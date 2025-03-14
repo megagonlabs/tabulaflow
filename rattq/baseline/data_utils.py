@@ -1,6 +1,7 @@
 import json
 import os
 from rattq.db_connector import BaseDBConnector, SQLiteConnector
+from rattq.schema import NL2QSample
 
 
 def get_db_connectors(dataset_name: str, splits: list[str] = ['train', 'dev', 'test']) -> dict[str, BaseDBConnector]:
@@ -18,5 +19,24 @@ def get_db_connectors(dataset_name: str, splits: list[str] = ['train', 'dev', 't
                 sqlite_path = os.path.join(db_dir, db_name, f'{db_name}.sqlite')
                 res[db_name] = SQLiteConnector(name=db_name, db_path=sqlite_path)
         return res
+    else:
+        raise ValueError(f'Dataset {dataset_name} not supported')
+
+
+def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
+    if dataset_name == 'bird-sql':
+        dir_name = 'dev_20240627' if split == 'dev' else split
+        with open(f'data/BIRD-SQL/{dir_name}/{split}.json', 'r') as f:
+            data = json.load(f)
+        return [
+            NL2QSample(
+                qid=f'{split}_{i}',
+                language='SQLite',
+                db=item['db_id'],
+                question=item['question'],
+                evidence=item['evidence'],
+                gold_query=item['SQL'],
+            ) for i, item in enumerate(data)
+        ]
     else:
         raise ValueError(f'Dataset {dataset_name} not supported')
