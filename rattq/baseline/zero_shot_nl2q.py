@@ -55,7 +55,7 @@ def main():
         batch_samples = dev_samples[i:j]
         prompts = [
             NL2Q_PROMPT.format(
-                language='SQL',
+                language=sample.language,
                 schema=db_connectors[sample.db].get_schema(),
                 evidence=sample.evidence,
                 question=sample.question
