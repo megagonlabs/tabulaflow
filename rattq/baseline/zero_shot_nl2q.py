@@ -26,7 +26,7 @@ def main():
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
 
-    db_connectors = get_db_connectors(args.dataset)
+    db_connectors = get_db_connectors(args.dataset, splits=['dev'])
     for db_name, db_connector in db_connectors.items():
         print(db_name)
         print(db_connector.get_schema())
