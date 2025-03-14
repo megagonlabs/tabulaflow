@@ -4,3 +4,4 @@ llama-index
 litellm
 pydantic
 tqdm
+func-timeout
