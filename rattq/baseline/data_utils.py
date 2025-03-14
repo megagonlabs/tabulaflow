@@ -30,7 +30,7 @@ def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
             data = json.load(f)
         return [
             NL2QSample(
-                qid=f'{split}_{i}',
+                qid=f'{dataset_name}_{split}_{i}',
                 language='SQLite',
                 db=item['db_id'],
                 question=item['question'],
