@@ -3,3 +3,4 @@ sqlalchemy
 llama-index
 litellm
 pydantic
+tqdm
