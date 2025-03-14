@@ -1,6 +1,8 @@
 import argparse
 import os
 import shutil
+import json
+from tqdm import trange
 from litellm import batch_completion
 from rattq.baseline.data_utils import get_db_connectors, load_nl2q_samples
 
@@ -47,7 +49,8 @@ def main():
     dev_samples = load_nl2q_samples(args.dataset, 'dev')
     print(f'Loaded {len(dev_samples)} samples from {args.dataset} dev set.')
 
-    for i in range(0, len(dev_samples), args.batch_size):
+    res = []
+    for i in trange(0, len(dev_samples), args.batch_size):
         j = min(i + args.batch_size, len(dev_samples))
         batch_samples = dev_samples[i:j]
         prompts = [
@@ -67,8 +70,18 @@ def main():
         responses = [r['choices'][0]['message']['content'] for r in responses]
         if i == 0:
             print(f'<response>{responses[0]}</response>')
-        break
-    
+        for item, r in zip(batch_samples, responses):
+            lines = r.strip().split('\n')
+            if lines[0].startswith('```') and lines[-1].startswith('```'):
+                r = '\n'.join(lines[1:-1])
+            item.pred_query = r
+            res.append(item)
+        
+    output_path = os.path.join(args.result_dir, f'result.json')
+    with open(output_path, 'w') as fout:
+        json.dump([item.model_dump(mode='json') for item in res], fout, indent=2)
+    print(f'Saved result to {output_path}')
+
 
 if __name__ == '__main__':
     main()
