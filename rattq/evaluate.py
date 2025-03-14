@@ -4,6 +4,7 @@ import json
 import os
 import math
 from tqdm import tqdm
+import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rattq.metric import bird_sql_ex
 from rattq.db_connector import BaseDBConnector
@@ -58,6 +59,11 @@ def main():
 
     with open(os.path.join(args.result_dir, 'result.json')) as fin:
         result = [NL2QSample(**item) for item in json.load(fin)]
+
+    # Shuffle the result to reduce concurent query execution on the same database
+    qids = {item.qid: i for i, item in enumerate(result)}
+    random.seed(42)
+    random.shuffle(result)
     
     db_connectors = get_db_connectors(dataset_name=args.dataset, splits=[args.split])
 
@@ -67,6 +73,9 @@ def main():
         futures = [executor.submit(compute_metrics, item, args.metrics, db_connectors[item.db]) for item in result]
         for future in tqdm(as_completed(futures), total=len(result)):
             result_with_metrics.append(future.result())
+
+    # Sort the result by qid
+    result_with_metrics.sort(key=lambda x: qids[x.qid])
 
     aggregated = {}
     aggregated['overall'] = {m: avg_and_round([item.metrics[m] for item in result_with_metrics]) for m in args.metrics}
