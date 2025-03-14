@@ -14,7 +14,7 @@ def bird_sql_ex(pred_query: str,
         gold_executed = db_connector.run_query(gold_query, timeout=timeout)
         pred_executed = db_connector.run_query(pred_query, timeout=timeout)
     except Exception as e:
-        print(f"Warning: Exception {e} occurred while executing querys")
+        print(f"Warning: Exception {e} occurred while executing queries")
         return 0.0
 
     return int(set(pred_executed) == set(gold_executed))
