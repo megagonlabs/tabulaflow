@@ -1,17 +1,32 @@
 import argparse
 import os
 import shutil
-from rattq.baseline.data_utils import get_db_connectors
+from litellm import batch_completion
+from rattq.baseline.data_utils import get_db_connectors, load_nl2q_samples
+
+NL2Q_PROMPT = """
+Translate the following natural language question into a {language} query. Output the query only, without any additional explanation.
+
+Database Schema:
+{schema}
+
+Extra Evidence:
+{evidence}
+
+Question: {question}
+
+Query:
+""".strip()
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--llm', default='gpt-4o')
+    parser.add_argument('--llm', default='openai/gpt-4o-mini')
     parser.add_argument('--prompt', default='default', choices=['default'])
     parser.add_argument('--dataset', default='bird-sql')
     parser.add_argument('--batch_size', default=10, type=int)
     parser.add_argument('--wait_time_between_batches', default=0.0, type=float)
-    parser.add_argument('--result_dir', default='output/zero_shot_nl2q_gpt-4o/')
+    parser.add_argument('--result_dir', default='output/zero_shot_nl2q_gpt-4o-mini/')
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
@@ -27,9 +42,33 @@ def main():
     os.makedirs(args.result_dir)
 
     db_connectors = get_db_connectors(args.dataset, splits=['dev'])
-    for db_name, db_connector in db_connectors.items():
-        print(db_name)
-        print(db_connector.get_schema())
+    print(f'Loaded {len(db_connectors)} databases from {args.dataset} dev set.')
+
+    dev_samples = load_nl2q_samples(args.dataset, 'dev')
+    print(f'Loaded {len(dev_samples)} samples from {args.dataset} dev set.')
+
+    for i in range(0, len(dev_samples), args.batch_size):
+        j = min(i + args.batch_size, len(dev_samples))
+        batch_samples = dev_samples[i:j]
+        prompts = [
+            NL2Q_PROMPT.format(
+                language='SQL',
+                schema=db_connectors[sample.db].get_schema(),
+                evidence=sample.evidence,
+                question=sample.question
+            ) for sample in batch_samples
+        ]
+        if i == 0:
+            print(f'<prompt>{prompts[0]}</prompt>')
+        responses = batch_completion(
+            model=args.llm,
+            messages = [[{"role": "user", "content": s}] for s in prompts]
+        )
+        responses = [r['choices'][0]['message']['content'] for r in responses]
+        if i == 0:
+            print(f'<response>{responses[0]}</response>')
+        break
+    
 
 if __name__ == '__main__':
     main()
