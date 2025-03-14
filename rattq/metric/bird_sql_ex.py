@@ -9,14 +9,12 @@ def bird_sql_ex(pred_query: str,
     if pred_query == gold_query:
         return 1.0
     t0 = time.time()
-    gold_executed = db_connector.run_query(gold_query)
-    gold_seconds = time.time() - t0
-    if gold_seconds > timeout:
-        print(f"Warning: Execution of gold query {gold_query} took longer than {timeout} seconds")
+
     try:
+        gold_executed = db_connector.run_query(gold_query, timeout=timeout)
         pred_executed = db_connector.run_query(pred_query, timeout=timeout)
     except Exception as e:
-        print(f"Warning: Exception {e} occurred while executing the predicted query {pred_query}")
+        print(f"Warning: Exception {e} occurred while executing querys")
         return 0.0
 
     return int(set(pred_executed) == set(gold_executed))
