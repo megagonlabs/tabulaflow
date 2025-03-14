@@ -1,3 +1,5 @@
 trl
 sqlalchemy
 llama-index
+litellm
+pydantic
