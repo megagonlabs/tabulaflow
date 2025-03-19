@@ -10,18 +10,20 @@ from rattq.baseline.data_utils import get_db_connectors, load_nl2q_samples
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
+- The query must follow the database schema.
+- You must use the hints to generate the query.
 - Output the query only, without any additional explanation.
 - Do not include additional columns that are not required by the question.
-  - For example, if the question only ask of a quantity of an item but not its name, do not fetch the name of the item.
+  - For example, if the question only ask for a quantity of an item but not its name, do not fetch the name of the item.
 - Before submitting the final query as answer, always execute the query and ensure it returns non-empty results.
 
 Database Schema:
 {schema}
 
-Extra Evidence:
-{evidence}
-
 Question: {question}
+
+Hints:
+{evidence}
 
 Query:
 """.strip()
