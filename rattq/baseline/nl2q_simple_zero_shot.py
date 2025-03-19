@@ -4,7 +4,7 @@ import shutil
 import json
 from tqdm import trange
 from litellm import batch_completion
-from rattq.utils import get_db_connectors, load_nl2q_samples
+from rattq.utils import get_db_connectors, load_nl2q_samples, parse_query
 
 
 NL2Q_PROMPT = """
@@ -83,10 +83,7 @@ def main():
         if i == 0:
             print(f'<response>{responses[0]}</response>')
         for item, r in zip(batch_samples, responses):
-            lines = r.strip().split('\n')
-            if lines[0].startswith('```') and lines[-1].startswith('```'):
-                r = '\n'.join(lines[1:-1])
-            item.pred_query = r
+            item.pred_query = parse_query(r)
             res.append(item)
         
     output_path = os.path.join(args.result_dir, f'result.json')

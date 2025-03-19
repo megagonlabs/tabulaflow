@@ -40,3 +40,19 @@ def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
         ]
     else:
         raise ValueError(f'Dataset {dataset_name} not supported')
+
+
+def parse_query(response) -> str:
+    if isinstance(response, dict):
+        if 'query' in response:
+            response = response['query']
+        elif 'answer' in response:
+            response = response['answer']
+
+    if isinstance(response, str):
+        lines = response.strip().split('\n')
+        if lines[0].startswith('```') and lines[-1].startswith('```'):
+            response = '\n'.join(lines[1:-1])
+        return response
+    else:
+        return ""
