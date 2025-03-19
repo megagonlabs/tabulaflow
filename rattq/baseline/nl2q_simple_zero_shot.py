@@ -4,7 +4,7 @@ import shutil
 import json
 from tqdm import trange
 from litellm import batch_completion
-from rattq.baseline.data_utils import get_db_connectors, load_nl2q_samples
+from rattq.utils import get_db_connectors, load_nl2q_samples
 
 
 NL2Q_PROMPT = """
