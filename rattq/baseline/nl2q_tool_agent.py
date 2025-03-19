@@ -74,18 +74,21 @@ def main():
                 question=sample.question
             ) for sample in batch_samples
         ]
-        if i == 0:
-            print(f'<prompt>{prompts[0]}</prompt>')
-
         responses = []
             
-        for sample, prompt in zip(batch_samples, prompts):
+        for k, (sample, prompt) in enumerate(zip(batch_samples, prompts)):
+            if args.debug or (i == 0 and k == 0):
+                print(f'<prompt>{prompt}</prompt>')
+
             tool = db_connectors[sample.db].as_smolagent_tool()
             agent = ToolCallingAgent(tools=[tool], model=model)
-            responses.append(agent.run(prompt))
 
-        if i == 0:
-            print(f'<response>{responses[0]}</response>')
+            responses.append(agent.run(prompt))
+            if args.debug or (i == 0 and k == 0):
+                print(f'<last_agent_step_input>{agent.memory.steps[-1].model_input_messages}</last_agent_step_input>')
+                print(f'<last_agent_step_output>{agent.memory.steps[-1].model_output_message}</last_agent_step_output>')
+                print(f'<response>{responses[0]}</response>')
+
         for item, r in zip(batch_samples, responses):
             lines = r.strip().split('\n')
             if lines[0].startswith('```') and lines[-1].startswith('```'):
