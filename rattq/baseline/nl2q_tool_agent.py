@@ -38,7 +38,7 @@ def main():
     parser.add_argument('--llm', default='openai/gpt-4o')
     parser.add_argument('--prompt', default='default', choices=['default'])
     parser.add_argument('--dataset', default='bird-sql')
-    parser.add_argument('--batch_size', default=10, type=int)
+    parser.add_argument('--batch_size', default=50, type=int)
     parser.add_argument('--wait_time_between_batches', default=0.0, type=float)
     parser.add_argument('--result_dir', default='output/nl2q_tool_agent_gpt-4o/')
     parser.add_argument('--overwrite', action='store_true')
