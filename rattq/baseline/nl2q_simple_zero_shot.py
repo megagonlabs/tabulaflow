@@ -28,7 +28,7 @@ def main():
     parser.add_argument('--dataset', default='bird-sql')
     parser.add_argument('--batch_size', default=10, type=int)
     parser.add_argument('--wait_time_between_batches', default=0.0, type=float)
-    parser.add_argument('--result_dir', default='output/zero_shot_nl2q_gpt-4o/')
+    parser.add_argument('--result_dir', default='output/nl2q_simple_zero_shot_gpt-4o/')
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
