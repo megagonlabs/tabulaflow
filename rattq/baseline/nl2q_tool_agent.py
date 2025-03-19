@@ -13,10 +13,13 @@ NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
 - You must use the hints to generate the query.
-- Output the query only, without any additional explanation.
+- The final answer must be the query rather than the result of the query.
 - Do not include additional columns that are not required by the question.
-  - For example, if the question only ask for a quantity of an item but not its name, do not fetch the name of the item.
-- Before submitting the final query as answer, always execute the query and ensure it returns non-empty results.
+  - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
+  - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
+- The observation being empty indicates that the query is incorrect, try a different query.
+- Before submitting the final query as answer, always execute the query to validate it.
+  - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 
 Database Schema:
 {schema}
@@ -66,7 +69,7 @@ def main():
                        if sample.qid in ('bird-sql_dev_1', 'bird-sql_dev_2', 'bird-sql_dev_10',
                                          'bird-sql_dev_15', 'bird-sql_dev_16')]
 
-    model = LiteLLMModel(model_id=args.llm) # Could use 'gpt-4o'
+    model = LiteLLMModel(model_id=args.llm)
 
     res = []
     for i in trange(0, len(dev_samples), args.batch_size):
