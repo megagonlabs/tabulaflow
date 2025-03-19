@@ -5,3 +5,4 @@ litellm
 pydantic
 tqdm
 func-timeout
+smolagents

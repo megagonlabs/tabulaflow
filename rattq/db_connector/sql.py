@@ -3,6 +3,7 @@ import sqlite3
 from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.mschema_utils import MSchema, SchemaEngine
 from rattq.db_connector.base import BaseDBConnector
+from smolagents import tool
 
 
 class SQLiteConnector(BaseDBConnector):
@@ -41,3 +42,17 @@ class SQLiteConnector(BaseDBConnector):
             raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
         except Exception as e:
             raise
+
+    def as_smolagent_tool(self):
+        @tool
+        def query_db(query: str) -> str:
+            """
+            Query the database with the given SQL query.
+
+            Args:
+                query: The SQL query to execute.
+            """
+            result = self.run_query(query)
+            return '\n'.join([str(row) for row in result])
+
+        return query_db
