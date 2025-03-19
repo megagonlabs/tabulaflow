@@ -5,6 +5,7 @@ import json
 from tqdm import trange
 from litellm import batch_completion
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
+from concurrent.futures import ThreadPoolExecutor
 from rattq.baseline.data_utils import get_db_connectors, load_nl2q_samples
 
 
@@ -74,20 +75,21 @@ def main():
                 question=sample.question
             ) for sample in batch_samples
         ]
+        if i == 0:
+            print(f'<prompts>{prompts[0]}</prompts>')
+
         responses = []
-            
-        for k, (sample, prompt) in enumerate(zip(batch_samples, prompts)):
-            if args.debug or (i == 0 and k == 0):
-                print(f'<prompt>{prompt}</prompt>')
+        tools = [db_connectors[sample.db].as_smolagent_tool() for sample in batch_samples]
+        agents = [ToolCallingAgent(tools=[tool], model=model) for tool in tools]
 
-            tool = db_connectors[sample.db].as_smolagent_tool()
-            agent = ToolCallingAgent(tools=[tool], model=model)
+        with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
+            futures = [executor.submit(agent.run, prompt) for agent, prompt in zip(agents, prompts)]
+            responses = [future.result() for future in futures]
 
-            responses.append(agent.run(prompt))
-            if args.debug or (i == 0 and k == 0):
-                print(f'<last_agent_step_input>{agent.memory.steps[-1].model_input_messages}</last_agent_step_input>')
-                print(f'<last_agent_step_output>{agent.memory.steps[-1].model_output_message}</last_agent_step_output>')
-                print(f'<response>{responses[0]}</response>')
+        if i == 0:
+            print(f'<last_agent_step_input>{agents[-1].memory.steps[-1].model_input_messages}</last_agent_step_input>')
+            print(f'<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>')
+            print(f'<response>{responses[0]}</response>')
 
         for item, r in zip(batch_samples, responses):
             lines = r.strip().split('\n')
