@@ -3,12 +3,12 @@ import os
 import shutil
 import json
 from tqdm import trange
-from litellm import batch_completion
+import litellm
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import get_db_connectors, load_nl2q_samples, parse_query
 
-
+litellm._turn_on_debug()
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
@@ -42,6 +42,7 @@ def main():
     parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_tool_agent_gpt-4o/")
     parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--vllm_config", default="local_llm_config.json")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
@@ -49,6 +50,11 @@ def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    litellm_kwargs = {"tool_choice": "auto"}
+    if args.llm.startswith("hosted_vllm/"):
+        with open(args.vllm_config, "r") as f:
+            litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
@@ -80,7 +86,7 @@ def main():
             )
         ]
 
-    model = LiteLLMModel(model_id=args.llm)
+    model = LiteLLMModel(model_id=args.llm, **litellm_kwargs)
 
     res = []
     for i in trange(0, len(dev_samples), args.batch_size):
