@@ -4,55 +4,64 @@ from rattq.db_connector import BaseDBConnector, SQLiteConnector
 from rattq.schema import NL2QSample
 
 
-def get_db_connectors(dataset_name: str, splits: list[str] = ['train', 'dev', 'test']) -> dict[str, BaseDBConnector]:
-    if dataset_name == 'bird-sql':
+def get_db_connectors(
+    dataset_name: str, splits: list[str] = ["train", "dev", "test"]
+) -> dict[str, BaseDBConnector]:
+    if dataset_name == "bird-sql":
         res = {}
         paths = {
-            'train': ('data/BIRD-SQL/train/train_tables.json', 'data/BIRD-SQL/train/train_databases/'),
-            'dev': ('data/BIRD-SQL/dev_20240627/dev_tables.json', 'data/BIRD-SQL/dev_20240627/dev_databases/'),
+            "train": (
+                "data/BIRD-SQL/train/train_tables.json",
+                "data/BIRD-SQL/train/train_databases/",
+            ),
+            "dev": (
+                "data/BIRD-SQL/dev_20240627/dev_tables.json",
+                "data/BIRD-SQL/dev_20240627/dev_databases/",
+            ),
         }
         for split in splits:
             metadata_path, db_dir = paths[split]
-            with open(metadata_path, 'r') as f:
-                db_names = [item['db_id'] for item in json.load(f)]
+            with open(metadata_path, "r") as f:
+                db_names = [item["db_id"] for item in json.load(f)]
             for db_name in db_names:
-                sqlite_path = os.path.join(db_dir, db_name, f'{db_name}.sqlite')
+                sqlite_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
                 res[db_name] = SQLiteConnector(name=db_name, db_path=sqlite_path)
         return res
     else:
-        raise ValueError(f'Dataset {dataset_name} not supported')
+        raise ValueError(f"Dataset {dataset_name} not supported")
 
 
 def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
-    if dataset_name == 'bird-sql':
-        dir_name = 'dev_20240627' if split == 'dev' else split
-        with open(f'data/BIRD-SQL/{dir_name}/{split}.json', 'r') as f:
+    if dataset_name == "bird-sql":
+        dir_name = "dev_20240627" if split == "dev" else split
+        with open(f"data/BIRD-SQL/{dir_name}/{split}.json", "r") as f:
             data = json.load(f)
         return [
             NL2QSample(
-                qid=f'{dataset_name}_{split}_{i}',
-                language='SQLite',
-                db=item['db_id'],
-                question=item['question'],
-                evidence=item['evidence'],
-                gold_query=item['SQL'],
-            ) for i, item in enumerate(data)
+                qid=f"{dataset_name}_{split}_{i}",
+                language="SQLite",
+                db=item["db_id"],
+                question=item["question"],
+                evidence=item["evidence"],
+                gold_query=item["SQL"],
+            )
+            for i, item in enumerate(data)
         ]
     else:
-        raise ValueError(f'Dataset {dataset_name} not supported')
+        raise ValueError(f"Dataset {dataset_name} not supported")
 
 
 def parse_query(response) -> str:
     if isinstance(response, dict):
-        if 'query' in response:
-            response = response['query']
-        elif 'answer' in response:
-            response = response['answer']
+        if "query" in response:
+            response = response["query"]
+        elif "answer" in response:
+            response = response["answer"]
 
     if isinstance(response, str):
-        lines = response.strip().split('\n')
-        if lines[0].startswith('```') and lines[-1].startswith('```'):
-            response = '\n'.join(lines[1:-1])
+        lines = response.strip().split("\n")
+        if lines[0].startswith("```") and lines[-1].startswith("```"):
+            response = "\n".join(lines[1:-1])
         return response
     else:
         return ""

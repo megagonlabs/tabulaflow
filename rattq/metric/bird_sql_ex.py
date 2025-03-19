@@ -2,10 +2,9 @@ import time
 from rattq.db_connector import BaseDBConnector
 
 
-def bird_sql_ex(pred_query: str,
-                gold_query: str,
-                db_connector: BaseDBConnector,
-                timeout: int = 30) -> float:
+def bird_sql_ex(
+    pred_query: str, gold_query: str, db_connector: BaseDBConnector, timeout: int = 30
+) -> float:
     if pred_query == gold_query:
         return 1.0
     t0 = time.time()

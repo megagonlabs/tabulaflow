@@ -13,20 +13,20 @@ from rattq.utils import get_db_connectors
 
 
 METRIC_FUNC_MAPPING = {
-    'bird_sql_ex': bird_sql_ex,
+    "bird_sql_ex": bird_sql_ex,
 }
 
 
-def compute_metrics(item: NL2QSample, metrics: list[str], db_connector: BaseDBConnector):
+def compute_metrics(
+    item: NL2QSample, metrics: list[str], db_connector: BaseDBConnector
+):
     item = copy.deepcopy(item)
     for m in metrics:
         pred_query = item.pred_query
-        if pred_query.endswith('<end_of_turn>'):
-            pred_query = pred_query[:-len('<end_of_turn>')].strip()
+        if pred_query.endswith("<end_of_turn>"):
+            pred_query = pred_query[: -len("<end_of_turn>")].strip()
         item.metrics[m] = METRIC_FUNC_MAPPING[m](
-            pred_query=pred_query,
-            gold_query=item.gold_query,
-            db_connector=db_connector
+            pred_query=pred_query, gold_query=item.gold_query, db_connector=db_connector
         )
     return item
 
@@ -48,29 +48,32 @@ def aggregate(results: list[tuple[str, float]]):
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--dataset', default='bird-sql')
-    parser.add_argument('--split', default='dev')
-    parser.add_argument('--result_dir', default='output/gpt-4o')
-    parser.add_argument('--num_threads', type=int, default=8)
-    parser.add_argument('--metrics', nargs='+', default=['bird_sql_ex'])
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev")
+    parser.add_argument("--result_dir", default="output/gpt-4o")
+    parser.add_argument("--num_threads", type=int, default=8)
+    parser.add_argument("--metrics", nargs="+", default=["bird_sql_ex"])
     args = parser.parse_args()
     print(args)
     print()
 
-    with open(os.path.join(args.result_dir, 'result.json')) as fin:
+    with open(os.path.join(args.result_dir, "result.json")) as fin:
         result = [NL2QSample(**item) for item in json.load(fin)]
 
     # Shuffle the result to reduce concurent query execution on the same database
     qids = {item.qid: i for i, item in enumerate(result)}
     random.seed(42)
     random.shuffle(result)
-    
+
     db_connectors = get_db_connectors(dataset_name=args.dataset, splits=[args.split])
 
     # Use ThreadPoolExecutor for multithreading
     result_with_metrics = []
     with ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        futures = [executor.submit(compute_metrics, item, args.metrics, db_connectors[item.db]) for item in result]
+        futures = [
+            executor.submit(compute_metrics, item, args.metrics, db_connectors[item.db])
+            for item in result
+        ]
         for future in tqdm(as_completed(futures), total=len(result)):
             result_with_metrics.append(future.result())
 
@@ -78,22 +81,29 @@ def main():
     result_with_metrics.sort(key=lambda x: qids[x.qid])
 
     aggregated = {}
-    aggregated['overall'] = {m: avg_and_round([item.metrics[m] for item in result_with_metrics]) for m in args.metrics}
+    aggregated["overall"] = {
+        m: avg_and_round([item.metrics[m] for item in result_with_metrics])
+        for m in args.metrics
+    }
 
-    output_path = os.path.join(args.result_dir, f'result_with_metrics.json')
-    with open(output_path, 'w') as fout:
-        json.dump([item.model_dump(mode='json') for item in result_with_metrics], fout, indent=2)
-    print(f'Saved result with metrics to {output_path}')
+    output_path = os.path.join(args.result_dir, f"result_with_metrics.json")
+    with open(output_path, "w") as fout:
+        json.dump(
+            [item.model_dump(mode="json") for item in result_with_metrics],
+            fout,
+            indent=2,
+        )
+    print(f"Saved result with metrics to {output_path}")
 
-    output_path = os.path.join(args.result_dir, f'aggregated_metrics.json')
-    with open(output_path, 'w') as fout:
+    output_path = os.path.join(args.result_dir, f"aggregated_metrics.json")
+    with open(output_path, "w") as fout:
         json.dump(aggregated, fout, indent=2)
-    print(f'Saved aggregated metrics to {output_path}')
+    print(f"Saved aggregated metrics to {output_path}")
 
     print()
-    print('Aggregated metrics:')
+    print("Aggregated metrics:")
     print(json.dumps(aggregated, indent=2))
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
