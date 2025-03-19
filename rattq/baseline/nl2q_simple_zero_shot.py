@@ -3,7 +3,7 @@ import os
 import shutil
 import json
 from tqdm import trange
-from litellm import batch_completion
+import litellm
 from rattq.utils import get_db_connectors, load_nl2q_samples, parse_query
 
 
@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
+    parser.add_argument("--vllm_config", default="local_llm_config.json")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -43,6 +44,11 @@ def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    litellm_kwargs = {}
+    if args.llm.startswith("hosted_vllm/"):
+        with open(args.vllm_config, "r") as f:
+            litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
@@ -78,8 +84,11 @@ def main():
         ]
         if i == 0:
             print(f"<prompt>{prompts[0]}</prompt>")
-        responses = batch_completion(
-            model=args.llm, messages=[[{"role": "user", "content": s}] for s in prompts]
+
+        responses = litellm.batch_completion(
+            model=args.llm,
+            messages=[[{"role": "user", "content": s}] for s in prompts],
+            **litellm_kwargs,
         )
         responses = [r["choices"][0]["message"]["content"] for r in responses]
         if i == 0:

@@ -50,7 +50,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
-    parser.add_argument("--result_dir", default="output/gpt-4o")
+    parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--num_threads", type=int, default=8)
     parser.add_argument("--metrics", nargs="+", default=["bird_sql_ex"])
     args = parser.parse_args()
