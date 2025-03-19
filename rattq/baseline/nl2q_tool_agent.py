@@ -41,6 +41,9 @@ def main():
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
+    if args.debug:
+        parser.set_defaults(batch_size=1, overwrite=True, result_dir='output/test/')
+    args = parser.parse_args()
     print(args)
     print()
 
@@ -59,7 +62,9 @@ def main():
     print(f'Loaded {len(dev_samples)} samples from {args.dataset} dev set.')
 
     if args.debug:
-        dev_samples = dev_samples[:3]
+        dev_samples = [sample for sample in dev_samples
+                       if sample.qid in ('bird-sql_dev_1', 'bird-sql_dev_2', 'bird-sql_dev_10',
+                                         'bird-sql_dev_15', 'bird-sql_dev_16')]
 
     model = LiteLLMModel(model_id=args.llm) # Could use 'gpt-4o'
 

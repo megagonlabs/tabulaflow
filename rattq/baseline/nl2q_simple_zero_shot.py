@@ -38,6 +38,9 @@ def main():
     parser.add_argument('--overwrite', action='store_true')
     parser.add_argument('--debug', action='store_true')
     args = parser.parse_args()
+    if args.debug:
+        parser.set_defaults(batch_size=1, overwrite=True, result_dir='output/test/')
+    args = parser.parse_args()
     print(args)
     print()
 
@@ -54,6 +57,9 @@ def main():
 
     dev_samples = load_nl2q_samples(args.dataset, 'dev')
     print(f'Loaded {len(dev_samples)} samples from {args.dataset} dev set.')
+
+    if args.debug:
+        dev_samples = dev_samples[:3]
 
     res = []
     for i in trange(0, len(dev_samples), args.batch_size):
