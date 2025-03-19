@@ -43,7 +43,7 @@ class SQLiteConnector(BaseDBConnector):
         except Exception as e:
             raise
 
-    def as_smolagent_tool(self):
+    def as_smolagent_tool(self, max_length_chars: int = 1000):
         @tool
         def query_db(query: str) -> str:
             """
@@ -53,6 +53,11 @@ class SQLiteConnector(BaseDBConnector):
                 query: The SQL query to execute.
             """
             result = self.run_query(query)
-            return '\n'.join([str(row) for row in result])
-
+            res = '\n'.join([str(row) for row in result])
+            if max_length_chars > 0 and len(res) > max_length_chars:
+                # borrowed from https://github.com/huggingface/smolagents/blob/main/src/smolagents/utils.py
+                res = res[:max_length_chars // 2] + \
+                      f"\n..._This content has been truncated to stay below {max_length_chars} characters_...\n" + \
+                      res[-(max_length_chars // 2):]
+            return res
         return query_db
