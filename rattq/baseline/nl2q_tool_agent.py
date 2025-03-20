@@ -70,14 +70,27 @@ def get_smolagent_tools(db_connector):
         res = ""
         for table_column in table_columns:
             table, column = table_column.split(".", 1)
-            if " " in column and column[0] != '"':
-                column = f'"{column}"'
+            column = column.strip('"')
             matches = []
             try:
+                # Check if the table exists
+                query = f'SELECT name FROM sqlite_master WHERE type="table" AND name="{table}"'
+                result = db_connector.run_query(query)
+                table_exist = len(result) > 0
+                if not table_exist:
+                    raise Exception(f"table {table} does not exist")
+
+                # Check if the column exists in the table
+                query = f'PRAGMA table_info("{table}")'
+                result = db_connector.run_query(
+                    query
+                )  # This will return a list of tuples
+                column_exist = any(row[1] == column for row in result)
+                if not column_exist:
+                    raise Exception(f"column {column} does not exist in table {table}")
+
                 for keyword in keywords:
-                    query = (
-                        f'SELECT DISTINCT {column} FROM "{table}" WHERE {column} LIKE ?'
-                    )
+                    query = f'SELECT DISTINCT "{column}" FROM "{table}" WHERE "{column}" LIKE ?'
                     result = db_connector.run_query(query, (f"%{keyword}%",))
                     matches += [row[0] for row in result]
                 matches = sorted(list(set(matches)))
