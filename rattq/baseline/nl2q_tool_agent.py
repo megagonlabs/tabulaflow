@@ -37,6 +37,7 @@ Query:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", default="openai/gpt-4o")
+    parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--batch_size", default=50, type=int)
@@ -87,7 +88,7 @@ def main():
             )
         ]
 
-    model = LiteLLMModel(model_id=args.llm, **litellm_kwargs)
+    model = LiteLLMModel(model_id=args.llm, temperature=args.temperature, **litellm_kwargs)
 
     res = []
     for i in trange(0, len(dev_samples), args.batch_size):

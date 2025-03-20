@@ -30,6 +30,7 @@ Query:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", default="openai/gpt-4o")
+    parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--batch_size", default=50, type=int)
@@ -88,6 +89,7 @@ def main():
         responses = litellm.batch_completion(
             model=args.llm,
             messages=[[{"role": "user", "content": s}] for s in prompts],
+            temperature=args.temperature,
             **litellm_kwargs,
         )
         responses = [r["choices"][0]["message"]["content"] for r in responses]
