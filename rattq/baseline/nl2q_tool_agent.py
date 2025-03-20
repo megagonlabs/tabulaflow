@@ -76,13 +76,13 @@ def get_smolagent_tools(db_connector):
         Fuzzy search for a keyword in the database, case-insensitive.
 
         Args:
-            table_columns: A list of columns in the format of "table.column", e.g. student."Student Name".
+            table_columns: A list of columns in the format of "table.column", e.g. student.`Student Name`.
             keywords: A list of keywords to search for.
         """
         res = ""
         for table_column in table_columns:
             table, column = table_column.split(".", 1)
-            column = column.strip('"')
+            column = column.strip("`").strip('"')
             matches = []
             try:
                 # Check if the table exists
