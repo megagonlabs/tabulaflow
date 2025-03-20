@@ -19,7 +19,7 @@ Translate the following natural language question into a {language} query.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
-- For non-digit text columns, always use the `search_keyword` tool to search for the keyword and ensure it exists in the database.
+- For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
   - Try to search over all potentially relevant columns in the database, and include potential synonyms in the keyword list.
 - Before submitting the final query as answer, always execute the query to validate it.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
@@ -59,7 +59,7 @@ def get_smolagent_tools(db_connector):
         return res
 
     @tool
-    def search_keyword(table_columns: list[str], keywords: list[str]) -> str:
+    def search_keywords(table_columns: list[str], keywords: list[str]) -> str:
         """
         Fuzzy search for a keyword in the database, case-insensitive.
 
@@ -106,7 +106,7 @@ def get_smolagent_tools(db_connector):
 
         return res
 
-    return [query_db, search_keyword]
+    return [query_db, search_keywords]
 
 
 def main():
