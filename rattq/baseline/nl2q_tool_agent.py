@@ -19,7 +19,7 @@ Translate the following natural language question into a {language} query.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
 - The observation being empty indicates that the query is incorrect, try a different query.
-- When filtering on text columns, use the `search_value` tool to search for the value and ensure it exists in the database.
+- When filtering on text columns, always use the `search_value` tool to search for the value and ensure it exists in the database.
 - Before submitting the final query as answer, always execute the query to validate it.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 
