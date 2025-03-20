@@ -19,6 +19,18 @@ Translate the following natural language question into a {language} query.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
+  - Example:
+    Table: student
+    [
+    (id:TEXT, Primary Key, Example: 1),
+    (name:TEXT, Examples: [John]),
+    (score:INTEGER, Examples: [100, 95, 90]),
+    ]
+    Question: What is the highest score?
+    Query: SELECT MAX(score) FROM student
+
+    Question: What is the student with the highest score?
+    Query: SELECT name FROM student WHERE score = (SELECT MAX(score) FROM student)
 - For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
   - Try to search over all potentially relevant columns in the database, and include potential synonyms in the keyword list.
 - Before submitting the final query as answer, always execute the query to validate it.
