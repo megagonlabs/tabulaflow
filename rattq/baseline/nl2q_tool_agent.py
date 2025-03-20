@@ -6,7 +6,8 @@ from tqdm import trange
 import litellm
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
-from rattq.utils import load_nl2q_samples, parse_query
+from smolagents.tools import tool
+from rattq.utils import load_nl2q_samples, parse_query, truncate_content
 from rattq.db_connector import get_db_connectors
 
 
@@ -32,6 +33,62 @@ Hints:
 
 Query:
 """.strip()
+
+
+MAX_RESPONSE_LENGTH_CHARS = 1000
+MAX_SEARCH_VALUE_RESULTS_PER_COLUMN = 10
+
+
+def get_smolagent_tools(db_connector):
+
+    @tool
+    def query_db(query: str) -> str:
+        """
+        Query the database with the given SQL query.
+
+        Args:
+            query: The SQL query to execute.
+        """
+        result = db_connector.run_query(query)
+        if not result:
+            return "QUERY RESULT IS EMPTY"
+
+        res = "\n".join([str(row) for row in result])
+        res = truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
+        return res
+
+    @tool
+    def search_value(table_columns: list[tuple[str, str]], keywords: list[str]) -> str:
+        """
+        Fuzzy search for a keyword in the database, case-insensitive.
+
+        Args:
+            table_columns: A list of tuples, each containing (table_name, column_name).
+            keywords: A list of keywords to search for.
+        """
+        res = ""
+        for table, column in table_columns:
+            matches = []
+            for keyword in keywords:
+                query = (
+                    f'SELECT DISTINCT "{column}" FROM "{table}" WHERE "{column}" LIKE ?'
+                )
+                result = db_connector.run_query(query, (f"%{keyword}%",))
+                matches += [row[0] for row in result]
+            matches = sorted(list(set(matches)))
+            if len(matches) > MAX_SEARCH_VALUE_RESULTS_PER_COLUMN:
+                matches_str = (
+                    json.dumps(matches[:MAX_SEARCH_VALUE_RESULTS_PER_COLUMN]) + ", ..."
+                )
+            else:
+                matches_str = json.dumps(matches)
+            if " " in column:
+                column = f'"{column}"'
+            res += f"[{table}.{column}]: {len(matches)} matches: {matches_str}\n"
+
+        return res
+
+    return [query_db, search_value]
 
 
 def main():
@@ -88,7 +145,9 @@ def main():
             )
         ]
 
-    model = LiteLLMModel(model_id=args.llm, temperature=args.temperature, **litellm_kwargs)
+    model = LiteLLMModel(
+        model_id=args.llm, temperature=args.temperature, **litellm_kwargs
+    )
 
     res = []
     for i in trange(0, len(dev_samples), args.batch_size):
