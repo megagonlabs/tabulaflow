@@ -58,21 +58,20 @@ def get_smolagent_tools(db_connector):
         return res
 
     @tool
-    def search_value(table_columns: list[tuple[str, str]], keywords: list[str]) -> str:
+    def search_value(table_columns: list[str], keywords: list[str]) -> str:
         """
         Fuzzy search for a keyword in the database, case-insensitive.
 
         Args:
-            table_columns: A list of tuples, each containing (table_name, column_name).
+            table_columns: A list of columns in the format of "table.column".
             keywords: A list of keywords to search for.
         """
         res = ""
-        for table, column in table_columns:
+        for table_column in table_columns:
+            table, column = table_column.split(".", 1)
             matches = []
             for keyword in keywords:
-                query = (
-                    f'SELECT DISTINCT "{column}" FROM "{table}" WHERE "{column}" LIKE ?'
-                )
+                query = f'SELECT DISTINCT {column} FROM "{table}" WHERE {column} LIKE ?'
                 result = db_connector.run_query(query, (f"%{keyword}%",))
                 matches += [row[0] for row in result]
             matches = sorted(list(set(matches)))
@@ -82,9 +81,7 @@ def get_smolagent_tools(db_connector):
                 )
             else:
                 matches_str = json.dumps(matches)
-            if " " in column:
-                column = f'"{column}"'
-            res += f"[{table}.{column}]: {len(matches)} matches: {matches_str}\n"
+            res += f"[{table_column}]: {len(matches)} matches: {matches_str}\n"
 
         return res
 
@@ -168,7 +165,7 @@ def main():
         responses = []
         agents = [
             ToolCallingAgent(
-                tools=db_connectors[sample.db].as_smolagent_tools(), model=model
+                tools=get_smolagent_tools(db_connectors[sample.db]), model=model
             )
             for sample in batch_samples
         ]
