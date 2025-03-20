@@ -6,13 +6,14 @@ import math
 from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from rattq.metric import bird_sql_ex
+from rattq.metric import bird_sql_ex, executable
 from rattq.db_connector import BaseDBConnector, get_db_connectors
 from rattq.schema import NL2QSample
 
 
 METRIC_FUNC_MAPPING = {
     "bird_sql_ex": bird_sql_ex,
+    "executable": executable,
 }
 
 
@@ -51,7 +52,7 @@ def main():
     parser.add_argument("--split", default="dev")
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--num_threads", type=int, default=8)
-    parser.add_argument("--metrics", nargs="+", default=["bird_sql_ex"])
+    parser.add_argument("--metrics", nargs="+", default=["bird_sql_ex", "executable"])
     args = parser.parse_args()
     print(args)
     print()
