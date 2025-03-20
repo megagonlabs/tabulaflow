@@ -7,9 +7,8 @@ from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from rattq.metric import bird_sql_ex
-from rattq.db_connector import BaseDBConnector
+from rattq.db_connector import BaseDBConnector, get_db_connectors
 from rattq.schema import NL2QSample
-from rattq.utils import get_db_connectors
 
 
 METRIC_FUNC_MAPPING = {

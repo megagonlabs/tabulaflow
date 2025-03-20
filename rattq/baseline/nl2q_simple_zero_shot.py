@@ -4,8 +4,8 @@ import shutil
 import json
 from tqdm import trange
 import litellm
-from rattq.utils import get_db_connectors, load_nl2q_samples, parse_query
-
+from rattq.utils import load_nl2q_samples, parse_query
+from rattq.db_connector import get_db_connectors
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.

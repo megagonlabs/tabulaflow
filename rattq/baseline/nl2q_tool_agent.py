@@ -6,9 +6,10 @@ from tqdm import trange
 import litellm
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
-from rattq.utils import get_db_connectors, load_nl2q_samples, parse_query
+from rattq.utils import load_nl2q_samples, parse_query
+from rattq.db_connector import get_db_connectors
 
-litellm._turn_on_debug()
+
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
@@ -18,6 +19,7 @@ Translate the following natural language question into a {language} query.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
 - The observation being empty indicates that the query is incorrect, try a different query.
+- When filtering on text columns, use the `search_value` tool to search for the value and ensure it exists in the database.
 - Before submitting the final query as answer, always execute the query to validate it.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 
@@ -105,10 +107,12 @@ def main():
             print(f"<prompts>{prompts[0]}</prompts>")
 
         responses = []
-        tools = [
-            db_connectors[sample.db].as_smolagent_tool() for sample in batch_samples
+        agents = [
+            ToolCallingAgent(
+                tools=db_connectors[sample.db].as_smolagent_tools(), model=model
+            )
+            for sample in batch_samples
         ]
-        agents = [ToolCallingAgent(tools=[tool], model=model) for tool in tools]
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [

@@ -1,34 +1,5 @@
 import json
-import os
-from rattq.db_connector import BaseDBConnector, SQLiteConnector
 from rattq.schema import NL2QSample
-
-
-def get_db_connectors(
-    dataset_name: str, splits: list[str] = ["train", "dev", "test"]
-) -> dict[str, BaseDBConnector]:
-    if dataset_name == "bird-sql":
-        res = {}
-        paths = {
-            "train": (
-                "data/BIRD-SQL/train/train_tables.json",
-                "data/BIRD-SQL/train/train_databases/",
-            ),
-            "dev": (
-                "data/BIRD-SQL/dev_20240627/dev_tables.json",
-                "data/BIRD-SQL/dev_20240627/dev_databases/",
-            ),
-        }
-        for split in splits:
-            metadata_path, db_dir = paths[split]
-            with open(metadata_path, "r") as f:
-                db_names = [item["db_id"] for item in json.load(f)]
-            for db_name in db_names:
-                sqlite_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
-                res[db_name] = SQLiteConnector(name=db_name, db_path=sqlite_path)
-        return res
-    else:
-        raise ValueError(f"Dataset {dataset_name} not supported")
 
 
 def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
@@ -65,3 +36,15 @@ def parse_query(response) -> str:
         return response
     else:
         return ""
+
+
+def truncate_content(content: str, max_length_chars: int = 1000) -> str:
+    # borrowed from https://github.com/huggingface/smolagents/blob/main/src/smolagents/utils.py
+    if len(content) <= max_length_chars:
+        return content
+    else:
+        return (
+            content[: max_length_chars // 2]
+            + f"\n..._This content has been truncated to stay below {max_length_chars} characters_...\n"
+            + content[-max_length_chars // 2 :]
+        )
