@@ -205,6 +205,8 @@ class MSchema:
                 continue
 
             raw_type = self.get_field_type(field_info["type"], not show_type_detail)
+            if " " in field_name:
+                field_name = f'"{field_name}"'
             field_line = f"({field_name}:{raw_type.upper()}"
             if field_info["comment"] != "":
                 field_line += f", {field_info['comment'].strip()}"
