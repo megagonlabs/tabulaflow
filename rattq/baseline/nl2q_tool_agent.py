@@ -73,18 +73,23 @@ def get_smolagent_tools(db_connector):
             if " " in column and column[0] != '"':
                 column = f'"{column}"'
             matches = []
-            for keyword in keywords:
-                query = f'SELECT DISTINCT {column} FROM "{table}" WHERE {column} LIKE ?'
-                result = db_connector.run_query(query, (f"%{keyword}%",))
-                matches += [row[0] for row in result]
-            matches = sorted(list(set(matches)))
-            if len(matches) > MAX_SEARCH_RESULTS_PER_COLUMN:
-                matches_str = (
-                    json.dumps(matches[:MAX_SEARCH_RESULTS_PER_COLUMN]) + ", ..."
-                )
-            else:
-                matches_str = json.dumps(matches)
-            res += f"[{table}.{column}]: {len(matches)} matches: {matches_str}\n"
+            try:
+                for keyword in keywords:
+                    query = (
+                        f'SELECT DISTINCT {column} FROM "{table}" WHERE {column} LIKE ?'
+                    )
+                    result = db_connector.run_query(query, (f"%{keyword}%",))
+                    matches += [row[0] for row in result]
+                matches = sorted(list(set(matches)))
+                if len(matches) > MAX_SEARCH_RESULTS_PER_COLUMN:
+                    matches_str = (
+                        json.dumps(matches[:MAX_SEARCH_RESULTS_PER_COLUMN]) + ", ..."
+                    )
+                else:
+                    matches_str = json.dumps(matches)
+                res += f"[{table}.{column}] {len(matches)} matches: {matches_str}\n"
+            except Exception as e:
+                res += f"[{table}.{column}] ERROR ENCOUNTERED: {str(e)}\n"
 
         return res
 
