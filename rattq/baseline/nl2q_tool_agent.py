@@ -19,7 +19,8 @@ Translate the following natural language question into a {language} query.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
-- When filtering on non-digit text columns, always use the `search_value` tool to search for the value and ensure it exists in the database.
+- For non-digit text columns, always use the `search_keyword` tool to search for the keyword and ensure it exists in the database.
+  - Try to search over all potentially relevant columns in the database, and include potential synonyms in the keyword list.
 - Before submitting the final query as answer, always execute the query to validate it.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 
@@ -36,7 +37,7 @@ Query:
 
 
 MAX_RESPONSE_LENGTH_CHARS = 1000
-MAX_SEARCH_VALUE_RESULTS_PER_COLUMN = 10
+MAX_SEARCH_RESULTS_PER_COLUMN = 10
 
 
 def get_smolagent_tools(db_connector):
@@ -58,34 +59,36 @@ def get_smolagent_tools(db_connector):
         return res
 
     @tool
-    def search_value(table_columns: list[str], keywords: list[str]) -> str:
+    def search_keyword(table_columns: list[str], keywords: list[str]) -> str:
         """
         Fuzzy search for a keyword in the database, case-insensitive.
 
         Args:
-            table_columns: A list of columns in the format of "table.column".
+            table_columns: A list of columns in the format of "table.column", e.g. student."Student Name".
             keywords: A list of keywords to search for.
         """
         res = ""
         for table_column in table_columns:
             table, column = table_column.split(".", 1)
+            if " " in column and column[0] != '"':
+                column = f'"{column}"'
             matches = []
             for keyword in keywords:
                 query = f'SELECT DISTINCT {column} FROM "{table}" WHERE {column} LIKE ?'
                 result = db_connector.run_query(query, (f"%{keyword}%",))
                 matches += [row[0] for row in result]
             matches = sorted(list(set(matches)))
-            if len(matches) > MAX_SEARCH_VALUE_RESULTS_PER_COLUMN:
+            if len(matches) > MAX_SEARCH_RESULTS_PER_COLUMN:
                 matches_str = (
-                    json.dumps(matches[:MAX_SEARCH_VALUE_RESULTS_PER_COLUMN]) + ", ..."
+                    json.dumps(matches[:MAX_SEARCH_RESULTS_PER_COLUMN]) + ", ..."
                 )
             else:
                 matches_str = json.dumps(matches)
-            res += f"[{table_column}]: {len(matches)} matches: {matches_str}\n"
+            res += f"[{table}.{column}]: {len(matches)} matches: {matches_str}\n"
 
         return res
 
-    return [query_db, search_value]
+    return [query_db, search_keyword]
 
 
 def main():
