@@ -6,6 +6,7 @@ from rattq.db_connector.base import BaseDBConnector
 from smolagents import tool
 from rattq.utils import truncate_content
 
+
 class SQLiteConnector(BaseDBConnector):
     def __init__(self, name: str, db_path: str):
         self.name = name
@@ -51,7 +52,7 @@ class SQLiteConnector(BaseDBConnector):
             if res == "":
                 res = "QUERY RESULT IS EMPTY"
             return res
-        
+
         @tool
         def query_db(query: str) -> str:
             """
@@ -62,19 +63,19 @@ class SQLiteConnector(BaseDBConnector):
             """
             result = self.run_query(query)
             return _format_result(result)
-        
+
         @tool
-        def search_value(table_name: str, column_name: str, value: str) -> str:
+        def search_value(table: str, column: str, value: str) -> str:
             """
-            Fuzzy search for a value in a table and column, case-insensitive.
+            Fuzzy search for a value in a table and column, case-insensitive. Use this tool for text columns.
 
             Args:
-                table_name: The name of the table to search.
-                column_name: The name of the column to search.
+                table: The name of the table to search.
+                column: The name of the column to search.
                 value: The value to search for.
             """
-            column_name = column_name.strip('"')
-            query = f"SELECT DISTINCT \"{column_name}\" FROM {table_name} WHERE \"{column_name}\" LIKE '%{value}%'"
+            column = column.strip('"')
+            query = f'SELECT DISTINCT "{column}" FROM {table} WHERE "{column}" LIKE \'%{value}%\''
             result = self.run_query(query)
             return _format_result(result)
 
