@@ -13,6 +13,7 @@ NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
 - You must use the hints to generate the query.
+- You must use the 【Foreign keys】 section in the database schema to connect the tables.
 - Output the query only, without any additional explanation.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
