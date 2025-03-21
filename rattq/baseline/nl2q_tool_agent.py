@@ -18,10 +18,15 @@ Translate the following natural language question into a {language} query.
 - The final answer must be the query rather than the result of the query.
 - You are not allowed to decompose the question into sub-questions, and use the intermediate results of previous sub-questions in the final query.
   - However, you can debug a query by testing smaller components.
-- You must use the 【Foreign keys】 section in the database schema to connect the tables.
-- Do not include additional columns that are not required by the question.
-  - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
-  - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
+- To use multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema .
+- For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
+  - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
+  - Similarly, include potential synonyms in the keyword list. 
+- Before submitting the final query as answer, always execute the query to validate it.
+  - The execution result should be non-empty and reasonable (not null, not zero, etc.)
+- When submitting the final query, remove any additional columns that are not required by the question.
+  - For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student.
+  - Similarly, if the question only ask for the student with the highest score but not the score, do not include the score.
   - Example:
     Table: student
     [
@@ -34,11 +39,8 @@ Translate the following natural language question into a {language} query.
 
     Question: What is the student with the highest score?
     Query: SELECT name FROM student WHERE score = (SELECT MAX(score) FROM student)
-- For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
-  - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
-  - Similarly, include potential synonyms in the keyword list. 
-- Before submitting the final query as answer, always execute the query to validate it.
-  - The execution result should be non-empty and reasonable (not null, not zero, etc.)
+
+=== Your Task ===
 
 Database Schema:
 {schema}
@@ -174,10 +176,10 @@ def main():
             if sample.qid
             in (
                 "bird-sql_dev_1",
-                "bird-sql_dev_2",
+                # "bird-sql_dev_2",
                 "bird-sql_dev_10",
-                "bird-sql_dev_15",
-                "bird-sql_dev_16",
+                # "bird-sql_dev_15",
+                # "bird-sql_dev_16",
             )
         ]
 
