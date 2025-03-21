@@ -160,7 +160,8 @@ def main():
             print(f"<response>{responses[0]}</response>")
 
         for k, sample in enumerate(batch_samples):
-            candidates = responses[k : k + args.num_majority_voting_candidates]
+            n = args.num_majority_voting_candidates
+            candidates = responses[k * n : (k + 1) * n]
             sample.pred_query = select_best_query(candidates, db_connectors[sample.db])
             res.append(sample)
 
