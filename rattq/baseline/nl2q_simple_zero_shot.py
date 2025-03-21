@@ -6,7 +6,7 @@ from tqdm import trange
 import litellm
 import time
 import collections
-from rattq.utils import load_nl2q_samples, parse_query
+from rattq.utils import load_nl2q_samples, parse_query, is_null_result
 from rattq.db_connector import get_db_connectors
 
 NL2Q_PROMPT = """
@@ -43,18 +43,6 @@ Hints:
 
 Query:
 """.strip()
-
-
-def is_null_result(result):
-    if not result:  # empty result
-        return True
-
-    # Check if any column is all None
-    n_cols = len(result[0])
-    for i in range(n_cols):
-        if all(row[i] is None for row in result):
-            return True
-    return False
 
 
 def select_best_query(candidates, db_connector):

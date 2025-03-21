@@ -7,7 +7,7 @@ import litellm
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
 from smolagents.tools import tool
-from rattq.utils import load_nl2q_samples, parse_query, truncate_content
+from rattq.utils import load_nl2q_samples, parse_query, truncate_content, is_null_result
 from rattq.db_connector import get_db_connectors
 
 
@@ -35,7 +35,8 @@ Translate the following natural language question into a {language} query.
     Question: What is the student with the highest score?
     Query: SELECT name FROM student WHERE score = (SELECT MAX(score) FROM student)
 - For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
-  - Try to search over all potentially relevant columns in the database, and include potential synonyms in the keyword list.
+  - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
+  - Similarly, include potential synonyms in the keyword list. 
 - Before submitting the final query as answer, always execute the query to validate it.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 
@@ -67,10 +68,12 @@ def get_smolagent_tools(db_connector):
         """
         result = db_connector.run_query(query)
         if not result:
-            return "QUERY RESULT IS EMPTY"
+            return "QUERY RESULT IS EMPTY, THE QUERY IS INCORRECT"
 
         res = "\n".join([str(row) for row in result])
         res = truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
+        if is_null_result(result):
+            res += "\nONE OF THE COLUMNS IS ALL NULL, THE QUERY IS INCORRECT"
         return res
 
     @tool

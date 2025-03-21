@@ -48,3 +48,15 @@ def truncate_content(content: str, max_length_chars: int = 1000) -> str:
             + f"\n..._This content has been truncated to stay below {max_length_chars} characters_...\n"
             + content[-max_length_chars // 2 :]
         )
+
+
+def is_null_result(result: list[tuple]) -> bool:
+    if not result:  # empty result
+        return True
+
+    # Check if any column is all None
+    n_cols = len(result[0])
+    for i in range(n_cols):
+        if all(row[i] is None for row in result):
+            return True
+    return False
