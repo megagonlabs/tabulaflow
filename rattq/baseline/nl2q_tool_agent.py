@@ -16,8 +16,6 @@ Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
 - You must use the hints to generate the query.
 - The final answer must be the query rather than the result of the query.
-- You are not allowed to decompose the question into sub-questions, and use the intermediate results of previous sub-questions in the final query.
-  - However, you can debug a query by testing smaller components.
 - To use multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema .
 - For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
   - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
@@ -32,13 +30,24 @@ Translate the following natural language question into a {language} query.
     [
     (id:TEXT, Primary Key, Example: 1),
     (name:TEXT, Examples: [John]),
-    (score:INTEGER, Examples: [100, 95, 90]),
+    (readScore:INTEGER, Examples: [100, 95, 90]),
+    (writeScore:INTEGER, Examples: [100, 95, 90]),
     ]
-    Question: What is the highest score?
-    Query: SELECT MAX(score) FROM student
+    Question: What is the highest score in reading?
+    Query: SELECT MAX(readScore) FROM student
 
-    Question: What is the student with the highest score?
-    Query: SELECT name FROM student WHERE score = (SELECT MAX(score) FROM student)
+    Question: What is the student with the highest score in reading?
+    Query: SELECT name FROM student WHERE readScore = (SELECT MAX(readScore) FROM student)
+
+- DO NOT decompose the question into sub-questions, and use the intermediate results of previous queries to construct the final query
+  - All logic of previous queries for sub-questions must be included in the final query.
+  - However, you can debug a query by testing smaller components.
+  - THIS IS NOT ALLOWED:
+    * Question: What is the writing score of the student with the highest reading score?
+    * Query 1: SELECT MAX(readScore) FROM student
+    * Observation 1: 97
+    * Final Query (NOT ALLOWED): SELECT writeScore FROM student WHERE readScore = 97
+    The correct query should be: SELECT writeScore FROM student WHERE readScore = (SELECT MAX(readScore) FROM student)
 
 === Your Task ===
 
