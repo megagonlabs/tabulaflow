@@ -16,6 +16,9 @@ Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
 - You must use the hints to generate the query.
 - The final answer must be the query rather than the result of the query.
+- You are not allowed to decompose the question into sub-questions, and use the intermediate results of previous sub-questions in the final query.
+  - However, you can debug a query by testing smaller components.
+- You must use the 【Foreign keys】 section in the database schema to connect the tables.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
