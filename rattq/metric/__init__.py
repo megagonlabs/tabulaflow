@@ -1,4 +1,5 @@
 from rattq.metric.bird_sql_ex import bird_sql_ex
+from rattq.metric.bird_sql_ex_soft import bird_sql_ex_soft
 from rattq.metric.executable import executable
 
-__all__ = ["bird_sql_ex", "executable"]
+__all__ = ["bird_sql_ex", "bird_sql_ex_soft", "executable"]
