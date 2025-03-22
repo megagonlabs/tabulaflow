@@ -7,7 +7,6 @@ def bird_sql_ex(
 ) -> float:
     if pred_query == gold_query:
         return 1.0
-    t0 = time.time()
 
     try:
         gold_executed = db_connector.run_query(gold_query, timeout=timeout)
