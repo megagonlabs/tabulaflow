@@ -67,6 +67,9 @@ MAX_SEARCH_RESULTS_PER_COLUMN = 10
 
 
 def get_smolagent_tools(db_connector, question: str, evidence: str):
+    question = question.strip()
+    evidence = evidence.strip()
+
     def _format_table(result: list[tuple]) -> str:
         res = "\n".join([str(row) for row in result])
         return truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
@@ -81,10 +84,13 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         """
         result = db_connector.run_query(query)
         result_str = _format_table(result)
+        if not result:
+            result_str = "EMPTY RESULT"
         res = f"The query returns the following results:\n{result_str}"
 
         res += f'\nReminder - The original question is: "{question}"'
-        res += f'\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
+        if evidence:
+            res += f'\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
         res += f"\nReminder - You are not allowed to use intermediate results of previous queries to construct the final query. Did you include all the logic of previous queries in the final query?"
 
         warnings = []
