@@ -96,6 +96,10 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
             warnings.append(
                 "At least one column is all null, the query might be incorrect."
             )
+        elif len(result[0]) == 1 and len(result[0][0]) == 1 and result[0][0] == 0:
+            warnings.append(
+                "The query returns a single value of 0, the query might be incorrect."
+            )
 
         # tables = Parser(query).tables
         # if len(tables) > 1 and "JOIN" not in query:
