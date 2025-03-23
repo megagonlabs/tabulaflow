@@ -83,8 +83,9 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         result_str = _format_table(result)
         res = f"The query returns the following results:\n{result_str}"
 
-        res += f'\n\nReminder - The original question is: "{question}"'
-        res += f'\n\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
+        res += f'\nReminder - The original question is: "{question}"'
+        res += f'\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
+        res += f"\nReminder - You are not allowed to use intermediate results of previous queries to construct the final query. Did you include all the logic of previous queries in the final query?"
 
         warnings = []
 
@@ -96,7 +97,7 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
             warnings.append(
                 "At least one column is all null, the query might be incorrect."
             )
-        elif len(result[0]) == 1 and len(result[0][0]) == 1 and result[0][0] == 0:
+        elif len(result) == 1 and len(result[0]) == 1 and result[0][0] == 0:
             warnings.append(
                 "The query returns a single value of 0, the query might be incorrect."
             )
@@ -107,18 +108,17 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         #         "The query references multiple tables, but no JOIN operation is found."
         #     )
 
-        n_cols = len(result[0])
-        if n_cols > 1:
+        if result and len(result[0]) > 1:
             warnings.append(
                 (
-                    f"The query returns multiple columns, please check if the question asks for all these columns."
+                    f"Your query returns multiple columns, please check if the question asks for all these columns."
                     " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
                     " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
                 )
             )
 
         if warnings:
-            res += "\n\n" + "\n\n".join(
+            res += "\n\n" + "\n".join(
                 [f"Warning {i+1}: {w}" for i, w in enumerate(warnings)]
             )
 
@@ -243,9 +243,9 @@ def main():
             for sample in dev_samples
             if sample.qid
             in (
-                "bird-sql_dev_1",
+                # "bird-sql_dev_1",
                 # "bird-sql_dev_2",
-                # "bird-sql_dev_10",
+                "bird-sql_dev_10",
                 # "bird-sql_dev_15",
             )
         ]
