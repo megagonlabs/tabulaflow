@@ -7,9 +7,9 @@ import litellm
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
 from smolagents.tools import tool
+from sql_metadata import Parser
 from rattq.utils import load_nl2q_samples, parse_query, truncate_content, is_null_result
 from rattq.db_connector import get_db_connectors
-
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
@@ -100,16 +100,26 @@ def get_smolagent_tools(db_connector):
             warnings.append(
                 (
                     f"The query returns multiple columns, please check if the question asks for all these columns."
-                    "For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
-                    "Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
+                    " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
+                    " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
                 )
             )
-        res = res + "\n\n".join([f"Warning {i}: {w}" for i, w in enumerate(warnings)])
+
+        tables = Parser(query).tables
+        if len(tables) > 1 and "JOIN" not in query:
+            warnings.append(
+                "The query references multiple tables, but no JOIN operation is found."
+            )
+
+        if warnings:
+            res += "\n\n" + "\n\n".join(
+                [f"Warning {i+1}: {w}" for i, w in enumerate(warnings)]
+            )
 
         res += (
             f"\n\nYour query receives {len(warnings)} warnings."
             " If you think the warnings are incorrect, you can ignore them and submit the query."
-            " Otherwise, please fix the query, and use this tool again when you are ready to submit."
+            " Otherwise, please try to fix the query. Feel free to use any tools you want. When you are ready to submit again, call `check_final_answer` tool again to check the query."
         )
         return res
 
