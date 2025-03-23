@@ -6,3 +6,4 @@ pydantic
 tqdm
 func-timeout
 smolagents
+sql-metadata

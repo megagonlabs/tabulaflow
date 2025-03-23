@@ -97,6 +97,12 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
                 "At least one column is all null, the query might be incorrect."
             )
 
+        tables = Parser(query).tables
+        if len(tables) > 1 and "JOIN" not in query:
+            warnings.append(
+                "The query references multiple tables, but no JOIN operation is found."
+            )
+
         n_cols = len(result[0])
         if n_cols > 1:
             warnings.append(
