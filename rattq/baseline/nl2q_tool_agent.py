@@ -20,8 +20,7 @@ Translate the following natural language question into a {language} query.
 - For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
   - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
   - Similarly, include potential synonyms in the keyword list. 
-- Before submitting the final query as answer, always execute the query to validate it.
-  - The execution result should be non-empty and reasonable (not null, not zero, etc.)
+- Before submitting the final query as answer, always use the `check_final_answer` tool to validate the query.
 - When submitting the final query, remove any additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not his score, do not include the score.
@@ -59,7 +58,7 @@ Question: {question}
 Hints:
 {evidence}
 
-{language}Query:
+{language} Query:
 """.strip()
 
 
@@ -67,7 +66,7 @@ MAX_RESPONSE_LENGTH_CHARS = 1000
 MAX_SEARCH_RESULTS_PER_COLUMN = 10
 
 
-def get_smolagent_tools(db_connector):
+def get_smolagent_tools(db_connector, question: str):
     def _format_table(result: list[tuple]) -> str:
         res = "\n".join([str(row) for row in result])
         return truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
@@ -75,14 +74,15 @@ def get_smolagent_tools(db_connector):
     @tool
     def check_final_answer(query: str) -> str:
         """
-        Always use this tool to check the final query before submission. You are now allowed to submit the final query without using this tool.
+        Validate the final query before submission. Always use this tool to validate the query before submission.
 
         Args:
-            query: The final query to check.
+            query: The query to check.
         """
         result = db_connector.run_query(query)
         result_str = _format_table(result)
         res = f"The query returns the following results:\n{result_str}"
+        res += f'\n\nReminder - The original question is: "{question}"'
 
         warnings = []
 
@@ -143,7 +143,7 @@ def get_smolagent_tools(db_connector):
     @tool
     def search_keywords(table_columns: list[str], keywords: list[str]) -> str:
         """
-        Fuzzy search for a keyword in the database, case-insensitive.
+        Fuzzy search for a keyword in the database, case-insensitive. Always use this tool to ensure a value exists in the database.
 
         Args:
             table_columns: A list of columns in the format of "table.column", e.g. student.`Student Name`.
@@ -267,7 +267,8 @@ def main():
         responses = []
         agents = [
             ToolCallingAgent(
-                tools=get_smolagent_tools(db_connectors[sample.db]), model=model
+                tools=get_smolagent_tools(db_connectors[sample.db], sample.question),
+                model=model,
             )
             for sample in batch_samples
         ]
