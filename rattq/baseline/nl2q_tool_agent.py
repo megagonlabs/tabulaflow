@@ -24,7 +24,7 @@ Translate the following natural language question into a {language} query.
   - The execution result should be non-empty and reasonable (not null, not zero, etc.)
 - When submitting the final query, remove any additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student.
-  - Similarly, if the question only ask for the student with the highest score but not the score, do not include the score.
+  - Similarly, if the question only ask for the student with the highest score but not his score, do not include the score.
   - Example:
     Table: student
     [
@@ -59,7 +59,7 @@ Question: {question}
 Hints:
 {evidence}
 
-Query:
+{language}Query:
 """.strip()
 
 
@@ -68,6 +68,40 @@ MAX_SEARCH_RESULTS_PER_COLUMN = 10
 
 
 def get_smolagent_tools(db_connector):
+    def _format_table(result: list[tuple]) -> str:
+        res = "\n".join([str(row) for row in result])
+        return truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
+
+    @tool
+    def check_final_answer(query: str) -> str:
+        """
+        Always use this tool to check the final query before submission. You are now allowed to submit the final query without using this tool.
+
+        Args:
+            query: The final query to check.
+        """
+        result = db_connector.run_query(query)
+        result_str = _format_table(result)
+        res = f"The query returns the following results:\n{result_str}"
+
+        warnings = []
+        n_cols = len(result[0])
+        if n_cols > 1:
+            warnings.append(
+                (
+                    f"The query returns multiple columns, please check if the question asks for all these columns."
+                    "For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
+                    "Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
+                )
+            )
+        res = res + "\n\n".join([f"Warning {i}: {w}" for i, w in enumerate(warnings)])
+
+        res += (
+            f"\n\nYour query receives {len(warnings)} warnings."
+            " If you think the warnings are incorrect, you can ignore them and submit the query."
+            " Otherwise, please fix the query, and use this tool again when you are ready to submit."
+        )
+        return res
 
     @tool
     def query_db(query: str) -> str:
@@ -81,8 +115,7 @@ def get_smolagent_tools(db_connector):
         if not result:
             return "QUERY RESULT IS EMPTY, THE QUERY IS INCORRECT"
 
-        res = "\n".join([str(row) for row in result])
-        res = truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
+        res = _format_table(result)
         if is_null_result(result):
             res += "\nONE OF THE COLUMNS IS ALL NULL, THE QUERY IS INCORRECT"
         return res
@@ -135,7 +168,7 @@ def get_smolagent_tools(db_connector):
 
         return res
 
-    return [query_db, search_keywords]
+    return [query_db, search_keywords, check_final_answer]
 
 
 def main():
@@ -185,9 +218,9 @@ def main():
             if sample.qid
             in (
                 "bird-sql_dev_1",
-                "bird-sql_dev_2",
-                "bird-sql_dev_10",
-                "bird-sql_dev_15",
+                # "bird-sql_dev_2",
+                # "bird-sql_dev_10",
+                # "bird-sql_dev_15",
             )
         ]
 
