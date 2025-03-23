@@ -85,6 +85,16 @@ def get_smolagent_tools(db_connector):
         res = f"The query returns the following results:\n{result_str}"
 
         warnings = []
+
+        if not result:
+            warnings.append(
+                "The query returns an empty result, the query might be incorrect."
+            )
+        elif is_null_result(result):
+            warnings.append(
+                "At least one column is all null, the query might be incorrect."
+            )
+
         n_cols = len(result[0])
         if n_cols > 1:
             warnings.append(
