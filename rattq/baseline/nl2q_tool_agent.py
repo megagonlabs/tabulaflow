@@ -66,7 +66,7 @@ MAX_RESPONSE_LENGTH_CHARS = 1000
 MAX_SEARCH_RESULTS_PER_COLUMN = 10
 
 
-def get_smolagent_tools(db_connector, question: str):
+def get_smolagent_tools(db_connector, question: str, evidence: str):
     def _format_table(result: list[tuple]) -> str:
         res = "\n".join([str(row) for row in result])
         return truncate_content(res, MAX_RESPONSE_LENGTH_CHARS)
@@ -82,7 +82,9 @@ def get_smolagent_tools(db_connector, question: str):
         result = db_connector.run_query(query)
         result_str = _format_table(result)
         res = f"The query returns the following results:\n{result_str}"
+
         res += f'\n\nReminder - The original question is: "{question}"'
+        res += f'\n\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
 
         warnings = []
 
@@ -267,7 +269,9 @@ def main():
         responses = []
         agents = [
             ToolCallingAgent(
-                tools=get_smolagent_tools(db_connectors[sample.db], sample.question),
+                tools=get_smolagent_tools(
+                    db_connectors[sample.db], sample.question, sample.evidence
+                ),
                 model=model,
             )
             for sample in batch_samples
