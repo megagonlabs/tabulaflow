@@ -93,17 +93,14 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
             res += f'\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
         res += f"\nReminder - You are not allowed to use intermediate results of previous queries to construct the final query. Did you include all the logic of previous queries in the final query?"
 
-        warnings = []
-
+        errors = []
         if not result:
-            warnings.append(
-                "The query returns an empty result, the query might be incorrect."
-            )
+            errors.append("The query returns an empty result, the query IS INCORRECT.")
         elif is_null_result(result):
-            warnings.append(
-                "At least one column is all null, the query might be incorrect."
-            )
-        elif len(result) == 1 and len(result[0]) == 1 and result[0][0] == 0:
+            errors.append("At least one column is all null, the query IS INCORRECT.")
+
+        warnings = []
+        if len(result) == 1 and len(result[0]) == 1 and result[0][0] == 0:
             warnings.append(
                 "The query returns a single value of 0, the query might be incorrect."
             )
@@ -123,16 +120,23 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
                 )
             )
 
+        if errors:
+            res += "\n\n" + "\n".join(
+                [f"Error {i+1}: {e}" for i, e in enumerate(errors)]
+            )
+
         if warnings:
             res += "\n\n" + "\n".join(
                 [f"Warning {i+1}: {w}" for i, w in enumerate(warnings)]
             )
 
-        res += (
-            f"\n\nYour query receives {len(warnings)} warnings."
-            " If you think the warnings are incorrect, you can ignore them and submit the query."
-            " Otherwise, please try to fix the query. Feel free to use any tools you want. When you are ready to submit again, call `check_final_answer` tool again to check the query."
-        )
+        res += f"\n\nYour query receives {len(errors)} errors and {len(warnings)} warnings."
+        if errors:
+            res += " Please fix the errors and submit the query again. Feel free to use any tools you want. When you are ready to submit again, call the `check_final_answer` tool again to check the query."
+        else:
+            res += " If you think the reminders and warnings are incorrect, you can ignore them and submit the query."
+            res += " Otherwise, please try to fix the query. Feel free to use any tools you want. When you are ready to submit again, call the `check_final_answer` tool again to check the query."
+
         return res
 
     @tool
@@ -249,10 +253,10 @@ def main():
             for sample in dev_samples
             if sample.qid
             in (
-                # "bird-sql_dev_1",
-                # "bird-sql_dev_2",
+                "bird-sql_dev_1",
+                "bird-sql_dev_2",
                 "bird-sql_dev_10",
-                # "bird-sql_dev_15",
+                "bird-sql_dev_15",
             )
         ]
 
