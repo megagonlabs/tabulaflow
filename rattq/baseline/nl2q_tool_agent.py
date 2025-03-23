@@ -16,7 +16,7 @@ Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
 - You must use the hints to generate the query.
 - The final answer must be the query rather than the result of the query.
-- To use multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema .
+- To connect multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema.
 - For non-digit text columns, always use the `search_keywords` tool to search for the keyword and ensure it exists in the database.
   - Try to search over all possible relevant columns across the database. Try to be very comprehensive.
   - Similarly, include potential synonyms in the keyword list. 
@@ -105,12 +105,6 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
                     " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
                     " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
                 )
-            )
-
-        tables = Parser(query).tables
-        if len(tables) > 1 and "JOIN" not in query:
-            warnings.append(
-                "The query references multiple tables, but no JOIN operation is found."
             )
 
         if warnings:
