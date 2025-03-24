@@ -15,4 +15,4 @@ def bird_sql_ex(
         print(f"Warning: Exception {e} occurred while executing queries")
         return 0.0
 
-    return int(set(pred_executed) == set(gold_executed))
+    return float(set(pred_executed) == set(gold_executed))
