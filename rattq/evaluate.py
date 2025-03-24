@@ -87,12 +87,6 @@ def main():
     # Sort the result by qid
     result_with_metrics.sort(key=lambda x: qids[x.qid])
 
-    aggregated = {}
-    aggregated["overall"] = {
-        m: avg_and_round([item.metrics[m] for item in result_with_metrics])
-        for m in args.metrics
-    }
-
     output_path = os.path.join(args.result_dir, f"result_with_metrics.json")
     with open(output_path, "w") as fout:
         json.dump(
@@ -103,6 +97,16 @@ def main():
     print(f"Saved result with metrics to {output_path}")
 
     output_path = os.path.join(args.result_dir, f"aggregated_metrics.json")
+    with open(output_path, "r") as fout:
+        aggregated = json.load(fout)
+
+    aggregated.update(
+        {
+            m: avg_and_round([item.metrics[m] for item in result_with_metrics])
+            for m in args.metrics
+        }
+    )
+
     with open(output_path, "w") as fout:
         json.dump(aggregated, fout, indent=2)
     print(f"Saved aggregated metrics to {output_path}")

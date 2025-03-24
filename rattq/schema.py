@@ -1,5 +1,5 @@
 from pydantic import BaseModel
-from typing import Optional, Dict
+from typing import Optional, Dict, Union
 
 
 class NL2QSample(BaseModel):
@@ -10,4 +10,4 @@ class NL2QSample(BaseModel):
     evidence: Optional[str] = None
     gold_query: str
     pred_query: Optional[str] = None
-    metrics: Dict[str, float] = {}
+    metrics: Dict[str, Union[float, int]] = {}
