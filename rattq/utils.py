@@ -1,5 +1,6 @@
 import json
 import math
+import os
 from rattq.schema import NL2QSample
 
 
@@ -82,3 +83,28 @@ def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
         output_tokens / 1000000
     ) * output_cost
     return round(total_cost, 2)
+
+
+def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
+    aggregated_metrics = {
+        "latency": avg_and_round([metrics["latency"] for metrics in all_metrics], 1),
+        "avg_input_tokens": avg_and_round(
+            [metrics["input_tokens"] for metrics in all_metrics], 2
+        ),
+        "avg_output_tokens": avg_and_round(
+            [metrics["output_tokens"] for metrics in all_metrics], 2
+        ),
+        "total_input_tokens": sum([metrics["input_tokens"] for metrics in all_metrics]),
+        "total_output_tokens": sum(
+            [metrics["output_tokens"] for metrics in all_metrics]
+        ),
+        "avg_api_cost_usd": avg_and_round(
+            [metrics["api_cost_usd"] for metrics in all_metrics], 2
+        ),
+        "total_api_cost_usd": sum([metrics["api_cost_usd"] for metrics in all_metrics]),
+    }
+
+    output_path = os.path.join(result_dir, f"aggregated_metrics.json")
+    with open(output_path, "w") as fout:
+        json.dump(aggregated_metrics, fout, indent=2)
+    print(f"Saved aggregated metrics to {output_path}")

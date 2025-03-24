@@ -15,8 +15,8 @@ from rattq.utils import (
     parse_query,
     truncate_content,
     is_null_result,
-    avg_and_round,
     get_llm_api_cost,
+    save_aggregated_inference_metrics,
 )
 from rattq.db_connector import get_db_connectors
 from rattq.schema import NL2QSample
@@ -241,29 +241,6 @@ def run_agent(agent, prompt: str, llm: str):
     return response, metrics
 
 
-def save_aggregated_metrics(res: list[NL2QSample], result_dir: str):
-    aggregated_metrics = {
-        "latency": avg_and_round([item.metrics["latency"] for item in res], 1),
-        "avg_input_tokens": avg_and_round(
-            [item.metrics["input_tokens"] for item in res], 2
-        ),
-        "avg_output_tokens": avg_and_round(
-            [item.metrics["output_tokens"] for item in res], 2
-        ),
-        "total_input_tokens": sum([item.metrics["input_tokens"] for item in res]),
-        "total_output_tokens": sum([item.metrics["output_tokens"] for item in res]),
-        "avg_api_cost_usd": avg_and_round(
-            [item.metrics["api_cost_usd"] for item in res], 2
-        ),
-        "total_api_cost_usd": sum([item.metrics["api_cost_usd"] for item in res]),
-    }
-
-    output_path = os.path.join(result_dir, f"aggregated_metrics.json")
-    with open(output_path, "w") as fout:
-        json.dump(aggregated_metrics, fout, indent=2)
-    print(f"Saved aggregated metrics to {output_path}")
-
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", default="openai/gpt-4o")
@@ -379,7 +356,7 @@ def main():
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
 
-    save_aggregated_metrics(res, args.result_dir)
+    save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
 
 
 if __name__ == "__main__":
