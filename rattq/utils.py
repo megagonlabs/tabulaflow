@@ -80,25 +80,14 @@ def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
 
 
 def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
-    aggregated_metrics = {
-        "latency": avg_and_round([metrics["latency"] for metrics in all_metrics], 1),
-        "avg_input_tokens": avg_and_round(
-            [metrics["input_tokens"] for metrics in all_metrics], 2
-        ),
-        "avg_output_tokens": avg_and_round(
-            [metrics["output_tokens"] for metrics in all_metrics], 2
-        ),
-        "total_input_tokens": sum([metrics["input_tokens"] for metrics in all_metrics]),
-        "total_output_tokens": sum(
-            [metrics["output_tokens"] for metrics in all_metrics]
-        ),
-        "avg_api_cost_usd": avg_and_round(
-            [metrics["api_cost_usd"] for metrics in all_metrics], 2
-        ),
-        "total_api_cost_usd": sum([metrics["api_cost_usd"] for metrics in all_metrics]),
-    }
+    res = {}
+    keys = list(all_metrics[0].keys())
+    for key in keys:
+        res[key] = avg_and_round([m[key] for m in all_metrics], 2)
+        if key in ("input_tokens", "output_tokens", "api_cost_usd"):
+            res[f"total_{key}"] = sum([m[key] for m in all_metrics])
 
     output_path = os.path.join(result_dir, f"aggregated_metrics.json")
     with open(output_path, "w") as fout:
-        json.dump(aggregated_metrics, fout, indent=2)
+        json.dump(res, fout, indent=2)
     print(f"Saved aggregated metrics to {output_path}")

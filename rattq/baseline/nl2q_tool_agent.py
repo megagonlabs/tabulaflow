@@ -237,6 +237,7 @@ def run_agent(agent, prompt: str, llm: str):
         "api_cost_usd": get_llm_api_cost(
             llm, token_counts["input"], token_counts["output"]
         ),
+        "trajectory_steps": agent.memory.steps[-1].step_number,
     }
     return response, metrics
 
