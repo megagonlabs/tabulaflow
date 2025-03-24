@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import litellm
 from rattq.schema import NL2QSample
 
 
@@ -68,21 +69,14 @@ def avg_and_round(nums: list[float], n: int = 4):
     return round(sum(nums) / len(nums), n) if nums else math.nan
 
 
-LLM_API_COST_PER_MILLION_TOKENS = {
-    "openai/gpt-4o": (2.5, 10),
-    "openai/gpt-4o-mini": (0.15, 0.6),
-}
-
-
 def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
-    if llm not in LLM_API_COST_PER_MILLION_TOKENS:
+    try:
+        input_cost, output_cost = litellm.cost_per_token(
+            model=llm, prompt_tokens=input_tokens, completion_tokens=output_tokens
+        )
+        return round(input_cost + output_cost, 2)
+    except:
         return 0.0
-
-    input_cost, output_cost = LLM_API_COST_PER_MILLION_TOKENS[llm]
-    total_cost = (input_tokens / 1000000) * input_cost + (
-        output_tokens / 1000000
-    ) * output_cost
-    return round(total_cost, 2)
 
 
 def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):

@@ -130,6 +130,9 @@ def main():
     print(args)
     print()
 
+    if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
+        print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
+
     litellm_kwargs = {}
     if args.llm.startswith("hosted_vllm/"):
         with open(args.vllm_config, "r") as f:

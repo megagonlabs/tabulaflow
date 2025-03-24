@@ -265,7 +265,7 @@ def main():
     else:
         verbosity = LogLevel.ERROR
 
-    if get_llm_api_cost(args.llm, 1000, 1000) == 0.0:
+    if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
     litellm_kwargs = {"tool_choice": "auto"}
