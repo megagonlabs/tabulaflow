@@ -18,6 +18,9 @@ Translate the following natural language question into a {language} query.
 - The final answer must be the query rather than the result of the query.
 - To connect multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema.
 - When submitting the final query, remove any additional columns that are not required by the question.
+  - If there are multiple columns that cover similar information, only include the one that is the most relevant and precise.
+    - For example, if the question asks for only the list of events, only include the event ids without the dates.
+    - For example, if the question asks for only the country and there are city, country, location, zipcode columns, only include the country column.
   - For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not his score, do not include the score.
   - Example:
@@ -27,11 +30,15 @@ Translate the following natural language question into a {language} query.
     (name:TEXT, Examples: [John]),
     (readScore:INTEGER, Examples: [100, 95, 90]),
     (writeScore:INTEGER, Examples: [100, 95, 90]),
+    (streetAddress:TEXT, Examples: ["123 Main St", "456 Maple Ave"]),
+    (city:TEXT, Examples: ["Anytown", "Anycity"]),
     ]
     Question: What is the highest score in reading?
     Query: SELECT MAX(readScore) FROM student
     Question: What is the student with the highest score in reading?
     Query: SELECT name FROM student WHERE readScore = (SELECT MAX(readScore) FROM student)
+    Question: What is the address of the student with the highest score in reading?
+    Query: SELECT streetAddress FROM student WHERE readScore = (SELECT MAX(readScore) FROM student)
 - DO NOT decompose the question into sub-questions, and use the intermediate results of previous queries to construct the final query
   - All logic of previous queries for sub-questions must be included in the final query.
   - However, you can debug a query by testing smaller components.
@@ -112,7 +119,10 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         if result and len(result[0]) > 1:
             warnings.append(
                 (
-                    f"Your query returns multiple columns, please check if the question asks for all these columns."
+                    f"Your query returns multiple columns, please check if the question asks for all these columns and remove those that are not asked for."
+                    " If there are multiple columns that cover similar information, only include the one that is the most relevant and precise."
+                    " For example, if the question asks for only the list of events, only include the event ids without the dates."
+                    " For example, if the question asks for only the country and there are city, country, location, zipcode columns, only include the country column."
                     " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
                     " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
                 )
@@ -251,9 +261,9 @@ def main():
             for sample in dev_samples
             if sample.qid
             in (
-                # "bird-sql_dev_1",
+                "bird-sql_dev_1",
                 # "bird-sql_dev_2",
-                "bird-sql_dev_10",
+                # "bird-sql_dev_10",
                 # "bird-sql_dev_15",
             )
         ]
