@@ -8,6 +8,7 @@ from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
 from smolagents.tools import tool
 from sql_metadata import Parser
+from smolagents.monitoring import LogLevel
 from rattq.utils import load_nl2q_samples, parse_query, truncate_content, is_null_result
 from rattq.db_connector import get_db_connectors
 
@@ -234,6 +235,11 @@ def main():
     print(args)
     print()
 
+    if args.debug:
+        verbosity = LogLevel.INFO
+    else:
+        verbosity = LogLevel.ERROR
+
     litellm_kwargs = {"tool_choice": "auto"}
     if args.llm.startswith("hosted_vllm/"):
         with open(args.vllm_config, "r") as f:
@@ -295,6 +301,7 @@ def main():
                     db_connectors[sample.db], sample.question, sample.evidence
                 ),
                 model=model,
+                verbosity_level=verbosity,
             )
             for sample in batch_samples
         ]
@@ -307,12 +314,12 @@ def main():
             responses = [future.result() for future in futures]
 
         if i == 0:
-            print(
-                f"<last_agent_step_input>{agents[-1].memory.steps[-1].model_input_messages}</last_agent_step_input>"
-            )
-            print(
-                f"<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>"
-            )
+            # print(
+            #     f"<last_agent_step_input>{agents[-1].memory.steps[-1].model_input_messages}</last_agent_step_input>"
+            # )
+            # print(
+            #     f"<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>"
+            # )
             print(f"<response>{responses[0]}</response>")
 
         for item, r in zip(batch_samples, responses):
