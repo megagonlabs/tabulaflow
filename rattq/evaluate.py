@@ -16,7 +16,7 @@ from rattq.metric import (
 )
 from rattq.db_connector import BaseDBConnector, get_db_connectors
 from rattq.schema import NL2QSample
-
+from rattq.utils import avg_and_round
 
 METRIC_FUNC_MAPPING = {
     "bird_sql_ex": bird_sql_ex,
@@ -40,21 +40,6 @@ def compute_metrics(
             pred_query=pred_query, gold_query=item.gold_query, db_connector=db_connector
         )
     return item
-
-
-def avg_and_round(nums: list[float], n: int = 4):
-    return round(sum(nums) / len(nums), n) if nums else math.nan
-
-
-def aggregate(results: list[tuple[str, float]]):
-    res = {}
-    for key, value in results:
-        if key not in res:
-            res[key] = []
-        res[key].append(value)
-    for key, values in res.items():
-        res[key] = avg_and_round(values)
-    return res
 
 
 def main():

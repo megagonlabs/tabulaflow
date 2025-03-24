@@ -1,4 +1,5 @@
 import json
+import math
 from rattq.schema import NL2QSample
 
 
@@ -60,3 +61,8 @@ def is_null_result(result: list[tuple]) -> bool:
         if all(row[i] is None for row in result):
             return True
     return False
+
+
+def avg_and_round(nums: list[float], n: int = 4):
+    return round(sum(nums) / len(nums), n) if nums else math.nan
+

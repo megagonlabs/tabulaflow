@@ -10,8 +10,15 @@ from concurrent.futures import ThreadPoolExecutor
 from smolagents.tools import tool
 from sql_metadata import Parser
 from smolagents.monitoring import LogLevel
-from rattq.utils import load_nl2q_samples, parse_query, truncate_content, is_null_result
+from rattq.utils import (
+    load_nl2q_samples,
+    parse_query,
+    truncate_content,
+    is_null_result,
+    avg_and_round,
+)
 from rattq.db_connector import get_db_connectors
+from rattq.schema import NL2QSample
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
@@ -223,11 +230,30 @@ def run_agent(agent, prompt: str):
     latency = time.time() - t0
     token_counts = agent.monitor.get_total_token_counts()
     metrics = {
-        "latency": latency,
-        "num_input_tokens": token_counts["input"],
-        "num_output_tokens": token_counts["output"],
+        "latency": round(latency, 1),
+        "input_tokens": int(token_counts["input"]),
+        "output_tokens": int(token_counts["output"]),
     }
     return response, metrics
+
+
+def save_aggregated_metrics(res: list[NL2QSample], result_dir: str):
+    aggregated_metrics = {
+        "latency": avg_and_round([item.metrics["latency"] for item in res], 1),
+        "avg_input_tokens": avg_and_round(
+            [item.metrics["input_tokens"] for item in res], 2
+        ),
+        "avg_output_tokens": avg_and_round(
+            [item.metrics["output_tokens"] for item in res], 2
+        ),
+        "total_input_tokens": sum([item.metrics["input_tokens"] for item in res]),
+        "total_output_tokens": sum([item.metrics["output_tokens"] for item in res]),
+    }
+
+    output_path = os.path.join(result_dir, f"aggregated_metrics.json")
+    with open(output_path, "w") as fout:
+        json.dump(aggregated_metrics, fout, indent=2)
+    print(f"Saved aggregated metrics to {output_path}")
 
 
 def main():
@@ -282,9 +308,9 @@ def main():
             if sample.qid
             in (
                 "bird-sql_dev_1",
-                # "bird-sql_dev_2",
-                # "bird-sql_dev_10",
-                # "bird-sql_dev_15",
+                "bird-sql_dev_2",
+                "bird-sql_dev_10",
+                "bird-sql_dev_15",
             )
         ]
 
@@ -345,6 +371,8 @@ def main():
     with open(output_path, "w") as fout:
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
+
+    save_aggregated_metrics(res, args.result_dir)
 
 
 if __name__ == "__main__":
