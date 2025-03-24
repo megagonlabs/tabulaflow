@@ -4,6 +4,7 @@ import shutil
 import json
 from tqdm import trange
 import litellm
+import time
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
 from smolagents.tools import tool
@@ -216,6 +217,19 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
     return [query_db, search_keywords, check_final_answer]
 
 
+def run_agent(agent, prompt: str):
+    t0 = time.time()
+    response = agent.run(prompt)
+    latency = time.time() - t0
+    token_counts = agent.monitor.get_total_token_counts()
+    metrics = {
+        "latency": latency,
+        "num_input_tokens": token_counts["input"],
+        "num_output_tokens": token_counts["output"],
+    }
+    return response, metrics
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", default="openai/gpt-4o")
@@ -294,7 +308,6 @@ def main():
         if i == 0:
             print(f"<prompts>{prompts[0]}</prompts>")
 
-        responses = []
         agents = [
             ToolCallingAgent(
                 tools=get_smolagent_tools(
@@ -308,10 +321,10 @@ def main():
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [
-                executor.submit(agent.run, prompt)
+                executor.submit(run_agent, agent, prompt)
                 for agent, prompt in zip(agents, prompts)
             ]
-            responses = [future.result() for future in futures]
+            raw_responses = [future.result() for future in futures]
 
         if i == 0:
             # print(
@@ -320,10 +333,12 @@ def main():
             # print(
             #     f"<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>"
             # )
-            print(f"<response>{responses[0]}</response>")
+            print(f"<response>{raw_responses[0][0]}</response>")
 
-        for item, r in zip(batch_samples, responses):
-            item.pred_query = parse_query(r)
+        for item, r in zip(batch_samples, raw_responses):
+            query, metrics = r
+            item.pred_query = parse_query(query)
+            item.metrics.update(metrics)
             res.append(item)
 
     output_path = os.path.join(args.result_dir, f"result.json")
