@@ -3,6 +3,7 @@ from rattq.metric.bird_sql_ex_soft import bird_sql_ex_soft
 from rattq.metric.executable import executable
 from rattq.metric.gold_executable import gold_executable
 from rattq.metric.gold_not_null import gold_not_null
+from rattq.metric.gold_not_single_zero import gold_not_single_zero
 
 __all__ = [
     "bird_sql_ex",
@@ -10,4 +11,5 @@ __all__ = [
     "executable",
     "gold_executable",
     "gold_not_null",
+    "gold_not_single_zero",
 ]

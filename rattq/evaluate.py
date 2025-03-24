@@ -12,6 +12,7 @@ from rattq.metric import (
     executable,
     gold_executable,
     gold_not_null,
+    gold_not_single_zero,
 )
 from rattq.db_connector import BaseDBConnector, get_db_connectors
 from rattq.schema import NL2QSample
@@ -23,6 +24,7 @@ METRIC_FUNC_MAPPING = {
     "executable": executable,
     "gold_executable": gold_executable,
     "gold_not_null": gold_not_null,
+    "gold_not_single_zero": gold_not_single_zero,
 }
 
 
@@ -64,7 +66,14 @@ def main():
     parser.add_argument(
         "--metrics",
         nargs="+",
-        default=["bird_sql_ex", "bird_sql_ex_soft", "executable", "gold_executable", "gold_not_null"],
+        default=[
+            "bird_sql_ex",
+            "bird_sql_ex_soft",
+            "executable",
+            "gold_executable",
+            "gold_not_null",
+            "gold_not_single_zero",
+        ],
     )
     args = parser.parse_args()
     print(args)
