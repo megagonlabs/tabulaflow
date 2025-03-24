@@ -16,6 +16,7 @@ from rattq.utils import (
     truncate_content,
     is_null_result,
     avg_and_round,
+    get_llm_api_cost,
 )
 from rattq.db_connector import get_db_connectors
 from rattq.schema import NL2QSample
@@ -224,7 +225,7 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
     return [query_db, search_keywords, check_final_answer]
 
 
-def run_agent(agent, prompt: str):
+def run_agent(agent, prompt: str, llm: str):
     t0 = time.time()
     response = agent.run(prompt)
     latency = time.time() - t0
@@ -233,6 +234,9 @@ def run_agent(agent, prompt: str):
         "latency": round(latency, 1),
         "input_tokens": int(token_counts["input"]),
         "output_tokens": int(token_counts["output"]),
+        "api_cost_usd": get_llm_api_cost(
+            llm, token_counts["input"], token_counts["output"]
+        ),
     }
     return response, metrics
 
@@ -248,6 +252,10 @@ def save_aggregated_metrics(res: list[NL2QSample], result_dir: str):
         ),
         "total_input_tokens": sum([item.metrics["input_tokens"] for item in res]),
         "total_output_tokens": sum([item.metrics["output_tokens"] for item in res]),
+        "avg_api_cost_usd": avg_and_round(
+            [item.metrics["api_cost_usd"] for item in res], 2
+        ),
+        "total_api_cost_usd": sum([item.metrics["api_cost_usd"] for item in res]),
     }
 
     output_path = os.path.join(result_dir, f"aggregated_metrics.json")
@@ -279,6 +287,9 @@ def main():
         verbosity = LogLevel.INFO
     else:
         verbosity = LogLevel.ERROR
+
+    if get_llm_api_cost(args.llm, 1000, 1000) == 0.0:
+        print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
     litellm_kwargs = {"tool_choice": "auto"}
     if args.llm.startswith("hosted_vllm/"):
@@ -347,18 +358,14 @@ def main():
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [
-                executor.submit(run_agent, agent, prompt)
+                executor.submit(run_agent, agent, prompt, args.llm)
                 for agent, prompt in zip(agents, prompts)
             ]
             raw_responses = [future.result() for future in futures]
 
         if i == 0:
-            # print(
-            #     f"<last_agent_step_input>{agents[-1].memory.steps[-1].model_input_messages}</last_agent_step_input>"
-            # )
-            # print(
-            #     f"<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>"
-            # )
+            # print(f"<last_agent_step_input>{agents[-1].memory.steps[-1].model_input_messages}</last_agent_step_input>")
+            # print(f"<last_agent_step_output>{agents[-1].memory.steps[-1].model_output_message}</last_agent_step_output>")
             print(f"<response>{raw_responses[0][0]}</response>")
 
         for item, r in zip(batch_samples, raw_responses):
