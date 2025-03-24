@@ -239,7 +239,8 @@ def run_agent(agent, prompt: str, llm: str):
         ),
         "trajectory_steps": agent.memory.steps[-1].step_number,
     }
-    return response, metrics
+    trajectory = agent.write_memory_to_messages()
+    return response, metrics, trajectory
 
 
 def main():
@@ -308,6 +309,7 @@ def main():
     )
 
     res = []
+    trajectories = []
     for i in trange(0, len(dev_samples), args.batch_size):
         j = min(i + args.batch_size, len(dev_samples))
         batch_samples = dev_samples[i:j]
@@ -347,15 +349,21 @@ def main():
             print(f"<response>{raw_responses[0][0]}</response>")
 
         for item, r in zip(batch_samples, raw_responses):
-            query, metrics = r
+            query, metrics, trajectory = r
             item.pred_query = parse_query(query)
             item.metrics.update(metrics)
             res.append(item)
+            trajectories.append({"qid": item.qid, "trajectory": trajectory})
 
     output_path = os.path.join(args.result_dir, f"result.json")
     with open(output_path, "w") as fout:
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
+
+    output_path = os.path.join(args.result_dir, f"trajectories.json")
+    with open(output_path, "w") as fout:
+        json.dump(trajectories, fout, indent=2)
+    print(f"Saved trajectories to {output_path}")
 
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
 
