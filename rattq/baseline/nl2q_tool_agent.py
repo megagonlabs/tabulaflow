@@ -27,7 +27,7 @@ Translate the following natural language question into a {language} query.
 - You must use the hints to generate the query.
 - The final answer must be the query rather than the result of the query.
 - To connect multiple tables, you must use JOIN on one of the pairs in the 【Foreign keys】 section in the database schema.
-  -  Keep in mind that the records in the tables may not perfectly align: the entities in one table might only be partially covered by another table.
+  -  Keep in mind that the records in the tables may not perfectly align: the some entities in one table might not be covered by another table.
 - When submitting the final query, remove any additional columns that are not required by the question.
   - If there are multiple columns that cover similar information, only include the one that is the most relevant and precise.
     - For example, if the question asks for only the list of events, only include the event ids without the dates.
@@ -298,9 +298,9 @@ def main():
             for sample in dev_samples
             if sample.qid
             in (
-                "bird-sql_dev_1",
-                "bird-sql_dev_2",
-                # "bird-sql_dev_10",
+                # "bird-sql_dev_1",
+                # "bird-sql_dev_2",
+                "bird-sql_dev_10",
                 # "bird-sql_dev_15",
             )
         ]
