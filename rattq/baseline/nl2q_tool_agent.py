@@ -182,7 +182,7 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         Fuzzy search for a keyword in the database, case-insensitive. Always use this tool to ensure a value exists in the database.
 
         Args:
-            table_columns: A list of columns in the format of "table.column", e.g. student.`Student Name`.
+            table_columns: A list of columns in the format of "table.column", e.g. student."Student Name".
             keywords: A list of keywords to search for.
         """
         res = ""

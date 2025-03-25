@@ -202,8 +202,8 @@ class MSchema:
                 output.append(f"# Table: {table_name}")
 
         quote_char = {
-            "sqlite": "`",
-        }[self._dialect]
+            "sqlite": '"',
+        }.get(self._dialect, '"')
         field_lines = []
         # 处理表中的每一个字段
         for field_name, field_info in table_info["fields"].items():
