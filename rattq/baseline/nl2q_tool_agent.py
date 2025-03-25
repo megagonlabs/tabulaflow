@@ -22,6 +22,9 @@ from rattq.utils import (
 from rattq.db_connector import get_db_connectors
 from rattq.schema import NL2QSample
 
+# litellm._turn_on_debug()
+
+
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
 - The query must follow the database schema.
