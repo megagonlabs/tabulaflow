@@ -262,7 +262,6 @@ def run_agent(
     queries = []
     trajectory_steps = []
     trajectories = []
-    print(1)
     for _ in range(num_majority_voting_candidates):
         response = agent.run(prompt, reset=True)
         queries.append(parse_query(response))
@@ -271,8 +270,6 @@ def run_agent(
         output_tokens += int(token_counts["output"])
         trajectory_steps.append(agent.memory.steps[-1].step_number)
         trajectories.append(agent.write_memory_to_messages())
-
-    print(2)
 
     best_query = select_best_query(queries, db_connector)
     best_index = queries.index(best_query)
@@ -285,7 +282,6 @@ def run_agent(
         "trajectory_steps": trajectory_steps[best_index],
     }
     trajectory = trajectories[best_index]
-    print(3)
     return response, metrics, trajectory
 
 
@@ -305,7 +301,9 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
+        parser.set_defaults(
+            batch_size=1, overwrite=True, result_dir="output/test/", split="dev"
+        )
     args = parser.parse_args()
     print(args)
     print()
@@ -364,7 +362,7 @@ def main():
     for i in trange(0, len(dev_samples), args.batch_size):
         j = min(i + args.batch_size, len(dev_samples))
         batch_samples = dev_samples[i:j]
-        print('asfasdf')
+        print("asfasdf")
         prompts = [
             NL2Q_PROMPT.format(
                 language=item.language,
