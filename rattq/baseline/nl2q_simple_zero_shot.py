@@ -149,7 +149,9 @@ def main():
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
 
-    db_connectors = get_db_connectors(args.dataset, splits=["dev"])
+    db_connectors = get_db_connectors(
+        args.dataset, splits=[args.split.split("_")[0] if "_" in args.split else args.split]
+    )
     print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
 
     dev_samples = load_nl2q_samples(args.dataset, args.split)

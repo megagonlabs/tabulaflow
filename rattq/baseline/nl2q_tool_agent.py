@@ -288,7 +288,7 @@ def main():
     os.makedirs(args.result_dir)
 
     db_connectors = get_db_connectors(
-        args.dataset, splits=[args.split("_")[0] if "_" in args.split else args.split]
+        args.dataset, splits=[args.split.split("_")[0] if "_" in args.split else args.split]
     )
     print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
 
