@@ -362,7 +362,6 @@ def main():
     for i in trange(0, len(dev_samples), args.batch_size):
         j = min(i + args.batch_size, len(dev_samples))
         batch_samples = dev_samples[i:j]
-        print("asfasdf")
         prompts = [
             NL2Q_PROMPT.format(
                 language=item.language,
