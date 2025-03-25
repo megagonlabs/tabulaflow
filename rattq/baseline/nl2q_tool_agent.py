@@ -99,46 +99,55 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         Args:
             query: The query to check.
         """
-        result = db_connector.run_query(query)
-        result_str = _format_table(result)
-        if not result:
-            result_str = "EMPTY RESULT"
-        res = f"The query returns the following results:\n{result_str}"
+        res = ""
+        result = None
+        errors = []
+        warnings = []
+        try:
+            result = db_connector.run_query(query)
+            result_str = _format_table(result)
+            if not result:
+                result_str = "EMPTY RESULT"
+            res += f"The query returns the following results:\n{result_str}"
+        except Exception as e:
+            errors.append(f"Query execution failed: {str(e)}")
 
         res += f'\nReminder - The original question is: "{question}"'
         if evidence:
             res += f'\nReminder - The evidence is: "{evidence}". Did you use all the evidence in the query?'
         res += f"\nReminder - You are not allowed to use intermediate results of previous queries to construct the final query. Did you include all the logic of previous queries in the final query?"
 
-        errors = []
-        if not result:
-            errors.append("The query returns an empty result, the query IS INCORRECT.")
-        elif is_null_result(result):
-            errors.append("At least one column is all null, the query IS INCORRECT.")
-
-        warnings = []
-        if len(result) == 1 and len(result[0]) == 1 and result[0][0] == 0:
-            warnings.append(
-                "The query returns a single value of 0, the query might be incorrect."
-            )
-
-        # tables = Parser(query).tables
-        # if len(tables) > 1 and "JOIN" not in query:
-        #     warnings.append(
-        #         "The query references multiple tables, but no JOIN operation is found."
-        #     )
-
-        if result and len(result[0]) > 1:
-            warnings.append(
-                (
-                    f"Your query returns multiple columns, please check if the question asks for all these columns and remove those that are not asked for."
-                    " If there are multiple columns that cover similar information, only include the one that is the most relevant and precise."
-                    " For example, if the question asks for only the list of events, only include the event ids without the dates."
-                    " For example, if the question asks for only the country and there are city, country, location, zipcode columns, only include the country column."
-                    " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
-                    " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
+        if result is not None:
+            if not result:
+                errors.append(
+                    "The query returns an empty result, the query IS INCORRECT."
                 )
-            )
+            elif result and is_null_result(result):
+                errors.append(
+                    "At least one column is all null, the query IS INCORRECT."
+                )
+            if len(result) == 1 and len(result[0]) == 1 and result[0][0] == 0:
+                warnings.append(
+                    "The query returns a single value of 0, the query might be incorrect."
+                )
+
+            # tables = Parser(query).tables
+            # if len(tables) > 1 and "JOIN" not in query:
+            #     warnings.append(
+            #         "The query references multiple tables, but no JOIN operation is found."
+            #     )
+
+            if result and len(result[0]) > 1:
+                warnings.append(
+                    (
+                        f"Your query returns multiple columns, please check if the question asks for all these columns and remove those that are not asked for."
+                        " If there are multiple columns that cover similar information, only include the one that is the most relevant and precise."
+                        " For example, if the question asks for only the list of events, only include the event ids without the dates."
+                        " For example, if the question asks for only the country and there are city, country, location, zipcode columns, only include the country column."
+                        " For example, if the question only ask for the highest score but not the name of the student, do not include the name of the student."
+                        " Similarly, if the question only ask for the student with the highest score but not his score, do not include the score."
+                    )
+                )
 
         if errors:
             res += "\n\n" + "\n".join(
@@ -167,7 +176,11 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
         Args:
             query: The SQL query to execute.
         """
-        result = db_connector.run_query(query)
+        try:
+            result = db_connector.run_query(query)
+        except Exception as e:
+            return f"Query execution failed: {str(e)}"
+
         if not result:
             return "QUERY RESULT IS EMPTY, THE QUERY IS INCORRECT"
 
@@ -292,7 +305,7 @@ def main():
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_99")
+    parser.add_argument("--split", default="dev_199")
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_tool_agent_gpt-4o/")
@@ -346,10 +359,10 @@ def main():
             for item in dev_samples
             if item.qid
             in (
-                # "bird-sql_dev_1",
-                # "bird-sql_dev_2",
+                "bird-sql_dev_1",
+                "bird-sql_dev_2",
                 "bird-sql_dev_10",
-                # "bird-sql_dev_15",
+                "bird-sql_dev_15",
             )
         ]
 

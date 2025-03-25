@@ -117,7 +117,7 @@ def main():
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_99")
+    parser.add_argument("--split", default="199")
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")

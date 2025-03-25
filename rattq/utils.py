@@ -35,7 +35,7 @@ def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
         ]
 
         if sample_size:
-            sampler = random.Random(0)
+            sampler = random.Random(42)
             data = sampler.sample(data, int(sample_size))
 
         return data
