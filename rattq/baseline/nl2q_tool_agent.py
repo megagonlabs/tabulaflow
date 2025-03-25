@@ -250,6 +250,7 @@ def main():
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev_99")
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_tool_agent_gpt-4o/")
@@ -286,10 +287,12 @@ def main():
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
 
-    db_connectors = get_db_connectors(args.dataset, splits=["dev"])
+    db_connectors = get_db_connectors(
+        args.dataset, splits=[args.split("_")[0] if "_" in args.split else args.split]
+    )
     print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
 
-    dev_samples = load_nl2q_samples(args.dataset, "dev")
+    dev_samples = load_nl2q_samples(args.dataset, args.split)
     print(f"Loaded {len(dev_samples)} samples from {args.dataset} dev set.")
 
     if args.debug:
