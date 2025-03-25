@@ -3,26 +3,21 @@ import os
 import shutil
 import json
 from tqdm import trange
-import litellm
 import collections
 import time
-from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
+from smolagents import LiteLLMModel
 from concurrent.futures import ThreadPoolExecutor
-from smolagents.tools import tool
-from sql_metadata import Parser
-from smolagents.monitoring import LogLevel
 from rattq.utils import (
     load_nl2q_samples,
     parse_query,
-    truncate_content,
     is_null_result,
     get_llm_api_cost,
     save_aggregated_inference_metrics,
 )
 from rattq.db_connector import get_db_connectors
-from rattq.schema import NL2QSample
 from rattq.baseline.agent_v1 import get_agent_v1, get_prompt_v1
 
+# import litellm
 # litellm._turn_on_debug()
 
 
@@ -95,11 +90,9 @@ def main():
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
-    parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_199")
     parser.add_argument("--batch_size", default=50, type=int)
-    parser.add_argument("--wait_time_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/nl2q_tool_agent_gpt-4o/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--vllm_config", default="local_llm_config.json")
