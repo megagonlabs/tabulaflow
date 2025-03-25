@@ -99,11 +99,17 @@ def examples_to_str(examples: list) -> list[str]:
 
 
 class MSchema:
-    def __init__(self, db_id: str = "Anonymous", schema: Optional[str] = None):
+    def __init__(
+        self,
+        db_id: str = "Anonymous",
+        schema: Optional[str] = None,
+        dialect: str = "sqlite",
+    ):
         self.db_id = db_id
         self.schema = schema
         self.tables = {}
         self.foreign_keys = []
+        self._dialect = dialect
 
     def add_table(self, name, fields={}, comment=None):
         self.tables[name] = {
@@ -195,6 +201,9 @@ class MSchema:
             else:
                 output.append(f"# Table: {table_name}")
 
+        quote_char = {
+            "sqlite": "`",
+        }[self._dialect]
         field_lines = []
         # 处理表中的每一个字段
         for field_name, field_info in table_info["fields"].items():
@@ -206,7 +215,7 @@ class MSchema:
 
             raw_type = self.get_field_type(field_info["type"], not show_type_detail)
             if " " in field_name:
-                field_name = f'"{field_name}"'
+                field_name = f"{quote_char}{field_name}{quote_char}"
             field_line = f"({field_name}:{raw_type.upper()}"
             if field_info["comment"] != "":
                 field_line += f", {field_info['comment'].strip()}"
@@ -368,7 +377,7 @@ class SchemaEngine(SQLDatabase):
         if mschema is not None:
             self._mschema = mschema
         else:
-            self._mschema = MSchema(db_id=db_name, schema=schema)
+            self._mschema = MSchema(db_id=db_name, schema=schema, dialect=self._dialect)
             self.init_mschema()
 
     @property

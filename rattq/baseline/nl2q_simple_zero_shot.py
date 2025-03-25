@@ -126,7 +126,7 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/")
+        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
     args = parser.parse_args()
     print(args)
     print()
