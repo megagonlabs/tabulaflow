@@ -4,6 +4,7 @@ import shutil
 import json
 from tqdm import trange
 import litellm
+import collections
 import time
 from smolagents import ToolCallingAgent, LiteLLMModel, CodeAgent
 from concurrent.futures import ThreadPoolExecutor
@@ -226,21 +227,65 @@ def get_smolagent_tools(db_connector, question: str, evidence: str):
     return [query_db, search_keywords, check_final_answer]
 
 
-def run_agent(agent, prompt: str, llm: str):
+def select_best_query(candidates, db_connector):
+    result2query = collections.defaultdict(list)
+    run_time = {}
+    for query in candidates:
+        t0 = time.time()
+        try:
+            result = db_connector.run_query(query)
+            if is_null_result(result):
+                continue
+        except Exception as e:
+            continue
+        run_time[query] = time.time() - t0
+        hashable = tuple(
+            sorted(set(result), key=lambda row: tuple((x is None, x) for x in row))
+        )
+        result2query[hashable].append(query)
+
+    if not result2query:
+        return candidates[0]
+
+    # select majority query group
+    majority_query_group = max(result2query.values(), key=len)
+
+    # select the query with the least run time
+    return min(majority_query_group, key=lambda x: run_time[x])
+
+
+def run_agent(
+    agent, prompt: str, llm: str, db_connector, num_majority_voting_candidates: int = 1
+):
     t0 = time.time()
-    response = agent.run(prompt)
-    latency = time.time() - t0
-    token_counts = agent.monitor.get_total_token_counts()
+    input_tokens, output_tokens = 0, 0
+    queries = []
+    trajectory_steps = []
+    trajectories = []
+    print(1)
+    for _ in range(num_majority_voting_candidates):
+        response = agent.run(prompt, reset=True)
+        queries.append(parse_query(response))
+        token_counts = agent.monitor.get_total_token_counts()
+        input_tokens += int(token_counts["input"])
+        output_tokens += int(token_counts["output"])
+        trajectory_steps.append(agent.memory.steps[-1].step_number)
+        trajectories.append(agent.write_memory_to_messages())
+
+    print(2)
+
+    best_query = select_best_query(queries, db_connector)
+    best_index = queries.index(best_query)
+
     metrics = {
-        "latency": round(latency, 1),
-        "input_tokens": int(token_counts["input"]),
-        "output_tokens": int(token_counts["output"]),
-        "api_cost_usd": get_llm_api_cost(
-            llm, token_counts["input"], token_counts["output"]
-        ),
-        "trajectory_steps": agent.memory.steps[-1].step_number,
+        "latency": round(time.time() - t0, 1),
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
+        "trajectory_steps": trajectory_steps[best_index],
     }
-    trajectory = agent.write_memory_to_messages()
+    trajectory = trajectories[best_index]
+    print(3)
     return response, metrics, trajectory
 
 
@@ -248,6 +293,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
+    parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--prompt", default="default", choices=["default"])
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_99")
@@ -259,7 +305,7 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/")
+        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
     args = parser.parse_args()
     print(args)
     print()
@@ -288,7 +334,8 @@ def main():
     os.makedirs(args.result_dir)
 
     db_connectors = get_db_connectors(
-        args.dataset, splits=[args.split.split("_")[0] if "_" in args.split else args.split]
+        args.dataset,
+        splits=[args.split.split("_")[0] if "_" in args.split else args.split],
     )
     print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
 
@@ -297,9 +344,9 @@ def main():
 
     if args.debug:
         dev_samples = [
-            sample
-            for sample in dev_samples
-            if sample.qid
+            item
+            for item in dev_samples
+            if item.qid
             in (
                 # "bird-sql_dev_1",
                 # "bird-sql_dev_2",
@@ -317,14 +364,15 @@ def main():
     for i in trange(0, len(dev_samples), args.batch_size):
         j = min(i + args.batch_size, len(dev_samples))
         batch_samples = dev_samples[i:j]
+        print('asfasdf')
         prompts = [
             NL2Q_PROMPT.format(
-                language=sample.language,
-                schema=db_connectors[sample.db].get_schema(),
-                evidence=sample.evidence,
-                question=sample.question,
+                language=item.language,
+                schema=db_connectors[item.db].get_schema(),
+                evidence=item.evidence,
+                question=item.question,
             )
-            for sample in batch_samples
+            for item in batch_samples
         ]
         if i == 0:
             print(f"<prompts>{prompts[0]}</prompts>")
@@ -332,18 +380,25 @@ def main():
         agents = [
             ToolCallingAgent(
                 tools=get_smolagent_tools(
-                    db_connectors[sample.db], sample.question, sample.evidence
+                    db_connectors[item.db], item.question, item.evidence
                 ),
                 model=model,
                 verbosity_level=verbosity,
             )
-            for sample in batch_samples
+            for item in batch_samples
         ]
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [
-                executor.submit(run_agent, agent, prompt, args.llm)
-                for agent, prompt in zip(agents, prompts)
+                executor.submit(
+                    run_agent,
+                    agent,
+                    prompt,
+                    args.llm,
+                    db_connectors[item.db],
+                    args.num_majority_voting_candidates,
+                )
+                for agent, prompt, item in zip(agents, prompts, batch_samples)
             ]
             raw_responses = [future.result() for future in futures]
 
@@ -354,7 +409,7 @@ def main():
 
         for item, r in zip(batch_samples, raw_responses):
             query, metrics, trajectory = r
-            item.pred_query = parse_query(query)
+            item.pred_query = query
             item.metrics.update(metrics)
             res.append(item)
             trajectories.append({"qid": item.qid, "trajectory": trajectory})
