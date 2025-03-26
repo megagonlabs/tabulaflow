@@ -6,8 +6,8 @@ from tqdm import trange
 import collections
 import time
 import math
+import smolagents
 from smolagents import LiteLLMModel
-from smolagents.models import get_clean_message_list
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import (
     load_nl2q_samples,
@@ -19,6 +19,7 @@ from rattq.utils import (
 from rattq.db_connector import get_db_connectors
 from rattq.baseline.nl2q_tool_agent import AGENT_MAPPINGS
 from rattq.metric import bird_sql_ex
+from rattq.patch_smolagents import patch_smolagents
 
 # import litellm
 # litellm._turn_on_debug()
@@ -49,13 +50,13 @@ def rejection_sampling(
         if metric_fn(pred_query, gold_query, db_connector) == 1.0:
             query = pred_query
             trajectories.append(
-                get_clean_message_list(
+                smolagents.models.get_clean_message_list(
                     agent.write_memory_to_messages(),
-                    flatten_messages_as_text=True,
-                    role_conversions={
-                        "tool-call": "assistant",
-                        "tool-response": "user",
-                    },
+                    # flatten_messages_as_text=True,
+                    # role_conversions={
+                    #     "tool-call": "assistant",
+                    #     "tool-response": "user",
+                    # },
                 )
             )
             accuracy = 1.0
@@ -77,6 +78,7 @@ METRIC_FN_MAPPINGS = {
 }
 
 
+@patch_smolagents
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="v1", choices=["v1"])

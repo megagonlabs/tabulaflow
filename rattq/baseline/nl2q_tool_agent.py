@@ -16,6 +16,7 @@ from rattq.utils import (
 )
 from rattq.db_connector import get_db_connectors
 from rattq.baseline.agent_v1 import get_agent_v1, get_prompt_v1
+from rattq.patch_smolagents import patch_smolagents
 
 # import litellm
 # litellm._turn_on_debug()
@@ -84,6 +85,7 @@ AGENT_MAPPINGS = {
 }
 
 
+@patch_smolagents
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="v1", choices=["v1"])
@@ -140,9 +142,9 @@ def main():
             if item.qid
             in (
                 "bird-sql_dev_1",
-                "bird-sql_dev_2",
-                "bird-sql_dev_10",
-                "bird-sql_dev_15",
+                # "bird-sql_dev_2",
+                # "bird-sql_dev_10",
+                # "bird-sql_dev_15",
             )
         ]
 
