@@ -50,14 +50,21 @@ def rejection_sampling(
         if metric_fn(pred_query, gold_query, db_connector) == 1.0:
             query = pred_query
             trajectories.append(
-                smolagents.models.get_clean_message_list(
-                    agent.write_memory_to_messages(),
-                    # flatten_messages_as_text=True,
-                    # role_conversions={
-                    #     "tool-call": "assistant",
-                    #     "tool-response": "user",
-                    # },
-                )
+                {
+                    "messages": smolagents.models.get_clean_message_list(
+                        agent.write_memory_to_messages(),
+                        # flatten_messages_as_text=True,
+                        # role_conversions={
+                        #     "tool-call": "assistant",
+                        #     "tool-response": "user",
+                        # },
+                    ),
+                    "tools": [
+                        smolagents.models.get_tool_json_schema(t)
+                        for t in list(agent.tools.values())
+                    ],
+                    "parallel_tool_calls": False,
+                }
             )
             accuracy = 1.0
             break
@@ -202,7 +209,7 @@ def main():
     output_path = os.path.join(args.result_dir, f"trajectories.jsonl")
     with open(output_path, "w") as fout:
         for trajectory in all_trajectories:
-            fout.write(json.dumps({"messages": trajectory}) + "\n")
+            fout.write(json.dumps(trajectory) + "\n")
     print(f"Saved trajectories to {output_path}")
 
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
