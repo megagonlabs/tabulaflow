@@ -7,6 +7,7 @@ import collections
 import time
 import math
 from smolagents import LiteLLMModel
+from smolagents.models import get_clean_message_list
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import (
     load_nl2q_samples,
@@ -47,7 +48,11 @@ def rejection_sampling(
         output_tokens += int(token_counts["output"])
         if metric_fn(pred_query, gold_query, db_connector) == 1.0:
             query = pred_query
-            trajectories.append(agent.write_memory_to_messages())
+            trajectories.append(
+                get_clean_message_list(
+                    agent.write_memory_to_messages(), flatten_messages_as_text=True
+                )
+            )
             accuracy = 1.0
             break
 
@@ -57,7 +62,7 @@ def rejection_sampling(
         "output_tokens": output_tokens,
         "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
         "success": accuracy,
-        "num_tries_to_success": i if accuracy == 0.0 else math.nan,
+        "num_tries_to_success": i if accuracy == 1.0 else math.nan,
     }
     return query, metrics, trajectories
 
@@ -128,7 +133,7 @@ def main():
             if item.qid
             in (
                 "bird-sql_dev_1",
-                "bird-sql_dev_2",
+                # "bird-sql_dev_2",
                 # "bird-sql_dev_10",
                 # "bird-sql_dev_15",
             )
