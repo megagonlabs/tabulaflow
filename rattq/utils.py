@@ -101,9 +101,9 @@ def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
     res = {}
     keys = list(all_metrics[0].keys())
     for key in keys:
-        res[key] = avg_and_round([m[key] for m in all_metrics], 2)
+        res[key] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 2)
         if key in ("input_tokens", "output_tokens", "api_cost_usd"):
-            res[f"total_{key}"] = sum([m[key] for m in all_metrics])
+            res[f"total_{key}"] = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
 
     output_path = os.path.join(result_dir, f"aggregated_metrics.json")
     with open(output_path, "w") as fout:
