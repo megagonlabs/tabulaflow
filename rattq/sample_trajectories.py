@@ -50,7 +50,12 @@ def rejection_sampling(
             query = pred_query
             trajectories.append(
                 get_clean_message_list(
-                    agent.write_memory_to_messages(), flatten_messages_as_text=True
+                    agent.write_memory_to_messages(),
+                    flatten_messages_as_text=True,
+                    role_conversions={
+                        "tool-call": "assistant",
+                        "tool-response": "user",
+                    },
                 )
             )
             accuracy = 1.0
