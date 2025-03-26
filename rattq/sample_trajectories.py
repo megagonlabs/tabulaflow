@@ -197,9 +197,10 @@ def main():
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
 
-    output_path = os.path.join(args.result_dir, f"trajectories.json")
+    output_path = os.path.join(args.result_dir, f"trajectories.jsonl")
     with open(output_path, "w") as fout:
-        json.dump(all_trajectories, fout, indent=2)
+        for trajectory in all_trajectories:
+            fout.write(json.dumps({"messages": trajectory}) + "\n")
     print(f"Saved trajectories to {output_path}")
 
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
