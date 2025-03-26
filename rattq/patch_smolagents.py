@@ -49,13 +49,21 @@ def ActionStep__to_messages(
             )
         )
     if self.error is not None:
-        messages.append(
-            dict(
-                role=MessageRole.TOOL_RESPONSE,
-                tool_call_id=self.tool_calls[0].id,
-                content="Error:\n" + str(self.error),
+        if self.tool_calls:
+            messages.append(
+                dict(
+                    role=MessageRole.TOOL_RESPONSE,
+                    tool_call_id=self.tool_calls[0].id,
+                    content="Error:\n" + str(self.error),
+                )
             )
-        )
+        else:
+            messages.append(
+                dict(
+                    role=MessageRole.USER,
+                    content="Error:\n" + str(self.error),
+                )
+            )
 
     if self.observations_images:
         raise NotImplementedError("Observations images are not implemented")
