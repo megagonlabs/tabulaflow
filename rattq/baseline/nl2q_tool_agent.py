@@ -16,7 +16,7 @@ from rattq.utils import (
 )
 from rattq.db_connector import get_db_connectors
 from rattq.baseline.agent_v1 import get_agent_v1, get_prompt_v1
-from rattq.patch_smolagents import patch_smolagents
+from rattq.patch_smolagents import smolagents_use_tool_format
 
 # import litellm
 # litellm._turn_on_debug()
@@ -85,11 +85,11 @@ AGENT_MAPPINGS = {
 }
 
 
-@patch_smolagents
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="v1", choices=["v1"])
     parser.add_argument("--llm", default="openai/gpt-4o")
+    parser.add_argument("--use_tool_format", action="store_true")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--dataset", default="bird-sql")
@@ -107,6 +107,9 @@ def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.use_tool_format:
+        smolagents_use_tool_format()
 
     if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")

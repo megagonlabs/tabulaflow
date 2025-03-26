@@ -19,7 +19,7 @@ from rattq.utils import (
 from rattq.db_connector import get_db_connectors
 from rattq.baseline.nl2q_tool_agent import AGENT_MAPPINGS
 from rattq.metric import bird_sql_ex
-from rattq.patch_smolagents import patch_smolagents
+from rattq.patch_smolagents import smolagents_use_tool_format
 
 # import litellm
 # litellm._turn_on_debug()
@@ -53,11 +53,11 @@ def rejection_sampling(
                 {
                     "messages": smolagents.models.get_clean_message_list(
                         agent.write_memory_to_messages(),
-                        # flatten_messages_as_text=True,
-                        # role_conversions={
-                        #     "tool-call": "assistant",
-                        #     "tool-response": "user",
-                        # },
+                        flatten_messages_as_text=True,
+                        role_conversions={
+                            "tool-call": "assistant",
+                            "tool-response": "user",
+                        },
                     ),
                     "tools": [
                         smolagents.models.get_tool_json_schema(t)
@@ -85,11 +85,11 @@ METRIC_FN_MAPPINGS = {
 }
 
 
-@patch_smolagents
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="v1", choices=["v1"])
     parser.add_argument("--max_tries", default=1, type=int)
+    parser.add_argument("--use_tool_format", action="store_true")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--dataset", default="bird-sql")
@@ -110,6 +110,9 @@ def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.use_tool_format:
+        smolagents_use_tool_format()
 
     if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")

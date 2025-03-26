@@ -122,21 +122,14 @@ def get_clean_message_list(
     return output_message_list
 
 
-def patch_smolagents(func):
+def smolagents_use_tool_format():
     from unittest.mock import patch
 
-    def wrapper(*args, **kwargs):
-        patch_map = [
-            ("smolagents.memory.ActionStep.to_messages", ActionStep__to_messages),
-            ("smolagents.models.get_clean_message_list", get_clean_message_list),
-        ]
+    patch_map = [
+        ("smolagents.memory.ActionStep.to_messages", ActionStep__to_messages),
+        ("smolagents.models.get_clean_message_list", get_clean_message_list),
+    ]
 
-        patchers = [patch(target, new=new) for target, new in patch_map]
-        started = [p.start() for p in patchers]
-        try:
-            return func(*args, **kwargs)
-        finally:
-            for p in patchers:
-                p.stop()
-
-    return wrapper
+    patchers = [patch(target, new=new) for target, new in patch_map]
+    for p in patchers:
+        p.start()
