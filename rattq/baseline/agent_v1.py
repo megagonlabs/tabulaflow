@@ -229,7 +229,6 @@ def get_agent_v1(db_connector, item: NL2QSample, model, verbose: bool = False):
         tools=get_smolagent_tools_v1(db_connector, item.question, item.evidence),
         model=model,
         verbosity_level=LogLevel.INFO if verbose else LogLevel.ERROR,
-        max_steps=1
     )
 
 

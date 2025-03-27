@@ -43,11 +43,16 @@ def rejection_sampling(
     while i < max_tries:
         i += 1
         response = agent.run(prompt, reset=True)
+        trajectory_steps = agent.memory.steps[-1].step_number
         pred_query = parse_query(response)
         token_counts = agent.monitor.get_total_token_counts()
         input_tokens += int(token_counts["input"])
         output_tokens += int(token_counts["output"])
-        if metric_fn(pred_query, gold_query, db_connector) == 1.0:
+        print(trajectory_steps, agent.max_steps)
+        if (
+            trajectory_steps <= agent.max_steps
+            and metric_fn(pred_query, gold_query, db_connector) == 1.0
+        ):
             query = pred_query
             trajectories.append(
                 {
@@ -76,6 +81,7 @@ def rejection_sampling(
         "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
         "success": accuracy,
         "num_tries_to_success": i if accuracy == 1.0 else math.nan,
+        "trajectory_steps": trajectory_steps if accuracy == 1.0 else math.nan
     }
     return query, metrics, trajectories
 
