@@ -35,7 +35,10 @@ def select_best_query(candidates, db_connector):
             continue
         run_time[query] = time.time() - t0
         hashable = tuple(
-            sorted(set(result), key=lambda row: tuple((x is None, str(type(x)), x) for x in row))
+            sorted(
+                set(result),
+                key=lambda row: tuple((x is None, str(type(x)), x) for x in row),
+            )
         )
         result2query[hashable].append(query)
 
@@ -114,8 +117,11 @@ def main():
     if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
-    litellm_kwargs = {"tool_choice": "auto"}
+    litellm_kwargs = {}
     if args.llm.startswith("hosted_vllm/"):
+        litellm_kwargs["tool_choice"] = (
+            "auto"  # "required" mode not supported by VLLM yet
+        )
         with open(args.vllm_config, "r") as f:
             litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
 
