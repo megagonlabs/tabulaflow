@@ -35,7 +35,7 @@ def select_best_query(candidates, db_connector):
             continue
         run_time[query] = time.time() - t0
         hashable = tuple(
-            sorted(set(result), key=lambda row: tuple((x is None, x) for x in row))
+            sorted(set(result), key=lambda row: tuple((x is None, str(type(x)), x) for x in row))
         )
         result2query[hashable].append(query)
 
