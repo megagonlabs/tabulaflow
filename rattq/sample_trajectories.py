@@ -8,6 +8,7 @@ import time
 import math
 import smolagents
 from smolagents import LiteLLMModel
+import litellm
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import (
     load_nl2q_samples,
@@ -48,7 +49,6 @@ def rejection_sampling(
         token_counts = agent.monitor.get_total_token_counts()
         input_tokens += int(token_counts["input"])
         output_tokens += int(token_counts["output"])
-        print(trajectory_steps, agent.max_steps)
         if (
             trajectory_steps <= agent.max_steps
             and metric_fn(pred_query, gold_query, db_connector) == 1.0
@@ -81,7 +81,113 @@ def rejection_sampling(
         "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
         "success": accuracy,
         "num_tries_to_success": i if accuracy == 1.0 else math.nan,
-        "trajectory_steps": trajectory_steps if accuracy == 1.0 else math.nan
+        "trajectory_steps": trajectory_steps if accuracy == 1.0 else math.nan,
+    }
+    return query, metrics, trajectories
+
+
+FEEDBACK_PROMPT = """
+A student agent tried to accomplish a task but it got stuck. You are a teacher who needs to provide a guide to help the student agent.
+
+### His Task:
+{task}
+
+### Here are the actions he has tried so far:
+{history}
+
+### Your instructions:
+You have access to the gold query: {gold_query}
+However, you should never reveal it to the your student directly.
+Instead, you should provide concise one-paragraph suggestions or plans that will help the student come up with the gold query himself.
+- First, summarize what the student has done so far in a few sentences.
+- Next, provide the suggestions for future actions.
+  - Your suggestions should always be based on the task instruction, hints, available tools, and what hasn't been tried in the action history.
+  - Your suggestions should not be based on the gold query. For example, you should not provide the column names and values in the gold query directly.
+""".strip()
+
+
+def rejection_sampling_with_teacher_feedback(
+    agent,
+    prompt: str,
+    llm: str,
+    db_connector,
+    metric_fn,
+    gold_query,
+    max_tries: int = 1,
+):
+    t0 = time.time()
+    input_tokens, output_tokens = 0, 0
+    query = None
+    trajectories = []
+    accuracy = 0.0
+    i = 0
+    while i < max_tries:
+        i += 1
+        response = agent.run(prompt, reset=True)
+        trajectory_steps = agent.memory.steps[-1].step_number
+        pred_query = parse_query(response)
+        token_counts = agent.monitor.get_total_token_counts()
+        input_tokens += int(token_counts["input"])
+        output_tokens += int(token_counts["output"])
+        success = (
+            trajectory_steps <= agent.max_steps
+            and metric_fn(pred_query, gold_query, db_connector) == 1.0
+        )
+        if not success:
+            messages = agent.write_memory_to_messages()[
+                1:-1
+            ]  # skip the system message and the final_answer message
+            messages = messages[:11]  # consider at most 10 actions
+            messages = smolagents.models.get_clean_message_list(
+                messages, flatten_messages_as_text=True
+            )
+            task = messages[0]["content"]
+            for msg in messages[1:]:
+                if msg["role"] in ("tool-call", "assistant"):
+                    msg["role"] = "ASSISTANT"
+                else:
+                    msg["role"] = "TOOL"
+            history = json.dumps(messages[1:], indent=2)
+
+            prompt = FEEDBACK_PROMPT.format(
+                task=task, history=history, gold_query=gold_query
+            )
+            print(f"<prompt>{prompt}</prompt>")
+            feedback = litellm.completion(
+                model=llm, messages=[{"role": "user", "content": prompt}]
+            )
+            feedback = feedback["choices"][0]["message"]["content"]
+            print(f"<feedback>{feedback}</feedback>")
+            exit(9)
+            query = pred_query
+            trajectories.append(
+                {
+                    "messages": smolagents.models.get_clean_message_list(
+                        agent.write_memory_to_messages(),
+                        flatten_messages_as_text=True,
+                        role_conversions={
+                            "tool-call": "assistant",
+                            "tool-response": "user",
+                        },
+                    ),
+                    "tools": [
+                        smolagents.models.get_tool_json_schema(t)
+                        for t in list(agent.tools.values())
+                    ],
+                    "parallel_tool_calls": False,
+                }
+            )
+            accuracy = 1.0
+            break
+
+    metrics = {
+        "latency": time.time() - t0,
+        "input_tokens": input_tokens,
+        "output_tokens": output_tokens,
+        "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
+        "success": accuracy,
+        "num_tries_to_success": i if accuracy == 1.0 else math.nan,
+        "trajectory_steps": trajectory_steps if accuracy == 1.0 else math.nan,
     }
     return query, metrics, trajectories
 
@@ -90,10 +196,20 @@ METRIC_FN_MAPPINGS = {
     "bird-sql": bird_sql_ex,
 }
 
+SAMPLE_FN_MAPPINGS = {
+    "rejection_sampling": rejection_sampling,
+    "teacher_feedback": rejection_sampling_with_teacher_feedback,
+}
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="v1", choices=["v1"])
+    parser.add_argument(
+        "--sampling",
+        default="teacher_feedback",
+        choices=["rejection_sampling", "teacher_feedback"],
+    )
     parser.add_argument("--max_tries", default=1, type=int)
     parser.add_argument("--use_tool_format", action="store_true")
     parser.add_argument("--llm", default="openai/gpt-4o")
@@ -155,10 +271,10 @@ def main():
             for item in nl2q_samples
             if item.qid
             in (
-                "bird-sql_dev_1",
+                # "bird-sql_dev_1",
                 # "bird-sql_dev_2",
                 # "bird-sql_dev_10",
-                # "bird-sql_dev_15",
+                "bird-sql_dev_15",
             )
         ]
 
@@ -168,6 +284,8 @@ def main():
 
     agent_fn, prompt_fn = AGENT_MAPPINGS[args.agent]
     metric_fn = METRIC_FN_MAPPINGS[args.dataset]
+    sampling_fn = SAMPLE_FN_MAPPINGS[args.sampling]
+
     res = []
     all_trajectories = []
     for i in trange(0, len(nl2q_samples), args.batch_size):
@@ -185,7 +303,7 @@ def main():
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [
                 executor.submit(
-                    rejection_sampling,
+                    sampling_fn,
                     agent,
                     prompt,
                     args.llm,
