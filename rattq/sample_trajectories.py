@@ -99,10 +99,10 @@ A student agent tried to accomplish a task but it got stuck. You are a teacher w
 You have access to the gold query: {gold_query}
 However, you should never reveal it to the your student directly.
 Instead, you should provide concise one-paragraph suggestions or plans that will help the student come up with the gold query himself.
-- First, summarize what the student has done so far in a few sentences.
+- First, summarize what the student has done so far in a few sentences. If the student's current answer does not align with the question, explain briefly why it is wrong.
 - Next, provide the suggestions for future actions.
-  - Your suggestions should always be based on the task instruction, hints, available tools, and what hasn't been tried in the action history.
-  - Your suggestions should not be based on the gold query. For example, you should not provide the column names and values in the gold query directly.
+  - Your suggestions should always be based on the task instruction, schema, question, hints, available tools, and what hasn't been tried in the action history.
+  - Your suggestions should NOT be based on the gold query. For example, you should not provide the column names and values in the gold query directly.
 """.strip()
 
 
