@@ -134,10 +134,12 @@ def rejection_sampling_with_teacher_feedback(
             and metric_fn(pred_query, gold_query, db_connector) == 1.0
         )
         if not success:
-            messages = agent.write_memory_to_messages()[
-                1:-1
-            ]  # skip the system message and the final_answer message
-            messages = messages[:11]  # consider at most 10 actions
+            # remove the final_answer step or max-step-reached step
+            agent.memory.steps.pop(-1)
+            # consider at most 8 actions (the first step is the task step)
+            agent.memory.steps = agent.memory.steps[:9]
+            # skip the system message
+            messages = agent.write_memory_to_messages()[1:]
             messages = smolagents.models.get_clean_message_list(
                 messages, flatten_messages_as_text=True
             )
