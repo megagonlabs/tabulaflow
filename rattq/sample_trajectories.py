@@ -38,6 +38,7 @@ def rejection_sampling(
     metric_fn,
     gold_query,
     max_tries: int = 1,
+    verbose: bool = False,
 ):
     t0 = time.time()
     input_tokens, output_tokens = 0, 0
