@@ -245,7 +245,7 @@ METRIC_FN_MAPPINGS = {
 }
 
 SAMPLE_FN_MAPPINGS = {
-    "rejection_sampling": rejection_sampling,
+    "rejection": rejection_sampling,
     "teacher_feedback": rejection_sampling_with_teacher_feedback,
 }
 
@@ -256,7 +256,7 @@ def main():
     parser.add_argument(
         "--sampling",
         default="teacher_feedback",
-        choices=["rejection_sampling", "teacher_feedback"],
+        choices=["rejection", "teacher_feedback"],
     )
     parser.add_argument("--max_tries", default=1, type=int)
     parser.add_argument("--use_tool_format", action="store_true")
