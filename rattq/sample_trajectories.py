@@ -134,6 +134,7 @@ def rejection_sampling_with_teacher_feedback(
     metric_fn,
     gold_query,
     max_tries: int = 1,
+    feedback_temperature: float = 0.7,
     verbose: bool = False,
 ):
     t0 = time.time()
@@ -173,13 +174,15 @@ def rejection_sampling_with_teacher_feedback(
                     msg["role"] = "TOOL"
             history = json.dumps(messages[1:], indent=2)
 
-            prompt = FEEDBACK_PROMPT.format(
+            feedback_prompt = FEEDBACK_PROMPT.format(
                 task=task, history=history, gold_query=gold_query
             )
             if verbose:
-                print(f"<feedback_prompt>{prompt}</feedback_prompt>")
+                print(f"<feedback_prompt>{feedback_prompt}</feedback_prompt>")
             feedback = litellm.completion(
-                model=llm, messages=[{"role": "user", "content": prompt}]
+                model=llm,
+                messages=[{"role": "user", "content": feedback_prompt}],
+                temperature=feedback_temperature,
             )
             feedback = feedback["choices"][0]["message"]["content"]
             if verbose:
