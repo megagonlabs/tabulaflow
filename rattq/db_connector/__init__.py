@@ -22,6 +22,8 @@ def get_db_connectors(
             ),
         }
         for split in splits:
+            if "_" in split:
+                split = split.split("_")[0]
             metadata_path, db_dir = paths[split]
             with open(metadata_path, "r") as f:
                 db_names = [item["db_id"] for item in json.load(f)]
