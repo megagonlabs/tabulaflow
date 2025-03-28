@@ -116,7 +116,6 @@ def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
 
 
 def get_trajectory_num_steps(trajectory: list[dict]) -> int:
-    print([msg["role"] for msg in trajectory["messages"]])
     return len(
         [msg for msg in trajectory["messages"] if msg["role"].lower() == "assistant"]
     )

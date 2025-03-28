@@ -28,6 +28,16 @@ class NL2QAgent:
         self.input_tokens = 0
         self.output_tokens = 0
 
+    def get_llm_name(self) -> str:
+        return self.smolagent.model.model_id
+
+    def remove_last_k_actions(self, num: int):
+        for _ in range(num):
+            self.smolagent.memory.steps.pop(-1)
+
+    def truncate_to_first_k_actions(self, num: int):
+        self.smolagent.memory.steps = self.smolagent.memory.steps[:num + 1]
+
     def add_feedback(self, feedback: str):
         self.feedback_step_indexes.append(len(self.smolagent.memory.steps))
         self.smolagent.memory.steps.append(FeedbackStep(feedback=feedback))
