@@ -36,8 +36,8 @@ def rejection_sampling(
     db_connector,
     metric_fn,
     gold_query,
-    max_tries: int = 1,
     max_steps: int = 20,
+    max_tries: int = 1,
     verbose: bool = False,
 ):
     t0 = time.time()
@@ -91,8 +91,8 @@ def rejection_sampling_with_teacher_feedback(
     db_connector,
     metric_fn,
     gold_query,
-    max_tries: int = 1,
     max_steps: int = 20,
+    max_tries: int = 1,
     feedback_temperature: float = 0.7,
     verbose: bool = False,
 ):
@@ -174,6 +174,7 @@ def main():
         choices=["rejection", "teacher_feedback"],
     )
     parser.add_argument("--max_tries", default=1, type=int)
+    parser.add_argument("--max_steps", default=20, type=int)
     parser.add_argument("--use_tool_format", action="store_true")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
@@ -272,6 +273,7 @@ def main():
                     db_connectors[item.db],
                     metric_fn,
                     item.gold_query,
+                    args.max_steps,
                     args.max_tries,
                     verbose=i == 0 and k == 0,
                 )
