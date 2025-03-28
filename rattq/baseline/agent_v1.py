@@ -1,4 +1,6 @@
 import json
+import yaml
+import importlib
 from smolagents import ToolCallingAgent
 from smolagents.tools import tool
 from smolagents.monitoring import LogLevel
@@ -226,7 +228,14 @@ def get_smolagent_tools_v1(db_connector, question: str, evidence: str):
 
 
 def get_agent_v1(db_connector, item: NL2QSample, model, verbose: bool = False):
+    prompt_templates = yaml.safe_load(
+        importlib.resources.files("smolagents.prompts")
+        .joinpath("toolcalling_agent.yaml")
+        .read_text()
+    )
+    prompt_templates["system_prompt"] = "You are a helpful database expert."
     smolagent = ToolCallingAgent(
+        prompt_templates=prompt_templates,
         tools=get_smolagent_tools_v1(db_connector, item.question, item.evidence),
         model=model,
         verbosity_level=LogLevel.INFO if verbose else LogLevel.ERROR,
