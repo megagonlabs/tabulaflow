@@ -16,7 +16,7 @@ from rattq.metric import (
 )
 from rattq.db_connector import BaseDBConnector, get_db_connectors
 from rattq.schema import NL2QSample
-from rattq.utils import avg_and_round
+from rattq.utils import avg_and_round, load_nl2q_samples
 
 METRIC_FUNC_MAPPING = {
     "bird_sql_ex": bird_sql_ex,
@@ -66,6 +66,10 @@ def main():
 
     with open(os.path.join(args.result_dir, "result.json")) as fin:
         result = [NL2QSample(**item) for item in json.load(fin)]
+
+    qid2item = {item.qid: item for item in result}
+    samples = load_nl2q_samples(args.dataset, args.split)
+    result = [qid2item[item.qid] for item in samples]
 
     # Shuffle the result to reduce concurent query execution on the same database
     qids = {item.qid: i for i, item in enumerate(result)}
