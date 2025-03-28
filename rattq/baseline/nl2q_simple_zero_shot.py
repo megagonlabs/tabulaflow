@@ -3,18 +3,14 @@ import os
 import shutil
 import json
 from tqdm import trange
+import random
 import litellm
 import time
 import collections
 from concurrent.futures import ThreadPoolExecutor
-from rattq.utils import (
-    load_nl2q_samples,
-    parse_query,
-    is_null_result,
-    get_llm_api_cost,
-    save_aggregated_inference_metrics,
-)
-from rattq.db_connector import get_db_connectors
+from rattq.utils import *
+from rattq.db_connector import get_db_connectors, BaseDBConnector
+from rattq.schema import NL2QSample
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
@@ -110,8 +106,49 @@ def run_llm(
     return best_query, metrics
 
 
+def prepare_finetuning_data(
+    samples: list[NL2QSample],
+    db_connectors: dict[str, BaseDBConnector],
+    output_dir: str,
+) -> list[dict]:
+    finetune_data = []
+    for item in samples:
+        prompt = NL2Q_PROMPT.format(
+            language=item.language,
+            schema=db_connectors[item.db].get_schema(),
+            evidence=item.evidence,
+            question=item.question,
+        )
+        messages = [
+            {
+                "role": "user",
+                "content": prompt,
+            },
+            {
+                "role": "assistant",
+                "content": item.gold_query,
+            },
+        ]
+        finetune_data.append({"messages": messages})
+
+    finetune_train, finetune_dev = split_train_dev(finetune_data, 0.9)
+    with open(os.path.join(output_dir, "finetune_train.jsonl"), "w") as f:
+        for item in finetune_train:
+            f.write(json.dumps(item) + "\n")
+    print(
+        f"Saved finetune train data to {os.path.join(output_dir, 'finetune_train.jsonl')}"
+    )
+    with open(os.path.join(output_dir, "finetune_dev.jsonl"), "w") as f:
+        for item in finetune_dev:
+            f.write(json.dumps(item) + "\n")
+    print(
+        f"Saved finetune dev data to {os.path.join(output_dir, 'finetune_dev.jsonl')}"
+    )
+
+
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--prepare_finetuning_data", action="store_true")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
@@ -126,18 +163,12 @@ def main():
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
+        parser.set_defaults(
+            batch_size=1, overwrite=True, result_dir="output/test/", split="dev"
+        )
     args = parser.parse_args()
     print(args)
     print()
-
-    if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
-        print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
-
-    litellm_kwargs = {}
-    if args.llm.startswith("hosted_vllm/"):
-        with open(args.vllm_config, "r") as f:
-            litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
@@ -149,8 +180,26 @@ def main():
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
 
+    if args.prepare_finetuning_data:
+        samples = load_nl2q_samples(args.dataset, args.split)
+        db_connectors = get_db_connectors(
+            args.dataset,
+            splits=[args.split.split("_")[0] if "_" in args.split else args.split],
+        )
+        prepare_finetuning_data(samples, db_connectors, args.result_dir)
+        return
+
+    if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
+        print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
+
+    litellm_kwargs = {}
+    if args.llm.startswith("hosted_vllm/"):
+        with open(args.vllm_config, "r") as f:
+            litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
+
     db_connectors = get_db_connectors(
-        args.dataset, splits=[args.split.split("_")[0] if "_" in args.split else args.split]
+        args.dataset,
+        splits=[args.split.split("_")[0] if "_" in args.split else args.split],
     )
     print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
 
