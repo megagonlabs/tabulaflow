@@ -9,7 +9,7 @@ from smolagents import LiteLLMModel
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import (
     load_nl2q_samples,
-    parse_query,
+    get_trajectory_num_steps,
     is_null_result,
     get_llm_api_cost,
     save_aggregated_inference_metrics,
@@ -53,34 +53,32 @@ def select_best_query(candidates, db_connector):
 
 
 def run_agent(
-    agent, prompt: str, llm: str, db_connector, num_majority_voting_candidates: int = 1
+    agent,
+    task: str,
+    llm: str,
+    db_connector,
+    max_steps: int = 20,
+    num_majority_voting_candidates: int = 1,
 ):
     t0 = time.time()
-    input_tokens, output_tokens = 0, 0
     queries = []
-    trajectory_steps = []
     trajectories = []
     for _ in range(num_majority_voting_candidates):
-        response = agent.run(prompt, reset=True)
-        queries.append(parse_query(response))
-        token_counts = agent.monitor.get_total_token_counts()
-        input_tokens += int(token_counts["input"])
-        output_tokens += int(token_counts["output"])
-        trajectory_steps.append(agent.memory.steps[-1].step_number)
-        trajectories.append(agent.write_memory_to_messages())
+        query = agent.run_new_task(
+            task, max_steps=max_steps, allow_max_steps_reached=True
+        )
+        if query:
+            queries.append(query)
+            trajectories.append(agent.get_trajectory())
 
     best_query = select_best_query(queries, db_connector)
     best_index = queries.index(best_query)
-
-    metrics = {
-        "latency": round(time.time() - t0, 1),
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
-        "trajectory_steps": trajectory_steps[best_index],
-    }
     trajectory = trajectories[best_index]
-    return response, metrics, trajectory
+
+    metrics = agent.get_metrics()
+    metrics["latency"] = round(time.time() - t0, 1)
+    metrics["trajectory_steps"] = get_trajectory_num_steps(trajectory)
+    return best_query, metrics, trajectory
 
 
 AGENT_MAPPINGS = {
@@ -94,6 +92,7 @@ def main():
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--use_tool_format", action="store_true")
     parser.add_argument("--temperature", default=0.0, type=float)
+    parser.add_argument("--max_steps", default=20, type=int)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_199")
@@ -185,6 +184,7 @@ def main():
                     prompt,
                     args.llm,
                     db_connectors[item.db],
+                    args.max_steps,
                     args.num_majority_voting_candidates,
                 )
                 for agent, prompt, item in zip(agents, prompts, batch_samples)
