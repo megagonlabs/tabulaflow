@@ -4,6 +4,7 @@ from smolagents.tools import tool
 from smolagents.monitoring import LogLevel
 from rattq.utils import truncate_content, is_null_result
 from rattq.schema import NL2QSample
+from rattq.baseline.agent_common import NL2QAgent
 
 
 NL2Q_PROMPT_V1 = """
@@ -225,12 +226,13 @@ def get_smolagent_tools_v1(db_connector, question: str, evidence: str):
 
 
 def get_agent_v1(db_connector, item: NL2QSample, model, verbose: bool = False):
-    return ToolCallingAgent(
+    smolagent = ToolCallingAgent(
         tools=get_smolagent_tools_v1(db_connector, item.question, item.evidence),
         model=model,
         verbosity_level=LogLevel.INFO if verbose else LogLevel.ERROR,
-        max_steps=20
+        max_steps=20,
     )
+    return NL2QAgent(smolagent)
 
 
 def get_prompt_v1(db_connector, item: NL2QSample):

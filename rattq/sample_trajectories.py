@@ -17,7 +17,7 @@ from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import (
     load_nl2q_samples,
     parse_query,
-    is_null_result,
+    get_trajectory_num_steps,
     get_llm_api_cost,
     save_aggregated_inference_metrics,
 )
@@ -30,64 +30,35 @@ from rattq.patch_smolagents import smolagents_use_tool_format
 # litellm._turn_on_debug()
 
 
+
+
 def rejection_sampling(
     agent,
     prompt: str,
-    llm: str,
     db_connector,
     metric_fn,
     gold_query,
     max_tries: int = 1,
+    max_steps: int = 20,
     verbose: bool = False,
 ):
     t0 = time.time()
-    input_tokens, output_tokens = 0, 0
     query = None
     trajectories = []
-    accuracy = 0.0
-    i = 0
-    while i < max_tries:
-        i += 1
-        response = agent.run(prompt, reset=True)
-        trajectory_steps = agent.memory.steps[-1].step_number
-        pred_query = parse_query(response)
-        token_counts = agent.monitor.get_total_token_counts()
-        input_tokens += int(token_counts["input"])
-        output_tokens += int(token_counts["output"])
-        if (
-            trajectory_steps <= agent.max_steps
-            and metric_fn(pred_query, gold_query, db_connector) == 1.0
-        ):
+    num_tries = 0
+    while num_tries < max_tries:
+        num_tries += 1
+        pred_query = agent.run_new_task(prompt,max_steps=max_steps, allow_max_steps_reached=False)
+        if pred_query and metric_fn(pred_query, gold_query, db_connector) == 1.0:
             query = pred_query
-            trajectories.append(
-                {
-                    "messages": smolagents.models.get_clean_message_list(
-                        agent.write_memory_to_messages(),
-                        flatten_messages_as_text=True,
-                        role_conversions={
-                            "tool-call": "assistant",
-                            "tool-response": "user",
-                        },
-                    ),
-                    "tools": [
-                        smolagents.models.get_tool_json_schema(t)
-                        for t in list(agent.tools.values())
-                    ],
-                    "parallel_tool_calls": False,
-                }
-            )
-            accuracy = 1.0
+            trajectories.append(agent.get_trajectory())
             break
 
-    metrics = {
-        "latency": time.time() - t0,
-        "input_tokens": input_tokens,
-        "output_tokens": output_tokens,
-        "api_cost_usd": get_llm_api_cost(llm, input_tokens, output_tokens),
-        "success": accuracy,
-        "num_tries_to_success": i if accuracy == 1.0 else math.nan,
-        "trajectory_steps": trajectory_steps if accuracy == 1.0 else math.nan,
-    }
+    metrics = agent.get_metrics()
+    metrics["latency"] = time.time() - t0
+    metrics["success"] = 1 if query else 0
+    metrics["num_tries_to_success"] = num_tries if query else math.nan
+    metrics["trajectory_steps"] = get_trajectory_num_steps(trajectories[0]) if query else math.nan
     return query, metrics, trajectories
 
 
@@ -112,19 +83,7 @@ Address the student as "you" in your feedback.
 """.strip()
 
 
-@dataclass
-class FeedbackStep(MemoryStep):
-    feedback: str
 
-    def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
-        if summary_mode:
-            return []
-        return [
-            Message(
-                role=MessageRole.USER,
-                content=[{"type": "text", "text": self.feedback.strip()}],
-            )
-        ]
 
 
 def rejection_sampling_with_teacher_feedback(
@@ -320,9 +279,9 @@ def main():
             for item in nl2q_samples
             if item.qid
             in (
-                # "bird-sql_dev_1",
+                "bird-sql_dev_1",
                 # "bird-sql_dev_2",
-                "bird-sql_dev_10",
+                # "bird-sql_dev_10",
                 # "bird-sql_dev_15",
             )
         ]
@@ -355,7 +314,6 @@ def main():
                     sampling_fn,
                     agent,
                     prompt,
-                    args.llm,
                     db_connectors[item.db],
                     metric_fn,
                     item.gold_query,
