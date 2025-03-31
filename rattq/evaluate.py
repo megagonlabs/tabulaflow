@@ -46,6 +46,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
+    parser.add_argument("--evaluate_on_intersection", action="store_true")
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--num_threads", type=int, default=8)
     parser.add_argument(
@@ -67,9 +68,10 @@ def main():
     with open(os.path.join(args.result_dir, "result.json")) as fin:
         result = [NL2QSample(**item) for item in json.load(fin)]
 
-    qid2item = {item.qid: item for item in result}
-    samples = load_nl2q_samples(args.dataset, args.split)
-    result = [qid2item[item.qid] for item in samples]
+    if args.evaluate_on_intersection:
+        qid2item = {item.qid: item for item in result}
+        samples = load_nl2q_samples(args.dataset, args.split)
+        result = [qid2item[item.qid] for item in samples if item.qid in qid2item]
 
     # Shuffle the result to reduce concurent query execution on the same database
     qids = {item.qid: i for i, item in enumerate(result)}

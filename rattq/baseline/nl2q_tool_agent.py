@@ -149,10 +149,11 @@ def main():
             for item in dev_samples
             if item.qid
             in (
-                "bird-sql_dev_1",
+                # "bird-sql_dev_1",
                 # "bird-sql_dev_2",
                 # "bird-sql_dev_10",
                 # "bird-sql_dev_15",
+                "bird-sql_dev_944",
             )
         ]
 
