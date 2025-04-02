@@ -2,7 +2,6 @@ from sqlalchemy import create_engine, text, inspect
 import sqlite3
 from enum import Enum
 from func_timeout import func_timeout, FunctionTimedOut
-from rattq.db_connector.mschema_utils import MSchema, SchemaEngine
 from rattq.db_connector.base import BaseDBConnector
 from rattq.utils import truncate_content
 from pydantic import BaseModel
@@ -27,7 +26,7 @@ class ForeignKeySchema(BaseModel):
     foreign_column: str
 
 
-class SQLDBSchema(BaseModel):
+class SQLSchema(BaseModel):
     name: str
     tables: List[SQLTableSchema]
     foreign_keys: List[ForeignKeySchema]
@@ -41,10 +40,10 @@ class SQLiteConnector(BaseDBConnector):
         self._inspector = inspect(self._engine)
         self._schema = self._init_schema()
 
-    def get_schema(self) -> str:
+    def get_schema(self) -> SQLSchema:
         return self._schema
 
-    def _init_schema(self) -> SQLDBSchema:
+    def _init_schema(self) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
@@ -78,7 +77,7 @@ class SQLiteConnector(BaseDBConnector):
                 )
             )
 
-        return SQLDBSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
+        return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
 
     def _run_query_without_timeout(self, query: str, args: tuple = ()) -> list:
         # db_engine = create_engine(f"sqlite:///{self.db_path}")
