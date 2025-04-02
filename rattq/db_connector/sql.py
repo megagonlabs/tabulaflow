@@ -1,27 +1,84 @@
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, text, inspect
 import sqlite3
+from enum import Enum
 from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.mschema_utils import MSchema, SchemaEngine
 from rattq.db_connector.base import BaseDBConnector
 from rattq.utils import truncate_content
+from pydantic import BaseModel
+from typing import List, Optional
+
+
+class SQLColumnSchema(BaseModel):
+    name: str
+    type: str
+
+
+class SQLTableSchema(BaseModel):
+    name: str
+    columns: List[SQLColumnSchema]
+    primary_key: List[str]
+
+
+class ForeignKeySchema(BaseModel):
+    table: str
+    column: str
+    foreign_table: str
+    foreign_column: str
+
+
+class SQLDBSchema(BaseModel):
+    name: str
+    tables: List[SQLTableSchema]
+    foreign_keys: List[ForeignKeySchema]
 
 
 class SQLiteConnector(BaseDBConnector):
     def __init__(self, name: str, db_path: str):
         self.name = name
         self.db_path = db_path
-        self._schema = self._get_mschema()
-
-    def _get_mschema(self):
-        # adapted from https://github.com/XGenerationLab/M-Schema
-        db_engine = create_engine(f"sqlite:///{self.db_path}")
-        schema_engine = SchemaEngine(engine=db_engine, db_name=self.name)
-        mschema = schema_engine.mschema
-        mschema_str = mschema.to_mschema()
-        return mschema_str
+        self._engine = create_engine(f"sqlite:///{self.db_path}")
+        self._inspector = inspect(self._engine)
+        self._schema = self._init_schema()
 
     def get_schema(self) -> str:
         return self._schema
+
+    def _init_schema(self) -> SQLDBSchema:
+        """Initialize and return the database schema."""
+        tables = []
+        foreign_keys = []
+
+        for table_name in self._inspector.get_table_names():
+            columns = []
+            for column in self._inspector.get_columns(table_name):
+                columns.append(
+                    SQLColumnSchema(
+                        name=column["name"], type=str(column["type"]).upper()
+                    )
+                )
+
+            primary_key = self._inspector.get_pk_constraint(table_name)[
+                "constrained_columns"
+            ]
+
+            for fk in self._inspector.get_foreign_keys(table_name):
+                foreign_keys.append(
+                    ForeignKeySchema(
+                        table=table_name,
+                        column=fk["constrained_columns"][0],
+                        foreign_table=fk["referred_table"],
+                        foreign_column=fk["referred_columns"][0],
+                    )
+                )
+
+            tables.append(
+                SQLTableSchema(
+                    name=table_name, columns=columns, primary_key=primary_key
+                )
+            )
+
+        return SQLDBSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
 
     def _run_query_without_timeout(self, query: str, args: tuple = ()) -> list:
         # db_engine = create_engine(f"sqlite:///{self.db_path}")
@@ -44,3 +101,11 @@ class SQLiteConnector(BaseDBConnector):
             raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
         except Exception as e:
             raise
+
+
+if __name__ == "__main__":
+    import json
+
+    connector = SQLiteConnector("test", "test.db")
+    schema = connector.get_schema()
+    print(json.dumps(schema.model_dump(), indent=2))
