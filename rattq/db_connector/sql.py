@@ -1,16 +1,18 @@
-from sqlalchemy import create_engine, text, inspect
+import sqlalchemy
+from sqlalchemy import create_engine, text, inspect, select, distinct
 import sqlite3
 from enum import Enum
 from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.base import BaseDBConnector
 from rattq.utils import truncate_content
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Any
 
 
 class SQLColumnSchema(BaseModel):
     name: str
     type: str
+    examples: List[Any]
 
 
 class SQLTableSchema(BaseModel):
@@ -51,9 +53,21 @@ class SQLiteConnector(BaseDBConnector):
         for table_name in self._inspector.get_table_names():
             columns = []
             for column in self._inspector.get_columns(table_name):
+                col = sqlalchemy.column(column["name"])
+                tbl = sqlalchemy.table(table_name)
+                stmt = (
+                    select(distinct(col))
+                    .select_from(tbl)
+                    .where(col.isnot(None))
+                    .limit(3)
+                )
+                with self._engine.connect() as conn:
+                    examples = [row[0] for row in conn.execute(stmt).fetchall()]
                 columns.append(
                     SQLColumnSchema(
-                        name=column["name"], type=str(column["type"]).upper()
+                        name=column["name"],
+                        type=str(column["type"]).upper(),
+                        examples=examples,
                     )
                 )
 
