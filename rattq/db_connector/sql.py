@@ -1,5 +1,5 @@
 import sqlalchemy
-from sqlalchemy import create_engine, text, inspect, select, distinct
+from sqlalchemy import create_engine, text, inspect, select, distinct, func
 import sqlite3
 from enum import Enum
 from func_timeout import func_timeout, FunctionTimedOut
@@ -12,6 +12,7 @@ from typing import List, Any
 class SQLColumnSchema(BaseModel):
     name: str
     type: str
+    cardinality: int
     examples: List[Any]
 
 
@@ -56,10 +57,17 @@ class SQLiteConnector(BaseDBConnector):
                 col = sqlalchemy.column(column["name"])
                 tbl = sqlalchemy.table(table_name)
                 stmt = (
+                    select(func.count(distinct(col)))
+                    .select_from(tbl)
+                    .where(col.isnot(None))
+                )
+                with self._engine.connect() as conn:
+                    cardinality = conn.execute(stmt).fetchone()[0]
+                stmt = (
                     select(distinct(col))
                     .select_from(tbl)
                     .where(col.isnot(None))
-                    .limit(3)
+                    .limit(20)
                 )
                 with self._engine.connect() as conn:
                     examples = [row[0] for row in conn.execute(stmt).fetchall()]
@@ -67,6 +75,7 @@ class SQLiteConnector(BaseDBConnector):
                     SQLColumnSchema(
                         name=column["name"],
                         type=str(column["type"]).upper(),
+                        cardinality=cardinality,
                         examples=examples,
                     )
                 )
