@@ -4,24 +4,37 @@ import smolagents
 from smolagents.memory import MemoryStep, Message, ActionStep
 from smolagents.models import MessageRole
 from rattq.utils import get_llm_api_cost, parse_query
+from rattq.schema import NL2QSample
+from rattq.db_connector import BaseDBConnector
 
 
-@dataclass
-class FeedbackStep(MemoryStep):
-    feedback: str
+class BaseNL2QModel:
+    def get_llm_name(self) -> str:
+        """
+        Returns the name of the LLM.
+        """
+        raise NotImplementedError()
 
-    def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
-        if summary_mode:
-            return []
-        return [
-            Message(
-                role=MessageRole.USER,
-                content=[{"type": "text", "text": self.feedback.strip()}],
-            )
-        ]
+    def predict(
+        self, task: NL2QSample, db_connector: BaseDBConnector
+    ) -> tuple[str, list[dict]]:
+        """
+        Predicts the query and returns the trajectory for the given NL2QSample.
+
+        Returns:
+            - query: str
+            - trajectory: list[dict]
+        """
+        raise NotImplementedError()
+
+    def get_metrics(self) -> dict:
+        """
+        Returns the metrics of the agent.
+        """
+        raise NotImplementedError()
 
 
-class NL2QAgent:
+class SmolagentsNL2QAgent(BaseNL2QModel):
     def __init__(self, smolagent: smolagents.MultiStepAgent):
         self.smolagent = smolagent
         self.feedback_step_indexes = []
@@ -31,29 +44,23 @@ class NL2QAgent:
     def get_llm_name(self) -> str:
         return self.smolagent.model.model_id
 
-    def remove_last_k_actions(self, num: int):
-        for _ in range(num):
-            self.smolagent.memory.steps.pop(-1)
+    def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
+        raise NotImplementedError()
 
-    def truncate_to_first_k_actions(self, num: int):
-        self.smolagent.memory.steps = self.smolagent.memory.steps[:num + 1]
-
-    def add_feedback(self, feedback: str):
-        self.feedback_step_indexes.append(len(self.smolagent.memory.steps))
-        self.smolagent.memory.steps.append(FeedbackStep(feedback=feedback))
-
-    def remove_all_feedback(self):
-        for idx in self.feedback_step_indexes[::-1]:
-            self.smolagent.memory.steps.pop(idx)
-        self.feedback_step_indexes = []
-
-    def run_new_task(
-        self, task: str, max_steps: int, allow_max_steps_reached: bool = True
-    ) -> str | None:
-        query = self.smolagent.run(task, reset=True, max_steps=max_steps)
-        query = parse_query(query)
+    def predict(
+        self,
+        task: NL2QSample,
+        db_connector: BaseDBConnector,
+        max_steps: int = 20,
+        allow_max_steps_reached: bool = True,
+    ) -> tuple[str, list[dict]]:
+        prompt = self.format_prompt(task, db_connector)
+        query = self.smolagent.run(prompt, reset=True, max_steps=max_steps)
         self._update_token_counts()
-        return self._finalize_return(query, allow_max_steps_reached)
+        query = parse_query(query)
+        query = self._finalize_return(query, allow_max_steps_reached)
+        trajectory = self._get_trajectory()
+        return query, trajectory
 
     def _update_token_counts(self):
         token_counts = self.smolagent.monitor.get_total_token_counts()
@@ -67,14 +74,7 @@ class NL2QAgent:
                 return None
         return parse_query(query)
 
-    def continue_task(
-        self, max_steps: int, allow_max_steps_reached: bool = False
-    ) -> str | None:
-        query = list(self.smolagent._run(task=None, max_steps=max_steps))[-1]
-        self._update_token_counts()
-        return self._finalize_return(query, allow_max_steps_reached)
-
-    def get_trajectory(self) -> list[dict]:
+    def _get_trajectory(self) -> list[dict]:
         return {
             "messages": smolagents.models.get_clean_message_list(
                 self.smolagent.write_memory_to_messages(),

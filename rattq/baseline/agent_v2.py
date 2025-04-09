@@ -1,13 +1,12 @@
 import json
 import yaml
 import importlib
-from dataclasses import dataclass
 from smolagents import ToolCallingAgent
 from smolagents.tools import tool
 from smolagents.monitoring import LogLevel
 from rattq.utils import truncate_content, is_null_result
 from rattq.schema import NL2QSample
-from rattq.baseline.base import SmolagentsNL2QAgent
+from rattq.baseline.agent_common import NL2QAgent
 
 
 NL2Q_PROMPT_V1 = """
@@ -228,103 +227,6 @@ def get_smolagent_tools_v1(db_connector, question: str, evidence: str):
     return [query_db, search_keywords, check_final_answer]
 
 
-@dataclass
-class FeedbackStep(MemoryStep):
-    feedback: str
-
-    def to_messages(self, summary_mode: bool, **kwargs) -> List[Message]:
-        if summary_mode:
-            return []
-        return [
-            Message(
-                role=MessageRole.USER,
-                content=[{"type": "text", "text": self.feedback.strip()}],
-            )
-        ]
-
-
-class AgentV1(SmolagentsNL2QAgent):
-    def __init__(self, smolagent: smolagents.MultiStepAgent):
-        self.smolagent = smolagent
-        self.feedback_step_indexes = []
-        self.input_tokens = 0
-        self.output_tokens = 0
-
-    def get_llm_name(self) -> str:
-        return self.smolagent.model.model_id
-
-    def remove_last_k_actions(self, num: int):
-        for _ in range(num):
-            self.smolagent.memory.steps.pop(-1)
-
-    def truncate_to_first_k_actions(self, num: int):
-        self.smolagent.memory.steps = self.smolagent.memory.steps[: num + 1]
-
-    def add_feedback(self, feedback: str):
-        self.feedback_step_indexes.append(len(self.smolagent.memory.steps))
-        self.smolagent.memory.steps.append(FeedbackStep(feedback=feedback))
-
-    def remove_all_feedback(self):
-        for idx in self.feedback_step_indexes[::-1]:
-            self.smolagent.memory.steps.pop(idx)
-        self.feedback_step_indexes = []
-
-    def run_new_task(
-        self, task: str, max_steps: int, allow_max_steps_reached: bool = True
-    ) -> str | None:
-        query = self.smolagent.run(task, reset=True, max_steps=max_steps)
-        query = parse_query(query)
-        self._update_token_counts()
-        return self._finalize_return(query, allow_max_steps_reached)
-
-    def _update_token_counts(self):
-        token_counts = self.smolagent.monitor.get_total_token_counts()
-        self.input_tokens += int(token_counts["input"])
-        self.output_tokens += int(token_counts["output"])
-
-    def _finalize_return(self, query: str, allow_max_steps_reached: bool) -> str | None:
-        if not allow_max_steps_reached:
-            last_step = self.smolagent.memory.steps[-1]
-            if isinstance(last_step, ActionStep) and last_step.error:
-                return None
-        return parse_query(query)
-
-    def continue_task(
-        self, max_steps: int, allow_max_steps_reached: bool = False
-    ) -> str | None:
-        query = list(self.smolagent._run(task=None, max_steps=max_steps))[-1]
-        self._update_token_counts()
-        return self._finalize_return(query, allow_max_steps_reached)
-
-    def get_trajectory(self) -> list[dict]:
-        return {
-            "messages": smolagents.models.get_clean_message_list(
-                self.smolagent.write_memory_to_messages(),
-                flatten_messages_as_text=True,
-                role_conversions={
-                    "tool-call": "assistant",
-                    "tool-response": "user",
-                },
-            ),
-            "tools": [
-                smolagents.models.get_tool_json_schema(t)
-                for t in list(self.smolagent.tools.values())
-            ],
-            "parallel_tool_calls": False,
-        }
-
-    def get_metrics(self) -> dict:
-        return {
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
-            "api_cost_usd": get_llm_api_cost(
-                self.smolagent.model.model_id,
-                self.input_tokens,
-                self.output_tokens,
-            ),
-        }
-
-
 def get_agent_v1(db_connector, item: NL2QSample, model, verbose: bool = False):
     prompt_templates = yaml.safe_load(
         importlib.resources.files("smolagents.prompts")
@@ -339,7 +241,7 @@ def get_agent_v1(db_connector, item: NL2QSample, model, verbose: bool = False):
         verbosity_level=LogLevel.INFO if verbose else LogLevel.ERROR,
         max_steps=20,
     )
-    return AgentV1(smolagent)
+    return NL2QAgent(smolagent)
 
 
 def get_prompt_v1(db_connector, item: NL2QSample):
