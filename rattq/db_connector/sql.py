@@ -13,6 +13,7 @@ class SQLColumnSchema(BaseModel):
     name: str
     type: str
     cardinality: int
+    count: int
     examples: List[Any]
 
 
@@ -20,6 +21,7 @@ class SQLTableSchema(BaseModel):
     name: str
     columns: List[SQLColumnSchema]
     primary_key: List[str]
+    num_rows: int
 
 
 class ForeignKeySchema(BaseModel):
@@ -63,6 +65,9 @@ class SQLiteConnector(BaseDBConnector):
                 )
                 with self._engine.connect() as conn:
                     cardinality = conn.execute(stmt).fetchone()[0]
+                    count = conn.execute(
+                        select(func.count()).select_from(tbl).where(col.isnot(None))
+                    ).fetchone()[0]
                 stmt = (
                     select(distinct(col))
                     .select_from(tbl)
@@ -71,11 +76,13 @@ class SQLiteConnector(BaseDBConnector):
                 )
                 with self._engine.connect() as conn:
                     examples = [row[0] for row in conn.execute(stmt).fetchall()]
+
                 columns.append(
                     SQLColumnSchema(
                         name=column["name"],
                         type=str(column["type"]).upper(),
                         cardinality=cardinality,
+                        count=count,
                         examples=examples,
                     )
                 )
@@ -83,7 +90,10 @@ class SQLiteConnector(BaseDBConnector):
             primary_key = self._inspector.get_pk_constraint(table_name)[
                 "constrained_columns"
             ]
-
+            with self._engine.connect() as conn:
+                num_rows = conn.execute(
+                    select(func.count()).select_from(tbl)
+                ).fetchone()[0]
             for fk in self._inspector.get_foreign_keys(table_name):
                 foreign_keys.append(
                     ForeignKeySchema(
@@ -96,7 +106,10 @@ class SQLiteConnector(BaseDBConnector):
 
             tables.append(
                 SQLTableSchema(
-                    name=table_name, columns=columns, primary_key=primary_key
+                    name=table_name,
+                    columns=columns,
+                    primary_key=primary_key,
+                    num_rows=num_rows,
                 )
             )
 
