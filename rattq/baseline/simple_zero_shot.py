@@ -57,10 +57,6 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
     def llm_name(self) -> str:
         return self.llm
 
-    @property
-    def metrics(self) -> dict:
-        return {}
-
     def predict(self, task, db_connector) -> str:
         t0 = time.time()
 
