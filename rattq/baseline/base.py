@@ -1,35 +1,31 @@
-from dataclasses import dataclass
-from typing import List
+from abc import ABC, abstractmethod
 import smolagents
-from smolagents.memory import MemoryStep, Message, ActionStep
-from smolagents.models import MessageRole
+from smolagents.memory import ActionStep
 from rattq.utils import get_llm_api_cost, parse_query
 from rattq.schema import NL2QSample
 from rattq.db_connector import BaseDBConnector
 
 
-class BaseNL2QModel:
-    def get_llm_name(self) -> str:
-        """
-        Returns the name of the LLM.
-        """
-        raise NotImplementedError()
-
+class BaseNL2QModel(ABC):
+    @abstractmethod
     def predict(
         self, task: NL2QSample, db_connector: BaseDBConnector
-    ) -> tuple[str, list[dict]]:
+    ) -> tuple[str, list[dict], dict]:
         """
         Predicts the query and returns the trajectory for the given NL2QSample.
 
         Returns:
             - query: str
             - trajectory: list[dict]
+            - metrics: dict
         """
         raise NotImplementedError()
 
-    def get_metrics(self) -> dict:
+    @property
+    @abstractmethod
+    def llm_name(self) -> str:
         """
-        Returns the metrics of the agent.
+        Returns the name of the LLM.
         """
         raise NotImplementedError()
 
@@ -40,9 +36,6 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
         self.feedback_step_indexes = []
         self.input_tokens = 0
         self.output_tokens = 0
-
-    def get_llm_name(self) -> str:
-        return self.smolagent.model.model_id
 
     def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
         raise NotImplementedError()
@@ -60,7 +53,16 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
         query = parse_query(query)
         query = self._finalize_return(query, allow_max_steps_reached)
         trajectory = self._get_trajectory()
-        return query, trajectory
+        metrics = {
+            "input_tokens": self.input_tokens,
+            "output_tokens": self.output_tokens,
+            "api_cost_usd": get_llm_api_cost(
+                self.smolagent.model.model_id,
+                self.input_tokens,
+                self.output_tokens,
+            ),
+        }
+        return query, trajectory, metrics
 
     def _update_token_counts(self):
         token_counts = self.smolagent.monitor.get_total_token_counts()
@@ -91,13 +93,6 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
             "parallel_tool_calls": False,
         }
 
-    def get_metrics(self) -> dict:
-        return {
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
-            "api_cost_usd": get_llm_api_cost(
-                self.smolagent.model.model_id,
-                self.input_tokens,
-                self.output_tokens,
-            ),
-        }
+    @property
+    def llm_name(self) -> str:
+        return self.smolagent.model.model_id
