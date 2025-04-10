@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import time
 import smolagents
 from smolagents.memory import ActionStep
 from rattq.utils import get_llm_api_cost, parse_query
@@ -31,14 +32,19 @@ class BaseNL2QModel(ABC):
 
 
 class SmolagentsNL2QAgent(BaseNL2QModel):
-    def __init__(self, smolagent: smolagents.MultiStepAgent):
-        self.smolagent = smolagent
-        self.feedback_step_indexes = []
-        self.input_tokens = 0
-        self.output_tokens = 0
+    @property
+    def llm_name(self) -> str:
+        return self.smolagent.model.model_id
 
+    @abstractmethod
     def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
-        raise NotImplementedError()
+        pass
+
+    @abstractmethod
+    def get_smolagent(
+        self, task: NL2QSample, db_connector: BaseDBConnector
+    ) -> smolagents.MultiStepAgent:
+        pass
 
     def predict(
         self,
@@ -47,39 +53,21 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
         max_steps: int = 20,
         allow_max_steps_reached: bool = True,
     ) -> tuple[str, list[dict]]:
+        t0 = time.time()
+        agent = self.get_smolagent(task, db_connector)
         prompt = self.format_prompt(task, db_connector)
-        query = self.smolagent.run(prompt, reset=True, max_steps=max_steps)
-        self._update_token_counts()
+        query = agent.run(prompt, reset=True, max_steps=max_steps)
+
         query = parse_query(query)
-        query = self._finalize_return(query, allow_max_steps_reached)
-        trajectory = self._get_trajectory()
-        metrics = {
-            "input_tokens": self.input_tokens,
-            "output_tokens": self.output_tokens,
-            "api_cost_usd": get_llm_api_cost(
-                self.smolagent.model.model_id,
-                self.input_tokens,
-                self.output_tokens,
-            ),
-        }
-        return query, trajectory, metrics
-
-    def _update_token_counts(self):
-        token_counts = self.smolagent.monitor.get_total_token_counts()
-        self.input_tokens += int(token_counts["input"])
-        self.output_tokens += int(token_counts["output"])
-
-    def _finalize_return(self, query: str, allow_max_steps_reached: bool) -> str | None:
         if not allow_max_steps_reached:
-            last_step = self.smolagent.memory.steps[-1]
+            last_step = agent.memory.steps[-1]
             if isinstance(last_step, ActionStep) and last_step.error:
-                return None
-        return parse_query(query)
+                query = None
 
-    def _get_trajectory(self) -> list[dict]:
-        return {
+        # Re-construct trajectory
+        trajectory = {
             "messages": smolagents.models.get_clean_message_list(
-                self.smolagent.write_memory_to_messages(),
+                agent.write_memory_to_messages(),
                 flatten_messages_as_text=True,
                 role_conversions={
                     "tool-call": "assistant",
@@ -88,11 +76,28 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
             ),
             "tools": [
                 smolagents.models.get_tool_json_schema(t)
-                for t in list(self.smolagent.tools.values())
+                for t in list(agent.tools.values())
             ],
             "parallel_tool_calls": False,
         }
 
-    @property
-    def llm_name(self) -> str:
-        return self.smolagent.model.model_id
+        # Compute metrics
+        token_counts = agent.monitor.get_total_token_counts()
+        input_tokens = int(token_counts["input"])
+        output_tokens = int(token_counts["output"])
+        metrics = {
+            "input_tokens": input_tokens,
+            "output_tokens": output_tokens,
+            "api_cost_usd": get_llm_api_cost(
+                agent.model.model_id,
+                input_tokens,
+                output_tokens,
+            ),
+            "latency": round(time.time() - t0, 1),
+            "trajectory_steps": sum(
+                1
+                for msg in trajectory["messages"]
+                if msg["role"].lower() == "assistant"
+            ),
+        }
+        return query, trajectory, metrics
