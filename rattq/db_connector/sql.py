@@ -1,5 +1,5 @@
 import sqlalchemy
-from sqlalchemy import create_engine, inspect, select, distinct, func
+from sqlalchemy import create_engine, inspect, select, func
 import sqlite3
 from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.base import BaseDBConnector
@@ -31,7 +31,7 @@ class SQLiteConnector(BaseDBConnector):
                     tbl = sqlalchemy.table(table_name)
 
                     cardinality = conn.execute(
-                        select(func.count(distinct(col)))
+                        select(func.count(col.distinct()))
                         .select_from(tbl)
                         .where(col.isnot(None))
                     ).fetchone()[0]
@@ -41,7 +41,8 @@ class SQLiteConnector(BaseDBConnector):
                     examples = [
                         row[0]
                         for row in conn.execute(
-                            select(distinct(col))
+                            select(col)
+                            .distinct()
                             .select_from(tbl)
                             .where(col.isnot(None))
                             .limit(20)
