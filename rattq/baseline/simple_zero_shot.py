@@ -3,6 +3,7 @@ import time
 import collections
 from rattq.utils import *
 from rattq.baseline.base import BaseNL2QModel
+from rattq.schema_formatter import BaseSchemaFormatter
 
 NL2Q_PROMPT = """
 Translate the following natural language question into a {language} query.
@@ -44,11 +45,13 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
     def __init__(
         self,
         llm: str,
+        schema_formatter: BaseSchemaFormatter,
         temperature: float = 0.0,
         num_candidates: int = 1,
         litellm_kwargs: dict = {},
     ):
         self.llm = llm
+        self.schema_formatter = schema_formatter
         self.temperature = temperature
         self.num_candidates = num_candidates
         self.litellm_kwargs = litellm_kwargs
@@ -63,7 +66,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         # Construct prompt
         prompt = NL2Q_PROMPT.format(
             language=task.language,
-            schema=db_connector.get_schema(),
+            schema=self.schema_formatter.format(db_connector.get_schema()),
             evidence=task.evidence,
             question=task.question,
         )

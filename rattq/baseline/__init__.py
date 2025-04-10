@@ -2,11 +2,15 @@ from rattq.baseline.simple_zero_shot import SimpleZeroShotNL2Q
 from rattq.baseline.base import BaseNL2QModel
 
 
+nl2q_model_registry = {
+    "simple_zero_shot": SimpleZeroShotNL2Q,
+}
+
+
 def get_nl2q_model(name: str, **kwargs) -> BaseNL2QModel:
-    if name == "simple_zero_shot":
-        return SimpleZeroShotNL2Q(**kwargs)
-    else:
+    if name not in nl2q_model_registry:
         raise ValueError(f"Unknown NL2Q model: {name}")
+    return nl2q_model_registry[name](**kwargs)
 
 
 __all__ = ["get_nl2q_model", "BaseNL2QModel", "SimpleZeroShotNL2Q"]

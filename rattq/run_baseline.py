@@ -6,6 +6,7 @@ from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import *
 from rattq.db_connector import get_db_connectors
+from rattq.schema_formatter import get_schema_formatter
 from rattq.baseline import get_nl2q_model
 
 
@@ -16,6 +17,7 @@ def main():
         default="simple_zero_shot",
         choices=["simple_zero_shot", "tool_agent"],
     )
+    parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
@@ -54,11 +56,13 @@ def main():
     if args.llm.startswith("hosted_vllm/"):
         with open(args.local_llm_config, "r") as f:
             litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
+    schema_formatter = get_schema_formatter(args.schema_formatter)
     nl2q_kwargs = {
         "llm": args.llm,
         "temperature": args.temperature,
         "num_candidates": args.num_majority_voting_candidates,
         "litellm_kwargs": litellm_kwargs,
+        "schema_formatter": schema_formatter,
     }
 
     db_connectors = get_db_connectors(args.dataset, splits=[args.split])
