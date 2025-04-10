@@ -110,7 +110,9 @@ class SQLiteConnector(BaseDBConnector):
 
 if __name__ == "__main__":
     import json
+    from rattq.schema_formatter import get_schema_formatter
 
     connector = SQLiteConnector("test", "test.db")
     schema = connector.get_schema()
-    print(json.dumps(schema.model_dump(), indent=2))
+    formatter = get_schema_formatter("sql_default")
+    print(formatter.format(schema))
