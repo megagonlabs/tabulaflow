@@ -1,40 +1,9 @@
 import sqlalchemy
-from sqlalchemy import create_engine, text, inspect, select, distinct, func
+from sqlalchemy import create_engine, inspect, select, distinct, func
 import sqlite3
-from enum import Enum
 from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.base import BaseDBConnector
-from rattq.utils import truncate_content
-from pydantic import BaseModel
-from typing import List, Any
-
-
-class SQLColumnSchema(BaseModel):
-    name: str
-    type: str
-    cardinality: int
-    count: int
-    examples: List[Any]
-
-
-class SQLTableSchema(BaseModel):
-    name: str
-    columns: List[SQLColumnSchema]
-    primary_key: List[str]
-    num_rows: int
-
-
-class ForeignKeySchema(BaseModel):
-    table: str
-    column: str
-    foreign_table: str
-    foreign_column: str
-
-
-class SQLSchema(BaseModel):
-    name: str
-    tables: List[SQLTableSchema]
-    foreign_keys: List[ForeignKeySchema]
+from rattq.schema import *
 
 
 class SQLiteConnector(BaseDBConnector):
