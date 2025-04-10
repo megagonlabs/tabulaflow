@@ -112,7 +112,7 @@ if __name__ == "__main__":
     import json
     from rattq.schema_formatter import get_schema_formatter
 
-    connector = SQLiteConnector("test", "test.db")
+    connector = SQLiteConnector("california_school", "test.db")
     schema = connector.get_schema()
     formatter = get_schema_formatter("sql_default")
     print(formatter.format(schema))

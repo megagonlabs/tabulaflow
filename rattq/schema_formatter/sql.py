@@ -2,6 +2,19 @@ from rattq.schema_formatter.base import BaseSchemaFormatter
 from rattq.schema import *
 
 
+# class ForeignKeySchema(BaseModel):
+#     table: str
+#     column: str
+#     foreign_table: str
+#     foreign_column: str
+
+
+# class SQLSchema(BaseDBSchema):
+#     name: str
+#     tables: List[SQLTableSchema]
+#     foreign_keys: List[ForeignKeySchema]
+
+
 class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
     def __init__(self, quote_char: str = '"'):
         self.quote_char = quote_char
@@ -13,7 +26,14 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         return self._quote(s) if " " in s else s
 
     def format(self, schema: SQLSchema) -> str:
-        return "\n\n".join([self._format_table(table) for table in schema.tables])
+        res = f"Database: {schema.name}\n"
+        res += f"Tables: {', '.join([self._quote_if_needed(table.name) for table in schema.tables])}\n"
+        res += f"Foreign keys:\n"
+        for fk in schema.foreign_keys:
+            res += f"- {fk.table}.{self._quote_if_needed(fk.column)} -> {fk.foreign_table}.{self._quote_if_needed(fk.foreign_column)}\n"
+        res += "\n"
+        res += "\n\n".join([self._format_table(table) for table in schema.tables])
+        return res
 
     def _format_table(self, table: SQLTableSchema) -> str:
         res = f"Table: {self._quote_if_needed(table.name)} ({table.num_rows} rows)"
