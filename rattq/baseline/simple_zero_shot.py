@@ -113,7 +113,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             t0 = time.time()
             try:
                 result = db_connector.run_query(query)
-                if is_null_result(result):
+                if not result:
                     continue
             except Exception as e:
                 continue
