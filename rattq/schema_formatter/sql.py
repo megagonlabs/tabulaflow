@@ -58,5 +58,9 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
             example = column.examples[0]
             if isinstance(example, str):
                 example = self._quote(example)
+            elif isinstance(example, float):
+                example = f"{example:.2f}"
+            else:
+                example = str(example)
             res += f" (Example: {example})"
         return res
