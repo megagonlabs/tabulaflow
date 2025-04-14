@@ -59,7 +59,7 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
             if isinstance(example, str):
                 example = self._quote(example)
             elif isinstance(example, float):
-                example = f"{example:.2f}"
+                example = f"{example:.3f}"
             else:
                 example = str(example)
             res += f" (Example: {example})"
