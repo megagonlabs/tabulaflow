@@ -93,7 +93,7 @@ def main():
             raw_responses = [future.result() for future in futures]
 
         if i == 0:
-            print(f"<response>{json.dumps(raw_responses[0][1], indent=2)}</response>")
+            print(f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>")
 
         for item, r in zip(batch, raw_responses):
             query, trajectory, metrics = r
