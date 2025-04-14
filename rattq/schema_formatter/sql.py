@@ -54,6 +54,8 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
                 + ", ".join([self._quote(v) for v in column.examples])
                 + "})"
             )
+        elif not column.examples:
+            res += " (all values are null)"
         else:
             example = column.examples[0]
             if isinstance(example, str):
