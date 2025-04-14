@@ -24,7 +24,7 @@ def main():
     parser.add_argument("--local_llm_config", default="local_llm_config.json")
 
     parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="199")
+    parser.add_argument("--split", default="dev_199")
 
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
