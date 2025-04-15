@@ -31,27 +31,14 @@ class SnowflakeConnector(BaseSQLConnector):
         self.sf_schema = sf_schema
         self._conn = None
 
-    def _run_query_without_timeout(self, query: str, args: tuple = ()) -> list:
-        cursor = self._conn.cursor()
-        cursor.execute(query, args)
-        result = cursor.fetchall()
-        return result
-
-    def run_query(self, query: str, args: tuple = (), timeout: int = 30) -> list:
+    def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
         if self._conn is None:
             self._conn = snowflake.connector.connect(
                 user=self.user,
                 password=self.password,
                 account=self.account,
             )
-        try:
-            return func_timeout(
-                timeout, self._run_query_without_timeout, args=(query, args)
-            )
-        except FunctionTimedOut:
-            raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
-        except Exception as e:
-            raise
+        return self._conn.execute(query, parameters, timeout=timeout)
 
     def close(self):
         if self._conn is not None:
