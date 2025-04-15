@@ -251,7 +251,7 @@ class ToolAgentNL2Q(SmolagentsNL2QAgent):
     def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
         return NL2Q_PROMPT_V1.format(
             language=task.language,
-            schema=db_connector.get_schema(),
+            schema=db_connector.schema,
             evidence=task.evidence,
             question=task.question,
         )

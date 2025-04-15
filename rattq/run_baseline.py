@@ -2,6 +2,7 @@ import argparse
 import os
 import shutil
 import json
+import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import *
@@ -30,6 +31,7 @@ def main():
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
+    parser.add_argument("--debug_litellm", action="store_true")
     args = parser.parse_args()
     if args.debug:
         parser.set_defaults(
@@ -38,6 +40,9 @@ def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.debug_litellm:
+        litellm._turn_on_debug()
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
@@ -93,7 +98,9 @@ def main():
             raw_responses = [future.result() for future in futures]
 
         if i == 0:
-            print(f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>")
+            print(
+                f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>"
+            )
 
         for item, r in zip(batch, raw_responses):
             query, trajectory, metrics = r

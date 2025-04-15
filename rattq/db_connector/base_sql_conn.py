@@ -1,26 +1,28 @@
+from abc import ABC, abstractmethod
 import sqlalchemy
-from sqlalchemy import create_engine, inspect, select, func
-import sqlite3
-from func_timeout import func_timeout, FunctionTimedOut
+from sqlalchemy import create_engine, inspect, func, select
 from rattq.db_connector.base import BaseDBConnector
 from rattq.schema import *
 
 
-class SQLiteConnector(BaseDBConnector):
-    def __init__(self, name: str, db_path: str):
-        self.name = name
-        self.db_path = db_path
-        self._schema = self._init_schema()
+class BaseSQLConnector(BaseDBConnector):
+    def __init__(self, name: str, sqlalchemy_engine):
+        self._name = name
+        self._schema = self._init_schema(sqlalchemy_engine)
 
-    def get_schema(self) -> SQLSchema:
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def schema(self) -> SQLSchema:
         return self._schema
 
-    def _init_schema(self) -> SQLSchema:
+    def _init_schema(self, engine) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
 
-        engine = create_engine(f"sqlite:///{self.db_path}")
         inspector = inspect(engine)
 
         with engine.connect() as conn:
@@ -85,35 +87,3 @@ class SQLiteConnector(BaseDBConnector):
                 )
 
         return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
-
-    def _run_query_without_timeout(self, query: str, args: tuple = ()) -> list:
-        # db_engine = create_engine(f"sqlite:///{self.db_path}")
-        # with db_engine.connect() as conn:
-        #     result = conn.execute(text(query))
-        #     return result.fetchall()
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        cursor.execute(query, args)
-        result = cursor.fetchall()
-        conn.close()
-        return result
-
-    def run_query(self, query: str, args: tuple = (), timeout: int = 30) -> list:
-        try:
-            return func_timeout(
-                timeout, self._run_query_without_timeout, args=(query, args)
-            )
-        except FunctionTimedOut:
-            raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
-        except Exception as e:
-            raise
-
-
-if __name__ == "__main__":
-    import json
-    from rattq.schema_formatter import get_schema_formatter
-
-    connector = SQLiteConnector("california_school", "test.db")
-    schema = connector.get_schema()
-    formatter = get_schema_formatter("sql_default")
-    print(formatter.format(schema))

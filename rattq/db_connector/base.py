@@ -1,6 +1,22 @@
-class BaseDBConnector:
-    def get_schema(self):
-        raise NotImplementedError()
+from abc import ABC, abstractmethod
+from rattq.schema import BaseDBSchema
 
-    def run_query(self, query: str, timeout: int = 30) -> list:
-        raise NotImplementedError()
+
+class BaseDBConnector(ABC):
+    @property
+    @abstractmethod
+    def name(self) -> str:
+        pass
+
+    @property
+    @abstractmethod
+    def schema(self) -> BaseDBSchema:
+        pass
+
+    @abstractmethod
+    def run_query(self, query: str, args: tuple = (), timeout: int = 30) -> list:
+        pass
+
+    @abstractmethod
+    def close(self):
+        pass

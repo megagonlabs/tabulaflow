@@ -66,7 +66,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         # Construct prompt
         prompt = NL2Q_PROMPT.format(
             language=task.language,
-            schema=self.schema_formatter.format(db_connector.get_schema()),
+            schema=self.schema_formatter.format(db_connector.schema),
             evidence=task.evidence,
             question=task.question,
         )

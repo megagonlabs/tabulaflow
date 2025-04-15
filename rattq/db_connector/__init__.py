@@ -1,16 +1,15 @@
 import os
 import json
 from rattq.db_connector.base import BaseDBConnector
-from rattq.db_connector.sql import SQLiteConnector
+from rattq.db_connector.sqlite_conn import SQLiteConnector
 from multiprocessing import Pool
 
 __all__ = ["BaseDBConnector", "SQLiteConnector", "get_db_connectors"]
 
 
 def create_connector(args):
-    db_name, db_dir = args
-    sqlite_path = os.path.join(db_dir, db_name, f"{db_name}.sqlite")
-    return (db_name, SQLiteConnector(name=db_name, db_path=sqlite_path))
+    name, conn_cls, kwargs = args
+    return conn_cls(name, **kwargs)
 
 
 def get_db_connectors(
@@ -38,9 +37,21 @@ def get_db_connectors(
             # Create connections in parallel using a process pool
             with Pool(processes=16) as pool:
                 connections = pool.map(
-                    create_connector, [(name, db_dir) for name in db_names]
+                    create_connector,
+                    [
+                        (
+                            name,
+                            SQLiteConnector,
+                            {
+                                "sqlite_db_path": os.path.join(
+                                    db_dir, name, f"{name}.sqlite"
+                                )
+                            },
+                        )
+                        for name in db_names
+                    ],
                 )
-                res = dict(connections)
+                res = {conn.name: conn for conn in connections}
         return res
     else:
         raise ValueError(f"Dataset {dataset_name} not supported")
