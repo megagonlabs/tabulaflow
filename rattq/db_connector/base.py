@@ -16,7 +16,3 @@ class BaseDBConnector(ABC):
     @abstractmethod
     def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
         pass
-
-    @abstractmethod
-    def close(self):
-        pass

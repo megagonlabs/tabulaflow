@@ -116,10 +116,6 @@ def main():
 
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
 
-    # Close all db connections
-    for db_connector in dataset.db_connectors.values():
-        db_connector.close()
-
 
 if __name__ == "__main__":
     main()

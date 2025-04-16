@@ -29,21 +29,14 @@ class SnowflakeConnector(BaseSQLConnector):
         self.sf_account = sf_account
         self.sf_database = sf_database
         self.sf_schema = sf_schema
-        self._conn = None
 
     def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
-        if self._conn is None:
-            self._conn = snowflake.connector.connect(
-                user=self.user,
-                password=self.password,
-                account=self.account,
-            )
-        return self._conn.execute(query, parameters, timeout=timeout)
-
-    def close(self):
-        if self._conn is not None:
-            self._conn.close()
-            self._conn = None
+        with snowflake.connector.connect(
+            user=self.sf_user,
+            password=self.sf_password,
+            account=self.sf_account,
+        ) as conn:
+            return conn.execute(query, parameters, timeout=timeout)
 
 
 if __name__ == "__main__":
