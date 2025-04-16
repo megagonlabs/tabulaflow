@@ -14,6 +14,13 @@ class NL2QSample(BaseModel):
     metrics: Dict[str, Union[float, int]] = {}
 
 
+class NL2QDataset(BaseModel):
+    name: str
+    split_id: str
+    tasks: list[NL2QSample]
+    db_connectors: dict[str, Any]
+
+
 class BaseDBSchema(BaseModel, ABC):
     pass
 

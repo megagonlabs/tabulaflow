@@ -2,13 +2,14 @@ import argparse
 import os
 import shutil
 import json
+import time
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
 from rattq.utils import *
-from rattq.db_connector import get_db_connectors
 from rattq.schema_formatter import get_schema_formatter
 from rattq.baseline import get_nl2q_model
+from rattq.dataset import get_dataset_loader
 
 
 def main():
@@ -69,20 +70,20 @@ def main():
         "litellm_kwargs": litellm_kwargs,
         "schema_formatter": schema_formatter,
     }
-
-    db_connectors = get_db_connectors(args.dataset, splits=[args.split])
-    print(f"Loaded {len(db_connectors)} databases from {args.dataset} dev set.")
-
-    samples = load_nl2q_samples(args.dataset, args.split)
-    print(f"Loaded {len(samples)} samples from {args.dataset} dev set.")
+    t0 = time.time()
+    dataset_loader = get_dataset_loader(args.dataset)
+    dataset = dataset_loader.get_split(args.split)
+    print(
+        f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
+    )
 
     if args.debug:
-        samples = samples[:3]
+        dataset.tasks = dataset.tasks[:3]
 
     res = []
-    for i in trange(0, len(samples), args.batch_size):
-        j = min(i + args.batch_size, len(samples))
-        batch = samples[i:j]
+    for i in trange(0, len(dataset.tasks), args.batch_size):
+        j = min(i + args.batch_size, len(dataset.tasks))
+        batch = dataset.tasks[i:j]
 
         nl2q_models = [get_nl2q_model(args.baseline, **nl2q_kwargs) for _ in batch]
 
@@ -91,7 +92,7 @@ def main():
                 executor.submit(
                     nl2q_model.predict,
                     item,
-                    db_connectors[item.db],
+                    dataset.db_connectors[item.db],
                 )
                 for item, nl2q_model in zip(batch, nl2q_models)
             ]
@@ -116,7 +117,7 @@ def main():
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
 
     # Close all db connections
-    for db_connector in db_connectors.values():
+    for db_connector in dataset.db_connectors.values():
         db_connector.close()
 
 

@@ -6,43 +6,6 @@ import random
 from rattq.schema import NL2QSample
 
 
-def load_nl2q_samples(dataset_name: str, split: str) -> list[NL2QSample]:
-    if dataset_name == "bird-sql":
-        sample_size = None
-        if "_" in split:
-            split, sample_size = split.split("_")
-
-        if split == "dev":
-            dir_name = "dev_20240627"
-        elif split == "train":
-            dir_name = "train"
-        else:
-            raise ValueError(f"Split {split} not supported")
-
-        with open(f"data/BIRD-SQL/{dir_name}/{split}.json", "r") as f:
-            data = json.load(f)
-
-        data = [
-            NL2QSample(
-                qid=f"{dataset_name}_{split}_{i}",
-                language="SQLite",
-                db=item["db_id"],
-                question=item["question"],
-                evidence=item["evidence"],
-                gold_query=item["SQL"],
-            )
-            for i, item in enumerate(data)
-        ]
-
-        if sample_size:
-            sampler = random.Random(42)
-            data = sampler.sample(data, int(sample_size))
-
-        return data
-    else:
-        raise ValueError(f"Dataset {dataset_name} not supported")
-
-
 def parse_query(response) -> str:
     if isinstance(response, dict):
         if "query" in response:
