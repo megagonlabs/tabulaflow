@@ -5,8 +5,9 @@ import random
 import multiprocessing
 from typing import Optional
 import pandas as pd
+from tqdm import tqdm
 from rattq.dataset.base import NL2QDatasetLoader
-from rattq.schema import NL2QTask, NL2QDataset
+from rattq.schema import MultiOutputNL2QTask, NL2QDataset
 from rattq.db_connector import SnowflakeConnector
 
 
@@ -23,7 +24,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         num_processes: int = 16,
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
-        sf_account: Optional[str] = "YDB67606",
+        sf_account: Optional[str] = None,
     ):
         self.name = name
         self.directory = directory
@@ -68,14 +69,14 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                         gold_exec_result.append(pd.read_csv(f))
 
                 tasks.append(
-                    NL2QTask(
+                    MultiOutputNL2QTask(
                         qid=item["instance_id"],
                         language="SnowflakeSQL",
                         db=item["db_id"],
                         question=item["instruction"],
                         evidence=evidence,
-                        gold_query=gold_sql,
-                        gold_exec_result=gold_exec_result,
+                        gold_queries=gold_sql,
+                        gold_exec_results=gold_exec_result,
                     )
                 )
 
@@ -90,22 +91,26 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
             sf_account = os.environ.get("SF_ACCOUNT")
 
         with multiprocessing.Pool(processes=self.num_processes) as pool:
-            db_connectors = pool.map(
-                create_connector,
-                [
-                    (
-                        name,
-                        SnowflakeConnector,
-                        {
-                            "sf_user": sf_user,
-                            "sf_password": sf_password,
-                            "sf_account": sf_account,
-                            "sf_database": name,
-                            "sf_schema": name,
-                        },
-                    )
-                    for name in db_names
-                ],
+            connector_args = [
+                (
+                    name,
+                    SnowflakeConnector,
+                    {
+                        "sf_user": sf_user,
+                        "sf_password": sf_password,
+                        "sf_account": sf_account,
+                        "sf_database": name,
+                        "sf_schema": name,
+                    },
+                )
+                for name in db_names
+            ]
+            db_connectors = list(
+                tqdm(
+                    pool.imap(create_connector, connector_args),
+                    total=len(connector_args),
+                    desc="Creating database connectors",
+                )
             )
             db_connectors = {conn.name: conn for conn in db_connectors}
 

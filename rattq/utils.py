@@ -3,7 +3,6 @@ import math
 import os
 import litellm
 import random
-from rattq.schema import NL2QTask
 
 
 def parse_query(response) -> str:

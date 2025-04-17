@@ -2,8 +2,9 @@ import os
 import json
 import random
 import multiprocessing
+from tqdm import tqdm
 from rattq.dataset.base import NL2QDatasetLoader
-from rattq.schema import NL2QTask, NL2QDataset
+from rattq.schema import SingleOutputNL2QTask, NL2QDataset
 from rattq.db_connector import SQLiteConnector
 
 
@@ -38,13 +39,13 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
 
         for i, item in enumerate(data):
             tasks.append(
-                NL2QTask(
+                SingleOutputNL2QTask(
                     qid=f"{self.name}_{split}_{i}",
                     language="SQLite",
                     db=item["db_id"],
                     question=item["question"],
                     evidence=item["evidence"],
-                    gold_query=[item["SQL"]],
+                    gold_query=item["SQL"],
                 )
             )
 
@@ -54,16 +55,20 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
 
         db_dir = os.path.join(directory, f"{split}_databases")
         with multiprocessing.Pool(processes=self.num_processes) as pool:
-            db_connectors = pool.map(
-                create_connector,
-                [
-                    (
-                        name,
-                        SQLiteConnector,
-                        {"sqlite_db_path": os.path.join(db_dir, name, f"{name}.sqlite")},
-                    )
-                    for name in db_names
-                ],
+            connector_args = [
+                (
+                    name,
+                    SQLiteConnector,
+                    {"sqlite_db_path": os.path.join(db_dir, name, f"{name}.sqlite")},
+                )
+                for name in db_names
+            ]
+            db_connectors = list(
+                tqdm(
+                    pool.imap(create_connector, connector_args),
+                    total=len(connector_args),
+                    desc="Creating database connectors",
+                )
             )
             db_connectors = {conn.name: conn for conn in db_connectors}
 

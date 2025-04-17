@@ -105,7 +105,7 @@ def main():
 
         for item, r in zip(batch, raw_responses):
             query, trajectory, metrics = r
-            item.pred_query = query
+            item.pred_queries = [query]
             item.metrics.update(metrics)
             res.append(item)
 
