@@ -48,8 +48,8 @@ if __name__ == "__main__":
         os.environ["SF_USER"],
         os.environ["SF_PASSWORD"],
         os.environ["SF_ACCOUNT"],
-        "AIRLINES",
-        "AIRLINES",
+        "CRYPTO",
+        "CRYPTO_BAND",
     )
     formatter = get_schema_formatter("sql_default")
     print(formatter.format(connector.schema))
