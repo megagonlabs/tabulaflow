@@ -44,7 +44,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                     db=item["db_id"],
                     question=item["question"],
                     evidence=item["evidence"],
-                    gold_query=item["SQL"],
+                    gold_query=[item["SQL"]],
                 )
             )
 
@@ -60,11 +60,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                     (
                         name,
                         SQLiteConnector,
-                        {
-                            "sqlite_db_path": os.path.join(
-                                db_dir, name, f"{name}.sqlite"
-                            )
-                        },
+                        {"sqlite_db_path": os.path.join(db_dir, name, f"{name}.sqlite")},
                     )
                     for name in db_names
                 ],

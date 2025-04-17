@@ -12,9 +12,9 @@ class NL2QTask(BaseModel):
     db: str
     question: str
     evidence: Optional[str] = None
-    gold_query: Optional[str] = None
-    gold_exec_result: Optional[pd.DataFrame] = None
-    pred_query: Optional[str] = None
+    gold_query: List[str] = []
+    gold_exec_result: List[pd.DataFrame] = []
+    pred_query: List[str] = []
     metrics: Dict[str, Union[float, int]] = {}
 
 

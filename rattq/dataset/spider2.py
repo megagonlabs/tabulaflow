@@ -1,5 +1,6 @@
 import os
 import json
+import re
 import random
 import multiprocessing
 from typing import Optional
@@ -36,27 +37,35 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         if split != "test":
             raise ValueError(f"Only test split is supported for spider2-snow")
 
+        all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
+
         tasks = []
         with open(os.path.join(self.directory, f"spider2-snow.jsonl"), "r") as f:
             for line in f:
                 item = json.loads(line)
-                evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
-                with open(evidence_file, "r") as f:
-                    evidence = f.read()
+
+                if item["external_knowledge"]:
+                    evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
+                    with open(evidence_file, "r") as f:
+                        evidence = f.read()
+                else:
+                    evidence = None
 
                 gold_sql_file = os.path.join(
                     self.directory, "evaluation_suite", "gold", "sql", item["instance_id"] + ".sql"
                 )
                 if os.path.exists(gold_sql_file):
                     with open(gold_sql_file, "r") as f:
-                        gold_sql = f.read()
+                        gold_sql = [f.read()]
                 else:
-                    gold_sql = None
+                    gold_sql = []
 
-                gold_exec_result_file = os.path.join(
-                    self.directory, "evaluation_suite", "gold", "exec_result", item["instance_id"] + ".csv"
-                )
-                gold_exec_result = pd.read_csv(gold_exec_result_file)
+                pattern = re.compile(rf'^{re.escape(item["instance_id"])}(_[a-z])?\.csv$')
+                gold_exec_result_files = [file for file in all_gold_exec_result_files if re.match(pattern, file)]
+                gold_exec_result = []
+                for file in gold_exec_result_files:
+                    with open(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result", file), "r") as f:
+                        gold_exec_result.append(pd.read_csv(f))
 
                 tasks.append(
                     NL2QTask(
