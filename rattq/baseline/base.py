@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 import time
 import smolagents
 from smolagents.memory import ActionStep
+import copy
 from rattq.utils import get_llm_api_cost, parse_query
 from rattq.schema import BaseNL2QTask
 from rattq.db_connector import BaseDBConnector
@@ -11,14 +12,12 @@ class BaseNL2QModel(ABC):
     @abstractmethod
     def predict(
         self, task: BaseNL2QTask, db_connector: BaseDBConnector
-    ) -> tuple[str, list[dict], dict]:
+    ) -> BaseNL2QTask:
         """
         Predicts the query and returns the trajectory for the given BaseNL2QTask.
 
         Returns:
-            - query: str
-            - trajectory: list[dict]
-            - metrics: dict
+            - The updated BaseNL2QTask object with the predicted query.
         """
         raise NotImplementedError()
 
@@ -52,7 +51,8 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
         db_connector: BaseDBConnector,
         max_steps: int = 20,
         allow_max_steps_reached: bool = True,
-    ) -> tuple[str, list[dict]]:
+    ) -> BaseNL2QTask:
+        task = copy.deepcopy(task)
         t0 = time.time()
         agent = self.get_smolagent(task, db_connector)
         prompt = self.format_prompt(task, db_connector)
@@ -100,4 +100,6 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
                 if msg["role"].lower() == "assistant"
             ),
         }
-        return query, trajectory, metrics
+        task.pred_query = query
+        task.metrics.update(metrics)
+        return task

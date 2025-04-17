@@ -60,7 +60,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
     def llm_name(self) -> str:
         return self.llm
 
-    def predict(self, task, db_connector) -> str:
+    def predict(self, task, db_connector):
         t0 = time.time()
 
         # Construct prompt
@@ -74,10 +74,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         # Text-to-SQL generation by LLM
         responses = litellm.batch_completion(
             model=self.llm,
-            messages=[
-                [{"role": "user", "content": prompt}]
-                for _ in range(self.num_candidates)
-            ],
+            messages=[[{"role": "user", "content": prompt}] for _ in range(self.num_candidates)],
             temperature=self.temperature,
             **self.litellm_kwargs,
         )
@@ -104,7 +101,13 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             "api_cost_usd": api_cost_usd,
         }
 
-        return queries[best_query_idx], trajectory, metrics
+        task.metrics.update(metrics)
+        if hasattr(task, "pred_query"):
+            task.pred_query = queries[best_query_idx]
+        else:
+            task.pred_queries = [queries[best_query_idx]]
+
+        return task
 
     def select_best_query(self, candidates, db_connector) -> int:
         result2idx = collections.defaultdict(list)
@@ -118,9 +121,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             except Exception as e:
                 continue
             run_time[idx] = time.time() - t0
-            hashable = tuple(
-                sorted(set(result), key=lambda row: tuple((x is None, x) for x in row))
-            )
+            hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))
             result2idx[hashable].append(idx)
 
         if not result2idx:
