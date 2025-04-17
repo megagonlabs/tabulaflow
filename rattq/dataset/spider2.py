@@ -34,7 +34,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         self.sf_account = sf_account
         self._data = {}
 
-    def _load_split(self, split: str) -> NL2QDataset:
+    def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split != "test":
             raise ValueError(f"Only test split is supported for spider2-snow")
 
@@ -44,6 +44,9 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         with open(os.path.join(self.directory, f"spider2-snow.jsonl"), "r") as f:
             for line in f:
                 item = json.loads(line)
+
+                if databases and item["db_id"] not in databases:
+                    continue
 
                 if item["external_knowledge"]:
                     evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
@@ -121,22 +124,29 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
             db_connectors=db_connectors,
         )
 
-    def get_split(self, split_id: str) -> NL2QDataset:
+    def get_split(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if "_" in split_id:
             split, sample_size = split_id.split("_")
         else:
             split, sample_size = split_id, None
 
-        if split not in self._data:
-            self._data[split] = self._load_split(split)
+        if sample_size and databases:
+            raise ValueError("sample_size and databases cannot be both specified")
 
+        if databases:
+            databases = tuple(sorted(databases))
+
+        if (split, databases) not in self._data:
+            self._data[(split, databases)] = self._load_split(split, databases=databases)
+
+        dataset = self._data[(split, databases)]
         if sample_size:
             sampler = random.Random(42)
             return NL2QDataset(
                 name=self.name,
                 split_id=split_id,
-                tasks=sampler.sample(self._data[split].tasks, int(sample_size)),
-                db_connectors=self._data[split].db_connectors,
+                tasks=sampler.sample(dataset.tasks, int(sample_size)),
+                db_connectors=dataset.db_connectors,
             )
         else:
-            return self._data[split]
+            return dataset

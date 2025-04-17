@@ -3,6 +3,7 @@ import json
 import random
 import multiprocessing
 from tqdm import tqdm
+from typing import Optional
 from rattq.dataset.base import NL2QDatasetLoader
 from rattq.schema import SingleOutputBaseNL2QTask, NL2QDataset
 from rattq.db_connector import SQLiteConnector
@@ -25,7 +26,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
         self.num_processes = num_processes
         self._data = {}
 
-    def _load_split(self, split: str) -> NL2QDataset:
+    def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split == "train":
             directory = os.path.join(self.directory, "train")
         elif split == "dev":
@@ -38,6 +39,9 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
             data = json.load(f)
 
         for i, item in enumerate(data):
+            if databases and item["db_id"] not in databases:
+                continue
+
             tasks.append(
                 SingleOutputBaseNL2QTask(
                     qid=f"{self.name}_{split}_{i}",
@@ -49,9 +53,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                 )
             )
 
-        metadata_path = os.path.join(directory, f"{split}_tables.json")
-        with open(metadata_path, "r") as f:
-            db_names = [item["db_id"] for item in json.load(f)]
+        db_names = list(dict.fromkeys([task.db for task in tasks]))
 
         db_dir = os.path.join(directory, f"{split}_databases")
         with multiprocessing.Pool(processes=self.num_processes) as pool:
@@ -79,22 +81,29 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
             db_connectors=db_connectors,
         )
 
-    def get_split(self, split_id: str) -> NL2QDataset:
+    def get_split(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if "_" in split_id:
             split, sample_size = split_id.split("_")
         else:
             split, sample_size = split_id, None
 
-        if split not in self._data:
-            self._data[split] = self._load_split(split)
+        if sample_size and databases:
+            raise ValueError("sample_size and databases cannot be both specified")
 
+        if databases:
+            databases = tuple(sorted(databases))
+
+        if (split, databases) not in self._data:
+            self._data[(split, databases)] = self._load_split(split, databases=databases)
+
+        dataset = self._data[(split, databases)]
         if sample_size:
             sampler = random.Random(42)
             return NL2QDataset(
                 name=self.name,
                 split_id=split_id,
-                tasks=sampler.sample(self._data[split].tasks, int(sample_size)),
-                db_connectors=self._data[split].db_connectors,
+                tasks=sampler.sample(dataset.tasks, int(sample_size)),
+                db_connectors=dataset.db_connectors,
             )
         else:
-            return self._data[split]
+            return dataset
