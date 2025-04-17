@@ -3,13 +3,14 @@ from pydantic import BaseModel
 from typing import Optional, Dict, Union, List, Any
 
 
-class NL2QSample(BaseModel):
+class NL2QTask(BaseModel):
     qid: str
     language: str
     db: str
     question: str
     evidence: Optional[str] = None
-    gold_query: str
+    gold_query: Optional[str] = None
+    gold_exec_result: Optional[List[Any]] = None
     pred_query: Optional[str] = None
     metrics: Dict[str, Union[float, int]] = {}
 
@@ -17,7 +18,7 @@ class NL2QSample(BaseModel):
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
-    tasks: list[NL2QSample]
+    tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
 

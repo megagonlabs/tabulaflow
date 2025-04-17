@@ -3,17 +3,17 @@ import time
 import smolagents
 from smolagents.memory import ActionStep
 from rattq.utils import get_llm_api_cost, parse_query
-from rattq.schema import NL2QSample
+from rattq.schema import NL2QTask
 from rattq.db_connector import BaseDBConnector
 
 
 class BaseNL2QModel(ABC):
     @abstractmethod
     def predict(
-        self, task: NL2QSample, db_connector: BaseDBConnector
+        self, task: NL2QTask, db_connector: BaseDBConnector
     ) -> tuple[str, list[dict], dict]:
         """
-        Predicts the query and returns the trajectory for the given NL2QSample.
+        Predicts the query and returns the trajectory for the given NL2QTask.
 
         Returns:
             - query: str
@@ -37,18 +37,18 @@ class SmolagentsNL2QAgent(BaseNL2QModel):
         return self.smolagent.model.model_id
 
     @abstractmethod
-    def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
+    def format_prompt(self, task: NL2QTask, db_connector: BaseDBConnector) -> str:
         pass
 
     @abstractmethod
     def get_smolagent(
-        self, task: NL2QSample, db_connector: BaseDBConnector
+        self, task: NL2QTask, db_connector: BaseDBConnector
     ) -> smolagents.MultiStepAgent:
         pass
 
     def predict(
         self,
-        task: NL2QSample,
+        task: NL2QTask,
         db_connector: BaseDBConnector,
         max_steps: int = 20,
         allow_max_steps_reached: bool = True,

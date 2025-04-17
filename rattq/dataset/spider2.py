@@ -15,7 +15,7 @@ def create_connector(args):
 class BirdSQLDatasetLoader(NL2QDatasetLoader):
     def __init__(
         self,
-        name: str = "bird-sql",
+        name: str = "spider2.0",
         directory: str = "data/BIRD-SQL",
         num_processes: int = 16,
     ):
@@ -32,12 +32,12 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
         else:
             raise ValueError(f"Split {split} not supported")
 
-        tasks = []
+        samples = []
         with open(os.path.join(directory, f"{split}.json"), "r") as f:
             data = json.load(f)
 
         for i, item in enumerate(data):
-            tasks.append(
+            samples.append(
                 NL2QTask(
                     qid=f"{self.name}_{split}_{i}",
                     language="SQLite",
@@ -74,7 +74,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
         return NL2QDataset(
             name=self.name,
             split_id=split,
-            tasks=tasks,
+            tasks=samples,
             db_connectors=db_connectors,
         )
 

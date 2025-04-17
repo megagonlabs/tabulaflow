@@ -15,7 +15,7 @@ from rattq.metric import (
     gold_not_single_zero,
 )
 from rattq.db_connector import BaseDBConnector, get_db_connectors
-from rattq.schema import NL2QSample
+from rattq.schema import NL2QTask
 from rattq.utils import avg_and_round, load_nl2q_samples
 
 METRIC_FUNC_MAPPING = {
@@ -29,7 +29,7 @@ METRIC_FUNC_MAPPING = {
 
 
 def compute_metrics(
-    item: NL2QSample, metrics: list[str], db_connector: BaseDBConnector
+    item: NL2QTask, metrics: list[str], db_connector: BaseDBConnector
 ):
     item = copy.deepcopy(item)
     for m in metrics:
@@ -66,7 +66,7 @@ def main():
     print()
 
     with open(os.path.join(args.result_dir, "result.json")) as fin:
-        result = [NL2QSample(**item) for item in json.load(fin)]
+        result = [NL2QTask(**item) for item in json.load(fin)]
 
     if args.evaluate_on_intersection:
         qid2item = {item.qid: item for item in result}

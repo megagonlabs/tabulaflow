@@ -4,7 +4,7 @@ import importlib
 import smolagents
 from smolagents.monitoring import LogLevel
 from rattq.utils import truncate_content, is_null_result
-from rattq.schema import NL2QSample
+from rattq.schema import NL2QTask
 from rattq.schema_formatter import BaseSchemaFormatter
 from rattq.baseline.base import SmolagentsNL2QAgent
 from rattq.db_connector import BaseDBConnector
@@ -248,7 +248,7 @@ class ToolAgentNL2Q(SmolagentsNL2QAgent):
         self.litellm_kwargs = litellm_kwargs
         self.verbose = verbose
 
-    def format_prompt(self, task: NL2QSample, db_connector: BaseDBConnector) -> str:
+    def format_prompt(self, task: NL2QTask, db_connector: BaseDBConnector) -> str:
         return NL2Q_PROMPT_V1.format(
             language=task.language,
             schema=db_connector.schema,
@@ -257,7 +257,7 @@ class ToolAgentNL2Q(SmolagentsNL2QAgent):
         )
 
     def get_smolagent(
-        self, task: NL2QSample, db_connector: BaseDBConnector
+        self, task: NL2QTask, db_connector: BaseDBConnector
     ) -> smolagents.MultiStepAgent:
         prompt_templates = yaml.safe_load(
             importlib.resources.files("smolagents.prompts")
