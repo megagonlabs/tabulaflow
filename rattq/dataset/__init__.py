@@ -1,11 +1,13 @@
 from rattq.dataset.base import NL2QDatasetLoader, NL2QDataset
 from rattq.dataset.bird_sql import BirdSQLDatasetLoader
+from rattq.dataset.spider2 import Spider2SnowDatasetLoader
 
 __all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader"]
 
 
 dataset_loader_registry = {
     "bird-sql": BirdSQLDatasetLoader,
+    "spider2-snow": Spider2SnowDatasetLoader,
 }
 
 

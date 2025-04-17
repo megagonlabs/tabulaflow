@@ -2,9 +2,11 @@ import os
 import json
 import random
 import multiprocessing
+from typing import Optional
+import pandas as pd
 from rattq.dataset.base import NL2QDatasetLoader
 from rattq.schema import NL2QTask, NL2QDataset
-from rattq.db_connector import SQLiteConnector
+from rattq.db_connector import SnowflakeConnector
 
 
 def create_connector(args):
@@ -12,58 +14,85 @@ def create_connector(args):
     return conn_cls(name, **kwargs)
 
 
-class BirdSQLDatasetLoader(NL2QDatasetLoader):
+class Spider2SnowDatasetLoader(NL2QDatasetLoader):
     def __init__(
         self,
-        name: str = "spider2.0",
-        directory: str = "data/BIRD-SQL",
+        name: str = "spider2-snow",
+        directory: str = "data/Spider2/spider2-snow",
         num_processes: int = 16,
+        sf_user: Optional[str] = None,
+        sf_password: Optional[str] = None,
+        sf_account: Optional[str] = "YDB67606",
     ):
         self.name = name
         self.directory = directory
         self.num_processes = num_processes
+        self.sf_user = sf_user
+        self.sf_password = sf_password
+        self.sf_account = sf_account
         self._data = {}
 
     def _load_split(self, split: str) -> NL2QDataset:
-        if split == "train":
-            directory = os.path.join(self.directory, "train")
-        elif split == "dev":
-            directory = os.path.join(self.directory, "dev_20240627")
-        else:
-            raise ValueError(f"Split {split} not supported")
+        if split != "test":
+            raise ValueError(f"Only test split is supported for spider2-snow")
 
-        samples = []
-        with open(os.path.join(directory, f"{split}.json"), "r") as f:
-            data = json.load(f)
+        tasks = []
+        with open(os.path.join(self.directory, f"spider2-snow.jsonl"), "r") as f:
+            for line in f:
+                item = json.loads(line)
+                evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
+                with open(evidence_file, "r") as f:
+                    evidence = f.read()
 
-        for i, item in enumerate(data):
-            samples.append(
-                NL2QTask(
-                    qid=f"{self.name}_{split}_{i}",
-                    language="SQLite",
-                    db=item["db_id"],
-                    question=item["question"],
-                    evidence=item["evidence"],
-                    gold_query=item["SQL"],
+                gold_sql_file = os.path.join(
+                    self.directory, "evaluation_suite", "gold", "sql", item["instance_id"] + ".sql"
                 )
-            )
+                if os.path.exists(gold_sql_file):
+                    with open(gold_sql_file, "r") as f:
+                        gold_sql = f.read()
+                else:
+                    gold_sql = None
 
-        metadata_path = os.path.join(directory, f"{split}_tables.json")
-        with open(metadata_path, "r") as f:
-            db_names = [item["db_id"] for item in json.load(f)]
+                gold_exec_result_file = os.path.join(
+                    self.directory, "evaluation_suite", "gold", "exec_result", item["instance_id"] + ".csv"
+                )
+                gold_exec_result = pd.read_csv(gold_exec_result_file)
 
-        db_dir = os.path.join(directory, f"{split}_databases")
+                tasks.append(
+                    NL2QTask(
+                        qid=item["instance_id"],
+                        language="SnowflakeSQL",
+                        db=item["db_id"],
+                        question=item["instruction"],
+                        evidence=evidence,
+                        gold_query=gold_sql,
+                        gold_exec_result=gold_exec_result,
+                    )
+                )
+
+        db_names = list(dict.fromkeys([task.db for task in tasks]))
+
+        sf_user, sf_password, sf_account = self.sf_user, self.sf_password, self.sf_account
+        if sf_user is None:
+            sf_user = os.environ.get("SF_USER")
+        if sf_password is None:
+            sf_password = os.environ.get("SF_PASSWORD")
+        if sf_account is None:
+            sf_account = os.environ.get("SF_ACCOUNT")
+
         with multiprocessing.Pool(processes=self.num_processes) as pool:
             db_connectors = pool.map(
                 create_connector,
                 [
                     (
                         name,
-                        SQLiteConnector,
+                        SnowflakeConnector,
                         {
-                            "sqlite_db_path": os.path.join(
-                                db_dir, name, f"{name}.sqlite"
-                            )
+                            "sf_user": sf_user,
+                            "sf_password": sf_password,
+                            "sf_account": sf_account,
+                            "sf_database": name,
+                            "sf_schema": name,
                         },
                     )
                     for name in db_names
@@ -74,7 +103,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
         return NL2QDataset(
             name=self.name,
             split_id=split,
-            tasks=samples,
+            tasks=tasks,
             db_connectors=db_connectors,
         )
 
