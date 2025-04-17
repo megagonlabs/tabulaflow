@@ -7,7 +7,7 @@ from typing import Optional
 import pandas as pd
 from tqdm import tqdm
 from rattq.dataset.base import NL2QDatasetLoader
-from rattq.schema import MultiOutputNL2QTask, NL2QDataset
+from rattq.schema import MultiOutputBaseNL2QTask, NL2QDataset
 from rattq.db_connector import SnowflakeConnector
 
 
@@ -69,7 +69,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                         gold_exec_result.append(pd.read_csv(f))
 
                 tasks.append(
-                    MultiOutputNL2QTask(
+                    MultiOutputBaseNL2QTask(
                         qid=item["instance_id"],
                         language="SnowflakeSQL",
                         db=item["db_id"],

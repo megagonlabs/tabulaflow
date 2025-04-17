@@ -4,7 +4,7 @@ import random
 import multiprocessing
 from tqdm import tqdm
 from rattq.dataset.base import NL2QDatasetLoader
-from rattq.schema import SingleOutputNL2QTask, NL2QDataset
+from rattq.schema import SingleOutputBaseNL2QTask, NL2QDataset
 from rattq.db_connector import SQLiteConnector
 
 
@@ -39,7 +39,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
 
         for i, item in enumerate(data):
             tasks.append(
-                SingleOutputNL2QTask(
+                SingleOutputBaseNL2QTask(
                     qid=f"{self.name}_{split}_{i}",
                     language="SQLite",
                     db=item["db_id"],

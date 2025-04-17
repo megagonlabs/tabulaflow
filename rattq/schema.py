@@ -4,7 +4,7 @@ from pydantic import BaseModel, ConfigDict
 from typing import Optional, Dict, Union, List, Any
 
 
-class BaseNL2QTask(BaseModel, ABC):
+class BaseBaseNL2QTask(BaseModel, ABC):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     qid: str
@@ -15,13 +15,13 @@ class BaseNL2QTask(BaseModel, ABC):
     metrics: Dict[str, Union[float, int]] = {}
 
 
-class SingleOutputNL2QTask(BaseNL2QTask):
+class SingleOutputBaseNL2QTask(BaseBaseNL2QTask):
     gold_query: Optional[str] = None
     gold_exec_result: Optional[pd.DataFrame] = None
     pred_query: Optional[str] = None
 
 
-class MultiOutputNL2QTask(BaseNL2QTask):
+class MultiOutputBaseNL2QTask(BaseBaseNL2QTask):
     gold_queries: List[str] = []
     gold_exec_results: List[pd.DataFrame] = []
     pred_queries: List[str] = []
@@ -30,7 +30,7 @@ class MultiOutputNL2QTask(BaseNL2QTask):
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
-    tasks: list[BaseNL2QTask]
+    tasks: list[BaseBaseNL2QTask]
     db_connectors: dict[str, Any]
 
 
