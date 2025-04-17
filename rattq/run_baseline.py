@@ -27,6 +27,7 @@ def main():
 
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_199")
+    parser.add_argument("--databases", default=None, nargs="+")
 
     parser.add_argument("--batch_size", default=50, type=int)
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
@@ -35,9 +36,11 @@ def main():
     parser.add_argument("--debug_litellm", action="store_true")
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(
-            batch_size=1, overwrite=True, result_dir="output/test/", split="dev"
-        )
+        parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
+        if args.dataset == "bird-sql":
+            parser.set_defaults(split="dev", databases=["california_schools"])
+        elif args.dataset == "spider2-snow":
+            parser.set_defaults(split="test", databases=["CRYPTO"])
     args = parser.parse_args()
     print(args)
     print()
@@ -47,9 +50,7 @@ def main():
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
-            print(
-                f"{args.result_dir} already exists. Use --overwrite to overwrite the directory."
-            )
+            print(f"{args.result_dir} already exists. Use --overwrite to overwrite the directory.")
             return
         else:
             shutil.rmtree(args.result_dir)
@@ -72,13 +73,12 @@ def main():
     }
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
-    dataset = dataset_loader.get_split(args.split)
+    dataset = dataset_loader.get_split(args.split, databases=args.databases)
+    if args.debug:
+        dataset.tasks = dataset.tasks[:3]
     print(
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
-
-    if args.debug:
-        dataset.tasks = dataset.tasks[:3]
 
     res = []
     for i in trange(0, len(dataset.tasks), args.batch_size):
@@ -96,18 +96,10 @@ def main():
                 )
                 for item, nl2q_model in zip(batch, nl2q_models)
             ]
-            raw_responses = [future.result() for future in futures]
+            res += [future.result() for future in futures]
 
-        if i == 0:
-            print(
-                f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>"
-            )
-
-        for item, r in zip(batch, raw_responses):
-            query, trajectory, metrics = r
-            item.pred_queries = [query]
-            item.metrics.update(metrics)
-            res.append(item)
+        # if i == 0:
+        #     print(f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>")
 
     output_path = os.path.join(args.result_dir, f"result.json")
     with open(output_path, "w") as fout:
