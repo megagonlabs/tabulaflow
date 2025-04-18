@@ -17,13 +17,14 @@ class SingleOutputBaseNL2QTask(BaseNL2QTask):
     gold_query: Optional[str] = None
     gold_exec_result: Optional[List[dict]] = None
     pred_query: Optional[str] = None
+    trajectory: Optional[List[dict]] = None
 
 
 class MultiOutputBaseNL2QTask(BaseNL2QTask):
     gold_queries: List[str] = []
     gold_exec_results: List[List[dict]] = []
     pred_queries: List[str] = []
-
+    trajectory: Optional[List[dict]] = None
 
 class NL2QDataset(BaseModel):
     name: str

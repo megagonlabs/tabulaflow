@@ -98,8 +98,8 @@ def main():
             ]
             res += [future.result() for future in futures]
 
-        # if i == 0:
-        #     print(f"<trajectory>{json.dumps(raw_responses[0][1], indent=2)}</trajectory>")
+        if i == 0:
+            print(f"<trajectory>{json.dumps(res[0].trajectory, indent=2)}</trajectory>")
 
     output_path = os.path.join(args.result_dir, f"result.json")
     with open(output_path, "w") as fout:

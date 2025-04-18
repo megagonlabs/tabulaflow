@@ -82,9 +82,13 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         queries = [parse_query(q) for q in raw_queries]
         # Select the best query using self-consistency voting
         best_query_idx = self.select_best_query(queries, db_connector)
+        if hasattr(task, "pred_query"):  # single-output task
+            task.pred_query = queries[best_query_idx]
+        else:  # multi-output task
+            task.pred_queries = [queries[best_query_idx]]
 
         # Re-construct the trajectory of the best query
-        trajectory = [
+        task.trajectory = [
             {"role": "user", "content": prompt},
             {"role": "assistant", "content": raw_queries[best_query_idx]},
         ]
@@ -100,12 +104,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             "output_tokens": int(output_tokens),
             "api_cost_usd": api_cost_usd,
         }
-
         task.metrics.update(metrics)
-        if hasattr(task, "pred_query"):
-            task.pred_query = queries[best_query_idx]
-        else:
-            task.pred_queries = [queries[best_query_idx]]
 
         return task
 
