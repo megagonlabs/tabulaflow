@@ -5,6 +5,21 @@ from rattq.db_connector.base import BaseDBConnector
 from rattq.schema import *
 
 
+# def get_base_type(col_type) -> str:
+#     """
+#     Given a SQLAlchemy column type instance (like VARCHAR),
+#     return an its CamelCase base type (like String).
+
+#     References:
+#         - https://docs.sqlalchemy.org/en/20/core/type_basics.html
+#     """
+#     # Get the MRO (inheritance chain)
+#     for cls in type(col_type).__mro__:
+#         if cls.__name__[0].isupper() and cls.__name__ != cls.__name__.upper():  # is camelcase
+#             return cls.__name__
+#     return col_type.__name__
+
+
 class BaseSQLConnector(BaseDBConnector):
     def __init__(self, name: str, sqlalchemy_engine):
         self._name = name
@@ -40,36 +55,26 @@ class BaseSQLConnector(BaseDBConnector):
                         tbl = sqlalchemy.table(table_name, schema=schema_name)
 
                         cardinality = conn.execute(
-                            select(func.count(col.distinct()))
-                            .select_from(tbl)
-                            .where(col.isnot(None))
+                            select(func.count(col.distinct())).select_from(tbl).where(col.isnot(None))
                         ).fetchone()[0]
                         examples = [
                             row[0]
                             for row in conn.execute(
-                                select(col)
-                                .distinct()
-                                .select_from(tbl)
-                                .where(col.isnot(None))
-                                .limit(20)
+                                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(20)
                             ).fetchall()
                         ]
 
                         columns.append(
                             SQLColumnSchema(
                                 name=column["name"],
-                                type=str(column["type"]).upper(),
+                                type=column["type"].__class__.__name__,
                                 cardinality=cardinality,
                                 examples=examples,
                             )
                         )
 
-                    primary_key = inspector.get_pk_constraint(table_name, schema=schema_name)[
-                        "constrained_columns"
-                    ]
-                    num_rows = conn.execute(
-                        select(func.count()).select_from(tbl)
-                    ).fetchone()[0]
+                    primary_key = inspector.get_pk_constraint(table_name, schema=schema_name)["constrained_columns"]
+                    num_rows = conn.execute(select(func.count()).select_from(tbl)).fetchone()[0]
                     for fk in inspector.get_foreign_keys(table_name, schema=schema_name):
                         foreign_keys.append(
                             ForeignKeySchema(
