@@ -78,10 +78,10 @@ class BaseSQLConnector(BaseDBConnector):
                     for fk in inspector.get_foreign_keys(table_name, schema=schema_name):
                         foreign_keys.append(
                             ForeignKeySchema(
-                                schema=schema_name,
+                                schema_name=schema_name,
                                 table=table_name,
                                 columns=fk["constrained_columns"],
-                                foreign_schema=fk["referred_schema"],
+                                foreign_schema_name=fk["referred_schema"],
                                 foreign_table=fk["referred_table"],
                                 foreign_columns=fk["referred_columns"],
                             )
@@ -90,7 +90,7 @@ class BaseSQLConnector(BaseDBConnector):
                     tables.append(
                         SQLTableSchema(
                             name=table_name,
-                            schema=schema_name,
+                            schema_name=schema_name,
                             columns=columns,
                             primary_key=primary_key,
                             num_rows=num_rows,

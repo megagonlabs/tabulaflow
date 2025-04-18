@@ -1,9 +1,6 @@
-import sqlalchemy
-from sqlalchemy import create_engine, inspect, select, func
+from sqlalchemy import create_engine
 import os
-import rattq.db_connector.snowflake_conn as snowflake_conn
 import snowflake.connector
-from func_timeout import func_timeout, FunctionTimedOut
 from rattq.db_connector.base_sql_conn import BaseSQLConnector
 from rattq.schema import *
 
@@ -40,7 +37,7 @@ if __name__ == "__main__":
     from rattq.schema_formatter import get_schema_formatter
 
     connector = SnowflakeConnector(
-        "AIRLINES", os.environ["SF_USER"], os.environ["SF_PASSWORD"], os.environ["SF_ACCOUNT"], "CRYPTO"
+        "AIRLINES", os.environ["SF_USER"], os.environ["SF_PASSWORD"], os.environ["SF_ACCOUNT"], "AIRLINES"
     )
     formatter = get_schema_formatter("sql_default")
     print(formatter.format(connector.schema))
