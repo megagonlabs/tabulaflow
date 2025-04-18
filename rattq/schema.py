@@ -48,16 +48,19 @@ class SQLColumnSchema(BaseModel):
 
 class SQLTableSchema(BaseModel):
     name: str
+    schema: Optional[str]
     columns: List[SQLColumnSchema]
     primary_key: List[str]
     num_rows: int
 
 
 class ForeignKeySchema(BaseModel):
+    schema: Optional[str]
     table: str
-    column: str
+    columns: List[str]
+    foreign_schema: Optional[str]
     foreign_table: str
-    foreign_column: str
+    foreign_columns: List[str]
 
 
 class SQLSchema(BaseDBSchema):

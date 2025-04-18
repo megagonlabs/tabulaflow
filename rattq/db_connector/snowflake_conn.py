@@ -16,19 +16,15 @@ class SnowflakeConnector(BaseSQLConnector):
         sf_password: str,
         sf_account: str,
         sf_database: str,
-        sf_schema: str,
     ):
         super().__init__(
             name,
-            create_engine(
-                f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}/{sf_schema}"
-            ),
+            create_engine(f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"),
         )
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
         self.sf_database = sf_database
-        self.sf_schema = sf_schema
 
     def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
         with snowflake.connector.connect(
@@ -44,12 +40,7 @@ if __name__ == "__main__":
     from rattq.schema_formatter import get_schema_formatter
 
     connector = SnowflakeConnector(
-        "AIRLINES",
-        os.environ["SF_USER"],
-        os.environ["SF_PASSWORD"],
-        os.environ["SF_ACCOUNT"],
-        "CRYPTO",
-        "CRYPTO_BAND",
+        "AIRLINES", os.environ["SF_USER"], os.environ["SF_PASSWORD"], os.environ["SF_ACCOUNT"], "CRYPTO"
     )
     formatter = get_schema_formatter("sql_default")
     print(formatter.format(connector.schema))
