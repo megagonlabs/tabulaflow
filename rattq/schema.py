@@ -5,8 +5,6 @@ from typing import Optional, Dict, Union, List, Any
 
 
 class BaseNL2QTask(BaseModel, ABC):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
     qid: str
     language: str
     db: str
@@ -17,13 +15,13 @@ class BaseNL2QTask(BaseModel, ABC):
 
 class SingleOutputBaseNL2QTask(BaseNL2QTask):
     gold_query: Optional[str] = None
-    gold_exec_result: Optional[pd.DataFrame] = None
+    gold_exec_result: Optional[List[dict]] = None
     pred_query: Optional[str] = None
 
 
 class MultiOutputBaseNL2QTask(BaseNL2QTask):
     gold_queries: List[str] = []
-    gold_exec_results: List[pd.DataFrame] = []
+    gold_exec_results: List[List[dict]] = []
     pred_queries: List[str] = []
 
 

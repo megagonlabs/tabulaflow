@@ -66,10 +66,10 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
 
                 pattern = re.compile(rf'^{re.escape(item["instance_id"])}(_[a-z])?\.csv$')
                 gold_exec_result_files = [file for file in all_gold_exec_result_files if re.match(pattern, file)]
-                gold_exec_result = []
+                gold_exec_results = []
                 for file in gold_exec_result_files:
                     with open(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result", file), "r") as f:
-                        gold_exec_result.append(pd.read_csv(f))
+                        gold_exec_results.append(pd.read_csv(f).to_dict(orient="records"))
 
                 tasks.append(
                     MultiOutputBaseNL2QTask(
@@ -79,7 +79,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                         question=item["instruction"],
                         evidence=evidence,
                         gold_queries=gold_sql,
-                        gold_exec_results=gold_exec_result,
+                        gold_exec_results=gold_exec_results,
                     )
                 )
 
@@ -102,8 +102,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                         "sf_user": sf_user,
                         "sf_password": sf_password,
                         "sf_account": sf_account,
-                        "sf_database": name,
-                        "sf_schema": name,
+                        "sf_database": name
                     },
                 )
                 for name in db_names

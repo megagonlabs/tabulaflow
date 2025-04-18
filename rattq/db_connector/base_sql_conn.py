@@ -34,7 +34,6 @@ class BaseSQLConnector(BaseDBConnector):
 
             for schema_name in schema_names:
                 for table_name in inspector.get_table_names(schema=schema_name):
-                    print(schema_name, table_name)
                     columns = []
                     for column in inspector.get_columns(table_name, schema=schema_name):
                         col = sqlalchemy.column(column["name"])

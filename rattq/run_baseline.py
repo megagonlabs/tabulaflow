@@ -40,7 +40,7 @@ def main():
         if args.dataset == "bird-sql":
             parser.set_defaults(split="dev", databases=["california_schools"])
         elif args.dataset == "spider2-snow":
-            parser.set_defaults(split="test", databases=["CRYPTO"])
+            parser.set_defaults(split="test", databases=["AIRLINES"])
     args = parser.parse_args()
     print(args)
     print()
