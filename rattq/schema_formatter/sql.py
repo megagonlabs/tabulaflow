@@ -36,16 +36,18 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         res += (
             f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
         )
-        res += f"Foreign keys:\n"
-        for fk in schema.foreign_keys:
-            res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
+        if schema.foreign_keys:
+            res += f"Foreign keys:\n"
+            for fk in schema.foreign_keys:
+                res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
         res += "\n"
         res += "\n\n".join([self._format_table(table) for table in schema.tables])
         return res
 
     def _format_table(self, table: SQLTableSchema) -> str:
-        res = f"Table: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows)"
-        res += f" (Primary key: {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])})\n"
+        res = f"Table: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows)\n"
+        if table.primary_key:
+            res += f"Primary key: {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}\n"
         res += "\n".join([self._format_column(table, column) for column in table.columns])
         return res
 
