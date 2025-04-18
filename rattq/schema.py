@@ -41,7 +41,6 @@ class SQLColumnSchema(BaseModel):
     name: str
     type: str
     cardinality: int
-    count: int
     examples: List[Any]
 
 

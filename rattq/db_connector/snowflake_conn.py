@@ -36,10 +36,13 @@ class SnowflakeConnector(BaseSQLConnector):
 
 if __name__ == "__main__":
     import json
+    import time
     from rattq.schema_formatter import get_schema_formatter
 
+    t0 = time.time()
     connector = SnowflakeConnector(
         "AIRLINES", os.environ["SF_USER"], os.environ["SF_PASSWORD"], os.environ["SF_ACCOUNT"], "AIRLINES"
     )
     formatter = get_schema_formatter("sql_default")
     print(formatter.format(connector.schema))
+    print(f"Time taken: {time.time() - t0} seconds")

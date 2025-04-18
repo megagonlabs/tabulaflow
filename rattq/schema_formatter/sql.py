@@ -33,7 +33,9 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
 
     def format(self, schema: SQLSchema) -> str:
         res = f"Database: {schema.name}\n"
-        res += f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
+        res += (
+            f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
+        )
         res += f"Foreign keys:\n"
         for fk in schema.foreign_keys:
             res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
@@ -44,12 +46,14 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
     def _format_table(self, table: SQLTableSchema) -> str:
         res = f"Table: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows)"
         res += f" (Primary key: {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])})\n"
-        res += "\n".join([self._format_column(column) for column in table.columns])
+        res += "\n".join([self._format_column(table, column) for column in table.columns])
         return res
 
-    def _format_column(self, column: SQLColumnSchema) -> str:
+    def _format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str:
         res = f"- {self._quote_if_needed(column.name)}: {column.type}"
-        is_categorical = column.type == "TEXT" and column.cardinality <= 10 and column.cardinality / column.count < 0.01
+        is_categorical = (
+            column.type == "TEXT" and 0 < column.cardinality <= 10 and column.cardinality / table.num_rows < 0.01
+        )
         if is_categorical:  # show all possible values
             res += " (Allowed values: {" + ", ".join([self._quote(v) for v in column.examples]) + "})"
         elif not column.examples:

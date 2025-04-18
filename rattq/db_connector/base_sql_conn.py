@@ -44,9 +44,6 @@ class BaseSQLConnector(BaseDBConnector):
                             .select_from(tbl)
                             .where(col.isnot(None))
                         ).fetchone()[0]
-                        count = conn.execute(
-                            select(func.count()).select_from(tbl).where(col.isnot(None))
-                        ).fetchone()[0]
                         examples = [
                             row[0]
                             for row in conn.execute(
@@ -63,7 +60,6 @@ class BaseSQLConnector(BaseDBConnector):
                                 name=column["name"],
                                 type=str(column["type"]).upper(),
                                 cardinality=cardinality,
-                                count=count,
                                 examples=examples,
                             )
                         )
