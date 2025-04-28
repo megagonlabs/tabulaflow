@@ -1,27 +1,32 @@
-# nl2q-rl
+# mintq
 
-RATTQ (Reinforced Agentic Text-to-Query)
+A Minimalist Text-to-Query Toolkit
 
+Contact: yanlin@megagon.ai
 
-
-```python
-from rattq.db_connector import SQLiteConnector
-
-db = SQLiteConnector(
-    "bird-sql_dev_1",
-    "data/BIRD-SQL/dev_20240627/dev_databases/california_schools/california_schools.sqlite",
-)
-tools = get_smolagent_tools(db)
-print(
-    tools[1](
-        [
-            'frpm."School Type"',
-            'frpm."SchooasdfadlType"',
-            'asdf."SchoolType"',
-            'frpm."School Name"',
-        ],
-        ["public", "charter"],
-    )
-)
-exit(9)
+Project structure:
+```
+mintq
+├── baseline/
+│   ├── simple_zero_shot.py
+│   ├── tool_agent.py
+│   └── ...
+├── dataset/
+│   ├── bird-sql/
+│   ├── spider2-snow/
+│   └── ...
+├── db_connector/
+│   ├── sqlite_conn.py
+│   ├── snowflake_conn.py
+│   └── ...
+├── metric/
+│   ├── bird_sql_ex.py
+│   ├── executable.py
+│   └── ...
+├── schema_formatter/
+│   ├── sql.py
+│   └── ...
+├── schema.py
+├── utils.py
+├── run_baseline.py
 ```
