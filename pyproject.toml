@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nl2q-rl"
+authors = [{ name = "Yanlin Feng", email = "yanlinf23@gmail.com" }]
+version = "0.1.0"
+description = "Minimal Natural Language to SQL Toolkit"
+readme = "README.md"
+requires-python = ">=3.10"
+dependencies = [
+    "func-timeout>=4.3.5",
+    "litellm>=1.67.4.post1",
+    "pandas>=2.2.3",
+    "pydantic>=2.11.3",
+    "smolagents>=1.14.0",
+    "snowflake-connector-python>=3.14.1",
+    "snowflake-sqlalchemy>=1.7.3",
+    "sqlalchemy>=2.0.40",
+    "tqdm>=4.67.1",
+]
+
+[tool.setuptools]
+packages = ["rattq"]

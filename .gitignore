@@ -3,6 +3,15 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+# Added by me
+exp/
+log/
+data/
+output/
+*.db
+*.sqlite
+.envrc
+
 # C extensions
 *.so
 

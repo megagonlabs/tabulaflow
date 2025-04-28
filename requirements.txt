@@ -1,11 +1,8 @@
-trl
 sqlalchemy
-llama-index
 litellm
 pydantic
 tqdm
 func-timeout
 smolagents
-sql-metadata
 snowflake-connector-python
 snowflake-sqlalchemy
