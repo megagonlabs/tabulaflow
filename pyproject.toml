@@ -3,10 +3,10 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "nl2q-rl"
+name = "mintq"
 authors = [{ name = "Yanlin Feng", email = "yanlinf23@gmail.com" }]
 version = "0.1.0"
-description = "Minimal Natural Language to SQL Toolkit"
+description = "Minimal Text to Query Toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
@@ -22,4 +22,4 @@ dependencies = [
 ]
 
 [tool.setuptools]
-packages = ["rattq"]
+packages = ["mintq"]
