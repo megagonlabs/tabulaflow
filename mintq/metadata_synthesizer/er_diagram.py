@@ -22,20 +22,44 @@ class ERDiagram(BaseModel):
 
     def to_graphviz(self):
         g = graphviz.Digraph()
+        g.attr("node", shape="none")  # Remove outer box
+        g.attr(
+            "graph", rankdir="LR", nodesep="0.25", ranksep="0.5"
+        )
+
         for table in self.db_schema.tables:
-            g.node(table.name, table.name)
+            # Create a table node with columns as rows
+            columns_html = '<TR><TD COLSPAN="2"><B>' + table.name + "</B></TD></TR>"
+            for col in table.columns:
+                columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT">{col.name}</TD><TD PORT="{col.name}-type" ALIGN="RIGHT">{col.type}</TD></TR>'
+
+            # Create HTML table for the node
+            table_html = f"""<
+            <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0">
+                {columns_html}
+            </TABLE>>"""
+
+            g.node(table.name, table_html)
+
         for relation in self.relations:
             g.edge(
-                relation.from_table,
-                relation.to_table,
-                label=f"{relation.from_column}:{relation.to_column}",
+                f"{relation.from_table}:{relation.from_column}-type:e",
+                f"{relation.to_table}:{relation.to_column}-name:w",
+                label="",
             )
         return g
 
 
 class ERDiagramSynthesizer(BaseMetadataSynthesizer):
     def run(self, db_connector):
-        schema = db_connector.schema
+        # schema = db_connector.schema
+
+        if not os.path.exists("cache/airlines_schema.json"):
+            with open("cache/airlines_schema.json", "w") as f:
+                f.write(schema.model_dump_json())
+        else:
+            with open("cache/airlines_schema.json", "r") as f:
+                schema = SQLSchema.model_validate_json(f.read())
 
         suffixes = "id|key|code|number|no|ref"
 
@@ -88,15 +112,15 @@ if __name__ == "__main__":
     import os
 
     t0 = time.time()
-    connector = SnowflakeConnector(
-        "AIRLINES",
-        os.environ["SF_USER"],
-        os.environ["SF_PASSWORD"],
-        os.environ["SF_ACCOUNT"],
-        "AIRLINES",
-    )
+    # connector = SnowflakeConnector(
+    #     "AIRLINES",
+    #     os.environ["SF_USER"],
+    #     os.environ["SF_PASSWORD"],
+    #     os.environ["SF_ACCOUNT"],
+    #     "AIRLINES",
+    # )
     synthesizer = ERDiagramSynthesizer()
-    erd = synthesizer.run(connector)
+    erd = synthesizer.run(None)
     print(json.dumps(erd.model_dump(), indent=2))
     print(f"Time taken: {time.time() - t0} seconds")
 
