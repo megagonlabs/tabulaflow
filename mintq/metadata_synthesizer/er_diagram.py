@@ -37,7 +37,7 @@ class ERDiagramSynthesizer(BaseMetadataSynthesizer):
     def run(self, db_connector):
         schema = db_connector.schema
 
-        suffixes = "id|key|code|number|no"
+        suffixes = "id|key|code|number|no|ref"
 
         erd = ERDiagram(db_schema=schema, relations=[])
         for from_table in schema.tables:
