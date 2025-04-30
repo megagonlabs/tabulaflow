@@ -2,6 +2,8 @@ from pydantic import BaseModel
 from typing import List
 import re
 import logging
+import graphviz
+from mintq.schema import SQLSchema
 from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
 
 logger = logging.getLogger(__name__)
@@ -15,7 +17,20 @@ class Relation(BaseModel):
 
 
 class ERDiagram(BaseModel):
+    db_schema: SQLSchema
     relations: List[Relation]
+
+    def to_graphviz(self):
+        g = graphviz.Digraph()
+        for table in self.db_schema.tables:
+            g.node(table.name, table.name)
+        for relation in self.relations:
+            g.edge(
+                relation.from_table,
+                relation.to_table,
+                label=f"{relation.from_column}:{relation.to_column}",
+            )
+        return g
 
 
 class ERDiagramSynthesizer(BaseMetadataSynthesizer):
@@ -24,7 +39,7 @@ class ERDiagramSynthesizer(BaseMetadataSynthesizer):
 
         suffixes = "id|key|code|number|no"
 
-        erd = ERDiagram(relations=[])
+        erd = ERDiagram(db_schema=schema, relations=[])
         for from_table in schema.tables:
             for from_column in from_table.columns:
                 m = re.match(rf"(.+?)_?(:?{suffixes})$", from_column.name, re.I)
@@ -40,7 +55,9 @@ class ERDiagramSynthesizer(BaseMetadataSynthesizer):
                             col.name
                             for col in to_table.columns
                             if re.match(
-                                rf"^({re.escape(target_hint)})?_?({suffixes})$", col.name, re.I
+                                rf"^({re.escape(target_hint)})?_?({suffixes})$",
+                                col.name,
+                                re.I,
                             )
                         ]
                         if len(candidates) > 1:
@@ -82,3 +99,6 @@ if __name__ == "__main__":
     erd = synthesizer.run(connector)
     print(json.dumps(erd.model_dump(), indent=2))
     print(f"Time taken: {time.time() - t0} seconds")
+
+    g = erd.to_graphviz()
+    g.render("erd", format="png")
