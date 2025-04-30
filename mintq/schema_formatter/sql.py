@@ -2,19 +2,6 @@ from mintq.schema_formatter.base import BaseSchemaFormatter
 from mintq.schema import *
 
 
-# class ForeignKeySchema(BaseModel):
-#     table: str
-#     column: str
-#     foreign_table: str
-#     foreign_column: str
-
-
-# class SQLSchema(BaseDBSchema):
-#     name: str
-#     tables: List[SQLTableSchema]
-#     foreign_keys: List[ForeignKeySchema]
-
-
 class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
     def __init__(self, quote_char: str = '"'):
         self.quote_char = quote_char
