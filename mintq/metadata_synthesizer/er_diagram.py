@@ -71,10 +71,19 @@ class ERDiagramSynthesizer(BaseMetadataSynthesizer):
         erd = ERDiagram(db_schema=schema, relations=[])
         for from_table in schema.tables:
             for from_column in from_table.columns:
-                m = re.match(rf"(.+?)_?(:?{suffixes})$", from_column.name, re.I)
-                if not m:
+                patterns = [
+                    rf"(.+?)_?(:?{suffixes})$",
+                    r".*?_(.+?)$",
+                ]
+                target_hint = None
+                for pattern in patterns:
+                    m = re.match(pattern, from_column.name, re.I)
+                    if m:
+                        target_hint = m.group(1).lower()
+                        break
+                if not target_hint:
                     continue
-                target_hint = m.group(1).lower()
+
                 for to_table in schema.tables:
                     if from_table.name == to_table.name:
                         continue
