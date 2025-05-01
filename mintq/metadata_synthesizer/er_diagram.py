@@ -28,17 +28,17 @@ class ERDiagram(BaseModel):
         for table in self.db_schema.tables:
             # Create a table node with columns as rows
             columns_html = (
-                '<TR><TD COLSPAN="2" BGCOLOR="#444444" ALIGN="LEFT"><FONT COLOR="white"><B>'
+                '<TR><TD COLSPAN="2" BGCOLOR="#4f5475" ALIGN="LEFT"><FONT COLOR="white"><B>'
                 + table.name
                 + "</B></FONT></TD></TR>"
             )
             for col in table.columns:
                 columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT" BGCOLOR="#eeeeee"><FONT COLOR="#2b2b2b">{col.name}</FONT></TD>"\
-                "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT COLOR="#666666">{col.type}</FONT></TD></TR>'
+                "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT POINT-SIZE="10" COLOR="#888888">{col.type}</FONT></TD></TR>'
 
             # Create HTML table for the node
             table_html = f"""<
-            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2">
+            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">
                 {columns_html}
             </TABLE>>"""
 
@@ -50,10 +50,7 @@ class ERDiagram(BaseModel):
                 f"{relation.to_table}:{relation.to_column}-name:w",
                 label="",
                 color="#cccccc",
-                dir="none",
-                arrowhead="dot",
-                arrowtail="dot",
-                arrowsize="0.5",
+                dir="none"
             )
         return g
 
