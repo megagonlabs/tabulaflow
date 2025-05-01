@@ -23,7 +23,7 @@ class ERDiagram(BaseModel):
     def to_graphviz(self):
         g = graphviz.Digraph()
         g.attr("node", shape="none", fontname="Courier")  # Remove outer box
-        g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5")
+        g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5", splines="polyline")
 
         for table in self.db_schema.tables:
             # Create a table node with columns as rows
@@ -57,14 +57,7 @@ class ERDiagram(BaseModel):
 
 class ERDiagramSynthesizer(BaseMetadataSynthesizer):
     def run(self, db_connector):
-        # schema = db_connector.schema
-
-        if not os.path.exists("cache/airlines_schema.json"):
-            with open("cache/airlines_schema.json", "w") as f:
-                f.write(schema.model_dump_json())
-        else:
-            with open("cache/airlines_schema.json", "r") as f:
-                schema = SQLSchema.model_validate_json(f.read())
+        schema = db_connector.schema
 
         suffixes = "id|key|code|number|no|ref"
 
