@@ -8,7 +8,7 @@ from mintq.schema import *
 
 class SQLiteConnector(BaseSQLConnector):
     def __init__(self, name: str, sqlite_db_path: str):
-        super().__init__(name, create_engine(f"sqlite:///{sqlite_db_path}"))
+        super().__init__(name, f"sqlite:///{sqlite_db_path}")
         self.sqlite_db_path = sqlite_db_path
 
     def _run_query_without_timeout(self, query: str, parameters=()) -> list:

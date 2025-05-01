@@ -1,8 +1,11 @@
 from abc import ABC, abstractmethod
+import os
+import json
+import hashlib
 import sqlalchemy
 from sqlalchemy import create_engine, inspect, func, select
 from mintq.db_connector.base import BaseDBConnector
-from mintq.schema import *
+from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
 
 # def get_base_type(col_type) -> str:
@@ -21,9 +24,9 @@ from mintq.schema import *
 
 
 class BaseSQLConnector(BaseDBConnector):
-    def __init__(self, name: str, sqlalchemy_engine):
+    def __init__(self, name: str, sqlalchemy_engine_str: str):
         self._name = name
-        self._schema = self._init_schema(sqlalchemy_engine)
+        self._schema = self._load_schema_with_cache(name, sqlalchemy_engine_str)
 
     @property
     def name(self) -> str:
@@ -33,11 +36,29 @@ class BaseSQLConnector(BaseDBConnector):
     def schema(self) -> SQLSchema:
         return self._schema
 
-    def _init_schema(self, engine) -> SQLSchema:
+    def _load_schema_with_cache(self, name: str, sqlalchemy_engine_str: str) -> SQLSchema:
+        cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
+        cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
+        os.makedirs(cache_dir, exist_ok=True)
+        hashed = hashlib.sha256(sqlalchemy_engine_str.encode()).hexdigest()
+        cache_path = os.path.join(cache_dir, f"{name}.{hashed}.json")
+
+        if cache_enabled and os.path.exists(cache_path):
+            with open(cache_path, "r") as f:
+                return SQLSchema.model_validate_json(f.read())
+
+        schema = self._init_schema(sqlalchemy_engine_str)
+        if cache_enabled:
+            with open(cache_path, "w") as f:
+                f.write(schema.model_dump_json())
+        return schema
+
+    def _init_schema(self, sqlalchemy_engine_str: str) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
 
+        engine = create_engine(sqlalchemy_engine_str)
         inspector = inspect(engine)
 
         with engine.connect() as conn:

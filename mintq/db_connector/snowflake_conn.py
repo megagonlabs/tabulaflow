@@ -1,4 +1,3 @@
-from sqlalchemy import create_engine
 import os
 import snowflake.connector
 from mintq.db_connector.base_sql_conn import BaseSQLConnector
@@ -16,7 +15,7 @@ class SnowflakeConnector(BaseSQLConnector):
     ):
         super().__init__(
             name,
-            create_engine(f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"),
+            f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}",
         )
         self.sf_user = sf_user
         self.sf_password = sf_password
