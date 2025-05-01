@@ -22,19 +22,19 @@ class ERDiagram(BaseModel):
 
     def to_graphviz(self):
         g = graphviz.Digraph()
-        g.attr("node", shape="none")  # Remove outer box
+        g.attr("node", shape="none", fontname="Courier")  # Remove outer box
         g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5")
 
         for table in self.db_schema.tables:
             # Create a table node with columns as rows
             columns_html = (
-                '<TR><TD COLSPAN="2" BGCOLOR="#444444"><FONT COLOR="white"><B>'
+                '<TR><TD COLSPAN="2" BGCOLOR="#444444" ALIGN="LEFT"><FONT COLOR="white"><B>'
                 + table.name
                 + "</B></FONT></TD></TR>"
             )
             for col in table.columns:
-                columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT" BGCOLOR="lightgrey"><FONT COLOR="#2b2b2b">{col.name}</FONT></TD>"\
-                "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="lightgrey"><FONT COLOR="#666666">{col.type}</FONT></TD></TR>'
+                columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT" BGCOLOR="#eeeeee"><FONT COLOR="#2b2b2b">{col.name}</FONT></TD>"\
+                "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT COLOR="#666666">{col.type}</FONT></TD></TR>'
 
             # Create HTML table for the node
             table_html = f"""<
@@ -49,7 +49,11 @@ class ERDiagram(BaseModel):
                 f"{relation.from_table}:{relation.from_column}-type:e",
                 f"{relation.to_table}:{relation.to_column}-name:w",
                 label="",
-                color="#666666",
+                color="#cccccc",
+                dir="none",
+                arrowhead="dot",
+                arrowtail="dot",
+                arrowsize="0.5",
             )
         return g
 
