@@ -24,3 +24,6 @@ dependencies = [
 
 [tool.setuptools]
 packages = ["mintq"]
+
+[tool.ruff]
+line-length = 120
