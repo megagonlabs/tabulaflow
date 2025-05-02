@@ -24,12 +24,12 @@ def er_diagram_to_graphviz(erd: ERDiagram) -> graphviz.Digraph:
             {columns_html}
         </TABLE>>"""
 
-        g.node(table.name, table_html)
+        g.node(f"{table.schema_name}.{table.name}", table_html)
 
     for relation in erd.relations:
         g.edge(
-            f"{relation.from_table}:{relation.from_column}-type:e",
-            f"{relation.to_table}:{relation.to_column}-name:w",
+            f"{relation.from_schema}.{relation.from_table}:{relation.from_column}-type:e",
+            f"{relation.to_schema}.{relation.to_table}:{relation.to_column}-name:w",
             label="",
             color="#cccccc",
             dir="none",
