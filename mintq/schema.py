@@ -72,8 +72,10 @@ class SQLSchema(BaseDBSchema):
 
 
 class ERDiagramRelation(BaseModel):
+    from_schema: Optional[str]
     from_table: str
     from_column: str
+    to_schema: Optional[str]
     to_table: str
     to_column: str
 

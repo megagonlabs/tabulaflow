@@ -73,7 +73,9 @@ You are a helpful assistant that synthesizes ER diagrams from a given database s
 - If a column looks like a foreign key but its reference table is not in the database, ignore it.
 - The output should be a JSON list of dictionaries with the following keys:
   - "source_column": the name of the column that might be a foreign key
-  - "target_table": the name of the table that the foreign key references
+  - "target_table": the name of the table that the foreign key references.
+    - The table name should include the schema name if it exists.
+    - The table and schema names should be quoted if they contain spaces.
 
 === Example ===
 
@@ -120,6 +122,8 @@ You are a helpful assistant that synthesizes ER diagrams from a given database s
 - Given a candidate foreign key column in a source table, you need to select from the target table the column that it references.
 - The output should be a list of JSON dictionaries with the following keys:
   - "source_table": the name of the source table
+    - The table name should include the schema name if it exists.
+    - The table and schema names should be quoted if they contain spaces.
   - "source_column": the name of the source column that is a candidate foreign key
   - "target_column": the name of the column in the target table that the foreign key references. If no reference column is found, set this to null.
 
@@ -184,7 +188,9 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
         reference_table_to_fks = collections.defaultdict(list)
         for table, r in zip(schema.tables, responses):
             for dic in parse_json(r["choices"][0]["message"]["content"]):
-                reference_table_to_fks[dic["target_table"]].append((table.name, dic["source_column"]))
+                reference_table_to_fks[dic["target_table"]].append(
+                    (formatter.format_table_name(table), dic["source_column"])
+                )
 
         prompts = []
         for table in schema.tables:
@@ -203,14 +209,20 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
             messages=[[{"role": "user", "content": prompt}] for prompt in prompts],
             temperature=0.0,
         )
+
+        all_tables = {formatter.format_table_name(table): table for table in schema.tables}
+
         erd = ERDiagram(db_schema=schema, relations=[])
         for table, r in zip(schema.tables, responses):
             for dic in parse_json(r["choices"][0]["message"]["content"]):
                 if dic["target_column"] is not None:
+                    src_table = all_tables[dic["source_table"]]
                     erd.relations.append(
                         ERDiagramRelation(
-                            from_table=dic["source_table"],
+                            from_schema=src_table.schema_name,
+                            from_table=src_table.name,
                             from_column=dic["source_column"],
+                            to_schema=table.schema_name,
                             to_table=table.name,
                             to_column=dic["target_column"],
                         )
