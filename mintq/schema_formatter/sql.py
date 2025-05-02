@@ -1,3 +1,4 @@
+from typing import Optional
 from mintq.schema_formatter.base import BaseSchemaFormatter
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
