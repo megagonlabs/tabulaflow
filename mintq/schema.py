@@ -27,10 +27,13 @@ class MultiOutputBaseNL2QTask(BaseNL2QTask):
     trajectory: Optional[List[dict]] = None
 
 
+NL2QTask = Union[SingleOutputBaseNL2QTask, MultiOutputBaseNL2QTask]
+
+
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
-    tasks: list[BaseNL2QTask]
+    tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
 

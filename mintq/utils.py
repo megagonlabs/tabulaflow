@@ -3,6 +3,7 @@ import math
 import os
 import litellm
 import random
+from mintq.schema import NL2QTask, SingleOutputBaseNL2QTask, MultiOutputBaseNL2QTask
 
 
 def parse_json(response: str):
@@ -90,3 +91,14 @@ def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict]
     train_samples = [samples[i] for i in train_indices]
     dev_samples = [samples[i] for i in range(len(samples)) if i not in set(train_indices)]
     return train_samples, dev_samples
+
+
+def load_nl2q_tasks(path: str) -> list[NL2QTask]:
+    with open(path, "r") as f:
+        data = json.load(f)
+    for cls in (SingleOutputBaseNL2QTask, MultiOutputBaseNL2QTask):
+        try:
+            return [cls(**item) for item in data]
+        except Exception as e:
+            continue
+    raise ValueError(f"No valid NL2QTask found in {path}")
