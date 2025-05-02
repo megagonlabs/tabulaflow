@@ -39,9 +39,10 @@ class BaseSQLConnector(BaseDBConnector):
     def _load_schema_with_cache(self, name: str, sqlalchemy_engine_str: str) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
-        os.makedirs(cache_dir, exist_ok=True)
+        schema_cache_dir = os.path.join(cache_dir, "schemas")
+        os.makedirs(schema_cache_dir, exist_ok=True)
         hashed = hashlib.sha256(sqlalchemy_engine_str.encode()).hexdigest()
-        cache_path = os.path.join(cache_dir, f"{name}.{hashed}.json")
+        cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
 
         if cache_enabled and os.path.exists(cache_path):
             with open(cache_path, "r") as f:
@@ -50,7 +51,7 @@ class BaseSQLConnector(BaseDBConnector):
         schema = self._init_schema(sqlalchemy_engine_str)
         if cache_enabled:
             with open(cache_path, "w") as f:
-                f.write(schema.model_dump_json())
+                f.write(schema.model_dump_json(indent=2))
         return schema
 
     def _convert(self, value):
