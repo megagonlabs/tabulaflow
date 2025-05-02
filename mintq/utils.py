@@ -6,7 +6,6 @@ import random
 
 
 def parse_json(response: str):
-    print(f"<response>{response}</response>")
     lines = response.strip().split("\n")
     if lines[0].startswith("```") and lines[-1].startswith("```"):
         response = "\n".join(lines[1:-1])

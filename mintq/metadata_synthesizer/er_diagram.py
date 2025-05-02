@@ -184,13 +184,11 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
             )
             for table in schema.tables
         ]
-        print(f"<prompt>{prompts[0]}</prompt>")
         responses = litellm.batch_completion(
             model=self.llm,
             messages=[[{"role": "user", "content": prompt}] for prompt in prompts],
             temperature=0.0,
         )
-        print(f"<response>{responses[0]['choices'][0]['message']['content']}</response>")
 
         reference_table_to_fks = collections.defaultdict(list)
         for table, r in zip(schema.tables, responses):
@@ -207,13 +205,11 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
                     target_table=formatter.format_table(table),
                 )
             )
-        print(f"<prompt>{prompts[0]}</prompt>")
         responses = litellm.batch_completion(
             model=self.llm,
             messages=[[{"role": "user", "content": prompt}] for prompt in prompts],
             temperature=0.0,
         )
-        print(f"<response>{responses[0]['choices'][0]['message']['content']}</response>")
         erd = ERDiagram(db_schema=schema, relations=[])
         for table, r in zip(schema.tables, responses):
             for dic in parse_json(r["choices"][0]["message"]["content"]):
