@@ -8,6 +8,7 @@ exp/
 log/
 data/
 output/
+cache/
 *.db
 *.sqlite
 .envrc
