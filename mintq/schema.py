@@ -26,6 +26,7 @@ class MultiOutputBaseNL2QTask(BaseNL2QTask):
     pred_queries: List[str] = []
     trajectory: Optional[List[dict]] = None
 
+
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
@@ -65,3 +66,15 @@ class SQLSchema(BaseDBSchema):
     name: str
     tables: List[SQLTableSchema]
     foreign_keys: List[ForeignKeySchema]
+
+
+class ERDiagramRelation(BaseModel):
+    from_table: str
+    from_column: str
+    to_table: str
+    to_column: str
+
+
+class ERDiagram(BaseModel):
+    db_schema: SQLSchema
+    relations: List[ERDiagramRelation]

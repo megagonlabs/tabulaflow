@@ -1,62 +1,13 @@
-from pydantic import BaseModel
-from typing import List
 import re
 import logging
-import graphviz
-from mintq.schema import SQLSchema
+from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
 
 logger = logging.getLogger(__name__)
 
 
-class Relation(BaseModel):
-    from_table: str
-    from_column: str
-    to_table: str
-    to_column: str
-
-
-class ERDiagram(BaseModel):
-    db_schema: SQLSchema
-    relations: List[Relation]
-
-    def to_graphviz(self):
-        g = graphviz.Digraph()
-        g.attr("node", shape="none", fontname="Courier")  # Remove outer box
-        g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5", splines="polyline")
-
-        for table in self.db_schema.tables:
-            # Create a table node with columns as rows
-            columns_html = (
-                '<TR><TD COLSPAN="2" BGCOLOR="#4f5475" ALIGN="LEFT"><FONT COLOR="white"><B>'
-                + table.name
-                + "</B></FONT></TD></TR>"
-            )
-            for col in table.columns:
-                columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT" BGCOLOR="#eeeeee"><FONT COLOR="#2b2b2b">{col.name}</FONT></TD>"\
-                "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT POINT-SIZE="10" COLOR="#888888">{col.type}</FONT></TD></TR>'
-
-            # Create HTML table for the node
-            table_html = f"""<
-            <TABLE BORDER="0" CELLBORDER="0" CELLSPACING="2" CELLPADDING="4">
-                {columns_html}
-            </TABLE>>"""
-
-            g.node(table.name, table_html)
-
-        for relation in self.relations:
-            g.edge(
-                f"{relation.from_table}:{relation.from_column}-type:e",
-                f"{relation.to_table}:{relation.to_column}-name:w",
-                label="",
-                color="#cccccc",
-                dir="none"
-            )
-        return g
-
-
 class ERDiagramSynthesizer(BaseMetadataSynthesizer):
-    def run(self, db_connector):
+    def run(self, db_connector) -> ERDiagram:
         schema = db_connector.schema
 
         suffixes = "id|key|code|number|no|ref"
@@ -101,7 +52,7 @@ class ERDiagramSynthesizer(BaseMetadataSynthesizer):
                             )
                         if candidates:
                             erd.relations.append(
-                                Relation(
+                                ERDiagramRelation(
                                     from_table=from_table.name,
                                     from_column=from_column.name,
                                     to_table=to_table.name,
@@ -116,20 +67,21 @@ if __name__ == "__main__":
     import time
     from mintq.schema_formatter import get_schema_formatter
     from mintq.db_connector.snowflake_conn import SnowflakeConnector
+    from mintq.visualization import er_diagram_to_graphviz  
     import os
 
     t0 = time.time()
-    # connector = SnowflakeConnector(
-    #     "AIRLINES",
-    #     os.environ["SF_USER"],
-    #     os.environ["SF_PASSWORD"],
-    #     os.environ["SF_ACCOUNT"],
-    #     "AIRLINES",
-    # )
+    connector = SnowflakeConnector(
+        "ADVENTUREWORKS",
+        os.environ["SF_USER"],
+        os.environ["SF_PASSWORD"],
+        os.environ["SF_ACCOUNT"],
+        "ADVENTUREWORKS",
+    )
     synthesizer = ERDiagramSynthesizer()
-    erd = synthesizer.run(None)
+    erd = synthesizer.run(connector)
     print(json.dumps(erd.model_dump(), indent=2))
     print(f"Time taken: {time.time() - t0} seconds")
 
-    g = erd.to_graphviz()
+    g = er_diagram_to_graphviz(erd)
     g.render("erd", format="png")
