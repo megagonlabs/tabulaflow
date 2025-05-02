@@ -2,9 +2,11 @@ import re
 import logging
 import litellm
 import jinja2
+import collections
 from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.schema_formatter import get_schema_formatter
 from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
+from mintq.utils import parse_json
 
 logger = logging.getLogger(__name__)
 
@@ -67,10 +69,11 @@ class RuleBasedERDiagramSynthesizer(BaseMetadataSynthesizer):
 
 CANDIDATE_FK_PROMPT = """
 You are a helpful assistant that synthesizes ER diagrams from a given database schema.
-Given a table, you need to determine what columns might be foreign keys.
+- Given a table, you need to determine what columns might be foreign keys.
+- If a column looks like a foreign key but its reference table is not in the database, ignore it.
 - The output should be a JSON list of dictionaries with the following keys:
-  - "column": the name of the column that might be a foreign key
-  - "reference_table": the name of the table that the foreign key references
+  - "source_column": the name of the column that might be a foreign key
+  - "target_table": the name of the table that the foreign key references
 
 === Example ===
 
@@ -93,8 +96,8 @@ Table: orders (10000 rows)
 Output:
 ```json
 [
-    {"column": "customer_id", "reference_table": "customers"},
-    {"column": "product_id", "reference_table": "products"},
+    {"source_column": "customer_id", "target_table": "customers"},
+    {"source_column": "product_id", "target_table": "products"}
 ]
 ```
 
@@ -103,18 +106,63 @@ Output:
 Database: {{db_name}}
 
 Here are the tables in the database:
-{{all_tables}}
+{{all_table_names}}
 
 Here is the schema of the selected table:
 {{table_schema}}
 
-You need to determine what columns might be foreign keys.
+Output:
+"""
+
+
+REFERENCE_COLUMN_PROMPT = """
+You are a helpful assistant that synthesizes ER diagrams from a given database schema.
+- Given a candidate foreign key column in a source table, you need to select from the target table the column that it references.
+- The output should be a list of JSON dictionaries with the following keys:
+  - "source_table": the name of the source table
+  - "source_column": the name of the source column that is a candidate foreign key
+  - "target_column": the name of the column in the target table that the foreign key references. If no reference column is found, set this to null.
+
+=== Example ===
+
+Database: ECOMMERCE
+
+Candidate Foreign Keys:
+- (Table: orders) customer_id 
+- (Table: orders) product_id 
+
+Here is the schema of the target table:
+Table: customers (10000 rows)
+  - id: VARCHAR
+  - name: VARCHAR
+  - email: VARCHAR
+
+Output:
+```json
+[
+    {"source_table": "orders", "source_column": "customer_id", "target_column": "id"},
+    {"source_table": "orders", "source_column": "product_id", "target_column": null}
+]
+```
+
+=== Your task ===
+
+Database: {{db_name}}
+
+Candidate Foreign Keys:
+{{candidate_foreign_keys}}
+
+Here is the schema of the target table:
+{{target_table}}
 
 Output:
 """
 
 
 class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
+    def __init__(self, llm: str = "openai/gpt-4o"):
+        self.llm = llm
+
     def run(self, db_connector) -> ERDiagram:
         schema = db_connector.schema
         formatter = get_schema_formatter("sql_default")
@@ -122,21 +170,63 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
         all_schema_names = [table.schema_name for table in schema.tables]
         is_multi_schema = len(set(all_schema_names)) > 1
 
-        all_tables = [
+        all_table_names = [
             f"{table.schema_name}.{table.name}" if table.schema_name and is_multi_schema else table.name
             for table in schema.tables
         ]
-        all_tables = "\n".join([f"- {table}" for table in all_tables])
+        all_table_names = "\n".join([f"- {table}" for table in all_table_names])
 
         prompts = [
             jinja2.Template(CANDIDATE_FK_PROMPT).render(
                 db_name=schema.name,
-                all_tables=all_tables,
+                all_table_names=all_table_names,
                 table_schema=formatter.format_table(table),
             )
             for table in schema.tables
         ]
-        print(prompts[0])
+        print(f"<prompt>{prompts[0]}</prompt>")
+        responses = litellm.batch_completion(
+            model=self.llm,
+            messages=[[{"role": "user", "content": prompt}] for prompt in prompts],
+            temperature=0.0,
+        )
+        print(f"<response>{responses[0]['choices'][0]['message']['content']}</response>")
+
+        reference_table_to_fks = collections.defaultdict(list)
+        for table, r in zip(schema.tables, responses):
+            for dic in parse_json(r["choices"][0]["message"]["content"]):
+                reference_table_to_fks[dic["target_table"]].append((table.name, dic["source_column"]))
+
+        prompts = []
+        for table in schema.tables:
+            candidate_fks = "\n".join([f"- (Table: {t}) {c}" for t, c in reference_table_to_fks[table.name]])
+            prompts.append(
+                jinja2.Template(REFERENCE_COLUMN_PROMPT).render(
+                    db_name=schema.name,
+                    candidate_foreign_keys=candidate_fks,
+                    target_table=formatter.format_table(table),
+                )
+            )
+        print(f"<prompt>{prompts[0]}</prompt>")
+        responses = litellm.batch_completion(
+            model=self.llm,
+            messages=[[{"role": "user", "content": prompt}] for prompt in prompts],
+            temperature=0.0,
+        )
+        print(f"<response>{responses[0]['choices'][0]['message']['content']}</response>")
+        erd = ERDiagram(db_schema=schema, relations=[])
+        for table, r in zip(schema.tables, responses):
+            for dic in parse_json(r["choices"][0]["message"]["content"]):
+                if dic["target_column"] is not None:
+                    erd.relations.append(
+                        ERDiagramRelation(
+                            from_table=dic["source_table"],
+                            from_column=dic["source_column"],
+                            to_table=table.name,
+                            to_column=dic["target_column"],
+                        )
+                    )
+        return erd
 
 
 if __name__ == "__main__":
@@ -157,7 +247,6 @@ if __name__ == "__main__":
     )
     synthesizer = LLMERDiagramSynthesizer()
     erd = synthesizer.run(connector)
-    exit(9)
     print(json.dumps(erd.model_dump(), indent=2))
     print(f"Time taken: {time.time() - t0} seconds")
 

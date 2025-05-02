@@ -5,6 +5,14 @@ import litellm
 import random
 
 
+def parse_json(response: str):
+    print(f"<response>{response}</response>")
+    lines = response.strip().split("\n")
+    if lines[0].startswith("```") and lines[-1].startswith("```"):
+        response = "\n".join(lines[1:-1])
+    return json.loads(response)
+
+
 def parse_query(response) -> str:
     if isinstance(response, dict):
         if "query" in response:
@@ -63,13 +71,9 @@ def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
     res = {}
     keys = list(all_metrics[0].keys())
     for key in keys:
-        res[key] = avg_and_round(
-            [m[key] for m in all_metrics if not math.isnan(m[key])], 2
-        )
+        res[key] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 2)
         if key in ("input_tokens", "output_tokens", "api_cost_usd"):
-            res[f"total_{key}"] = sum(
-                [m[key] for m in all_metrics if not math.isnan(m[key])]
-            )
+            res[f"total_{key}"] = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
 
     output_path = os.path.join(result_dir, f"aggregated_metrics.json")
     with open(output_path, "w") as fout:
@@ -78,18 +82,12 @@ def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
 
 
 def get_trajectory_num_steps(trajectory: list[dict]) -> int:
-    return len(
-        [msg for msg in trajectory["messages"] if msg["role"].lower() == "assistant"]
-    )
+    return len([msg for msg in trajectory["messages"] if msg["role"].lower() == "assistant"])
 
 
-def split_train_dev(
-    samples: list[dict], ratio: float = 0.9
-) -> tuple[list[dict], list[dict]]:
+def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict], list[dict]]:
     sampler = random.Random(42)
     train_indices = sampler.sample(range(len(samples)), int(len(samples) * ratio))
     train_samples = [samples[i] for i in train_indices]
-    dev_samples = [
-        samples[i] for i in range(len(samples)) if i not in set(train_indices)
-    ]
+    dev_samples = [samples[i] for i in range(len(samples)) if i not in set(train_indices)]
     return train_samples, dev_samples
