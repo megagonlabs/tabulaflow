@@ -19,12 +19,12 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         else:
             return f"{self._quote_if_needed(schema)}.{self._quote_if_needed(table)}"
 
-    def format(self, schema: SQLSchema) -> str:
+    def format(self, schema: SQLSchema, include_foreign_keys: bool = True) -> str:
         res = f"Database: {schema.name}\n"
         res += (
             f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
         )
-        if schema.foreign_keys:
+        if include_foreign_keys and schema.foreign_keys:
             res += "Foreign keys:\n"
             for fk in schema.foreign_keys:
                 res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
