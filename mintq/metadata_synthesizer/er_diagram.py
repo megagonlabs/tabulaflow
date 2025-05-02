@@ -167,19 +167,10 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
         schema = db_connector.schema
         formatter = get_schema_formatter("sql_default")
 
-        all_schema_names = [table.schema_name for table in schema.tables]
-        is_multi_schema = len(set(all_schema_names)) > 1
-
-        all_table_names = [
-            f"{table.schema_name}.{table.name}" if table.schema_name and is_multi_schema else table.name
-            for table in schema.tables
-        ]
-        all_table_names = "\n".join([f"- {table}" for table in all_table_names])
-
         prompts = [
             jinja2.Template(CANDIDATE_FK_PROMPT).render(
                 db_name=schema.name,
-                all_table_names=all_table_names,
+                all_table_names="\n".join([f"- {formatter.format_table_name(table)}" for table in schema.tables]),
                 table_schema=formatter.format_table(table),
             )
             for table in schema.tables
@@ -197,7 +188,9 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 
         prompts = []
         for table in schema.tables:
-            candidate_fks = "\n".join([f"- (Table: {t}) {c}" for t, c in reference_table_to_fks[table.name]])
+            candidate_fks = "\n".join(
+                [f"- (Table: {t}) {c}" for t, c in reference_table_to_fks[formatter.format_table_name(table)]]
+            )
             prompts.append(
                 jinja2.Template(REFERENCE_COLUMN_PROMPT).render(
                     db_name=schema.name,
@@ -235,11 +228,11 @@ if __name__ == "__main__":
 
     t0 = time.time()
     connector = SnowflakeConnector(
-        "ADVENTUREWORKS",
+        "AUSTIN",
         os.environ["SF_USER"],
         os.environ["SF_PASSWORD"],
         os.environ["SF_ACCOUNT"],
-        "ADVENTUREWORKS",
+        "AUSTIN",
     )
     synthesizer = LLMERDiagramSynthesizer()
     erd = synthesizer.run(connector)

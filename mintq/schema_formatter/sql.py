@@ -19,6 +19,9 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         else:
             return f"{self._quote_if_needed(schema)}.{self._quote_if_needed(table)}"
 
+    def format_table_name(self, table: SQLTableSchema) -> str:
+        return self._full_table_name(table.name, table.schema_name)
+
     def format(self, schema: SQLSchema, include_foreign_keys: bool = True) -> str:
         res = f"Database: {schema.name}\n"
         res += (
