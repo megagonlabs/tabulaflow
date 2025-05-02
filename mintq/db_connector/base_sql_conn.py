@@ -53,6 +53,11 @@ class BaseSQLConnector(BaseDBConnector):
                 f.write(schema.model_dump_json())
         return schema
 
+    def _convert(self, value):
+        if isinstance(value, (int, float, str, bool)):
+            return value
+        return str(value)
+
     def _init_schema(self, sqlalchemy_engine_str: str) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
@@ -69,7 +74,10 @@ class BaseSQLConnector(BaseDBConnector):
                 schema_names = inspector.get_schema_names()
 
             for schema_name in schema_names:
+                if schema_name.lower() == "information_schema":
+                    continue
                 for table_name in inspector.get_table_names(schema=schema_name):
+                    # print(f"table_name: {table_name}, schema_name: {schema_name}")
                     columns = []
                     for column in inspector.get_columns(table_name, schema=schema_name):
                         col = sqlalchemy.column(column["name"])
@@ -84,7 +92,7 @@ class BaseSQLConnector(BaseDBConnector):
                                 select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(20)
                             ).fetchall()
                         ]
-
+                        examples = [self._convert(v) for v in examples]
                         columns.append(
                             SQLColumnSchema(
                                 name=column["name"],
