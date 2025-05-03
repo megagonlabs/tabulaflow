@@ -24,9 +24,9 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 
 
 class BaseSQLConnector(BaseDBConnector):
-    def __init__(self, name: str, sqlalchemy_engine_str: str):
+    def __init__(self, name: str, sqlalchemy_engine):
         self._name = name
-        self._schema = self._load_schema_with_cache(name, sqlalchemy_engine_str)
+        self._schema = self._load_schema_with_cache(name, sqlalchemy_engine)
 
     @property
     def name(self) -> str:
@@ -36,19 +36,19 @@ class BaseSQLConnector(BaseDBConnector):
     def schema(self) -> SQLSchema:
         return self._schema
 
-    def _load_schema_with_cache(self, name: str, sqlalchemy_engine_str: str) -> SQLSchema:
+    def _load_schema_with_cache(self, name: str, engine: str) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
         schema_cache_dir = os.path.join(cache_dir, "schemas")
         os.makedirs(schema_cache_dir, exist_ok=True)
-        hashed = hashlib.sha256(sqlalchemy_engine_str.encode()).hexdigest()
+        hashed = hashlib.sha256(str(engine.url).encode()).hexdigest()
         cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
 
         if cache_enabled and os.path.exists(cache_path):
             with open(cache_path, "r") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        schema = self._init_schema(sqlalchemy_engine_str)
+        schema = self._init_schema(engine)
         if cache_enabled:
             with open(cache_path, "w") as f:
                 f.write(schema.model_dump_json(indent=2))
@@ -59,12 +59,11 @@ class BaseSQLConnector(BaseDBConnector):
             return value
         return str(value)
 
-    def _init_schema(self, sqlalchemy_engine_str: str) -> SQLSchema:
+    def _init_schema(self, engine) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
 
-        engine = create_engine(sqlalchemy_engine_str)
         inspector = inspect(engine)
 
         with engine.connect() as conn:

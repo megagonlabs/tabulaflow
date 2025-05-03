@@ -240,11 +240,11 @@ if __name__ == "__main__":
 
     t0 = time.time()
     connector = SnowflakeConnector(
-        "AUSTIN",
+        "CRYPTO",
         os.environ["SF_USER"],
         os.environ["SF_PASSWORD"],
         os.environ["SF_ACCOUNT"],
-        "AUSTIN",
+        "CRYPTO",
     )
     synthesizer = LLMERDiagramSynthesizer()
     erd = synthesizer.run(connector)
