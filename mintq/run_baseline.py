@@ -6,7 +6,7 @@ import time
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
-from mintq.utils import *
+from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics
 from mintq.schema_formatter import get_schema_formatter
 from mintq.baseline import get_nl2q_model
 from mintq.dataset import get_dataset_loader
@@ -25,8 +25,8 @@ def main():
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--local_llm_config", default="local_llm_config.json")
 
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_199")
+    parser.add_argument("--dataset", default="spider2-snow")
+    parser.add_argument("--split", default="test")
     parser.add_argument("--databases", default=None, nargs="+")
 
     parser.add_argument("--batch_size", default=50, type=int)
@@ -41,6 +41,10 @@ def main():
             parser.set_defaults(split="dev", databases=["california_schools"])
         elif args.dataset == "spider2-snow":
             parser.set_defaults(split="test", databases=["AIRLINES"])
+    if args.dataset == "spider2-snow":
+        parser.set_defaults(split="test")
+    elif args.dataset == "bird-sql":
+        parser.set_defaults(split="dev")
     args = parser.parse_args()
     print(args)
     print()
@@ -101,7 +105,7 @@ def main():
         if i == 0:
             print(f"<trajectory>{json.dumps(res[0].trajectory, indent=2)}</trajectory>")
 
-    output_path = os.path.join(args.result_dir, f"result.json")
+    output_path = os.path.join(args.result_dir, "result.json")
     with open(output_path, "w") as fout:
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
