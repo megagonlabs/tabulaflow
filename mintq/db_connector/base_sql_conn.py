@@ -74,7 +74,7 @@ class BaseSQLConnector(BaseDBConnector):
                 schema_names = inspector.get_schema_names()
 
             for schema_name in schema_names:
-                if schema_name.lower() == "information_schema":
+                if schema_name and schema_name.lower() == "information_schema":
                     continue
                 for table_name in inspector.get_table_names(schema=schema_name):
                     # print(f"table_name: {table_name}, schema_name: {schema_name}")
