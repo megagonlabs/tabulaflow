@@ -42,6 +42,11 @@ def main():
         ],
     )
     args = parser.parse_args()
+    if args.dataset == "bird-sql":
+        parser.set_defaults(split="dev")
+    elif args.dataset == "spider2-snow":
+        parser.set_defaults(split="test")
+    args = parser.parse_args()
     print(args)
     print()
 
