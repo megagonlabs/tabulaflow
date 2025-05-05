@@ -51,10 +51,11 @@ def main():
     print()
 
     result = load_nl2q_tasks(os.path.join(args.result_dir, "result.json"))
+    databases = list(dict.fromkeys([item.db for item in result]))
 
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
-    dataset = dataset_loader.get_split(args.split)
+    dataset = dataset_loader.get_split(args.split, databases=databases)
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
