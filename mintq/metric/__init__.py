@@ -1,15 +1,29 @@
-from mintq.metric.bird_sql_ex import bird_sql_ex
-from mintq.metric.bird_sql_ex_soft import bird_sql_ex_soft
-from mintq.metric.executable import executable
-from mintq.metric.gold_executable import gold_executable
-from mintq.metric.gold_not_null import gold_not_null
-from mintq.metric.gold_not_single_zero import gold_not_single_zero
+from mintq.metric.base import NL2QMetric
+from mintq.metric.bird_sql_ex import BirdSQLEx
+from mintq.metric.bird_sql_ex_soft import BirdSQLExSoft
+from mintq.metric.executable import Executable
+from mintq.metric.gold_executable import GoldExecutable
+from mintq.metric.gold_result_not_empty import GoldResultNotEmpty
 
 __all__ = [
-    "bird_sql_ex",
-    "bird_sql_ex_soft",
-    "executable",
-    "gold_executable",
-    "gold_not_null",
-    "gold_not_single_zero",
+    "BirdSQLEx",
+    "BirdSQLExSoft",
+    "Executable",
+    "GoldExecutable",
+    "GoldResultNotEmpty",
 ]
+
+
+metric_registry = {
+    "bird_sql_ex": BirdSQLEx,
+    "bird_sql_ex_soft": BirdSQLExSoft,
+    "executable": Executable,
+    "gold_executable": GoldExecutable,
+    "gold_result_not_empty": GoldResultNotEmpty,
+}
+
+
+def get_metric(name: str, **kwargs) -> NL2QMetric:
+    if name not in metric_registry:
+        raise ValueError(f"Metric {name} not found")
+    return metric_registry[name](**kwargs)

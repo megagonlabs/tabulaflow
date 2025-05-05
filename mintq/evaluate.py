@@ -6,27 +6,11 @@ import time
 from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from mintq.metric import (
-    bird_sql_ex,
-    bird_sql_ex_soft,
-    executable,
-    gold_executable,
-    gold_not_null,
-    gold_not_single_zero,
-)
 from mintq.db_connector import BaseDBConnector
 from mintq.schema import NL2QTask
 from mintq.utils import avg_and_round, load_nl2q_tasks
 from mintq.dataset import get_dataset_loader
-
-METRIC_FUNC_MAPPING = {
-    "bird_sql_ex": bird_sql_ex,
-    "bird_sql_ex_soft": bird_sql_ex_soft,
-    "executable": executable,
-    "gold_executable": gold_executable,
-    "gold_not_null": gold_not_null,
-    "gold_not_single_zero": gold_not_single_zero,
-}
+from mintq.metric import get_metric
 
 
 def compute_metrics(item: NL2QTask, metrics: list[str], db_connector: BaseDBConnector):
@@ -35,9 +19,7 @@ def compute_metrics(item: NL2QTask, metrics: list[str], db_connector: BaseDBConn
         pred_query = item.pred_query
         if pred_query.endswith("<end_of_turn>"):
             pred_query = pred_query[: -len("<end_of_turn>")].strip()
-        item.metrics[m] = METRIC_FUNC_MAPPING[m](
-            pred_query=pred_query, gold_query=item.gold_query, db_connector=db_connector
-        )
+        item.metrics[m] = get_metric(m).compute(task=item, db_connector=db_connector)
     return item
 
 
@@ -56,8 +38,7 @@ def main():
             "bird_sql_ex_soft",
             "executable",
             "gold_executable",
-            "gold_not_null",
-            "gold_not_single_zero",
+            "gold_result_not_empty",
         ],
     )
     args = parser.parse_args()

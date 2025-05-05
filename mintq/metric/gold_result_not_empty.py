@@ -1,21 +1,20 @@
 from mintq.metric.base import NL2QMetric
 from mintq.schema import SingleOutputBaseNL2QTask
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import BaseDBConnector
 
 
-class BirdSQLEx(NL2QMetric):
+class GoldResultNotEmpty(NL2QMetric):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SingleOutputBaseNL2QTask, db_connector: SQLiteConnector) -> float:
-        if task.pred_query == task.gold_query:
-            return 1.0
-
+    def compute(self, task: SingleOutputBaseNL2QTask, db_connector: BaseDBConnector) -> float:
         try:
             gold_executed = db_connector.run_query(task.gold_query, timeout=self.timeout)
-            pred_executed = db_connector.run_query(task.pred_query, timeout=self.timeout)
         except Exception as e:
             print(f"Warning: Exception {e} occurred while executing queries")
             return 0.0
 
-        return float(set(pred_executed) == set(gold_executed))
+        if len(gold_executed) == 0:
+            return 0.0
+
+        return 1.0
