@@ -1,6 +1,5 @@
 from abc import ABC
-import pandas as pd
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel
 from typing import Optional, Dict, Union, List, Any
 
 

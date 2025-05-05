@@ -31,6 +31,7 @@ class SnowflakeConnector(BaseSQLConnector):
             user=self.sf_user,
             password=self.sf_password,
             account=self.sf_account,
+            database=self.sf_database,
         ) as conn:
             cursor = conn.cursor()
             cursor.execute(query, parameters, timeout=timeout)
