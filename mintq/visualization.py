@@ -1,17 +1,20 @@
 import graphviz
+from mintq.schema_formatter import get_schema_formatter
 from mintq.schema import ERDiagram
 
 
 def er_diagram_to_graphviz(erd: ERDiagram) -> graphviz.Digraph:
     g = graphviz.Digraph()
     g.attr("node", shape="none", fontname="Courier")  # Remove outer box
-    g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5", splines="polyline")
+    g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5", splines="true")
+
+    formatter = get_schema_formatter("sql_default")
 
     for table in erd.db_schema.tables:
         # Create a table node with columns as rows
         columns_html = (
             '<TR><TD COLSPAN="2" BGCOLOR="#4f5475" ALIGN="LEFT"><FONT COLOR="white"><B>'
-            + table.name
+            + formatter.format_table_name(table)
             + "</B></FONT></TD></TR>"
         )
         for col in table.columns:
