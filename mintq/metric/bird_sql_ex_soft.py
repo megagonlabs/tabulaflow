@@ -1,24 +1,14 @@
 from itertools import combinations
 from mintq.db_connector import SQLiteConnector
 from mintq.metric.base import NL2QMetric
-from mintq.schema import SingleOutputBaseNL2QTask
+from mintq.schema import SingleOutputNL2QTask
 
 
 class BirdSQLExSoft(NL2QMetric):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SingleOutputBaseNL2QTask, db_connector: SQLiteConnector) -> float:
-        if task.pred_query == task.gold_query:
-            return 1.0
-
-        try:
-            gold_executed = db_connector.run_query(task.gold_query, timeout=self.timeout)
-            pred_executed = db_connector.run_query(task.pred_query, timeout=self.timeout)
-        except Exception as e:
-            print(f"Warning: Exception {e} occurred while executing queries")
-            return 0.0
-
+    def _compare(self, pred_executed: list[tuple], gold_executed: list[tuple]) -> float:
         if not gold_executed and not pred_executed:
             return 1.0
         elif not gold_executed or not pred_executed:
@@ -42,6 +32,24 @@ class BirdSQLExSoft(NL2QMetric):
             # If we found a matching subset, return 1.0
             if pred_subset == gold_set:
                 return 1.0
+        return 0.0
 
-        # No matching subset found
+    def compute(self, task: SingleOutputNL2QTask, db_connector: SQLiteConnector) -> float:
+        try:
+            pred_executed = db_connector.run_query(task.pred_query, timeout=self.timeout)
+        except Exception:
+            return 0.0
+
+        for gold_query in task.gold_queries:
+            if task.pred_query == gold_query:
+                return 1.0
+
+            try:
+                gold_executed = db_connector.run_query(gold_query, timeout=self.timeout)
+            except Exception as e:
+                print(f"Warning: Exception {e} occurred while executing gold queries")
+                continue
+
+            if self._compare(pred_executed, gold_executed) == 1.0:
+                return 1.0
         return 0.0

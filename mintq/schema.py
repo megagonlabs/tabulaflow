@@ -13,21 +13,21 @@ class BaseNL2QTask(BaseModel, ABC):
     metrics: Dict[str, Union[float, int]] = {}
 
 
-class SingleOutputBaseNL2QTask(BaseNL2QTask):
-    gold_query: Optional[str] = None
-    gold_exec_result: Optional[List[dict]] = None
+class SingleOutputNL2QTask(BaseNL2QTask):
+    gold_queries: List[str] = []
+    gold_exec_results: List[List[dict]] = []
     pred_query: Optional[str] = None
     trajectory: Optional[List[dict]] = None
 
 
-class MultiOutputBaseNL2QTask(BaseNL2QTask):
+class MultiOutputNL2QTask(BaseNL2QTask):
     gold_queries: List[str] = []
     gold_exec_results: List[List[dict]] = []
     pred_queries: List[str] = []
-    trajectory: Optional[List[dict]] = None
+    trajectories: List[List[dict]] = []
 
 
-NL2QTask = Union[SingleOutputBaseNL2QTask, MultiOutputBaseNL2QTask]
+NL2QTask = Union[SingleOutputNL2QTask, MultiOutputNL2QTask]
 
 
 class NL2QDataset(BaseModel):

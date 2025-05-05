@@ -5,7 +5,7 @@ import multiprocessing
 from tqdm import tqdm
 from typing import Optional
 from mintq.dataset.base import NL2QDatasetLoader
-from mintq.schema import SingleOutputBaseNL2QTask, NL2QDataset
+from mintq.schema import SingleOutputNL2QTask, NL2QDataset
 from mintq.db_connector import SQLiteConnector
 
 
@@ -43,13 +43,13 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                 continue
 
             tasks.append(
-                SingleOutputBaseNL2QTask(
+                SingleOutputNL2QTask(
                     qid=f"{self.name}_{split}_{i}",
                     language="SQLite",
                     db=item["db_id"],
                     question=item["question"],
                     evidence=item["evidence"],
-                    gold_query=item["SQL"],
+                    gold_queries=[item["SQL"]],
                 )
             )
 
