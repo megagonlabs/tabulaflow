@@ -1,5 +1,6 @@
 import os
 import snowflake.connector
+import pandas as pd
 from sqlalchemy import create_engine
 from mintq.db_connector.base_sql_conn import BaseSQLConnector
 from mintq.schema import *
@@ -35,10 +36,11 @@ class SnowflakeConnector(BaseSQLConnector):
         ) as conn:
             cursor = conn.cursor()
             cursor.execute(query, parameters, timeout=timeout)
+            results = cursor.fetchall()
             if return_df:
-                return cursor.fetch_pandas_all()
+                return pd.DataFrame(results, columns=[desc[0] for desc in cursor.description])
             else:
-                return cursor.fetchall()
+                return results
 
 
 if __name__ == "__main__":

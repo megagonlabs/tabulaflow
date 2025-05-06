@@ -22,8 +22,8 @@ def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_
 
     for i, gold in enumerate(multi_gold):
         if compare_pandas_table(pred, gold, multi_condition_cols[i], multi_ignore_order[i]):
-            return 1
-    return 0
+            return 1.0
+    return 0.0
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
@@ -37,8 +37,6 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
         ignore_order (bool, optional): _description_. Defaults to False.
 
     """
-    print("condition_cols", condition_cols)
-
     tolerance = 1e-2
 
     def vectors_match(v1, v2, tol=tolerance, ignore_order_=False):
@@ -67,10 +65,10 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
 
     t_gold_list = gold_cols.transpose().values.tolist()
     t_pred_list = pred_cols.transpose().values.tolist()
-    score = 1
+    score = 1.0
     for _, gold in enumerate(t_gold_list):
         if not any(vectors_match(gold, pred, ignore_order_=ignore_order) for pred in t_pred_list):
-            score = 0
+            score = 0.0
     return score
 
 
@@ -100,8 +98,14 @@ class Spider2Ex(NL2QMetric):
 
         if not gold_dfs:
             return 0.0
-
-        if compare_multi_pandas_table(pred_df, gold_dfs):
-            return 1.0
+        elif len(gold_dfs) == 1:
+            return compare_pandas_table(
+                pred_df,
+                gold_dfs[0],
+                task.extra_info.get("condition_cols", []),
+                task.extra_info.get("ignore_order", False),
+            )
         else:
-            return 0.0
+            return compare_multi_pandas_table(
+                pred_df, gold_dfs, task.extra_info.get("condition_cols", []), task.extra_info.get("ignore_order", False)
+            )
