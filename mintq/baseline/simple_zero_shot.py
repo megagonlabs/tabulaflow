@@ -2,6 +2,7 @@ import litellm
 import time
 import collections
 import jinja2
+import logging
 from mintq.utils import parse_query, get_llm_api_cost
 from mintq.baseline.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
@@ -33,6 +34,10 @@ LANGUAGE_INSTRUCTIONS = {
     "SnowflakeSQL": """For Snowflake SQL, the column names must be quoted with double quotes (e.g. `SELECT ORDER."product_id"`).\n"""
 }
 
+SCHEMA_MAX_CHARS = 20000
+
+logger = logging.getLogger(__name__)
+
 
 class SimpleZeroShotNL2Q(BaseNL2QModel):
     def __init__(
@@ -61,10 +66,14 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         hints = task.evidence.strip()
         if not hints:
             hints = "NO HINTS PROVIDED"
+        schema_str = self.schema_formatter.format(db_connector.schema)
+        if len(schema_str) > SCHEMA_MAX_CHARS:
+            logger.warning(f"Schema is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
+            schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
         prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,
             language_instructions=language_instructions,
-            schema=self.schema_formatter.format(db_connector.schema),
+            schema=schema_str,
             hints=hints,
             question=task.question,
         )
