@@ -36,12 +36,21 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
 
     def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split != "test":
-            raise ValueError(f"Only test split is supported for spider2-snow")
+            raise ValueError("Only test split is supported for spider2-snow")
 
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
+        # Load spider2snow_eval.jsonl
+        eval_standard_file = os.path.join(self.directory, "evaluation_suite", "gold", "spider2snow_eval.jsonl")
+        eval_standard = {}
+        with open(eval_standard_file, "r") as f:
+            for line in f:
+                item = json.loads(line)
+                qid = item.pop("instance_id")
+                eval_standard[qid] = item
+
         tasks = []
-        with open(os.path.join(self.directory, f"spider2-snow.jsonl"), "r") as f:
+        with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             for line in f:
                 item = json.loads(line)
 
@@ -64,7 +73,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                 else:
                     gold_sql = []
 
-                pattern = re.compile(rf'^{re.escape(item["instance_id"])}(_[a-z])?\.csv$')
+                pattern = re.compile(rf"^{re.escape(item['instance_id'])}(_[a-z])?\.csv$")
                 gold_exec_result_files = [file for file in all_gold_exec_result_files if re.match(pattern, file)]
                 gold_exec_results = []
                 for file in gold_exec_result_files:
@@ -80,6 +89,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                         evidence=evidence,
                         gold_queries=gold_sql,
                         gold_exec_results=gold_exec_results,
+                        extra_info=eval_standard[item["instance_id"]],
                     )
                 )
 
@@ -98,12 +108,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                 (
                     name,
                     SnowflakeConnector,
-                    {
-                        "sf_user": sf_user,
-                        "sf_password": sf_password,
-                        "sf_account": sf_account,
-                        "sf_database": name
-                    },
+                    {"sf_user": sf_user, "sf_password": sf_password, "sf_account": sf_account, "sf_database": name},
                 )
                 for name in db_names
             ]

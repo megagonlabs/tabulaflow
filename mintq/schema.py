@@ -10,6 +10,7 @@ class BaseNL2QTask(BaseModel, ABC):
     question: str
     evidence: Optional[str] = None
     metrics: Dict[str, Union[float, int]] = {}
+    extra_info: Dict[str, Any] = {}
 
 
 class SingleOutputNL2QTask(BaseNL2QTask):
