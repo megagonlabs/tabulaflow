@@ -6,7 +6,7 @@ import time
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
-from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics
+from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics, save_results
 from mintq.schema_formatter import get_schema_formatter
 from mintq.baseline import get_nl2q_model
 from mintq.dataset import get_dataset_loader
@@ -105,11 +105,7 @@ def main():
         if i == 0:
             print(f"<trajectory>{json.dumps(res[0].trajectory, indent=2)}</trajectory>")
 
-    output_path = os.path.join(args.result_dir, "result.json")
-    with open(output_path, "w") as fout:
-        json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
-    print(f"Saved result to {output_path}")
-
+    save_results(res, args.result_dir)
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
 
 

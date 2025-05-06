@@ -102,3 +102,25 @@ def load_nl2q_tasks(path: str) -> list[NL2QTask]:
         except Exception:
             continue
     raise ValueError(f"No valid NL2QTask found in {path}")
+
+
+def save_results(results: list[NL2QTask], result_dir: str):
+    if not isinstance(results[0], SingleOutputNL2QTask):
+        raise ValueError("Only single-output NL2Q tasks are supported currently")
+
+    with open(os.path.join(result_dir, "result.json"), "w") as f:
+        json.dump([task.model_dump(mode="json") for task in results], f, indent=2)
+
+    gold_sql_dir = os.path.join(result_dir, "gold_sql")
+    os.makedirs(gold_sql_dir, exist_ok=True)
+    for task in results:
+        with open(os.path.join(gold_sql_dir, f"{task.qid}.sql"), "w") as f:
+            f.write("\n\n".join(task.gold_queries) + "\n")
+
+    pred_sql_dir = os.path.join(result_dir, "pred_sql")
+    os.makedirs(pred_sql_dir, exist_ok=True)
+    for task in results:
+        with open(os.path.join(pred_sql_dir, f"{task.qid}.sql"), "w") as f:
+            f.write(task.pred_query + "\n")
+
+    print(f"Saved results to {result_dir}")
