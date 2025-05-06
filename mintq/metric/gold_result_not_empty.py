@@ -8,6 +8,15 @@ class GoldResultNotEmpty(NL2QMetric):
         self.timeout = timeout
 
     def compute(self, task: SingleOutputNL2QTask, db_connector: BaseDBConnector) -> float:
+        if not task.gold_exec_results and not task.gold_queries:
+            raise ValueError("No gold queries or gold execution results provided")
+
+        if task.gold_exec_results:
+            for exec_result in task.gold_exec_results:
+                if len(exec_result) == 0:
+                    return 0.0
+            return 1.0
+
         for gold_query in task.gold_queries:
             try:
                 gold_executed = db_connector.run_query(gold_query, timeout=self.timeout)
