@@ -4,6 +4,7 @@ from mintq.metric.bird_sql_ex_soft import BirdSQLExSoft
 from mintq.metric.executable import Executable
 from mintq.metric.gold_executable import GoldExecutable
 from mintq.metric.gold_result_not_empty import GoldResultNotEmpty
+from mintq.metric.spider2_ex import Spider2Ex
 
 __all__ = [
     "BirdSQLEx",
@@ -11,6 +12,7 @@ __all__ = [
     "Executable",
     "GoldExecutable",
     "GoldResultNotEmpty",
+    "Spider2Ex",
 ]
 
 
@@ -20,6 +22,7 @@ metric_registry = {
     "executable": Executable,
     "gold_executable": GoldExecutable,
     "gold_result_not_empty": GoldResultNotEmpty,
+    "spider2_ex": Spider2Ex,
 }
 
 

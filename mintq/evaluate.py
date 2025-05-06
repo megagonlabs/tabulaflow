@@ -34,6 +34,7 @@ def main():
         "--metrics",
         nargs="+",
         default=[
+            "spider2_ex",
             "bird_sql_ex",
             "bird_sql_ex_soft",
             "executable",
