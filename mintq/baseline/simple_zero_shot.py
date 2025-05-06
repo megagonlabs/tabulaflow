@@ -56,12 +56,11 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
     def predict(self, task, db_connector):
         t0 = time.time()
 
+        # Construct prompt
         language_instructions = LANGUAGE_INSTRUCTIONS.get(task.language, "")
         hints = task.evidence.strip()
         if not hints:
             hints = "NO HINTS PROVIDED"
-
-        # Construct prompt
         prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,
             language_instructions=language_instructions,
