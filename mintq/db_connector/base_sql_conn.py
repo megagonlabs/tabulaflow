@@ -83,13 +83,11 @@ class BaseSQLConnector(BaseDBConnector):
                         col = sqlalchemy.column(column["name"])
                         tbl = sqlalchemy.table(table_name, schema=schema_name)
 
-                        cardinality = conn.execute(
-                            select(func.count(col.distinct())).select_from(tbl).where(col.isnot(None))
-                        ).fetchone()[0]
+                        # Note: examples will contain all possible values if cardinality <= 20
                         examples = [
                             row[0]
                             for row in conn.execute(
-                                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(20)
+                                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21)
                             ).fetchall()
                         ]
                         examples = [self._convert(v) for v in examples]
@@ -97,7 +95,6 @@ class BaseSQLConnector(BaseDBConnector):
                             SQLColumnSchema(
                                 name=column["name"],
                                 dtype=column["type"].__visit_name__,
-                                cardinality=cardinality,
                                 examples=examples,
                             )
                         )

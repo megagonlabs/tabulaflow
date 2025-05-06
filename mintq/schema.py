@@ -43,7 +43,6 @@ class BaseDBSchema(BaseModel, ABC):
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
-    cardinality: int
     examples: List[Any]
 
 
