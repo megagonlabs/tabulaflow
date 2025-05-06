@@ -63,12 +63,10 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
 
         # Construct prompt
         language_instructions = LANGUAGE_INSTRUCTIONS.get(task.language, "")
-        hints = task.evidence.strip()
-        if not hints:
-            hints = "NO HINTS PROVIDED"
+        hints = task.evidence if task.evidence else "NO HINTS PROVIDED"
         schema_str = self.schema_formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
-            logger.warning(f"Schema is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
+            logger.warning(f"Schema {db_connector.db_name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
         prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,
