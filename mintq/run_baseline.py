@@ -103,7 +103,8 @@ def main():
             res += [future.result() for future in futures]
 
         if i == 0:
-            print(f"<trajectory>{json.dumps(res[0].trajectory, indent=2)}</trajectory>")
+            for msg in res[0].trajectory:
+                print(f"<{msg['role']}>{msg['content']}</{msg['role']}>")
 
     save_results(res, args.result_dir)
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
