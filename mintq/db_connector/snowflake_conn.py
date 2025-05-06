@@ -33,6 +33,7 @@ class SnowflakeConnector(BaseSQLConnector):
             password=self.sf_password,
             account=self.sf_account,
             database=self.sf_database,
+            disable_ocsp_checks=True,
         ) as conn:
             cursor = conn.cursor()
             cursor.execute(query, parameters, timeout=timeout)
