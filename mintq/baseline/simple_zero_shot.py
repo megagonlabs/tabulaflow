@@ -30,7 +30,7 @@ Hints:
 """.strip()
 
 LANGUAGE_INSTRUCTIONS = {
-    "SnowflakeSQL": "For Snowflake SQL, the column names must be quoted with double quotes if they are not all uppercase.\n"
+    "SnowflakeSQL": """For Snowflake SQL, the column names must be quoted with double quotes (e.g. `SELECT ORDER."product_id"`).\n"""
 }
 
 
