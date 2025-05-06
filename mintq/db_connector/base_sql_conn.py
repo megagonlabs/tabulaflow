@@ -96,7 +96,7 @@ class BaseSQLConnector(BaseDBConnector):
                         columns.append(
                             SQLColumnSchema(
                                 name=column["name"],
-                                type=column["type"].__class__.__name__,
+                                dtype=column["type"].__class__.__name__,
                                 cardinality=cardinality,
                                 examples=examples,
                             )

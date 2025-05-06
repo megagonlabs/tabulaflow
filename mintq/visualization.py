@@ -19,7 +19,7 @@ def er_diagram_to_graphviz(erd: ERDiagram) -> graphviz.Digraph:
         )
         for col in table.columns:
             columns_html += f'<TR><TD PORT="{col.name}-name" ALIGN="LEFT" BGCOLOR="#eeeeee"><FONT COLOR="#2b2b2b">{col.name}</FONT></TD>"\
-            "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT POINT-SIZE="10" COLOR="#888888">{col.type}</FONT></TD></TR>'
+            "<TD PORT="{col.name}-type" ALIGN="RIGHT" BGCOLOR="#eeeeee"><FONT POINT-SIZE="10" COLOR="#888888">{col.dtype}</FONT></TD></TR>'
 
         # Create HTML table for the node
         table_html = f"""<

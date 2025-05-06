@@ -42,7 +42,7 @@ class BaseDBSchema(BaseModel, ABC):
 
 class SQLColumnSchema(BaseModel):
     name: str
-    type: str
+    dtype: str
     cardinality: int
     examples: List[Any]
 

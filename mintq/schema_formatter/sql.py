@@ -43,9 +43,9 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         return res
 
     def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str:
-        res = f"- {self._quote_if_needed(column.name)}: {column.type}"
+        res = f"- {self._quote_if_needed(column.name)}: {column.dtype}"
         is_categorical = (
-            column.type == "TEXT" and 0 < column.cardinality <= 10 and column.cardinality / table.num_rows < 0.01
+            column.dtype == "TEXT" and 0 < column.cardinality <= 10 and column.cardinality / table.num_rows < 0.01
         )
         if is_categorical:  # show all possible values
             res += " (Allowed values: {" + ", ".join([self._quote(v) for v in column.examples]) + "})"
