@@ -26,7 +26,7 @@ class SnowflakeConnector(BaseSQLConnector):
         self.sf_account = sf_account
         self.sf_database = sf_database
 
-    def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
+    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
         with snowflake.connector.connect(
             user=self.sf_user,
             password=self.sf_password,
@@ -35,7 +35,10 @@ class SnowflakeConnector(BaseSQLConnector):
         ) as conn:
             cursor = conn.cursor()
             cursor.execute(query, parameters, timeout=timeout)
-            return cursor.fetchall()
+            if return_df:
+                return cursor.fetch_pandas_all()
+            else:
+                return cursor.fetchall()
 
 
 if __name__ == "__main__":

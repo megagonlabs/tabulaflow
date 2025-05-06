@@ -1,6 +1,7 @@
 import sqlalchemy
 from sqlalchemy import create_engine, inspect, select, func
 import sqlite3
+import pandas as pd
 from func_timeout import func_timeout, FunctionTimedOut
 from mintq.db_connector.base_sql_conn import BaseSQLConnector
 from mintq.schema import *
@@ -11,16 +12,18 @@ class SQLiteConnector(BaseSQLConnector):
         super().__init__(name, create_engine(f"sqlite:///{sqlite_db_path}"))
         self.sqlite_db_path = sqlite_db_path
 
-    def _run_query_without_timeout(self, query: str, parameters=()) -> list:
+    def _run_query_without_timeout(self, query: str, parameters=(), return_df: bool = False) -> list:
         with sqlite3.connect(self.sqlite_db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, parameters)
-            result = cursor.fetchall()
-        return result
+            if return_df:
+                return pd.read_sql_query(query, conn, params=parameters)
+            else:
+                cursor = conn.cursor()
+                cursor.execute(query, parameters)
+                return cursor.fetchall()
 
-    def run_query(self, query: str, parameters=(), timeout: int = 30) -> list:
+    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
         try:
-            return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters))
+            return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
         except FunctionTimedOut:
             raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
         except Exception as e:
