@@ -1,44 +1,37 @@
 import litellm
 import time
 import collections
-from mintq.utils import *
+import jinja2
+from mintq.utils import parse_query, get_llm_api_cost
 from mintq.baseline.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
 
 NL2Q_PROMPT = """
-Translate the following natural language question into a {language} query.
+Translate the following natural language question into a {{language}} query.
 - The query must follow the database schema.
-- You must use the hints to generate the query.
-- You must use the 【Foreign keys】 section in the database schema to connect the tables.
+- You must utilize the hints if provided.
 - Output the query only, without any additional explanation.
 - Do not include additional columns that are not required by the question.
   - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
   - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
-  - Example:
-    Table: student
-    [
-    (id:TEXT, Primary Key, Example: 1),
-    (name:TEXT, Examples: [John]),
-    (score:INTEGER, Examples: [100, 95, 90]),
-    ]
-    Question: What is the highest score?
-    Query: SELECT MAX(score) FROM student
-
-    Question: What is the student with the highest score?
-    Query: SELECT name FROM student WHERE score = (SELECT MAX(score) FROM student)
-
+  - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
+{{language_instructions}}
 === Your task ===
 
 Database Schema:
-{schema}
+{{schema}}
 
-Question: {question}
+Question: {{question}}
 
 Hints:
-{evidence}
+{{hints}}
 
-Query:
+{{language}} Query:
 """.strip()
+
+LANGUAGE_INSTRUCTIONS = {
+    "SnowflakeSQL": "For Snowflake SQL, the column names must be quoted with double quotes if they are not all uppercase.\n"
+}
 
 
 class SimpleZeroShotNL2Q(BaseNL2QModel):
@@ -63,11 +56,17 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
     def predict(self, task, db_connector):
         t0 = time.time()
 
+        language_instructions = LANGUAGE_INSTRUCTIONS.get(task.language, "")
+        hints = task.evidence.strip()
+        if not hints:
+            hints = "NO HINTS PROVIDED"
+
         # Construct prompt
-        prompt = NL2Q_PROMPT.format(
+        prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,
+            language_instructions=language_instructions,
             schema=self.schema_formatter.format(db_connector.schema),
-            evidence=task.evidence,
+            hints=hints,
             question=task.question,
         )
 
