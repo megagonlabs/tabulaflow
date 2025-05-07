@@ -75,6 +75,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
 
                 pattern = re.compile(rf"^{re.escape(item['instance_id'])}(_[a-z])?\.csv$")
                 gold_exec_result_files = [file for file in all_gold_exec_result_files if re.match(pattern, file)]
+                gold_exec_result_files = sorted(gold_exec_result_files)  # must load from a to z
                 gold_exec_results = []
                 for file in gold_exec_result_files:
                     with open(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result", file), "r") as f:
