@@ -34,7 +34,7 @@ LANGUAGE_INSTRUCTIONS = {
     "SnowflakeSQL": """For Snowflake SQL, the column names must be quoted with double quotes (e.g. `SELECT ORDER."product_id"`).\n"""
 }
 
-SCHEMA_MAX_CHARS = 20000
+SCHEMA_MAX_CHARS = 128000
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +66,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         hints = task.evidence if task.evidence else "NO HINTS PROVIDED"
         schema_str = self.schema_formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
-            logger.warning(f"Schema {db_connector.db_name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
+            logger.warning(f"Schema {db_connector.name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
         prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,
