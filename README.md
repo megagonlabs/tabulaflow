@@ -37,6 +37,24 @@ mintq
 
 ## Dataset setup
 
+### BIRD-SQL
+
+Download the BIRD-SQL dataset from [here](https://bird-bench.github.io/).
+
+The dataset should be stored in the `data/bird-sql` directory and organized as follows:
+
+```
+data/
+├── BIRD-SQL/
+│   ├── train/
+│   |   └── ...
+│   └── dev_20240627/
+│       ├── dev_databases/
+│       ├── dev.json
+│       └── ...
+└── ...
+```
+
 ### Beaver
 
 Download the Beaver dataset from [here](https://github.com/peterbaile/beaver).
