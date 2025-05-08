@@ -59,9 +59,12 @@ data/
 └── ...
 ```
 
-Run the following command to start a MySQL server:
+Run the following command to start the MySQL databases:
 
 ```bash
 docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/dw:/docker-entrypoint-initdb.d mysql:8.0
+```
+
+```bash
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0
 ```
