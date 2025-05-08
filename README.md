@@ -34,3 +34,34 @@ mintq
 ├── run_baseline.py         # entry point to run the baseline methods
 └── evaluate.py             # script to evaluate the results
 ```
+
+## Dataset setup
+
+### Beaver
+
+Download the Beaver dataset from [here](https://github.com/peterbaile/beaver).
+
+The dataset should be stored in the `data/beaver` directory and organized as follows:
+
+```
+data/
+├── beaver/
+│   ├── dw/
+│   │   └── new_dw_indexed.sql
+│   ├── nw/
+│   │   ├── keystone.sql
+│   │   ├── csail_stata_neutron.sql
+│   │   └── ...
+│   ├── dev_dw.json
+│   ├── dev_nw.json
+│   ├── test_dw.json
+│   └── test_nw.json
+└── ...
+```
+
+Run the following command to start a MySQL server:
+
+```bash
+docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/dw:/docker-entrypoint-initdb.d mysql:8.0
+docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0
+```
