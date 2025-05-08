@@ -1,9 +1,9 @@
-from abc import ABC, abstractmethod
 import os
-import json
+import pandas as pd
 import hashlib
 import sqlalchemy
 from sqlalchemy import create_engine, inspect, func, select
+from func_timeout import func_timeout, FunctionTimedOut
 from mintq.db_connector.base import BaseDBConnector
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
@@ -23,10 +23,16 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 #     return col_type.__name__
 
 
-class BaseSQLConnector(BaseDBConnector):
+class GenericSQLConnector(BaseDBConnector):
     def __init__(self, name: str, sqlalchemy_engine):
         self._name = name
         self._schema = self._load_schema_with_cache(name, sqlalchemy_engine)
+        self._engine = sqlalchemy_engine
+
+    @classmethod
+    def from_url(cls, name: str, url: str, **engine_kwargs):
+        engine = create_engine(url, **engine_kwargs)
+        return cls(name, engine)
 
     @property
     def name(self) -> str:
@@ -36,7 +42,7 @@ class BaseSQLConnector(BaseDBConnector):
     def schema(self) -> SQLSchema:
         return self._schema
 
-    def _load_schema_with_cache(self, name: str, engine: str) -> SQLSchema:
+    def _load_schema_with_cache(self, name: str, engine) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
         schema_cache_dir = os.path.join(cache_dir, "schemas")
@@ -124,3 +130,15 @@ class BaseSQLConnector(BaseDBConnector):
                     )
 
         return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
+
+    def _run_query_without_timeout(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
+        with self._engine.connect() as conn:
+            if return_df:
+                return pd.read_sql_query(sqlalchemy.text(query), conn, params=parameters)
+            return conn.execute(sqlalchemy.text(query), parameters, timeout=timeout).fetchall()
+
+    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
+        try:
+            return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
+        except FunctionTimedOut:
+            raise TimeoutError(f"Query {query} timed out after {timeout} seconds")

@@ -2,11 +2,10 @@ import os
 import snowflake.connector
 import pandas as pd
 from sqlalchemy import create_engine
-from mintq.db_connector.base_sql_conn import BaseSQLConnector
-from mintq.schema import *
+from mintq.db_connector.sql_conn import GenericSQLConnector
 
 
-class SnowflakeConnector(BaseSQLConnector):
+class SnowflakeConnector(GenericSQLConnector):
     def __init__(
         self,
         name: str,

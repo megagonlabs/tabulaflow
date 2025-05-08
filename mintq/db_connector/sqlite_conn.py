@@ -1,13 +1,11 @@
-import sqlalchemy
-from sqlalchemy import create_engine, inspect, select, func
+from sqlalchemy import create_engine
 import sqlite3
 import pandas as pd
 from func_timeout import func_timeout, FunctionTimedOut
-from mintq.db_connector.base_sql_conn import BaseSQLConnector
-from mintq.schema import *
+from mintq.db_connector.sql_conn import GenericSQLConnector
 
 
-class SQLiteConnector(BaseSQLConnector):
+class SQLiteConnector(GenericSQLConnector):
     def __init__(self, name: str, sqlite_db_path: str):
         super().__init__(name, create_engine(f"sqlite:///{sqlite_db_path}"))
         self.sqlite_db_path = sqlite_db_path
