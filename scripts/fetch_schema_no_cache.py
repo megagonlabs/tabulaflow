@@ -1,0 +1,28 @@
+import argparse
+import os
+from mintq.dataset import get_dataset_loader
+
+
+os.environ["MINTQ_CACHE_ENABLED"] = "0"
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="beaver")
+    parser.add_argument("--split", default="dev")
+    parser.add_argument("--database", default="keystone")
+    args = parser.parse_args()
+    print(args)
+    print()
+
+    dataset_loader = get_dataset_loader(args.dataset)
+    dataset = dataset_loader.get_split(args.split, databases=[args.database])
+    schema = dataset.db_connectors[args.database].schema
+    print(schema.model_dump_json(indent=2))
+
+    tables = [table.name for table in schema.tables]
+    print(f"Tables: {tables}")
+
+
+if __name__ == "__main__":
+    main()
