@@ -2,11 +2,12 @@ import os
 import json
 import random
 from concurrent.futures import ThreadPoolExecutor
+from sqlalchemy import create_engine
 from tqdm import tqdm
 from typing import Optional
 from mintq.dataset.base import NL2QDatasetLoader
 from mintq.schema import SingleOutputNL2QTask, NL2QDataset
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import GenericSQLConnector
 
 
 def create_connector(args):
@@ -14,11 +15,11 @@ def create_connector(args):
     return conn_cls(name, **kwargs)
 
 
-class BirdSQLDatasetLoader(NL2QDatasetLoader):
+class BeaverDatasetLoader(NL2QDatasetLoader):
     def __init__(
         self,
-        name: str = "bird-sql",
-        directory: str = "data/BIRD-SQL",
+        name: str = "beaver",
+        directory: str = "data/beaver",
         num_threads: int = 16,
     ):
         self.name = name
@@ -27,43 +28,43 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
         self._data = {}
 
     def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
-        if split == "train":
-            directory = os.path.join(self.directory, "train")
-        elif split == "dev":
-            directory = os.path.join(self.directory, "dev_20240627")
-        else:
-            raise ValueError(f"Split {split} not supported")
+        if split != "dev":
+            raise ValueError("Only dev split is supported for beaver")
 
+        engines = {}
         tasks = []
-        with open(os.path.join(directory, f"{split}.json"), "r") as f:
-            data = json.load(f)
+        for file, port in [("dev_dw.json", 3311), ("dev_nw.json", 3312)]:
+            with open(os.path.join(self.directory, file), "r") as f:
+                data = json.load(f)
 
-        for i, item in enumerate(data):
-            if databases and item["db_id"] not in databases:
-                continue
+            for i, item in enumerate(data):
+                if databases and item["db_id"] not in databases:
+                    continue
 
-            tasks.append(
-                SingleOutputNL2QTask(
-                    qid=f"{self.name}_{split}_{i}",
-                    language="SQLite",
-                    db=item["db_id"],
-                    question=item["question"],
-                    evidence=item["evidence"],
-                    gold_queries=[item["SQL"]],
+                tasks.append(
+                    SingleOutputNL2QTask(
+                        qid=f"{self.name}_{split}_{i}",
+                        language="MySQL",
+                        db=item["db_id"],
+                        question=item["question"],
+                        evidence=None,
+                        gold_queries=[item["sql"]],
+                    )
                 )
-            )
 
-        db_names = list(dict.fromkeys([task.db for task in tasks]))
+                if item["db_id"] not in engines:
+                    engines[item["db_id"]] = create_engine(
+                        f"mysql+pymysql://root:root@localhost:{port}/{item['db_id']}"
+                    )
 
-        db_dir = os.path.join(directory, f"{split}_databases")
         with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             connector_args = [
                 (
                     name,
-                    SQLiteConnector,
-                    {"sqlite_db_path": os.path.join(db_dir, name, f"{name}.sqlite")},
+                    GenericSQLConnector,
+                    {"sqlalchemy_engine": engine},
                 )
-                for name in db_names
+                for name, engine in engines.items()
             ]
             db_connectors = list(
                 tqdm(

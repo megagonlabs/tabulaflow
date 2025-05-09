@@ -2,7 +2,7 @@ import os
 import json
 import re
 import random
-import multiprocessing
+from concurrent.futures import ThreadPoolExecutor
 from typing import Optional
 import pandas as pd
 from tqdm import tqdm
@@ -21,14 +21,14 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         self,
         name: str = "spider2-snow",
         directory: str = "data/Spider2/spider2-snow",
-        num_processes: int = 16,
+        num_threads: int = 16,
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
     ):
         self.name = name
         self.directory = directory
-        self.num_processes = num_processes
+        self.num_threads = num_threads
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
@@ -104,7 +104,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         if sf_account is None:
             sf_account = os.environ.get("SF_ACCOUNT")
 
-        with multiprocessing.Pool(processes=self.num_processes) as pool:
+        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
             connector_args = [
                 (
                     name,
@@ -115,7 +115,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
             ]
             db_connectors = list(
                 tqdm(
-                    pool.imap(create_connector, connector_args),
+                    executor.map(create_connector, connector_args),
                     total=len(connector_args),
                     desc="Creating database connectors",
                 )

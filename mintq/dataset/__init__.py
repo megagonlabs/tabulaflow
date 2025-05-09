@@ -1,13 +1,15 @@
 from mintq.dataset.base import NL2QDatasetLoader, NL2QDataset
 from mintq.dataset.bird_sql import BirdSQLDatasetLoader
 from mintq.dataset.spider2 import Spider2SnowDatasetLoader
+from mintq.dataset.beaver import BeaverDatasetLoader
 
-__all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader"]
+__all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader", "BeaverDatasetLoader"]
 
 
 dataset_loader_registry = {
     "bird-sql": BirdSQLDatasetLoader,
     "spider2-snow": Spider2SnowDatasetLoader,
+    "beaver": BeaverDatasetLoader,
 }
 
 
