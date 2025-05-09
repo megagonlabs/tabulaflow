@@ -131,11 +131,11 @@ class GenericSQLConnector(BaseDBConnector):
 
         return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
 
-    def _run_query_without_timeout(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
+    def _run_query_without_timeout(self, query: str, parameters=(), return_df: bool = False) -> list:
         with self._engine.connect() as conn:
             if return_df:
                 return pd.read_sql_query(sqlalchemy.text(query), conn, params=parameters)
-            return conn.execute(sqlalchemy.text(query), parameters, timeout=timeout).fetchall()
+            return conn.execute(sqlalchemy.text(query), parameters).fetchall()
 
     def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
         try:
