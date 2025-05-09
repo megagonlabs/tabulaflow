@@ -67,7 +67,7 @@ export SF_PASSWORD="your_password"
 export SF_ACCOUNT="RSRSBDK-YDB67606"
 ```
 
-Next, clone the Spider2 repository under the `data/` directory:
+Next, clone the Spider2 repository and save it as `data/Spider2`:
 
 ```bash
 git clone https://github.com/xlang-ai/Spider2.git data/Spider2
