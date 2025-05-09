@@ -57,6 +57,22 @@ data/
 
 ### Spider 2.0
 
+First, follow the guidelines [here](https://github.com/xlang-ai/Spider2/blob/main/assets/Snowflake_Guideline.md) to request a Snowflake account.
+
+Configure the credentials using environment variables:
+
+```bash
+export SF_USER="your_username"
+export SF_PASSWORD="your_password"
+export SF_ACCOUNT="RSRSBDK-YDB67606"
+```
+
+Next, clone the Spider2 repository under the `data/` directory:
+
+```bash
+git clone https://github.com/xlang-ai/Spider2.git data/Spider2
+```
+
 ### Beaver
 
 Download the Beaver dataset from [here](https://github.com/peterbaile/beaver).
