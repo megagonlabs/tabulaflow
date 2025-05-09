@@ -24,8 +24,6 @@ class SQLiteConnector(GenericSQLConnector):
             return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
         except FunctionTimedOut:
             raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
-        except Exception as e:
-            raise
 
 
 if __name__ == "__main__":
