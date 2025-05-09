@@ -26,7 +26,7 @@ def main():
     parser.add_argument("--local_llm_config", default="local_llm_config.json")
 
     parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="test")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
 
     parser.add_argument("--batch_size", default=50, type=int)
@@ -38,13 +38,9 @@ def main():
     if args.debug:
         parser.set_defaults(batch_size=1, overwrite=True, result_dir="output/test/", split="dev")
         if args.dataset == "bird-sql":
-            parser.set_defaults(split="dev", databases=["california_schools"])
+            parser.set_defaults(databases=["california_schools"])
         elif args.dataset == "spider2-snow":
-            parser.set_defaults(split="test", databases=["AIRLINES"])
-    if args.dataset == "spider2-snow":
-        parser.set_defaults(split="test")
-    elif args.dataset == "bird-sql":
-        parser.set_defaults(split="dev")
+            parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
     print(args)
     print()

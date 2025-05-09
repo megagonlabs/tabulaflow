@@ -6,7 +6,7 @@ from mintq.dataset import get_dataset_loader
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="test")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
     args = parser.parse_args()
     print(args)
