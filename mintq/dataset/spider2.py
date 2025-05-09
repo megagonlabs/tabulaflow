@@ -35,8 +35,8 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         self._data = {}
 
     def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
-        if split != "test":
-            raise ValueError("Only test split is supported for spider2-snow")
+        if split != "dev":
+            raise ValueError("Only dev split is supported for spider2-snow")
 
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
