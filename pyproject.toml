@@ -16,6 +16,7 @@ dependencies = [
     "litellm>=1.67.4.post1",
     "pandas>=2.2.3",
     "pydantic>=2.11.3",
+    "pymysql>=1.1.1",
     "smolagents>=1.14.0",
     "snowflake-connector-python>=3.14.1",
     "snowflake-sqlalchemy>=1.7.3",
