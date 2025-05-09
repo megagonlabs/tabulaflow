@@ -45,10 +45,14 @@ class GenericSQLConnector(BaseDBConnector):
     def _load_schema_with_cache(self, name: str, engine) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
+        cache_refresh = os.getenv("MINTQ_CACHE_REFRESH", "0") == "1"
         schema_cache_dir = os.path.join(cache_dir, "schemas")
         os.makedirs(schema_cache_dir, exist_ok=True)
         hashed = hashlib.sha256(str(engine.url).encode()).hexdigest()
         cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
+
+        if cache_refresh and os.path.exists(cache_path):
+            os.remove(cache_path)
 
         if cache_enabled and os.path.exists(cache_path):
             with open(cache_path, "r") as f:
@@ -74,7 +78,7 @@ class GenericSQLConnector(BaseDBConnector):
 
         with engine.connect() as conn:
             # if sqlite, there is no schema
-            if engine.dialect.name == "sqlite":
+            if engine.dialect.name in ("sqlite", "mysql"):
                 schema_names = [None]
             else:
                 schema_names = inspector.get_schema_names()
