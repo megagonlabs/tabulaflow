@@ -26,7 +26,7 @@ def compute_metrics(item: NL2QTask, metrics: list[str], db_connector: BaseDBConn
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="test")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--evaluate_on_intersection", action="store_true")
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--num_threads", type=int, default=8)
@@ -42,11 +42,6 @@ def main():
             "gold_result_not_empty",
         ],
     )
-    args = parser.parse_args()
-    if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev")
-    elif args.dataset == "spider2-snow":
-        parser.set_defaults(split="test")
     args = parser.parse_args()
     print(args)
     print()
