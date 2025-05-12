@@ -37,6 +37,14 @@ mintq
 
 ## Dataset setup
 
+Currently, the following datasets are supported:
+
+| Dataset | Key | Splits |
+|---------|-----|------------------|
+| BIRD-SQL | `bird-sql` | `train`, `dev` |
+| Spider 2.0-snow | `spider2-snow` | `dev`|
+| Beaver | `beaver` | `dev` |
+
 ### BIRD-SQL
 
 Download the BIRD-SQL dataset from [here](https://bird-bench.github.io/).
