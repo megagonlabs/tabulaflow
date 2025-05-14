@@ -138,7 +138,7 @@ def search_keywords(ctx: RunContext[Dependencies], table: str, column: str, keyw
     return res
 
 
-class SQLAgentV1(BaseNL2QModel):
+class SQLAgentTableNamesOnly(BaseNL2QModel):
     def __init__(
         self, llm: str, schema_formatter: BaseSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
     ):
