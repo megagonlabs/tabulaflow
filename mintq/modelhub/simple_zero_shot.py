@@ -4,7 +4,7 @@ import collections
 import jinja2
 import logging
 from mintq.utils import parse_query, get_llm_api_cost
-from mintq.baseline.base import BaseNL2QModel
+from mintq.modelhub.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
 
 NL2Q_PROMPT = """

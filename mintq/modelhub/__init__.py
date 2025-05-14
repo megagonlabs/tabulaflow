@@ -1,6 +1,6 @@
-from mintq.baseline.simple_zero_shot import SimpleZeroShotNL2Q
-from mintq.baseline.base import BaseNL2QModel
-from mintq.baseline.sql_agent_v1.agent import SQLAgentV1
+from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
+from mintq.modelhub.base import BaseNL2QModel
+from mintq.modelhub.sql_agent_v1.agent import SQLAgentV1
 
 nl2q_model_registry = {
     "simple_zero_shot": SimpleZeroShotNL2Q,

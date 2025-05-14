@@ -8,7 +8,7 @@ from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics, save_results
 from mintq.schema_formatter import get_schema_formatter
-from mintq.baseline import get_nl2q_model
+from mintq.modelhub import get_nl2q_model
 from mintq.dataset import get_dataset_loader
 
 

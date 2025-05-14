@@ -6,7 +6,7 @@ from smolagents.monitoring import LogLevel
 from mintq.utils import truncate_content, is_null_result
 from mintq.schema import BaseNL2QTask
 from mintq.schema_formatter import BaseSchemaFormatter
-from mintq.baseline.base import SmolagentsNL2QAgent
+from mintq.modelhub.base import SmolagentsNL2QAgent
 from mintq.db_connector import BaseDBConnector
 
 

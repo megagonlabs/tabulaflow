@@ -22,7 +22,7 @@ from mintq.utils import (
     save_aggregated_inference_metrics,
 )
 from mintq.db_connector import get_db_connectors
-from mintq.baseline.nl2q_tool_agent import AGENT_MAPPINGS
+from mintq.modelhub.nl2q_tool_agent import AGENT_MAPPINGS
 from mintq.metric import bird_sql_ex
 from mintq.patch_smolagents import smolagents_use_tool_format
 
