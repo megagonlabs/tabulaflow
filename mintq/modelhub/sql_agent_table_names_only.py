@@ -15,7 +15,7 @@ from mintq.utils import parse_query
 
 
 @dataclass
-class Dependencies:
+class TaskContext:
     task: SingleOutputNL2QTask
     db_connector: BaseDBConnector
     formatter: BaseSchemaFormatter
@@ -58,7 +58,7 @@ Now, translate the above question into a {{language}} query.
 """.strip()
 
 
-def get_system_prompt(ctx: RunContext[Dependencies]) -> str:
+def get_system_prompt(ctx: RunContext[TaskContext]) -> str:
     return jinja2.Template(SYSTEM_PROMPT).render(language=ctx.deps.task.language)
 
 
@@ -68,7 +68,7 @@ def truncate(s: str, max_chars: int) -> str:
     return s[: max_chars // 2] + "\n...content truncated...\n" + s[-max_chars // 2 :]
 
 
-def run_query(ctx: RunContext[Dependencies], query: str) -> str:
+def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     Execute a SQL query and return the results.
 
@@ -87,7 +87,7 @@ def run_query(ctx: RunContext[Dependencies], query: str) -> str:
     return exec_results
 
 
-def list_columns(ctx: RunContext[Dependencies], table: str) -> str:
+def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     """
     List the columns of a table.
 
@@ -103,7 +103,7 @@ def list_columns(ctx: RunContext[Dependencies], table: str) -> str:
     return "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
 
 
-def search_keywords(ctx: RunContext[Dependencies], table: str, column: str, keywords: list[str]) -> str:
+def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
     """
     Search for values in a column of a table that match any of the keywords.
 
@@ -147,7 +147,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         self.agent = Agent(
             get_pydantic_ai_llm(llm),
             tools=[Tool(run_query), Tool(list_columns), Tool(search_keywords)],
-            deps_type=Dependencies,
+            deps_type=TaskContext,
             instructions=get_system_prompt,
         )
         self.formatter = schema_formatter
@@ -168,7 +168,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
 
         # Construct dependencies
         table_id_to_schema = {self.formatter.format_table_name(table): table for table in db_connector.schema.tables}
-        deps = Dependencies(
+        deps = TaskContext(
             task=task,
             db_connector=db_connector,
             formatter=self.formatter,
