@@ -15,9 +15,8 @@ from mintq.dataset import get_dataset_loader
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--baseline",
-        default="simple_zero_shot",
-        choices=["simple_zero_shot", "sql_agent_v1"],
+        "--model",
+        default="simple_zero_shot"
     )
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
@@ -85,7 +84,7 @@ def main():
         j = min(i + args.batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
-        nl2q_models = [get_nl2q_model(args.baseline, **nl2q_kwargs) for _ in batch]
+        nl2q_models = [get_nl2q_model(args.model, **nl2q_kwargs) for _ in batch]
 
         with ThreadPoolExecutor(max_workers=len(batch)) as executor:
             futures = [
