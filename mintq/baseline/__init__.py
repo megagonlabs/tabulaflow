@@ -1,10 +1,10 @@
 from mintq.baseline.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.baseline.base import BaseNL2QModel
-from mintq.baseline.tool_agent import ToolAgentNL2Q
+from mintq.baseline.sql_agent_v1.agent import SQLAgentV1
 
 nl2q_model_registry = {
     "simple_zero_shot": SimpleZeroShotNL2Q,
-    "tool_agent": ToolAgentNL2Q,
+    "sql_agent_v1": SQLAgentV1,
 }
 
 
@@ -14,4 +14,4 @@ def get_nl2q_model(name: str, **kwargs) -> BaseNL2QModel:
     return nl2q_model_registry[name](**kwargs)
 
 
-__all__ = ["get_nl2q_model", "BaseNL2QModel", "SimpleZeroShotNL2Q", "ToolAgentNL2Q"]
+__all__ = ["get_nl2q_model", "BaseNL2QModel", "SimpleZeroShotNL2Q", "SQLAgentV1"]

@@ -17,7 +17,7 @@ def main():
     parser.add_argument(
         "--baseline",
         default="simple_zero_shot",
-        choices=["simple_zero_shot", "tool_agent"],
+        choices=["simple_zero_shot", "sql_agent_v1"],
     )
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
@@ -59,16 +59,16 @@ def main():
     if get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
-    litellm_kwargs = {}
-    if args.llm.startswith("hosted_vllm/"):
-        with open(args.local_llm_config, "r") as f:
-            litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
+    # litellm_kwargs = {}
+    # if args.llm.startswith("hosted_vllm/"):
+    #     with open(args.local_llm_config, "r") as f:
+    #         litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
     schema_formatter = get_schema_formatter(args.schema_formatter)
     nl2q_kwargs = {
         "llm": args.llm,
         "temperature": args.temperature,
         "num_candidates": args.num_majority_voting_candidates,
-        "litellm_kwargs": litellm_kwargs,
+        # "litellm_kwargs": litellm_kwargs,
         "schema_formatter": schema_formatter,
     }
     t0 = time.time()
@@ -100,7 +100,10 @@ def main():
 
         if i == 0:
             for msg in res[0].trajectory:
-                print(f"<{msg['role']}>{msg['content']}</{msg['role']}>")
+                try:
+                    print(f"<{msg['role']}>{msg['content']}</{msg['role']}>")
+                except Exception:
+                    print(f"<msg>{msg}</msg>")
 
     save_results(res, args.result_dir)
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
