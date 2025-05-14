@@ -22,17 +22,20 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
     def format_table_name(self, table: SQLTableSchema) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
-    def format(self, schema: SQLSchema, include_foreign_keys: bool = True) -> str:
+    def format(self, schema: SQLSchema, include_foreign_keys: bool = True, include_table_schemas: bool = True) -> str:
         res = f"Database: {schema.name}\n"
         res += (
             f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
         )
+
         if include_foreign_keys and schema.foreign_keys:
             res += "Foreign keys:\n"
             for fk in schema.foreign_keys:
                 res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
-        res += "\n"
-        res += "\n\n".join([self.format_table(table) for table in schema.tables])
+
+        if include_table_schemas:
+            res += "\n"
+            res += "\n\n".join([self.format_table(table) for table in schema.tables])
         return res
 
     def format_table(self, table: SQLTableSchema) -> str:

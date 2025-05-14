@@ -160,7 +160,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         task = copy.deepcopy(task)
 
         prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.formatter.format(db_connector.schema),
+            schema=self.formatter.format(db_connector.schema, include_table_schemas=False),
             hints=task.evidence,
             question=task.question,
             language=task.language,
