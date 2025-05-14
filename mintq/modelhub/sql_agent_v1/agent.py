@@ -32,6 +32,7 @@ You are a database expert responsible for translating natural language questions
   - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not fetch the score.
   - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
 - The final output should only include the SQL query, without explanation.
+- Before returning the final output, always execute the query and check if the results match the question.
 {% if language == "SnowflakeSQL" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
@@ -75,7 +76,10 @@ def run_query(ctx: RunContext[Dependencies], query: str) -> str:
         query: The SQL query to execute.
     """
     db_connector = ctx.deps.db_connector
-    exec_results = db_connector.run_query(query)
+    try:
+        exec_results = db_connector.run_query(query)
+    except Exception as e:
+        return f"(query failed: {e})"
     if not exec_results:
         return "(query executed successfully, but results are empty)"
     exec_results = "\n".join([str(row) for row in exec_results])
@@ -90,7 +94,10 @@ def list_columns(ctx: RunContext[Dependencies], table: str) -> str:
     Args:
         table: The name of the table to list the columns of. It should include the schema name if applicable.
     """
-    table_schema = ctx.deps.table_id_to_schema[table]
+    try:
+        table_schema = ctx.deps.table_id_to_schema[table]
+    except KeyError:
+        return f"(table {table} not found)"
     if not table_schema.columns:
         return f"(table {table} has no columns)"
     return "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
