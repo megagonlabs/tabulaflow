@@ -10,17 +10,17 @@ from mintq.db_connector import BaseDBConnector
 from mintq.schema import NL2QTask, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
 from mintq.dataset import get_dataset_loader
-from mintq.metric import get_metric
+from mintq.metric import get_metric, NL2QMetric
 
 
-def compute_metrics(item: NL2QTask, metrics: list[str], db_connector: BaseDBConnector):
+def compute_metrics(item: NL2QTask, metrics: list[NL2QMetric], db_connector: BaseDBConnector):
     item = copy.deepcopy(item)
     for m in metrics:
-        item.metrics[m] = get_metric(m).compute(task=item, db_connector=db_connector)
+        item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
     return item
 
 
-def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[str], num_threads: int) -> NL2QRunResult:
+def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[NL2QMetric], num_threads: int) -> NL2QRunResult:
     result = copy.deepcopy(result)
 
     # Shuffle the result to reduce concurent query execution on the same database
@@ -41,7 +41,7 @@ def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[str], nu
     tasks_with_metrics.sort(key=lambda x: qids[x.qid])
     result.tasks = tasks_with_metrics
 
-    aggregated_metrics = {m: avg_and_round([item.metrics[m] for item in tasks_with_metrics]) for m in metrics}
+    aggregated_metrics = {m.name: avg_and_round([item.metrics[m.name] for item in tasks_with_metrics]) for m in metrics}
     result.aggregated_metrics.update(aggregated_metrics)
     return result
 
@@ -76,12 +76,13 @@ def main():
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split_id} set in {time.time() - t0:.2f} seconds."
     )
 
-    result = evaluate(result, dataset, args.metrics, args.num_threads)
+    metrics = [get_metric(m) for m in args.metrics]
+    result = evaluate(result, dataset, metrics, args.num_threads)
 
     print()
     print("Aggregated metrics:")
-    for m in args.metrics:
-        print(f"- {m}: {result.aggregated_metrics[m]:.4f}")
+    for m in metrics:
+        print(f"- {m.name}: {result.aggregated_metrics[m.name]:.4f}")
 
     output_path = args.result_json.replace(".json", "_with_metrics.json")
     with open(output_path, "w") as fout:

@@ -13,6 +13,7 @@ __all__ = [
     "GoldExecutable",
     "GoldResultNotEmpty",
     "Spider2Ex",
+    "BaseNL2QMetric",
     "get_metric",
 ]
 
