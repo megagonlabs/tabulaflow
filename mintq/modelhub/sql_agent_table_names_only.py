@@ -183,7 +183,9 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
 
         usage = result.usage()
         task.metrics["latency"] = time.time() - t0
+        task.metrics["api_calls"] = usage.requests
         task.metrics["input_tokens"] = usage.request_tokens
         task.metrics["output_tokens"] = usage.response_tokens
         task.metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
+        task.metrics["steps"] = sum(1 for msg in task.trajectory.messages if msg.role == "assistant")
         return task

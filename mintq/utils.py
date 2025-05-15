@@ -32,7 +32,7 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
     keys = list(all_metrics[0].keys())
     for key in keys:
         res[f"avg_{key}"] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 4)
-        if key in ("input_tokens", "output_tokens", "api_cost_usd"):
+        if key in ("api_calls", "input_tokens", "output_tokens", "api_cost_usd"):
             summ = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
             res[f"total_{key}"] = round(summ, 4) if isinstance(summ, float) else summ
     return res
