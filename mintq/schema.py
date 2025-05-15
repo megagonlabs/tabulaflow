@@ -1,6 +1,7 @@
 from abc import ABC
+import datetime
 from pydantic import BaseModel, Field
-from typing import Optional, Dict, Union, List, Any, Literal, Annotated
+from typing import Any, Literal, Annotated, Union
 
 
 class SystemMessage(BaseModel):
@@ -16,13 +17,13 @@ class UserMessage(BaseModel):
 class ToolCall(BaseModel):
     tool_call_id: str
     name: str
-    arguments: Dict[str, Any]
+    arguments: dict[str, Any]
 
 
 class AssistantMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
     content: str
-    tool_calls: List[ToolCall]
+    tool_calls: list[ToolCall]
 
 
 class ToolResponse(BaseModel):
@@ -38,7 +39,7 @@ Message = Annotated[
 
 
 class Trajectory(BaseModel):
-    messages: List[Message]
+    messages: list[Message]
 
 
 class BaseNL2QTask(BaseModel, ABC):
@@ -47,25 +48,27 @@ class BaseNL2QTask(BaseModel, ABC):
     db: str
     question: str
     evidence: str | None = None
-    metrics: Dict[str, Union[float, int]] = {}
-    extra_info: Dict[str, Any] = {}
+    metrics: dict[str, float | int] = {}
+    extra_info: dict[str, Any] = {}
 
 
 class SingleOutputNL2QTask(BaseNL2QTask):
-    gold_queries: List[str] = []
-    gold_exec_results: List[List[dict]] = []
+    task_type: Literal["single_output"] = "single_output"
+    gold_queries: list[str] = []
+    gold_exec_results: list[list[dict]] = []
     pred_query: str | None = None
     trajectory: Trajectory | None = None
 
 
 class MultiOutputNL2QTask(BaseNL2QTask):
-    gold_queries: List[str] = []
-    gold_exec_results: List[List[dict]] = []
-    pred_queries: List[str] = []
-    trajectories: List[Trajectory] = []
+    task_type: Literal["multi_output"] = "multi_output"
+    gold_queries: list[str] = []
+    gold_exec_results: list[list[dict]] = []
+    pred_queries: list[str] = []
+    trajectories: list[Trajectory] = []
 
 
-NL2QTask = Union[SingleOutputNL2QTask, MultiOutputNL2QTask]
+NL2QTask = Annotated[Union[SingleOutputNL2QTask, MultiOutputNL2QTask], Field(discriminator="task_type")]
 
 
 class NL2QDataset(BaseModel):
@@ -75,6 +78,17 @@ class NL2QDataset(BaseModel):
     db_connectors: dict[str, Any]
 
 
+class NL2QRunResult(BaseModel):
+    start_time: datetime.datetime
+    end_time: datetime.datetime
+    dataset: str
+    split_id: str
+    model: str
+    model_args: dict[str, Any]
+    aggregated_metrics: dict[str, float | int]
+    tasks: list[NL2QTask]
+
+
 class BaseDBSchema(BaseModel, ABC):
     pass
 
@@ -82,30 +96,30 @@ class BaseDBSchema(BaseModel, ABC):
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
-    examples: List[Any]
+    examples: list[Any]
 
 
 class SQLTableSchema(BaseModel):
     name: str
     schema_name: str | None = None
-    columns: List[SQLColumnSchema]
-    primary_key: List[str]
+    columns: list[SQLColumnSchema]
+    primary_key: list[str]
     num_rows: int
 
 
 class ForeignKeySchema(BaseModel):
     schema_name: str | None = None
     table: str
-    columns: List[str]
+    columns: list[str]
     foreign_schema_name: str | None = None
     foreign_table: str
-    foreign_columns: List[str]
+    foreign_columns: list[str]
 
 
 class SQLSchema(BaseDBSchema):
     name: str
-    tables: List[SQLTableSchema]
-    foreign_keys: List[ForeignKeySchema]
+    tables: list[SQLTableSchema]
+    foreign_keys: list[ForeignKeySchema]
 
 
 class ERDiagramRelation(BaseModel):
@@ -119,4 +133,4 @@ class ERDiagramRelation(BaseModel):
 
 class ERDiagram(BaseModel):
     db_schema: SQLSchema
-    relations: List[ERDiagramRelation]
+    relations: list[ERDiagramRelation]

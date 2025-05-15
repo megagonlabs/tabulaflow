@@ -3,7 +3,7 @@ import math
 import os
 import litellm
 import random
-from mintq.schema import NL2QTask, SingleOutputNL2QTask, MultiOutputNL2QTask, Trajectory
+from mintq.schema import NL2QTask, Trajectory, NL2QRunResult, SingleOutputNL2QTask, MultiOutputNL2QTask
 
 
 def parse_json(response: str):
@@ -67,18 +67,14 @@ def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
         return 0.0
 
 
-def save_aggregated_inference_metrics(all_metrics: list[dict], result_dir: str):
+def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[str, float | int]:
     res = {}
     keys = list(all_metrics[0].keys())
     for key in keys:
-        res[key] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 2)
+        res[f"avg_{key}"] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 4)
         if key in ("input_tokens", "output_tokens", "api_cost_usd"):
             res[f"total_{key}"] = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
-
-    output_path = os.path.join(result_dir, f"aggregated_metrics.json")
-    with open(output_path, "w") as fout:
-        json.dump(res, fout, indent=2)
-    print(f"Saved aggregated metrics to {output_path}")
+    return res
 
 
 def get_trajectory_num_steps(trajectory: list[dict]) -> int:
@@ -104,35 +100,36 @@ def load_nl2q_tasks(path: str) -> list[NL2QTask]:
     raise ValueError(f"No valid NL2QTask found in {path}")
 
 
-def save_results(results: list[NL2QTask], result_dir: str):
-    if not isinstance(results[0], SingleOutputNL2QTask):
+def save_results(result: NL2QRunResult, result_dir: str) -> None:
+    if result.tasks[0].task_type != "single_output":
         raise ValueError("Only single-output NL2Q tasks are supported currently")
 
     with open(os.path.join(result_dir, "result.json"), "w") as f:
-        json.dump([task.model_dump(mode="json") for task in results], f, indent=2)
+        f.write(result.model_dump_json(indent=2))
 
-    if "sql" in results[0].language.lower():
+    language = result.tasks[0].language.lower()
+    if language.startswith("sql") or language.endswith("sql"):
         extension = "sql"
-    elif results[0].language.lower() == "cypher":
+    elif language == "cypher":
         extension = "cypher"
     else:
-        extension = "txt"
+        extension = "query"
 
     gold_query_dir = os.path.join(result_dir, "gold_query")
     os.makedirs(gold_query_dir, exist_ok=True)
-    for task in results:
+    for task in result.tasks:
         with open(os.path.join(gold_query_dir, f"{task.qid}.{extension}"), "w") as f:
             f.write("\n\n".join(task.gold_queries) + "\n")
 
     pred_query_dir = os.path.join(result_dir, "pred_query")
     os.makedirs(pred_query_dir, exist_ok=True)
-    for task in results:
+    for task in result.tasks:
         with open(os.path.join(pred_query_dir, f"{task.qid}.{extension}"), "w") as f:
             f.write(task.pred_query + "\n")
 
     trajectory_dir = os.path.join(result_dir, "trajectory")
     os.makedirs(trajectory_dir, exist_ok=True)
-    for task in results:
+    for task in result.tasks:
         if task.trajectory:
             with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
                 f.write(pprint_trajectory(task.trajectory) + "\n")
@@ -144,20 +141,20 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
     res = []
     for msg in trajectory.messages:
         if msg.role == "system":
-            res.append(f"<message role=\"system\">\n{msg.content}\n</message>")
+            res.append(f'<message role="system">\n{msg.content}\n</message>')
         elif msg.role == "user":
-            res.append(f"<message role=\"user\">\n{msg.content}\n</message>")
+            res.append(f'<message role="user">\n{msg.content}\n</message>')
         elif msg.role == "assistant":
-            s = f"<message role=\"assistant\">\n<content>{msg.content}</content>\n"
+            s = f'<message role="assistant">\n<content>{msg.content}</content>\n'
             for tool_call in msg.tool_calls:
-                s += f"<function name=\"{tool_call.name}\">\n"
+                s += f'<function name="{tool_call.name}">\n'
                 for key, value in tool_call.arguments.items():
-                    s += f"<parameter name=\"{key}\">"
+                    s += f'<parameter name="{key}">'
                     s += f"\n{value}\n" if "\n" in value else value
                     s += "</parameter>\n"
                 s += "</function>\n"
             s += "</message>"
             res.append(s)
         elif msg.role == "tool":
-            res.append(f"<message role=\"tool\">\n{msg.response}\n</message>")
+            res.append(f'<message role="tool">\n{msg.response}\n</message>')
     return "\n\n\n".join(res)

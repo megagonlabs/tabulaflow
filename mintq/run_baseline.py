@@ -2,18 +2,61 @@ import argparse
 import os
 import shutil
 import time
+from typing import Callable
+import datetime
 import logfire
+from functools import partial
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
-from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics, save_results, pprint_trajectory
+from mintq.utils import get_llm_api_cost, get_aggregated_metrics, pprint_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
-from mintq.modelhub import get_nl2q_model
+from mintq.modelhub import get_nl2q_model, BaseNL2QModel
 from mintq.dataset import get_dataset_loader
+from mintq.schema import NL2QDataset, NL2QRunResult
 
 
 logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
 logfire.instrument_pydantic_ai()
+
+
+def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch_size: int) -> NL2QRunResult:
+    start_time = datetime.datetime.now()
+    tasks_with_predictions = []
+    for i in trange(0, len(dataset.tasks), batch_size):
+        j = min(i + batch_size, len(dataset.tasks))
+        batch = dataset.tasks[i:j]
+
+        nl2q_models = [model_fn() for _ in batch]
+
+        with ThreadPoolExecutor(max_workers=len(batch)) as executor:
+            futures = [
+                executor.submit(
+                    nl2q_model.predict,
+                    item,
+                    dataset.db_connectors[item.db],
+                )
+                for item, nl2q_model in zip(batch, nl2q_models)
+            ]
+            tasks_with_predictions += [future.result() for future in futures]
+
+        if i == 0:
+            print(pprint_trajectory(tasks_with_predictions[0].trajectory))
+
+    sample_model = model_fn()
+    aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
+
+    end_time = datetime.datetime.now()
+    return NL2QRunResult(
+        start_time=start_time,
+        end_time=end_time,
+        dataset=dataset.name,
+        split_id=dataset.split_id,
+        model=sample_model.name,
+        model_args=sample_model.get_config(),
+        aggregated_metrics=aggregated_metrics,
+        tasks=tasks_with_predictions,
+    )
 
 
 def main():
@@ -80,30 +123,9 @@ def main():
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    res = []
-    for i in trange(0, len(dataset.tasks), args.batch_size):
-        j = min(i + args.batch_size, len(dataset.tasks))
-        batch = dataset.tasks[i:j]
-
-        nl2q_models = [get_nl2q_model(args.model, **nl2q_kwargs) for _ in batch]
-
-        with ThreadPoolExecutor(max_workers=len(batch)) as executor:
-            futures = [
-                executor.submit(
-                    nl2q_model.predict,
-                    item,
-                    dataset.db_connectors[item.db],
-                )
-                for item, nl2q_model in zip(batch, nl2q_models)
-            ]
-            res += [future.result() for future in futures]
-
-        if i == 0:
-            print(pprint_trajectory(res[0].trajectory))
-
-    save_results(res, args.result_dir)
-    save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)
-
+    model_fn = partial(get_nl2q_model, args.model, **nl2q_kwargs)
+    result = run_model(model_fn, dataset, args.batch_size)
+    save_results(result, args.result_dir)
 
 if __name__ == "__main__":
     main()
