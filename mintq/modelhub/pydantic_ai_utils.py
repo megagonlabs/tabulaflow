@@ -14,6 +14,8 @@ def get_pydantic_ai_llm(litellm_id: str):
 
 def pydantic_ai_messages_to_trajectory(messages: list[ModelMessage]) -> Trajectory:
     new_msgs = []
+    if messages[0].kind == "request" and messages[0].instructions:
+        new_msgs.append(SystemMessage(content=messages[0].instructions))
     for msg in messages:
         if msg.kind == "request":
             for part in msg.parts:
