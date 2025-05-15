@@ -86,7 +86,7 @@ class NL2QRunResult(BaseModel):
     split_id: str
     databases: list[str] | None  # None means all databases
     model: str
-    model_args: dict[str, Any]
+    model_config: dict[str, Any]
     aggregated_metrics: dict[str, float | int]
     tasks: list[NL2QTask]
 

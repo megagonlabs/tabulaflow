@@ -54,7 +54,7 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
         split_id=dataset.split_id,
         databases=dataset.databases,
         model=sample_model.name,
-        model_args=sample_model.get_config(),
+        model_config=sample_model.get_config(),
         aggregated_metrics=aggregated_metrics,
         tasks=tasks_with_predictions,
     )
