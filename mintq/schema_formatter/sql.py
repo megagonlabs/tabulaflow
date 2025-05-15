@@ -4,6 +4,8 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
 class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
+    name = "sql_default"
+
     def __init__(self, quote_char: str = '"'):
         self.quote_char = quote_char
 

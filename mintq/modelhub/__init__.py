@@ -2,8 +2,9 @@ from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.modelhub.base import BaseNL2QModel
 from mintq.modelhub.sql_agent_table_names_only import SQLAgentTableNamesOnly
 
+all_model_classes = [SimpleZeroShotNL2Q, SQLAgentTableNamesOnly]
 
-model_registry = {cls.name: cls for cls in [SimpleZeroShotNL2Q, SQLAgentTableNamesOnly]}
+model_registry = {cls.name: cls for cls in all_model_classes}
 
 
 def get_nl2q_model(name: str, **kwargs) -> BaseNL2QModel:

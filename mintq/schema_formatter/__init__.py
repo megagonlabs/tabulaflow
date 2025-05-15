@@ -1,12 +1,12 @@
 from mintq.schema_formatter.base import BaseSchemaFormatter
 from mintq.schema_formatter.sql import SQLDefaultSchemaFormatter
 
-__all__ = ["BaseSchemaFormatter", "SQLDefaultSchemaFormatter"]
+__all__ = ["BaseSchemaFormatter", "SQLDefaultSchemaFormatter", "get_schema_formatter"]
 
 
-schema_formatter_registry = {
-    "sql_default": SQLDefaultSchemaFormatter,
-}
+all_schema_formatter_classes = [SQLDefaultSchemaFormatter]
+
+schema_formatter_registry = {cls.name: cls for cls in all_schema_formatter_classes}
 
 
 def get_schema_formatter(name: str) -> BaseSchemaFormatter:

@@ -4,6 +4,8 @@ from mintq.db_connector import BaseDBConnector
 
 
 class GoldResultNotEmpty(NL2QMetric):
+    name = "gold_result_not_empty"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

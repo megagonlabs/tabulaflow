@@ -13,17 +13,19 @@ __all__ = [
     "GoldExecutable",
     "GoldResultNotEmpty",
     "Spider2Ex",
+    "get_metric",
 ]
 
+all_metric_classes = [
+    BirdSQLEx,
+    BirdSQLExSoft,
+    Executable,
+    GoldExecutable,
+    GoldResultNotEmpty,
+    Spider2Ex,
+]
 
-metric_registry = {
-    "bird_sql_ex": BirdSQLEx,
-    "bird_sql_ex_soft": BirdSQLExSoft,
-    "executable": Executable,
-    "gold_executable": GoldExecutable,
-    "gold_result_not_empty": GoldResultNotEmpty,
-    "spider2_ex": Spider2Ex,
-}
+metric_registry = {cls.name: cls for cls in all_metric_classes}
 
 
 def get_metric(name: str, **kwargs) -> NL2QMetric:

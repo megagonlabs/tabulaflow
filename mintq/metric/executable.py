@@ -4,6 +4,8 @@ from mintq.db_connector import BaseDBConnector
 
 
 class Executable(NL2QMetric):
+    name = "executable"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

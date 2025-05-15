@@ -73,6 +73,8 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
 
 
 class Spider2Ex(NL2QMetric):
+    name = "spider2_ex"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

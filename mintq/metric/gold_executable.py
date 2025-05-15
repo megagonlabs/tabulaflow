@@ -5,6 +5,8 @@ from mintq.metric.base import NL2QMetric
 
 
 class GoldExecutable(NL2QMetric):
+    name = "gold_executable"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

@@ -5,6 +5,8 @@ from mintq.schema import SingleOutputNL2QTask
 
 
 class BirdSQLExSoft(NL2QMetric):
+    name = "bird_sql_ex_soft"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 

@@ -4,6 +4,8 @@ from mintq.db_connector import BaseDBConnector
 
 
 class NL2QMetric(ABC):
+    name: str
+
     @abstractmethod
     def compute(self, task: NL2QTask, db_connector: BaseDBConnector) -> float:
         pass

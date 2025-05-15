@@ -4,6 +4,8 @@ from mintq.db_connector import SQLiteConnector
 
 
 class BirdSQLEx(NL2QMetric):
+    name = "bird_sql_ex"
+
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
