@@ -1,6 +1,6 @@
 from abc import ABC
-from pydantic import BaseModel
-from typing import Optional, Dict, Union, List, Any
+from pydantic import BaseModel, Field
+from typing import Optional, Dict, Union, List, Any, Literal, Annotated
 
 
 class BaseNL2QTask(BaseModel, ABC):
@@ -82,3 +82,40 @@ class ERDiagramRelation(BaseModel):
 class ERDiagram(BaseModel):
     db_schema: SQLSchema
     relations: List[ERDiagramRelation]
+
+
+class SystemMessage(BaseModel):
+    role: str = Literal["system"]
+    content: str
+
+
+class UserMessage(BaseModel):
+    role: str = Literal["user"]
+    content: str
+
+
+class ToolCall(BaseModel):
+    tool_call_id: str
+    name: str
+    arguments: Dict[str, Any]
+
+
+class AssistantMessage(BaseModel):
+    role: str = Literal["assistant"]
+    content: str
+    tool_calls: List[ToolCall]
+
+
+class ToolResponse(BaseModel):
+    role: str = Literal["tool"]
+    response: str
+
+
+Message = Annotated[
+    Union[AssistantMessage, ToolResponse, UserMessage, SystemMessage],
+    Field(discriminator="role"),
+]
+
+
+class Trajectory(BaseModel):
+    messages: List[Message]
