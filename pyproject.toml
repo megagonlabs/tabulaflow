@@ -30,3 +30,8 @@ packages = ["mintq"]
 
 [tool.ruff]
 line-length = 120
+
+[dependency-groups]
+dev = [
+    "mypy>=1.15.0",
+]
