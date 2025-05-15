@@ -6,7 +6,7 @@ import logfire
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
-from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics, save_results
+from mintq.utils import get_llm_api_cost, save_aggregated_inference_metrics, save_results, pprint_trajectory
 from mintq.schema_formatter import get_schema_formatter
 from mintq.modelhub import get_nl2q_model
 from mintq.dataset import get_dataset_loader
@@ -99,11 +99,7 @@ def main():
             res += [future.result() for future in futures]
 
         if i == 0:
-            for msg in res[0].trajectory:
-                try:
-                    print(f"<{msg['role']}>{msg['content']}</{msg['role']}>")
-                except Exception:
-                    print(f"<msg>{msg}</msg>")
+            print(pprint_trajectory(res[0].trajectory))
 
     save_results(res, args.result_dir)
     save_aggregated_inference_metrics([item.metrics for item in res], args.result_dir)

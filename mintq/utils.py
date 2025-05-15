@@ -3,7 +3,7 @@ import math
 import os
 import litellm
 import random
-from mintq.schema import NL2QTask, SingleOutputNL2QTask, MultiOutputNL2QTask
+from mintq.schema import NL2QTask, SingleOutputNL2QTask, MultiOutputNL2QTask, Trajectory
 
 
 def parse_json(response: str):
@@ -124,3 +124,25 @@ def save_results(results: list[NL2QTask], result_dir: str):
             f.write(task.pred_query + "\n")
 
     print(f"Saved results to {result_dir}")
+
+
+def pprint_trajectory(trajectory: Trajectory) -> str:
+    res = []
+    for msg in trajectory.messages:
+        if msg.role == "system":
+            res.append(f"=== SYSTEM ===\n{msg.content}")
+        elif msg.role == "user":
+            res.append(f"=== USER ===\n{msg.content}")
+        elif msg.role == "assistant":
+            s = f"=== ASSISTANT ===\n{msg.content}"
+            for tool_call in msg.tool_calls:
+                s += f"<function={tool_call.name}>\n"
+                for key, value in tool_call.arguments.items():
+                    s += f"<parameter={key}>"
+                    s += f"\n{value}\n" if "\n" in value else value
+                    s += "</parameter>\n"
+                s += "</function>\n"
+            res.append(s.strip())
+        elif msg.role == "tool":
+            res.append(f"=== TOOL ===\n{msg.response}")
+    return "\n\n".join(res)
