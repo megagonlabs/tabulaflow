@@ -6,13 +6,6 @@ import random
 from mintq.schema import Trajectory, NL2QRunResult
 
 
-def parse_json(response: str):
-    lines = response.strip().split("\n")
-    if lines[0].startswith("```") and lines[-1].startswith("```"):
-        response = "\n".join(lines[1:-1])
-    return json.loads(response)
-
-
 def parse_query(response: str) -> str:
     lines = response.strip().split("\n")
     if lines[0].startswith("```") and lines[-1].startswith("```"):
@@ -56,6 +49,13 @@ def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict]
     return train_samples, dev_samples
 
 
+def save_str_list(strings: list[str], filenames: list[str], directory: str) -> None:
+    os.makedirs(directory, exist_ok=True)
+    for s, filename in zip(strings, filenames):
+        with open(os.path.join(directory, filename), "w") as f:
+            f.write(s)
+
+
 def save_results(result: NL2QRunResult, result_dir: str) -> None:
     if result.tasks[0].task_type != "single_output":
         raise ValueError("Only single-output NL2Q tasks are supported currently")
@@ -71,24 +71,23 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
     else:
         extension = "query"
 
-    gold_query_dir = os.path.join(result_dir, "gold_query")
-    os.makedirs(gold_query_dir, exist_ok=True)
-    for task in result.tasks:
-        with open(os.path.join(gold_query_dir, f"{task.qid}.{extension}"), "w") as f:
-            f.write("\n\n".join(task.gold_queries) + "\n")
+    save_str_list(
+        ["\n\n".join(task.gold_queries) for task in result.tasks],
+        [f"{task.qid}.{extension}" for task in result.tasks],
+        os.path.join(result_dir, "gold_query"),
+    )
 
-    pred_query_dir = os.path.join(result_dir, "pred_query")
-    os.makedirs(pred_query_dir, exist_ok=True)
-    for task in result.tasks:
-        with open(os.path.join(pred_query_dir, f"{task.qid}.{extension}"), "w") as f:
-            f.write(task.pred_query + "\n")
+    save_str_list(
+        [task.pred_query for task in result.tasks],
+        [f"{task.qid}.{extension}" for task in result.tasks],
+        os.path.join(result_dir, "pred_query"),
+    )
 
-    trajectory_dir = os.path.join(result_dir, "trajectory")
-    os.makedirs(trajectory_dir, exist_ok=True)
-    for task in result.tasks:
-        if task.trajectory:
-            with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
-                f.write(pprint_trajectory(task.trajectory) + "\n")
+    save_str_list(
+        [pprint_trajectory(task.trajectory) + "\n" for task in result.tasks],
+        [f"{task.qid}.xml" for task in result.tasks],
+        os.path.join(result_dir, "trajectory"),
+    )
 
     print(f"Saved results to {result_dir}")
 
@@ -101,13 +100,15 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
         elif msg.role == "user":
             res.append(f'<message role="user">\n{msg.content}\n</message>')
         elif msg.role == "assistant":
-            s = f'<message role="assistant">\n<content>{msg.content}</content>\n'
+            s = '<message role="assistant">\n'
+            if msg.content:
+                s += f"{msg.content}\n"
             for tool_call in msg.tool_calls:
                 s += f'<function name="{tool_call.name}">\n'
                 for key, value in tool_call.arguments.items():
-                    s += f'<parameter name="{key}">'
+                    s += f'<arg name="{key}">'
                     s += f"\n{value}\n" if "\n" in value else value
-                    s += "</parameter>\n"
+                    s += "</arg>\n"
                 s += "</function>\n"
             s += "</message>"
             res.append(s)

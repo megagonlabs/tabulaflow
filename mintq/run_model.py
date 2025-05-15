@@ -62,14 +62,14 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="simple_zero_shot")
+    parser.add_argument("--model", default="sql_agent_table_names_only")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--local_llm_config", default="local_llm_config.json")
 
-    parser.add_argument("--dataset", default="spider2-snow")
+    parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
 
