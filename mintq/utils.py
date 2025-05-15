@@ -136,11 +136,11 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
     res = []
     for msg in trajectory.messages:
         if msg.role == "system":
-            res.append(f"=== SYSTEM ===\n{msg.content}")
+            res.append(f"<message role=system>\n{msg.content}\n</message>")
         elif msg.role == "user":
-            res.append(f"=== USER ===\n{msg.content}")
+            res.append(f"<message role=user>\n{msg.content}\n</message>")
         elif msg.role == "assistant":
-            s = f"=== ASSISTANT ===\n{msg.content}"
+            s = f"<message role=assistant>\n<content>{msg.content}</content>\n"
             for tool_call in msg.tool_calls:
                 s += f"<function={tool_call.name}>\n"
                 for key, value in tool_call.arguments.items():
@@ -148,7 +148,8 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
                     s += f"\n{value}\n" if "\n" in value else value
                     s += "</parameter>\n"
                 s += "</function>\n"
-            res.append(s.strip())
+            s += "</message>"
+            res.append(s)
         elif msg.role == "tool":
-            res.append(f"=== TOOL ===\n{msg.response}")
+            res.append(f"<message role=tool>\n{msg.response}\n</message>")
     return "\n\n".join(res)
