@@ -3,6 +3,7 @@ import math
 import os
 import litellm
 import random
+from pydantic import TypeAdapter
 from mintq.schema import NL2QTask, Trajectory, NL2QRunResult, SingleOutputNL2QTask, MultiOutputNL2QTask
 
 
@@ -91,13 +92,7 @@ def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict]
 
 def load_nl2q_tasks(path: str) -> list[NL2QTask]:
     with open(path, "r") as f:
-        data = json.load(f)
-    for cls in (SingleOutputNL2QTask, MultiOutputNL2QTask):
-        try:
-            return [cls(**item) for item in data]
-        except Exception:
-            continue
-    raise ValueError(f"No valid NL2QTask found in {path}")
+        return [TypeAdapter(NL2QTask).validate_python(item) for item in json.load(f)]
 
 
 def save_results(result: NL2QRunResult, result_dir: str) -> None:

@@ -7,8 +7,8 @@ from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from mintq.db_connector import BaseDBConnector
-from mintq.schema import NL2QTask
-from mintq.utils import avg_and_round, load_nl2q_tasks
+from mintq.schema import NL2QTask, NL2QRunResult, NL2QDataset
+from mintq.utils import avg_and_round
 from mintq.dataset import get_dataset_loader
 from mintq.metric import get_metric
 
@@ -16,19 +16,39 @@ from mintq.metric import get_metric
 def compute_metrics(item: NL2QTask, metrics: list[str], db_connector: BaseDBConnector):
     item = copy.deepcopy(item)
     for m in metrics:
-        pred_query = item.pred_query
-        if pred_query.endswith("<end_of_turn>"):
-            pred_query = pred_query[: -len("<end_of_turn>")].strip()
         item.metrics[m] = get_metric(m).compute(task=item, db_connector=db_connector)
     return item
 
 
+def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[str], num_threads: int) -> NL2QRunResult:
+    result = copy.deepcopy(result)
+
+    # Shuffle the result to reduce concurent query execution on the same database
+    qids = {item.qid: i for i, item in enumerate(result.tasks)}
+    random.seed(42)
+    random.shuffle(result.tasks)
+
+    # Use ThreadPoolExecutor for multithreading
+    tasks_with_metrics = []
+    with ThreadPoolExecutor(max_workers=num_threads) as executor:
+        futures = [
+            executor.submit(compute_metrics, item, metrics, dataset.db_connectors[item.db]) for item in result.tasks
+        ]
+        for future in tqdm(as_completed(futures), total=len(result.tasks)):
+            tasks_with_metrics.append(future.result())
+
+    # Sort the result so that the order is the same as the original result
+    tasks_with_metrics.sort(key=lambda x: qids[x.qid])
+    result.tasks = tasks_with_metrics
+
+    aggregated_metrics = {m: avg_and_round([item.metrics[m] for item in tasks_with_metrics]) for m in metrics}
+    result.aggregated_metrics.update(aggregated_metrics)
+    return result
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="dev")
-    parser.add_argument("--evaluate_on_intersection", action="store_true")
-    parser.add_argument("--result_dir", default="output/test/")
+    parser.add_argument("--result_json", default="output/test/result.json")
     parser.add_argument("--num_threads", type=int, default=8)
     parser.add_argument(
         "--metrics",
@@ -46,59 +66,28 @@ def main():
     print(args)
     print()
 
-    result = load_nl2q_tasks(os.path.join(args.result_dir, "result.json"))
-    databases = list(dict.fromkeys([item.db for item in result]))
+    with open(args.result_json, "r") as f:
+        result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
-    dataset = dataset_loader.get_split(args.split, databases=databases)
+    dataset_loader = get_dataset_loader(result.dataset)
+    dataset = dataset_loader.get_split(result.split_id, databases=result.databases)
     print(
-        f"Loaded {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
+        f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split_id} set in {time.time() - t0:.2f} seconds."
     )
 
-    if args.evaluate_on_intersection:
-        qid2item = {item.qid: item for item in result}
-        result = [qid2item[item.qid] for item in dataset.tasks if item.qid in qid2item]
-
-    # Shuffle the result to reduce concurent query execution on the same database
-    qids = {item.qid: i for i, item in enumerate(result)}
-    random.seed(42)
-    random.shuffle(result)
-
-    # Use ThreadPoolExecutor for multithreading
-    result_with_metrics = []
-    with ThreadPoolExecutor(max_workers=args.num_threads) as executor:
-        futures = [
-            executor.submit(compute_metrics, item, args.metrics, dataset.db_connectors[item.db]) for item in result
-        ]
-        for future in tqdm(as_completed(futures), total=len(result)):
-            result_with_metrics.append(future.result())
-
-    # Sort the result by qid
-    result_with_metrics.sort(key=lambda x: qids[x.qid])
-
-    output_path = os.path.join(args.result_dir, "result_with_metrics.json")
-    with open(output_path, "w") as fout:
-        json.dump(
-            [item.model_dump(mode="json") for item in result_with_metrics],
-            fout,
-            indent=2,
-        )
-    print(f"Saved result with metrics to {output_path}")
-
-    output_path = os.path.join(args.result_dir, "aggregated_metrics.json")
-    with open(output_path, "r") as fout:
-        aggregated = json.load(fout)
-
-    aggregated.update({m: avg_and_round([item.metrics[m] for item in result_with_metrics]) for m in args.metrics})
-
-    with open(output_path, "w") as fout:
-        json.dump(aggregated, fout, indent=2)
-    print(f"Saved aggregated metrics to {output_path}")
+    result = evaluate(result, dataset, args.metrics, args.num_threads)
 
     print()
     print("Aggregated metrics:")
-    print(json.dumps(aggregated, indent=2))
+    for m in args.metrics:
+        print(f"- {m}: {result.aggregated_metrics[m]:.4f}")
+
+    output_path = args.result_json.replace(".json", "_with_metrics.json")
+    with open(output_path, "w") as fout:
+        fout.write(result.model_dump_json(indent=2))
+    print()
+    print(f"Saved result with metrics to {output_path}")
 
 
 if __name__ == "__main__":

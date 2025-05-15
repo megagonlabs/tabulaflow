@@ -74,6 +74,7 @@ NL2QTask = Annotated[Union[SingleOutputNL2QTask, MultiOutputNL2QTask], Field(dis
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
+    databases: list[str] | None  # None means all databases
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
@@ -83,6 +84,7 @@ class NL2QRunResult(BaseModel):
     end_time: datetime.datetime
     dataset: str
     split_id: str
+    databases: list[str] | None  # None means all databases
     model: str
     model_args: dict[str, Any]
     aggregated_metrics: dict[str, float | int]

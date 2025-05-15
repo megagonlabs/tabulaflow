@@ -52,6 +52,7 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
         end_time=end_time,
         dataset=dataset.name,
         split_id=dataset.split_id,
+        databases=dataset.databases,
         model=sample_model.name,
         model_args=sample_model.get_config(),
         aggregated_metrics=aggregated_metrics,

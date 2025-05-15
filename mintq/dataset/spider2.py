@@ -125,6 +125,7 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         return NL2QDataset(
             name=self.name,
             split_id=split,
+            databases=databases,
             tasks=tasks,
             db_connectors=db_connectors,
         )
