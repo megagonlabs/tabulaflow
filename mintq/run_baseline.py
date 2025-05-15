@@ -1,8 +1,8 @@
 import argparse
 import os
 import shutil
-import json
 import time
+import logfire
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
@@ -12,12 +12,13 @@ from mintq.modelhub import get_nl2q_model
 from mintq.dataset import get_dataset_loader
 
 
+logfire.configure(service_name="otel", send_to_logfire=False, console=False)
+logfire.instrument_pydantic_ai()
+
+
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--model",
-        default="simple_zero_shot"
-    )
+    parser.add_argument("--model", default="simple_zero_shot")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
