@@ -40,6 +40,8 @@ logger = logging.getLogger(__name__)
 
 
 class SimpleZeroShotNL2Q(BaseNL2QModel):
+    name = "simple_zero_shot"
+
     def __init__(
         self,
         llm: str,
@@ -54,9 +56,12 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         self.num_candidates = num_candidates
         self.litellm_kwargs = litellm_kwargs
 
-    @property
-    def llm_name(self) -> str:
-        return self.llm
+    def get_config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "llm": self.llm,
+            "temperature": self.temperature,
+            "num_candidates": self.num_candidates,
+        }
 
     def predict(self, task, db_connector):
         t0 = time.time()
@@ -66,7 +71,9 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
         hints = task.evidence if task.evidence else "NO HINTS PROVIDED"
         schema_str = self.schema_formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
-            logger.warning(f"Schema {db_connector.name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars.")
+            logger.warning(
+                f"Schema {db_connector.name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
+            )
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
         prompt = jinja2.Template(NL2Q_PROMPT).render(
             language=task.language,

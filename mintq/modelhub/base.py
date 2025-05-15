@@ -4,6 +4,8 @@ from mintq.db_connector import BaseDBConnector
 
 
 class BaseNL2QModel(ABC):
+    name: str
+
     @abstractmethod
     def predict(self, task: BaseNL2QTask, db_connector: BaseDBConnector) -> BaseNL2QTask:
         """
@@ -12,12 +14,14 @@ class BaseNL2QModel(ABC):
         Returns:
             - The updated BaseNL2QTask object with the predicted query.
         """
-        raise NotImplementedError()
+        pass
 
-    @property
     @abstractmethod
-    def llm_name(self) -> str:
+    def get_config(self) -> dict[str, str | int | float | bool]:
         """
-        Returns the name of the LLM.
+        Returns the parameters of the model so that it can be reproduced.
+
+        Returns:
+            - A dictionary containing the parameters of the model. Currently we only support literal values.
         """
-        raise NotImplementedError()
+        pass

@@ -131,11 +131,14 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
 
 
 class SQLAgentTableNamesOnly(BaseNL2QModel):
+    name = "sql_agent_table_names_only"
+
     def __init__(
         self, llm: str, schema_formatter: BaseSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
     ):
-        self._llm_name = llm
+        self.llm = llm
         self.temperature = temperature
+        self.num_candidates = num_candidates
         self.agent = Agent(
             get_pydantic_ai_llm(llm),
             tools=[Tool(run_query), Tool(list_columns), Tool(search_keywords)],
@@ -144,9 +147,12 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         )
         self.formatter = schema_formatter
 
-    @property
-    def llm_name(self) -> str:
-        return self._llm_name
+    def get_config(self) -> dict[str, str | int | float | bool]:
+        return {
+            "llm": self.llm,
+            "temperature": self.temperature,
+            "num_candidates": self.num_candidates,
+        }
 
     def predict(self, task: SingleOutputNL2QTask, db_connector: BaseDBConnector) -> SingleOutputNL2QTask:
         task = copy.deepcopy(task)
