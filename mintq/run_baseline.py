@@ -12,7 +12,7 @@ from mintq.modelhub import get_nl2q_model
 from mintq.dataset import get_dataset_loader
 
 
-logfire.configure(service_name="otel", send_to_logfire=False, console=False)
+logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
 logfire.instrument_pydantic_ai()
 
 
