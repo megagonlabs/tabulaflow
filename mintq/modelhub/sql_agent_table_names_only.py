@@ -152,6 +152,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         return {
             "llm": self.llm,
             "temperature": self.temperature,
+            "schema_formatter": self.formatter.name,
             "num_candidates": self.num_candidates,
         }
 
@@ -182,7 +183,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         task.trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
 
         usage = result.usage()
-        task.metrics["latency"] = time.time() - t0
+        task.metrics["latency_seconds"] = time.time() - t0
         task.metrics["api_calls"] = usage.requests
         task.metrics["input_tokens"] = usage.request_tokens
         task.metrics["output_tokens"] = usage.response_tokens
