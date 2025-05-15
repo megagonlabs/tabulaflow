@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import copy
 import jinja2
+import time
 import sqlalchemy
 from sqlalchemy import select, distinct
 from pydantic_core import to_jsonable_python
@@ -11,7 +12,7 @@ from mintq.schema_formatter import BaseSchemaFormatter, get_schema_formatter
 from mintq.schema import SingleOutputNL2QTask, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
-from mintq.utils import parse_query
+from mintq.utils import parse_query, get_llm_api_cost
 
 
 @dataclass
@@ -156,6 +157,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
 
     def predict(self, task: SingleOutputNL2QTask, db_connector: BaseDBConnector) -> SingleOutputNL2QTask:
         task = copy.deepcopy(task)
+        t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
             schema=self.formatter.format(db_connector.schema, include_table_schemas=False),
@@ -178,4 +180,10 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
 
         task.pred_query = parse_query(result.output)
         task.trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
+
+        usage = result.usage()
+        task.metrics["latency"] = time.time() - t0
+        task.metrics["input_tokens"] = usage.request_tokens
+        task.metrics["output_tokens"] = usage.response_tokens
+        task.metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
         return task
