@@ -111,16 +111,23 @@ def save_results(results: list[NL2QTask], result_dir: str):
     with open(os.path.join(result_dir, "result.json"), "w") as f:
         json.dump([task.model_dump(mode="json") for task in results], f, indent=2)
 
-    gold_sql_dir = os.path.join(result_dir, "gold_sql")
-    os.makedirs(gold_sql_dir, exist_ok=True)
+    if "sql" in results[0].language.lower():
+        extension = "sql"
+    elif results[0].language.lower() == "cypher":
+        extension = "cypher"
+    else:
+        extension = "txt"
+
+    gold_query_dir = os.path.join(result_dir, "gold_query")
+    os.makedirs(gold_query_dir, exist_ok=True)
     for task in results:
-        with open(os.path.join(gold_sql_dir, f"{task.qid}.sql"), "w") as f:
+        with open(os.path.join(gold_query_dir, f"{task.qid}.{extension}"), "w") as f:
             f.write("\n\n".join(task.gold_queries) + "\n")
 
-    pred_sql_dir = os.path.join(result_dir, "pred_sql")
-    os.makedirs(pred_sql_dir, exist_ok=True)
+    pred_query_dir = os.path.join(result_dir, "pred_query")
+    os.makedirs(pred_query_dir, exist_ok=True)
     for task in results:
-        with open(os.path.join(pred_sql_dir, f"{task.qid}.sql"), "w") as f:
+        with open(os.path.join(pred_query_dir, f"{task.qid}.{extension}"), "w") as f:
             f.write(task.pred_query + "\n")
 
     trajectory_dir = os.path.join(result_dir, "trajectory")
