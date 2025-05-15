@@ -134,7 +134,7 @@ def save_results(results: list[NL2QTask], result_dir: str):
     os.makedirs(trajectory_dir, exist_ok=True)
     for task in results:
         if task.trajectory:
-            with open(os.path.join(trajectory_dir, f"{task.qid}.txt"), "w") as f:
+            with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
                 f.write(pprint_trajectory(task.trajectory) + "\n")
 
     print(f"Saved results to {result_dir}")
@@ -144,20 +144,20 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
     res = []
     for msg in trajectory.messages:
         if msg.role == "system":
-            res.append(f"<message role=system>\n{msg.content}\n</message>")
+            res.append(f"<message role=\"system\">\n{msg.content}\n</message>")
         elif msg.role == "user":
-            res.append(f"<message role=user>\n{msg.content}\n</message>")
+            res.append(f"<message role=\"user\">\n{msg.content}\n</message>")
         elif msg.role == "assistant":
-            s = f"<message role=assistant>\n<content>{msg.content}</content>\n"
+            s = f"<message role=\"assistant\">\n<content>{msg.content}</content>\n"
             for tool_call in msg.tool_calls:
-                s += f"<function={tool_call.name}>\n"
+                s += f"<function name=\"{tool_call.name}\">\n"
                 for key, value in tool_call.arguments.items():
-                    s += f"<parameter={key}>"
+                    s += f"<parameter name=\"{key}\">"
                     s += f"\n{value}\n" if "\n" in value else value
                     s += "</parameter>\n"
                 s += "</function>\n"
             s += "</message>"
             res.append(s)
         elif msg.role == "tool":
-            res.append(f"<message role=tool>\n{msg.response}\n</message>")
+            res.append(f"<message role=\"tool\">\n{msg.response}\n</message>")
     return "\n\n\n".join(res)
