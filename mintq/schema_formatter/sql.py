@@ -23,23 +23,26 @@ class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
         return self._full_table_name(table.name, table.schema_name)
 
     def format(self, schema: SQLSchema, include_foreign_keys: bool = True, include_table_schemas: bool = True) -> str:
-        res = f"Database: {schema.name}\n"
-        res += (
-            f"Tables: {', '.join([self._full_table_name(table.name, table.schema_name) for table in schema.tables])}\n"
-        )
+        res = f"Database: {schema.name}"
+        res += "\n\nTables:"
+        for table in schema.tables:
+            res += f"\n- {self._full_table_name(table.name, table.schema_name)}"
 
         if include_foreign_keys and schema.foreign_keys:
-            res += "Foreign keys:\n"
-            for fk in schema.foreign_keys:
-                res += f"- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}\n"
+            res += "\n\nForeign keys:"
+            if not schema.foreign_keys:
+                res += "\n(No foreign keys defined)"
+            else:
+                for fk in schema.foreign_keys:
+                    res += f"\n- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}"
 
         if include_table_schemas:
-            res += "\n"
+            res += "\n\n"
             res += "\n\n".join([self.format_table(table) for table in schema.tables])
         return res
 
     def format_table(self, table: SQLTableSchema) -> str:
-        res = f"Table: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows)\n"
+        res = f"Table details: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows)\n"
         if table.primary_key:
             res += f"Primary key: {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}\n"
         res += "\n".join([self.format_column(table, column) for column in table.columns])
