@@ -3,8 +3,7 @@ import math
 import os
 import litellm
 import random
-from pydantic import TypeAdapter
-from mintq.schema import NL2QTask, Trajectory, NL2QRunResult, SingleOutputNL2QTask, MultiOutputNL2QTask
+from mintq.schema import Trajectory, NL2QRunResult
 
 
 def parse_json(response: str):
@@ -14,44 +13,11 @@ def parse_json(response: str):
     return json.loads(response)
 
 
-def parse_query(response) -> str:
-    if isinstance(response, dict):
-        if "query" in response:
-            response = response["query"]
-        elif "answer" in response:
-            response = response["answer"]
-
-    if isinstance(response, str):
-        lines = response.strip().split("\n")
-        if lines[0].startswith("```") and lines[-1].startswith("```"):
-            response = "\n".join(lines[1:-1])
-        return response
-    else:
-        return ""
-
-
-def truncate_content(content: str, max_length_chars: int = 1000) -> str:
-    # borrowed from https://github.com/huggingface/smolagents/blob/main/src/smolagents/utils.py
-    if len(content) <= max_length_chars:
-        return content
-    else:
-        return (
-            content[: max_length_chars // 2]
-            + f"\n..._This content has been truncated to stay below {max_length_chars} characters_...\n"
-            + content[-max_length_chars // 2 :]
-        )
-
-
-def is_null_result(result: list[tuple]) -> bool:
-    if not result:  # empty result
-        return True
-
-    # Check if any column is all None
-    n_cols = len(result[0])
-    for i in range(n_cols):
-        if all(row[i] is None for row in result):
-            return True
-    return False
+def parse_query(response: str) -> str:
+    lines = response.strip().split("\n")
+    if lines[0].startswith("```") and lines[-1].startswith("```"):
+        response = "\n".join(lines[1:-1])
+    return response
 
 
 def avg_and_round(nums: list[float], n: int = 4):
@@ -64,7 +30,7 @@ def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
             model=llm, prompt_tokens=input_tokens, completion_tokens=output_tokens
         )
         return round(input_cost + output_cost, 2)
-    except:
+    except Exception:
         return 0.0
 
 
@@ -88,11 +54,6 @@ def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict]
     train_samples = [samples[i] for i in train_indices]
     dev_samples = [samples[i] for i in range(len(samples)) if i not in set(train_indices)]
     return train_samples, dev_samples
-
-
-def load_nl2q_tasks(path: str) -> list[NL2QTask]:
-    with open(path, "r") as f:
-        return [TypeAdapter(NL2QTask).validate_python(item) for item in json.load(f)]
 
 
 def save_results(result: NL2QRunResult, result_dir: str) -> None:
