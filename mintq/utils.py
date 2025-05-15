@@ -133,8 +133,9 @@ def save_results(results: list[NL2QTask], result_dir: str):
     trajectory_dir = os.path.join(result_dir, "trajectory")
     os.makedirs(trajectory_dir, exist_ok=True)
     for task in results:
-        with open(os.path.join(trajectory_dir, f"{task.qid}.txt"), "w") as f:
-            f.write(pprint_trajectory(task.trajectory) + "\n")
+        if task.trajectory:
+            with open(os.path.join(trajectory_dir, f"{task.qid}.txt"), "w") as f:
+                f.write(pprint_trajectory(task.trajectory) + "\n")
 
     print(f"Saved results to {result_dir}")
 
