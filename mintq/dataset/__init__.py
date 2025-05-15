@@ -3,14 +3,11 @@ from mintq.dataset.bird_sql import BirdSQLDatasetLoader
 from mintq.dataset.spider2 import Spider2SnowDatasetLoader
 from mintq.dataset.beaver import BeaverDatasetLoader
 
-__all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader", "BeaverDatasetLoader"]
+__all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader", "BeaverDatasetLoader", "get_dataset_loader"]
 
+all_dataset_loader_classes = [BirdSQLDatasetLoader, Spider2SnowDatasetLoader, BeaverDatasetLoader]
 
-dataset_loader_registry = {
-    "bird-sql": BirdSQLDatasetLoader,
-    "spider2-snow": Spider2SnowDatasetLoader,
-    "beaver": BeaverDatasetLoader,
-}
+dataset_loader_registry = {cls.name: cls for cls in all_dataset_loader_classes}
 
 
 def get_dataset_loader(name: str) -> NL2QDatasetLoader:

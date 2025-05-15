@@ -16,13 +16,13 @@ def create_connector(args):
 
 
 class BeaverDatasetLoader(NL2QDatasetLoader):
+    name = "beaver"
+
     def __init__(
         self,
-        name: str = "beaver",
         directory: str = "data/beaver",
         num_threads: int = 16,
     ):
-        self.name = name
         self.directory = directory
         self.num_threads = num_threads
         self._data = {}

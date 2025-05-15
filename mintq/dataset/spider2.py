@@ -17,16 +17,16 @@ def create_connector(args):
 
 
 class Spider2SnowDatasetLoader(NL2QDatasetLoader):
+    name = "spider2-snow"
+
     def __init__(
         self,
-        name: str = "spider2-snow",
         directory: str = "data/Spider2/spider2-snow",
         num_threads: int = 16,
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
     ):
-        self.name = name
         self.directory = directory
         self.num_threads = num_threads
         self.sf_user = sf_user

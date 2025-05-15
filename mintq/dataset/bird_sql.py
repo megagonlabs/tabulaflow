@@ -15,13 +15,13 @@ def create_connector(args):
 
 
 class BirdSQLDatasetLoader(NL2QDatasetLoader):
+    name = "bird-sql"
+
     def __init__(
         self,
-        name: str = "bird-sql",
         directory: str = "data/BIRD-SQL",
         num_threads: int = 16,
     ):
-        self.name = name
         self.directory = directory
         self.num_threads = num_threads
         self._data = {}
