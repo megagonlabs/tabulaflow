@@ -159,4 +159,4 @@ def pprint_trajectory(trajectory: Trajectory) -> str:
             res.append(s)
         elif msg.role == "tool":
             res.append(f"<message role=tool>\n{msg.response}\n</message>")
-    return "\n\n".join(res)
+    return "\n\n\n".join(res)
