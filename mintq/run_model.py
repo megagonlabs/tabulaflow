@@ -9,7 +9,7 @@ from functools import partial
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
-from mintq.utils import get_llm_api_cost, get_aggregated_metrics, pprint_trajectory, save_results
+from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
 from mintq.modelhub import get_nl2q_model, BaseNL2QModel
 from mintq.dataset import get_dataset_loader
@@ -41,7 +41,7 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
             tasks_with_predictions += [future.result() for future in futures]
 
         if i == 0:
-            print(pprint_trajectory(tasks_with_predictions[0].trajectory))
+            print(format_trajectory(tasks_with_predictions[0].trajectory))
 
     sample_model = model_fn()
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])

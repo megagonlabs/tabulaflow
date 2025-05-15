@@ -84,7 +84,7 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
     )
 
     save_str_list(
-        [pprint_trajectory(task.trajectory) + "\n" for task in result.tasks],
+        [format_trajectory(task.trajectory) + "\n" for task in result.tasks],
         [f"{task.qid}.xml" for task in result.tasks],
         os.path.join(result_dir, "trajectory"),
     )
@@ -92,7 +92,7 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
     print(f"Saved results to {result_dir}")
 
 
-def pprint_trajectory(trajectory: Trajectory) -> str:
+def format_trajectory(trajectory: Trajectory) -> str:
     res = []
     for msg in trajectory.messages:
         if msg.role == "system":
