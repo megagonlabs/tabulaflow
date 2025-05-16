@@ -3,14 +3,14 @@ import json
 import re
 import random
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional
+from typing import Optional, Any
 import pandas as pd
 from tqdm import tqdm
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SnowflakeConnector
+from mintq.db_connector import SnowflakeConnector, BaseDBConnector
 
 
-def create_connector(args):
+def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
     name, conn_cls, kwargs = args
     return conn_cls(name, **kwargs)
 

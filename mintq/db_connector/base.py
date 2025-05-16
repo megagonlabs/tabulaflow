@@ -7,6 +7,8 @@ class BaseDBConnector(Protocol):
     name: str  # note: for db connectors, name is an instance attribute
     schema: BaseDBSchema
 
+    def __init__(self, name: str, **kwargs: Any): ...
+
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]]: ...

@@ -4,12 +4,12 @@ import random
 from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import create_engine
 from tqdm import tqdm
-from typing import Optional
+from typing import Optional, Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import GenericSQLConnector
+from mintq.db_connector import GenericSQLConnector, BaseDBConnector
 
 
-def create_connector(args):
+def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
     name, conn_cls, kwargs = args
     return conn_cls(name, **kwargs)
 

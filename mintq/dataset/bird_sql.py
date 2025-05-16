@@ -3,12 +3,12 @@ import json
 import random
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
-from typing import Optional
+from typing import Optional, Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import SQLiteConnector, BaseDBConnector
 
 
-def create_connector(args):
+def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
     name, conn_cls, kwargs = args
     return conn_cls(name, **kwargs)
 
