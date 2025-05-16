@@ -1,11 +1,14 @@
 import math
 import pandas as pd
+from typing import Any
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import SQLiteConnector
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
-def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_ignore_order=False) -> float:
+def compare_multi_pandas_table(
+    pred: pd.DataFrame, multi_gold: list[pd.DataFrame], multi_condition_cols: Any = [], ignore_order: bool = False
+) -> float:
     print("multi_condition_cols", multi_condition_cols)
 
     if (
@@ -17,7 +20,7 @@ def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_
         multi_condition_cols = [[] for _ in range(len(multi_gold))]
     elif len(multi_gold) > 1 and not all(isinstance(sublist, list) for sublist in multi_condition_cols):
         multi_condition_cols = [multi_condition_cols for _ in range(len(multi_gold))]
-    multi_ignore_order = [multi_ignore_order for _ in range(len(multi_gold))]
+    multi_ignore_order = [ignore_order for _ in range(len(multi_gold))]
 
     for i, gold in enumerate(multi_gold):
         if compare_pandas_table(pred, gold, multi_condition_cols[i], multi_ignore_order[i]):
@@ -26,7 +29,9 @@ def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
-def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
+def compare_pandas_table(
+    pred: pd.DataFrame, gold: pd.DataFrame, condition_cols: list[int] = [], ignore_order: bool = False
+) -> float:
     """_summary_
 
     Args:
@@ -38,7 +43,7 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
     """
     tolerance = 1e-2
 
-    def vectors_match(v1, v2, tol=tolerance, ignore_order_=False):
+    def vectors_match(v1: list[Any], v2: list[Any], tol: float = tolerance, ignore_order_: bool = False) -> bool:
         if ignore_order_:
             v1, v2 = (
                 sorted(v1, key=lambda x: (x is None, str(x), isinstance(x, (int, float)))),
