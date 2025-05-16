@@ -92,13 +92,12 @@ class BeaverDatasetLoader(NL2QDatasetLoader):
         if sample_size and databases:
             raise ValueError("sample_size and databases cannot be both specified")
 
-        if databases:
-            databases = tuple(sorted(databases))
+        key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
-        if (split, databases) not in self._data:
-            self._data[(split, databases)] = self._load_split(split, databases=databases)
+        if (split, key) not in self._data:
+            self._data[(split, key)] = self._load_split(split, databases=databases)
 
-        dataset = self._data[(split, databases)]
+        dataset = self._data[(split, key)]
         if sample_size:
             sampler = random.Random(42)
             return NL2QDataset(
