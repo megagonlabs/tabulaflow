@@ -3,7 +3,7 @@ import time
 import collections
 import jinja2
 import logging
-from mintq.utils import parse_query, get_llm_api_cost
+from mintq.utils import extract_code, get_llm_api_cost
 from mintq.modelhub.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
 
@@ -91,7 +91,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             **self.litellm_kwargs,
         )
         raw_queries = [r["choices"][0]["message"]["content"] for r in responses]
-        queries = [parse_query(q) for q in raw_queries]
+        queries = [extract_code(q) for q in raw_queries]
         # Select the best query using self-consistency voting
         best_query_idx = self.select_best_query(queries, db_connector)
         if hasattr(task, "pred_query"):  # single-output task
@@ -129,7 +129,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
                 result = db_connector.run_query(query)
                 if not result:
                     continue
-            except Exception:
+            except Exception as e:
                 continue
             run_time[idx] = time.time() - t0
             hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))

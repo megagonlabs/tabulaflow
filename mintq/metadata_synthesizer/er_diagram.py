@@ -6,7 +6,7 @@ import collections
 from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.schema_formatter import SQLDefaultSchemaFormatter
 from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
-from mintq.utils import parse_json
+from mintq.utils import extract_code
 
 logger = logging.getLogger(__name__)
 
@@ -187,7 +187,7 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 
         reference_table_to_fks = collections.defaultdict(list)
         for table, r in zip(schema.tables, responses):
-            for dic in parse_json(r["choices"][0]["message"]["content"]):
+            for dic in extract_code(r["choices"][0]["message"]["content"]):
                 reference_table_to_fks[dic["target_table"]].append(
                     (formatter.format_table_name(table), dic["source_column"])
                 )
@@ -214,7 +214,7 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 
         erd = ERDiagram(db_schema=schema, relations=[])
         for table, r in zip(schema.tables, responses):
-            for dic in parse_json(r["choices"][0]["message"]["content"]):
+            for dic in extract_code(r["choices"][0]["message"]["content"]):
                 if dic["target_column"] is not None:
                     src_table = all_tables[dic["source_table"]]
                     erd.relations.append(

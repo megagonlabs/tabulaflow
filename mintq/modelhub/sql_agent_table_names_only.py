@@ -10,7 +10,7 @@ from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
-from mintq.utils import parse_query, get_llm_api_cost
+from mintq.utils import extract_code, get_llm_api_cost
 
 
 @dataclass
@@ -176,7 +176,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         # Run the agent
         result = self.agent.run_sync(prompt, deps=deps, model_settings={"temperature": self.temperature})
 
-        pred_query = parse_query(result.output)
+        pred_query = extract_code(result.output)
         trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
 
         usage = result.usage()

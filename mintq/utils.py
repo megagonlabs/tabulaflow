@@ -5,8 +5,9 @@ import random
 from mintq.schema import Trajectory, NL2QRunResult
 
 
-def parse_query(response: str) -> str:
-    lines = response.strip().split("\n")
+def extract_code(response: str) -> str:
+    response = response.strip()
+    lines = response.split("\n")
     if lines[0].startswith("```") and lines[-1].startswith("```"):
         response = "\n".join(lines[1:-1])
     return response
