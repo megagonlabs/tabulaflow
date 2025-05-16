@@ -30,7 +30,7 @@ class GenericSQLConnector:
         self._engine = sqlalchemy_engine
 
     @classmethod
-    def from_url(cls, name: str, url: str, **engine_kwargs):
+    def from_url(cls, name: str, url: str, **engine_kwargs: Any) -> "GenericSQLConnector":
         engine = create_engine(url, **engine_kwargs)
         return cls(name, engine)
 
@@ -68,7 +68,7 @@ class GenericSQLConnector:
                 f.write(schema.model_dump_json(indent=2))
         return schema
 
-    def _convert(self, value):
+    def _convert(self, value: Any) -> str | int | float | bool:
         if isinstance(value, (int, float, str, bool)):
             return value
         return str(value)
@@ -85,7 +85,7 @@ class GenericSQLConnector:
             if engine.dialect.name in ("sqlite", "mysql"):
                 schema_names = [None]
             else:
-                schema_names = inspector.get_schema_names()
+                schema_names = inspector.get_schema_names()  # type: ignore
 
             for schema_name in schema_names:
                 if schema_name and schema_name.lower() == "information_schema":
@@ -139,7 +139,9 @@ class GenericSQLConnector:
 
         return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
 
-    def _run_query_without_timeout(self, query: str, parameters=(), return_df: bool = False) -> list | pd.DataFrame:
+    def _run_query_without_timeout(
+        self, query: str, parameters: Sequence[Any] = (), return_df: bool = False
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self._engine.connect() as conn:
             if return_df:
                 return pd.read_sql_query(sqlalchemy.text(query), conn, params=parameters)
@@ -147,7 +149,7 @@ class GenericSQLConnector:
 
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list | pd.DataFrame:
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
         try:
             return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
         except FunctionTimedOut:

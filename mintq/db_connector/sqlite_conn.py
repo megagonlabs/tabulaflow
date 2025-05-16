@@ -11,7 +11,9 @@ class SQLiteConnector(GenericSQLConnector):
         super().__init__(name, create_engine(f"sqlite:///{sqlite_db_path}"))
         self.sqlite_db_path = sqlite_db_path
 
-    def _run_query_without_timeout(self, query: str, parameters=(), return_df: bool = False) -> list | pd.DataFrame:
+    def _run_query_without_timeout(
+        self, query: str, parameters: Sequence[Any] = (), return_df: bool = False
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with sqlite3.connect(self.sqlite_db_path) as conn:
             if return_df:
                 return pd.read_sql_query(query, conn, params=parameters)
@@ -22,7 +24,7 @@ class SQLiteConnector(GenericSQLConnector):
 
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list | pd.DataFrame:
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
         try:
             return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
         except FunctionTimedOut:
