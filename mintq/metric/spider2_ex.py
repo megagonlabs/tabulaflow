@@ -1,7 +1,7 @@
 import math
 import pandas as pd
 from mintq.metric.base import NL2QMetric
-from mintq.schema import SingleOutputNL2QTask
+from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import SQLiteConnector
 
 
@@ -78,7 +78,7 @@ class Spider2Ex(NL2QMetric):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SingleOutputNL2QTask, db_connector: SQLiteConnector) -> float:
+    def compute(self, task: SimpleNL2QTaskOutput, db_connector: SQLiteConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 

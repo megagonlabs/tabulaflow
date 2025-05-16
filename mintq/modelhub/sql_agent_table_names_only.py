@@ -9,7 +9,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseDBConnector
 from mintq.schema_formatter import BaseSchemaFormatter, get_schema_formatter
-from mintq.schema import SingleOutputNL2QTask, SQLTableSchema
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import parse_query, get_llm_api_cost
@@ -17,7 +17,7 @@ from mintq.utils import parse_query, get_llm_api_cost
 
 @dataclass
 class TaskContext:
-    task: SingleOutputNL2QTask
+    task: SimpleNL2QTask
     db_connector: BaseDBConnector
     formatter: BaseSchemaFormatter
     table_id_to_schema: dict[str, SQLTableSchema]
@@ -156,8 +156,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
             "num_candidates": self.num_candidates,
         }
 
-    def predict(self, task: SingleOutputNL2QTask, db_connector: BaseDBConnector) -> SingleOutputNL2QTask:
-        task = copy.deepcopy(task)
+    def predict(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
@@ -176,17 +175,19 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
             table_id_to_schema=table_id_to_schema,
         )
 
+        output = SimpleNL2QTaskOutput.model_validate(task.model_dump())
+
         # Run the agent
         result = self.agent.run_sync(prompt, deps=deps, model_settings={"temperature": self.temperature})
 
-        task.pred_query = parse_query(result.output)
-        task.trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
+        output.pred_query = parse_query(result.output)
+        output.trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
 
         usage = result.usage()
-        task.metrics["latency_seconds"] = time.time() - t0
-        task.metrics["api_calls"] = usage.requests
-        task.metrics["input_tokens"] = usage.request_tokens
-        task.metrics["output_tokens"] = usage.response_tokens
-        task.metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
-        task.metrics["steps"] = sum(1 for msg in task.trajectory.messages if msg.role == "assistant")
-        return task
+        output.metrics["latency_seconds"] = time.time() - t0
+        output.metrics["api_calls"] = usage.requests
+        output.metrics["input_tokens"] = usage.request_tokens
+        output.metrics["output_tokens"] = usage.response_tokens
+        output.metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
+        output.metrics["steps"] = sum(1 for msg in output.trajectory.messages if msg.role == "assistant")
+        return output

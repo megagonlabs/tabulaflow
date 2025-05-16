@@ -1,5 +1,5 @@
 import math
-from mintq.schema import SingleOutputNL2QTask
+from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseDBConnector
 from mintq.metric.base import NL2QMetric
 
@@ -10,7 +10,7 @@ class GoldExecutable(NL2QMetric):
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SingleOutputNL2QTask, db_connector: BaseDBConnector) -> float:
+    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseDBConnector) -> float:
         if not task.gold_queries:
             return math.nan
 

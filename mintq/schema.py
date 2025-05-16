@@ -42,33 +42,44 @@ class Trajectory(BaseModel):
     messages: list[Message]
 
 
-class BaseNL2QTask(BaseModel, ABC):
+class SimpleNL2QTask(BaseModel):
+    task_type: Literal["simple"] = "simple"
     qid: str
     language: str
     db: str
     question: str
     evidence: str | None = None
-    metrics: dict[str, float | int] = {}
     extra_info: dict[str, Any] = {}
-
-
-class SingleOutputNL2QTask(BaseNL2QTask):
-    task_type: Literal["single_output"] = "single_output"
     gold_queries: list[str] = []
     gold_exec_results: list[list[dict[str, Any]]] = []
+
+
+class SimpleNL2QTaskOutput(SimpleNL2QTask):
+    metrics: dict[str, float | int] = {}
     pred_query: str | None = None
     trajectory: Trajectory | None = None
 
 
-class MultiOutputNL2QTask(BaseNL2QTask):
-    task_type: Literal["multi_output"] = "multi_output"
+class MultiNL2QTask(BaseModel):
+    task_type: Literal["multi"] = "multi"
+    qid: str
+    language: str
+    db: str
+    question: str
+    evidence: str | None = None
+    extra_info: dict[str, Any] = {}
     gold_queries: list[str] = []
     gold_exec_results: list[list[dict[str, Any]]] = []
+
+
+class MultiNL2QTaskOutput(MultiNL2QTask):
+    metrics: dict[str, float | int] = {}
     pred_queries: list[str] = []
     trajectories: list[Trajectory] = []
 
 
-NL2QTask = Annotated[Union[SingleOutputNL2QTask, MultiOutputNL2QTask], Field(discriminator="task_type")]
+NL2QTask = Annotated[Union[SimpleNL2QTask, MultiNL2QTask], Field(discriminator="task_type")]
+NL2QTaskOutput = Annotated[Union[SimpleNL2QTaskOutput, MultiNL2QTaskOutput], Field(discriminator="task_type")]
 
 
 class NL2QDataset(BaseModel):
@@ -88,7 +99,7 @@ class NL2QRunResult(BaseModel):
     model: str
     model_args: dict[str, Any]
     aggregated_metrics: dict[str, float | int]
-    tasks: list[NL2QTask]
+    tasks: list[NL2QTaskOutput]
 
 
 class BaseDBSchema(BaseModel, ABC):

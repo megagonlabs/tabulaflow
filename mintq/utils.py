@@ -58,8 +58,8 @@ def save_str_list(strings: list[str], filenames: list[str], directory: str) -> N
 
 
 def save_results(result: NL2QRunResult, result_dir: str) -> None:
-    if result.tasks[0].task_type != "single_output":
-        raise ValueError("Only single-output NL2Q tasks are supported currently")
+    if result.tasks[0].task_type != "simple":
+        raise ValueError("Only simple NL2Q tasks are supported currently")
 
     with open(os.path.join(result_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))

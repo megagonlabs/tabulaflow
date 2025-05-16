@@ -5,7 +5,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from typing import Optional
 from mintq.dataset.base import NL2QDatasetLoader
-from mintq.schema import SingleOutputNL2QTask, NL2QDataset
+from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLiteConnector
 
 
@@ -43,7 +43,7 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                 continue
 
             tasks.append(
-                SingleOutputNL2QTask(
+                SimpleNL2QTask(
                     qid=f"{self.name}_{split}_{i}",
                     language="SQLite",
                     db=item["db_id"],
