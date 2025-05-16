@@ -75,9 +75,9 @@ def run_query(ctx: RunContext[TaskContext], query: str) -> str:
         return f"(query failed: {e})"
     if not exec_results:
         return "(query executed successfully, but results are empty)"
-    exec_results = "[" + ",\n".join([str(row) for row in exec_results]) + "]"
-    exec_results = truncate(exec_results, 500)
-    return exec_results
+    res = "[" + ",\n".join([str(row) for row in exec_results]) + "]"
+    res = truncate(res, 500)
+    return res
 
 
 def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
