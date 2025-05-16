@@ -116,7 +116,7 @@ class SimpleZeroShotNL2Q:
         metrics["api_calls"] = len(responses)
         metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
         metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])
+        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = 1
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

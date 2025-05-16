@@ -186,7 +186,7 @@ class SQLAgentTableNamesOnly:
         metrics["api_calls"] = usage.requests
         metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])
+        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

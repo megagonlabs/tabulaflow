@@ -41,7 +41,9 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
             tasks_with_predictions += [future.result() for future in futures]
 
         if i == 0:
-            print(format_trajectory(tasks_with_predictions[0].trajectory))
+            task = tasks_with_predictions[0]
+            trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
+            print(format_trajectory(trajectory))
 
     sample_model = model_fn()
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
