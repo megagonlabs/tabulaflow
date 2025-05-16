@@ -103,6 +103,7 @@ class BeaverDatasetLoader(NL2QDatasetLoader):
             return NL2QDataset(
                 name=self.name,
                 split_id=split_id,
+                databases=databases,
                 tasks=sampler.sample(dataset.tasks, int(sample_size)),
                 db_connectors=dataset.db_connectors,
             )

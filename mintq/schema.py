@@ -55,9 +55,9 @@ class SimpleNL2QTask(BaseModel):
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
-    metrics: dict[str, float | int] = {}
-    pred_query: str | None = None
-    trajectory: Trajectory | None = None
+    metrics: dict[str, float | int]
+    pred_query: str
+    trajectory: Trajectory
 
 
 class MultiNL2QTask(BaseModel):
@@ -73,9 +73,9 @@ class MultiNL2QTask(BaseModel):
 
 
 class MultiNL2QTaskOutput(MultiNL2QTask):
-    metrics: dict[str, float | int] = {}
-    pred_queries: list[str] = []
-    trajectories: list[Trajectory] = []
+    metrics: dict[str, float | int]
+    pred_queries: list[str]
+    trajectories: list[Trajectory]
 
 
 NL2QTask = Annotated[Union[SimpleNL2QTask, MultiNL2QTask], Field(discriminator="task_type")]
