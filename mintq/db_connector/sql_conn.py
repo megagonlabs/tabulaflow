@@ -4,7 +4,7 @@ import hashlib
 import sqlalchemy
 from sqlalchemy import create_engine, inspect, func, select
 from func_timeout import func_timeout, FunctionTimedOut
-from mintq.db_connector.base import BaseDBConnector
+from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
 
@@ -23,7 +23,7 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 #     return col_type.__name__
 
 
-class GenericSQLConnector(BaseDBConnector):
+class GenericSQLConnector(BaseSQLDBConnector):
     def __init__(self, name: str, sqlalchemy_engine):
         self._name = name
         self._schema = self._load_schema_with_cache(name, sqlalchemy_engine)

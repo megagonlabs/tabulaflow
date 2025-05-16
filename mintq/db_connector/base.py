@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
-from mintq.schema import BaseDBSchema
+from mintq.schema import BaseDBSchema, SQLSchema
 
 
 class BaseDBConnector(ABC):
@@ -16,4 +16,11 @@ class BaseDBConnector(ABC):
 
     @abstractmethod
     def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list[tuple[Any, ...]]:
+        pass
+
+
+class BaseSQLDBConnector(BaseDBConnector):
+    @property
+    @abstractmethod
+    def schema(self) -> SQLSchema:
         pass

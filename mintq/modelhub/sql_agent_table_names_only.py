@@ -5,7 +5,7 @@ import sqlalchemy
 from sqlalchemy import select, distinct
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
-from mintq.db_connector import BaseDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
@@ -16,7 +16,7 @@ from mintq.utils import parse_query, get_llm_api_cost
 @dataclass
 class TaskContext:
     task: SimpleNL2QTask
-    db_connector: BaseDBConnector
+    db_connector: BaseSQLDBConnector
     formatter: BaseSQLSchemaFormatter
     table_id_to_schema: dict[str, SQLTableSchema]
 
@@ -154,7 +154,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
             "num_candidates": self.num_candidates,
         }
 
-    def predict(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
+    def predict(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
@@ -183,9 +183,9 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["api_calls"] = usage.requests
-        metrics["input_tokens"] = usage.request_tokens
-        metrics["output_tokens"] = usage.response_tokens
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
+        metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
+        metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
+        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

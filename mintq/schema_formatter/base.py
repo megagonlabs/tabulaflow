@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from mintq.schema import BaseDBSchema, SQLSchema
+from mintq.schema import BaseDBSchema, SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
 class BaseSchemaFormatter(ABC):
@@ -15,4 +15,16 @@ class BaseSQLSchemaFormatter(BaseSchemaFormatter):
 
     @abstractmethod
     def format(self, schema: SQLSchema) -> str:
+        pass
+
+    @abstractmethod
+    def format_table_name(self, table: SQLTableSchema) -> str:
+        pass
+
+    @abstractmethod
+    def format_table(self, table: SQLTableSchema) -> str:
+        pass
+
+    @abstractmethod
+    def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str:
         pass
