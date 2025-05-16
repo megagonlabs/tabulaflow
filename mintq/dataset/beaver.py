@@ -66,14 +66,16 @@ class BeaverDatasetLoader(NL2QDatasetLoader):
                 )
                 for name, engine in engines.items()
             ]
-            db_connectors = list(
-                tqdm(
-                    executor.map(create_connector, connector_args),
-                    total=len(connector_args),
-                    desc="Creating database connectors",
+            db_connectors = {
+                conn.name: conn
+                for conn in tqdm(
+                    tqdm(
+                        executor.map(create_connector, connector_args),
+                        total=len(connector_args),
+                        desc="Creating database connectors",
+                    )
                 )
-            )
-            db_connectors = {conn.name: conn for conn in db_connectors}
+            }
 
         return NL2QDataset(
             name=self.name,

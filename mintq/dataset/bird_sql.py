@@ -65,14 +65,16 @@ class BirdSQLDatasetLoader(NL2QDatasetLoader):
                 )
                 for name in db_names
             ]
-            db_connectors = list(
-                tqdm(
-                    executor.map(create_connector, connector_args),
-                    total=len(connector_args),
-                    desc="Creating database connectors",
+            db_connectors = {
+                conn.name: conn
+                for conn in tqdm(
+                    tqdm(
+                        executor.map(create_connector, connector_args),
+                        total=len(connector_args),
+                        desc="Creating database connectors",
+                    )
                 )
-            )
-            db_connectors = {conn.name: conn for conn in db_connectors}
+            }
 
         return NL2QDataset(
             name=self.name,

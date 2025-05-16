@@ -1,7 +1,6 @@
 import math
 import os
 import litellm
-import random
 from mintq.schema import Trajectory, NL2QRunResult
 
 

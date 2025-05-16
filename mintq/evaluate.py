@@ -5,13 +5,13 @@ from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from mintq.db_connector import BaseDBConnector
-from mintq.schema import NL2QTask, NL2QRunResult, NL2QDataset
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
 from mintq.dataset import get_dataset_loader
 from mintq.metric import get_metric, NL2QMetric
 
 
-def compute_metrics(item: NL2QTask, metrics: list[NL2QMetric], db_connector: BaseDBConnector):
+def compute_metrics(item: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: BaseDBConnector):
     item = copy.deepcopy(item)
     for m in metrics:
         item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
