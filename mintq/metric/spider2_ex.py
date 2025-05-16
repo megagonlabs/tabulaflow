@@ -6,7 +6,7 @@ from mintq.db_connector import SQLiteConnector
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
-def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_ignore_order=False):
+def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_ignore_order=False) -> float:
     print("multi_condition_cols", multi_condition_cols)
 
     if (

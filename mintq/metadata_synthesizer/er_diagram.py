@@ -4,7 +4,7 @@ import litellm
 import jinja2
 import collections
 from mintq.schema import ERDiagram, ERDiagramRelation
-from mintq.schema_formatter import get_schema_formatter
+from mintq.schema_formatter import SQLDefaultSchemaFormatter
 from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
 from mintq.utils import parse_json
 
@@ -169,7 +169,7 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 
     def run(self, db_connector) -> ERDiagram:
         schema = db_connector.schema
-        formatter = get_schema_formatter("sql_default")
+        formatter = SQLDefaultSchemaFormatter()
 
         prompts = [
             jinja2.Template(CANDIDATE_FK_PROMPT).render(
