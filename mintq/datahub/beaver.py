@@ -80,7 +80,7 @@ class BeaverDatasetLoader:
             name=self.name,
             split_id=split,
             databases=databases,
-            tasks=tasks,  # type: ignore[arg-type]
+            tasks=tasks,  # type: ignore
             db_connectors=db_connectors,
         )
 

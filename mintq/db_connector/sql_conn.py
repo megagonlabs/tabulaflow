@@ -82,7 +82,7 @@ class GenericSQLConnector:
                     # print(f"table_name: {table_name}, schema_name: {schema_name}")
                     columns = []
                     for column in inspector.get_columns(table_name, schema=schema_name):
-                        col = sqlalchemy.column(column["name"])
+                        col = sqlalchemy.column(column["name"])  # type: ignore
                         tbl = sqlalchemy.table(table_name, schema=schema_name)
 
                         # Note: examples will contain all possible values if cardinality <= 20
