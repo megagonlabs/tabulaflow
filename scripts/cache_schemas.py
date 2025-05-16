@@ -1,7 +1,7 @@
 import argparse
 import time
 import os
-from mintq.dataset import get_dataset_loader
+from mintq.datahub import get_dataset_loader
 
 
 def main():

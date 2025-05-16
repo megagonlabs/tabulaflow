@@ -1,6 +1,6 @@
 import argparse
 import os
-from mintq.dataset import get_dataset_loader
+from mintq.datahub import get_dataset_loader
 
 
 os.environ["MINTQ_CACHE_ENABLED"] = "0"
