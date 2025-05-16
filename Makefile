@@ -14,3 +14,8 @@ format:
 .PHONY: lint
 lint:
 	uv run ruff check mintq/
+
+.PHONY: test
+test:
+	uv run mintq/run_model.py --debug
+	uv run mintq/evaluate.py
