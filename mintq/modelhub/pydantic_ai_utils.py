@@ -1,7 +1,7 @@
 import json
 from pydantic_ai.models.openai import OpenAIModel
 from pydantic_ai.messages import ModelMessage
-from mintq.schema import Trajectory, ToolCall, AssistantMessage, ToolResponse, UserMessage, SystemMessage, Message
+from mintq.schema import Trajectory, ToolCall, AssistantMessage, ToolResponse, UserMessage, SystemMessage
 
 
 def get_pydantic_ai_llm(litellm_id: str):

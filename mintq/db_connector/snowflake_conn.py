@@ -1,4 +1,5 @@
 import os
+from typing import Any, Sequence
 import snowflake.connector
 import pandas as pd
 from sqlalchemy import create_engine
@@ -26,7 +27,9 @@ class SnowflakeConnector(GenericSQLConnector):
         self.sf_account = sf_account
         self.sf_database = sf_database
 
-    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list | pd.DataFrame:
+    def run_query(
+        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
+    ) -> list | pd.DataFrame:
         with snowflake.connector.connect(
             user=self.sf_user,
             password=self.sf_password,

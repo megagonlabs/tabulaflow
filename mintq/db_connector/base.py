@@ -1,4 +1,4 @@
-from typing import Any, Protocol
+from typing import Any, Protocol, Sequence
 import sqlalchemy
 from mintq.schema import BaseDBSchema, SQLSchema
 
@@ -8,7 +8,7 @@ class BaseDBConnector(Protocol):
     schema: BaseDBSchema
 
     def run_query(
-        self, query: str, parameters=(), timeout: int = 30, return_df: bool = False
+        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]]: ...
 
 
@@ -18,5 +18,5 @@ class BaseSQLDBConnector(Protocol):
     engine: sqlalchemy.engine.Engine
 
     def run_query(
-        self, query: str, parameters=(), timeout: int = 30, return_df: bool = False
+        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]]: ...

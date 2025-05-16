@@ -1,4 +1,5 @@
 import os
+from typing import Any, Sequence
 import pandas as pd
 import hashlib
 import sqlalchemy
@@ -144,7 +145,9 @@ class GenericSQLConnector:
                 return pd.read_sql_query(sqlalchemy.text(query), conn, params=parameters)
             return conn.execute(sqlalchemy.text(query), parameters).fetchall()
 
-    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list | pd.DataFrame:
+    def run_query(
+        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
+    ) -> list | pd.DataFrame:
         try:
             return func_timeout(timeout, self._run_query_without_timeout, args=(query, parameters, return_df))
         except FunctionTimedOut:

@@ -1,4 +1,3 @@
-from mintq.metric.base import NL2QMetric
 from mintq.metric.bird_sql_ex import BirdSQLEx
 from mintq.metric.bird_sql_ex_soft import BirdSQLExSoft
 from mintq.metric.executable import Executable
@@ -13,7 +12,6 @@ __all__ = [
     "GoldExecutable",
     "GoldResultNotEmpty",
     "Spider2Ex",
-    "BaseNL2QMetric",
     "get_metric",
 ]
 
