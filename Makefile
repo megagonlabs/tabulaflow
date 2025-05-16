@@ -15,7 +15,12 @@ format:
 lint:
 	uv run ruff check mintq/
 
-.PHONY: test
-test:
-	uv run mintq/run_model.py --debug
+.PHONY: test-zero
+test-zero:
+	uv run mintq/run_model.py --model simple_zero_shot --debug
+	uv run mintq/evaluate.py
+
+.PHONY: test-agent
+test-agent:
+	uv run mintq/run_model.py --model sql_agent_table_names_only --debug
 	uv run mintq/evaluate.py
