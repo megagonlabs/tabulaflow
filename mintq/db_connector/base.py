@@ -19,6 +19,8 @@ class BaseSQLDBConnector(Protocol):
     schema: SQLSchema
     engine: sqlalchemy.engine.Engine
 
+    def __init__(self, name: str, **kwargs: Any): ...
+
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]]: ...

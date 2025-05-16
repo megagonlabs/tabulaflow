@@ -11,14 +11,18 @@ from mintq.datahub import get_dataset_loader
 from mintq.metric import get_metric, BaseNL2QMetric
 
 
-def compute_metrics(item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector) -> NL2QTaskOutput:
+def compute_metrics(
+    item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector
+) -> NL2QTaskOutput:
     item = copy.deepcopy(item)
     for m in metrics:
         item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
     return item
 
 
-def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseNL2QMetric], num_threads: int) -> NL2QRunResult:
+def evaluate(
+    result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseNL2QMetric], num_threads: int
+) -> NL2QRunResult:
     result = copy.deepcopy(result)
 
     # Shuffle the result to reduce concurent query execution on the same database
