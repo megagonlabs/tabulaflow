@@ -13,7 +13,7 @@ def compare_multi_pandas_table(pred, multi_gold, multi_condition_cols=[], multi_
         multi_condition_cols == []
         or multi_condition_cols == [[]]
         or multi_condition_cols == [None]
-        or multi_condition_cols == None
+        or multi_condition_cols is None
     ):
         multi_condition_cols = [[] for _ in range(len(multi_gold))]
     elif len(multi_gold) > 1 and not all(isinstance(sublist, list) for sublist in multi_condition_cols):
