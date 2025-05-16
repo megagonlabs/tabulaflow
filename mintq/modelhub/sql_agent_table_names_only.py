@@ -112,6 +112,12 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
             column = column[1:-1]
             break
 
+    if table not in ctx.deps.table_id_to_schema:
+        return f"(table {table} not found)"
+
+    if not any(col.name == column for col in ctx.deps.table_id_to_schema[table].columns):
+        return f"(column {column} not found in table {table})"
+
     matches = []
     for keyword in keywords:
         sql_table = sqlalchemy.Table(table, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String))
