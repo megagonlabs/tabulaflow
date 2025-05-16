@@ -38,18 +38,6 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
     return res
 
 
-def get_trajectory_num_steps(trajectory: list[dict]) -> int:
-    return len([msg for msg in trajectory["messages"] if msg["role"].lower() == "assistant"])
-
-
-def split_train_dev(samples: list[dict], ratio: float = 0.9) -> tuple[list[dict], list[dict]]:
-    sampler = random.Random(42)
-    train_indices = sampler.sample(range(len(samples)), int(len(samples) * ratio))
-    train_samples = [samples[i] for i in train_indices]
-    dev_samples = [samples[i] for i in range(len(samples)) if i not in set(train_indices)]
-    return train_samples, dev_samples
-
-
 def save_str_list(strings: list[str], filenames: list[str], directory: str) -> None:
     os.makedirs(directory, exist_ok=True)
     for s, filename in zip(strings, filenames):

@@ -187,7 +187,7 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 
         reference_table_to_fks = collections.defaultdict(list)
         for table, r in zip(schema.tables, responses):
-            for dic in extract_code(r["choices"][0]["message"]["content"]):
+            for dic in json.loads(extract_code(r["choices"][0]["message"]["content"])):
                 reference_table_to_fks[dic["target_table"]].append(
                     (formatter.format_table_name(table), dic["source_column"])
                 )
