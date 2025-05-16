@@ -7,16 +7,17 @@ Contact: yanlin@megagon.ai
 Project structure:
 ```
 mintq
-├── baseline/               # text-to-query methods
+├── modelhub/               # text-to-query methods
 │   ├── simple_zero_shot.py
-│   ├── tool_agent.py
+│   ├── sql_agent_table_names_only.py
 │   └── ...
-├── dataset/                # text-to-query datasets
-│   ├── bird-sql/
-│   ├── spider2-snow/
+├── datahub/                # text-to-query datasets
+│   ├── bird_sql.py
+│   ├── spider2.py
+│   ├── beaver.py
 │   └── ...
 ├── db_connector/           # database connectors
-│   ├── sqlite_conn.py
+│   ├── sql_conn.py
 │   ├── snowflake_conn.py
 │   └── ...
 ├── metric/                 # evaluation metrics
@@ -31,8 +32,9 @@ mintq
 │   └── ...
 ├── schema.py               # data structures used in the project
 ├── utils.py                # utility functions
-├── run_baseline.py         # entry point to run the baseline methods
-└── evaluate.py             # script to evaluate the results
+├── run_model.py            # entry point to run the text-to-query methods
+├── evaluate.py             # script to evaluate the results
+└── visualization.py        # visualization utilities
 ```
 
 ## Dataset setup
