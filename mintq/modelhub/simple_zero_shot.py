@@ -96,6 +96,10 @@ class SimpleZeroShotNL2Q:
             **self.litellm_kwargs,
         )
 
+        for r in responses:
+            if isinstance(r, litellm.BadRequestError):  # type: ignore
+                raise ValueError(f"{r}")
+
         raw_outputs = [r["choices"][0]["message"]["content"] for r in responses]
         queries = [extract_code(q) for q in raw_outputs]
         # Select the best query using self-consistency voting
