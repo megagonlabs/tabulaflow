@@ -115,7 +115,7 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     for keyword in keywords:
         sql_table = sqlalchemy.Table(table, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String))
         stmt = select(distinct(sql_table.c[column])).where(sql_table.c[column].like(f"%{keyword}%"))
-        with db_connector._engine.connect() as conn:
+        with db_connector.engine.connect() as conn:
             result = conn.execute(stmt)
             matches += [row[0] for row in result]
     matches = sorted(list(set(matches)))

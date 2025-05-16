@@ -39,6 +39,10 @@ class GenericSQLConnector(BaseSQLDBConnector):
         return self._name
 
     @property
+    def engine(self) -> sqlalchemy.engine.Engine:
+        return self._engine
+
+    @property
     def schema(self) -> SQLSchema:
         return self._schema
 

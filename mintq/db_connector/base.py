@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import Any
+import sqlalchemy
 from mintq.schema import BaseDBSchema, SQLSchema
 
 
@@ -23,4 +24,9 @@ class BaseSQLDBConnector(BaseDBConnector):
     @property
     @abstractmethod
     def schema(self) -> SQLSchema:
+        pass
+
+    @property
+    @abstractmethod
+    def engine(self) -> sqlalchemy.engine.Engine:
         pass
