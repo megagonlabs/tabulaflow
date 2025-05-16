@@ -2,11 +2,7 @@ from abc import ABC, abstractmethod
 from mintq.schema import SQLSchema
 
 
-class BaseSchemaFormatter(ABC):
-    name: str
-
-
-class BaseSQLSchemaFormatter(BaseSchemaFormatter):
+class BaseSQLSchemaFormatter(ABC):
     name: str
 
     @abstractmethod

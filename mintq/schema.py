@@ -55,7 +55,7 @@ class BaseNL2QTask(BaseModel, ABC):
 class SingleOutputNL2QTask(BaseNL2QTask):
     task_type: Literal["single_output"] = "single_output"
     gold_queries: list[str] = []
-    gold_exec_results: list[list[dict]] = []
+    gold_exec_results: list[list[dict[str, Any]]] = []
     pred_query: str | None = None
     trajectory: Trajectory | None = None
 
@@ -63,7 +63,7 @@ class SingleOutputNL2QTask(BaseNL2QTask):
 class MultiOutputNL2QTask(BaseNL2QTask):
     task_type: Literal["multi_output"] = "multi_output"
     gold_queries: list[str] = []
-    gold_exec_results: list[list[dict]] = []
+    gold_exec_results: list[list[dict[str, Any]]] = []
     pred_queries: list[str] = []
     trajectories: list[Trajectory] = []
 

@@ -113,14 +113,14 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
                 )
                 for name in db_names
             ]
-            db_connectors = list(
-                tqdm(
+            db_connectors = {
+                conn.name: conn
+                for conn in tqdm(
                     executor.map(create_connector, connector_args),
                     total=len(connector_args),
                     desc="Creating database connectors",
                 )
-            )
-            db_connectors = {conn.name: conn for conn in db_connectors}
+            }
 
         return NL2QDataset(
             name=self.name,
@@ -139,18 +139,18 @@ class Spider2SnowDatasetLoader(NL2QDatasetLoader):
         if sample_size and databases:
             raise ValueError("sample_size and databases cannot be both specified")
 
-        if databases:
-            databases = tuple(sorted(databases))
+        key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
-        if (split, databases) not in self._data:
-            self._data[(split, databases)] = self._load_split(split, databases=databases)
+        if (split, key) not in self._data:
+            self._data[(split, key)] = self._load_split(split, databases=databases)
 
-        dataset = self._data[(split, databases)]
+        dataset = self._data[(split, key)]
         if sample_size:
             sampler = random.Random(42)
             return NL2QDataset(
                 name=self.name,
                 split_id=split_id,
+                databases=databases,
                 tasks=sampler.sample(dataset.tasks, int(sample_size)),
                 db_connectors=dataset.db_connectors,
             )

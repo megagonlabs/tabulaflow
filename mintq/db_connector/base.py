@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-import os
+from typing import Any
 from mintq.schema import BaseDBSchema
 
 
@@ -15,5 +15,5 @@ class BaseDBConnector(ABC):
         pass
 
     @abstractmethod
-    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list:
+    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list[tuple[Any, ...]]:
         pass
