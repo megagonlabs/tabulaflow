@@ -37,16 +37,8 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
     return res
 
 
-def save_str_list(strings: list[str], filenames: list[str], directory: str) -> None:
-    os.makedirs(directory, exist_ok=True)
-    for s, filename in zip(strings, filenames):
-        with open(os.path.join(directory, filename), "w") as f:
-            f.write(s)
-
-
 def save_results(result: NL2QRunResult, result_dir: str) -> None:
-    if result.tasks[0].task_type != "simple":
-        raise ValueError("Only simple NL2Q tasks are supported currently")
+    os.makedirs(result_dir, exist_ok=True)
 
     with open(os.path.join(result_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
@@ -59,23 +51,26 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
     else:
         extension = "query"
 
-    save_str_list(
-        ["\n\n".join(task.gold_queries) for task in result.tasks],
-        [f"{task.qid}.{extension}" for task in result.tasks],
-        os.path.join(result_dir, "gold_query"),
-    )
+    gold_query_dir = os.path.join(result_dir, "gold_query")
+    pred_query_dir = os.path.join(result_dir, "pred_query")
+    trajectory_dir = os.path.join(result_dir, "trajectory")
 
-    save_str_list(
-        [task.pred_query for task in result.tasks],
-        [f"{task.qid}.{extension}" for task in result.tasks],
-        os.path.join(result_dir, "pred_query"),
-    )
+    os.makedirs(gold_query_dir, exist_ok=True)
+    os.makedirs(pred_query_dir, exist_ok=True)
+    os.makedirs(trajectory_dir, exist_ok=True)
 
-    save_str_list(
-        [format_trajectory(task.trajectory) + "\n" for task in result.tasks],
-        [f"{task.qid}.xml" for task in result.tasks],
-        os.path.join(result_dir, "trajectory"),
-    )
+    for task in result.tasks:
+        if task.task_type != "simple":
+            raise ValueError("Only simple NL2Q tasks are supported currently")
+
+        with open(os.path.join(gold_query_dir, f"{task.qid}.{extension}"), "w") as f:
+            f.write("\n\n".join(task.gold_queries))
+
+        with open(os.path.join(pred_query_dir, f"{task.qid}.{extension}"), "w") as f:
+            f.write(task.pred_query)
+
+        with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
+            f.write(format_trajectory(task.trajectory))
 
     print(f"Saved results to {result_dir}")
 
