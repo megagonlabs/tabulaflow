@@ -31,7 +31,7 @@ class Spider2SnowDatasetLoader:
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
-        self._data = {}
+        self._data: dict[Any, NL2QDataset] = {}
 
     def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split != "dev":

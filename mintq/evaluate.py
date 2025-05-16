@@ -8,17 +8,17 @@ from mintq.db_connector import BaseDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
 from mintq.dataset import get_dataset_loader
-from mintq.metric import get_metric, NL2QMetric
+from mintq.metric import get_metric, BaseNL2QMetric
 
 
-def compute_metrics(item: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: BaseDBConnector):
+def compute_metrics(item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector):
     item = copy.deepcopy(item)
     for m in metrics:
         item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
     return item
 
 
-def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[NL2QMetric], num_threads: int) -> NL2QRunResult:
+def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseNL2QMetric], num_threads: int) -> NL2QRunResult:
     result = copy.deepcopy(result)
 
     # Shuffle the result to reduce concurent query execution on the same database

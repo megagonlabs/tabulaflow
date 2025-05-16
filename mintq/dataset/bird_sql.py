@@ -23,7 +23,7 @@ class BirdSQLDatasetLoader:
     ):
         self.directory = directory
         self.num_threads = num_threads
-        self._data = {}
+        self._data: dict[Any, NL2QDataset] = {}
 
     def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split == "train":
