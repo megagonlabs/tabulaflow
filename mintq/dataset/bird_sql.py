@@ -79,7 +79,7 @@ class BirdSQLDatasetLoader:
             name=self.name,
             split_id=split,
             databases=databases,
-            tasks=tasks,
+            tasks=tasks,  # type: ignore[arg-type]
             db_connectors=db_connectors,
         )
 
