@@ -129,7 +129,7 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
                 result = db_connector.run_query(query)
                 if not result:
                     continue
-            except Exception as e:
+            except Exception:
                 continue
             run_time[idx] = time.time() - t0
             hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))

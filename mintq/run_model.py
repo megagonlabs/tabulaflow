@@ -128,5 +128,6 @@ def main():
     result = run_model(model_fn, dataset, args.batch_size)
     save_results(result, args.result_dir)
 
+
 if __name__ == "__main__":
     main()

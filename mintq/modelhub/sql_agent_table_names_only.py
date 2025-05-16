@@ -1,14 +1,12 @@
 from dataclasses import dataclass
-import copy
 import jinja2
 import time
 import sqlalchemy
 from sqlalchemy import select, distinct
-from pydantic_core import to_jsonable_python
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseDBConnector
-from mintq.schema_formatter import BaseSchemaFormatter, get_schema_formatter
+from mintq.schema_formatter import BaseSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory

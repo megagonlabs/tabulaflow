@@ -3,20 +3,13 @@ import os
 import shutil
 import json
 from tqdm import trange
-import collections
 import time
 import math
-from dataclasses import dataclass
-from typing import List
-import smolagents
-from smolagents.memory import MemoryStep, Message
 from smolagents import LiteLLMModel
-from smolagents.models import ChatMessage, MessageRole
 import litellm
 from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import (
     load_nl2q_samples,
-    parse_query,
     get_trajectory_num_steps,
     get_llm_api_cost,
     save_aggregated_inference_metrics,
@@ -46,9 +39,7 @@ def rejection_sampling(
     num_tries = 0
     while num_tries < max_tries:
         num_tries += 1
-        pred_query = agent.run_new_task(
-            task, max_steps=max_steps, allow_max_steps_reached=False
-        )
+        pred_query = agent.run_new_task(task, max_steps=max_steps, allow_max_steps_reached=False)
         if pred_query and metric_fn(pred_query, gold_query, db_connector) == 1.0:
             query = pred_query
             trajectories.append(agent.get_trajectory())
@@ -58,9 +49,7 @@ def rejection_sampling(
     metrics["latency"] = time.time() - t0
     metrics["success"] = 1 if query else 0
     metrics["num_tries_to_success"] = num_tries if query else math.nan
-    metrics["trajectory_steps"] = (
-        get_trajectory_num_steps(trajectories[0]) if query else math.nan
-    )
+    metrics["trajectory_steps"] = get_trajectory_num_steps(trajectories[0]) if query else math.nan
     return query, metrics, trajectories
 
 
@@ -102,9 +91,7 @@ def rejection_sampling_with_teacher_feedback(
     num_tries = 0
     while num_tries < max_tries:
         num_tries += 1
-        pred_query = agent.run_new_task(
-            task, max_steps=max_steps, allow_max_steps_reached=False
-        )
+        pred_query = agent.run_new_task(task, max_steps=max_steps, allow_max_steps_reached=False)
         success = pred_query and metric_fn(pred_query, gold_query, db_connector) == 1.0
         if not success:
             # remove the final_answer step or max-step-reached step
@@ -116,9 +103,7 @@ def rejection_sampling_with_teacher_feedback(
             messages = messages[2:]
             history = json.dumps(messages, indent=2)
 
-            feedback_prompt = FEEDBACK_PROMPT.format(
-                task=task, history=history, gold_query=gold_query
-            )
+            feedback_prompt = FEEDBACK_PROMPT.format(task=task, history=history, gold_query=gold_query)
             if verbose:
                 print(f"<feedback_prompt>{feedback_prompt}</feedback_prompt>")
             feedback = litellm.completion(
@@ -133,13 +118,9 @@ def rejection_sampling_with_teacher_feedback(
             curr_steps = get_trajectory_num_steps(agent.get_trajectory())
             agent.add_feedback(feedback)
             remaining_steps = max_steps - curr_steps
-            pred_query = agent.continue_task(
-                max_steps=remaining_steps, allow_max_steps_reached=False
-            )
+            pred_query = agent.continue_task(max_steps=remaining_steps, allow_max_steps_reached=False)
             agent.remove_all_feedback()
-            success = (
-                pred_query and metric_fn(pred_query, gold_query, db_connector) == 1.0
-            )
+            success = pred_query and metric_fn(pred_query, gold_query, db_connector) == 1.0
         if success:
             query = pred_query
             trajectories.append(agent.get_trajectory())
@@ -149,9 +130,7 @@ def rejection_sampling_with_teacher_feedback(
     metrics["latency"] = time.time() - t0
     metrics["success"] = 1 if query else 0
     metrics["num_tries_to_success"] = num_tries if query else math.nan
-    metrics["trajectory_steps"] = (
-        get_trajectory_num_steps(trajectories[0]) if query else math.nan
-    )
+    metrics["trajectory_steps"] = get_trajectory_num_steps(trajectories[0]) if query else math.nan
     return query, metrics, trajectories
 
 
@@ -210,9 +189,7 @@ def main():
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:
-            print(
-                f"{args.result_dir} already exists. Use --overwrite to overwrite the directory."
-            )
+            print(f"{args.result_dir} already exists. Use --overwrite to overwrite the directory.")
             return
         else:
             shutil.rmtree(args.result_dir)
@@ -222,9 +199,7 @@ def main():
         args.dataset,
         splits=[args.split.split("_")[0] if "_" in args.split else args.split],
     )
-    print(
-        f"Loaded {len(db_connectors)} databases from {args.dataset} {args.split} set."
-    )
+    print(f"Loaded {len(db_connectors)} databases from {args.dataset} {args.split} set.")
 
     nl2q_samples = load_nl2q_samples(args.dataset, args.split)
     print(f"Loaded {len(nl2q_samples)} samples from {args.dataset} {args.split} set.")
@@ -242,9 +217,7 @@ def main():
             )
         ]
 
-    model = LiteLLMModel(
-        model_id=args.llm, temperature=args.temperature, **litellm_kwargs
-    )
+    model = LiteLLMModel(model_id=args.llm, temperature=args.temperature, **litellm_kwargs)
 
     agent_fn, prompt_fn = AGENT_MAPPINGS[args.agent]
     metric_fn = METRIC_FN_MAPPINGS[args.dataset]
@@ -259,10 +232,7 @@ def main():
         if i == 0:
             print(f"<prompts>{prompts[0]}</prompts>")
 
-        agents = [
-            agent_fn(db_connectors[item.db], item, model, verbose=args.debug)
-            for item in batch_samples
-        ]
+        agents = [agent_fn(db_connectors[item.db], item, model, verbose=args.debug) for item in batch_samples]
 
         with ThreadPoolExecutor(max_workers=len(prompts)) as executor:
             futures = [
@@ -277,9 +247,7 @@ def main():
                     args.max_tries,
                     verbose=i == 0 and k == 0,
                 )
-                for k, (agent, prompt, item) in enumerate(
-                    zip(agents, prompts, batch_samples)
-                )
+                for k, (agent, prompt, item) in enumerate(zip(agents, prompts, batch_samples))
             ]
             raw_responses = [future.result() for future in futures]
 
@@ -295,12 +263,12 @@ def main():
             res.append(item)
             all_trajectories += trajectories
 
-    output_path = os.path.join(args.result_dir, f"result.json")
+    output_path = os.path.join(args.result_dir, "result.json")
     with open(output_path, "w") as fout:
         json.dump([item.model_dump(mode="json") for item in res], fout, indent=2)
     print(f"Saved result to {output_path}")
 
-    output_path = os.path.join(args.result_dir, f"trajectories.jsonl")
+    output_path = os.path.join(args.result_dir, "trajectories.jsonl")
     with open(output_path, "w") as fout:
         for trajectory in all_trajectories:
             fout.write(json.dumps(trajectory) + "\n")

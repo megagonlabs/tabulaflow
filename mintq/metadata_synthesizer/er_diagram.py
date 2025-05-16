@@ -233,7 +233,6 @@ class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
 if __name__ == "__main__":
     import json
     import time
-    from mintq.schema_formatter import get_schema_formatter
     from mintq.db_connector.snowflake_conn import SnowflakeConnector
     from mintq.visualization import er_diagram_to_graphviz
     import os

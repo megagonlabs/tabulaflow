@@ -44,7 +44,6 @@ class SnowflakeConnector(GenericSQLConnector):
 
 
 if __name__ == "__main__":
-    import json
     import time
     from mintq.schema_formatter import get_schema_formatter
 

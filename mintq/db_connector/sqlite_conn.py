@@ -27,7 +27,6 @@ class SQLiteConnector(GenericSQLConnector):
 
 
 if __name__ == "__main__":
-    import json
     from mintq.schema_formatter import get_schema_formatter
 
     connector = SQLiteConnector("california_school", "test.db")
