@@ -11,7 +11,9 @@ class BaseSchemaFormatter(Protocol):
 class BaseSQLSchemaFormatter(Protocol):
     name: ClassVar[str]
 
-    def format(self, schema: SQLSchema) -> str: ...
+    def format(
+        self, schema: SQLSchema, include_foreign_keys: bool = True, include_table_schemas: bool = True
+    ) -> str: ...
 
     def format_table_name(self, table: SQLTableSchema) -> str: ...
 
