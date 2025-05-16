@@ -6,7 +6,10 @@ __all__ = ["BaseSchemaFormatter", "BaseSQLSchemaFormatter", "SQLDefaultSchemaFor
 
 all_schema_formatter_classes = [SQLDefaultSchemaFormatter]
 
-schema_formatter_registry = {cls.name: cls for cls in all_schema_formatter_classes}  # type: ignore[attr-defined]
+schema_formatter_registry: dict[str, type[BaseSchemaFormatter] | type[BaseSQLSchemaFormatter]] = {
+    cls.name: cls  # type: ignore
+    for cls in all_schema_formatter_classes
+}
 
 
 def get_schema_formatter(name: str) -> BaseSchemaFormatter | BaseSQLSchemaFormatter:

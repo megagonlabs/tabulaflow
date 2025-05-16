@@ -1,3 +1,4 @@
+from typing import Any
 from mintq.metric.base import BaseNL2QMetric
 from mintq.metric.bird_sql_ex import BirdSQLEx
 from mintq.metric.bird_sql_ex_soft import BirdSQLExSoft
@@ -26,10 +27,10 @@ all_metric_classes = [
     Spider2Ex,
 ]
 
-metric_registry = {cls.name: cls for cls in all_metric_classes}  # type: ignore[attr-defined]
+metric_registry: dict[str, type[BaseNL2QMetric]] = {cls.name: cls for cls in all_metric_classes}  # type: ignore
 
 
-def get_metric(name: str, **kwargs):
+def get_metric(name: str, **kwargs: Any) -> BaseNL2QMetric:
     if name not in metric_registry:
         raise ValueError(f"Metric {name} not found")
     return metric_registry[name](**kwargs)
