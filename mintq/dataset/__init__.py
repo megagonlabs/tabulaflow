@@ -7,7 +7,7 @@ __all__ = ["NL2QDatasetLoader", "NL2QDataset", "BirdSQLDatasetLoader", "BeaverDa
 
 all_dataset_loader_classes = [BirdSQLDatasetLoader, Spider2SnowDatasetLoader, BeaverDatasetLoader]
 
-dataset_loader_registry = {cls.name: cls for cls in all_dataset_loader_classes}
+dataset_loader_registry = {cls.name: cls for cls in all_dataset_loader_classes}  # type: ignore[attr-defined]
 
 
 def get_dataset_loader(name: str) -> NL2QDatasetLoader:
