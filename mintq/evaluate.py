@@ -7,7 +7,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from mintq.db_connector import BaseDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
-from mintq.dataset import get_dataset_loader
+from mintq.datahub import get_dataset_loader
 from mintq.metric import get_metric, BaseNL2QMetric
 
 

@@ -12,7 +12,7 @@ from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
 from mintq.modelhub import get_nl2q_model, BaseNL2QModel
-from mintq.dataset import get_dataset_loader
+from mintq.datahub import get_dataset_loader
 from mintq.schema import NL2QDataset, NL2QRunResult
 
 
