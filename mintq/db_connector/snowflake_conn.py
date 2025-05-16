@@ -29,7 +29,7 @@ class SnowflakeConnector(GenericSQLConnector):
 
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list | pd.DataFrame:
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with snowflake.connector.connect(
             user=self.sf_user,
             password=self.sf_password,

@@ -114,7 +114,7 @@ class GenericSQLConnector:
                         )
 
                     primary_key = inspector.get_pk_constraint(table_name, schema=schema_name)["constrained_columns"]
-                    num_rows = conn.execute(select(func.count()).select_from(tbl)).fetchone()[0]
+                    num_rows = conn.execute(select(func.count()).select_from(tbl)).scalar_one()
                     for fk in inspector.get_foreign_keys(table_name, schema=schema_name):
                         foreign_keys.append(
                             ForeignKeySchema(

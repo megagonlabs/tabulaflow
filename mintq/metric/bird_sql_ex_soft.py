@@ -1,3 +1,4 @@
+from typing import Any
 from itertools import combinations
 from mintq.db_connector import SQLiteConnector
 from mintq.schema import SimpleNL2QTaskOutput
@@ -9,7 +10,7 @@ class BirdSQLExSoft:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def _compare(self, pred_executed: list[tuple], gold_executed: list[tuple]) -> float:
+    def _compare(self, pred_executed: list[tuple[Any, ...]], gold_executed: list[tuple[Any, ...]]) -> float:
         if not gold_executed and not pred_executed:
             return 1.0
         elif not gold_executed or not pred_executed:
