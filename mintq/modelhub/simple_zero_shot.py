@@ -3,6 +3,7 @@ import time
 import collections
 import jinja2
 import logging
+from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.schema_formatter import BaseSchemaFormatter
 from mintq.db_connector import BaseDBConnector
@@ -51,7 +52,7 @@ class SimpleZeroShotNL2Q:
         schema_formatter: BaseSchemaFormatter,
         temperature: float = 0.0,
         num_candidates: int = 1,
-        litellm_kwargs: dict = {},
+        litellm_kwargs: dict[str, Any] = {},
     ):
         self.llm = llm
         self.schema_formatter = schema_formatter

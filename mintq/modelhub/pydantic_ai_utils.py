@@ -1,10 +1,10 @@
 import json
+import pydantic_ai
 from pydantic_ai.models.openai import OpenAIModel
-from pydantic_ai.messages import ModelMessage
 from mintq.schema import Trajectory, ToolCall, AssistantMessage, ToolResponse, UserMessage, SystemMessage
 
 
-def get_pydantic_ai_llm(litellm_id: str):
+def get_pydantic_ai_llm(litellm_id: str) -> pydantic_ai.models.Model:
     provider, model = litellm_id.split("/", 1)
     if provider == "openai":
         return OpenAIModel(model_name=model)
@@ -12,7 +12,7 @@ def get_pydantic_ai_llm(litellm_id: str):
         raise ValueError(f"Unsupported provider: {provider}")
 
 
-def pydantic_ai_messages_to_trajectory(messages: list[ModelMessage]) -> Trajectory:
+def pydantic_ai_messages_to_trajectory(messages: list[pydantic_ai.messages.ModelMessage]) -> Trajectory:
     trajectory = Trajectory(messages=[])
     if messages[0].kind == "request" and messages[0].instructions:
         trajectory.messages.append(SystemMessage(content=messages[0].instructions))
@@ -37,9 +37,9 @@ def pydantic_ai_messages_to_trajectory(messages: list[ModelMessage]) -> Trajecto
         elif msg.kind == "response":
             new_msg = AssistantMessage(content="", tool_calls=[])
             for part in msg.parts:  # type: ignore
-                if part.part_kind == "text":
+                if part.part_kind == "text":  # type: ignore
                     new_msg.content += part.content
-                elif part.part_kind == "tool-call":
+                elif part.part_kind == "tool-call":  # type: ignore
                     arguments = part.args
                     if isinstance(arguments, str):
                         arguments = json.loads(arguments)

@@ -12,13 +12,13 @@ def extract_code(response: str) -> str:
     return response
 
 
-def avg_and_round(nums: list[float], n: int = 4):
+def avg_and_round(nums: list[float], n: int = 4) -> float:
     return round(sum(nums) / len(nums), n) if nums else math.nan
 
 
 def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
     try:
-        input_cost, output_cost = litellm.cost_per_token(
+        input_cost, output_cost = litellm.cost_per_token(  # type: ignore
             model=llm, prompt_tokens=input_tokens, completion_tokens=output_tokens
         )
         return input_cost + output_cost
