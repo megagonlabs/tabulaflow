@@ -130,7 +130,7 @@ class GenericSQLConnector:
     def _run_query_without_timeout(
         self, query: str, parameters: Sequence[Any] = (), return_df: bool = False
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        with self._engine.connect() as conn:
+        with self.engine.connect() as conn:
             if return_df:
                 return pd.read_sql_query(sqlalchemy.text(query), conn, params=parameters)
             return conn.execute(sqlalchemy.text(query), parameters).fetchall()
