@@ -3,6 +3,7 @@ import logging
 import litellm
 import jinja2
 import collections
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.schema_formatter import SQLDefaultSchemaFormatter
 from mintq.utils import extract_code
@@ -13,7 +14,7 @@ logger = logging.getLogger(__name__)
 class RuleBasedERDiagramSynthesizer:
     name = "rule_based_er_diagram"
 
-    def run(self, db_connector) -> ERDiagram:
+    def run(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
 
         suffixes = "id|key|code|number|no|ref"
@@ -170,7 +171,7 @@ class LLMERDiagramSynthesizer:
     def __init__(self, llm: str = "openai/gpt-4o"):
         self.llm = llm
 
-    def run(self, db_connector) -> ERDiagram:
+    def run(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
         formatter = SQLDefaultSchemaFormatter()
 

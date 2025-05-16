@@ -25,26 +25,14 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 
 class GenericSQLConnector:
     def __init__(self, name: str, sqlalchemy_engine: sqlalchemy.engine.Engine):
-        self._name = name
-        self._schema = self._load_schema_with_cache(name, sqlalchemy_engine)
-        self._engine = sqlalchemy_engine
+        self.name = name
+        self.schema = self._load_schema_with_cache(name, sqlalchemy_engine)
+        self.engine = sqlalchemy_engine
 
     @classmethod
     def from_url(cls, name: str, url: str, **engine_kwargs: Any) -> "GenericSQLConnector":
         engine = create_engine(url, **engine_kwargs)
         return cls(name, engine)
-
-    @property
-    def name(self) -> str:
-        return self._name
-
-    @property
-    def engine(self) -> sqlalchemy.engine.Engine:
-        return self._engine
-
-    @property
-    def schema(self) -> SQLSchema:
-        return self._schema
 
     def _load_schema_with_cache(self, name: str, engine: sqlalchemy.engine.Engine) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")

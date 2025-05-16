@@ -62,7 +62,7 @@ def run_model(model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch
     )
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="sql_agent_table_names_only")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
@@ -92,7 +92,7 @@ def main():
     print()
 
     if args.debug_litellm:
-        litellm._turn_on_debug()
+        litellm._turn_on_debug()  # type: ignore
 
     if os.path.exists(args.result_dir):
         if not args.overwrite:

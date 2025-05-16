@@ -11,7 +11,7 @@ from mintq.dataset import get_dataset_loader
 from mintq.metric import get_metric, BaseNL2QMetric
 
 
-def compute_metrics(item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector):
+def compute_metrics(item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector) -> NL2QTaskOutput:
     item = copy.deepcopy(item)
     for m in metrics:
         item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
@@ -44,7 +44,7 @@ def evaluate(result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseNL2Q
     return result
 
 
-def main():
+def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_json", default="output/test/result.json")
     parser.add_argument("--num_threads", type=int, default=8)
