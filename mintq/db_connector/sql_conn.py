@@ -24,7 +24,7 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 
 
 class GenericSQLConnector:
-    def __init__(self, name: str, sqlalchemy_engine):
+    def __init__(self, name: str, sqlalchemy_engine: sqlalchemy.engine.Engine):
         self._name = name
         self._schema = self._load_schema_with_cache(name, sqlalchemy_engine)
         self._engine = sqlalchemy_engine
@@ -46,7 +46,7 @@ class GenericSQLConnector:
     def schema(self) -> SQLSchema:
         return self._schema
 
-    def _load_schema_with_cache(self, name: str, engine) -> SQLSchema:
+    def _load_schema_with_cache(self, name: str, engine: sqlalchemy.engine.Engine) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
         cache_refresh = os.getenv("MINTQ_CACHE_REFRESH", "0") == "1"
@@ -73,7 +73,7 @@ class GenericSQLConnector:
             return value
         return str(value)
 
-    def _init_schema(self, engine) -> SQLSchema:
+    def _init_schema(self, engine: sqlalchemy.engine.Engine) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
