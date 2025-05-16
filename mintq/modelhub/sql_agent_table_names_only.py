@@ -41,9 +41,11 @@ TASK_PROMPT = """
 === START OF DATABASE SCHEMA ===
 {{schema}}
 === END OF DATABASE SCHEMA ===
+{% if hints %}
 === START OF HINTS ===
 {{hints}}
 === END OF HINTS ===
+{% endif %}
 Question to translate: {{question}}
 Now, translate the above question into a {{language}} query.
 """.strip()

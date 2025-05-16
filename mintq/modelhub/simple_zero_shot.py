@@ -6,33 +6,37 @@ import logging
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.modelhub.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
+from mintq.db_connector import BaseDBConnector
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage
 
-NL2Q_PROMPT = """
-Translate the following natural language question into a {{language}} query.
-- The query must follow the database schema.
-- You must utilize the hints if provided.
-- Output the query only, without any additional explanation.
-- Do not include additional columns that are not required by the question.
-  - For example, if the question only ask for the highest score but not the name of the student, do not fetch the name of the student.
-  - Similarly, if the question only ask for the student with the highest score but not the score, do not fetch the score.
+SYSTEM_PROMPT = """
+You are a database expert responsible for translating natural language questions into {{language}} queries.
+- The query must follow the given database schema.
+- You must follow the hints if provided.
+- The final output should not include additional columns that are not required by the question.
+  - For example, if the question only ask for the highest score but not the name of the student, the final query should not fetch the name of the student.
+  - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not fetch the score.
   - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
-{{language_instructions}}
-=== Your task ===
-
-Database Schema:
-{{schema}}
-
-Question: {{question}}
-
-Hints:
-{{hints}}
-
-{{language}} Query:
+- The final output should only include the SQL query, without explanation or any other text.
+- Before returning the final output, always execute the query and check if the results match the question.
+{% if language == "SnowflakeSQL" %}
+- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
+{% endif %}
 """.strip()
 
-LANGUAGE_INSTRUCTIONS = {
-    "SnowflakeSQL": """For Snowflake SQL, the column names must be quoted with double quotes (e.g. `SELECT ORDER."product_id"`).\n"""
-}
+
+TASK_PROMPT = """
+=== START OF DATABASE SCHEMA ===
+{{schema}}
+=== END OF DATABASE SCHEMA ===
+{% if hints %}
+=== START OF HINTS ===
+{{hints}}
+=== END OF HINTS ===
+{% endif %}
+Question to translate: {{question}}
+{{language}} query:
+""".strip()
 
 SCHEMA_MAX_CHARS = 128000
 
@@ -63,64 +67,66 @@ class SimpleZeroShotNL2Q(BaseNL2QModel):
             "num_candidates": self.num_candidates,
         }
 
-    def predict(self, task, db_connector):
+    def predict(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        # Construct prompt
-        language_instructions = LANGUAGE_INSTRUCTIONS.get(task.language, "")
-        hints = task.evidence if task.evidence else "NO HINTS PROVIDED"
         schema_str = self.schema_formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
             )
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
-        prompt = jinja2.Template(NL2Q_PROMPT).render(
-            language=task.language,
-            language_instructions=language_instructions,
+
+        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
+        user_prompt = jinja2.Template(TASK_PROMPT).render(
             schema=schema_str,
-            hints=hints,
+            hints=task.evidence,
             question=task.question,
+            language=task.language,
         )
 
         # Text-to-SQL generation by LLM
         responses = litellm.batch_completion(
             model=self.llm,
-            messages=[[{"role": "user", "content": prompt}] for _ in range(self.num_candidates)],
+            messages=[
+                [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+                for _ in range(self.num_candidates)
+            ],
             temperature=self.temperature,
             **self.litellm_kwargs,
         )
-        raw_queries = [r["choices"][0]["message"]["content"] for r in responses]
-        queries = [extract_code(q) for q in raw_queries]
+
+        raw_outputs = [r["choices"][0]["message"]["content"] for r in responses]
+        queries = [extract_code(q) for q in raw_outputs]
         # Select the best query using self-consistency voting
         best_query_idx = self.select_best_query(queries, db_connector)
-        if hasattr(task, "pred_query"):  # single-output task
-            task.pred_query = queries[best_query_idx]
-        else:  # multi-output task
-            task.pred_queries = [queries[best_query_idx]]
+        pred_query = queries[best_query_idx]
 
         # Re-construct the trajectory of the best query
-        task.trajectory = [
-            {"role": "user", "content": prompt},
-            {"role": "assistant", "content": raw_queries[best_query_idx]},
-        ]
+        trajectory = Trajectory(
+            messages=[
+                SystemMessage(content=system_prompt),
+                UserMessage(content=user_prompt),
+                AssistantMessage(content=raw_outputs[best_query_idx], tool_calls=[]),
+            ]
+        )
 
         # Compute metrics
-        latency = time.time() - t0
-        input_tokens = sum([r["usage"]["prompt_tokens"] for r in responses])
-        output_tokens = sum([r["usage"]["completion_tokens"] for r in responses])
-        api_cost_usd = get_llm_api_cost(self.llm, input_tokens, output_tokens)
-        metrics = {
-            "latency": round(latency, 1),
-            "input_tokens": int(input_tokens),
-            "output_tokens": int(output_tokens),
-            "api_cost_usd": api_cost_usd,
-        }
-        task.metrics.update(metrics)
+        metrics = {}
+        metrics["latency_seconds"] = time.time() - t0
+        metrics["api_calls"] = len(responses)
+        metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
+        metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
+        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])
+        metrics["steps"] = 1
+        return SimpleNL2QTaskOutput(
+            **task.model_dump(),
+            pred_query=pred_query,
+            trajectory=trajectory,
+            metrics=metrics,
+        )
 
-        return task
-
-    def select_best_query(self, candidates, db_connector) -> int:
+    def select_best_query(self, candidates: list[str], db_connector: BaseDBConnector) -> int:
         result2idx = collections.defaultdict(list)
         run_time = {}
         for idx, query in enumerate(candidates):
