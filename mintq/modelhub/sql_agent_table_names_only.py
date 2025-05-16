@@ -8,7 +8,6 @@ from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
-from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
 
@@ -131,7 +130,7 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     return res
 
 
-class SQLAgentTableNamesOnly(BaseNL2QModel):
+class SQLAgentTableNamesOnly:
     name = "sql_agent_table_names_only"
 
     def __init__(

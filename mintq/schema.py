@@ -1,4 +1,3 @@
-from abc import ABC
 import datetime
 from pydantic import BaseModel, Field
 from typing import Any, Literal, Annotated, Union
@@ -102,7 +101,7 @@ class NL2QRunResult(BaseModel):
     tasks: list[NL2QTaskOutput]
 
 
-class BaseDBSchema(BaseModel, ABC):
+class BaseDBSchema(BaseModel):
     pass
 
 

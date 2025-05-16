@@ -5,7 +5,6 @@ from concurrent.futures import ThreadPoolExecutor
 from sqlalchemy import create_engine
 from tqdm import tqdm
 from typing import Optional
-from mintq.dataset.base import NL2QDatasetLoader
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import GenericSQLConnector
 
@@ -15,7 +14,7 @@ def create_connector(args):
     return conn_cls(name, **kwargs)
 
 
-class BeaverDatasetLoader(NL2QDatasetLoader):
+class BeaverDatasetLoader:
     name = "beaver"
 
     def __init__(

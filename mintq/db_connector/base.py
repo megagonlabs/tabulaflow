@@ -1,32 +1,22 @@
-from abc import ABC, abstractmethod
-from typing import Any
+from typing import Any, Protocol
 import sqlalchemy
 from mintq.schema import BaseDBSchema, SQLSchema
 
 
-class BaseDBConnector(ABC):
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        pass
+class BaseDBConnector(Protocol):
+    name: str  # note: for db connectors, name is an instance attribute
+    schema: BaseDBSchema
 
-    @property
-    @abstractmethod
-    def schema(self) -> BaseDBSchema:
-        pass
-
-    @abstractmethod
-    def run_query(self, query: str, parameters=(), timeout: int = 30, return_df: bool = False) -> list[tuple[Any, ...]]:
-        pass
+    def run_query(
+        self, query: str, parameters=(), timeout: int = 30, return_df: bool = False
+    ) -> list[tuple[Any, ...]]: ...
 
 
-class BaseSQLDBConnector(BaseDBConnector):
-    @property
-    @abstractmethod
-    def schema(self) -> SQLSchema:
-        pass
+class BaseSQLDBConnector(Protocol):
+    name: str
+    schema: SQLSchema
+    engine: sqlalchemy.engine.Engine
 
-    @property
-    @abstractmethod
-    def engine(self) -> sqlalchemy.engine.Engine:
-        pass
+    def run_query(
+        self, query: str, parameters=(), timeout: int = 30, return_df: bool = False
+    ) -> list[tuple[Any, ...]]: ...

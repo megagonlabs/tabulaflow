@@ -1,6 +1,5 @@
 import math
 import pandas as pd
-from mintq.metric.base import NL2QMetric
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import SQLiteConnector
 
@@ -72,7 +71,7 @@ def compare_pandas_table(pred, gold, condition_cols=[], ignore_order=False):
     return score
 
 
-class Spider2Ex(NL2QMetric):
+class Spider2Ex:
     name = "spider2_ex"
 
     def __init__(self, timeout: int = 30):

@@ -1,9 +1,8 @@
-from mintq.metric.base import NL2QMetric
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseDBConnector
 
 
-class GoldResultNotEmpty(NL2QMetric):
+class GoldResultNotEmpty:
     name = "gold_result_not_empty"
 
     def __init__(self, timeout: int = 30):

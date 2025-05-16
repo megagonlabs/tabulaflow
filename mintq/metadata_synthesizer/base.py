@@ -1,9 +1,8 @@
-from abc import ABC, abstractmethod
+from typing import Any, Protocol, ClassVar
 from mintq.db_connector import BaseDBConnector
-from typing import Any
 
 
-class BaseMetadataSynthesizer(ABC):
-    @abstractmethod
-    def run(self, db_connector: BaseDBConnector) -> Any:
-        pass
+class BaseMetadataSynthesizer(Protocol):
+    name: ClassVar[str]
+
+    def run(self, db_connector: BaseDBConnector) -> Any: ...

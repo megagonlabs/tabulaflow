@@ -5,13 +5,14 @@ import jinja2
 import collections
 from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.schema_formatter import SQLDefaultSchemaFormatter
-from mintq.metadata_synthesizer.base import BaseMetadataSynthesizer
 from mintq.utils import extract_code
 
 logger = logging.getLogger(__name__)
 
 
-class RuleBasedERDiagramSynthesizer(BaseMetadataSynthesizer):
+class RuleBasedERDiagramSynthesizer:
+    name = "rule_based_er_diagram"
+
     def run(self, db_connector) -> ERDiagram:
         schema = db_connector.schema
 
@@ -163,7 +164,9 @@ Output:
 """
 
 
-class LLMERDiagramSynthesizer(BaseMetadataSynthesizer):
+class LLMERDiagramSynthesizer:
+    name = "llm_er_diagram"
+
     def __init__(self, llm: str = "openai/gpt-4o"):
         self.llm = llm
 

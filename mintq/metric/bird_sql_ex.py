@@ -1,9 +1,8 @@
-from mintq.metric.base import NL2QMetric
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import SQLiteConnector
 
 
-class BirdSQLEx(NL2QMetric):
+class BirdSQLEx:
     name = "bird_sql_ex"
 
     def __init__(self, timeout: int = 30):

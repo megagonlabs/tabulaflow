@@ -4,7 +4,6 @@ import random
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from typing import Optional
-from mintq.dataset.base import NL2QDatasetLoader
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLiteConnector
 
@@ -14,7 +13,7 @@ def create_connector(args):
     return conn_cls(name, **kwargs)
 
 
-class BirdSQLDatasetLoader(NL2QDatasetLoader):
+class BirdSQLDatasetLoader:
     name = "bird-sql"
 
     def __init__(

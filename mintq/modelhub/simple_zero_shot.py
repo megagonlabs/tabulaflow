@@ -4,7 +4,6 @@ import collections
 import jinja2
 import logging
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.modelhub.base import BaseNL2QModel
 from mintq.schema_formatter import BaseSchemaFormatter
 from mintq.db_connector import BaseDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage
@@ -43,7 +42,7 @@ SCHEMA_MAX_CHARS = 128000
 logger = logging.getLogger(__name__)
 
 
-class SimpleZeroShotNL2Q(BaseNL2QModel):
+class SimpleZeroShotNL2Q:
     name = "simple_zero_shot"
 
     def __init__(

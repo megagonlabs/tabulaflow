@@ -1,30 +1,20 @@
-from abc import ABC, abstractmethod
+from typing import Protocol, ClassVar
 from mintq.schema import BaseDBSchema, SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
-class BaseSchemaFormatter(ABC):
-    name: str
+class BaseSchemaFormatter(Protocol):
+    name: ClassVar[str]
 
-    @abstractmethod
-    def format(self, schema: BaseDBSchema) -> str:
-        pass
+    def format(self, schema: BaseDBSchema) -> str: ...
 
 
-class BaseSQLSchemaFormatter(BaseSchemaFormatter):
-    name: str
+class BaseSQLSchemaFormatter(Protocol):
+    name: ClassVar[str]
 
-    @abstractmethod
-    def format(self, schema: SQLSchema) -> str:
-        pass
+    def format(self, schema: SQLSchema) -> str: ...
 
-    @abstractmethod
-    def format_table_name(self, table: SQLTableSchema) -> str:
-        pass
+    def format_table_name(self, table: SQLTableSchema) -> str: ...
 
-    @abstractmethod
-    def format_table(self, table: SQLTableSchema) -> str:
-        pass
+    def format_table(self, table: SQLTableSchema) -> str: ...
 
-    @abstractmethod
-    def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str:
-        pass
+    def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str: ...

@@ -1,10 +1,9 @@
 from itertools import combinations
 from mintq.db_connector import SQLiteConnector
-from mintq.metric.base import NL2QMetric
 from mintq.schema import SimpleNL2QTaskOutput
 
 
-class BirdSQLExSoft(NL2QMetric):
+class BirdSQLExSoft:
     name = "bird_sql_ex_soft"
 
     def __init__(self, timeout: int = 30):

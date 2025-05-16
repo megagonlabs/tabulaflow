@@ -1,9 +1,8 @@
-from mintq.metric.base import NL2QMetric
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseDBConnector
 
 
-class Executable(NL2QMetric):
+class Executable:
     name = "executable"
 
     def __init__(self, timeout: int = 30):
