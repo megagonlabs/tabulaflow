@@ -49,8 +49,8 @@ class SimpleNL2QTask(BaseModel):
     question: str
     evidence: str | None = None
     extra_info: dict[str, Any] = {}
-    gold_queries: list[str] = []
-    gold_exec_results: list[list[dict[str, Any]]] = []
+    gold_queries: list[str] = Field(default_factory=list)
+    gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
@@ -67,8 +67,8 @@ class MultiNL2QTask(BaseModel):
     question: str
     evidence: str | None = None
     extra_info: dict[str, Any] = {}
-    gold_queries: list[str] = []
-    gold_exec_results: list[list[dict[str, Any]]] = []
+    gold_queries: list[str] = Field(default_factory=list)
+    gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
 
 
 class MultiNL2QTaskOutput(MultiNL2QTask):
