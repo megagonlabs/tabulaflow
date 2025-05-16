@@ -85,7 +85,7 @@ def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     List the columns of a table.
 
     Args:
-        table: The name of the table to list the columns of. It should include the schema name if applicable.
+        table: The name of the table to list the columns of.
     """
     try:
         table_schema = ctx.deps.table_id_to_schema[table]
@@ -101,7 +101,7 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     Search for values in a column of a table that match any of the keywords.
 
     Args:
-        table: The name of the table to search in. It should be identical to the ones in the schema (include schema name if applicable).
+        table: The name of the table to search in.
         column: The name of the column to search in.
         keywords: A list of keywords to search for. A value is considered a match if it contains any of the keywords.
     """
