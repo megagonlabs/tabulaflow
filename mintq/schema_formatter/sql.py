@@ -1,9 +1,9 @@
 from typing import Optional
-from mintq.schema_formatter.base import BaseSchemaFormatter
+from mintq.schema_formatter.base import BaseSQLSchemaFormatter
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
-class SQLDefaultSchemaFormatter(BaseSchemaFormatter):
+class SQLDefaultSchemaFormatter(BaseSQLSchemaFormatter):
     name = "sql_default"
 
     def __init__(self, quote_char: str = '"'):

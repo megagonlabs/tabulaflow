@@ -6,7 +6,7 @@ from sqlalchemy import select, distinct
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseDBConnector
-from mintq.schema_formatter import BaseSchemaFormatter
+from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub import BaseNL2QModel
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
@@ -17,7 +17,7 @@ from mintq.utils import parse_query, get_llm_api_cost
 class TaskContext:
     task: SimpleNL2QTask
     db_connector: BaseDBConnector
-    formatter: BaseSchemaFormatter
+    formatter: BaseSQLSchemaFormatter
     table_id_to_schema: dict[str, SQLTableSchema]
 
 
@@ -133,7 +133,7 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
     name = "sql_agent_table_names_only"
 
     def __init__(
-        self, llm: str, schema_formatter: BaseSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
+        self, llm: str, schema_formatter: BaseSQLSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
     ):
         self.llm = llm
         self.temperature = temperature
@@ -173,19 +173,23 @@ class SQLAgentTableNamesOnly(BaseNL2QModel):
             table_id_to_schema=table_id_to_schema,
         )
 
-        output = SimpleNL2QTaskOutput.model_validate(task.model_dump())
-
         # Run the agent
         result = self.agent.run_sync(prompt, deps=deps, model_settings={"temperature": self.temperature})
 
-        output.pred_query = parse_query(result.output)
-        output.trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
+        pred_query = parse_query(result.output)
+        trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
 
         usage = result.usage()
-        output.metrics["latency_seconds"] = time.time() - t0
-        output.metrics["api_calls"] = usage.requests
-        output.metrics["input_tokens"] = usage.request_tokens
-        output.metrics["output_tokens"] = usage.response_tokens
-        output.metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
-        output.metrics["steps"] = sum(1 for msg in output.trajectory.messages if msg.role == "assistant")
-        return output
+        metrics = {}
+        metrics["latency_seconds"] = time.time() - t0
+        metrics["api_calls"] = usage.requests
+        metrics["input_tokens"] = usage.request_tokens
+        metrics["output_tokens"] = usage.response_tokens
+        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, usage.request_tokens, usage.response_tokens)
+        metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
+        return SimpleNL2QTaskOutput(
+            **task.model_dump(),
+            pred_query=pred_query,
+            trajectory=trajectory,
+            metrics=metrics,
+        )
