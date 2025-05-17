@@ -8,9 +8,14 @@ A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 
 🧩 **Modular**: Core components like [database connectors](mintq/db_connector/base.py), [dataloaders](mintq/datahub/base.py), [models](mintq/modelhub/base.py), [metrics](mintq/metric/base.py) follow the interfaces defined in the base.py files.
 
-🔌 **Extensible**: Intefaces are designed to be minimal and flexible. You are free to use any agent library to build your own text-to-query model.
+🔌 **Extensible**: Intefaces are designed to be minimal and flexible, without heavy abstractions. You are free to use any agent library to build your own text-to-query model.
 
 🌐 **Multi-DBMS**: Works with a wide variety of databases including all SQL databases supported by sqlalchemy as well as graph databases like Neo4j.
+
+🧠 **Built for Researchers**: Includes out-of-the-box support for popular research datasets like BIRD-SQL, Beaver, and Spider 2.0, including equivalent re-implementation of their official leaderboard metrics. Designed for efficient experimentation with:
+- Multi-threaded inference and evaluation
+- Trajectory tracing
+- Agent tool call and token usage tracking
 
 ## 🚀 Quick Start
 
