@@ -2,7 +2,7 @@
 
 A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 
-📐 **Structured Data**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or massive strings.
+📐 **Structured Data**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
 
 🔍 **Type-safe**: Every method is type-hinted and checked with static type checker mypy.
 
