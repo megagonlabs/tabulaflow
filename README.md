@@ -2,9 +2,39 @@
 
 A **Min**imalist **T**ext-to-**Q**uery Toolkit
 
-Contact: yanlin@megagon.ai
+## 🚀 Quick Start
 
-Project structure:
+```python
+from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
+from mintq.datahub.bird_sql import BirdSQLDatasetLoader
+from mintq.schema_formatter import SQLDefaultSchemaFormatter
+from mintq.metric import BirdSQLEx
+from mintq.run_model import run_model
+from mintq.evaluate import evaluate
+
+def model_fn():  # define the model factory function
+    return SimpleZeroShotNL2Q(
+        llm="openai/gpt-4o-mini",
+        schema_formatter=SQLDefaultSchemaFormatter()
+    )
+
+dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
+# dataset includes the text-to-query tasks and the database connectors
+dataset = dataloader.get_split("dev")  
+dataset.tasks = dataset.tasks[:3]
+
+# run the model on the dataset using multi-threading
+result = run_model(model_fn=model_fn, dataset=dataset, batch_size=10)
+print(result.tasks[0].pred_query)
+
+# evaluate execution accuracy
+metrics = [BirdSQLEx()]
+result_with_metrics = evaluate(result, dataset, metrics, num_threads=8)
+print(result_with_metrics.aggregated_metrics)
+```
+
+## 📦 Project Structure
+
 ```
 mintq
 ├── modelhub/               # text-to-query methods
@@ -37,7 +67,7 @@ mintq
 └── visualization.py        # visualization utilities
 ```
 
-## Dataset setup
+## 📚 Dataset Setup
 
 Currently, the following datasets are supported:
 
@@ -114,3 +144,5 @@ docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 ```bash
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
 ```
+
+Contact: yanlin@megagon.ai
