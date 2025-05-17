@@ -10,6 +10,8 @@ A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 
 🔌 **Extensible**: Intefaces are designed to be minimal and flexible. You are free to use any agent library to build your own text-to-query model.
 
+🌐 **Multi-DBMS**: Works with a wide variety of databases including all SQL databases supported by sqlalchemy as well as graph databases like Neo4j.
+
 ## 🚀 Quick Start
 
 ```python
