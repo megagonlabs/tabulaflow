@@ -1,6 +1,14 @@
 # mintq
 
-A **Min**imalist **T**ext-to-**Q**uery Toolkit
+A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
+
+📐 **Structured Data**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or massive strings.
+
+🔍 **Type-safe**: Every method is type-hinted and checked with static type checker mypy.
+
+🧩 **Modular**: Core components like [database connectors](mintq/db_connector/base.py), [dataloaders](mintq/datahub/base.py), [models](mintq/modelhub/base.py), [metrics](mintq/metric/base.py) follow the interfaces defined in the base.py files.
+
+🔌 **Extensible**: Intefaces are designed to be minimal and flexible. You are free to use any agent library to build your own text-to-query model.
 
 ## 🚀 Quick Start
 
@@ -34,7 +42,8 @@ result_with_metrics = evaluate(result, dataset, metrics, num_threads=8)
 print(result_with_metrics.aggregated_metrics)
 ```
 
-## 📦 Project Structure
+
+## Project Structure
 
 ```
 mintq
@@ -145,5 +154,7 @@ docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 ```bash
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
 ```
+
+---
 
 Contact: yanlin@megagon.ai
