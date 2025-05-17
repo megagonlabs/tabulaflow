@@ -12,15 +12,16 @@ from mintq.metric import BirdSQLEx
 from mintq.run_model import run_model
 from mintq.evaluate import evaluate
 
-def model_fn():  # define the model factory function
+# define the model factory function
+# the `run_model` function below constructs a separate model instance for each sample to avoid race condition
+def model_fn():  
     return SimpleZeroShotNL2Q(
         llm="openai/gpt-4o-mini",
         schema_formatter=SQLDefaultSchemaFormatter()
     )
 
 dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
-# dataset includes the text-to-query tasks and the database connectors
-dataset = dataloader.get_split("dev")  
+dataset = dataloader.get_split("dev")  # dataset includes the text-to-query tasks and the database connectors
 dataset.tasks = dataset.tasks[:3]
 
 # run the model on the dataset using multi-threading
