@@ -54,7 +54,7 @@ cat <<EOF >$exp_file
 set -e
 
 .venv/bin/python -u -m mintq.run_model --model $model --dataset $dataset --llm $llm --result_dir output/${exp_name}/ --overwrite
-.venv/bin/python -u -m mintq.evaluate --result_dir output/${exp_name}/
+.venv/bin/python -u -m mintq.evaluate --result_json output/${exp_name}/result.json
 EOF
 
 echo "Created $exp_file with the following content:"
