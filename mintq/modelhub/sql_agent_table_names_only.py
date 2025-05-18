@@ -160,8 +160,8 @@ class SQLAgentTableNamesOnly:
             "schema_formatter": self.formatter.name,
             "num_candidates": self.num_candidates,
         }
-
-    def predict(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
+    
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
@@ -181,7 +181,7 @@ class SQLAgentTableNamesOnly:
         )
 
         # Run the agent
-        result = self.agent.run_sync(prompt, deps=deps, model_settings={"temperature": self.temperature})
+        result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
 
         pred_query = extract_code(result.output)
         trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
