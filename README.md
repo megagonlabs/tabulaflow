@@ -24,7 +24,7 @@ from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.datahub.bird_sql import BirdSQLDatasetLoader
 from mintq.schema_formatter import SQLDefaultSchemaFormatter
 from mintq.metric import BirdSQLEx
-from mintq.run_model import run_model
+from mintq.run_model import run_model_multi_threaded
 from mintq.evaluate import evaluate
 
 # define the model factory function
@@ -40,7 +40,7 @@ dataset = dataloader.get_split("dev")  # dataset includes the text-to-query task
 dataset.tasks = dataset.tasks[:3]
 
 # run the model on the dataset using multi-threading
-result = run_model(model_fn=model_fn, dataset=dataset, batch_size=10)
+result = run_model_multi_threaded(model_fn=model_fn, dataset=dataset, batch_size=10)
 print(result.tasks[0].pred_query)
 
 # evaluate execution accuracy
