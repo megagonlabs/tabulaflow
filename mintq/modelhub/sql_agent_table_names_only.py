@@ -3,6 +3,7 @@ import jinja2
 import time
 import sqlalchemy
 from sqlalchemy import select, distinct
+import pydantic_ai
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseSQLDBConnector
@@ -10,6 +11,7 @@ from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
+from mintq.schema import Trajectory
 
 
 @dataclass
@@ -154,6 +156,12 @@ class SQLAgentTableNamesOnly:
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )
+        self.agent_no_tools = Agent(
+            get_pydantic_ai_llm(llm),
+            tools=[],
+            deps_type=TaskContext,
+            instructions=get_system_prompt,
+        )
         self.formatter = schema_formatter
 
     def get_config(self) -> dict[str, str | int | float | bool]:
@@ -184,7 +192,10 @@ class SQLAgentTableNamesOnly:
         )
 
         # Run the agent
-        result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+        try:
+            result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+        except pydantic_ai.exceptions.UsageLimitExceeded:
+            result = await self.agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
 
         pred_query = extract_code(result.output)
         trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
