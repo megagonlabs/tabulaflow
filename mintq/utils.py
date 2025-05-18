@@ -1,3 +1,4 @@
+import json
 import math
 import os
 import litellm
@@ -89,6 +90,10 @@ def format_trajectory(trajectory: Trajectory) -> str:
             for tool_call in msg.tool_calls:
                 s += f'<function name="{tool_call.name}">\n'
                 for key, value in tool_call.arguments.items():
+                    if isinstance(value, (list, dict)):
+                        value = json.dumps(value, indent=2)
+                    else:
+                        value = str(value)
                     s += f'<arg name="{key}">'
                     s += f"\n{value}\n" if "\n" in value else value
                     s += "</arg>\n"
