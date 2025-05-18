@@ -12,7 +12,7 @@ from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
-from mintq.modelhub import get_nl2q_model, BaseNL2QModel, BaseAsyncNL2QModel
+from mintq.modelhub import get_nl2q_model_class, BaseNL2QModel, BaseAsyncNL2QModel
 from mintq.datahub import get_dataset_loader
 from mintq.schema import NL2QDataset, NL2QRunResult
 
@@ -35,7 +35,7 @@ def run_model_multi_threaded(
         with ThreadPoolExecutor(max_workers=len(batch)) as executor:
             futures = [
                 executor.submit(
-                    nl2q_model.predict,
+                    nl2q_model.predict_sync,
                     item,
                     dataset.db_connectors[item.db],
                 )
@@ -164,13 +164,14 @@ def main() -> None:
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    model_fn = partial(get_nl2q_model, args.model, **nl2q_kwargs)
+    model_class = get_nl2q_model_class(args.model)
+    model_fn = partial(model_class, **nl2q_kwargs)
     sample_model = model_fn()
     if hasattr(sample_model, "predict_async"):
         loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(run_model_async(model_fn, dataset, args.batch_size))
+        result = loop.run_until_complete(run_model_async(model_fn, dataset, args.batch_size))  # type: ignore
     else:
-        result = run_model_multi_threaded(model_fn, dataset, args.batch_size)
+        result = run_model_multi_threaded(model_fn, dataset, args.batch_size)  # type: ignore
 
     save_results(result, args.result_dir)
 

@@ -160,7 +160,7 @@ class SQLAgentTableNamesOnly:
             "schema_formatter": self.formatter.name,
             "num_candidates": self.num_candidates,
         }
-    
+
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 

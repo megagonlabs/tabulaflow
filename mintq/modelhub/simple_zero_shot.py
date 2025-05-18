@@ -67,7 +67,7 @@ class SimpleZeroShotNL2Q:
             "num_candidates": self.num_candidates,
         }
 
-    def predict(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
+    def predict_sync(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self.schema_formatter.format(db_connector.schema)
