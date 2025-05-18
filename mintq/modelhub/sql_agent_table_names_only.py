@@ -101,7 +101,7 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
 
     Args:
         table: The name of the table to search in.
-        column: The name of the column to search in.
+        column: The name of the column to search in. The datatype of the column must be a string.
         keywords: A list of keywords to search for. A value is considered a match if it contains any of the keywords.
     """
     db_connector = ctx.deps.db_connector
@@ -115,8 +115,11 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     if table not in ctx.deps.table_id_to_schema:
         return f"(table {table} not found)"
 
-    if not any(col.name == column for col in ctx.deps.table_id_to_schema[table].columns):
+    column_dtypes = {col.name: col.dtype for col in ctx.deps.table_id_to_schema[table].columns}
+    if column not in column_dtypes:
         return f"(column {column} not found in table {table})"
+    if column_dtypes[column] not in ("VARCHAR", "TEXT", "STRING"):
+        return f"(column {column} is not a string)"
 
     matches = []
     for keyword in keywords:
