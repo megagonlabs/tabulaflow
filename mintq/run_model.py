@@ -101,7 +101,7 @@ async def run_model_async(
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="sql_agent_table_names_only")
+    parser.add_argument("--model", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
