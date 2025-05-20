@@ -2,7 +2,7 @@ import argparse
 import os
 import shutil
 import time
-from typing import Callable
+from typing import Callable, Type, Any
 import datetime
 import asyncio
 import logfire
@@ -22,7 +22,7 @@ logfire.instrument_pydantic_ai()
 
 
 def run_model_multi_threaded(
-    model_fn: Callable[[], BaseNL2QModel], dataset: NL2QDataset, batch_size: int
+    model_cls: Type[BaseNL2QModel], model_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     tasks_with_predictions = []
@@ -30,7 +30,7 @@ def run_model_multi_threaded(
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
-        nl2q_models = [model_fn() for _ in batch]
+        nl2q_models = [model_cls(**model_args) for _ in batch]
 
         with ThreadPoolExecutor(max_workers=len(batch)) as executor:
             futures = [
@@ -48,7 +48,7 @@ def run_model_multi_threaded(
             trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
             print(format_trajectory(trajectory))
 
-    sample_model = model_fn()
+    sample_model = model_cls(**model_args)
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
 
     end_time = datetime.datetime.now()
@@ -66,7 +66,7 @@ def run_model_multi_threaded(
 
 
 async def run_model_async(
-    model_fn: Callable[[], BaseAsyncNL2QModel], dataset: NL2QDataset, batch_size: int
+    model_cls: Type[BaseAsyncNL2QModel], model_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     tasks_with_predictions = []
@@ -75,7 +75,7 @@ async def run_model_async(
         batch = dataset.tasks[i:j]
 
         tasks_with_predictions += await asyncio.gather(
-            *[model_fn().predict_async(item, dataset.db_connectors[item.db]) for item in batch]
+            *[model_cls(**model_args).predict_async(item, dataset.db_connectors[item.db]) for item in batch]
         )
 
         if i == 0:
@@ -83,7 +83,7 @@ async def run_model_async(
             trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
             print(format_trajectory(trajectory))
 
-    sample_model = model_fn()
+    sample_model = model_cls(**model_args)
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
 
     end_time = datetime.datetime.now()
@@ -165,13 +165,11 @@ def main() -> None:
     )
 
     model_class = get_nl2q_model_class(args.model)
-    model_fn = partial(model_class, **nl2q_kwargs)
-    sample_model = model_fn()
-    if hasattr(sample_model, "predict_async"):
+    if hasattr(model_class, "predict_async"):
         loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(run_model_async(model_fn, dataset, args.batch_size))  # type: ignore
+        result = loop.run_until_complete(run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size))  # type: ignore
     else:
-        result = run_model_multi_threaded(model_fn, dataset, args.batch_size)  # type: ignore
+        result = run_model_multi_threaded(model_class, nl2q_kwargs, dataset, args.batch_size)  # type: ignore
 
     save_results(result, args.result_dir)
 
