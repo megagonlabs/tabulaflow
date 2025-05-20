@@ -47,7 +47,7 @@ result_with_metrics = evaluate(result, dataset, metrics, num_threads=8)
 print(result_with_metrics.aggregated_metrics)
 ```
 
-You can also run use the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts directly:
+We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
 
 ```bash
 uv run mintq/run_model.py --model simple_zero_shot --llm openai/gpt-4o-mini --result_dir output/test/ --debug
@@ -165,6 +165,57 @@ docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 ```bash
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
 ```
+
+## Development
+
+First, create a fork of the repository.
+
+### Dependency management
+
+We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry): [`uv` install docs](https://docs.astral.sh/uv/getting-started/installation/)
+
+First, run `uv --version` to ensure that `uv` is installed.
+
+After cloning the repository, run `make sync` in the root directory. The first time you run `make sync` (which runs [`uv sync`](Makefile#L3) behind the scenes), it will create a local venv at `.venv/` and install the dependencies into the venv.
+
+To add a new dependency, run `uv add <dependency>`.
+
+To run a python script, run `uv run <script.py>` (this is the preferred way but you can also either activate the venv using `source .venv/bin/activate` first or directly run the python binary `./.venv/bin/python <script.py>`).
+
+### Environment variables
+
+We use `.envrc` to manage environment variables. 
+
+First, ensure that [direnv](https://direnv.net/) is installed.
+
+Next, create a `.envrc` file in the root directory and add the environment variables to it:
+
+```bash
+export OPENAI_API_KEY="your_openai_api_key"
+
+# for Spider 2.0 (optional)
+export SF_USER="your_snowflake_username"
+export SF_PASSWORD="your_snowflake_password"
+export SF_ACCOUNT="RSRSBDK-YDB67606"
+
+# for tracing (optional)
+export OTEL_EXPORTER_OTLP_ENDPOINT="your_opentelemetry_endpoint"
+export LOGFIRE_TOKEN="your_logfire_token"
+```
+
+Then, run `direnv allow` to load the environment variables.
+
+### Utility commands
+
+We use `make` to manage a few common commands we frequently use (see [`Makefile`](Makefile) for their definitions):
+
+```bash
+make format      # format and lint
+make mypy        # type check with mypy
+make test-zero   # test simple_zero_shot
+make test-agent  # test sql_agent_table_names_only
+```
+
 
 ---
 
