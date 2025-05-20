@@ -50,7 +50,7 @@ print(result_with_metrics.aggregated_metrics)
 We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
 
 ```bash
-uv run mintq/run_model.py --model simple_zero_shot --llm openai/gpt-4o-mini --result_dir output/test/ --debug
+uv run mintq/run_model.py --model simple_zero_shot --dataset bird-sql --llm openai/gpt-4o-mini --result_dir output/test/ --debug
 uv run mintq/evaluate.py --result_json output/test/result.json
 ```
 
