@@ -168,8 +168,6 @@ docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 
 ## Development
 
-First, create a fork of the repository.
-
 ### Dependency management
 
 We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry): [`uv` install docs](https://docs.astral.sh/uv/getting-started/installation/)
@@ -178,17 +176,17 @@ First, run `uv --version` to ensure that `uv` is installed.
 
 After cloning the repository, run `make sync` in the root directory. The first time you run `make sync` (which runs [`uv sync`](Makefile#L3) behind the scenes), it will create a local venv at `.venv/` and install the dependencies into the venv.
 
-To add a new dependency, run `uv add <dependency>`.
+To add a new dependency, run `uv add <dependency>`. The `pyproject.toml` file and `uv.lock` should be committed to the repository.
 
 To run a python script, run `uv run <script.py>` (this is the preferred way but you can also either activate the venv using `source .venv/bin/activate` first or directly run the python binary `./.venv/bin/python <script.py>`).
 
 ### Environment variables
 
-We use `.envrc` to manage environment variables. 
+We use `direnv` to manage environment variables. 
 
-First, ensure that [direnv](https://direnv.net/) is installed.
+First, run `direnv --version` to ensure that [direnv](https://direnv.net/) is installed.
 
-Next, create a `.envrc` file in the root directory and add the environment variables to it:
+Next, create a `.envrc` file in the root directory and add the environment variables to it. This file should NOT be committed to the repository.
 
 ```bash
 export OPENAI_API_KEY="your_openai_api_key"
