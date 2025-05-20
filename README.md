@@ -201,7 +201,7 @@ export OTEL_EXPORTER_OTLP_ENDPOINT="your_opentelemetry_endpoint"
 export LOGFIRE_TOKEN="your_logfire_token"
 ```
 
-Then, run `direnv allow` to load the environment variables.
+Then, run `direnv allow` to load the environment variables. In the future, the env vars will be loaded automatically when you enter the directory.
 
 ### Utility commands
 
