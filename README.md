@@ -40,11 +40,15 @@ model_args = {
 # run the model on the dataset using multi-threading
 result = run_model_multi_threaded(SimpleZeroShotNL2Q, model_args, dataset=dataset, batch_size=10)
 print(result.tasks[0].pred_query)
+# SELECT MAX("Percent (%) Eligible Free (K-12)")
+# FROM frpm
+# WHERE "County Name" = 'Alameda';
 
 # evaluate execution accuracy
 metrics = [BirdSQLEx()]
 result_with_metrics = evaluate(result, dataset, metrics, num_threads=8)
 print(result_with_metrics.aggregated_metrics)
+# {'avg_latency_seconds': 1.472, 'avg_api_calls': 1.0, 'total_api_calls': 3, 'avg_input_tokens': 2490.6667, 'total_input_tokens': 7472, 'avg_output_tokens': 49.3333, 'total_output_tokens': 148, 'avg_api_cost_usd': 0.0004, 'total_api_cost_usd': 0.0012, 'avg_steps': 1.0, 'bird_sql_ex': 0.3333}
 ```
 
 We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
