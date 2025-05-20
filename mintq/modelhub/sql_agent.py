@@ -140,8 +140,8 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     return res
 
 
-class SQLAgentTableNamesOnly:
-    name = "sql_agent_table_names_only"
+class SQLAgent:
+    name = "sql_agent"
 
     def __init__(
         self, llm: str, schema_formatter: BaseSQLSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
