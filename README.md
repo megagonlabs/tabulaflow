@@ -212,6 +212,7 @@ make format      # format and lint
 make mypy        # type check with mypy
 make test-zero   # test simple_zero_shot
 make test-agent  # test sql_agent_table_names_only
+make sync        # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
 ```
 
 
