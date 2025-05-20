@@ -170,9 +170,9 @@ docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 
 ### Dependencies
 
-We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry): [`uv` install docs](https://docs.astral.sh/uv/getting-started/installation/)
+We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry).
 
-First, run `uv --version` to ensure that `uv` is installed.
+First, run `uv --version` to ensure that [uv](https://docs.astral.sh/uv/getting-started/installation/) is installed.
 
 After cloning the repository, run `make sync` in the root directory. The first time you run `make sync` (which runs [`uv sync`](Makefile#L3) behind the scenes), it will create a local venv at `.venv/` and install the dependencies into the venv.
 
