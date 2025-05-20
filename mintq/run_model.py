@@ -2,11 +2,10 @@ import argparse
 import os
 import shutil
 import time
-from typing import Callable, Type, Any
+from typing import Type, Any
 import datetime
 import asyncio
 import logfire
-from functools import partial
 import litellm
 from tqdm import trange
 from concurrent.futures import ThreadPoolExecutor
@@ -169,7 +168,7 @@ def main() -> None:
         loop = asyncio.get_event_loop()
         result = loop.run_until_complete(run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size))  # type: ignore
     else:
-        result = run_model_multi_threaded(model_class, nl2q_kwargs, dataset, args.batch_size)  # type: ignore
+        result = run_model_multi_threaded(model_class, nl2q_kwargs, dataset, args.batch_size)
 
     save_results(result, args.result_dir)
 
