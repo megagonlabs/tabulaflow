@@ -166,9 +166,9 @@ docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
 ```
 
-## Development
+## 💻 Development
 
-### Dependency management
+### Dependencies
 
 We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry): [`uv` install docs](https://docs.astral.sh/uv/getting-started/installation/)
 
