@@ -27,20 +27,18 @@ from mintq.metric import BirdSQLEx
 from mintq.run_model import run_model_multi_threaded
 from mintq.evaluate import evaluate
 
-# define the model factory function
-# the `run_model` function below constructs a separate model instance for each sample to avoid race condition
-def model_fn():  
-    return SimpleZeroShotNL2Q(
-        llm="openai/gpt-4o-mini",
-        schema_formatter=SQLDefaultSchemaFormatter()
-    )
-
 dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
 dataset = dataloader.get_split("dev")  # dataset includes the text-to-query tasks and the database connectors
 dataset.tasks = dataset.tasks[:3]
 
+# define the model arguments
+# the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
+model_args = {
+    "llm": "openai/gpt-4o-mini",
+    "schema_formatter": SQLDefaultSchemaFormatter()
+}
 # run the model on the dataset using multi-threading
-result = run_model_multi_threaded(model_fn=model_fn, dataset=dataset, batch_size=10)
+result = run_model_multi_threaded(SimpleZeroShotNL2Q, model_args, dataset=dataset, batch_size=10)
 print(result.tasks[0].pred_query)
 
 # evaluate execution accuracy
@@ -49,6 +47,12 @@ result_with_metrics = evaluate(result, dataset, metrics, num_threads=8)
 print(result_with_metrics.aggregated_metrics)
 ```
 
+You can also run use the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts directly:
+
+```bash
+uv run mintq/run_model.py --model simple_zero_shot --llm openai/gpt-4o-mini --result_dir output/test/ --debug
+uv run mintq/evaluate.py --result_json output/test/result.json
+```
 
 ## Project Structure
 
