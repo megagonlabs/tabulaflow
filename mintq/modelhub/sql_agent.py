@@ -95,7 +95,7 @@ def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     except Exception as e:
         return f"(query failed: {e})"
 
-    if df.empty:
+    if df.empty:  # type: ignore
         return "(query executed successfully, but results are empty)"
     res = format_df(df, max_visible_rows=5)
     return res

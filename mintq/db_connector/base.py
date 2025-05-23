@@ -1,5 +1,6 @@
 from typing import Any, Protocol, Sequence
 import sqlalchemy
+import pandas as pd
 from mintq.schema import BaseDBSchema, SQLSchema
 
 
@@ -11,7 +12,7 @@ class BaseDBConnector(Protocol):
 
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list[tuple[Any, ...]]: ...
+    ) -> list[tuple[Any, ...]] | pd.DataFrame: ...
 
 
 class BaseSQLDBConnector(Protocol):
@@ -23,4 +24,4 @@ class BaseSQLDBConnector(Protocol):
 
     def run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list[tuple[Any, ...]]: ...
+    ) -> list[tuple[Any, ...]] | pd.DataFrame: ...
