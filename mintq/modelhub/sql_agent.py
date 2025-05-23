@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 import jinja2
 import time
+import pandas as pd
+import numpy as np
+from tabulate import tabulate
 import sqlalchemy
 from sqlalchemy import select, distinct
 import pydantic_ai
@@ -61,6 +64,24 @@ def truncate(s: str, max_chars: int) -> str:
     return s[: max_chars // 2] + "\n...content truncated...\n" + s[-max_chars // 2 :]
 
 
+def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "simple") -> str:
+    n = len(df)
+    if n > max_visible_rows:
+        first_n = (max_visible_rows + 1) // 2
+        last_n = max_visible_rows - first_n
+        head = df.head(first_n)
+        tail = df.tail(last_n)
+        ellipsis_row = {col: "..." for col in df.columns}
+        display_df = pd.concat([head, pd.DataFrame([ellipsis_row]), tail], ignore_index=True)
+    else:
+        display_df = df
+
+    display_df = display_df.replace({np.nan: "[null]"})
+
+    # showindex=False hides the automatic row numbers
+    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
+
+
 def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     Execute a SQL query and return the results.
@@ -70,13 +91,13 @@ def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     db_connector = ctx.deps.db_connector
     try:
-        exec_results = db_connector.run_query(query)
+        df = db_connector.run_query(query, return_df=True)
     except Exception as e:
         return f"(query failed: {e})"
-    if not exec_results:
+
+    if df.empty:
         return "(query executed successfully, but results are empty)"
-    res = "[" + ",\n".join([str(row) for row in exec_results]) + "]"
-    res = truncate(res, 500)
+    res = format_df(df, max_visible_rows=5)
     return res
 
 
