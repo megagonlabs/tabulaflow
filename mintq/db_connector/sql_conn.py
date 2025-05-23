@@ -3,6 +3,7 @@ from typing import Any, Sequence
 import pandas as pd
 import hashlib
 import sqlalchemy
+from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, inspect, func, select
 from func_timeout import func_timeout, FunctionTimedOut
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
@@ -24,17 +25,19 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeyS
 
 
 class GenericSQLConnector:
-    def __init__(self, name: str, sqlalchemy_engine: sqlalchemy.engine.Engine):
+    def __init__(self, name: str, sqlalchemy_engine: sqlalchemy.engine.Engine, schema: SQLSchema):
         self.name = name
-        self.schema = self._load_schema_with_cache(name, sqlalchemy_engine)
+        self.schema = schema
         self.engine = sqlalchemy_engine
 
     @classmethod
-    def from_url(cls, name: str, url: str, **engine_kwargs: Any) -> "GenericSQLConnector":
+    def from_url(cls, name: str, url: str | SQLAlchemyURL, **engine_kwargs: Any) -> "GenericSQLConnector":
         engine = create_engine(url, **engine_kwargs)
-        return cls(name, engine)
+        schema = cls._load_schema_with_cache(name, engine)
+        return cls(name, engine, schema)
 
-    def _load_schema_with_cache(self, name: str, engine: sqlalchemy.engine.Engine) -> SQLSchema:
+    @classmethod
+    def _load_schema_with_cache(cls, name: str, engine: sqlalchemy.engine.Engine) -> SQLSchema:
         cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
         cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
         cache_refresh = os.getenv("MINTQ_CACHE_REFRESH", "0") == "1"
@@ -50,18 +53,20 @@ class GenericSQLConnector:
             with open(cache_path, "r") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        schema = self._init_schema(engine)
+        schema = cls._init_schema(name, engine)
         if cache_enabled:
             with open(cache_path, "w") as f:
                 f.write(schema.model_dump_json(indent=2))
         return schema
 
-    def _convert(self, value: Any) -> str | int | float | bool:
+    @staticmethod
+    def _convert(value: Any) -> str | int | float | bool:
         if isinstance(value, (int, float, str, bool)):
             return value
         return str(value)
 
-    def _init_schema(self, engine: sqlalchemy.engine.Engine) -> SQLSchema:
+    @classmethod
+    def _init_schema(cls, name: str, engine: sqlalchemy.engine.Engine) -> SQLSchema:
         """Initialize and return the database schema."""
         tables = []
         foreign_keys = []
@@ -92,7 +97,7 @@ class GenericSQLConnector:
                                 select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21)
                             ).fetchall()
                         ]
-                        examples = [self._convert(v) for v in examples]
+                        examples = [cls._convert(v) for v in examples]
                         columns.append(
                             SQLColumnSchema(
                                 name=column["name"],
@@ -125,7 +130,7 @@ class GenericSQLConnector:
                         )
                     )
 
-        return SQLSchema(name=self.name, tables=tables, foreign_keys=foreign_keys)
+        return SQLSchema(name=name, tables=tables, foreign_keys=foreign_keys)
 
     def _run_query_without_timeout(
         self, query: str, parameters: Sequence[Any] = (), return_df: bool = False

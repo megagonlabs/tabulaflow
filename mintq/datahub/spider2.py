@@ -3,16 +3,18 @@ import json
 import re
 import random
 from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 import pandas as pd
 from tqdm import tqdm
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SnowflakeConnector, BaseDBConnector
 
 
-def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
-    name, conn_cls, kwargs = args
-    return conn_cls(name, **kwargs)
+def create_connector(
+    args: tuple[str, Callable[..., BaseDBConnector], dict[str, Any]],
+) -> BaseDBConnector:
+    name, fn, kwargs = args
+    return fn(name, **kwargs)
 
 
 class Spider2SnowDatasetLoader:
@@ -107,7 +109,7 @@ class Spider2SnowDatasetLoader:
             connector_args = [
                 (
                     name,
-                    SnowflakeConnector,
+                    SnowflakeConnector.from_credentials,
                     {"sf_user": sf_user, "sf_password": sf_password, "sf_account": sf_account, "sf_database": name},
                 )
                 for name in db_names
