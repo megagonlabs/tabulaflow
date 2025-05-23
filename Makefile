@@ -18,9 +18,9 @@ lint:
 .PHONY: test-simple
 test-simple:
 	uv run mintq/run_model.py --model simple_zero_shot --debug
-	uv run mintq/evaluate.py
+	uv run mintq/evaluate.py --debug
 
 .PHONY: test-agent
 test-agent:
 	uv run mintq/run_model.py --model sql_agent --debug
-	uv run mintq/evaluate.py
+	uv run mintq/evaluate.py --debug

@@ -52,6 +52,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_json", default="output/test/result.json")
     parser.add_argument("--num_threads", type=int, default=8)
+    parser.add_argument("--debug", action="store_true")
     parser.add_argument(
         "--metrics",
         nargs="+",
@@ -91,6 +92,12 @@ def main() -> None:
         fout.write(result.model_dump_json(indent=2))
     print()
     print(f"Saved result with metrics to {output_path}")
+
+    if args.debug:
+        print()
+        print("=== DEBUG MODE === ")
+        for task in result.tasks:
+            print(f"{task.qid}: {task.metrics['bird_sql_ex']:.4f}")
 
 
 if __name__ == "__main__":
