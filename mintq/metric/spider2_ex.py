@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Any
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import BaseSQLDBConnector
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
@@ -82,7 +82,7 @@ class Spider2Ex:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: SQLiteConnector) -> float:
+    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseSQLDBConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 

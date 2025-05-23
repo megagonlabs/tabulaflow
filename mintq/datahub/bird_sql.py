@@ -3,14 +3,14 @@ import json
 import random
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SQLiteConnector, BaseDBConnector
+from mintq.db_connector import GenericSQLConnector, BaseDBConnector
 
 
-def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
-    name, conn_cls, kwargs = args
-    return conn_cls(name, **kwargs)
+def create_connector(args: tuple[str, Callable[..., BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
+    name, fn, kwargs = args
+    return fn(name, **kwargs)
 
 
 class BirdSQLDatasetLoader:
@@ -59,8 +59,8 @@ class BirdSQLDatasetLoader:
             connector_args = [
                 (
                     name,
-                    SQLiteConnector,
-                    {"sqlite_db_path": os.path.join(db_dir, name, f"{name}.sqlite")},
+                    GenericSQLConnector.from_url,
+                    {"url": f"sqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}"},
                 )
                 for name in db_names
             ]

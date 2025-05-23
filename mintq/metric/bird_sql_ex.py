@@ -1,5 +1,5 @@
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import BaseSQLDBConnector
 
 
 class BirdSQLEx:
@@ -8,7 +8,7 @@ class BirdSQLEx:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: SQLiteConnector) -> float:
+    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseSQLDBConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 

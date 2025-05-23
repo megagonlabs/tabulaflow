@@ -1,6 +1,6 @@
 from typing import Any
 from itertools import combinations
-from mintq.db_connector import SQLiteConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTaskOutput
 
 
@@ -36,7 +36,7 @@ class BirdSQLExSoft:
                 return 1.0
         return 0.0
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: SQLiteConnector) -> float:
+    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseSQLDBConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 
