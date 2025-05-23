@@ -4,10 +4,10 @@ __pycache__/
 *$py.class
 
 # Added by me
-exp/
-log/
+exp*/
+log*/
 data/
-output/
+output*/
 cache/
 *.db
 *.sqlite
