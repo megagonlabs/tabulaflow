@@ -12,56 +12,13 @@ from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
 from mintq.modelhub import get_nl2q_model_class, BaseNL2QModel, BaseAsyncNL2QModel
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import get_async_dataset_loader
 from mintq.schema import NL2QDataset, NL2QRunResult
 
 
 logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
 logfire.instrument_pydantic_ai()
 
-
-def run_model_multi_threaded(
-    model_cls: Type[BaseNL2QModel], model_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
-) -> NL2QRunResult:
-    start_time = datetime.datetime.now()
-    tasks_with_predictions = []
-    for i in trange(0, len(dataset.tasks), batch_size):
-        j = min(i + batch_size, len(dataset.tasks))
-        batch = dataset.tasks[i:j]
-
-        nl2q_models = [model_cls(**model_args) for _ in batch]
-
-        with ThreadPoolExecutor(max_workers=len(batch)) as executor:
-            futures = [
-                executor.submit(
-                    nl2q_model.predict_sync,
-                    item,
-                    dataset.db_connectors[item.db],
-                )
-                for item, nl2q_model in zip(batch, nl2q_models)
-            ]
-            tasks_with_predictions += [future.result() for future in futures]
-
-        if i == 0:
-            task = tasks_with_predictions[0]
-            trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
-            print(format_trajectory(trajectory))
-
-    sample_model = model_cls(**model_args)
-    aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
-
-    end_time = datetime.datetime.now()
-    return NL2QRunResult(
-        start_time=start_time,
-        end_time=end_time,
-        dataset=dataset.name,
-        split_id=dataset.split_id,
-        databases=dataset.databases,
-        model=sample_model.name,
-        model_args=sample_model.get_config(),
-        aggregated_metrics=aggregated_metrics,
-        tasks=tasks_with_predictions,
-    )
 
 
 async def run_model_async(
@@ -99,7 +56,7 @@ async def run_model_async(
     )
 
 
-def main() -> None:
+async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
@@ -155,8 +112,8 @@ def main() -> None:
         "schema_formatter": schema_formatter,
     }
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
-    dataset = dataset_loader.get_split(args.split, databases=args.databases)
+    dataset_loader = get_async_dataset_loader(args.dataset)
+    dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     if args.debug:
         dataset.tasks = dataset.tasks[:5]
     print(
@@ -164,14 +121,9 @@ def main() -> None:
     )
 
     model_class = get_nl2q_model_class(args.model)
-    if hasattr(model_class, "predict_async"):
-        loop = asyncio.get_event_loop()
-        result = loop.run_until_complete(run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size))  # type: ignore
-    else:
-        result = run_model_multi_threaded(model_class, nl2q_kwargs, dataset, args.batch_size)
-
+    result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)  # type: ignore
     save_results(result, args.result_dir)
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

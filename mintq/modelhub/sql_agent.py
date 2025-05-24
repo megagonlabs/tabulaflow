@@ -82,7 +82,7 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
     return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
 
 
-def run_query(ctx: RunContext[TaskContext], query: str) -> str:
+async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     Execute a SQL query and return the results.
 
@@ -91,7 +91,7 @@ def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     db_connector = ctx.deps.db_connector
     try:
-        df = db_connector.run_query(query, return_df=True)
+        df = await db_connector.run_query_async(query, return_df=True)
     except Exception as e:
         return f"(query failed: {e})"
 
@@ -101,7 +101,7 @@ def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     return res
 
 
-def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
+async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     """
     List the columns of a table.
 
@@ -117,7 +117,7 @@ def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     return "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
 
 
-def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
+async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
     """
     Search for values in a column of a table that match any of the keywords.
 
@@ -147,8 +147,8 @@ def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywo
     for keyword in keywords:
         sql_table = sqlalchemy.Table(table, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String))
         stmt = select(distinct(sql_table.c[column])).where(sql_table.c[column].like(f"%{keyword}%"))
-        with db_connector.engine.connect() as conn:
-            result = conn.execute(stmt)
+        async with db_connector.engine.connect() as conn:
+            result = await conn.execute(stmt)
             matches += [row[0] for row in result]
     matches = sorted(list(set(matches)))
     if not matches:
