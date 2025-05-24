@@ -6,3 +6,9 @@ class NL2QDatasetLoader(Protocol):
     name: ClassVar[str]
 
     def get_split(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset: ...
+
+
+class AsyncNL2QDatasetLoader(Protocol):
+    name: ClassVar[str]
+
+    async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset: ...
