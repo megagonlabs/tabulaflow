@@ -1,27 +1,29 @@
 import argparse
 import copy
 import time
+import asyncio
+import aiofiles
 from tqdm import tqdm
 import random
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from mintq.db_connector import BaseDBConnector
+from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
 from mintq.datahub import get_async_dataset_loader
-from mintq.metric import get_metric, BaseNL2QMetric
+from mintq.metric import get_metric, BaseAsyncNL2QMetric
 
 
-def compute_metrics(
-    item: NL2QTaskOutput, metrics: list[BaseNL2QMetric], db_connector: BaseDBConnector
+async def compute_metrics(
+    item: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
 ) -> NL2QTaskOutput:
     item = copy.deepcopy(item)
     for m in metrics:
-        item.metrics[m.name] = m.compute(task=item, db_connector=db_connector)
+        item.metrics[m.name] = await m.compute_async(task=item, db_connector=db_connector)
     return item
 
 
-def evaluate(
-    result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseNL2QMetric], num_threads: int
+async def evaluate(
+    result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseAsyncNL2QMetric], batch_size: int
 ) -> NL2QRunResult:
     result = copy.deepcopy(result)
 
@@ -30,14 +32,11 @@ def evaluate(
     random.seed(42)
     random.shuffle(result.tasks)
 
-    # Use ThreadPoolExecutor for multithreading
     tasks_with_metrics = []
-    with ThreadPoolExecutor(max_workers=num_threads) as executor:
-        futures = [
-            executor.submit(compute_metrics, item, metrics, dataset.db_connectors[item.db]) for item in result.tasks
-        ]
-        for future in tqdm(as_completed(futures), total=len(result.tasks)):
-            tasks_with_metrics.append(future.result())
+    for i in range(0, len(result.tasks), batch_size):
+        batch = result.tasks[i : i + batch_size]
+        batch_with_metrics = await asyncio.gather(*[compute_metrics(item, metrics, dataset.db_connectors[item.db]) for item in batch])
+        tasks_with_metrics += batch_with_metrics
 
     # Sort the result so that the order is the same as the original result
     tasks_with_metrics.sort(key=lambda x: qids[x.qid])
@@ -48,7 +47,7 @@ def evaluate(
     return result
 
 
-def main() -> None:
+async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_json", default="output/test/result.json")
     parser.add_argument("--num_threads", type=int, default=8)
@@ -74,13 +73,13 @@ def main() -> None:
 
     t0 = time.time()
     dataset_loader = get_async_dataset_loader(result.dataset)
-    dataset = dataset_loader.get_split(result.split_id, databases=result.databases)
+    dataset = await dataset_loader.get_split_async(result.split_id, databases=result.databases)
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split_id} set in {time.time() - t0:.2f} seconds."
     )
 
     metrics = [get_metric(m) for m in args.metrics]
-    result = evaluate(result, dataset, metrics, args.num_threads)
+    result = await evaluate(result, dataset, metrics, args.num_threads)
 
     print()
     print("Aggregated metrics:")
@@ -101,4 +100,4 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

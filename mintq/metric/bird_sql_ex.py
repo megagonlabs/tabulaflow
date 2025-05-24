@@ -1,5 +1,5 @@
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import BaseAsyncSQLDBConnector
 
 
 class BirdSQLEx:
@@ -8,12 +8,12 @@ class BirdSQLEx:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseSQLDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 
         try:
-            pred_executed = db_connector.run_query(task.pred_query, timeout=self.timeout)
+            pred_executed = await db_connector.run_query_async(task.pred_query, timeout=self.timeout)
         except Exception:
             return 0.0
 
@@ -30,7 +30,7 @@ class BirdSQLEx:
                 return 1.0
 
             try:
-                gold_executed = db_connector.run_query(gold_query, timeout=self.timeout)
+                gold_executed = await db_connector.run_query_async(gold_query, timeout=self.timeout)
             except Exception as e:
                 print(f"Warning: Exception {e} occurred while executing gold queries")
                 continue

@@ -1,5 +1,5 @@
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import BaseDBConnector
+from mintq.db_connector import BaseAsyncDBConnector
 
 
 class Executable:
@@ -8,9 +8,9 @@ class Executable:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
         try:
-            db_connector.run_query(task.pred_query, timeout=self.timeout)
+            await db_connector.run_query_async(task.pred_query, timeout=self.timeout)
         except Exception as e:
             print(f"Warning: Exception {e} occurred while executing queries")
             return 0.0

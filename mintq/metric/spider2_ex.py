@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Any
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import BaseAsyncSQLDBConnector
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
@@ -82,12 +82,12 @@ class Spider2Ex:
     def __init__(self, timeout: int = 30):
         self.timeout = timeout
 
-    def compute(self, task: SimpleNL2QTaskOutput, db_connector: BaseSQLDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
         if not task.gold_exec_results and not task.gold_queries:
             raise ValueError("No gold queries or gold execution results provided")
 
         try:
-            pred_df = db_connector.run_query(task.pred_query, timeout=self.timeout, return_df=True)
+            pred_df = await db_connector.run_query_async(task.pred_query, timeout=self.timeout, return_df=True)
         except Exception:
             return 0.0
 
@@ -97,7 +97,7 @@ class Spider2Ex:
             gold_dfs = []
             for gold_query in task.gold_queries:
                 try:
-                    gold_dfs.append(db_connector.run_query(gold_query, timeout=self.timeout, return_df=True))
+                    gold_dfs.append(await db_connector.run_query_async(gold_query, timeout=self.timeout, return_df=True))
                 except Exception as e:
                     print(f"Warning: Exception {e} occurred while executing gold queries")
                     continue
