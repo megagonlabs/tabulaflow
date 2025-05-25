@@ -31,6 +31,11 @@ test-agent:
 		uv run mintq/evaluate.py --debug; \
 	done
 
+.PHONY: test-bird-agent
+test-bird-agent:
+	uv run mintq/run_model.py --model sql_agent --dataset bird-sql --debug
+	uv run mintq/evaluate.py --debug
+
 .PHONY: test-spider2-agent
 test-spider2-agent:
 	uv run mintq/run_model.py --model sql_agent --dataset spider2-snow --debug
