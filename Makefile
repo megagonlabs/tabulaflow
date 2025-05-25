@@ -17,10 +17,26 @@ lint:
 
 .PHONY: test-simple
 test-simple:
-	uv run mintq/run_model.py --model simple_zero_shot --debug
-	uv run mintq/evaluate.py --debug
+	set -e; \
+	for dataset in bird-sql spider2-snow beaver; do \
+		uv run mintq/run_model.py --model simple_zero_shot --debug --dataset $$dataset; \
+		uv run mintq/evaluate.py --debug; \
+	done
 
 .PHONY: test-agent
 test-agent:
-	uv run mintq/run_model.py --model sql_agent --debug
+	set -e; \
+	for dataset in bird-sql spider2-snow beaver; do \
+		uv run mintq/run_model.py --model sql_agent --debug --dataset $$dataset; \
+		uv run mintq/evaluate.py --debug; \
+	done
+
+.PHONY: test-spider2-agent
+test-spider2-agent:
+	uv run mintq/run_model.py --model sql_agent --dataset spider2-snow --debug
+	uv run mintq/evaluate.py --debug
+
+.PHONY: test-beaver-agent
+test-beaver-agent:
+	uv run mintq/run_model.py --model sql_agent --dataset beaver --debug
 	uv run mintq/evaluate.py --debug
