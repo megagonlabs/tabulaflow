@@ -6,9 +6,9 @@ __pycache__/
 # Added by me
 exp*/
 log*/
-data/
+data*/
 output*/
-cache/
+cache*/
 *.db
 *.sqlite
 .envrc
