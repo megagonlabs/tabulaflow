@@ -133,16 +133,6 @@ class SQLAlchemyConnector:
 
         return SQLSchema(name=name, tables=tables, foreign_keys=foreign_keys)
 
-    async def _run_query_without_timeout_async(
-        self, query: str, parameters: Sequence[Any] = (), return_df: bool = False
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        async with self.engine.connect() as conn:  # AsyncConnection
-            result = await conn.execute(sqlalchemy.text(query), parameters)
-            rows = result.fetchall()
-            if return_df:
-                return pd.DataFrame(rows, columns=result.keys())
-            return rows
-
     async def run_query_async(
         self,
         query: str,
@@ -150,9 +140,12 @@ class SQLAlchemyConnector:
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        try:
-            return await asyncio.wait_for(
-                self._run_query_without_timeout_async(query, parameters, return_df), timeout=timeout
-            )
-        except asyncio.TimeoutError:
-            raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
+        async with self.engine.connect() as conn:
+            try:
+                result = await asyncio.wait_for(conn.execute(sqlalchemy.text(query), parameters), timeout=timeout)
+                rows = result.fetchall()
+                if return_df:
+                    return pd.DataFrame(rows, columns=result.keys())
+                return rows
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"Query {query} timed out after {timeout} seconds")

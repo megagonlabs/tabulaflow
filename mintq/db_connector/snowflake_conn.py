@@ -31,7 +31,7 @@ class SnowflakeConnector(SQLAlchemyConnector):
     ) -> "SnowflakeConnector":
         url = f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"
         engine = create_engine(url, connect_args={"disable_ocsp_checks": True})
-        schema = await cls._load_schema_with_cache(name, engine)
+        schema = await cls._load_schema_with_cache_async(name, engine)
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
     def _run_query_sync(
