@@ -46,9 +46,9 @@ class BeaverDatasetLoader:
                 )
 
                 if item["db_id"] not in urls:
-                    urls[item["db_id"]] = f"mysql+pymysql://root:root@localhost:{port}/{item['db_id']}"
+                    urls[item["db_id"]] = f"mysql+asyncmy://root:root@localhost:{port}/{item['db_id']}"
 
-        db_connectors = asyncio.gather(*[SQLAlchemyConnector.from_url(name, url) for name, url in urls.items()])
+        db_connectors = await asyncio.gather(*[SQLAlchemyConnector.from_url(name, url) for name, url in urls.items()])
 
         return NL2QDataset(
             name=self.name,
@@ -70,7 +70,7 @@ class BeaverDatasetLoader:
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = await self._load_split(split, databases=databases)
+            self._data[(split, key)] = await self._load_split_async(split, databases=databases)
 
         dataset = self._data[(split, key)]
         if sample_size:
