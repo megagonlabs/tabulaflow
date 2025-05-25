@@ -2,19 +2,13 @@ import os
 import json
 import re
 import random
-from concurrent.futures import ThreadPoolExecutor
-from typing import Optional, Any, Callable
+import asyncio
+from typing import Optional, Any
 import pandas as pd
 from tqdm import tqdm
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SnowflakeConnector, BaseDBConnector
+from mintq.db_connector import SnowflakeConnector
 
-
-def create_connector(
-    args: tuple[str, Callable[..., BaseDBConnector], dict[str, Any]],
-) -> BaseDBConnector:
-    name, fn, kwargs = args
-    return fn(name, **kwargs)
 
 
 class Spider2SnowDatasetLoader:
@@ -35,7 +29,7 @@ class Spider2SnowDatasetLoader:
         self.sf_account = sf_account
         self._data: dict[Any, NL2QDataset] = {}
 
-    def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split != "dev":
             raise ValueError("Only dev split is supported for spider2-snow")
 
@@ -105,33 +99,23 @@ class Spider2SnowDatasetLoader:
         if sf_account is None:
             sf_account = os.environ.get("SF_ACCOUNT")
 
-        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-            connector_args = [
-                (
-                    name,
-                    SnowflakeConnector.from_credentials,
-                    {"sf_user": sf_user, "sf_password": sf_password, "sf_account": sf_account, "sf_database": name},
-                )
+
+        db_connectors = await asyncio.gather(
+            *[
+                SnowflakeConnector.from_credentials(name, sf_user, sf_password, sf_account, name)
                 for name in db_names
             ]
-            db_connectors = {
-                conn.name: conn
-                for conn in tqdm(
-                    executor.map(create_connector, connector_args),
-                    total=len(connector_args),
-                    desc="Creating database connectors",
-                )
-            }
+        )
 
         return NL2QDataset(
             name=self.name,
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors=db_connectors,
+            db_connectors={conn.name: conn for conn in db_connectors},
         )
 
-    def get_split(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if "_" in split_id:
             split, sample_size = split_id.split("_")
         else:
@@ -143,7 +127,7 @@ class Spider2SnowDatasetLoader:
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = self._load_split(split, databases=databases)
+            self._data[(split, key)] = await self._load_split_async(split, databases=databases)
 
         dataset = self._data[(split, key)]
         if sample_size:

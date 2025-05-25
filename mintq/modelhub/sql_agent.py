@@ -9,7 +9,7 @@ from sqlalchemy import select, distinct
 import pydantic_ai
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.tools import Tool
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
@@ -19,7 +19,7 @@ from mintq.utils import extract_code, get_llm_api_cost
 @dataclass
 class TaskContext:
     task: SimpleNL2QTask
-    db_connector: BaseSQLDBConnector
+    db_connector: BaseAsyncSQLDBConnector
     formatter: BaseSQLSchemaFormatter
     table_id_to_schema: dict[str, SQLTableSchema]
 
@@ -192,7 +192,7 @@ class SQLAgent:
             "num_candidates": self.num_candidates,
         }
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(

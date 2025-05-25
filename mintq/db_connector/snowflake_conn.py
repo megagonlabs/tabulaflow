@@ -1,13 +1,14 @@
+import asyncio
 from typing import Any, Sequence
 import snowflake.connector
 import pandas as pd
 import sqlalchemy
 from sqlalchemy import create_engine
-from mintq.db_connector.sql_conn import GenericSQLConnector
+from mintq.db_connector.sql_conn import SQLAlchemyConnector
 from mintq.schema import SQLSchema
 
 
-class SnowflakeConnector(GenericSQLConnector):
+class SnowflakeConnector(SQLAlchemyConnector):
     def __init__(
         self,
         name: str,
@@ -25,15 +26,15 @@ class SnowflakeConnector(GenericSQLConnector):
         self.sf_database = sf_database
 
     @classmethod
-    def from_credentials(
+    async def from_credentials(
         cls, name: str, sf_user: str, sf_password: str, sf_account: str, sf_database: str
     ) -> "SnowflakeConnector":
         url = f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"
         engine = create_engine(url, connect_args={"disable_ocsp_checks": True})
-        schema = cls._load_schema_with_cache(name, engine)
+        schema = await cls._load_schema_with_cache(name, engine)
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
-    def run_query(
+    def _run_query_sync(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with snowflake.connector.connect(
@@ -50,3 +51,9 @@ class SnowflakeConnector(GenericSQLConnector):
                 return pd.DataFrame(results, columns=[desc[0] for desc in cursor.description])
             else:
                 return results
+
+    async def run_query_async(
+        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(None, self._run_query_sync, query, parameters, timeout, return_df)

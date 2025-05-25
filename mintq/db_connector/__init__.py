@@ -1,5 +1,10 @@
-from mintq.db_connector.base import BaseDBConnector, BaseSQLDBConnector, BaseAsyncDBConnector, BaseAsyncSQLDBConnector
+from mintq.db_connector.base import BaseAsyncDBConnector, BaseAsyncSQLDBConnector
 from mintq.db_connector.snowflake_conn import SnowflakeConnector
-from mintq.db_connector.sql_conn import GenericSQLConnector, AsyncGenericSQLConnector
+from mintq.db_connector.sql_conn import SQLAlchemyConnector
 
-__all__ = ["BaseDBConnector", "BaseSQLDBConnector", "BaseAsyncDBConnector", "BaseAsyncSQLDBConnector", "SnowflakeConnector", "GenericSQLConnector", "AsyncGenericSQLConnector"]
+__all__ = [
+    "BaseAsyncDBConnector",
+    "BaseAsyncSQLDBConnector",
+    "SQLAlchemyConnector",
+    "SnowflakeConnector",
+]

@@ -6,7 +6,7 @@ import logging
 from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.schema_formatter import BaseSchemaFormatter
-from mintq.db_connector import BaseDBConnector
+from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage
 
 SYSTEM_PROMPT = """
@@ -67,7 +67,7 @@ class SimpleZeroShotNL2Q:
             "num_candidates": self.num_candidates,
         }
 
-    def predict_sync(self, task: SimpleNL2QTask, db_connector: BaseDBConnector) -> SimpleNL2QTaskOutput:
+    def predict_sync(self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self.schema_formatter.format(db_connector.schema)
@@ -130,7 +130,7 @@ class SimpleZeroShotNL2Q:
             metrics=metrics,
         )
 
-    def select_best_query(self, candidates: list[str], db_connector: BaseDBConnector) -> int:
+    def select_best_query(self, candidates: list[str], db_connector: BaseAsyncDBConnector) -> int:
         result2idx = collections.defaultdict(list)
         run_time = {}
         for idx, query in enumerate(candidates):

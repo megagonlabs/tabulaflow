@@ -8,17 +8,15 @@ import asyncio
 import logfire
 import litellm
 from tqdm import trange
-from concurrent.futures import ThreadPoolExecutor
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.schema_formatter import get_schema_formatter
-from mintq.modelhub import get_nl2q_model_class, BaseNL2QModel, BaseAsyncNL2QModel
-from mintq.datahub import get_async_dataset_loader
+from mintq.modelhub import get_nl2q_model_class, BaseAsyncNL2QModel
+from mintq.datahub import get_dataset_loader
 from mintq.schema import NL2QDataset, NL2QRunResult
 
 
 logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
 logfire.instrument_pydantic_ai()
-
 
 
 async def run_model_async(
@@ -112,7 +110,7 @@ async def main() -> None:
         "schema_formatter": schema_formatter,
     }
     t0 = time.time()
-    dataset_loader = get_async_dataset_loader(args.dataset)
+    dataset_loader = get_dataset_loader(args.dataset)
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     if args.debug:
         dataset.tasks = dataset.tasks[:5]

@@ -7,10 +7,10 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from typing import Optional, Any, Callable
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import AsyncGenericSQLConnector, BaseDBConnector
+from mintq.db_connector import SQLAlchemyConnector
 
 
-class AsyncBirdSQLDatasetLoader:
+class BirdSQLDatasetLoader:
     name = "bird-sql"
 
     def __init__(
@@ -22,7 +22,7 @@ class AsyncBirdSQLDatasetLoader:
         self.num_threads = num_threads
         self._data: dict[Any, NL2QDataset] = {}
 
-    async def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split == "train":
             directory = os.path.join(self.directory, "train")
         elif split == "dev":
@@ -54,7 +54,7 @@ class AsyncBirdSQLDatasetLoader:
         db_dir = os.path.join(directory, f"{split}_databases")
         db_connectors = await asyncio.gather(
             *[
-                AsyncGenericSQLConnector.from_url(name, f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}")
+                SQLAlchemyConnector.from_url(name, f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}")
                 for name in db_names
             ]
         )
@@ -79,7 +79,7 @@ class AsyncBirdSQLDatasetLoader:
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = await self._load_split(split, databases=databases)
+            self._data[(split, key)] = await self._load_split_async(split, databases=databases)
 
         dataset = self._data[(split, key)]
         if sample_size:

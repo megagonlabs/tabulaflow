@@ -1,17 +1,11 @@
 import os
 import json
 import random
-from concurrent.futures import ThreadPoolExecutor
-from sqlalchemy import create_engine
+import asyncio
 from tqdm import tqdm
 from typing import Optional, Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import GenericSQLConnector, BaseDBConnector
-
-
-def create_connector(args: tuple[str, type[BaseDBConnector], dict[str, Any]]) -> BaseDBConnector:
-    name, conn_cls, kwargs = args
-    return conn_cls(name, **kwargs)
+from mintq.db_connector import SQLAlchemyConnector
 
 
 class BeaverDatasetLoader:
@@ -26,11 +20,11 @@ class BeaverDatasetLoader:
         self.num_threads = num_threads
         self._data: dict[Any, NL2QDataset] = {}
 
-    def _load_split(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if split != "dev":
             raise ValueError("Only dev split is supported for beaver")
 
-        engines = {}
+        urls = {}
         tasks = []
         for file, port in [("dev_dw.json", 3311), ("dev_nw.json", 3312)]:
             with open(os.path.join(self.directory, file), "r") as f:
@@ -51,40 +45,20 @@ class BeaverDatasetLoader:
                     )
                 )
 
-                if item["db_id"] not in engines:
-                    engines[item["db_id"]] = create_engine(
-                        f"mysql+pymysql://root:root@localhost:{port}/{item['db_id']}"
-                    )
+                if item["db_id"] not in urls:
+                    urls[item["db_id"]] = f"mysql+pymysql://root:root@localhost:{port}/{item['db_id']}"
 
-        with ThreadPoolExecutor(max_workers=self.num_threads) as executor:
-            connector_args = [
-                (
-                    name,
-                    GenericSQLConnector,
-                    {"sqlalchemy_engine": engine},
-                )
-                for name, engine in engines.items()
-            ]
-            db_connectors = {
-                conn.name: conn
-                for conn in tqdm(
-                    tqdm(
-                        executor.map(create_connector, connector_args),
-                        total=len(connector_args),
-                        desc="Creating database connectors",
-                    )
-                )
-            }
+        db_connectors = asyncio.gather(*[SQLAlchemyConnector.from_url(name, url) for name, url in urls.items()])
 
         return NL2QDataset(
             name=self.name,
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors=db_connectors,
+            db_connectors={conn.name: conn for conn in db_connectors},
         )
 
-    def get_split(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
         if "_" in split_id:
             split, sample_size = split_id.split("_")
         else:
@@ -96,7 +70,7 @@ class BeaverDatasetLoader:
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = self._load_split(split, databases=databases)
+            self._data[(split, key)] = await self._load_split(split, databases=databases)
 
         dataset = self._data[(split, key)]
         if sample_size:
