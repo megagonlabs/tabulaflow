@@ -82,7 +82,7 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
     return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
 
 
-async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
+async def run_query_async(ctx: RunContext[TaskContext], query: str) -> str:
     """
     Execute a SQL query and return the results.
 
@@ -101,7 +101,7 @@ async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     return res
 
 
-async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
+async def list_columns_async(ctx: RunContext[TaskContext], table: str) -> str:
     """
     List the columns of a table.
 
@@ -117,7 +117,7 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     return "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
 
 
-async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
+async def search_keywords_async(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
     """
     Search for values in a column of a table that match any of the keywords.
 
@@ -172,7 +172,7 @@ class SQLAgent:
         self.num_candidates = num_candidates
         self.agent = Agent(
             get_pydantic_ai_llm(llm),
-            tools=[Tool(run_query), Tool(list_columns), Tool(search_keywords)],
+            tools=[Tool(run_query_async), Tool(list_columns_async), Tool(search_keywords_async)],
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )

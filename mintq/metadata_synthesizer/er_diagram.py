@@ -242,7 +242,7 @@ if __name__ == "__main__":
     import os
 
     t0 = time.time()
-    connector = SnowflakeConnector.from_credentials(
+    connector = SnowflakeConnector.from_credentials_async(
         "AIRLINES",
         os.environ["SF_USER"],
         os.environ["SF_PASSWORD"],

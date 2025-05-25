@@ -54,7 +54,7 @@ async def run_model_async(
     )
 
 
-async def main() -> None:
+async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
@@ -124,4 +124,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main_async())

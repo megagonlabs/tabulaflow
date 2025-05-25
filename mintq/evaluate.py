@@ -13,7 +13,7 @@ from mintq.datahub import get_dataset_loader
 from mintq.metric import get_metric, BaseAsyncNL2QMetric
 
 
-async def compute_metrics(
+async def compute_metrics_async(
     item: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
 ) -> NL2QTaskOutput:
     item = copy.deepcopy(item)
@@ -22,7 +22,7 @@ async def compute_metrics(
     return item
 
 
-async def evaluate(
+async def evaluate_async(
     result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseAsyncNL2QMetric], batch_size: int
 ) -> NL2QRunResult:
     result = copy.deepcopy(result)
@@ -35,7 +35,7 @@ async def evaluate(
     tasks_with_metrics = []
     for i in range(0, len(result.tasks), batch_size):
         batch = result.tasks[i : i + batch_size]
-        batch_with_metrics = await asyncio.gather(*[compute_metrics(item, metrics, dataset.db_connectors[item.db]) for item in batch])
+        batch_with_metrics = await asyncio.gather(*[compute_metrics_async(item, metrics, dataset.db_connectors[item.db]) for item in batch])
         tasks_with_metrics += batch_with_metrics
 
     # Sort the result so that the order is the same as the original result
@@ -47,7 +47,7 @@ async def evaluate(
     return result
 
 
-async def main() -> None:
+async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_json", default="output/test/result.json")
     parser.add_argument("--num_threads", type=int, default=8)
@@ -79,7 +79,7 @@ async def main() -> None:
     )
 
     metrics = [get_metric(m) for m in args.metrics]
-    result = await evaluate(result, dataset, metrics, args.num_threads)
+    result = await evaluate_async(result, dataset, metrics, args.num_threads)
 
     print()
     print("Aggregated metrics:")
@@ -100,4 +100,4 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main_async())

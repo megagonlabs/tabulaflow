@@ -102,7 +102,7 @@ class Spider2SnowDatasetLoader:
 
         db_connectors = await asyncio.gather(
             *[
-                SnowflakeConnector.from_credentials(name, sf_user, sf_password, sf_account, name)
+                SnowflakeConnector.from_credentials_async(name, sf_user, sf_password, sf_account, name)
                 for name in db_names
             ]
         )

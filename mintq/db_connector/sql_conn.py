@@ -20,15 +20,15 @@ class SQLAlchemyConnector:
         self.schema = schema
 
     @classmethod
-    async def from_url(cls, name: str, url: str | SQLAlchemyURL, **engine_kwargs: Any) -> "SQLAlchemyConnector":
+    async def from_url_async(cls, name: str, url: str | SQLAlchemyURL, **engine_kwargs: Any) -> "SQLAlchemyConnector":
         # Ensure echo is False by default if not specified, to avoid excessive logging from engine
         engine_kwargs.setdefault("echo", False)
         engine = create_async_engine(url, **engine_kwargs)
-        schema = await cls._load_schema_with_cache(name, engine)
+        schema = await cls._load_schema_with_cache_async(name, engine)
         return cls(name, engine, schema)
 
     @classmethod
-    async def _load_schema_with_cache(cls, name: str, engine: AsyncEngine) -> SQLSchema:
+    async def _load_schema_with_cache_async(cls, name: str, engine: AsyncEngine) -> SQLSchema:
         """
         Loads the database schema, utilizing a cache if available and enabled.
         Sets the `self.schema` attribute.
@@ -133,7 +133,7 @@ class SQLAlchemyConnector:
 
         return SQLSchema(name=name, tables=tables, foreign_keys=foreign_keys)
 
-    async def _run_query_without_timeout(
+    async def _run_query_without_timeout_async(
         self, query: str, parameters: Sequence[Any] = (), return_df: bool = False
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         async with self.engine.connect() as conn:  # AsyncConnection
@@ -152,7 +152,7 @@ class SQLAlchemyConnector:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         try:
             return await asyncio.wait_for(
-                self._run_query_without_timeout(query, parameters, return_df), timeout=timeout
+                self._run_query_without_timeout_async(query, parameters, return_df), timeout=timeout
             )
         except asyncio.TimeoutError:
             raise TimeoutError(f"Query {query} timed out after {timeout} seconds")

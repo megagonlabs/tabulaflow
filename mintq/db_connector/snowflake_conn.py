@@ -26,7 +26,7 @@ class SnowflakeConnector(SQLAlchemyConnector):
         self.sf_database = sf_database
 
     @classmethod
-    async def from_credentials(
+    async def from_credentials_async(
         cls, name: str, sf_user: str, sf_password: str, sf_account: str, sf_database: str
     ) -> "SnowflakeConnector":
         url = f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"
