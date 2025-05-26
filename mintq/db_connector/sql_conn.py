@@ -53,7 +53,7 @@ class SQLAlchemyConnector:
                 return SQLSchema.model_validate_json(content)
 
         async with engine.connect() as conn:
-            dbms_supports_schema = engine.dialect not in ("sqlite", "mysql")
+            dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
             schema = await conn.run_sync(cls._init_schema, name, dbms_supports_schema)
 
         if cache_enabled:
