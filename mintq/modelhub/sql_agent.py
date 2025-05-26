@@ -172,7 +172,7 @@ class SQLAgent:
         self.num_candidates = num_candidates
         self.agent = Agent(
             get_pydantic_ai_llm(llm),
-            tools=[Tool(run_query_async), Tool(list_columns_async), Tool(search_keywords_async)],
+            tools=[Tool(run_query), Tool(list_columns), Tool(search_keywords)],
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )
