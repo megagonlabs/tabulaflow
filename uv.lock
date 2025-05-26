@@ -1184,13 +1184,13 @@ dependencies = [
     { name = "sqlalchemy", extra = ["asyncio"] },
     { name = "tabulate" },
     { name = "tqdm" },
-    { name = "types-aiofiles" },
 ]
 
 [package.dev-dependencies]
 dev = [
     { name = "mypy" },
     { name = "ruff" },
+    { name = "types-aiofiles" },
     { name = "types-tabulate" },
 ]
 
@@ -1213,13 +1213,13 @@ requires-dist = [
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.40" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
-    { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
 ]
 
 [package.metadata.requires-dev]
 dev = [
     { name = "mypy", specifier = ">=1.15.0" },
     { name = "ruff", specifier = ">=0.11.10" },
+    { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
     { name = "types-tabulate", specifier = ">=0.9.0" },
 ]
 
