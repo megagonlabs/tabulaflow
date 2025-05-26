@@ -8,8 +8,7 @@ import asyncio
 import sqlalchemy
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
-from sqlalchemy import create_engine, inspect, func, select
-from func_timeout import func_timeout, FunctionTimedOut
+from sqlalchemy import inspect, func, select
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
 

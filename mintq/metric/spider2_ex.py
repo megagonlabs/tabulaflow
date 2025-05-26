@@ -97,7 +97,9 @@ class Spider2Ex:
             gold_dfs = []
             for gold_query in task.gold_queries:
                 try:
-                    gold_dfs.append(await db_connector.run_query_async(gold_query, timeout=self.timeout, return_df=True))
+                    gold_dfs.append(
+                        await db_connector.run_query_async(gold_query, timeout=self.timeout, return_df=True)
+                    )
                 except Exception as e:
                     print(f"Warning: Exception {e} occurred while executing gold queries")
                     continue

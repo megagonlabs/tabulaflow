@@ -2,10 +2,7 @@ import argparse
 import copy
 import time
 import asyncio
-import aiofiles
-from tqdm import tqdm
 import random
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
@@ -35,7 +32,9 @@ async def evaluate_async(
     tasks_with_metrics = []
     for i in range(0, len(result.tasks), batch_size):
         batch = result.tasks[i : i + batch_size]
-        batch_with_metrics = await asyncio.gather(*[compute_metrics_async(item, metrics, dataset.db_connectors[item.db]) for item in batch])
+        batch_with_metrics = await asyncio.gather(
+            *[compute_metrics_async(item, metrics, dataset.db_connectors[item.db]) for item in batch]
+        )
         tasks_with_metrics += batch_with_metrics
 
     # Sort the result so that the order is the same as the original result

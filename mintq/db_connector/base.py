@@ -1,5 +1,4 @@
 from typing import Any, Protocol, Sequence
-import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncEngine
 import pandas as pd
 from mintq.schema import BaseDBSchema, SQLSchema
