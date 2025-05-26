@@ -1,9 +1,5 @@
-import os
-from typing import Any, Sequence
+from typing import Any, Sequence, Mapping
 import pandas as pd
-import hashlib
-import aiofiles
-import aiofiles.os
 import asyncio
 import sqlalchemy
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
@@ -28,20 +24,12 @@ class SQLAlchemyConnector:
 
     async def run_query_async(
         self,
-        query: str,
-        parameters: Sequence[Any] = (),
+        query: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        return await self.run_statement_async(sqlalchemy.text(query), parameters, timeout, return_df)
-
-    async def run_statement_async(
-        self,
-        statement: sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] = (),
-        timeout: int = 30,
-        return_df: bool = False,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        statement = sqlalchemy.text(query) if isinstance(query, str) else query
         async with self.engine.connect() as conn:
             try:
                 result = await asyncio.wait_for(conn.execute(statement, parameters), timeout=timeout)
@@ -50,4 +38,4 @@ class SQLAlchemyConnector:
                     return pd.DataFrame(rows, columns=result.keys())
                 return rows
             except asyncio.TimeoutError:
-                raise TimeoutError(f"Statement {statement} timed out after {timeout} seconds")
+                raise TimeoutError(f"Query {query} timed out after {timeout} seconds")

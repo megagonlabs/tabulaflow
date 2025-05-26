@@ -1,10 +1,9 @@
 import asyncio
-from typing import Any, Sequence
+from typing import Any, Sequence, Mapping
 import snowflake.connector
 import pandas as pd
 import sqlalchemy
 from sqlalchemy import create_engine
-from mintq.db_connector.sql_conn import SQLAlchemyConnector
 from mintq.schema import SQLSchema
 from mintq.db_connector.sqlalchemy_utils import load_schema_with_cache_async
 
@@ -37,7 +36,7 @@ class SnowflakeConnector:
         schema = await load_schema_with_cache_async(name, engine)
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
-    def _run_query_sync(
+    def _run_query(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with snowflake.connector.connect(
@@ -55,25 +54,39 @@ class SnowflakeConnector:
             else:
                 return results
 
-    async def run_query_async(
-        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        loop = asyncio.get_running_loop()
-        return await loop.run_in_executor(None, self._run_query_sync, query, parameters, timeout, return_df)
-
-    async def run_statement_async(
+    def _run_statement(
         self,
         statement: sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] = (),
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.connect() as conn:
             try:
-                result = await asyncio.wait_for(conn.execute(statement, parameters), timeout=timeout)
+                result = conn.execute(statement, parameters)
                 rows = result.fetchall()
                 if return_df:
                     return pd.DataFrame(rows, columns=result.keys())
                 return rows
             except asyncio.TimeoutError:
                 raise TimeoutError(f"Statement {statement} timed out after {timeout} seconds")
+
+    async def run_query_async(
+        self,
+        query: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        timeout: int = 30,
+        return_df: bool = False,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        loop = asyncio.get_running_loop()
+
+        if isinstance(query, str):
+            return await loop.run_in_executor(None, self._run_query, query, parameters, timeout, return_df)
+        else:
+            try:
+                return await asyncio.wait_for(
+                    loop.run_in_executor(None, self._run_statement, query, parameters, timeout, return_df),
+                    timeout=timeout,
+                )
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"Query {query} timed out after {timeout} seconds")

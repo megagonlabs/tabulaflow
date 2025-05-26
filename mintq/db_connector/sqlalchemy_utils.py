@@ -1,4 +1,5 @@
 import aiofiles
+import aiofiles.os
 import os
 import hashlib
 from typing import Any
