@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any, Sequence, Mapping
+from typing import Any, Sequence
 import snowflake.connector
 import pandas as pd
 import sqlalchemy
@@ -37,7 +37,7 @@ class SnowflakeConnector:
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
     def _run_query(
-        self, query: str, parameters: Sequence[Any] = (), timeout: int = 30, return_df: bool = False
+        self, query: str, parameters: Sequence[Any] | dict[str, Any] = (), timeout: int = 30, return_df: bool = False
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with snowflake.connector.connect(
             user=self.sf_user,
@@ -57,7 +57,7 @@ class SnowflakeConnector:
     def _run_statement(
         self,
         statement: sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        parameters: Sequence[Any] | dict[str, Any] = (),
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
@@ -74,7 +74,7 @@ class SnowflakeConnector:
     async def run_query_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        parameters: Sequence[Any] | dict[str, Any] = (),
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:

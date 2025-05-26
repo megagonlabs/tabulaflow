@@ -8,7 +8,7 @@ from mintq.metric.gold_result_not_empty import GoldResultNotEmpty
 from mintq.metric.spider2_ex import Spider2Ex
 
 __all__ = [
-    "BaseNL2QMetric",
+    "BaseAsyncNL2QMetric",
     "BirdSQLEx",
     "BirdSQLExSoft",
     "Executable",

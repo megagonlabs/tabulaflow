@@ -93,11 +93,11 @@ class Spider2SnowDatasetLoader:
 
         sf_user, sf_password, sf_account = self.sf_user, self.sf_password, self.sf_account
         if sf_user is None:
-            sf_user = os.environ.get("SF_USER")
+            sf_user = os.environ["SF_USER"]
         if sf_password is None:
-            sf_password = os.environ.get("SF_PASSWORD")
+            sf_password = os.environ["SF_PASSWORD"]
         if sf_account is None:
-            sf_account = os.environ.get("SF_ACCOUNT")
+            sf_account = os.environ["SF_ACCOUNT"]
 
 
         db_connectors = await asyncio.gather(

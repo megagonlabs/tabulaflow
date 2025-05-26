@@ -1,8 +1,8 @@
 from typing import Any, Protocol, ClassVar
-from mintq.db_connector import BaseDBConnector
+from mintq.db_connector import BaseAsyncDBConnector
 
 
-class BaseMetadataSynthesizer(Protocol):
+class BaseAsyncMetadataSynthesizer(Protocol):
     name: ClassVar[str]
 
-    def run(self, db_connector: BaseDBConnector) -> Any: ...
+    async def run(self, db_connector: BaseAsyncDBConnector) -> Any: ...

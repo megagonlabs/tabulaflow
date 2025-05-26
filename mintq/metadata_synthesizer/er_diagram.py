@@ -2,8 +2,9 @@ import re
 import logging
 import litellm
 import jinja2
+import json
 import collections
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema import ERDiagram, ERDiagramRelation
 from mintq.schema_formatter import SQLDefaultSchemaFormatter
 from mintq.utils import extract_code
@@ -14,7 +15,7 @@ logger = logging.getLogger(__name__)
 class RuleBasedERDiagramSynthesizer:
     name = "rule_based_er_diagram"
 
-    def run(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
+    async def run(self, db_connector: BaseAsyncSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
 
         suffixes = "id|key|code|number|no|ref"
@@ -171,7 +172,7 @@ class LLMERDiagramSynthesizer:
     def __init__(self, llm: str = "openai/gpt-4o"):
         self.llm = llm
 
-    def run(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
+    async def run(self, db_connector: BaseAsyncSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
         formatter = SQLDefaultSchemaFormatter()
 
@@ -232,27 +233,3 @@ class LLMERDiagramSynthesizer:
                         )
                     )
         return erd
-
-
-if __name__ == "__main__":
-    import json
-    import time
-    from mintq.db_connector.snowflake_conn import SnowflakeConnector
-    from mintq.visualization import er_diagram_to_graphviz
-    import os
-
-    t0 = time.time()
-    connector = SnowflakeConnector.from_credentials_async(
-        "AIRLINES",
-        os.environ["SF_USER"],
-        os.environ["SF_PASSWORD"],
-        os.environ["SF_ACCOUNT"],
-        "AIRLINES",
-    )
-    synthesizer = LLMERDiagramSynthesizer()
-    erd = synthesizer.run(connector)
-    print(json.dumps(erd.model_dump(), indent=2))
-    print(f"Time taken: {time.time() - t0} seconds")
-
-    g = er_diagram_to_graphviz(erd)
-    g.render("erd", format="png")

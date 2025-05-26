@@ -141,7 +141,11 @@ class SimpleZeroShotNL2Q:
         result2idx = collections.defaultdict(list)
 
         for idx, result in enumerate(all_results):
-            if isinstance(result, Exception) or not result:
+            if isinstance(result, BaseException):
+                if isinstance(result, (KeyboardInterrupt, SystemExit)):
+                    raise result
+                continue
+            if not result:
                 continue
             hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))
             result2idx[hashable].append(idx)
