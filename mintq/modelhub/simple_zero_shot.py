@@ -3,6 +3,7 @@ import time
 import collections
 import jinja2
 import logging
+import asyncio
 from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.schema_formatter import BaseSchemaFormatter
@@ -67,7 +68,7 @@ class SimpleZeroShotNL2Q:
             "num_candidates": self.num_candidates,
         }
 
-    def predict_sync(self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self.schema_formatter.format(db_connector.schema)
@@ -86,14 +87,16 @@ class SimpleZeroShotNL2Q:
         )
 
         # Text-to-SQL generation by LLM
-        responses = litellm.batch_completion(
-            model=self.llm,
-            messages=[
-                [{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}]
+        responses = await asyncio.gather(
+            *[
+                litellm.acompletion(
+                    model=self.llm,
+                    messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
+                    temperature=self.temperature,
+                    **self.litellm_kwargs,
+                )
                 for _ in range(self.num_candidates)
-            ],
-            temperature=self.temperature,
-            **self.litellm_kwargs,
+            ]
         )
 
         for r in responses:
@@ -103,7 +106,7 @@ class SimpleZeroShotNL2Q:
         raw_outputs = [r["choices"][0]["message"]["content"] for r in responses]
         queries = [extract_code(q) for q in raw_outputs]
         # Select the best query using self-consistency voting
-        best_query_idx = self.select_best_query(queries, db_connector)
+        best_query_idx = await self.select_best_query_async(queries, db_connector)
         pred_query = queries[best_query_idx]
 
         # Re-construct the trajectory of the best query
@@ -130,18 +133,16 @@ class SimpleZeroShotNL2Q:
             metrics=metrics,
         )
 
-    def select_best_query(self, candidates: list[str], db_connector: BaseAsyncDBConnector) -> int:
+    async def select_best_query_async(self, candidates: list[str], db_connector: BaseAsyncDBConnector) -> int:
+        all_results = await asyncio.gather(
+            *[db_connector.run_query_async(query) for query in candidates], return_exceptions=True
+        )
+
         result2idx = collections.defaultdict(list)
-        run_time = {}
-        for idx, query in enumerate(candidates):
-            t0 = time.time()
-            try:
-                result = db_connector.run_query(query)
-                if not result:
-                    continue
-            except Exception:
+
+        for idx, result in enumerate(all_results):
+            if isinstance(result, Exception) or not result:
                 continue
-            run_time[idx] = time.time() - t0
             hashable = tuple(sorted(set(result), key=lambda row: tuple((x is None, x) for x in row)))
             result2idx[hashable].append(idx)
 
@@ -150,6 +151,4 @@ class SimpleZeroShotNL2Q:
 
         # select majority query group
         majority_query_group = max(result2idx.values(), key=len)
-
-        # select the query with the least run time
-        return min(majority_query_group, key=lambda x: run_time[x])
+        return majority_query_group[0]

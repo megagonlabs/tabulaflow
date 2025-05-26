@@ -6,9 +6,10 @@ import sqlalchemy
 from sqlalchemy import create_engine
 from mintq.db_connector.sql_conn import SQLAlchemyConnector
 from mintq.schema import SQLSchema
+from mintq.db_connector.sqlalchemy_utils import load_schema_with_cache_async
 
 
-class SnowflakeConnector(SQLAlchemyConnector):
+class SnowflakeConnector:
     def __init__(
         self,
         name: str,
@@ -19,7 +20,9 @@ class SnowflakeConnector(SQLAlchemyConnector):
         sf_account: str,
         sf_database: str,
     ):
-        super().__init__(name, engine, schema)
+        self.name = name
+        self.engine = engine
+        self.schema = schema
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
@@ -31,7 +34,7 @@ class SnowflakeConnector(SQLAlchemyConnector):
     ) -> "SnowflakeConnector":
         url = f"snowflake://{sf_user}:{sf_password}@{sf_account}/{sf_database}"
         engine = create_engine(url, connect_args={"disable_ocsp_checks": True})
-        schema = await cls._load_schema_with_cache_async(name, engine)
+        schema = await load_schema_with_cache_async(name, engine)
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
     def _run_query_sync(
@@ -57,3 +60,20 @@ class SnowflakeConnector(SQLAlchemyConnector):
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         loop = asyncio.get_running_loop()
         return await loop.run_in_executor(None, self._run_query_sync, query, parameters, timeout, return_df)
+
+    async def run_statement_async(
+        self,
+        statement: sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] = (),
+        timeout: int = 30,
+        return_df: bool = False,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        with self.engine.connect() as conn:
+            try:
+                result = await asyncio.wait_for(conn.execute(statement, parameters), timeout=timeout)
+                rows = result.fetchall()
+                if return_df:
+                    return pd.DataFrame(rows, columns=result.keys())
+                return rows
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"Statement {statement} timed out after {timeout} seconds")
