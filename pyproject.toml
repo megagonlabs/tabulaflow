@@ -27,6 +27,7 @@ dependencies = [
     "sqlalchemy[asyncio]>=2.0.40",
     "tabulate>=0.9.0",
     "tqdm>=4.67.1",
+    "types-aiofiles>=24.1.0.20250516",
 ]
 
 [tool.setuptools]
