@@ -191,7 +191,7 @@ To run a python script, run `uv run <script.py>` (this is the preferred way but 
 
 ### Environment variables
 
-We use `direnv` to manage environment variables. 
+We use `direnv` to manage environment variables.
 
 First, run `direnv --version` to ensure that [direnv](https://direnv.net/) is installed.
 
@@ -219,7 +219,7 @@ We use `make` to manage a few common commands we frequently use (see [`Makefile`
 ```bash
 make format      # format and lint
 make mypy        # type check with mypy
-make test-zero   # test simple_zero_shot
+make test-simple # test simple_zero_shot
 make test-agent  # test sql_agent_table_names_only
 make sync        # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
 ```
