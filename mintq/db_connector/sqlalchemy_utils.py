@@ -7,16 +7,13 @@ import sqlalchemy
 from sqlalchemy import select, func, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine
 from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema
-
+from mintq.config import config
 
 async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalchemy.engine.Engine) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
-    cache_dir = os.getenv("MINTQ_CACHE_DIR", "cache")
-    cache_enabled = os.getenv("MINTQ_CACHE_ENABLED", "1") == "1"
-    cache_refresh = os.getenv("MINTQ_CACHE_REFRESH", "0") == "1"
-    schema_cache_dir = os.path.join(cache_dir, "schemas")
+    schema_cache_dir = os.path.join(config.cache_dir, "schemas")
 
     await aiofiles.os.makedirs(schema_cache_dir, exist_ok=True)
 
@@ -24,10 +21,10 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
     hashed = hashlib.sha256(engine_url_str.encode()).hexdigest()
     cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
 
-    if cache_refresh and await aiofiles.os.path.exists(cache_path):
+    if config.cache_refresh and await aiofiles.os.path.exists(cache_path):
         await aiofiles.os.remove(cache_path)
 
-    if cache_enabled and await aiofiles.os.path.exists(cache_path):
+    if config.cache_enabled and await aiofiles.os.path.exists(cache_path):
         async with aiofiles.open(cache_path, "r", encoding="utf-8") as f:
             content = await f.read()
             return SQLSchema.model_validate_json(content)
@@ -40,7 +37,7 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
         async with engine.connect() as conn:
             schema = await conn.run_sync(build_schema, name, dbms_supports_schema)
 
-    if cache_enabled:
+    if config.cache_enabled:
         async with aiofiles.open(cache_path, "w", encoding="utf-8") as f:
             await f.write(schema.model_dump_json(indent=2))
     return schema
