@@ -1,8 +1,0 @@
-sqlalchemy
-litellm
-pydantic
-tqdm
-func-timeout
-smolagents
-snowflake-connector-python
-snowflake-sqlalchemy
