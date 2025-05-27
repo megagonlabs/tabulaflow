@@ -183,11 +183,11 @@ We use `uv` to manage dependencies (the modern replacement of pip/conda/poetry).
 
 First, run `uv --version` to ensure that [uv](https://docs.astral.sh/uv/getting-started/installation/) is installed.
 
-After cloning the repository, run `make sync` in the root directory. The first time you run `make sync` (which runs [`uv sync`](Makefile#L3) behind the scenes), it will create a local venv at `.venv/` and install the dependencies into the venv.
+After cloning the repository, run `uv venv` to create a local venv at `.venv/`. Then run `make sync` (which runs [`uv sync`](Makefile#L3) behind the scenes) to install the dependencies into the venv.
 
 To add a new dependency, run `uv add <dependency>`. The `pyproject.toml` file and `uv.lock` should be committed to the repository.
 
-To run a python script, run `uv run <script.py>` (this is the preferred way but you can also either activate the venv using `source .venv/bin/activate` first or directly run the python binary `./.venv/bin/python <script.py>`).
+To run a python script, run `uv run <script.py>` (this is the preferred way but you can also either activate the venv using `source .venv/bin/activate` first or directly run the python binary `.venv/bin/python <script.py>`).
 
 ### Environment variables
 
