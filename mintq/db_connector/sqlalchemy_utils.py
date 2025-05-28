@@ -1,6 +1,7 @@
 import os
 import hashlib
 from typing import Any
+import asyncio
 import sqlalchemy
 from sqlalchemy import select, func, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -29,8 +30,9 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
 
     dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
     if isinstance(engine, sqlalchemy.engine.Engine):
+        loop = asyncio.get_running_loop()
         with engine.connect() as conn:
-            schema = build_schema(conn, name, dbms_supports_schema)
+            schema = await loop.run_in_executor(None, build_schema, conn, name, dbms_supports_schema)
     else:
         async with engine.connect() as conn:
             schema = await conn.run_sync(build_schema, name, dbms_supports_schema)
