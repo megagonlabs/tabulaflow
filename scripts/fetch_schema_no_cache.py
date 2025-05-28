@@ -1,3 +1,4 @@
+import asyncio
 import argparse
 import os
 from mintq.datahub import get_dataset_loader
@@ -6,7 +7,7 @@ from mintq.datahub import get_dataset_loader
 os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 
-def main():
+async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="beaver")
     parser.add_argument("--split", default="dev")
@@ -16,7 +17,7 @@ def main():
     print()
 
     dataset_loader = get_dataset_loader(args.dataset)
-    dataset = dataset_loader.get_split(args.split, databases=[args.database])
+    dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     schema = dataset.db_connectors[args.database].schema
     print(schema.model_dump_json(indent=2))
 
@@ -25,4 +26,4 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
