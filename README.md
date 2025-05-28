@@ -13,7 +13,7 @@ A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 🌐 **Multi-DBMS**: Works with a wide variety of databases including all SQL databases supported by sqlalchemy as well as graph databases like Neo4j.
 
 🧠 **Built for Researchers**: Includes out-of-the-box support for popular research datasets like BIRD-SQL, Beaver, and Spider 2.0, including equivalent re-implementation of their official leaderboard metrics. Designed for efficient experimentation with:
-- Multi-threaded inference and evaluation
+- Concurrent inference and evaluation with asyncio
 - Trajectory tracing
 - Agent tool call and token usage tracking
 
