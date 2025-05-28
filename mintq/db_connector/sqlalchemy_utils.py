@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema
 from mintq.config import config
 
+
 async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalchemy.engine.Engine) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
