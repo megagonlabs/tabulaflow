@@ -1,5 +1,3 @@
-import aiofiles
-import aiofiles.os
 import os
 import hashlib
 from typing import Any
@@ -15,18 +13,18 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
     """
     schema_cache_dir = os.path.join(config.cache_dir, "schemas")
 
-    await aiofiles.os.makedirs(schema_cache_dir, exist_ok=True)
+    os.makedirs(schema_cache_dir, exist_ok=True)
 
     engine_url_str = str(engine.url)
     hashed = hashlib.sha256(engine_url_str.encode()).hexdigest()
     cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
 
-    if config.cache_refresh and await aiofiles.os.path.exists(cache_path):
-        await aiofiles.os.remove(cache_path)
+    if config.cache_refresh and os.path.exists(cache_path):
+        os.remove(cache_path)
 
-    if config.cache_enabled and await aiofiles.os.path.exists(cache_path):
-        async with aiofiles.open(cache_path, "r", encoding="utf-8") as f:
-            content = await f.read()
+    if config.cache_enabled and os.path.exists(cache_path):
+        with open(cache_path, "r", encoding="utf-8") as f:
+            content = f.read()
             return SQLSchema.model_validate_json(content)
 
     dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
@@ -38,8 +36,8 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
             schema = await conn.run_sync(build_schema, name, dbms_supports_schema)
 
     if config.cache_enabled:
-        async with aiofiles.open(cache_path, "w", encoding="utf-8") as f:
-            await f.write(schema.model_dump_json(indent=2))
+        with open(cache_path, "w", encoding="utf-8") as f:
+            f.write(schema.model_dump_json(indent=2))
     return schema
 
 

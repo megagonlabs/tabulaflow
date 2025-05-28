@@ -1,7 +1,6 @@
 import os
 import json
 import random
-import aiofiles
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
@@ -31,8 +30,8 @@ class BirdSQLDatasetLoader:
             raise ValueError(f"Split {split} not supported")
 
         tasks = []
-        async with aiofiles.open(os.path.join(directory, f"{split}.json"), "r") as f:
-            data = json.loads(await f.read())
+        with open(os.path.join(directory, f"{split}.json"), "r") as f:
+            data = json.load(f)
 
         for i, item in enumerate(data):
             if databases and item["db_id"] not in databases:
