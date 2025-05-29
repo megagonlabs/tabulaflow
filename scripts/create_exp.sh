@@ -53,7 +53,7 @@ exp_file="exp/${exp_name}.sh"
 cat <<EOF >$exp_file
 set -e
 
-.venv/bin/python -u -m mintq.run_model --model $model --dataset $dataset --llm $llm --result_dir output/${exp_name}/ --batch_size 500 --overwrite
+.venv/bin/python -u -m mintq.run_model --model $model --dataset $dataset --llm $llm --result_dir output/${exp_name}/ --overwrite
 .venv/bin/python -u -m mintq.evaluate --result_json output/${exp_name}/result.json
 EOF
 
