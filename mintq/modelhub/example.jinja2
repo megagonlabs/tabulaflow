@@ -1,0 +1,131 @@
+=== START OF EXAMPLE ===
+<database_schema>
+Database: students
+Tables:
+- students
+- courses
+- enrollments
+- teachers
+</database_schema>
+
+Question: Which 3 students with a GPA below 2.5 are performing the worst in the Math course?
+{{language}} query:
+
+ASSISTANT: Sure! Let me first check what columns are available in students, courses, and enrollments:
+<function name="list_columns">
+<arg name="table">students</arg>
+</function>
+<function name="list_columns">
+<arg name="table">courses</arg>
+</function>
+<function name="list_columns">
+<arg name="table">enrollments</arg>
+</function>
+
+TOOL:
+Table: students
+- id: INTEGER
+- name: TEXT
+- gpa: REAL
+
+TOOL:
+Table: courses
+- id: INTEGER
+- name: TEXT
+
+TOOL:
+Table: enrollments
+- student_id: INTEGER
+- course_id: INTEGER
+- grade: TEXT
+
+ASSISTANT: We need to find the Math course first:
+<function name="search_keywords">
+<arg name="table">courses</arg>
+<arg name="column">name</arg>
+<arg name="keywords">["Math", "Maths", "Mathematics"]</arg>
+</function>
+
+TOOL:
+1 matches:
+Mathematics
+
+ASSISTANT: Now, let me write the SQL query to find the 3 students with a GPA below 2.5 performing the worst in the Math course:
+<function name="run_query">
+<arg name="query">
+SELECT students.id, students.name, students.gpa, enrollments.grade
+FROM students
+JOIN enrollments ON students.id = enrollments.student_id
+JOIN courses ON enrollments.course_id = courses.id
+WHERE courses.name = "Mathematics"
+AND students.gpa < 2.5
+ORDER BY enrollments.grade ASC
+LIMIT 3
+</arg>
+</function>
+
+TOOL:
+students.id students.name students.gpa enrollments.grade
+----------- ------------- ------------ -----------------
+3001        John Doe      2.4          [null]
+3002        Jane Smith    2.3          [null]
+1003        Jim Beam      2.2          67
+
+ASSISTANT: Looks like the scores in the Math course are not available for some students. Let me try to filter out the students who have no scores:
+<function name="run_query">
+<arg name="query">
+SELECT students.id, students.name, students.gpa, enrollments.grade
+FROM students
+JOIN enrollments ON students.id = enrollments.student_id
+JOIN courses ON enrollments.course_id = courses.id
+WHERE courses.name = "Mathematics"
+AND students.gpa < 2.5
+AND enrollments.grade IS NOT NULL
+ORDER BY enrollments.grade ASC  
+LIMIT 3
+</arg>
+</function>
+
+TOOL:
+students.id students.name students.gpa enrollments.grade
+----------- ------------- ------------ -----------------
+1003        Jim Beam      2.2          67
+2001        Alice Smith   2.1          74
+2002        Bob Brown     2.0          75
+
+
+ASSISTANT: The results look good. Now let me return only the students.id column since the question asks only for a list of students:
+<function name="run_query">
+<arg name="query">
+SELECT students.id
+FROM students
+JOIN enrollments ON students.id = enrollments.student_id
+JOIN courses ON enrollments.course_id = courses.id
+WHERE courses.name = "Mathematics"
+AND students.gpa < 2.5
+AND enrollments.grade IS NOT NULL
+ORDER BY enrollments.grade ASC  
+LIMIT 3
+</arg>
+</function>
+
+TOOL:
+students.id
+-----------
+1003
+2001
+2002
+
+ASSISTANT:
+```sql
+SELECT students.id
+FROM students
+JOIN enrollments ON students.id = enrollments.student_id
+JOIN courses ON enrollments.course_id = courses.id
+WHERE courses.name = "Mathematics"
+AND students.gpa < 2.5
+AND enrollments.grade IS NOT NULL
+ORDER BY enrollments.grade ASC  
+LIMIT 3
+```
+=== END OF EXAMPLE ===
