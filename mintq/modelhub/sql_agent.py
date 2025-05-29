@@ -96,8 +96,12 @@ async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
         return f"(query failed: {e})"
 
     if df.empty:  # type: ignore
-        return "(query executed successfully, but results are empty)"
+        return "(Warning: query executed successfully, but results are empty, the query might be incorrect)"
+
     res = format_df(df, max_visible_rows=5)
+
+    if df.isnull().all().any():
+        res += "\n(Warning: a column is entirely null, the query might be incorrect)"
     return res
 
 
