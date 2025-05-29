@@ -252,7 +252,7 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
         return f"(table {table} not found)"
     if not table_schema.columns:
         return f"(table {table} has no columns)"
-    res = f"Table: {table}\n"
+    res = f"[Table] {table}\n"
     res += "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
     return res
 

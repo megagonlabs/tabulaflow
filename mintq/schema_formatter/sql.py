@@ -30,10 +30,9 @@ class SQLDefaultSchemaFormatter:
             table_id_to_fks[self._full_table_name(fk.table, fk.schema_name)].append(fk)
 
         res = f"Database: {schema.name}"
-        res += "\n\nTables:"
         for table in schema.tables:
             table_id = self._full_table_name(table.name, table.schema_name)
-            res += f"\n- {table_id}"
+            res += f"\n* [Table] {table_id}"
             if table.primary_key:
                 res += f"\n  - [Primary Key] {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}"
             if include_foreign_keys:
