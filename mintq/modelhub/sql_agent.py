@@ -25,13 +25,15 @@ class TaskContext:
 
 
 SYSTEM_PROMPT = """
-You are a database expert responsible for translating natural language questions into {{language}} queries.
-- The query must follow the given database schema.
-- You must follow the hints if provided.
+You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+
+- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
+- Adhere strictly to the given database schema when constructing queries.
+- Utilize the provided hints to guide query formulation.
 - The final output should not include additional columns that are not required by the question.
-  - For example, if the question only ask for the highest score but not the name of the student, the final query should not fetch the name of the student.
-  - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not fetch the score.
-  - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
+  - For example, if the question only ask for the highest score but not the name of the student, the final query should not return the name of the student.
+  - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not return the score.
+  - If the question asks for the list of objects (e.g. students), return only the IDs of the objects.
 - The final output should only include the SQL query, without explanation or any other text.
 - Before returning the final output, always execute the query and check if the results match the question.
 {% if language == "SnowflakeSQL" %}
@@ -48,7 +50,8 @@ Tables:
 - teachers
 </database_schema>
 
-USER: Which 3 students with a GPA below 2.5 are performing the worst in the Math course?
+Question: Which 3 students with a GPA below 2.5 are performing the worst in the Math course?
+{{language}} query:
 
 ASSISTANT: Sure! Let me first check what columns are available in students, courses, and enrollments:
 <function name="list_columns">
@@ -156,6 +159,7 @@ students.id
 2002
 
 ASSISTANT:
+```sql
 SELECT students.id
 FROM students
 JOIN enrollments ON students.id = enrollments.student_id
@@ -165,6 +169,7 @@ AND students.gpa < 2.5
 AND enrollments.grade IS NOT NULL
 ORDER BY enrollments.grade ASC  
 LIMIT 3
+```
 === END OF EXAMPLE ===
 """.strip()
 
@@ -178,8 +183,8 @@ TASK_PROMPT = """
 {{hints}}
 === END OF HINTS ===
 {% endif %}
-Question to translate: {{question}}
-Now, translate the above question into a {{language}} query.
+Question: {{question}}
+{{language}} query:
 """.strip()
 
 
@@ -247,7 +252,9 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
         return f"(table {table} not found)"
     if not table_schema.columns:
         return f"(table {table} has no columns)"
-    return "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
+    res = f"Table: {table}\n"
+    res += "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
+    return res
 
 
 async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
