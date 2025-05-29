@@ -43,15 +43,16 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 
 
 TASK_PROMPT = """
-=== START OF DATABASE SCHEMA ===
-{{schema}}
-=== END OF DATABASE SCHEMA ===
+Question: {{question}}
 {% if hints %}
 === START OF HINTS ===
 {{hints}}
 === END OF HINTS ===
 {% endif %}
-Question: {{question}}
+=== START OF DATABASE SCHEMA ===
+{{schema}}
+=== END OF DATABASE SCHEMA ===
+
 {{language}} query:
 """.strip()
 
@@ -179,7 +180,7 @@ class SQLAgent:
         self.num_candidates = num_candidates
         self.agent = Agent(
             get_pydantic_ai_llm(llm),
-            tools=[Tool(run_query), Tool(list_columns), Tool(search_keywords)],
+            tools=[Tool(list_columns), Tool(search_keywords), Tool(run_query)],
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )
