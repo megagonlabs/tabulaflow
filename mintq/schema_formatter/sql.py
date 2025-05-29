@@ -1,4 +1,5 @@
 from typing import Optional
+import collections
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
@@ -24,18 +25,22 @@ class SQLDefaultSchemaFormatter:
         return self._full_table_name(table.name, table.schema_name)
 
     def format(self, schema: SQLSchema, include_foreign_keys: bool = True, include_table_schemas: bool = True) -> str:
+        table_id_to_fks = collections.defaultdict(list)
+        for fk in schema.foreign_keys:
+            table_id_to_fks[self._full_table_name(fk.table, fk.schema_name)].append(fk)
+
         res = f"Database: {schema.name}"
         res += "\n\nTables:"
         for table in schema.tables:
-            res += f"\n- {self._full_table_name(table.name, table.schema_name)}"
-
-        if include_foreign_keys and schema.foreign_keys:
-            res += "\n\nForeign keys:"
-            if not schema.foreign_keys:
-                res += "\n(No foreign keys defined)"
-            else:
-                for fk in schema.foreign_keys:
-                    res += f"\n- {self._full_table_name(fk.table, fk.schema_name)}.{self._quote_if_needed(fk.columns[0])} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}"
+            table_id = self._full_table_name(table.name, table.schema_name)
+            res += f"\n- {table_id}"
+            if table.primary_key:
+                res += f"\n  - [Primary Key] {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}"
+            if include_foreign_keys:
+                for fk in table_id_to_fks[table_id]:
+                    if len(fk.columns) > 1 or len(fk.foreign_columns) > 1:
+                        raise ValueError(f"Multiple foreign keys are not supported: {fk}")
+                    res += f"\n  - [Foreign Key] {fk.columns[0]} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}"
 
         if include_table_schemas:
             res += "\n\n"
