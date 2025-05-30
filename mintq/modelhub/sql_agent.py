@@ -8,7 +8,6 @@ from typing import cast
 from tabulate import tabulate
 import sqlalchemy
 from sqlalchemy import select, distinct
-import pydantic_ai
 from pydantic_ai import Agent, RunContext, ModelRetry
 from pydantic_ai.usage import Usage
 from pydantic_ai.tools import Tool
