@@ -138,7 +138,7 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
 
     Args:
         table: The name of the table to search in.
-        column: The name of the column to search in. The datatype of the column must be a string.
+        column: The name of the column to search in. The datatype of the column must be text-like.
         keywords: A list of keywords to search for. A value is considered a match if it contains any of the keywords.
     """
     db_connector = ctx.deps.db_connector
