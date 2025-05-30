@@ -4,6 +4,7 @@ import time
 import pandas as pd
 import numpy as np
 import json
+from typing import cast
 from tabulate import tabulate
 import sqlalchemy
 from sqlalchemy import select, distinct
@@ -97,10 +98,11 @@ async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     db_connector = ctx.deps.db_connector
     try:
         df = await db_connector.run_query_async(query, return_df=True)
+        df = cast(pd.DataFrame, df)
     except Exception as e:
         return f"(query failed: {e})"
 
-    if df.empty:  # type: ignore
+    if df.empty:
         return "(Warning: query executed successfully, but results are empty, the query might be incorrect)"
 
     res = format_df(df, max_visible_rows=5)
@@ -184,7 +186,13 @@ def finish(ctx: RunContext[TaskContext]) -> str:
         if msg.kind == "response":
             for part in msg.parts[::-1]:
                 if part.part_kind == "tool-call" and part.tool_name == "run_query":
-                    return json.loads(part.args)["query"]
+                    if isinstance(part.args, str):
+                        return json.loads(part.args)["query"]  # type: ignore
+                    elif isinstance(part.args, dict):
+                        return part.args["query"]  # type: ignore
+                    else:
+                        raise ValueError(f"Unexpected tool call argument type: {type(part.args)}")
+    ctx.usage.incr(Usage(details={"finish_no_query_executed": 1}))
     raise ModelRetry("No query has been executed, you cannot finish yet")
 
 
@@ -197,7 +205,7 @@ class SQLAgent:
         self.llm = llm
         self.temperature = temperature
         self.num_candidates = num_candidates
-        self.agent = Agent[TaskContext, str](
+        self.agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(llm),
             tools=[Tool(list_columns), Tool(search_keywords), Tool(run_query)],
             deps_type=TaskContext,
@@ -265,6 +273,7 @@ class SQLAgent:
         metrics["search_keywords_table_not_found"] = usage.details.get("search_keywords_table_not_found", 0)
         metrics["search_keywords_column_not_found"] = usage.details.get("search_keywords_column_not_found", 0)
         metrics["search_keywords_column_not_string"] = usage.details.get("search_keywords_column_not_string", 0)
+        metrics["finish_no_query_executed"] = usage.details.get("finish_no_query_executed", 0)
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
