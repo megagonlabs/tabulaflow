@@ -9,6 +9,7 @@ import sqlalchemy
 from sqlalchemy import select, distinct
 import pydantic_ai
 from pydantic_ai import Agent, RunContext, ModelRetry
+from pydantic_ai.usage import Usage
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
@@ -119,8 +120,10 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     try:
         table_schema = ctx.deps.table_id_to_schema[table]
     except KeyError:
+        ctx.usage.incr(Usage(details={"list_columns_table_not_found": 1}))
         return f"(table {table} not found)"
     if not table_schema.columns:
+        ctx.usage.incr(Usage(details={"list_columns_table_has_no_columns": 1}))
         return f"(table {table} has no columns)"
     res = f"[Table] {table}\n"
     res += "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
@@ -145,12 +148,15 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
             break
 
     if table not in ctx.deps.table_id_to_schema:
+        ctx.usage.incr(Usage(details={"search_keywords_table_not_found": 1}))
         return f"(table {table} not found)"
 
     column_dtypes = {col.name: col.dtype for col in ctx.deps.table_id_to_schema[table].columns}
     if column not in column_dtypes:
+        ctx.usage.incr(Usage(details={"search_keywords_column_not_found": 1}))
         return f"(column {column} not found in table {table})"
     if column_dtypes[column] not in ("VARCHAR", "TEXT", "STRING"):
+        ctx.usage.incr(Usage(details={"search_keywords_column_not_string": 1}))
         return f"(column {column} is not a string)"
 
     matches = []
@@ -252,6 +258,12 @@ class SQLAgent:
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
         metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
+        metrics["list_columns_table_not_found"] = usage.details.get("list_columns_table_not_found", 0)
+        metrics["list_columns_table_has_no_columns"] = usage.details.get("list_columns_table_has_no_columns", 0)
+        metrics["search_keywords_table_not_found"] = usage.details.get("search_keywords_table_not_found", 0)
+        metrics["search_keywords_column_not_found"] = usage.details.get("search_keywords_column_not_found", 0)
+        metrics["search_keywords_column_not_string"] = usage.details.get("search_keywords_column_not_string", 0)
+
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
             pred_query=pred_query,
