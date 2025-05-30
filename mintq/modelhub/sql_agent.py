@@ -100,6 +100,8 @@ async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     try:
         df = await db_connector.run_query_async(query, return_df=True)
         df = cast(pd.DataFrame, df)
+    except TimeoutError:
+        return "(query timed out after 30 seconds)"
     except Exception as e:
         return f"(query failed: {e})"
 
@@ -166,7 +168,7 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
     for keyword in keywords:
         sql_table = sqlalchemy.Table(table, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String))
         stmt = select(distinct(sql_table.c[column])).where(sql_table.c[column].like(f"%{keyword}%"))
-        result = await db_connector.run_query_async(stmt)
+        result = await db_connector.run_query_async(stmt, timeout=None)
         matches += [row[0] for row in result]
     matches = sorted(list(set(matches)))
     if not matches:
