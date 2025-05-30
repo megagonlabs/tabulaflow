@@ -19,7 +19,7 @@ dependencies = [
     "logfire>=3.16.0",
     "pandas>=2.2.3",
     "pydantic>=2.11.3",
-    "pydantic-ai==0.2.3",
+    "pydantic-ai==0.2.12",
     "pymysql>=1.1.1",
     "snowflake-connector-python>=3.14.1",
     "snowflake-sqlalchemy>=1.7.3",
