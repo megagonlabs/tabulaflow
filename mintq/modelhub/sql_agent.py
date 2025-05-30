@@ -12,6 +12,7 @@ import pydantic_ai
 from pydantic_ai import Agent, RunContext, ModelRetry
 from pydantic_ai.usage import Usage
 from pydantic_ai.tools import Tool
+from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
@@ -250,13 +251,14 @@ class SQLAgent:
         )
 
         # Run the agent
+        fallback = False
         try:
             result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
             messages = result.all_messages()[:-1]
-        except pydantic_ai.exceptions.UsageLimitExceeded:
+        except (UsageLimitExceeded, UnexpectedModelBehavior):
             result = await self.agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
             messages = result.all_messages()
-
+            fallback = True
         pred_query = extract_code(result.output)
         trajectory = pydantic_ai_messages_to_trajectory(messages)
 
@@ -274,6 +276,7 @@ class SQLAgent:
         metrics["search_keywords_column_not_found"] = usage.details.get("search_keywords_column_not_found", 0)
         metrics["search_keywords_column_not_string"] = usage.details.get("search_keywords_column_not_string", 0)
         metrics["finish_no_query_executed"] = usage.details.get("finish_no_query_executed", 0)
+        metrics["fallback"] = 1 if fallback else 0
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
