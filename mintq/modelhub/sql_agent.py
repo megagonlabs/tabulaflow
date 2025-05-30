@@ -244,11 +244,13 @@ class SQLAgent:
         # Run the agent
         try:
             result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            messages = result.all_messages()[:-1]
         except pydantic_ai.exceptions.UsageLimitExceeded:
             result = await self.agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            messages = result.all_messages()
 
         pred_query = extract_code(result.output)
-        trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
+        trajectory = pydantic_ai_messages_to_trajectory(messages)
 
         usage = result.usage()
         metrics = {}
