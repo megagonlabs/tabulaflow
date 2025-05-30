@@ -3,11 +3,12 @@ import jinja2
 import time
 import pandas as pd
 import numpy as np
+import json
 from tabulate import tabulate
 import sqlalchemy
 from sqlalchemy import select, distinct
 import pydantic_ai
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent, RunContext, ModelRetry
 from pydantic_ai.tools import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema_formatter import BaseSQLSchemaFormatter
@@ -169,6 +170,18 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
     return res
 
 
+def finish(ctx: RunContext[TaskContext]) -> str:
+    """
+    Finish the task and return the last executed query as final answer.
+    """
+    for msg in ctx.messages[::-1]:
+        if msg.kind == "response":
+            for part in msg.parts[::-1]:
+                if part.part_kind == "tool-call" and part.tool_name == "run_query":
+                    return json.loads(part.args)["query"]
+    raise ModelRetry("No query has been executed, you cannot finish yet")
+
+
 class SQLAgent:
     name = "sql_agent"
 
@@ -178,13 +191,16 @@ class SQLAgent:
         self.llm = llm
         self.temperature = temperature
         self.num_candidates = num_candidates
-        self.agent = Agent(
+        self.agent = Agent[TaskContext, str](
             get_pydantic_ai_llm(llm),
             tools=[Tool(list_columns), Tool(search_keywords), Tool(run_query)],
             deps_type=TaskContext,
+            output_type=finish,
+            result_tool_name="finish",
+            result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
         )
-        self.agent_no_tools = Agent(
+        self.agent_no_tools = Agent[TaskContext, str](
             get_pydantic_ai_llm(llm),
             tools=[],
             deps_type=TaskContext,
