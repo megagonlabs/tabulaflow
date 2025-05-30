@@ -29,6 +29,7 @@ class ToolResponse(BaseModel):
     role: Literal["tool"] = "tool"
     tool_call_id: str
     response: str
+    is_retry_prompt: bool = False
 
 
 Message = Annotated[

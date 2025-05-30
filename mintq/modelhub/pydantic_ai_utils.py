@@ -30,8 +30,9 @@ def pydantic_ai_messages_to_trajectory(messages: list[pydantic_ai.messages.Model
                         raise ValueError(f"Tool return is not a string: {part.content}")
                     trajectory.messages.append(ToolResponse(response=part.content, tool_call_id=part.tool_call_id))
                 elif part.part_kind == "retry-prompt":
-                    assert isinstance(part.content, str), f"{str(part.content)} is of type {type(part.content)}"
-                    trajectory.messages.append(ToolResponse(response=part.content, tool_call_id=part.tool_call_id))
+                    trajectory.messages.append(
+                        ToolResponse(response=str(part.content), tool_call_id=part.tool_call_id, is_retry_prompt=True)
+                    )
                 else:
                     raise ValueError(f"Unknown message part type: {part.part_kind}")
         elif msg.kind == "response":

@@ -277,6 +277,7 @@ class SQLAgent:
         metrics["search_keywords_column_not_string"] = usage.details.get("search_keywords_column_not_string", 0)
         metrics["finish_no_query_executed"] = usage.details.get("finish_no_query_executed", 0)
         metrics["fallback"] = 1 if fallback else 0
+        metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
