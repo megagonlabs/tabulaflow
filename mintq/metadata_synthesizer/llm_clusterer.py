@@ -67,9 +67,12 @@ class LLMClusterer:
         name2idx = {name: i for i, name in enumerate(item_names)}
 
         for i in range(0, len(items), self.batch_size):
+            names = item_names[i : i + self.batch_size]
             batch = items[i : i + self.batch_size]
 
-            new_items = "\n\n".join(f"###{i}\n{self.format_fn(item_names[i], item)}" for i, item in enumerate(batch))
+            new_items = "\n\n".join(
+                f"###{k}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
+            )
             user_prompt = jinja2.Template(USER_PROMPT).render(
                 current_clusters=json.dumps(cluster_descriptions, indent=2),
                 new_items=new_items,
