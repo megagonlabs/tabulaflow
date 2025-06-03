@@ -1,12 +1,5 @@
 import collections
-from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, SQLColumnSchema, HTableSection
-
-
-class HSchemaFormatter:
-    name = "hschema"
-
-    def format(self, schema: HSQLSchema) -> str:
-        return schema.model_dump_json(indent=2)
+from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, HTableSection
 
 
 """
