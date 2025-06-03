@@ -6,8 +6,9 @@ from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 class SQLDefaultSchemaFormatter:
     name = "sql_default"
 
-    def __init__(self, quote_char: str = '"'):
+    def __init__(self, quote_char: str = '"', example_max_chars: int = 100):
         self.quote_char = quote_char
+        self.example_max_chars = example_max_chars
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -20,6 +21,11 @@ class SQLDefaultSchemaFormatter:
             return self._quote_if_needed(table)
         else:
             return f"{self._quote_if_needed(schema)}.{self._quote_if_needed(table)}"
+
+    def _truncate(self, s: str) -> str:
+        if len(s) <= self.example_max_chars:
+            return s
+        return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
     def format_table_name(self, table: SQLTableSchema) -> str:
         return self._full_table_name(table.name, table.schema_name)
@@ -70,5 +76,6 @@ class SQLDefaultSchemaFormatter:
                 example = f"{example:.3f}"
             else:
                 example = str(example)
+            example = self._truncate(example)
             res += f" (Example: {example})"
         return res
