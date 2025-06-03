@@ -18,6 +18,7 @@ You are a helpful database expert that organizes the columns in a SQL table into
 Concepts:
 - A section is a collection of semantically similar columns that describe one aspect of the table.
   - The name of the section should be a short noun phrase.
+  - One column must be in exactly one section.
 
 Requirements:
 - You will be given the current list of sections, and a list of new columns that need to be added.

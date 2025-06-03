@@ -16,6 +16,12 @@ class Cluster(BaseModel):
     item_indexes: list[int]
 
 
+class MergeCluster(BaseModel):
+    cluster_names_to_merge: list[str]
+    new_cluster_name: str
+    new_description: str
+
+
 class UpdateCluster(BaseModel):
     old_name: str
     new_name: str
@@ -33,6 +39,7 @@ class Assignment(BaseModel):
 
 
 class LLMOutput(BaseModel):
+    merged_clusters: list[MergeCluster]
     updated_clusters: list[UpdateCluster]
     new_clusters: list[CreateCluster]
     assignments: list[Assignment]
@@ -84,6 +91,16 @@ class LLMClusterer:
                 temperature=self.temperature,
             )
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
+
+            assert len(output.assignments) == len(batch)
+
+            for merge in output.merged_clusters:
+                item_indexes = []
+                for name in merge.cluster_names_to_merge:
+                    item_indexes += cluster_items.pop(name)
+                    cluster_descriptions.pop(name)
+                cluster_descriptions[merge.new_cluster_name] = merge.new_description
+                cluster_items[merge.new_cluster_name] = item_indexes
 
             for update in output.updated_clusters:
                 cluster_descriptions.pop(update.old_name)
