@@ -107,7 +107,9 @@ class HSchemaFormatter:
         sample_col = column_group.columns[0]
         res = f"- {self._quote_if_needed(column_group.name)}: {sample_col.dtype}"
         if is_categorical:
-            res += " {" + ", ".join([self._quote(self._truncate(v)) for v in sample_col.examples]) + "}"
+            valid_values = [self._quote(self._truncate(v)) for v in sample_col.examples]
+            valid_values = sorted(valid_values)
+            res += " {" + ", ".join(valid_values) + "}"
         elif not sample_col.examples:
             res += " (all values are null)"
         else:

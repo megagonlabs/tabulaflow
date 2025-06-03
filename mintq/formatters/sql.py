@@ -67,7 +67,9 @@ class SQLDefaultSchemaFormatter:
             and len(column.examples) / table.num_rows < 0.01
         )
         if is_categorical:  # show all possible values
-            res += " (Allowed values: {" + ", ".join([self._quote(self._truncate(v)) for v in column.examples]) + "})"
+            valid_values = [self._quote(self._truncate(v)) for v in column.examples]
+            valid_values = sorted(valid_values)
+            res += " (Allowed values: {" + ", ".join(valid_values) + "})"
         elif not column.examples:
             res += " (all values are null)"
         else:
