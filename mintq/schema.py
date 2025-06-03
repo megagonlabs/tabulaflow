@@ -135,6 +135,36 @@ class SQLSchema(BaseDBSchema):
     foreign_keys: list[ForeignKeySchema]
 
 
+class HColumnGroup(BaseModel):
+    name: str
+    columns: list[SQLColumnSchema]
+
+
+class HTableSection(BaseModel):
+    name: str
+    description: str
+    column_groups: list[HColumnGroup]
+
+
+class HTableSchema(BaseModel):
+    name: str
+    schema_name: str | None = None
+    primary_key: list[str]
+    num_rows: int
+    sections: list[HTableSection]
+
+
+class HTableGroup(BaseModel):
+    name: str
+    tables: list[HTableSchema]
+
+
+class HSQLSchema(BaseModel):
+    name: str
+    table_groups: list[HTableGroup]
+    foreign_keys: list[ForeignKeySchema]
+
+
 class ERDiagramRelation(BaseModel):
     from_schema: str | None = None
     from_table: str
