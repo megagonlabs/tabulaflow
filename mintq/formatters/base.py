@@ -1,5 +1,5 @@
 from typing import Protocol, ClassVar
-from mintq.schema import BaseDBSchema, SQLSchema, SQLTableSchema, SQLColumnSchema
+from mintq.schema import BaseDBSchema, SQLSchema, SQLTableSchema, SQLColumnSchema, HSQLSchema
 
 
 class BaseSchemaFormatter(Protocol):
@@ -20,3 +20,9 @@ class BaseSQLSchemaFormatter(Protocol):
     def format_table(self, table: SQLTableSchema) -> str: ...
 
     def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str: ...
+
+
+class BaseHSchemaFormatter(Protocol):
+    name: ClassVar[str]
+
+    def format(self, schema: HSQLSchema) -> str: ...
