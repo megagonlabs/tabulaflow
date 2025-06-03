@@ -62,10 +62,12 @@ class SQLDefaultSchemaFormatter:
     def format_column(self, table: SQLTableSchema, column: SQLColumnSchema) -> str:
         res = f"- {self._quote_if_needed(column.name)}: {column.dtype}"
         is_categorical = (
-            column.dtype == "TEXT" and 0 < len(column.examples) <= 20 and len(column.examples) / table.num_rows < 0.01
+            column.dtype in ("TEXT", "VARCHAR")
+            and 0 < len(column.examples) <= 20
+            and len(column.examples) / table.num_rows < 0.01
         )
         if is_categorical:  # show all possible values
-            res += " (Allowed values: {" + ", ".join([self._quote(v) for v in column.examples]) + "})"
+            res += " (Allowed values: {" + ", ".join([self._quote(self._truncate(v)) for v in column.examples]) + "})"
         elif not column.examples:
             res += " (all values are null)"
         else:

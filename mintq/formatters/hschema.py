@@ -82,19 +82,33 @@ class HSchemaFormatter:
     def format_table(self, table: HTableSchema) -> str:
         return (
             f"=== TABLE: {self.format_table_name(table)} ===\n"
-            + "\n\n".join([self.format_section(section) for section in table.sections])
+            + "\n\n".join([self.format_section(section, table) for section in table.sections])
             + "\n=== END OF TABLE ==="
         )
 
-    def format_section(self, section: HTableSection) -> str:
+    def _is_categorical(self, cg: HColumnGroup, table: HTableSchema) -> bool:
+        return (
+            cg.columns[0].dtype in ("TEXT", "VARCHAR")
+            and 0 < len(cg.columns[0].examples) <= 20
+            and len(cg.columns[0].examples) / table.num_rows < 0.01
+        )
+
+    def format_section(self, section: HTableSection, table: HTableSchema) -> str:
         res = f"[{section.name}]\n"
-        res += "\n".join([self.format_column_group(column_group) for column_group in section.column_groups])
+        res += "\n".join(
+            [
+                self.format_column_group(column_group, self._is_categorical(column_group, table))
+                for column_group in section.column_groups
+            ]
+        )
         return res
 
-    def format_column_group(self, column_group: HColumnGroup) -> str:
+    def format_column_group(self, column_group: HColumnGroup, is_categorical: bool) -> str:
         sample_col = column_group.columns[0]
         res = f"- {self._quote_if_needed(column_group.name)}: {sample_col.dtype}"
-        if not sample_col.examples:
+        if is_categorical:
+            res += " {" + ", ".join([self._quote(self._truncate(v)) for v in sample_col.examples]) + "}"
+        elif not sample_col.examples:
             res += " (all values are null)"
         else:
             example = sample_col.examples[0]
