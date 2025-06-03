@@ -1,5 +1,5 @@
 import graphviz
-from mintq.schema_formatter import SQLDefaultSchemaFormatter
+from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.schema import ERDiagram
 
 

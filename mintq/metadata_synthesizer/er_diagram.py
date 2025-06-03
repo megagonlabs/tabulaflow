@@ -6,7 +6,7 @@ import json
 import collections
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema import ERDiagram, ERDiagramRelation
-from mintq.schema_formatter import SQLDefaultSchemaFormatter
+from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.utils import extract_code
 
 logger = logging.getLogger(__name__)

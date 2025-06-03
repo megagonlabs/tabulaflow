@@ -6,7 +6,7 @@ import logging
 import asyncio
 from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.schema_formatter import BaseSchemaFormatter
+from mintq.formatters import BaseSchemaFormatter
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage
 

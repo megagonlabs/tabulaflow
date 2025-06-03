@@ -1,5 +1,5 @@
-from mintq.schema_formatter.base import BaseSchemaFormatter, BaseSQLSchemaFormatter
-from mintq.schema_formatter.sql import SQLDefaultSchemaFormatter
+from mintq.formatters.base import BaseSchemaFormatter, BaseSQLSchemaFormatter
+from mintq.formatters.sql import SQLDefaultSchemaFormatter
 
 __all__ = ["BaseSchemaFormatter", "BaseSQLSchemaFormatter", "SQLDefaultSchemaFormatter", "get_schema_formatter"]
 
