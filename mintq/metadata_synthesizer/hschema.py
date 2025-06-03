@@ -2,6 +2,7 @@ import asyncio
 from dataclasses import dataclass
 from mintq.schema import (
     SQLTableSchema,
+    SQLColumnSchema,
     HTableSection,
     HColumnGroup,
     HSQLSchema,
@@ -16,13 +17,37 @@ SECTION_PROMPT = """
 You are a helpful database expert that organizes the columns in a SQL table into sections.
 
 Concepts:
-- A section is a collection of semantically similar columns that describe one aspect of the table.
+- A **section** is a collection of semantically relevant columns that describe one aspect of the table.
   - The name of the section should be a short noun phrase.
   - One column must be in exactly one section.
 
-Requirements:
+Instructions:
 - You will be given the current list of sections, and a list of new columns that need to be added.
-- You are allowed to add new sections, or update the existing sections.
+- You are allowed to add new sections, merge existing sections, or edit the name or description of an existing section.
+- You must ensure the section exists before assigning a column to it.
+""".strip()
+
+COLUMN_GROUP_PROMPT = """
+You are a helpful database expert that identify groups among the columns in a SQL table.
+
+Concepts:
+- A **group** consists of columns that are highly similar based on the following criteria:
+  - They share a common prefix or suffix.
+  - They have the same data type.
+  - They contain the same set of values.
+- If there are no similar columns that satisfy the above criteria, create a new group with a single column.
+- The name of the group should be:
+  - If there are multiple columns, the common prefix/suffix, and a template for the remaining part (e.g. "revenue_{YYYYMM}")
+  - If there is only one column, the name of the column.
+- The description should be:
+  - If there are multiple columns, valid variations of the template part.
+  - If there is only one column, an empty string.
+- One column must be in exactly one group.
+
+Instructions:
+- You will be given the current list of groups, and a list of new columns that need to be added.
+- You are allowed to add new groups, merge existing groups, or edit the name or description of an existing group.
+- You must ensure the group exists before assigning a column to it.
 """.strip()
 
 
@@ -40,17 +65,34 @@ class HTableSchemaSynthesizer:
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
-        sections = await clusterer.cluster_async([c.name for c in table.columns], table.columns)
+        clusters = await clusterer.cluster_async([c.name for c in table.columns], table.columns)
+
+        all_groups = await asyncio.gather(
+            *[self.build_groups([table.columns[idx] for idx in c.item_indexes]) for c in clusters]
+        )
 
         return [
             HTableSection(
-                name=s.name,
-                description=s.description,
-                column_groups=[
-                    HColumnGroup(name=table.columns[idx].name, columns=[table.columns[idx]]) for idx in s.item_indexes
-                ],
+                name=c.name,
+                description=c.description,
+                column_groups=groups,
             )
-            for s in sections
+            for c, groups in zip(clusters, all_groups)
+        ]
+
+    async def build_groups(self, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
+        clusterer = LLMClusterer(
+            llm=self.llm,
+            instruction=COLUMN_GROUP_PROMPT,
+            format_fn=lambda name, column: f"- {name}: {column.dtype}",
+            batch_size=self.batch_size,
+            temperature=self.temperature,
+        )
+        clusters = await clusterer.cluster_async([c.name for c in columns], columns)
+
+        return [
+            HColumnGroup(name=c.name, description=c.description, columns=[columns[idx] for idx in c.item_indexes])
+            for c in clusters
         ]
 
     async def run(self, table: SQLTableSchema) -> HTableSchema:

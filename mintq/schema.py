@@ -137,6 +137,7 @@ class SQLSchema(BaseDBSchema):
 
 class HColumnGroup(BaseModel):
     name: str
+    description: str
     columns: list[SQLColumnSchema]
 
 
