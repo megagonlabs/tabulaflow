@@ -228,3 +228,14 @@ make sync        # sync the dependencies in pyproject.toml into the venv (e.g. w
 ---
 
 Contact: yanlin@megagon.ai
+
+Roadmap:
+- [x] SQL Agent starting with table names and foreign keys
+- [ ] Hierarchical schemas
+- [ ] Code diff tool
+- [ ] Schema linking agent + SQL writing agent
+- [ ] Hierarchical documents
+```
+1126
+944
+```
