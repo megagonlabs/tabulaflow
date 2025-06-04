@@ -1,5 +1,6 @@
 import os
 import argparse
+import asyncio
 from mintq.datahub import get_dataset_loader
 from mintq.formatters.hschema import HSchemaFormatter
 from mintq.schema import HSQLSchema
@@ -38,7 +39,7 @@ async def main():
     hschema_str = formatter.format(hschema)
     print(hschema_str)
 
-    output_dir = "output/test_hschema/"
+    output_dir = "output/run_hschema_synthesizer/"
     os.makedirs(output_dir, exist_ok=True)
     with open(os.path.join(output_dir, "hschema.txt"), "w") as f:
         f.write(hschema_str)
@@ -49,3 +50,7 @@ async def main():
     for section_name, trajectory in synthesizer.per_section_trajectories_.items():
         with open(os.path.join(output_dir, f"{section_name}_trajectory.xml"), "w") as f:
             f.write(trajectory.model_dump_json(indent=2))
+
+
+if __name__ == "__main__":
+    asyncio.run(main())
