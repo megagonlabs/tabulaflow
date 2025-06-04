@@ -112,7 +112,7 @@ class LLMClusterer:
     llm: str
     instruction: str
     format_fn: Callable[[str, Any], str]
-    batch_size: int = 20
+    batch_size: int = 10
     temperature: float = 0.0
     trajectory_: Trajectory | None = None
 

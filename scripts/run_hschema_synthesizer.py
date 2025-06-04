@@ -1,4 +1,5 @@
 import os
+import shutil
 import argparse
 import asyncio
 from mintq.datahub import get_dataset_loader
@@ -16,6 +17,7 @@ async def main():
     parser.add_argument("--llm", type=str, default="gpt-4o")
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--temperature", type=float, default=0.0)
+    parser.add_argument("--output_dir", default="output/run_hschema_synthesizer")
     args = parser.parse_args()
     print(args)
     print()
@@ -40,10 +42,11 @@ async def main():
     hschema_str = formatter.format(hschema)
     print(hschema_str)
 
-    output_dir = "output/run_hschema_synthesizer/"
-    os.makedirs(output_dir, exist_ok=True)
+    if os.path.exists(args.output_dir):
+        shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
 
-    with open(os.path.join(output_dir, "hschema.txt"), "w") as f:
+    with open(os.path.join(args.output_dir, "hschema.txt"), "w") as f:
         f.write(hschema_str)
 
     for tg in hschema.table_groups:
@@ -51,11 +54,11 @@ async def main():
 
         table_synthesizer = synthesizer.table_synthesizers_[table.name]
 
-        with open(os.path.join(output_dir, f"{table.name}_section.xml"), "w") as f:
+        with open(os.path.join(args.output_dir, f"{table.name}_section.xml"), "w") as f:
             f.write(format_trajectory(table_synthesizer.section_clusterer_.trajectory_))
 
         for section_name, clusterer in table_synthesizer.column_group_clusterers_.items():
-            with open(os.path.join(output_dir, f"{table.name}_{section_name}_column_group.xml"), "w") as f:
+            with open(os.path.join(args.output_dir, f"{table.name}_{section_name}_column_group.xml"), "w") as f:
                 f.write(format_trajectory(clusterer.trajectory_))
 
 

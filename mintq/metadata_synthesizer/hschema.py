@@ -12,7 +12,6 @@ from mintq.schema import (
 )
 from mintq.metadata_synthesizer.llm_clusterer import LLMClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.schema import Trajectory
 
 
 SECTION_PROMPT = """
@@ -48,7 +47,7 @@ You are a helpful database expert that identify groups among the columns in a SQ
 @dataclass
 class HTableSchemaSynthesizer:
     llm: str = "gpt-4o"
-    batch_size: int = 20
+    batch_size: int = 10
     temperature: float = 0.0
     section_clusterer_: LLMClusterer | None = None
     column_group_clusterers_: dict[str, LLMClusterer] = field(default_factory=dict)
@@ -109,7 +108,7 @@ class HTableSchemaSynthesizer:
 @dataclass
 class HSchemaSynthesizer:
     llm: str = "gpt-4o"
-    batch_size: int = 20
+    batch_size: int = 10
     temperature: float = 0.0
     table_synthesizers_: dict[str, HTableSchemaSynthesizer] = field(default_factory=dict)
 
