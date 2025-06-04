@@ -44,9 +44,9 @@ class Assignment(BaseModel):
 
 
 class LLMOutput(BaseModel):
+    create_cluster_actions: list[CreateCluster]
     merge_cluster_actions: list[MergeCluster]
     update_cluster_actions: list[UpdateCluster]
-    create_cluster_actions: list[CreateCluster]
     assignments: list[Assignment]
 
 
@@ -72,7 +72,9 @@ Result:
 
 
 class ClusterStore:
-    def __init__(self):
+    def __init__(self, auto_create_if_not_exists: bool = True):
+        self.auto_create_if_not_exists = auto_create_if_not_exists
+
         self._descriptions: dict[str, str | None] = {}
         self._items: dict[str, list[int]] = {}
 
@@ -97,6 +99,11 @@ class ClusterStore:
         self._items[action.new_name] = merged_items
 
     def assign_item(self, item_name: str, cluster_name: str) -> None:
+        if cluster_name not in self._descriptions:
+            if self.auto_create_if_not_exists:
+                self.create_cluster(CreateCluster(name=cluster_name, description=None))
+            else:
+                raise ValueError(f"Cluster {cluster_name} does not exist")
         self._items[cluster_name].append(item_name)
 
     @property
