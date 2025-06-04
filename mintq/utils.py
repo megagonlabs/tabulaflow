@@ -86,7 +86,12 @@ def format_trajectory(trajectory: Trajectory) -> str:
         elif msg.role == "assistant":
             s = '<message role="assistant">\n'
             if msg.content:
-                s += f"{msg.content}\n"
+                try:
+                    content = json.loads(msg.content)
+                    content = json.dumps(content, indent=2)
+                except Exception:
+                    content = msg.content
+                s += f"{content}\n"
             for tool_call in msg.tool_calls:
                 s += f'<function name="{tool_call.name}">\n'
                 for key, value in tool_call.arguments.items():
