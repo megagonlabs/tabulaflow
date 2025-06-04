@@ -1,4 +1,5 @@
 import asyncio
+import json
 from dataclasses import dataclass
 from mintq.schema import (
     SQLTableSchema,
@@ -37,17 +38,20 @@ Concepts:
   - They contain the same set of values.
 - If there are no similar columns that satisfy the above criteria, create a new group with a single column.
 - The name of the group should be:
-  - If there are multiple columns, the common prefix/suffix, and a template for the remaining part (e.g. "revenue_{YYYYMM}")
   - If there is only one column, the name of the column.
+  - If there are multiple columns, a pseudo-regex pattern that captures the column name pattern.
+    - You can use the regex syntax (e.g. "person_[0-9]+", "age_(male|female)")
+    - You can use the `{...}` template syntax (e.g. "revenue_{YYYYMM}") with description to explain the template.
+    - Prioritize readability. Don't use complex regexes.
 - The description should be:
-  - If there are multiple columns, valid variations of the template part.
-  - If there is only one column, an empty string.
+  - null if there is only one column or the pseudo-regex already fully captures the column name pattern.
+  - a short description of the pattern variations otherwise.
 - One column must be in exactly one group.
 
 Instructions:
 - You will be given the current list of groups, and a list of new columns that need to be added.
 - You are allowed to add new groups, merge existing groups, or edit the name or description of an existing group.
-- You must ensure the group exists before assigning a column to it.
+- You must ensure the group exists before assigning a column to it. The name must match exactly the name of the group.
 """.strip()
 
 
@@ -61,7 +65,7 @@ class HTableSchemaSynthesizer:
         clusterer = LLMClusterer(
             llm=self.llm,
             instruction=SECTION_PROMPT,
-            format_fn=lambda name, column: f"- {name}: {column.dtype}",
+            format_fn=lambda name, column: json.dumps({"column_name": name, "datatype": column.dtype}),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
@@ -84,7 +88,7 @@ class HTableSchemaSynthesizer:
         clusterer = LLMClusterer(
             llm=self.llm,
             instruction=COLUMN_GROUP_PROMPT,
-            format_fn=lambda name, column: f"- {name}: {column.dtype}",
+            format_fn=lambda name, column: json.dumps({"column_name": name, "datatype": column.dtype}),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )

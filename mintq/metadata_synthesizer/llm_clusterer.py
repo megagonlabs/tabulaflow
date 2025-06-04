@@ -4,6 +4,9 @@ from typing import Protocol, Callable, Any
 from pydantic import BaseModel
 from dataclasses import dataclass
 import json
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 class ItemWithUniqueName(Protocol):
@@ -112,7 +115,12 @@ class LLMClusterer:
                 cluster_items[new_cluster.name] = []
 
             for assignment in output.assignments:
-                cluster_items[assignment.cluster_name].append(name2idx[assignment.item_name])
+                try:
+                    cluster_items[assignment.cluster_name].append(name2idx[assignment.item_name])
+                except KeyError:
+                    logger.error(f"<prompt>{user_prompt}</prompt>")
+                    logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
+                    raise
 
         return [
             Cluster(name=name, description=description, item_indexes=cluster_items[name])

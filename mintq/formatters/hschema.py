@@ -105,7 +105,11 @@ class HSchemaFormatter:
 
     def format_column_group(self, column_group: HColumnGroup, is_categorical: bool) -> str:
         sample_col = column_group.columns[0]
-        res = f"- {self._quote_if_needed(column_group.name)}: {sample_col.dtype}"
+        if column_group.description:
+            desc = f" ({column_group.description})"
+        else:
+            desc = ""
+        res = f"- {self._quote_if_needed(column_group.name)}{desc}: {sample_col.dtype}"
         if is_categorical:
             valid_values = [self._quote(self._truncate(v)) for v in sample_col.examples]
             valid_values = sorted(valid_values)
