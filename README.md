@@ -235,6 +235,7 @@ Roadmap:
 - [ ] Code diff tool
 - [ ] Schema linking agent + SQL writing agent
 - [ ] Hierarchical documents
+- [ ] Engineer individual components
 ```
 1126
 944
