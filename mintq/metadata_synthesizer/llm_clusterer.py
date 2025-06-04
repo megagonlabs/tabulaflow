@@ -21,7 +21,7 @@ class Cluster(BaseModel):
 
 
 class MergeCluster(BaseModel):
-    cluster_names_to_merge: list[str]
+    cluster_to_merge: list[str]
     new_cluster_name: str
     new_description: str | None
 
@@ -43,9 +43,9 @@ class Assignment(BaseModel):
 
 
 class LLMOutput(BaseModel):
-    merged_clusters: list[MergeCluster]
-    updated_clusters: list[UpdateCluster]
-    new_clusters: list[CreateCluster]
+    merge_cluster_actions: list[MergeCluster]
+    update_cluster_actions: list[UpdateCluster]
+    create_cluster_actions: list[CreateCluster]
     assignments: list[Assignment]
 
 
@@ -89,7 +89,7 @@ class ClusterStore:
 
     def merge_clusters(self, action: MergeCluster) -> None:
         merged_items = []
-        for name in action.cluster_names_to_merge:
+        for name in action.cluster_to_merge:
             merged_items += self._items.pop(name)
             self._descriptions.pop(name)
         self._descriptions[action.new_name] = action.new_description
@@ -151,11 +151,11 @@ class LLMClusterer:
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
             try:
                 assert len(output.assignments) == len(batch)
-                for merge in output.merged_clusters:
+                for merge in output.merge_cluster_actions:
                     store.merge_clusters(merge)
-                for update in output.updated_clusters:
+                for update in output.update_cluster_actions:
                     store.update_cluster(update)
-                for new_cluster in output.new_clusters:
+                for new_cluster in output.create_cluster_actions:
                     store.create_cluster(new_cluster)
                 for assignment in output.assignments:
                     store.assign_item(name2idx[assignment.item_name], assignment.cluster_name)
