@@ -35,6 +35,7 @@ packages = ["mintq"]
 
 [tool.ruff]
 line-length = 120
+include = ["mintq/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 
 [dependency-groups]
 dev = [

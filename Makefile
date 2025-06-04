@@ -4,16 +4,16 @@ sync:
 
 .PHONY: mypy
 mypy:
-	uv run mypy mintq/
+	uv run mypy mintq/ tests/ scripts/
 
 .PHONY: format
 format:
-	uv run ruff format mintq/
-	uv run ruff check --fix mintq/
+	uv run ruff format .
+	uv run ruff check --fix .
 
 .PHONY: lint
 lint:
-	uv run ruff check mintq/
+	uv run ruff check .
 
 .PHONY: test-simple
 test-simple:
