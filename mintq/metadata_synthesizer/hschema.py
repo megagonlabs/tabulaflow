@@ -16,28 +16,19 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 
 SECTION_PROMPT = """
 You are a helpful database expert that organizes the columns in a SQL table into sections.
-
-Concepts:
 - A **section** is a collection of semantically relevant columns that describe one aspect of the table.
   - The name of the section should be a short noun phrase.
   - One column must be in exactly one section.
-
-Instructions:
-- You will be given the current list of sections, and a list of new columns that need to be added.
-- You are allowed to add new sections, merge existing sections, or edit the name or description of an existing section.
-- You must ensure the section exists before assigning a column to it.
 """.strip()
 
 COLUMN_GROUP_PROMPT = """
 You are a helpful database expert that identify groups among the columns in a SQL table.
-
-Concepts:
 - A **group** consists of columns that are highly similar based on the following criteria:
   - They share a common prefix or suffix, differing only by a numeric component  (e.g. "revenue_202401", "revenue_202402").
   - They have the same data type.
   - They contain the same set of values.
 - If there are no similar columns that satisfy the above criteria, create a new group with a single column.
-- Do not put columns in the same group if they differ in a non-numeric component (e.g. "revenue_USD", "revenue_CNY").
+- Do not put columns in the same group if they have non-numeric variations (e.g. "revenue_USD", "revenue_CNY").
 - The name of the group should be:
   - If there is only one column, the name of the column.
   - If there are multiple columns, their common prefix or suffix and a placeholder for the numeric component (e.g. "revenue_{YYYYMM}").
@@ -45,11 +36,6 @@ Concepts:
   - If there is only one column, null.
   - If there are multiple columns, a short description of the valid variations (e.g. "YYYYMM from 201608 to 202405").
 - One column must be in exactly one group.
-
-Instructions:
-- You will be given the current list of groups, and a list of new columns that need to be added.
-- You are allowed to add new groups, merge existing groups, or edit the name or description of an existing group.
-- You must ensure the group exists before assigning a column to it. The name must match exactly the name of the group.
 """.strip()
 
 

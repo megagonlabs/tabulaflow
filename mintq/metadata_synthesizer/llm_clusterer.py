@@ -48,14 +48,22 @@ class LLMOutput(BaseModel):
     assignments: list[Assignment]
 
 
-USER_PROMPT = """
+LLM_CLUSTERER_PROMPT = """
+You are a helpful AI clustering agent.
+- You will be given the current list of clusters, and a list of new items that need to be added.
+- You are allowed to add new clusters, merge existing clusters, or edit the name or description of an existing cluster.
+- You must ensure the cluster exists before assigning an item to it.
+
+Clustering instructions:
+{{instruction}}
+
 Current clusters:
 {{current_clusters}}
 
 New items:
 {{new_items}}
 
-Output:
+Result:
 """.strip()
 
 
@@ -83,13 +91,14 @@ class LLMClusterer:
             new_items = "\n\n".join(
                 f"###{k}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
             )
-            user_prompt = jinja2.Template(USER_PROMPT).render(
+            prompt = jinja2.Template(LLM_CLUSTERER_PROMPT).render(
+                instruction=self.instruction,
                 current_clusters=json.dumps(cluster_descriptions, indent=2),
                 new_items=new_items,
             )
             response = await litellm.acompletion(
                 model=self.llm,
-                messages=[{"role": "system", "content": self.instruction}, {"role": "user", "content": user_prompt}],
+                messages=[{"role": "system", "content": prompt}],
                 response_format=LLMOutput,
                 temperature=self.temperature,
             )
@@ -118,7 +127,7 @@ class LLMClusterer:
                     cluster_items[assignment.cluster_name].append(name2idx[assignment.item_name])
 
             except Exception:
-                logger.error(f"<prompt>{user_prompt}</prompt>")
+                logger.error(f"<prompt>{prompt}</prompt>")
                 logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
                 raise
 
