@@ -1,4 +1,7 @@
 import pytest
+import os
+from mintq.formatters.hschema import HSchemaFormatter
+from mintq.schema import HSQLSchema
 from mintq.metadata_synthesizer.hschema import HSchemaSynthesizer
 from mintq.db_connector import SQLAlchemyConnector
 
@@ -12,5 +15,4 @@ async def test_hschema_synthesizer():
         batch_size=10,
         temperature=0.0,
     )
-    hschema = await synthesizer.run(db_connector)
-    print(hschema)
+    await synthesizer.run(db_connector)
