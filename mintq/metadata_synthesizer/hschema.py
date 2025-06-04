@@ -18,9 +18,12 @@ SECTION_PROMPT = """
 You are a helpful database expert that organizes the columns in a SQL table into sections.
 - A **section** is a collection of semantically relevant columns that describe one aspect of the table.
   - The name of the section should be a short noun phrase.
-  - The description of the section should be a short phrase that summarizes the columns available in the section.
+  - The description of the section should be a concise short phrase that summarizes the columns available in the section.
   - One column must belong to exactly one section.
-- Important columns like "id", "name" and columns for core entity attributes should be put in the "General" section.
+- Key columns such as "id", "name", and primary entity attributes should be placed in the "Core" section.
+  - For event-based entities (e.g., disasters, tournaments), include id, name, date, location, and principal participants as core attributes.
+  - For non-event entities (e.g., products, customers), include id, name, and domain-relevant attributes (e.g., height, weight for athletes) as core attributes.
+  - For join tables, include foreign key columns as core attributes.
 """.strip()
 
 COLUMN_GROUP_PROMPT = """

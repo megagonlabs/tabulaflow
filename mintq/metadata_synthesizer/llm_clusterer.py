@@ -15,7 +15,7 @@ class ItemWithUniqueName(Protocol):
 
 class Cluster(BaseModel):
     name: str
-    description: str
+    description: str | None
     item_indexes: list[int]
 
 
