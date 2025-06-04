@@ -1,6 +1,6 @@
 import asyncio
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from mintq.schema import (
     SQLTableSchema,
     SQLColumnSchema,
@@ -12,6 +12,7 @@ from mintq.schema import (
 )
 from mintq.metadata_synthesizer.llm_clusterer import LLMClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.schema import Trajectory
 
 
 SECTION_PROMPT = """
@@ -49,6 +50,8 @@ class HTableSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 20
     temperature: float = 0.0
+    root_trajectory_: Trajectory | None = None
+    per_section_trajectories_: dict[str, Trajectory] = field(default_factory=dict)
 
     async def build_sections(self, table: SQLTableSchema) -> list[HTableSection]:
         clusterer = LLMClusterer(
@@ -59,9 +62,10 @@ class HTableSchemaSynthesizer:
             temperature=self.temperature,
         )
         clusters = await clusterer.cluster_async([c.name for c in table.columns], table.columns)
+        self.root_trajectory_ = clusterer.trajectory_
 
         all_groups = await asyncio.gather(
-            *[self.build_groups([table.columns[idx] for idx in c.item_indexes]) for c in clusters]
+            *[self.build_groups(c.name, [table.columns[idx] for idx in c.item_indexes]) for c in clusters]
         )
 
         return [
@@ -73,7 +77,7 @@ class HTableSchemaSynthesizer:
             for c, groups in zip(clusters, all_groups)
         ]
 
-    async def build_groups(self, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
+    async def build_groups(self, section_name: str, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
         clusterer = LLMClusterer(
             llm=self.llm,
             instruction=COLUMN_GROUP_PROMPT,
@@ -82,6 +86,7 @@ class HTableSchemaSynthesizer:
             temperature=self.temperature,
         )
         clusters = await clusterer.cluster_async([c.name for c in columns], columns)
+        self.per_section_trajectories_[section_name] = clusterer.trajectory_
 
         return [
             HColumnGroup(name=c.name, description=c.description, columns=[columns[idx] for idx in c.item_indexes])
