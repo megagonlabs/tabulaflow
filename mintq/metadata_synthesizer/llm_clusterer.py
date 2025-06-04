@@ -94,33 +94,33 @@ class LLMClusterer:
                 temperature=self.temperature,
             )
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
+            try:
+                assert len(output.assignments) == len(batch)
 
-            assert len(output.assignments) == len(batch)
+                for merge in output.merged_clusters:
+                    item_indexes = []
+                    for name in merge.cluster_names_to_merge:
+                        item_indexes += cluster_items.pop(name)
+                        cluster_descriptions.pop(name)
+                    cluster_descriptions[merge.new_cluster_name] = merge.new_description
+                    cluster_items[merge.new_cluster_name] = item_indexes
 
-            for merge in output.merged_clusters:
-                item_indexes = []
-                for name in merge.cluster_names_to_merge:
-                    item_indexes += cluster_items.pop(name)
-                    cluster_descriptions.pop(name)
-                cluster_descriptions[merge.new_cluster_name] = merge.new_description
-                cluster_items[merge.new_cluster_name] = item_indexes
+                for update in output.updated_clusters:
+                    cluster_descriptions.pop(update.old_name)
+                    cluster_descriptions[update.new_name] = update.new_description
+                    cluster_items[update.new_name] = cluster_items.pop(update.old_name)
 
-            for update in output.updated_clusters:
-                cluster_descriptions.pop(update.old_name)
-                cluster_descriptions[update.new_name] = update.new_description
-                cluster_items[update.new_name] = cluster_items.pop(update.old_name)
+                for new_cluster in output.new_clusters:
+                    cluster_descriptions[new_cluster.name] = new_cluster.description
+                    cluster_items[new_cluster.name] = []
 
-            for new_cluster in output.new_clusters:
-                cluster_descriptions[new_cluster.name] = new_cluster.description
-                cluster_items[new_cluster.name] = []
-
-            for assignment in output.assignments:
-                try:
+                for assignment in output.assignments:
                     cluster_items[assignment.cluster_name].append(name2idx[assignment.item_name])
-                except KeyError:
-                    logger.error(f"<prompt>{user_prompt}</prompt>")
-                    logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
-                    raise
+
+            except Exception:
+                logger.error(f"<prompt>{user_prompt}</prompt>")
+                logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
+                raise
 
         return [
             Cluster(name=name, description=description, item_indexes=cluster_items[name])

@@ -33,19 +33,17 @@ You are a helpful database expert that identify groups among the columns in a SQ
 
 Concepts:
 - A **group** consists of columns that are highly similar based on the following criteria:
-  - They share a common prefix or suffix.
+  - They share a common prefix or suffix, differing only by a numeric component  (e.g. "revenue_202401", "revenue_202402").
   - They have the same data type.
   - They contain the same set of values.
 - If there are no similar columns that satisfy the above criteria, create a new group with a single column.
+- Do not put columns in the same group if they differ in a non-numeric component (e.g. "revenue_USD", "revenue_CNY").
 - The name of the group should be:
   - If there is only one column, the name of the column.
-  - If there are multiple columns, a pseudo-regex pattern that captures the column name pattern.
-    - You can use the regex syntax (e.g. "person_[0-9]+", "age_(male|female)")
-    - You can use the `{...}` template syntax (e.g. "revenue_{YYYYMM}") with description to explain the template.
-    - Prioritize readability. Don't use complex regexes.
+  - If there are multiple columns, their common prefix or suffix and a placeholder for the numeric component (e.g. "revenue_{YYYYMM}").
 - The description should be:
-  - null if there is only one column or the pseudo-regex already fully captures the column name pattern.
-  - a short description of the pattern variations otherwise.
+  - If there is only one column, null.
+  - If there are multiple columns, a short description of the valid variations (e.g. "YYYYMM from 201608 to 202405").
 - One column must be in exactly one group.
 
 Instructions:
