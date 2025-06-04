@@ -19,23 +19,22 @@ You are a helpful database expert that organizes the columns in a SQL table into
 - A **section** is a collection of semantically relevant columns that describe one aspect of the table.
   - The name of the section should be a short noun phrase.
   - One column must be in exactly one section.
+- Important columns like "id", "name" and columns for core entity attributes should be put in the "General" section.
 """.strip()
 
 COLUMN_GROUP_PROMPT = """
 You are a helpful database expert that identify groups among the columns in a SQL table.
-- A **group** consists of columns that are highly similar based on the following criteria:
-  - They share a common prefix or suffix, differing only by a numeric component  (e.g. "revenue_202401", "revenue_202402").
-  - They have the same data type.
-  - They contain the same set of values.
-- Do not put columns in the same group if they have non-numeric variations (e.g. "revenue_USD" and "revenue_CNY" should not be put in the same group).
-- If there are no similar columns that satisfy the above criteria, create a new group with a single column.
-- The name of the group should be:
-  - If there is only one column, the name of the column.
-  - If there are multiple columns, their common prefix or suffix and a placeholder for the numeric component (e.g. "revenue_{YYYYMM}").
-- The description should be:
-  - If there is only one column, null.
-  - If there are multiple columns, a short description of the valid variations (e.g. "YYYYMM from 201608 to 202405").
+- A **group** consists of columns that:
+  - share a common prefix or suffix, differing only by a numeric component  (e.g. "revenue_202401", "revenue_202402").
+    - However, columns that differ in a non-numeric component should NOT be put in the same group (e.g. "revenue_USD" and "revenue_CNY" should not be put in the same group).
+  - have the same data type.
+  - contain the same set of values.
+- If a column has no similar columns that satisfy the above criteria, create a new singleton group with the column.
 - One column must be in exactly one group.
+- For singleton groups, the group name should be the name of the column and the description should be null.
+- For non-singleton groups,
+  - the name of the group should be the common prefix or suffix and a placeholder for the numeric component (e.g. "revenue_{YYYYMM}")
+  - the description should be a short description of the valid variations (e.g. "YYYYMM from 201608 to 202405").
 """.strip()
 
 
