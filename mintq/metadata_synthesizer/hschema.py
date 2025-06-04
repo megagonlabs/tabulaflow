@@ -63,8 +63,9 @@ class HTableSchemaSynthesizer:
         )
         clusters = await self.section_clusterer_.cluster_async([c.name for c in table.columns], table.columns)
 
+        name2column = {c.name: c for c in table.columns}
         all_groups = await asyncio.gather(
-            *[self.build_groups_async(c.name, [table.columns[idx] for idx in c.item_indexes]) for c in clusters]
+            *[self.build_groups_async(c.name, [name2column[name] for name in c.item_names]) for c in clusters]
         )
 
         return [
@@ -87,8 +88,9 @@ class HTableSchemaSynthesizer:
         self.column_group_clusterers_[section_name] = clusterer
         clusters = await clusterer.cluster_async([c.name for c in columns], columns)
 
+        name2column = {c.name: c for c in columns}
         return [
-            HColumnGroup(name=c.name, description=c.description, columns=[columns[idx] for idx in c.item_indexes])
+            HColumnGroup(name=c.name, description=c.description, columns=[name2column[name] for name in c.item_names])
             for c in clusters
         ]
 

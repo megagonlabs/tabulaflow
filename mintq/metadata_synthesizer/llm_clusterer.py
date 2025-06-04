@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from dataclasses import dataclass
 import json
 import logging
+import random
 from mintq.schema import Trajectory, UserMessage, AssistantMessage
 
 logger = logging.getLogger(__name__)
@@ -17,12 +18,12 @@ class ItemWithUniqueName(Protocol):
 class Cluster(BaseModel):
     name: str
     description: str | None
-    item_indexes: list[int]
+    item_names: list[str]
 
 
 class MergeCluster(BaseModel):
-    cluster_to_merge: list[str]
-    new_cluster_name: str
+    clusters_to_merge: list[str]
+    new_name: str
     new_description: str | None
 
 
@@ -89,23 +90,19 @@ class ClusterStore:
 
     def merge_clusters(self, action: MergeCluster) -> None:
         merged_items = []
-        for name in action.cluster_to_merge:
+        for name in action.clusters_to_merge:
             merged_items += self._items.pop(name)
             self._descriptions.pop(name)
         self._descriptions[action.new_name] = action.new_description
         self._items[action.new_name] = merged_items
 
-    def assign_item(self, item_idx: int, cluster_name: str) -> None:
-        self._items[cluster_name].append(item_idx)
-
-    @property
-    def cluster_descriptions(self) -> dict[str, str | None]:
-        return self._descriptions
+    def assign_item(self, item_name: str, cluster_name: str) -> None:
+        self._items[cluster_name].append(item_name)
 
     @property
     def clusters(self) -> list[Cluster]:
         return [
-            Cluster(name=name, description=description, item_indexes=self._items[name])
+            Cluster(name=name, description=description, item_names=self._items[name])
             for name, description in self._descriptions.items()
         ]
 
@@ -123,24 +120,38 @@ class LLMClusterer:
         if len(item_names) != len(set(item_names)):
             raise ValueError("Items must have unique names")
 
-        name2idx = {name: i for i, name in enumerate(item_names)}
         store = ClusterStore()
 
         self.trajectory_ = Trajectory(messages=[])
+
+        local_random = random.Random(42)
 
         for i in range(0, len(items), self.batch_size):
             names = item_names[i : i + self.batch_size]
             batch = items[i : i + self.batch_size]
 
+            current_clusters = json.dumps(
+                [
+                    {
+                        "name": c.name,
+                        "description": c.description,
+                        "sample_items": local_random.sample(c.item_names, min(len(c.item_names), 3)),
+                    }
+                    for c in store.clusters
+                ],
+                indent=2,
+            )
+
             new_items = "\n\n".join(
-                f"###{k}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
+                f"#{k}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
             )
             prompt = jinja2.Template(LLM_CLUSTERER_PROMPT).render(
                 instruction=self.instruction,
-                current_clusters=json.dumps(store.cluster_descriptions, indent=2),
+                current_clusters=current_clusters,
                 new_items=new_items,
             )
             self.trajectory_.messages.append(UserMessage(content=prompt))
+
             response = await litellm.acompletion(
                 model=self.llm,
                 messages=[{"role": "system", "content": prompt}],
@@ -158,7 +169,7 @@ class LLMClusterer:
                 for new_cluster in output.create_cluster_actions:
                     store.create_cluster(new_cluster)
                 for assignment in output.assignments:
-                    store.assign_item(name2idx[assignment.item_name], assignment.cluster_name)
+                    store.assign_item(assignment.item_name, assignment.cluster_name)
             except Exception:
                 logger.error(f"<prompt>{prompt}</prompt>")
                 logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
