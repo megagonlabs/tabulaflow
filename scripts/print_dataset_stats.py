@@ -1,6 +1,5 @@
 import argparse
 import time
-import os
 from mintq.datahub import get_dataset_loader
 
 
@@ -24,7 +23,9 @@ def main():
     num_tables = sum(len(db.schema.tables) for db in dataset.db_connectors.values())
     num_columns = sum(sum(len(table.columns) for table in db.schema.tables) for db in dataset.db_connectors.values())
 
-    db_to_columns = { name: sum(len(table.columns) for table in db.schema.tables) for name, db in dataset.db_connectors.items() }
+    db_to_columns = {
+        name: sum(len(table.columns) for table in db.schema.tables) for name, db in dataset.db_connectors.items()
+    }
     db_to_columns = dict(sorted(db_to_columns.items(), key=lambda x: x[0]))
     print()
     print("### Column counts per database")

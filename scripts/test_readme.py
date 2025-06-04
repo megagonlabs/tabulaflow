@@ -10,7 +10,7 @@ from mintq.evaluate import evaluate_async
 async def main():
     dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
     # dataset includes the text-to-query tasks and the database connectors
-    dataset = await dataloader.get_split_async("dev")  
+    dataset = await dataloader.get_split_async("dev")
     dataset.tasks = dataset.tasks[:3]
 
     # define the model arguments
