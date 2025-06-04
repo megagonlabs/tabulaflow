@@ -70,6 +70,46 @@ Result:
 """.strip()
 
 
+class ClusterStore:
+    def __init__(self):
+        self._descriptions: dict[str, str | None] = {}
+        self._items: dict[str, list[int]] = {}
+
+    def create_cluster(self, action: CreateCluster) -> None:
+        if action.name in self._descriptions:
+            self._descriptions[action.name] = action.description
+        else:
+            self._descriptions[action.name] = action.description
+            self._items[action.name] = []
+
+    def update_cluster(self, action: UpdateCluster) -> None:
+        self._descriptions.pop(action.old_name)
+        self._descriptions[action.new_name] = action.new_description
+        self._items[action.new_name] = self._items.pop(action.old_name)
+
+    def merge_clusters(self, action: MergeCluster) -> None:
+        merged_items = []
+        for name in action.cluster_names_to_merge:
+            merged_items += self._items.pop(name)
+            self._descriptions.pop(name)
+        self._descriptions[action.new_name] = action.new_description
+        self._items[action.new_name] = merged_items
+
+    def assign_item(self, item_idx: int, cluster_name: str) -> None:
+        self._items[cluster_name].append(item_idx)
+
+    @property
+    def cluster_descriptions(self) -> dict[str, str | None]:
+        return self._descriptions
+
+    @property
+    def clusters(self) -> list[Cluster]:
+        return [
+            Cluster(name=name, description=description, item_indexes=self._items[name])
+            for name, description in self._descriptions.items()
+        ]
+
+
 @dataclass
 class LLMClusterer:
     llm: str
@@ -83,10 +123,8 @@ class LLMClusterer:
         if len(item_names) != len(set(item_names)):
             raise ValueError("Items must have unique names")
 
-        cluster_descriptions: dict[str, str] = {}
-        cluster_items: dict[str, list[int]] = {}
-
         name2idx = {name: i for i, name in enumerate(item_names)}
+        store = ClusterStore()
 
         self.trajectory_ = Trajectory(messages=[])
 
@@ -99,7 +137,7 @@ class LLMClusterer:
             )
             prompt = jinja2.Template(LLM_CLUSTERER_PROMPT).render(
                 instruction=self.instruction,
-                current_clusters=json.dumps(cluster_descriptions, indent=2),
+                current_clusters=json.dumps(store.cluster_descriptions, indent=2),
                 new_items=new_items,
             )
             self.trajectory_.messages.append(UserMessage(content=prompt))
@@ -113,33 +151,17 @@ class LLMClusterer:
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
             try:
                 assert len(output.assignments) == len(batch)
-
                 for merge in output.merged_clusters:
-                    item_indexes = []
-                    for name in merge.cluster_names_to_merge:
-                        item_indexes += cluster_items.pop(name)
-                        cluster_descriptions.pop(name)
-                    cluster_descriptions[merge.new_cluster_name] = merge.new_description
-                    cluster_items[merge.new_cluster_name] = item_indexes
-
+                    store.merge_clusters(merge)
                 for update in output.updated_clusters:
-                    cluster_descriptions.pop(update.old_name)
-                    cluster_descriptions[update.new_name] = update.new_description
-                    cluster_items[update.new_name] = cluster_items.pop(update.old_name)
-
+                    store.update_cluster(update)
                 for new_cluster in output.new_clusters:
-                    cluster_descriptions[new_cluster.name] = new_cluster.description
-                    cluster_items[new_cluster.name] = []
-
+                    store.create_cluster(new_cluster)
                 for assignment in output.assignments:
-                    cluster_items[assignment.cluster_name].append(name2idx[assignment.item_name])
-
+                    store.assign_item(name2idx[assignment.item_name], assignment.cluster_name)
             except Exception:
                 logger.error(f"<prompt>{prompt}</prompt>")
                 logger.error(f"<output>{output.model_dump_json(indent=2)}</output>")
                 raise
 
-        return [
-            Cluster(name=name, description=description, item_indexes=cluster_items[name])
-            for name, description in cluster_descriptions.items()
-        ]
+        return store.clusters
