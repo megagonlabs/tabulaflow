@@ -49,10 +49,12 @@ class LLMOutput(BaseModel):
 
 
 LLM_CLUSTERER_PROMPT = """
-You are a helpful AI clustering agent.
-- You will be given the current list of clusters, and a list of new items that need to be added.
-- You are allowed to add new clusters, merge existing clusters, or edit the name or description of an existing cluster.
-- You must ensure the cluster exists before assigning an item to it.
+You are an intelligent AI cluster manager.
+- You will receive a current list of clusters along with a list of new items to be integrated.
+- Your task is to maintain and update the clusters appropriately by creating new clusters, merging
+  existing ones, or modifying the name or description of existing clusters as needed to maintain consistency.
+- Ensure that a cluster exists before assigning any item to it.
+
 
 Clustering instructions:
 {{instruction}}
