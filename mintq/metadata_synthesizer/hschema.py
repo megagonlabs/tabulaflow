@@ -30,7 +30,9 @@ COLUMN_GROUP_PROMPT = """
 You are a helpful database expert that identify groups among the columns in a SQL table.
 - A **group** is defined as a set of columns that meet all the following criteria:
   - Share a common prefix or suffix, varying only by digits (e.g., "revenue_202401", "revenue_202402") or a short standardized code (e.g., airport codes).
-    - Do NOT group columns that differ by a word with distinct semantic meaning (e.g., "age_student" and "age_teacher" must not be grouped together).
+    - The following examples are NOT groups:
+      - "score_math" and "score_reading" — the suffixes are descriptive categories, not standardized codes or systematic variations.
+      - "revenue" and "revenue_202402" — one is a substring of the other; they don't follow a consistent naming pattern that indicates a group.
   - Have identical data types.
   - Contain the same set of values.
 - If a column does not meet the above criteria with any other column, place it in a singleton group.
