@@ -172,7 +172,7 @@ class LLMERDiagramSynthesizer:
     def __init__(self, llm: str = "openai/gpt-4o"):
         self.llm = llm
 
-    async def run(self, db_connector: BaseAsyncSQLDBConnector) -> ERDiagram:
+    async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
         formatter = SQLDefaultSchemaFormatter()
 

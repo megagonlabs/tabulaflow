@@ -50,22 +50,21 @@ class HTableSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 20
     temperature: float = 0.0
-    root_trajectory_: Trajectory | None = None
-    per_section_trajectories_: dict[str, Trajectory] = field(default_factory=dict)
+    section_clusterer_: LLMClusterer | None = None
+    column_group_clusterers_: dict[str, LLMClusterer] = field(default_factory=dict)
 
-    async def build_sections(self, table: SQLTableSchema) -> list[HTableSection]:
-        clusterer = LLMClusterer(
+    async def build_sections_async(self, table: SQLTableSchema) -> list[HTableSection]:
+        self.section_clusterer_ = LLMClusterer(
             llm=self.llm,
             instruction=SECTION_PROMPT,
             format_fn=lambda name, column: json.dumps({"column_name": name, "datatype": column.dtype}),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
-        clusters = await clusterer.cluster_async([c.name for c in table.columns], table.columns)
-        self.root_trajectory_ = clusterer.trajectory_
+        clusters = await self.section_clusterer_.cluster_async([c.name for c in table.columns], table.columns)
 
         all_groups = await asyncio.gather(
-            *[self.build_groups(c.name, [table.columns[idx] for idx in c.item_indexes]) for c in clusters]
+            *[self.build_groups_async(c.name, [table.columns[idx] for idx in c.item_indexes]) for c in clusters]
         )
 
         return [
@@ -77,7 +76,7 @@ class HTableSchemaSynthesizer:
             for c, groups in zip(clusters, all_groups)
         ]
 
-    async def build_groups(self, section_name: str, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
+    async def build_groups_async(self, section_name: str, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
         clusterer = LLMClusterer(
             llm=self.llm,
             instruction=COLUMN_GROUP_PROMPT,
@@ -85,16 +84,16 @@ class HTableSchemaSynthesizer:
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
+        self.column_group_clusterers_[section_name] = clusterer
         clusters = await clusterer.cluster_async([c.name for c in columns], columns)
-        self.per_section_trajectories_[section_name] = clusterer.trajectory_
 
         return [
             HColumnGroup(name=c.name, description=c.description, columns=[columns[idx] for idx in c.item_indexes])
             for c in clusters
         ]
 
-    async def run(self, table: SQLTableSchema) -> HTableSchema:
-        sections = await self.build_sections(table)
+    async def run_async(self, table: SQLTableSchema) -> HTableSchema:
+        sections = await self.build_sections_async(table)
 
         return HTableSchema(
             name=table.name,
@@ -110,17 +109,23 @@ class HSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 20
     temperature: float = 0.0
+    table_synthesizers_: dict[str, HTableSchemaSynthesizer] = field(default_factory=dict)
 
-    async def run(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
+    async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
         schema = db_connector.schema
 
-        table_synthesizer = HTableSchemaSynthesizer(
-            llm=self.llm,
-            batch_size=self.batch_size,
-            temperature=self.temperature,
-        )
+        self.table_synthesizers_ = {
+            table.name: HTableSchemaSynthesizer(
+                llm=self.llm,
+                batch_size=self.batch_size,
+                temperature=self.temperature,
+            )
+            for table in schema.tables
+        }
 
-        table_hschemas = await asyncio.gather(*[table_synthesizer.run(table) for table in schema.tables])
+        table_hschemas = await asyncio.gather(
+            *[self.table_synthesizers_[table.name].run_async(table) for table in schema.tables]
+        )
 
         return HSQLSchema(
             name=schema.name,

@@ -5,6 +5,7 @@ from mintq.datahub import get_dataset_loader
 from mintq.formatters.hschema import HSchemaFormatter
 from mintq.schema import HSQLSchema
 from mintq.metadata_synthesizer.hschema import HSchemaSynthesizer
+from mintq.utils import format_trajectory
 
 
 async def main():
@@ -27,7 +28,7 @@ async def main():
         batch_size=args.batch_size,
         temperature=args.temperature,
     )
-    hschema = await synthesizer.run(db_connector)
+    hschema = await synthesizer.run_async(db_connector)
 
     with open("cache/hschema.json", "w") as f:
         f.write(hschema.model_dump_json(indent=2))
@@ -41,15 +42,21 @@ async def main():
 
     output_dir = "output/run_hschema_synthesizer/"
     os.makedirs(output_dir, exist_ok=True)
+
     with open(os.path.join(output_dir, "hschema.txt"), "w") as f:
         f.write(hschema_str)
 
-    with open(os.path.join(output_dir, "root_trajectory.xml"), "w") as f:
-        f.write(synthesizer.root_trajectory_.model_dump_json(indent=2))
+    for tg in hschema.table_groups:
+        table = tg.tables[0]
 
-    for section_name, trajectory in synthesizer.per_section_trajectories_.items():
-        with open(os.path.join(output_dir, f"{section_name}_trajectory.xml"), "w") as f:
-            f.write(trajectory.model_dump_json(indent=2))
+        table_synthesizer = synthesizer.table_synthesizers_[table.name]
+
+        with open(os.path.join(output_dir, f"{table.name}_section.xml"), "w") as f:
+            f.write(format_trajectory(table_synthesizer.section_clusterer_.trajectory_))
+
+        for section_name, clusterer in table_synthesizer.column_group_clusterers_.items():
+            with open(os.path.join(output_dir, f"{table.name}_{section_name}_column_group.xml"), "w") as f:
+                f.write(format_trajectory(clusterer.trajectory_))
 
 
 if __name__ == "__main__":
