@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from dataclasses import dataclass
 import json
 import logging
+from mintq.schema import Trajectory, UserMessage, AssistantMessage
 
 logger = logging.getLogger(__name__)
 
@@ -76,6 +77,7 @@ class LLMClusterer:
     format_fn: Callable[[str, Any], str]
     batch_size: int = 20
     temperature: float = 0.0
+    trajectory_: Trajectory | None = None
 
     async def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]:
         if len(item_names) != len(set(item_names)):
@@ -85,6 +87,8 @@ class LLMClusterer:
         cluster_items: dict[str, list[int]] = {}
 
         name2idx = {name: i for i, name in enumerate(item_names)}
+
+        self.trajectory_ = Trajectory(messages=[])
 
         for i in range(0, len(items), self.batch_size):
             names = item_names[i : i + self.batch_size]
@@ -98,12 +102,14 @@ class LLMClusterer:
                 current_clusters=json.dumps(cluster_descriptions, indent=2),
                 new_items=new_items,
             )
+            self.trajectory_.messages.append(UserMessage(content=prompt))
             response = await litellm.acompletion(
                 model=self.llm,
                 messages=[{"role": "system", "content": prompt}],
                 response_format=LLMOutput,
                 temperature=self.temperature,
             )
+            self.trajectory_.messages.append(AssistantMessage(content=response.choices[0].message.content))
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
             try:
                 assert len(output.assignments) == len(batch)

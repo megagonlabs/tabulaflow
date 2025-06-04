@@ -22,7 +22,7 @@ class ToolCall(BaseModel):
 class AssistantMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
     content: str
-    tool_calls: list[ToolCall]
+    tool_calls: list[ToolCall] = Field(default_factory=list)
 
 
 class ToolResponse(BaseModel):
