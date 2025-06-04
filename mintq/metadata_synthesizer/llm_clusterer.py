@@ -22,18 +22,18 @@ class Cluster(BaseModel):
 class MergeCluster(BaseModel):
     cluster_names_to_merge: list[str]
     new_cluster_name: str
-    new_description: str
+    new_description: str | None
 
 
 class UpdateCluster(BaseModel):
     old_name: str
     new_name: str
-    new_description: str
+    new_description: str | None
 
 
 class CreateCluster(BaseModel):
     name: str
-    description: str
+    description: str | None
 
 
 class Assignment(BaseModel):
