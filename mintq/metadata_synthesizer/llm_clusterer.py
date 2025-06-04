@@ -44,9 +44,9 @@ class Assignment(BaseModel):
 
 
 class LLMOutput(BaseModel):
-    create_cluster_actions: list[CreateCluster]
     merge_cluster_actions: list[MergeCluster]
     update_cluster_actions: list[UpdateCluster]
+    create_cluster_actions: list[CreateCluster]
     assignments: list[Assignment]
 
 

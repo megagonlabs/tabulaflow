@@ -21,8 +21,8 @@ You are a helpful database expert that organizes the columns in a SQL table into
   - The description of the section should be a concise short phrase that summarizes the columns available in the section.
   - One column must belong to exactly one section.
 - Key columns such as "id", "name", and primary entity attributes should be placed in the "Core" section.
-  - For event-based entities (e.g., disasters, tournaments), include id, name, date, location, and principal participants as core attributes.
-  - For non-event entities (e.g., products, customers), include id, name, and domain-relevant attributes (e.g., height, weight for athletes) as core attributes.
+  - For event-based entities (e.g., disasters, tournaments), consider including id, name, date, location, outcome, and principal participants as core attributes.
+  - For non-event entities (e.g., products, customers), consider including id, name, and domain-relevant attributes (e.g., height, weight for athletes) as core attributes.
   - For join tables, include foreign key columns as core attributes.
 """.strip()
 
