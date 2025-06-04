@@ -1,5 +1,6 @@
 import os
 import shutil
+import time
 import argparse
 import asyncio
 from mintq.datahub import get_dataset_loader
@@ -15,7 +16,7 @@ async def main():
     parser.add_argument("--split", type=str, default="dev")
     parser.add_argument("--database", type=str, default="european_football_2")
     parser.add_argument("--llm", type=str, default="gpt-4o")
-    parser.add_argument("--batch_size", type=int, default=10)
+    parser.add_argument("--batch_size", type=int, default=5)
     parser.add_argument("--temperature", type=float, default=0.0)
     parser.add_argument("--output_dir", default="output/run_hschema_synthesizer")
     args = parser.parse_args()
@@ -30,7 +31,9 @@ async def main():
         batch_size=args.batch_size,
         temperature=args.temperature,
     )
+    t0 = time.time()
     hschema = await synthesizer.run_async(db_connector)
+    print(f"Time taken: {time.time() - t0} seconds")
 
     with open("cache/hschema.json", "w") as f:
         f.write(hschema.model_dump_json(indent=2))

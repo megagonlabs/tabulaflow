@@ -44,28 +44,34 @@ class Assignment(BaseModel):
 
 
 class LLMOutput(BaseModel):
-    merge_cluster_actions: list[MergeCluster]
-    update_cluster_actions: list[UpdateCluster]
-    create_cluster_actions: list[CreateCluster]
-    assignments: list[Assignment]
+    step1_merge_cluster_actions: list[MergeCluster]
+    step2_update_cluster_actions: list[UpdateCluster]
+    step3_create_cluster_actions: list[CreateCluster]
+    step4_assignments: list[Assignment]
 
 
 LLM_CLUSTERER_PROMPT = """
-You are an intelligent AI cluster manager.
-- You will receive a current list of clusters along with a list of new items to be integrated.
-- Your task is to maintain and update the clusters appropriately by creating new clusters, merging
-  existing ones, or modifying the name or description of existing clusters as needed to maintain consistency.
-- Ensure that a cluster exists before assigning any item to it.
+You are a smart AI responsible for managing and organizing clusters.
+- You will be provided with a current list of clusters and a list of new items that need to be integrated.
+- For each new item, first evaluate the existing clusters to determine the best placement:
+  - If the item fits:
+    - Consider whether merging multiple existing clusters would improve consistency and reduce overly fine-grained clustering. If so, merge them.
+    - Otherwise, incorporate the item into the most suitable existing cluster, updating the cluster's name and/or description as needed.
+  - If the item does not fit into any existing cluster, create a new cluster for it.
+- After the clusters are updated, assign each item to the appropriate cluster.
+- Your goal is to maintain consistency and ensure a well-structured cluster organization.
 
-
-Clustering instructions:
+=== Instructions ===
 {{instruction}}
+=== End ===
 
-Current clusters:
+=== Current clusters ===
 {{current_clusters}}
+=== End ===
 
-New items:
+=== New items to be integrated ===
 {{new_items}}
+=== End ===
 
 Result:
 """.strip()
@@ -168,14 +174,14 @@ class LLMClusterer:
             self.trajectory_.messages.append(AssistantMessage(content=response.choices[0].message.content))
             output = LLMOutput.model_validate_json(response.choices[0].message.content)
             try:
-                assert len(output.assignments) == len(batch)
-                for merge in output.merge_cluster_actions:
+                assert len(output.step4_assignments) == len(batch)
+                for merge in output.step1_merge_cluster_actions:
                     store.merge_clusters(merge)
-                for update in output.update_cluster_actions:
+                for update in output.step2_update_cluster_actions:
                     store.update_cluster(update)
-                for new_cluster in output.create_cluster_actions:
+                for new_cluster in output.step3_create_cluster_actions:
                     store.create_cluster(new_cluster)
-                for assignment in output.assignments:
+                for assignment in output.step4_assignments:
                     store.assign_item(assignment.item_name, assignment.cluster_name)
             except Exception:
                 logger.error(f"<prompt>{prompt}</prompt>")
