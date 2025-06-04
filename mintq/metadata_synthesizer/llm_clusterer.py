@@ -78,8 +78,8 @@ Result:
 
 
 class ClusterStore:
-    def __init__(self, auto_create_if_not_exists: bool = True):
-        self.auto_create_if_not_exists = auto_create_if_not_exists
+    def __init__(self, ignore_cluster_not_exists: bool = True):
+        self.ignore_cluster_not_exists = ignore_cluster_not_exists
 
         self._descriptions: dict[str, str | None] = {}
         self._items: dict[str, list[int]] = {}
@@ -99,6 +99,11 @@ class ClusterStore:
     def merge_clusters(self, action: MergeCluster) -> None:
         merged_items = []
         for name in action.clusters_to_merge:
+            if name not in self._descriptions:
+                if self.ignore_cluster_not_exists:
+                    continue
+                else:
+                    raise ValueError(f"Cluster {name} does not exist")
             merged_items += self._items.pop(name)
             self._descriptions.pop(name)
         self._descriptions[action.new_name] = action.new_description
@@ -106,7 +111,7 @@ class ClusterStore:
 
     def assign_item(self, item_name: str, cluster_name: str) -> None:
         if cluster_name not in self._descriptions:
-            if self.auto_create_if_not_exists:
+            if self.ignore_cluster_not_exists:
                 self.create_cluster(CreateCluster(name=cluster_name, description=None))
             else:
                 raise ValueError(f"Cluster {cluster_name} does not exist")
@@ -156,7 +161,7 @@ class LLMClusterer:
             )
 
             new_items = "\n\n".join(
-                f"#{k}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
+                f"#{k + 1}\n{self.format_fn(name, item)}" for k, (name, item) in enumerate(zip(names, batch))
             )
             prompt = jinja2.Template(LLM_CLUSTERER_PROMPT).render(
                 instruction=self.instruction,
