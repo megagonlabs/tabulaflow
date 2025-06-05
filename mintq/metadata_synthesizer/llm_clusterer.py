@@ -1,6 +1,8 @@
 import litellm
 import jinja2
 from typing import Protocol, Callable, Any
+import re
+import collections
 from pydantic import BaseModel
 from dataclasses import dataclass
 import json
@@ -194,3 +196,36 @@ class LLMClusterer:
                 raise
 
         return store.clusters
+
+
+@dataclass
+class AffixClusterer:
+    trajectory_: Trajectory | None = None
+
+    async def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]:
+        if len(item_names) != len(set(item_names)):
+            raise ValueError("Items must have unique names")
+
+        groups = collections.defaultdict(list)
+        for name in item_names:
+            pattern = re.sub(r"\d+", "{#}", name, count=1)
+            groups[pattern].append(name)
+
+        res = []
+        for pattern, names in groups.items():
+            if len(names) <= 5:
+                for name in names:
+                    res.append(Cluster(name=name, description=None, item_names=[name]))
+                continue
+
+            variations = [re.search(r"\d+", name).group() for name in names]
+            variations = sorted([int(v) for v in variations])
+            a = variations[0]
+            b = variations[-1]
+            if variations != list(range(a, b + 1)):
+                for name in names:
+                    res.append(Cluster(name=name, description=None, item_names=[name]))
+                continue
+
+            res.append(Cluster(name=pattern, description=f"# from {a} to {b}", item_names=names))
+        return res

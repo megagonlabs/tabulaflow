@@ -58,11 +58,13 @@ async def main():
         table_synthesizer = synthesizer.table_synthesizers_[table.name]
 
         with open(os.path.join(args.output_dir, f"S_{table.name}.xml"), "w") as f:
-            f.write(format_trajectory(table_synthesizer.section_clusterer_.trajectory_))
+            if table_synthesizer.section_clusterer_.trajectory_:
+                f.write(format_trajectory(table_synthesizer.section_clusterer_.trajectory_))
 
         for section_name, clusterer in table_synthesizer.column_group_clusterers_.items():
-            with open(os.path.join(args.output_dir, f"CG_{table.name}_{section_name}.xml"), "w") as f:
-                f.write(format_trajectory(clusterer.trajectory_))
+            if clusterer.trajectory_:
+                with open(os.path.join(args.output_dir, f"CG_{table.name}_{section_name}.xml"), "w") as f:
+                    f.write(format_trajectory(clusterer.trajectory_))
 
 
 if __name__ == "__main__":

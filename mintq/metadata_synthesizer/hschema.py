@@ -10,7 +10,7 @@ from mintq.schema import (
     HTableGroup,
     HTableSchema,
 )
-from mintq.metadata_synthesizer.llm_clusterer import LLMClusterer
+from mintq.metadata_synthesizer.llm_clusterer import LLMClusterer, AffixClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
 
 
@@ -83,13 +83,7 @@ class HTableSchemaSynthesizer:
         ]
 
     async def build_groups_async(self, section_name: str, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
-        clusterer = LLMClusterer(
-            llm=self.llm,
-            instruction=COLUMN_GROUP_PROMPT,
-            format_fn=lambda name, column: json.dumps({"column_name": name, "datatype": column.dtype}),
-            batch_size=self.batch_size,
-            temperature=self.temperature,
-        )
+        clusterer = AffixClusterer()
         self.column_group_clusterers_[section_name] = clusterer
         clusters = await clusterer.cluster_async([c.name for c in columns], columns)
 
