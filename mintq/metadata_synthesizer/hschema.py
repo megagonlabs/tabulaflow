@@ -24,31 +24,31 @@ You are a helpful database expert that organizes the columns in a SQL table into
 - Key columns such as "id", "name", and primary entity attributes should be placed in the "Core" section.
   - For event-based entities (e.g., disasters, tournaments), consider including id, name, date, location, outcome, and principal participants as core attributes.
   - For non-event entities (e.g., products, customers), consider including id, name, and domain-relevant attributes (e.g., height, weight for athletes) as core attributes.
-  - For join tables, include foreign key columns as core attributes.
+  - Foreign key columns should always be included in the "Core" section.
 """.strip()
 
-COLUMN_GROUP_PROMPT = """
-You are a helpful database expert that identify groups among the columns in a SQL table.
-- A **group** is defined as a set of columns that meet all the following criteria:
-  - Share a common prefix or suffix, varying only by digits (e.g., "revenue_202401", "revenue_202402") or a short standardized code (e.g., airport codes).
-    - The following examples are NOT groups:
-      - "score_math" and "score_reading" — the varying suffixes are descriptive words, not digits or codes.
-      - "revenue" and "revenue_202402" — one is a substring of the other; they don't follow a consistent naming pattern that indicates a group.
-  - Have identical data types.
-  - Contain the same set of values.
-- If a column does not meet the above criteria with any other column, place it in a singleton group.
-- Each column must belong to exactly one group.
-- For singleton groups:
-  - Use the column name as the group name.
-  - If the column name includes uncommon abbreviations, provide a brief explanation as description (e.g., "fx_rt_qtr" = "foreign exchange rate quote").
-    - Otherwise, set the description to null.
-- For non-singleton groups:
-  - Use the shared prefix or suffix with a placeholder for the varying component (e.g., "revenue_{YYYYMM}") as the group name.
-    - The pattern must accurately represent all column names in the group.
-  - Provide a concise description summarizing the range or nature of the variation (e.g., "YYYYMM from 201608 to 202405").
-    - Include brief explanations for uncommon abbreviations.
-  - Ensure that all column names can be reconstructed from the group name and description.
-""".strip()
+# COLUMN_GROUP_PROMPT = """
+# You are a helpful database expert that identify groups among the columns in a SQL table.
+# - A **group** is defined as a set of columns that meet all the following criteria:
+#   - Share a common prefix or suffix, varying only by digits (e.g., "revenue_202401", "revenue_202402") or a short standardized code (e.g., airport codes).
+#     - The following examples are NOT groups:
+#       - "score_math" and "score_reading" — the varying suffixes are descriptive words, not digits or codes.
+#       - "revenue" and "revenue_202402" — one is a substring of the other; they don't follow a consistent naming pattern that indicates a group.
+#   - Have identical data types.
+#   - Contain the same set of values.
+# - If a column does not meet the above criteria with any other column, place it in a singleton group.
+# - Each column must belong to exactly one group.
+# - For singleton groups:
+#   - Use the column name as the group name.
+#   - If the column name includes uncommon abbreviations, provide a brief explanation as description (e.g., "fx_rt_qtr" = "foreign exchange rate quote").
+#     - Otherwise, set the description to null.
+# - For non-singleton groups:
+#   - Use the shared prefix or suffix with a placeholder for the varying component (e.g., "revenue_{YYYYMM}") as the group name.
+#     - The pattern must accurately represent all column names in the group.
+#   - Provide a concise description summarizing the range or nature of the variation (e.g., "YYYYMM from 201608 to 202405").
+#     - Include brief explanations for uncommon abbreviations.
+#   - Ensure that all column names can be reconstructed from the group name and description.
+# """.strip()
 
 
 @dataclass
@@ -64,7 +64,9 @@ class HTableSchemaSynthesizer:
         self.section_clusterer_ = LLMClusterer(
             llm=self.llm,
             instruction=SECTION_PROMPT,
-            format_fn=lambda name, column: json.dumps({"column_name": name, "column_description": formatter.format_column(table, column)}),
+            format_fn=lambda name, column: json.dumps(
+                {"column_name": name, "column_description": formatter.format_column(table, column)}
+            ),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )

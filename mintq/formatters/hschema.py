@@ -94,7 +94,7 @@ class HSchemaFormatter:
         )
 
     def format_section(self, section: HTableSection, table: HTableSchema) -> str:
-        res = f"[{section.name}]\n"
+        res = f"[{section.name}] ({section.description})\n"
         res += "\n".join(
             [
                 self.format_column_group(column_group, self._is_categorical(column_group, table))
