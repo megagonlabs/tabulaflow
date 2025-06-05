@@ -1,5 +1,5 @@
 import collections
-from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, HTableSection
+from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, HTableSection, HTableGroup
 
 
 """
@@ -64,7 +64,7 @@ class HSchemaFormatter:
         res = f"Database: {schema.name}"
         for tg in schema.table_groups:
             table = tg.tables[0]
-            table_id = self._full_table_name(table.name, table.schema_name)
+            table_id = self._full_table_name(tg.name, table.schema_name)
             res += f"\n* {table_id} (Table)"
             if table.primary_key:
                 res += f"\n  - [PK] {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}"
@@ -76,13 +76,13 @@ class HSchemaFormatter:
 
         if include_table_schemas:
             res += "\n\n"
-            res += "\n\n".join([self.format_table(tg.tables[0]) for tg in schema.table_groups])
+            res += "\n\n".join([self.format_table_group(tg) for tg in schema.table_groups])
         return res
 
-    def format_table(self, table: HTableSchema) -> str:
+    def format_table_group(self, tg: HTableGroup) -> str:
         return (
-            f"=== TABLE: {self.format_table_name(table)} ===\n"
-            + "\n\n".join([self.format_section(section, table) for section in table.sections])
+            f"=== TABLE: {self._full_table_name(tg.name, tg.tables[0].schema_name)} ===\n"
+            + "\n\n".join([self.format_section(section, tg.tables[0]) for section in tg.tables[0].sections])
             + "\n=== END OF TABLE ==="
         )
 

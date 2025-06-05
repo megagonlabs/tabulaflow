@@ -52,6 +52,12 @@ class LLMOutput(BaseModel):
     step4_assignments: list[Assignment]
 
 
+class BaseClusterer(Protocol):
+    trajectory_: Trajectory | None
+
+    def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]: ...
+
+
 LLM_CLUSTERER_PROMPT = """
 You are a smart AI responsible for managing and organizing clusters.
 - You will be provided with a current list of clusters and a list of new items that need to be integrated.
@@ -200,7 +206,7 @@ class LLMClusterer:
 
 @dataclass
 class AffixClusterer:
-    trajectory_: Trajectory | None = None
+    trajectory_: None = None
 
     async def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]:
         if len(item_names) != len(set(item_names)):

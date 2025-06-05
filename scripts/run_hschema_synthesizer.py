@@ -55,7 +55,9 @@ async def main():
     for tg in hschema.table_groups:
         table = tg.tables[0]
 
-        table_synthesizer = synthesizer.table_synthesizers_[table.name]
+        table_synthesizer = synthesizer.table_synthesizers_.get(table.name)
+        if table_synthesizer is None:
+            continue
 
         with open(os.path.join(args.output_dir, f"S_{table.name}.xml"), "w") as f:
             if table_synthesizer.section_clusterer_.trajectory_:
