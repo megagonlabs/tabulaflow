@@ -109,6 +109,9 @@ class BaseDBSchema(BaseModel):
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
+    nullable: bool
+    null_ratio: float
+    unique_ratio: float  # the number of unique values (excluding nulls) divided by the number of rows
     examples: list[Any]
 
 

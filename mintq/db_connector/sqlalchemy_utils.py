@@ -68,10 +68,22 @@ def build_schema(conn: sqlalchemy.engine.Connection, name: str, dbms_supports_sc
 
         for table_name in inspector.get_table_names(schema=schema_name):
             # print(f"table_name: {table_name}, schema_name: {schema_name}")
+            tbl = sqlalchemy.table(table_name, schema=schema_name)
+            num_rows = conn.execute(select(func.count()).select_from(tbl)).scalar_one()
+
             columns = []
             for column in inspector.get_columns(table_name, schema=schema_name):
                 col = sqlalchemy.column(column["name"])  # type: ignore
-                tbl = sqlalchemy.table(table_name, schema=schema_name)
+
+                if num_rows > 0:
+                    null_ratio = (
+                        conn.execute(select(func.count()).select_from(tbl).where(col.is_(None))).scalar_one() / num_rows
+                    )
+                    unique_ratio = (
+                        conn.execute(select(func.count(col.distinct())).select_from(tbl)).scalar_one() / num_rows
+                    )
+                else:
+                    null_ratio = unique_ratio = 0.0
 
                 # Note: examples will contain all possible values if cardinality <= 20
                 examples = [
@@ -85,12 +97,15 @@ def build_schema(conn: sqlalchemy.engine.Connection, name: str, dbms_supports_sc
                     SQLColumnSchema(
                         name=column["name"],
                         dtype=column["type"].__visit_name__,
+                        nullable=column["nullable"],
+                        null_ratio=null_ratio,
+                        unique_ratio=unique_ratio,
                         examples=examples,
                     )
                 )
 
             primary_key = inspector.get_pk_constraint(table_name, schema=schema_name)["constrained_columns"]
-            num_rows = conn.execute(select(func.count()).select_from(tbl)).scalar_one()
+
             for fk in inspector.get_foreign_keys(table_name, schema=schema_name):
                 foreign_keys.append(
                     ForeignKeySchema(
