@@ -10,7 +10,7 @@ from mintq.schema import (
     HTableGroup,
     HTableSchema,
 )
-from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer
+from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer, BaseClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 
@@ -56,8 +56,8 @@ class HTableSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 10
     temperature: float = 0.0
-    section_clusterer_: LLMClusterer | None = None
-    column_group_clusterers_: dict[str, LLMClusterer] = field(default_factory=dict)
+    section_clusterer_: BaseClusterer | None = None
+    column_group_clusterers_: dict[str, BaseClusterer] = field(default_factory=dict)
 
     async def build_sections_async(self, table: SQLTableSchema) -> list[HTableSection]:
         formatter = SQLDefaultSchemaFormatter()
@@ -115,6 +115,7 @@ class HSchemaSynthesizer:
     batch_size: int = 10
     temperature: float = 0.0
     table_synthesizers_: dict[str, HTableSchemaSynthesizer] = field(default_factory=dict)
+    table_group_clusterer_: BaseClusterer | None = None
 
     async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
         schema = db_connector.schema
@@ -132,14 +133,18 @@ class HSchemaSynthesizer:
             *[self.table_synthesizers_[table.name].run_async(table) for table in schema.tables]
         )
 
+        clusterer = AffixClusterer()
+        clusters = await clusterer.cluster_async([t.name for t in table_hschemas], table_hschemas)
+        name2table = {t.name: t for t in table_hschemas}
+
         return HSQLSchema(
             name=schema.name,
             table_groups=[
                 HTableGroup(
-                    name=table.name,
-                    tables=[table],
+                    name=c.name,
+                    tables=[name2table[name] for name in c.item_names],
                 )
-                for table in table_hschemas
+                for c in clusters
             ],
             foreign_keys=schema.foreign_keys,
         )
