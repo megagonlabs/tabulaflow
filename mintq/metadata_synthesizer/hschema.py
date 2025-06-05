@@ -10,7 +10,7 @@ from mintq.schema import (
     HTableGroup,
     HTableSchema,
 )
-from mintq.metadata_synthesizer.llm_clusterer import LLMClusterer, AffixClusterer
+from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
 
 
