@@ -12,6 +12,7 @@ from mintq.schema import (
 )
 from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.formatters import SQLDefaultSchemaFormatter
 
 
 SECTION_PROMPT = """
@@ -59,10 +60,11 @@ class HTableSchemaSynthesizer:
     column_group_clusterers_: dict[str, LLMClusterer] = field(default_factory=dict)
 
     async def build_sections_async(self, table: SQLTableSchema) -> list[HTableSection]:
+        formatter = SQLDefaultSchemaFormatter()
         self.section_clusterer_ = LLMClusterer(
             llm=self.llm,
             instruction=SECTION_PROMPT,
-            format_fn=lambda name, column: json.dumps({"column_name": name, "datatype": column.dtype}),
+            format_fn=lambda name, column: json.dumps({"column_name": name, "column_description": formatter.format_column(table, column)}),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
