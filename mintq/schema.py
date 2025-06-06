@@ -115,27 +115,25 @@ class SQLColumnSchema(BaseModel):
     examples: list[Any]
 
 
-class SQLTableSchema(BaseModel):
-    name: str
-    schema_name: str | None = None
-    columns: list[SQLColumnSchema]
-    primary_key: list[str]
-    num_rows: int
-
-
 class ForeignKeySchema(BaseModel):
-    schema_name: str | None = None
-    table: str
     columns: list[str]
     foreign_schema_name: str | None = None
     foreign_table: str
     foreign_columns: list[str]
 
 
+class SQLTableSchema(BaseModel):
+    name: str
+    schema_name: str | None = None
+    columns: list[SQLColumnSchema]
+    primary_key: list[str]
+    num_rows: int
+    foreign_keys: list[ForeignKeySchema]
+
+
 class SQLSchema(BaseDBSchema):
     name: str
     tables: list[SQLTableSchema]
-    foreign_keys: list[ForeignKeySchema]
 
 
 class HColumnGroup(BaseModel):

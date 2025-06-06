@@ -30,13 +30,7 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
             return SQLSchema.model_validate_json(content)
 
     dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
-    if isinstance(engine, sqlalchemy.engine.Engine):
-        loop = asyncio.get_running_loop()
-        with engine.connect() as conn:
-            schema = await loop.run_in_executor(None, build_schema, conn, name, dbms_supports_schema)
-    else:
-        async with engine.connect() as conn:
-            schema = await conn.run_sync(build_schema, name, dbms_supports_schema)
+    schema = await build_schema_async(engine, name, dbms_supports_schema)
 
     if config.cache_enabled:
         with open(cache_path, "w", encoding="utf-8") as f:
@@ -50,82 +44,121 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def build_schema(conn: sqlalchemy.engine.Connection, name: str, dbms_supports_schema: bool) -> SQLSchema:
-    tables = []
+def run_query(conn, stmt) -> list[Any]:
+    return conn.execute(stmt).fetchall()
+
+
+async def run_query_async(engine, stmt) -> list[Any]:
+    if isinstance(engine, sqlalchemy.engine.Engine):
+        with engine.connect() as conn:
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, run_query, conn, stmt)
+    else:
+        async with engine.connect() as conn:
+            return await conn.run_sync(run_query, stmt)
+
+
+async def build_column(
+    engine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
+) -> SQLColumnSchema:
+    col = sqlalchemy.column(column["name"])  # type: ignore
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+
+    if num_rows > 0:
+        num_null = (await run_query_async(engine, select(func.count()).select_from(tbl).where(col.is_(None))))[0][0]
+        null_ratio = num_null / num_rows
+        num_unique = (await run_query_async(engine, select(func.count(col.distinct())).select_from(tbl)))[0][0]
+        unique_ratio = num_unique / num_rows
+    else:
+        null_ratio = unique_ratio = 0.0
+
+    # Note: examples will contain all possible values if cardinality <= 20
+    examples = [
+        row[0]
+        for row in await run_query_async(
+            engine, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21)
+        )
+    ]
+    examples = [_convert(v) for v in examples]
+    return SQLColumnSchema(
+        name=column["name"],
+        dtype=column["type"].__visit_name__,
+        nullable=column["nullable"],
+        null_ratio=null_ratio,
+        unique_ratio=unique_ratio,
+        examples=examples,
+    )
+
+
+class AsyncInspector:
+    def __init__(self, engine: AsyncEngine | sqlalchemy.engine.Engine):
+        self.engine = engine
+
+    def _run_inspector(self, conn, method: str, args, kwargs) -> Any:
+        inspector = inspect(conn)
+        return getattr(inspector, method)(*args, **kwargs)
+
+    def __getattr__(self, method: str) -> Any:
+        async def _stub_async(*args, **kwargs) -> Any:
+            if isinstance(self.engine, sqlalchemy.engine.Engine):
+                with self.engine.connect() as conn:
+                    loop = asyncio.get_running_loop()
+                    return await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
+            else:
+                async with self.engine.connect() as conn:
+                    return await conn.run_sync(self._run_inspector, method, args, kwargs)
+
+        return _stub_async
+
+
+async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTableSchema:
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    num_rows = (await run_query_async(engine, select(func.count()).select_from(tbl)))[0][0]
+
+    async_inspector = AsyncInspector(engine)
+
+    col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+
+    columns = await asyncio.gather(*[build_column(engine, col, table_name, schema_name, num_rows) for col in col_dicts])
+
+    primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
+
     foreign_keys = []
+    for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
+        foreign_keys.append(
+            ForeignKeySchema(
+                columns=fk["constrained_columns"],
+                foreign_schema_name=fk["referred_schema"],
+                foreign_table=fk["referred_table"],
+                foreign_columns=fk["referred_columns"],
+            )
+        )
+    return SQLTableSchema(
+        name=table_name,
+        schema_name=schema_name,
+        columns=columns,
+        primary_key=primary_key,
+        num_rows=num_rows,
+        foreign_keys=foreign_keys,
+    )
 
-    inspector = inspect(conn)  # sqlalchemy does not support async inspect yet as of May 2025
 
-    # if sqlite, there is no schema
+async def build_schema_async(engine, name: str, dbms_supports_schema: bool) -> SQLSchema:
+    async_inspector = AsyncInspector(engine)
+
     if not dbms_supports_schema:
         schema_names = [None]
     else:
-        schema_names = inspector.get_schema_names()  # type: ignore
+        schema_names = await async_inspector.get_schema_names()  # type: ignore
 
+    tasks = []
     for schema_name in schema_names:
         if schema_name and schema_name.lower() == "information_schema":
             continue
 
-        for table_name in inspector.get_table_names(schema=schema_name):
-            # print(f"table_name: {table_name}, schema_name: {schema_name}")
-            tbl = sqlalchemy.table(table_name, schema=schema_name)
-            num_rows = conn.execute(select(func.count()).select_from(tbl)).scalar_one()
+        for table_name in await async_inspector.get_table_names(schema=schema_name):
+            tasks.append(build_table_async(engine, table_name, schema_name))
 
-            columns = []
-            for column in inspector.get_columns(table_name, schema=schema_name):
-                col = sqlalchemy.column(column["name"])  # type: ignore
+    tables = await asyncio.gather(*tasks)
 
-                if num_rows > 0:
-                    null_ratio = (
-                        conn.execute(select(func.count()).select_from(tbl).where(col.is_(None))).scalar_one() / num_rows
-                    )
-                    unique_ratio = (
-                        conn.execute(select(func.count(col.distinct())).select_from(tbl)).scalar_one() / num_rows
-                    )
-                else:
-                    null_ratio = unique_ratio = 0.0
-
-                # Note: examples will contain all possible values if cardinality <= 20
-                examples = [
-                    row[0]
-                    for row in conn.execute(
-                        select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21)
-                    ).fetchall()
-                ]
-                examples = [_convert(v) for v in examples]
-                columns.append(
-                    SQLColumnSchema(
-                        name=column["name"],
-                        dtype=column["type"].__visit_name__,
-                        nullable=column["nullable"],
-                        null_ratio=null_ratio,
-                        unique_ratio=unique_ratio,
-                        examples=examples,
-                    )
-                )
-
-            primary_key = inspector.get_pk_constraint(table_name, schema=schema_name)["constrained_columns"]
-
-            for fk in inspector.get_foreign_keys(table_name, schema=schema_name):
-                foreign_keys.append(
-                    ForeignKeySchema(
-                        schema_name=schema_name,
-                        table=table_name,
-                        columns=fk["constrained_columns"],
-                        foreign_schema_name=fk["referred_schema"],
-                        foreign_table=fk["referred_table"],
-                        foreign_columns=fk["referred_columns"],
-                    )
-                )
-
-            tables.append(
-                SQLTableSchema(
-                    name=table_name,
-                    schema_name=schema_name,
-                    columns=columns,
-                    primary_key=primary_key,
-                    num_rows=num_rows,
-                )
-            )
-
-    return SQLSchema(name=name, tables=tables, foreign_keys=foreign_keys)
+    return SQLSchema(name=name, tables=tables)
