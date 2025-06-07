@@ -3,7 +3,6 @@ import argparse
 import os
 import time
 from mintq.datahub import get_dataset_loader
-from  mintq.formatters import SQLDefaultSchemaFormatter
 
 
 os.environ["MINTQ_CACHE_ENABLED"] = "0"

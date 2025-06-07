@@ -30,12 +30,19 @@ class SnowflakeConnector:
 
     @classmethod
     async def from_credentials_async(
-        cls, name: str, sf_user: str, sf_password: str, sf_account: str, sf_database: str
+        cls,
+        name: str,
+        sf_user: str,
+        sf_password: str,
+        sf_account: str,
+        sf_database: str,
+        pool_size: int = 10,
+        **engine_kwargs: Any,
     ) -> "SnowflakeConnector":
         encoded_user = quote_plus(sf_user)
         encoded_password = quote_plus(sf_password)
         url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}/{sf_database}"
-        engine = create_engine(url, connect_args={"disable_ocsp_checks": True})
+        engine = create_engine(url, connect_args={"disable_ocsp_checks": True}, pool_size=pool_size, **engine_kwargs)
         schema = await load_schema_with_cache_async(name, engine)
         return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 

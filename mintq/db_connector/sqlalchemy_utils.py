@@ -9,7 +9,7 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAXIMUM_CONCURRENT_CONNECTIONS = 5
+MAXIMUM_CONCURRENT_CONNECTIONS = 10
 sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_CONNECTIONS)
 
 
