@@ -9,6 +9,10 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
+MAXIMUM_CONCURRENT_CONNECTIONS = 5
+sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_CONNECTIONS)
+
+
 async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalchemy.engine.Engine) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
@@ -49,16 +53,17 @@ def run_query(conn, stmt) -> list[Any]:
 
 
 async def run_query_async(engine, stmt) -> list[Any]:
-    if isinstance(engine, sqlalchemy.engine.Engine):
-        with engine.connect() as conn:
-            loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, run_query, conn, stmt)
-    else:
-        async with engine.connect() as conn:
-            return await conn.run_sync(run_query, stmt)
+    async with sem:
+        if isinstance(engine, sqlalchemy.engine.Engine):
+            with engine.connect() as conn:
+                loop = asyncio.get_running_loop()
+                return await loop.run_in_executor(None, run_query, conn, stmt)
+        else:
+            async with engine.connect() as conn:
+                return await conn.run_sync(run_query, stmt)
 
 
-async def build_column(
+async def build_column_async(
     engine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
@@ -100,13 +105,14 @@ class AsyncInspector:
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args, **kwargs) -> Any:
-            if isinstance(self.engine, sqlalchemy.engine.Engine):
-                with self.engine.connect() as conn:
-                    loop = asyncio.get_running_loop()
-                    return await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
-            else:
-                async with self.engine.connect() as conn:
-                    return await conn.run_sync(self._run_inspector, method, args, kwargs)
+            async with sem:
+                if isinstance(self.engine, sqlalchemy.engine.Engine):
+                    with self.engine.connect() as conn:
+                        loop = asyncio.get_running_loop()
+                        return await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
+                else:
+                    async with self.engine.connect() as conn:
+                        return await conn.run_sync(self._run_inspector, method, args, kwargs)
 
         return _stub_async
 
@@ -119,7 +125,9 @@ async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTab
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
-    columns = await asyncio.gather(*[build_column(engine, col, table_name, schema_name, num_rows) for col in col_dicts])
+    columns = await asyncio.gather(
+        *[build_column_async(engine, col, table_name, schema_name, num_rows) for col in col_dicts]
+    )
 
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
 
@@ -157,7 +165,7 @@ async def build_schema_async(engine, name: str, dbms_supports_schema: bool) -> S
             continue
 
         for table_name in await async_inspector.get_table_names(schema=schema_name):
-            tasks.append(build_table_async(engine, table_name, schema_name))
+            tasks.append(asyncio.create_task(build_table_async(engine, table_name, schema_name)))
 
     tables = await asyncio.gather(*tasks)
 
