@@ -126,10 +126,7 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     if not table_schema.columns:
         ctx.usage.incr(Usage(details={"list_columns_table_has_no_columns": 1}))
         return f"(table {table} has no columns)"
-    res = f"[Table] {table}\n"
-    res += "\n".join([ctx.deps.formatter.format_column(table_schema, col) for col in table_schema.columns])
-    return res
-
+    return ctx.deps.formatter.format_table(table_schema)
 
 async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
     """
@@ -233,7 +230,7 @@ class SQLAgent:
         t0 = time.time()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.formatter.format(db_connector.schema, include_table_schemas=False),
+            schema=self.formatter.format(db_connector.schema, pk_fk_column_only=True),
             hints=task.evidence,
             question=task.question,
             language=task.language,

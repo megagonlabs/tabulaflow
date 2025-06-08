@@ -8,7 +8,6 @@ class SQLDefaultSchemaFormatter:
     name: ClassVar[str] = "sql_default"
     quote_char: str = '"'
     example_max_chars: int = 100
-    include_non_pk_fk_columns: bool = True
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -30,13 +29,13 @@ class SQLDefaultSchemaFormatter:
     def format_table_name(self, table: SQLTableSchema) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
-    def format(self, schema: SQLSchema) -> str:
+    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False) -> str:
         res = f"Database: {schema.name}"
         res += "\n\n"
-        res += "\n\n".join([self.format_table(table) for table in schema.tables])
+        res += "\n\n".join([self.format_table(table, pk_fk_column_only) for table in schema.tables])
         return res
 
-    def format_table(self, table: SQLTableSchema) -> str:
+    def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False) -> str:
         for fk in table.foreign_keys:
             if len(fk.columns) > 1:
                 raise NotImplementedError(f"Composite foreign keys are not supported: {fk.columns} in TABLE{table.name}")
@@ -46,7 +45,7 @@ class SQLDefaultSchemaFormatter:
             [
                 self.format_column(column)
                 for column in table.columns
-                if self.include_non_pk_fk_columns or column.primary_key_type or column.foreign_keys
+                if not pk_fk_column_only or column.primary_key_type or column.foreign_keys
             ]
         )
         res += "\n=== END OF TABLE ==="
