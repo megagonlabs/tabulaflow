@@ -41,7 +41,7 @@ class SQLDefaultSchemaFormatter:
             if len(fk.columns) > 1:
                 raise NotImplementedError(f"Composite foreign keys are not supported: {fk.columns} in TABLE{table.name}")
 
-        res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ===\n"
+        res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows) ===\n"
         res += "\n".join(
             [
                 self.format_column(column)
@@ -54,6 +54,10 @@ class SQLDefaultSchemaFormatter:
 
     def format_column(self, column: SQLColumnSchema) -> str:
         res = f"- {self._quote_if_needed(column.name)}: {column.dtype}"
+        if column.null_ratio == 1.0:
+            res += " (all values are null)"
+        elif column.null_ratio > 0.0:
+            res += " NULLABLE"
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR") and 0 < column.num_unique <= 20 and column.unique_ratio < 0.01
         )
@@ -61,9 +65,7 @@ class SQLDefaultSchemaFormatter:
             valid_values = [self._quote(self._truncate(v)) for v in column.examples]
             valid_values = sorted(valid_values)
             res += " {" + ", ".join(valid_values) + "}"
-        elif not column.examples:
-            res += " (all values are null)"
-        else:
+        elif column.examples:
             example = column.examples[0]
             if isinstance(example, str):
                 example = self._quote(example)
