@@ -1,6 +1,7 @@
 import os
 import hashlib
 from typing import Any
+import collections
 import asyncio
 import sqlalchemy
 from sqlalchemy import select, func, inspect
@@ -130,8 +131,11 @@ async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTab
     columns = await asyncio.gather(
         *[build_column_async(engine, col, table_name, schema_name, num_rows) for col in col_dicts]
     )
+    name2col = {col.name: col for col in columns}
 
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
+    for col in primary_key:
+        name2col[col].primary_key_type = "single" if len(primary_key) == 1 else "composite"
 
     foreign_keys = []
     for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
@@ -143,6 +147,10 @@ async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTab
                 foreign_columns=fk["referred_columns"],
             )
         )
+    for fk in foreign_keys:
+        for col in fk.columns:
+            name2col[col].foreign_keys.append(fk)
+
     return SQLTableSchema(
         name=table_name,
         schema_name=schema_name,

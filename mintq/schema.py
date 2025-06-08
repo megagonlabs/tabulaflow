@@ -106,6 +106,13 @@ class BaseDBSchema(BaseModel):
     pass
 
 
+class ForeignKeySchema(BaseModel):
+    columns: list[str]
+    foreign_schema_name: str | None = None
+    foreign_table: str
+    foreign_columns: list[str]
+
+
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
@@ -114,13 +121,8 @@ class SQLColumnSchema(BaseModel):
     num_unique: int
     unique_ratio: float  # the number of unique values (excluding nulls) divided by the number of rows
     examples: list[Any]
-
-
-class ForeignKeySchema(BaseModel):
-    columns: list[str]
-    foreign_schema_name: str | None = None
-    foreign_table: str
-    foreign_columns: list[str]
+    primary_key_type: Literal["single", "composite"] | None = None
+    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # include composite foreign keys
 
 
 class SQLTableSchema(BaseModel):
