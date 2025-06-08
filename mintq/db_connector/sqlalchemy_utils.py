@@ -76,6 +76,7 @@ async def build_column_async(
         unique_ratio = num_unique / num_rows
     else:
         null_ratio = unique_ratio = 0.0
+        num_unique = 0
 
     # Note: examples will contain all possible values if cardinality <= 20
     examples = [
@@ -90,6 +91,7 @@ async def build_column_async(
         dtype=column["type"].__visit_name__,
         nullable=column["nullable"],
         null_ratio=null_ratio,
+        num_unique=num_unique,
         unique_ratio=unique_ratio,
         examples=examples,
     )
