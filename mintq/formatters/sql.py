@@ -1,6 +1,5 @@
 from typing import Optional, ClassVar
 from dataclasses import dataclass
-import collections
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
@@ -9,6 +8,7 @@ class SQLDefaultSchemaFormatter:
     name: ClassVar[str] = "sql_default"
     quote_char: str = '"'
     example_max_chars: int = 100
+    include_non_pk_fk_columns: bool = True
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -42,7 +42,13 @@ class SQLDefaultSchemaFormatter:
                 raise NotImplementedError(f"Composite foreign keys are not supported: {fk.columns} in TABLE{table.name}")
 
         res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ===\n"
-        res += "\n".join([self.format_column(column) for column in table.columns])
+        res += "\n".join(
+            [
+                self.format_column(column)
+                for column in table.columns
+                if self.include_non_pk_fk_columns or column.primary_key_type or column.foreign_keys
+            ]
+        )
         res += "\n=== END OF TABLE ==="
         return res
 
