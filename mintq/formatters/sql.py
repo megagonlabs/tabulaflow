@@ -79,7 +79,7 @@ class SQLDefaultSchemaFormatter:
         for fk in column.foreign_keys:
             is_composite_fk = len(fk.columns) > 1
             res += (
-                f" [FK: -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}]"
+                f" [FK -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}]"
                 if not is_composite_fk
                 else " [FK-composite]"
             )
