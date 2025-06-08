@@ -1,4 +1,6 @@
 import collections
+from typing import ClassVar
+from dataclasses import dataclass
 from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, HTableSection, HTableGroup
 
 
@@ -29,12 +31,11 @@ DATABASE: european_football_2
 """
 
 
+@dataclass
 class HSchemaFormatter:
-    name = "hschema"
-
-    def __init__(self, quote_char: str = '"', example_max_chars: int = 100):
-        self.quote_char = quote_char
-        self.example_max_chars = example_max_chars
+    name: ClassVar[str] = "hschema"
+    quote_char: str = '"'
+    example_max_chars: int = 100
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
