@@ -36,11 +36,18 @@ class SQLDefaultSchemaFormatter:
         return res
 
     def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False) -> str:
+        res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows) ===\n"
+
+        composite_fks = []
         for fk in table.foreign_keys:
             if len(fk.columns) > 1:
-                raise NotImplementedError(f"Composite foreign keys are not supported: {fk.columns} in TABLE{table.name}")
+                columns = "(" + ", ".join([self._quote_if_needed(c) for c in fk.columns]) + ")"
+                fk_columns = "(" + ", ".join([self._quote_if_needed(c) for c in fk.foreign_columns]) + ")"
+                fk_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
+                composite_fks.append(f"* {columns} -> {fk_table}.{fk_columns}")
+        if composite_fks:
+            res += "[Composite FKs]\n" + "\n".join(composite_fks) + "\n\n"
 
-        res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows) ===\n"
         res += "\n".join(
             [
                 self.format_column(column)

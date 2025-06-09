@@ -128,6 +128,7 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
         return f"(table {table} has no columns)"
     return ctx.deps.formatter.format_table(table_schema)
 
+
 async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
     """
     Search for values in a column of a table that match any of the keywords.
