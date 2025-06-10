@@ -3,7 +3,7 @@ import hashlib
 from typing import Any
 import asyncio
 import sqlalchemy
-from sqlalchemy import select, func, inspect
+from sqlalchemy import select, func, distinct, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine
 from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema
 from mintq.config import config
@@ -57,10 +57,11 @@ async def run_query_async(engine, stmt) -> list[Any]:
         if isinstance(engine, sqlalchemy.engine.Engine):
             with engine.connect() as conn:
                 loop = asyncio.get_running_loop()
-                return await loop.run_in_executor(None, run_query, conn, stmt)
+                res = await loop.run_in_executor(None, run_query, conn, stmt)
         else:
             async with engine.connect() as conn:
-                return await conn.run_sync(run_query, stmt)
+                res = await conn.run_sync(run_query, stmt)
+    return res
 
 
 async def build_column_async(
@@ -69,23 +70,32 @@ async def build_column_async(
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
 
+    tasks = []
+    tasks.append(
+        asyncio.create_task(
+            run_query_async(engine, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
+        )
+    )
     if num_rows > 0:
-        num_null = (await run_query_async(engine, select(func.count()).select_from(tbl).where(col.is_(None))))[0][0]
+        tasks.append(
+            asyncio.create_task(run_query_async(engine, select(func.count()).select_from(tbl).where(col.is_(None))))
+        )
+        tasks.append(asyncio.create_task(run_query_async(engine, select(func.count(distinct(col))).select_from(tbl))))
+
+    results = await asyncio.gather(*tasks)
+
+    if num_rows > 0:
+        num_null = results[1][0][0]
+        num_unique = results[2][0][0]
         null_ratio = num_null / num_rows
-        num_unique = (await run_query_async(engine, select(func.count(col.distinct())).select_from(tbl)))[0][0]
         unique_ratio = num_unique / num_rows
     else:
         null_ratio = unique_ratio = 0.0
         num_unique = 0
 
     # Note: examples will contain all possible values if cardinality <= 20
-    examples = [
-        row[0]
-        for row in await run_query_async(
-            engine, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21)
-        )
-    ]
-    examples = [_convert(v) for v in examples]
+    examples = [_convert(row[0]) for row in results[0]]
+
     return SQLColumnSchema(
         name=column["name"],
         dtype=column["type"].__visit_name__,
@@ -111,10 +121,11 @@ class AsyncInspector:
                 if isinstance(self.engine, sqlalchemy.engine.Engine):
                     with self.engine.connect() as conn:
                         loop = asyncio.get_running_loop()
-                        return await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
+                        res = await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
                 else:
                     async with self.engine.connect() as conn:
-                        return await conn.run_sync(self._run_inspector, method, args, kwargs)
+                        res = await conn.run_sync(self._run_inspector, method, args, kwargs)
+            return res
 
         return _stub_async
 
