@@ -16,7 +16,7 @@ class SQLAlchemyConnector:
 
     @classmethod
     async def from_url_async(
-        cls, name: str, url: str | SQLAlchemyURL, pool_size: int = 64, **engine_kwargs: Any
+        cls, name: str, url: str | SQLAlchemyURL, pool_size: int = 32, **engine_kwargs: Any
     ) -> "SQLAlchemyConnector":
         # Ensure echo is False by default if not specified, to avoid excessive logging from engine
         engine_kwargs.setdefault("echo", False)

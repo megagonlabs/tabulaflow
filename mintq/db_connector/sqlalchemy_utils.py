@@ -9,12 +9,12 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAX_CONCURRENT_CONNECTIONS_DEFAULT = 16
+MAX_CONCURRENT_CONNECTIONS_DEFAULT = 32
 
 MAX_CONCURRENT_CONNECTIONS_PER_DBMS = {
-    "mysql": 64,
-    "sqlite": 64,
-    "postgresql": 64,
+    "mysql": 32,
+    "sqlite": 32,
+    "postgresql": 32,
     "snowflake": 16,
 }
 
