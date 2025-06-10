@@ -156,6 +156,7 @@ class HTableSchema(BaseModel):
     schema_name: str | None = None
     primary_key: list[str]
     num_rows: int
+    foreign_keys: list[ForeignKeySchema]
     sections: list[HTableSection]
 
 
@@ -167,7 +168,6 @@ class HTableGroup(BaseModel):
 class HSQLSchema(BaseModel):
     name: str
     table_groups: list[HTableGroup]
-    foreign_keys: list[ForeignKeySchema]
 
 
 class ERDiagramRelation(BaseModel):

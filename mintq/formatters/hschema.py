@@ -57,28 +57,8 @@ class HSchemaFormatter:
     def format_table_name(self, table: HTableSchema) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
-    def format(self, schema: HSQLSchema, include_foreign_keys: bool = True, include_table_schemas: bool = True) -> str:
-        table_id_to_fks = collections.defaultdict(list)
-        for fk in schema.foreign_keys:
-            table_id_to_fks[self._full_table_name(fk.table, fk.schema_name)].append(fk)
-
-        res = f"Database: {schema.name}"
-        for tg in schema.table_groups:
-            table = tg.tables[0]
-            table_id = self._full_table_name(tg.name, table.schema_name)
-            res += f"\n* {table_id} (Table)"
-            if table.primary_key:
-                res += f"\n  - [PK] {', '.join([self._quote_if_needed(pk) for pk in table.primary_key])}"
-            if include_foreign_keys:
-                for fk in table_id_to_fks[table_id]:
-                    if len(fk.columns) > 1 or len(fk.foreign_columns) > 1:
-                        raise ValueError(f"Multiple foreign keys are not supported: {fk}")
-                    res += f"\n  - [FK] {fk.columns[0]} -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}"
-
-        if include_table_schemas:
-            res += "\n\n"
-            res += "\n\n".join([self.format_table_group(tg) for tg in schema.table_groups])
-        return res
+    def format(self, schema: HSQLSchema) -> str:
+        return f"Database: {schema.name}\n\n" + "\n\n".join([self.format_table_group(tg) for tg in schema.table_groups])
 
     def format_table_group(self, tg: HTableGroup) -> str:
         return (
@@ -87,30 +67,23 @@ class HSchemaFormatter:
             + "\n=== END OF TABLE ==="
         )
 
-    def _is_categorical(self, cg: HColumnGroup, table: HTableSchema) -> bool:
-        return (
-            cg.columns[0].dtype in ("TEXT", "VARCHAR")
-            and 0 < len(cg.columns[0].examples) <= 20
-            and len(cg.columns[0].examples) / table.num_rows < 0.01
-        )
-
     def format_section(self, section: HTableSection, table: HTableSchema) -> str:
         res = f"[{section.name}] ({section.description})\n"
-        res += "\n".join(
-            [
-                self.format_column_group(column_group, self._is_categorical(column_group, table))
-                for column_group in section.column_groups
-            ]
-        )
+        res += "\n".join([self.format_column_group(column_group) for column_group in section.column_groups])
         return res
 
-    def format_column_group(self, column_group: HColumnGroup, is_categorical: bool) -> str:
+    def format_column_group(self, column_group: HColumnGroup) -> str:
         sample_col = column_group.columns[0]
         if column_group.description:
             desc = f" ({column_group.description})"
         else:
             desc = ""
         res = f"- {self._quote_if_needed(column_group.name)}{desc}: {sample_col.dtype}"
+        is_categorical = (
+            sample_col.dtype in ("TEXT", "VARCHAR")
+            and 0 < sample_col.num_unique <= 20
+            and sample_col.unique_ratio < 0.01
+        )
         if is_categorical:
             valid_values = [self._quote(self._truncate(v)) for v in sample_col.examples]
             valid_values = sorted(valid_values)

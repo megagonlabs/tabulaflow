@@ -65,7 +65,7 @@ class HTableSchemaSynthesizer:
             llm=self.llm,
             instruction=SECTION_PROMPT,
             format_fn=lambda name, column: json.dumps(
-                {"column_name": name, "column_description": formatter.format_column(table, column)}
+                {"column_name": name, "column_description": formatter.format_column(column)}
             ),
             batch_size=self.batch_size,
             temperature=self.temperature,
@@ -105,6 +105,7 @@ class HTableSchemaSynthesizer:
             schema_name=table.schema_name,
             primary_key=table.primary_key,
             num_rows=table.num_rows,
+            foreign_keys=table.foreign_keys,
             sections=sections,
         )
 
@@ -145,6 +146,5 @@ class HSchemaSynthesizer:
                     tables=[name2table[name] for name in c.item_names],
                 )
                 for c in clusters
-            ],
-            foreign_keys=schema.foreign_keys,
+            ]
         )
