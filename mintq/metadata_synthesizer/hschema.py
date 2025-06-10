@@ -1,6 +1,8 @@
 import asyncio
 import json
+import collections
 from dataclasses import dataclass, field
+from typing import Any
 from mintq.schema import (
     SQLTableSchema,
     SQLColumnSchema,
@@ -8,7 +10,7 @@ from mintq.schema import (
     HColumnGroup,
     HSQLSchema,
     HTableGroup,
-    HTableSchema,
+    ForeignKeySchema,
 )
 from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer, BaseClusterer
 from mintq.db_connector import BaseAsyncSQLDBConnector
@@ -52,62 +54,111 @@ You are a helpful database expert that organizes the columns in a SQL table into
 
 
 @dataclass
-class HTableSchemaSynthesizer:
+class TableSectionSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 10
     temperature: float = 0.0
     section_clusterer_: BaseClusterer | None = None
     column_group_clusterers_: dict[str, BaseClusterer] = field(default_factory=dict)
 
-    async def build_sections_async(self, table: SQLTableSchema) -> list[HTableSection]:
-        formatter = SQLDefaultSchemaFormatter()
+    def _column_digest(self, column: SQLColumnSchema) -> Any:
+        """
+        The digest of a column includes its data type, values set if categorical, primary key type, and foreign keys.
+        Columns in the same group must have the same digest.
+        """
+        is_categorical = (
+            column.dtype in ("TEXT", "VARCHAR") and 0 < column.num_unique <= 20 and column.unique_ratio < 0.01
+        )
+        values = tuple(sorted(column.examples)) if is_categorical else None
+        foreign_keys = tuple(
+            sorted(
+                [
+                    (
+                        tuple([c if c != column.name else "[MASK]" for c in fk.columns]),
+                        fk.foreign_schema_name,
+                        fk.foreign_table,
+                        tuple(fk.foreign_columns),
+                    )
+                    for fk in column.foreign_keys
+                ]
+            )
+        )
+        return (column.dtype, is_categorical, values, column.primary_key_type, foreign_keys)
+
+    @staticmethod
+    def _format_column_group(cg: HColumnGroup) -> str:
+        return SQLDefaultSchemaFormatter().format_column(
+            SQLColumnSchema(
+                name=cg.name,
+                dtype=cg.dtype,
+                nullable=cg.nullable,
+                null_ratio=cg.null_ratio,
+                num_unique=cg.num_unique,
+                unique_ratio=cg.unique_ratio,
+                examples=cg.examples,
+                primary_key_type=cg.primary_key_type,
+                foreign_keys=cg.foreign_keys,
+            )
+        )
+
+    async def run_async(self, tables: list[SQLTableSchema]) -> list[HTableSection]:
+        digest2columns = collections.defaultdict(list)
+        for column in tables[0].columns:
+            digest2columns[self._column_digest(column)].append(column)
+
+        name2column = {c.name: c for c in tables[0].columns}
+        column_groups = []
+        clusterer = AffixClusterer()
+        for _, columns_with_same_digest in digest2columns.items():
+            clusters = await clusterer.cluster_async(
+                [c.name for c in columns_with_same_digest], columns_with_same_digest
+            )
+            for cluster in clusters:
+                cols = [name2column[name] for name in cluster.item_names]
+                column_groups.append(
+                    HColumnGroup(
+                        name=cluster.name,
+                        description=cluster.description,
+                        column_names=cluster.item_names,
+                        dtype=cols[0].dtype,
+                        nullable=any(c.nullable for c in cols),
+                        null_ratio=sum(c.null_ratio for c in cols) / len(cols),
+                        num_unique=cols[0].num_unique,
+                        unique_ratio=cols[0].unique_ratio,
+                        examples=cols[0].examples,
+                        primary_key_type=cols[0].primary_key_type,
+                        foreign_keys=[
+                            ForeignKeySchema(
+                                # replace the column name with the column group name
+                                columns=[s if s != cols[0].name else cluster.name for s in fk.columns],
+                                foreign_schema_name=fk.foreign_schema_name,
+                                foreign_table=fk.foreign_table,
+                                foreign_columns=fk.foreign_columns,
+                            )
+                            for fk in cols[0].foreign_keys
+                        ],
+                    )
+                )
+
         self.section_clusterer_ = LLMClusterer(
             llm=self.llm,
             instruction=SECTION_PROMPT,
-            format_fn=lambda name, column: json.dumps(
-                {"column_name": name, "column_description": formatter.format_column(column)}
+            format_fn=lambda name, column_group: json.dumps(
+                {"column_name": name, "column_description": self._format_column_group(column_group)}
             ),
             batch_size=self.batch_size,
             temperature=self.temperature,
         )
-        clusters = await self.section_clusterer_.cluster_async([c.name for c in table.columns], table.columns)
-
-        name2column = {c.name: c for c in table.columns}
-        all_groups = await asyncio.gather(
-            *[self.build_groups_async(c.name, [name2column[name] for name in c.item_names]) for c in clusters]
-        )
-
+        clusters = await self.section_clusterer_.cluster_async([cg.name for cg in column_groups], column_groups)
+        name2cg = {cg.name: cg for cg in column_groups}
         return [
             HTableSection(
-                name=c.name,
-                description=c.description,
-                column_groups=groups,
+                name=cluster.name,
+                description=cluster.description,
+                column_groups=[name2cg[name] for name in cluster.item_names],
             )
-            for c, groups in zip(clusters, all_groups)
+            for cluster in clusters
         ]
-
-    async def build_groups_async(self, section_name: str, columns: list[SQLColumnSchema]) -> list[HColumnGroup]:
-        clusterer = AffixClusterer()
-        self.column_group_clusterers_[section_name] = clusterer
-        clusters = await clusterer.cluster_async([c.name for c in columns], columns)
-
-        name2column = {c.name: c for c in columns}
-        return [
-            HColumnGroup(name=c.name, description=c.description, columns=[name2column[name] for name in c.item_names])
-            for c in clusters
-        ]
-
-    async def run_async(self, table: SQLTableSchema) -> HTableSchema:
-        sections = await self.build_sections_async(table)
-
-        return HTableSchema(
-            name=table.name,
-            schema_name=table.schema_name,
-            primary_key=table.primary_key,
-            num_rows=table.num_rows,
-            foreign_keys=table.foreign_keys,
-            sections=sections,
-        )
 
 
 @dataclass
@@ -115,36 +166,65 @@ class HSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 10
     temperature: float = 0.0
-    table_synthesizers_: dict[str, HTableSchemaSynthesizer] = field(default_factory=dict)
-    table_group_clusterer_: BaseClusterer | None = None
+    table_section_synthesizers_: list[TableSectionSynthesizer] = field(default_factory=list)
+
+    def _table_digest(self, table: SQLTableSchema) -> Any:
+        """
+        The digest of a table includes its column names and data types, the primary key, and the foreign keys.
+        Tables in the same group must have the same digest.
+        """
+        schema_name = table.schema_name
+        columns = tuple(sorted([(c.name, c.dtype) for c in table.columns]))
+        primary_key = tuple(sorted(table.primary_key))
+        foreign_keys = tuple(
+            sorted(
+                [
+                    (tuple(fk.columns), fk.foreign_schema_name, fk.foreign_table, tuple(fk.foreign_columns))
+                    for fk in table.foreign_keys
+                ]
+            )
+        )
+        return (schema_name, columns, primary_key, foreign_keys)
 
     async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
         schema = db_connector.schema
 
-        self.table_synthesizers_ = {
-            table.name: HTableSchemaSynthesizer(
+        digest2tables = collections.defaultdict(list)
+        for table in schema.tables:
+            digest2tables[self._table_digest(table)].append(table)
+
+        table_groups = []
+        clusterer = AffixClusterer()
+        name2table = {t.name: t for t in schema.tables}
+        for _, tables in digest2tables.items():
+            clusters = await clusterer.cluster_async([t.name for t in tables], tables)
+            for c in clusters:
+                table_groups.append((c.name, [name2table[name] for name in c.item_names]))
+
+        self.table_section_synthesizers_ = [
+            TableSectionSynthesizer(
                 llm=self.llm,
                 batch_size=self.batch_size,
                 temperature=self.temperature,
             )
-            for table in schema.tables
-        }
+            for _ in table_groups
+        ]
 
-        table_hschemas = await asyncio.gather(
-            *[self.table_synthesizers_[table.name].run_async(table) for table in schema.tables]
+        all_sections = await asyncio.gather(
+            *[synth.run_async(tables) for synth, (_, tables) in zip(self.table_section_synthesizers_, table_groups)]
         )
-
-        clusterer = AffixClusterer()
-        clusters = await clusterer.cluster_async([t.name for t in table_hschemas], table_hschemas)
-        name2table = {t.name: t for t in table_hschemas}
 
         return HSQLSchema(
             name=schema.name,
             table_groups=[
                 HTableGroup(
-                    name=c.name,
-                    tables=[name2table[name] for name in c.item_names],
+                    name=name,
+                    table_names=[t.name for t in tables],
+                    schema_name=tables[0].schema_name,
+                    primary_key=tables[0].primary_key,
+                    foreign_keys=tables[0].foreign_keys,
+                    sections=sections,
                 )
-                for c in clusters
-            ]
+                for ((name, tables), sections) in zip(table_groups, all_sections)
+            ],
         )

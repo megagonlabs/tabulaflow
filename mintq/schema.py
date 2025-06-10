@@ -119,7 +119,7 @@ class SQLColumnSchema(BaseModel):
     nullable: bool
     null_ratio: float
     num_unique: int
-    unique_ratio: float  # the number of unique values (excluding nulls) divided by the number of rows
+    unique_ratio: float
     examples: list[Any]
     primary_key_type: Literal["single", "composite"] | None = None
     foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # include composite foreign keys
@@ -142,7 +142,17 @@ class SQLSchema(BaseDBSchema):
 class HColumnGroup(BaseModel):
     name: str
     description: str | None
-    columns: list[SQLColumnSchema]
+    column_names: list[str]
+    dtype: str
+    nullable: bool
+    null_ratio: float
+    num_unique: int
+    unique_ratio: float
+    examples: list[Any]
+    primary_key_type: Literal["single", "composite"] | None = None
+    foreign_keys: list[ForeignKeySchema] = Field(
+        default_factory=list
+    )  # in hschemas, the column names in fk become column group names
 
 
 class HTableSection(BaseModel):
@@ -151,18 +161,13 @@ class HTableSection(BaseModel):
     column_groups: list[HColumnGroup]
 
 
-class HTableSchema(BaseModel):
-    name: str
-    schema_name: str | None = None
-    primary_key: list[str]
-    num_rows: int
-    foreign_keys: list[ForeignKeySchema]
-    sections: list[HTableSection]
-
-
 class HTableGroup(BaseModel):
     name: str
-    tables: list[HTableSchema]
+    table_names: list[str]
+    schema_name: str | None = None
+    primary_key: list[str]
+    foreign_keys: list[ForeignKeySchema]
+    sections: list[HTableSection]
 
 
 class HSQLSchema(BaseModel):

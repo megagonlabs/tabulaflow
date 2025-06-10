@@ -1,7 +1,7 @@
 import collections
 from typing import ClassVar
 from dataclasses import dataclass
-from mintq.schema import HSQLSchema, HTableSchema, HColumnGroup, HTableSection, HTableGroup
+from mintq.schema import HSQLSchema, HColumnGroup, HTableSection, HTableGroup
 
 
 """
@@ -54,7 +54,7 @@ class HSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format_table_name(self, table: HTableSchema) -> str:
+    def format_table_name(self, table) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
     def format(self, schema: HSQLSchema) -> str:
@@ -67,7 +67,7 @@ class HSchemaFormatter:
             + "\n=== END OF TABLE ==="
         )
 
-    def format_section(self, section: HTableSection, table: HTableSchema) -> str:
+    def format_section(self, section: HTableSection, table) -> str:
         res = f"[{section.name}] ({section.description})\n"
         res += "\n".join([self.format_column_group(column_group) for column_group in section.column_groups])
         return res

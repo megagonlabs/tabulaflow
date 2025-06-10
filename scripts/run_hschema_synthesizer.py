@@ -4,7 +4,7 @@ import time
 import argparse
 import asyncio
 from mintq.datahub import get_dataset_loader
-from mintq.formatters.hschema import HSchemaFormatter
+# from mintq.formatters.hschema import HSchemaFormatter
 from mintq.schema import HSQLSchema
 from mintq.metadata_synthesizer.hschema import HSchemaSynthesizer
 from mintq.utils import format_trajectory
@@ -41,8 +41,9 @@ async def main():
     with open("cache/hschema.json", "r") as f:
         hschema = HSQLSchema.model_validate_json(f.read())
 
-    formatter = HSchemaFormatter()
-    hschema_str = formatter.format(hschema)
+    # formatter = HSchemaFormatter()
+    # hschema_str = formatter.format(hschema)
+    hschema_str = hschema.model_dump_json(indent=2)
     print(hschema_str)
 
     if os.path.exists(args.output_dir):
