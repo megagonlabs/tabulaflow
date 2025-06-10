@@ -62,36 +62,35 @@ class HSchemaFormatter:
 
     def format_table_group(self, tg: HTableGroup) -> str:
         return (
-            f"=== TABLE: {self._full_table_name(tg.name, tg.tables[0].schema_name)} ===\n"
-            + "\n\n".join([self.format_section(section, tg.tables[0]) for section in tg.tables[0].sections])
+            f"=== TABLE: {self._full_table_name(tg.name, tg.schema_name)} ===\n"
+            + "\n\n".join([self.format_section(section) for section in tg.sections])
             + "\n=== END OF TABLE ==="
         )
 
-    def format_section(self, section: HTableSection, table) -> str:
+    def format_section(self, section: HTableSection) -> str:
         res = f"[{section.name}] ({section.description})\n"
         res += "\n".join([self.format_column_group(column_group) for column_group in section.column_groups])
         return res
 
     def format_column_group(self, column_group: HColumnGroup) -> str:
-        sample_col = column_group.columns[0]
         if column_group.description:
             desc = f" ({column_group.description})"
         else:
             desc = ""
-        res = f"- {self._quote_if_needed(column_group.name)}{desc}: {sample_col.dtype}"
+        res = f"- {self._quote_if_needed(column_group.name)}{desc}: {column_group.dtype}"
         is_categorical = (
-            sample_col.dtype in ("TEXT", "VARCHAR")
-            and 0 < sample_col.num_unique <= 20
-            and sample_col.unique_ratio < 0.01
+            column_group.dtype in ("TEXT", "VARCHAR")
+            and 0 < column_group.num_unique <= 20
+            and column_group.unique_ratio < 0.01
         )
         if is_categorical:
-            valid_values = [self._quote(self._truncate(v)) for v in sample_col.examples]
+            valid_values = [self._quote(self._truncate(v)) for v in column_group.examples]
             valid_values = sorted(valid_values)
             res += " {" + ", ".join(valid_values) + "}"
-        elif not sample_col.examples:
+        elif not column_group.examples:
             res += " (all values are null)"
         else:
-            example = sample_col.examples[0]
+            example = column_group.examples[0]
             if isinstance(example, str):
                 example = self._quote(example)
             elif isinstance(example, float):
