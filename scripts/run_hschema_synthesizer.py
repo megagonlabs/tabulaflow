@@ -4,7 +4,7 @@ import time
 import argparse
 import asyncio
 from mintq.datahub import get_dataset_loader
-# from mintq.formatters.hschema import HSchemaFormatter
+from mintq.formatters.hschema import HSchemaFormatter
 from mintq.schema import HSQLSchema
 from mintq.metadata_synthesizer.hschema import HSchemaSynthesizer
 from mintq.utils import format_trajectory
@@ -41,9 +41,8 @@ async def main():
     with open("cache/hschema.json", "r") as f:
         hschema = HSQLSchema.model_validate_json(f.read())
 
-    # formatter = HSchemaFormatter()
-    # hschema_str = formatter.format(hschema)
-    hschema_str = hschema.model_dump_json(indent=2)
+    formatter = HSchemaFormatter()
+    hschema_str = formatter.format(hschema)
     print(hschema_str)
 
     if os.path.exists(args.output_dir):
@@ -53,21 +52,10 @@ async def main():
     with open(os.path.join(args.output_dir, "hschema.txt"), "w") as f:
         f.write(hschema_str)
 
-    for tg in hschema.table_groups:
-        table = tg.tables[0]
-
-        table_synthesizer = synthesizer.table_synthesizers_.get(table.name)
-        if table_synthesizer is None:
-            continue
-
-        with open(os.path.join(args.output_dir, f"S_{table.name}.xml"), "w") as f:
-            if table_synthesizer.section_clusterer_.trajectory_:
-                f.write(format_trajectory(table_synthesizer.section_clusterer_.trajectory_))
-
-        for section_name, clusterer in table_synthesizer.column_group_clusterers_.items():
-            if clusterer.trajectory_:
-                with open(os.path.join(args.output_dir, f"CG_{table.name}_{section_name}.xml"), "w") as f:
-                    f.write(format_trajectory(clusterer.trajectory_))
+    for tg, synth in zip(hschema.table_groups, synthesizer.table_section_synthesizers_):
+        if synth.section_clusterer_ and synth.section_clusterer_.trajectory_:
+            with open(os.path.join(args.output_dir, f"S_{tg.name}.xml"), "w") as f:
+                f.write(format_trajectory(synth.section_clusterer_.trajectory_))
 
 
 if __name__ == "__main__":
