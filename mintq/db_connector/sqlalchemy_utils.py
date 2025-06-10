@@ -9,8 +9,48 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAXIMUM_CONCURRENT_CONNECTIONS = 16
-sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_CONNECTIONS)
+MAX_CONCURRENT_CONNECTIONS_DEFAULT = 16
+
+MAX_CONCURRENT_CONNECTIONS_PER_DBMS = {
+    "mysql": 64,
+    "sqlite": 64,
+    "postgresql": 64,
+    "snowflake": 16,
+}
+
+_semaphores = {}
+_semaphores_lock = asyncio.Lock()
+
+
+async def get_semaphore_async(engine: sqlalchemy.engine.Engine) -> asyncio.Semaphore:
+    dbms_id = f"{engine.dialect.name}://{engine.url.host}:{engine.url.port}"
+    async with _semaphores_lock:
+        if dbms_id not in _semaphores:
+            limit = MAX_CONCURRENT_CONNECTIONS_PER_DBMS.get(engine.dialect.name, MAX_CONCURRENT_CONNECTIONS_DEFAULT)
+            _semaphores[dbms_id] = asyncio.Semaphore(limit)
+        return _semaphores[dbms_id]
+
+
+class DBSemaphore:
+    """
+    Async context manager for limiting concurrency per DB instance.
+
+    Usage:
+        async with DBSemaphore(engine):
+            # run your DB operation here
+    """
+
+    def __init__(self, engine: sqlalchemy.engine.Engine | AsyncEngine):
+        self.engine = engine
+        self._semaphore: asyncio.Semaphore | None = None
+
+    async def __aenter__(self) -> None:
+        self._semaphore = await get_semaphore_async(self.engine)
+        await self._semaphore.acquire()
+
+    async def __aexit__(self, exc_type, exc, tb) -> None:
+        if self._semaphore:
+            self._semaphore.release()
 
 
 async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalchemy.engine.Engine) -> SQLSchema:
@@ -58,7 +98,7 @@ def run_query(engine, stmt) -> list[Any]:
 
 
 async def run_query_async(engine, stmt) -> list[Any]:
-    async with sem:
+    async with DBSemaphore(engine):
         if isinstance(engine, sqlalchemy.engine.Engine):
             loop = asyncio.get_running_loop()
             return await loop.run_in_executor(None, run_query, engine, stmt)
@@ -124,7 +164,7 @@ class AsyncInspector:
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args, **kwargs) -> Any:
-            async with sem:
+            async with DBSemaphore(self.engine):
                 if isinstance(self.engine, sqlalchemy.engine.Engine):
                     loop = asyncio.get_running_loop()
                     return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
