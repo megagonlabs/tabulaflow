@@ -9,7 +9,7 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAXIMUM_CONCURRENT_CONNECTIONS = 10
+MAXIMUM_CONCURRENT_CONNECTIONS = 16
 sem = asyncio.Semaphore(MAXIMUM_CONCURRENT_CONNECTIONS)
 
 
@@ -48,20 +48,23 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def run_query(conn, stmt) -> list[Any]:
+def run_query_conn(conn, stmt) -> list[Any]:
     return conn.execute(stmt).fetchall()
+
+
+def run_query(engine, stmt) -> list[Any]:
+    with engine.connect() as conn:
+        return run_query_conn(conn, stmt)
 
 
 async def run_query_async(engine, stmt) -> list[Any]:
     async with sem:
         if isinstance(engine, sqlalchemy.engine.Engine):
-            with engine.connect() as conn:
-                loop = asyncio.get_running_loop()
-                res = await loop.run_in_executor(None, run_query, conn, stmt)
+            loop = asyncio.get_running_loop()
+            return await loop.run_in_executor(None, run_query, engine, stmt)
         else:
             async with engine.connect() as conn:
-                res = await conn.run_sync(run_query, stmt)
-    return res
+                return await conn.run_sync(run_query_conn, stmt)
 
 
 async def build_column_async(
@@ -111,21 +114,23 @@ class AsyncInspector:
     def __init__(self, engine: AsyncEngine | sqlalchemy.engine.Engine):
         self.engine = engine
 
-    def _run_inspector(self, conn, method: str, args, kwargs) -> Any:
+    def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
         inspector = inspect(conn)
         return getattr(inspector, method)(*args, **kwargs)
+
+    def _run_inspector(self, method: str, args, kwargs) -> Any:
+        with self.engine.connect() as conn:
+            return self._run_inspector_conn(conn, method, args, kwargs)
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args, **kwargs) -> Any:
             async with sem:
                 if isinstance(self.engine, sqlalchemy.engine.Engine):
-                    with self.engine.connect() as conn:
-                        loop = asyncio.get_running_loop()
-                        res = await loop.run_in_executor(None, self._run_inspector, conn, method, args, kwargs)
+                    loop = asyncio.get_running_loop()
+                    return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
                 else:
                     async with self.engine.connect() as conn:
-                        res = await conn.run_sync(self._run_inspector, method, args, kwargs)
-            return res
+                        return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
 
         return _stub_async
 
