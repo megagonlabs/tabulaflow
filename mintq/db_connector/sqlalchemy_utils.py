@@ -46,7 +46,6 @@ class DBSemaphore:
 
     async def __aenter__(self) -> None:
         self._semaphore = await get_semaphore_async(self.engine)
-        print(self._semaphore)
         await self._semaphore.acquire()
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
