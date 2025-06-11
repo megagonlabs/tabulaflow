@@ -9,13 +9,13 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAX_CONCURRENT_CONNECTIONS_DEFAULT = 16
+MAX_CONCURRENT_CONNECTIONS_DEFAULT = 4
 
 MAX_CONCURRENT_CONNECTIONS_PER_DBMS = {
     "mysql": 16,
     "sqlite": 4,
     "postgresql": 16,
-    "snowflake": 16,
+    "snowflake": 8,
 }
 
 _semaphores = {}
@@ -46,6 +46,7 @@ class DBSemaphore:
 
     async def __aenter__(self) -> None:
         self._semaphore = await get_semaphore_async(self.engine)
+        print(self._semaphore)
         await self._semaphore.acquire()
 
     async def __aexit__(self, exc_type, exc, tb) -> None:
