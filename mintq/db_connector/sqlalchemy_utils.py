@@ -9,12 +9,12 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAX_CONCURRENT_CONNECTIONS_DEFAULT = 32
+MAX_CONCURRENT_CONNECTIONS_DEFAULT = 16
 
 MAX_CONCURRENT_CONNECTIONS_PER_DBMS = {
-    "mysql": 32,
-    "sqlite": 32,
-    "postgresql": 32,
+    "mysql": 16,
+    "sqlite": 4,
+    "postgresql": 16,
     "snowflake": 16,
 }
 
@@ -88,13 +88,9 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def run_query_conn(conn, stmt) -> list[Any]:
-    return conn.execute(stmt).fetchall()
-
-
 def run_query(engine, stmt) -> list[Any]:
     with engine.connect() as conn:
-        return run_query_conn(conn, stmt)
+        return conn.execute(stmt).fetchall()
 
 
 async def run_query_async(engine, stmt) -> list[Any]:
@@ -104,7 +100,7 @@ async def run_query_async(engine, stmt) -> list[Any]:
             return await loop.run_in_executor(None, run_query, engine, stmt)
         else:
             async with engine.connect() as conn:
-                return await conn.run_sync(run_query_conn, stmt)
+                return (await conn.execute(stmt)).fetchall()
 
 
 async def build_column_async(
