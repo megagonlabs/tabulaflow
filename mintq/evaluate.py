@@ -49,7 +49,7 @@ async def evaluate_async(
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_json", default="output/test/result.json")
-    parser.add_argument("--num_threads", type=int, default=8)
+    parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument(
         "--metrics",
@@ -78,7 +78,7 @@ async def main_async() -> None:
     )
 
     metrics = [get_metric(m) for m in args.metrics]
-    result = await evaluate_async(result, dataset, metrics, args.num_threads)
+    result = await evaluate_async(result, dataset, metrics, args.batch_size)
 
     print()
     print("Aggregated metrics:")
