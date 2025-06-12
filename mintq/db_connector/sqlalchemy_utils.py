@@ -1,4 +1,5 @@
 import os
+from dataclasses import dataclass
 import hashlib
 from typing import Any
 import asyncio
@@ -53,7 +54,9 @@ class DBSemaphore:
             self._semaphore.release()
 
 
-async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalchemy.engine.Engine) -> SQLSchema:
+async def load_schema_with_cache_async(
+    name: str, engine: AsyncEngine | sqlalchemy.engine.Engine, db_to_attach: str | None = None
+) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
@@ -74,7 +77,7 @@ async def load_schema_with_cache_async(name: str, engine: AsyncEngine | sqlalche
             return SQLSchema.model_validate_json(content)
 
     dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
-    schema = await build_schema_async(engine, name, dbms_supports_schema)
+    schema = await build_schema_async(engine, name, dbms_supports_schema, db_to_attach)
 
     if config.cache_enabled:
         with open(cache_path, "w", encoding="utf-8") as f:
@@ -88,23 +91,27 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def run_query(engine, stmt) -> list[Any]:
+def run_query(engine, stmt, db_to_attach: str | None = None) -> list[Any]:
     with engine.connect() as conn:
+        if db_to_attach:
+            conn.execute(get_switch_db_stmt(engine, db_to_attach))
         return conn.execute(stmt).fetchall()
 
 
-async def run_query_async(engine, stmt) -> list[Any]:
+async def run_query_async(engine, stmt, db_to_attach: str | None = None) -> list[Any]:
     async with DBSemaphore(engine):
         if isinstance(engine, sqlalchemy.engine.Engine):
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, run_query, engine, stmt)
+            return await loop.run_in_executor(None, run_query, engine, stmt, db_to_attach)
         else:
             async with engine.connect() as conn:
+                if db_to_attach:
+                    await conn.execute(get_switch_db_stmt(engine, db_to_attach))
                 return (await conn.execute(stmt)).fetchall()
 
 
 async def build_column_async(
-    engine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
+    engine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int, db_to_attach: str | None = None
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
@@ -112,14 +119,22 @@ async def build_column_async(
     tasks = []
     tasks.append(
         asyncio.create_task(
-            run_query_async(engine, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
+            run_query_async(
+                engine, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21), db_to_attach
+            )
         )
     )
     if num_rows > 0:
         tasks.append(
-            asyncio.create_task(run_query_async(engine, select(func.count()).select_from(tbl).where(col.is_(None))))
+            asyncio.create_task(
+                run_query_async(engine, select(func.count()).select_from(tbl).where(col.is_(None)), db_to_attach)
+            )
         )
-        tasks.append(asyncio.create_task(run_query_async(engine, select(func.count(distinct(col))).select_from(tbl))))
+        tasks.append(
+            asyncio.create_task(
+                run_query_async(engine, select(func.count(distinct(col))).select_from(tbl), db_to_attach)
+            )
+        )
 
     results = await asyncio.gather(*tasks)
 
@@ -146,11 +161,24 @@ async def build_column_async(
     )
 
 
+def get_switch_db_stmt(engine: sqlalchemy.engine.Engine | AsyncEngine, db_to_attach: str) -> str:
+    dbms = engine.dialect.name
+    if dbms == "mysql":
+        return sqlalchemy.text(f"USE {db_to_attach};")
+    elif dbms == "snowflake":
+        return sqlalchemy.text(f"USE DATABASE {db_to_attach};")
+    else:
+        raise NotImplementedError(f"Switching databases is not supported for {dbms}")
+
+
+@dataclass
 class AsyncInspector:
-    def __init__(self, engine: AsyncEngine | sqlalchemy.engine.Engine):
-        self.engine = engine
+    engine: AsyncEngine | sqlalchemy.engine.Engine
+    db_to_attach: str | None = None
 
     def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
+        if self.db_to_attach:
+            conn.execute(get_switch_db_stmt(self.engine, self.db_to_attach))
         inspector = inspect(conn)
         return getattr(inspector, method)(*args, **kwargs)
 
@@ -171,16 +199,18 @@ class AsyncInspector:
         return _stub_async
 
 
-async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTableSchema:
+async def build_table_async(
+    engine, table_name: str, schema_name: str, db_to_attach: str | None = None
+) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await run_query_async(engine, select(func.count()).select_from(tbl)))[0][0]
+    num_rows = (await run_query_async(engine, select(func.count()).select_from(tbl), db_to_attach))[0][0]
 
-    async_inspector = AsyncInspector(engine)
+    async_inspector = AsyncInspector(engine, db_to_attach)
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
-        *[build_column_async(engine, col, table_name, schema_name, num_rows) for col in col_dicts]
+        *[build_column_async(engine, col, table_name, schema_name, num_rows, db_to_attach) for col in col_dicts]
     )
     name2col = {col.name: col for col in columns}
 
@@ -212,8 +242,10 @@ async def build_table_async(engine, table_name: str, schema_name: str) -> SQLTab
     )
 
 
-async def build_schema_async(engine, name: str, dbms_supports_schema: bool) -> SQLSchema:
-    async_inspector = AsyncInspector(engine)
+async def build_schema_async(
+    engine, name: str, dbms_supports_schema: bool, db_to_attach: str | None = None
+) -> SQLSchema:
+    async_inspector = AsyncInspector(engine, db_to_attach)
 
     if not dbms_supports_schema:
         schema_names = [None]
@@ -226,7 +258,7 @@ async def build_schema_async(engine, name: str, dbms_supports_schema: bool) -> S
             continue
 
         for table_name in await async_inspector.get_table_names(schema=schema_name):
-            tasks.append(asyncio.create_task(build_table_async(engine, table_name, schema_name)))
+            tasks.append(asyncio.create_task(build_table_async(engine, table_name, schema_name, db_to_attach)))
 
     tables = await asyncio.gather(*tasks)
 

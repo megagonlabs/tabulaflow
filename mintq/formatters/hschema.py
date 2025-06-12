@@ -1,4 +1,3 @@
-import collections
 from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import HSQLSchema, HColumnGroup, HTableSection, HTableGroup
