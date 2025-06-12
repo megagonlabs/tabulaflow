@@ -12,13 +12,13 @@ from mintq.config import config
 
 
 @dataclass
-class EngineWithSemaphores:
+class ThrottledEngine:
     engine_type: Literal["async", "sync"]
     engine: AsyncEngine | sqlalchemy.engine.Engine
     semaphores: list[asyncio.Semaphore]
 
     @asynccontextmanager
-    async def acquire(self):
+    async def throttle(self):
         for sem in self.semaphores:
             await sem.acquire()
         try:
@@ -53,8 +53,8 @@ async def load_schema_with_cache_async(
     dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
 
     engine_type = "async" if isinstance(engine, AsyncEngine) else "sync"
-    es = EngineWithSemaphores(engine_type, engine, semaphores)
-    schema = await build_schema_async(es, name, dbms_supports_schema)
+    t_eng = ThrottledEngine(engine_type, engine, semaphores)
+    schema = await build_schema_async(t_eng, name, dbms_supports_schema)
 
     if config.cache_enabled:
         with open(cache_path, "w", encoding="utf-8") as f:
@@ -73,18 +73,18 @@ def run_query(engine, stmt) -> list[Any]:
         return conn.execute(stmt).fetchall()
 
 
-async def run_query_async(es: EngineWithSemaphores, stmt) -> list[Any]:
-    async with es.acquire():
-        if es.engine_type == "async":
-            async with es.engine.connect() as conn:
+async def run_query_async(t_eng: ThrottledEngine, stmt) -> list[Any]:
+    async with t_eng.throttle():
+        if t_eng.engine_type == "async":
+            async with t_eng.engine.connect() as conn:
                 return (await conn.execute(stmt)).fetchall()
         else:
             loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, run_query, es.engine, stmt)
+            return await loop.run_in_executor(None, run_query, t_eng.engine, stmt)
 
 
 async def build_column_async(
-    es: EngineWithSemaphores, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
+    t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
@@ -92,14 +92,14 @@ async def build_column_async(
     tasks = []
     tasks.append(
         asyncio.create_task(
-            run_query_async(es, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
+            run_query_async(t_eng, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
         )
     )
     if num_rows > 0:
         tasks.append(
-            asyncio.create_task(run_query_async(es, select(func.count()).select_from(tbl).where(col.is_(None))))
+            asyncio.create_task(run_query_async(t_eng, select(func.count()).select_from(tbl).where(col.is_(None))))
         )
-        tasks.append(asyncio.create_task(run_query_async(es, select(func.count(distinct(col))).select_from(tbl))))
+        tasks.append(asyncio.create_task(run_query_async(t_eng, select(func.count(distinct(col))).select_from(tbl))))
 
     results = await asyncio.gather(*tasks)
 
@@ -128,21 +128,21 @@ async def build_column_async(
 
 @dataclass
 class AsyncInspector:
-    es: EngineWithSemaphores
+    t_eng: ThrottledEngine
 
     def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
         inspector = inspect(conn)
         return getattr(inspector, method)(*args, **kwargs)
 
     def _run_inspector(self, method: str, args, kwargs) -> Any:
-        with self.es.engine.connect() as conn:
+        with self.t_eng.engine.connect() as conn:
             return self._run_inspector_conn(conn, method, args, kwargs)
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args, **kwargs) -> Any:
-            async with self.es.acquire():
-                if self.es.engine_type == "async":
-                    async with self.es.engine.connect() as conn:
+            async with self.t_eng.throttle():
+                if self.t_eng.engine_type == "async":
+                    async with self.t_eng.engine.connect() as conn:
                         return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
                 else:
                     loop = asyncio.get_running_loop()
@@ -151,16 +151,16 @@ class AsyncInspector:
         return _stub_async
 
 
-async def build_table_async(es: EngineWithSemaphores, table_name: str, schema_name: str) -> SQLTableSchema:
+async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name: str) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await run_query_async(es, select(func.count()).select_from(tbl)))[0][0]
+    num_rows = (await run_query_async(t_eng, select(func.count()).select_from(tbl)))[0][0]
 
-    async_inspector = AsyncInspector(es)
+    async_inspector = AsyncInspector(t_eng)
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
-        *[build_column_async(es, col, table_name, schema_name, num_rows) for col in col_dicts]
+        *[build_column_async(t_eng, col, table_name, schema_name, num_rows) for col in col_dicts]
     )
     name2col = {col.name: col for col in columns}
 
@@ -192,8 +192,8 @@ async def build_table_async(es: EngineWithSemaphores, table_name: str, schema_na
     )
 
 
-async def build_schema_async(es: EngineWithSemaphores, name: str, dbms_supports_schema: bool) -> SQLSchema:
-    async_inspector = AsyncInspector(es)
+async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_schema: bool) -> SQLSchema:
+    async_inspector = AsyncInspector(t_eng)
 
     if not dbms_supports_schema:
         schema_names = [None]
@@ -206,7 +206,7 @@ async def build_schema_async(es: EngineWithSemaphores, name: str, dbms_supports_
             continue
 
         for table_name in await async_inspector.get_table_names(schema=schema_name):
-            tasks.append(asyncio.create_task(build_table_async(es, table_name, schema_name)))
+            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name)))
 
     tables = await asyncio.gather(*tasks)
 
