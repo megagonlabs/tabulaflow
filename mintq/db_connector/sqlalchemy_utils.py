@@ -1,8 +1,9 @@
 import os
 from dataclasses import dataclass
 import hashlib
-from typing import Any, Literal
+from typing import Any, Literal, Sequence
 import asyncio
+import pandas as pd
 import sqlalchemy
 from sqlalchemy import select, func, distinct, inspect
 from sqlalchemy.ext.asyncio import AsyncEngine
@@ -28,6 +29,72 @@ class ThrottledEngine:
         finally:
             for sem in reversed(semaphores):
                 sem.release()
+
+    def _run_query(
+        self,
+        statement: sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | dict[str, Any] = (),
+        return_df: bool = False,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        with self.engine.connect() as conn:
+            result = conn.execute(statement, parameters)
+            rows = result.fetchall()
+            if return_df:
+                return pd.DataFrame(rows, columns=result.keys())
+            return rows
+
+    async def run_query_async(
+        self,
+        query: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | dict[str, Any] = (),
+        timeout: int | None = None,
+        return_df: bool = False,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        if isinstance(query, str):
+            query = sqlalchemy.text(query)
+
+        async with self.throttle():
+            try:
+                if self.engine_type == "async":
+                    async with self.engine.connect() as conn:
+                        result = await asyncio.wait_for(conn.execute(query, parameters), timeout=timeout)
+                        rows = result.fetchall()
+                        if return_df:
+                            return pd.DataFrame(rows, columns=result.keys())
+                        return rows
+                else:
+                    loop = asyncio.get_running_loop()
+                    return await asyncio.wait_for(
+                        loop.run_in_executor(None, self._run_query, query, parameters, return_df),
+                        timeout=timeout,
+                    )
+            except asyncio.TimeoutError:
+                raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
+
+
+@dataclass
+class AsyncInspector:
+    t_eng: ThrottledEngine
+
+    def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
+        inspector = inspect(conn)
+        return getattr(inspector, method)(*args, **kwargs)
+
+    def _run_inspector(self, method: str, args, kwargs) -> Any:
+        with self.t_eng.engine.connect() as conn:
+            return self._run_inspector_conn(conn, method, args, kwargs)
+
+    def __getattr__(self, method: str) -> Any:
+        async def _stub_async(*args, **kwargs) -> Any:
+            async with self.t_eng.throttle():
+                if self.t_eng.engine_type == "async":
+                    async with self.t_eng.engine.connect() as conn:
+                        return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
+                else:
+                    loop = asyncio.get_running_loop()
+                    return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
+
+        return _stub_async
 
 
 async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQLSchema:
@@ -66,21 +133,6 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def run_query(engine, stmt) -> list[Any]:
-    with engine.connect() as conn:
-        return conn.execute(stmt).fetchall()
-
-
-async def run_query_async(t_eng: ThrottledEngine, stmt) -> list[Any]:
-    async with t_eng.throttle():
-        if t_eng.engine_type == "async":
-            async with t_eng.engine.connect() as conn:
-                return (await conn.execute(stmt)).fetchall()
-        else:
-            loop = asyncio.get_running_loop()
-            return await loop.run_in_executor(None, run_query, t_eng.engine, stmt)
-
-
 async def build_column_async(
     t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
@@ -90,14 +142,14 @@ async def build_column_async(
     tasks = []
     tasks.append(
         asyncio.create_task(
-            run_query_async(t_eng, select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
+            t_eng.run_query_async(select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
         )
     )
     if num_rows > 0:
         tasks.append(
-            asyncio.create_task(run_query_async(t_eng, select(func.count()).select_from(tbl).where(col.is_(None))))
+            asyncio.create_task(t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))
         )
-        tasks.append(asyncio.create_task(run_query_async(t_eng, select(func.count(distinct(col))).select_from(tbl))))
+        tasks.append(asyncio.create_task(t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))))
 
     results = await asyncio.gather(*tasks)
 
@@ -124,34 +176,9 @@ async def build_column_async(
     )
 
 
-@dataclass
-class AsyncInspector:
-    t_eng: ThrottledEngine
-
-    def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
-        inspector = inspect(conn)
-        return getattr(inspector, method)(*args, **kwargs)
-
-    def _run_inspector(self, method: str, args, kwargs) -> Any:
-        with self.t_eng.engine.connect() as conn:
-            return self._run_inspector_conn(conn, method, args, kwargs)
-
-    def __getattr__(self, method: str) -> Any:
-        async def _stub_async(*args, **kwargs) -> Any:
-            async with self.t_eng.throttle():
-                if self.t_eng.engine_type == "async":
-                    async with self.t_eng.engine.connect() as conn:
-                        return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
-                else:
-                    loop = asyncio.get_running_loop()
-                    return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
-
-        return _stub_async
-
-
 async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name: str) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await run_query_async(t_eng, select(func.count()).select_from(tbl)))[0][0]
+    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl)))[0][0]
 
     async_inspector = AsyncInspector(t_eng)
 
