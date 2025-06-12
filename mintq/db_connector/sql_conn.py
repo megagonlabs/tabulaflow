@@ -19,7 +19,7 @@ class SQLAlchemyConnector:
 
     @classmethod
     async def from_url_async(
-        cls, name: str, url: str | SQLAlchemyURL, pool_size: int = 256, **engine_kwargs: Any
+        cls, name: str, url: str | SQLAlchemyURL, pool_size: int = 8, **engine_kwargs: Any
     ) -> "SQLAlchemyConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
         dbms_supports_switch_db = any(url.startswith(dbms) for dbms in ("mysql", "snowflake"))

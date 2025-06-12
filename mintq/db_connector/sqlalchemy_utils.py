@@ -10,26 +10,16 @@ from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeyS
 from mintq.config import config
 
 
-MAX_CONCURRENT_CONNECTIONS_DEFAULT = 4
-
-MAX_CONCURRENT_CONNECTIONS_PER_DBMS = {
-    "mysql": 16,
-    "sqlite": 4,
-    "postgresql": 16,
-    "snowflake": 8,
-}
-
-_semaphores = {}
+_semaphores = {}  # one semaphore per engine, the maximum concurrency is the engine's pool size
 _semaphores_lock = asyncio.Lock()
 
 
 async def get_semaphore_async(engine: sqlalchemy.engine.Engine) -> asyncio.Semaphore:
-    dbms_id = f"{engine.dialect.name}://{engine.url.host}:{engine.url.port}"
+    key = str(engine.url)
     async with _semaphores_lock:
-        if dbms_id not in _semaphores:
-            limit = MAX_CONCURRENT_CONNECTIONS_PER_DBMS.get(engine.dialect.name, MAX_CONCURRENT_CONNECTIONS_DEFAULT)
-            _semaphores[dbms_id] = asyncio.Semaphore(limit)
-        return _semaphores[dbms_id]
+        if key not in _semaphores:
+            _semaphores[key] = asyncio.Semaphore(engine.pool._pool.maxsize)
+        return _semaphores[key]
 
 
 class DBSemaphore:
