@@ -26,6 +26,7 @@ class SQLConnector:
         engine_type: Literal["async", "sync"],
         url: str | SQLAlchemyURL,
         pool_size: int = 8,
+        dbms_semaphore: asyncio.Semaphore | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
@@ -34,7 +35,7 @@ class SQLConnector:
         else:
             engine = create_engine(url, pool_size=pool_size, **engine_kwargs)
         schema = await load_schema_with_cache_async(name, engine)
-        return cls(name, engine_type, engine, schema, None, asyncio.Semaphore(pool_size))
+        return cls(name, engine_type, engine, schema, dbms_semaphore, asyncio.Semaphore(pool_size))
 
     def _run_statement(
         self,

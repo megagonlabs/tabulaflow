@@ -101,10 +101,18 @@ class Spider2SnowDatasetLoader:
         encoded_password = quote_plus(sf_password)
         base_url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}"
 
+        # the default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
+        dbms_semaphore = asyncio.Semaphore(16)
+
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    name, "sync", f"{base_url}/{name}", pool_size=2, connect_args={"disable_ocsp_checks": True}
+                    name,
+                    "sync",
+                    f"{base_url}/{name}",
+                    pool_size=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
+                    dbms_semaphore=dbms_semaphore,
+                    connect_args={"disable_ocsp_checks": True},
                 )
                 for name in db_names
             ]
