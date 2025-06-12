@@ -4,9 +4,9 @@ from dataclasses import dataclass
 import snowflake.connector
 import pandas as pd
 import sqlalchemy
+from sqlalchemy import create_engine
 from mintq.schema import SQLSchema
 from mintq.db_connector.sqlalchemy_utils import load_schema_with_cache_async
-from mintq.db_connector.engine_factory import get_engine_async
 from urllib.parse import quote_plus
 
 
@@ -19,7 +19,6 @@ class SnowflakeConnector:
     sf_password: str
     sf_account: str
     sf_database: str
-    db_to_attach: str | None = None
 
     @classmethod
     async def from_credentials_async(
@@ -35,17 +34,9 @@ class SnowflakeConnector:
         encoded_user = quote_plus(sf_user)
         encoded_password = quote_plus(sf_password)
         url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}/{sf_database}"
-        # engine = create_engine(url, connect_args={"disable_ocsp_checks": True}, pool_size=pool_size, **engine_kwargs)
-        engine = await get_engine_async(
-            "sync",
-            url,
-            mask_database=True,
-            connect_args={"disable_ocsp_checks": True},
-            pool_size=pool_size,
-            **engine_kwargs,
-        )
-        schema = await load_schema_with_cache_async(name, engine, db_to_attach=sf_database)
-        return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database, db_to_attach=sf_database)
+        engine = create_engine(url, connect_args={"disable_ocsp_checks": True}, pool_size=pool_size, **engine_kwargs)
+        schema = await load_schema_with_cache_async(name, engine)
+        return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
 
     def _run_query(
         self, query: str, parameters: Sequence[Any] | dict[str, Any] = (), timeout: int = 30, return_df: bool = False
@@ -58,8 +49,6 @@ class SnowflakeConnector:
             disable_ocsp_checks=True,
         ) as conn:
             cursor = conn.cursor()
-            if self.db_to_attach:
-                cursor.execute(f"USE DATABASE {self.db_to_attach};")
             cursor.execute(query, parameters, timeout=timeout)
             results = cursor.fetchall()
             if return_df:
@@ -76,8 +65,6 @@ class SnowflakeConnector:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.connect() as conn:
             try:
-                if self.db_to_attach:
-                    conn.execute(sqlalchemy.text(f"USE DATABASE {self.db_to_attach};"))
                 result = conn.execute(statement, parameters)
                 rows = result.fetchall()
                 if return_df:
