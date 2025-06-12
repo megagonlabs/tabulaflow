@@ -53,7 +53,11 @@ class BirdSQLDatasetLoader:
         db_dir = os.path.join(directory, f"{split}_databases")
         db_connectors = await asyncio.gather(
             *[
-                SQLAlchemyConnector.from_url_async(name, f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}")
+                SQLAlchemyConnector.from_url_async(
+                    name,
+                    f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
+                    pool_size=4,
+                )
                 for name in db_names
             ]
         )
