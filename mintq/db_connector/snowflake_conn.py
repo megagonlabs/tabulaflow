@@ -28,7 +28,7 @@ class SnowflakeConnector:
         sf_password: str,
         sf_account: str,
         sf_database: str,
-        pool_size: int = 16,
+        pool_size: int = 8,
         **engine_kwargs: Any,
     ) -> "SnowflakeConnector":
         encoded_user = quote_plus(sf_user)

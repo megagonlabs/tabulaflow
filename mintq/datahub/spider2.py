@@ -10,20 +10,17 @@ from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SnowflakeConnector
 
 
-
 class Spider2SnowDatasetLoader:
     name = "spider2-snow"
 
     def __init__(
         self,
         directory: str = "data/Spider2/spider2-snow",
-        num_threads: int = 16,
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
     ):
         self.directory = directory
-        self.num_threads = num_threads
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
@@ -99,10 +96,9 @@ class Spider2SnowDatasetLoader:
         if sf_account is None:
             sf_account = os.environ["SF_ACCOUNT"]
 
-
         db_connectors = await asyncio.gather(
             *[
-                SnowflakeConnector.from_credentials_async(name, sf_user, sf_password, sf_account, name)
+                SnowflakeConnector.from_credentials_async(name, sf_user, sf_password, sf_account, name, pool_size=2)
                 for name in db_names
             ]
         )

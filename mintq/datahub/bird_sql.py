@@ -15,10 +15,8 @@ class BirdSQLDatasetLoader:
     def __init__(
         self,
         directory: str = "data/BIRD-SQL",
-        num_threads: int = 16,
     ):
         self.directory = directory
-        self.num_threads = num_threads
         self._data: dict[Any, NL2QDataset] = {}
 
     async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:

@@ -14,10 +14,8 @@ class BeaverDatasetLoader:
     def __init__(
         self,
         directory: str = "data/beaver",
-        num_threads: int = 16,
     ):
         self.directory = directory
-        self.num_threads = num_threads
         self._data: dict[Any, NL2QDataset] = {}
 
     async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
@@ -48,7 +46,7 @@ class BeaverDatasetLoader:
                 if item["db_id"] not in urls:
                     urls[item["db_id"]] = f"mysql+asyncmy://root:root@localhost:{port}/{item['db_id']}"
 
-        db_connectors = await asyncio.gather(*[SQLAlchemyConnector.from_url_async(name, url) for name, url in urls.items()])
+        db_connectors = await asyncio.gather(*[SQLAlchemyConnector.from_url_async(name, url, pool_size=2) for name, url in urls.items()])
 
         return NL2QDataset(
             name=self.name,
