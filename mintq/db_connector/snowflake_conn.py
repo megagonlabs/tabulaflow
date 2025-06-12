@@ -19,6 +19,7 @@ class SnowflakeConnector:
     sf_password: str
     sf_account: str
     sf_database: str
+    _semaphore: asyncio.Semaphore
 
     @classmethod
     async def from_credentials_async(
@@ -36,25 +37,25 @@ class SnowflakeConnector:
         url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}/{sf_database}"
         engine = create_engine(url, connect_args={"disable_ocsp_checks": True}, pool_size=pool_size, **engine_kwargs)
         schema = await load_schema_with_cache_async(name, engine)
-        return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database)
+        return cls(name, engine, schema, sf_user, sf_password, sf_account, sf_database, asyncio.Semaphore(pool_size))
 
-    def _run_query(
-        self, query: str, parameters: Sequence[Any] | dict[str, Any] = (), timeout: int = 30, return_df: bool = False
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        with snowflake.connector.connect(
-            user=self.sf_user,
-            password=self.sf_password,
-            account=self.sf_account,
-            database=self.sf_database,
-            disable_ocsp_checks=True,
-        ) as conn:
-            cursor = conn.cursor()
-            cursor.execute(query, parameters, timeout=timeout)
-            results = cursor.fetchall()
-            if return_df:
-                return pd.DataFrame(results, columns=[desc[0] for desc in cursor.description])
-            else:
-                return results
+    # def _run_query(
+    #     self, query: str, parameters: Sequence[Any] | dict[str, Any] = (), timeout: int = 30, return_df: bool = False
+    # ) -> list[tuple[Any, ...]] | pd.DataFrame:
+    #     with snowflake.connector.connect(
+    #         user=self.sf_user,
+    #         password=self.sf_password,
+    #         account=self.sf_account,
+    #         database=self.sf_database,
+    #         disable_ocsp_checks=True,
+    #     ) as conn:
+    #         cursor = conn.cursor()
+    #         cursor.execute(query, parameters, timeout=timeout)
+    #         results = cursor.fetchall()
+    #         if return_df:
+    #             return pd.DataFrame(results, columns=[desc[0] for desc in cursor.description])
+    #         else:
+    #             return results
 
     def _run_statement(
         self,
@@ -80,14 +81,12 @@ class SnowflakeConnector:
         timeout: int = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        loop = asyncio.get_running_loop()
-
-        if isinstance(query, str):
-            return await loop.run_in_executor(None, self._run_query, query, parameters, timeout, return_df)
-        else:
+        statement = sqlalchemy.text(query) if isinstance(query, str) else query
+        async with self._semaphore:
             try:
+                loop = asyncio.get_running_loop()
                 return await asyncio.wait_for(
-                    loop.run_in_executor(None, self._run_statement, query, parameters, timeout, return_df),
+                    loop.run_in_executor(None, self._run_statement, statement, parameters, timeout, return_df),
                     timeout=timeout,
                 )
             except asyncio.TimeoutError:

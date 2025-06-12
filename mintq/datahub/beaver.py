@@ -5,7 +5,7 @@ import asyncio
 from tqdm import tqdm
 from typing import Optional, Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SQLAlchemyConnector
+from mintq.db_connector import SQLConnector
 
 
 class BeaverDatasetLoader:
@@ -46,7 +46,7 @@ class BeaverDatasetLoader:
                 if item["db_id"] not in urls:
                     urls[item["db_id"]] = f"mysql+asyncmy://root:root@localhost:{port}/{item['db_id']}"
 
-        db_connectors = await asyncio.gather(*[SQLAlchemyConnector.from_url_async(name, url, pool_size=2) for name, url in urls.items()])
+        db_connectors = await asyncio.gather(*[SQLConnector.from_url_async(name, "async", url, pool_size=2) for name, url in urls.items()])
 
         return NL2QDataset(
             name=self.name,

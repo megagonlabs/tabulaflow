@@ -3,11 +3,12 @@ import json
 import re
 import random
 import asyncio
+from urllib.parse import quote_plus
 from typing import Optional, Any
 import pandas as pd
 from tqdm import tqdm
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SnowflakeConnector
+from mintq.db_connector import SQLConnector
 
 
 class Spider2SnowDatasetLoader:
@@ -96,9 +97,15 @@ class Spider2SnowDatasetLoader:
         if sf_account is None:
             sf_account = os.environ["SF_ACCOUNT"]
 
+        encoded_user = quote_plus(sf_user)
+        encoded_password = quote_plus(sf_password)
+        base_url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}"
+
         db_connectors = await asyncio.gather(
             *[
-                SnowflakeConnector.from_credentials_async(name, sf_user, sf_password, sf_account, name, pool_size=2)
+                SQLConnector.from_url_async(
+                    name, "sync", f"{base_url}/{name}", pool_size=2, connect_args={"disable_ocsp_checks": True}
+                )
                 for name in db_names
             ]
         )

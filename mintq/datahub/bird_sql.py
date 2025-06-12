@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 from tqdm import tqdm
 from typing import Optional, Any, Callable
 from mintq.schema import SimpleNL2QTask, NL2QDataset
-from mintq.db_connector import SQLAlchemyConnector
+from mintq.db_connector import SQLConnector
 
 
 class BirdSQLDatasetLoader:
@@ -51,8 +51,9 @@ class BirdSQLDatasetLoader:
         db_dir = os.path.join(directory, f"{split}_databases")
         db_connectors = await asyncio.gather(
             *[
-                SQLAlchemyConnector.from_url_async(
+                SQLConnector.from_url_async(
                     name,
+                    "async",
                     f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
                     pool_size=4,
                 )
