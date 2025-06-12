@@ -55,7 +55,7 @@ class BirdSQLDatasetLoader:
                     name,
                     "async",
                     f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
-                    pool_size=4,
+                    max_concurrency_per_db=4,
                 )
                 for name in db_names
             ]

@@ -48,7 +48,7 @@ class BeaverDatasetLoader:
 
         db_connectors = await asyncio.gather(
             *[
-                SQLConnector.from_url_async(name, "async", url, pool_size=16)
+                SQLConnector.from_url_async(name, "async", url, max_concurrency_per_db=16)
                 for name, url in urls.items()
             ]
         )

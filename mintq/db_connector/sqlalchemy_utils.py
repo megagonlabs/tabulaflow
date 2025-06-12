@@ -15,22 +15,22 @@ from mintq.config import config
 class ThrottledEngine:
     engine_type: Literal["async", "sync"]
     engine: AsyncEngine | sqlalchemy.engine.Engine
-    semaphores: list[asyncio.Semaphore]
+    dbms_semaphore: asyncio.Semaphore | None
+    db_semaphore: asyncio.Semaphore | None
 
     @asynccontextmanager
     async def throttle(self):
-        for sem in self.semaphores:
+        semaphores = [sem for sem in [self.dbms_semaphore, self.db_semaphore] if sem is not None]
+        for sem in semaphores:
             await sem.acquire()
         try:
             yield
         finally:
-            for sem in reversed(self.semaphores):
+            for sem in reversed(semaphores):
                 sem.release()
 
 
-async def load_schema_with_cache_async(
-    name: str, engine: AsyncEngine | sqlalchemy.engine.Engine, semaphores: list[asyncio.Semaphore]
-) -> SQLSchema:
+async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
@@ -38,7 +38,7 @@ async def load_schema_with_cache_async(
 
     os.makedirs(schema_cache_dir, exist_ok=True)
 
-    engine_url_str = str(engine.url)
+    engine_url_str = str(t_eng.engine.url)
     hashed = hashlib.sha256(engine_url_str.encode()).hexdigest()
     cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
 
@@ -50,10 +50,8 @@ async def load_schema_with_cache_async(
             content = f.read()
             return SQLSchema.model_validate_json(content)
 
-    dbms_supports_schema = engine.dialect.name not in ("sqlite", "mysql")
+    dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
-    engine_type = "async" if isinstance(engine, AsyncEngine) else "sync"
-    t_eng = ThrottledEngine(engine_type, engine, semaphores)
     schema = await build_schema_async(t_eng, name, dbms_supports_schema)
 
     if config.cache_enabled:

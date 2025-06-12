@@ -2,22 +2,28 @@ from typing import Any, Sequence, Mapping, Literal
 from dataclasses import dataclass
 import pandas as pd
 import asyncio
+from contextlib import asynccontextmanager
 import sqlalchemy
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine
-from mintq.db_connector.sqlalchemy_utils import load_schema_with_cache_async
+from mintq.db_connector.sqlalchemy_utils import load_schema_with_cache_async, ThrottledEngine
 from mintq.schema import SQLSchema
 
 
 @dataclass
 class SQLConnector:
     name: str
-    engine_type: Literal["async", "sync"]
-    engine: AsyncEngine | sqlalchemy.engine.Engine
     schema: SQLSchema
-    _dbms_semaphore: asyncio.Semaphore | None  # maximum concurrency per dbms instance (shared across databases)
-    _db_semaphore: asyncio.Semaphore | None  # maximum concurrency per database / engine
+    _t_eng: ThrottledEngine
+
+    @property
+    def engine_type(self) -> Literal["async", "sync"]:
+        return self._t_eng.engine_type
+
+    @property
+    def engine(self) -> AsyncEngine | sqlalchemy.engine.Engine:
+        return self._t_eng.engine
 
     @classmethod
     async def from_url_async(
@@ -25,19 +31,19 @@ class SQLConnector:
         name: str,
         engine_type: Literal["async", "sync"],
         url: str | SQLAlchemyURL,
-        pool_size: int = 8,
+        max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
         if engine_type == "async":
-            engine = create_async_engine(url, pool_size=pool_size, **engine_kwargs)
+            engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
-            engine = create_engine(url, pool_size=pool_size, **engine_kwargs)
-        db_semaphore = asyncio.Semaphore(pool_size)
-        semaphores = [sem for sem in [dbms_semaphore, db_semaphore] if sem is not None]
-        schema = await load_schema_with_cache_async(name, engine, semaphores)
-        return cls(name, engine_type, engine, schema, dbms_semaphore, db_semaphore)
+            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+        db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
+        t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
+        schema = await load_schema_with_cache_async(name, t_eng)
+        return cls(name, schema, t_eng)
 
     def _run_statement(
         self,
@@ -61,10 +67,7 @@ class SQLConnector:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         statement = sqlalchemy.text(query) if isinstance(query, str) else query
 
-        semaphores = [sem for sem in [self._dbms_semaphore, self._db_semaphore] if sem is not None]
-        for sem in semaphores:
-            await sem.acquire()
-        try:
+        with self._t_eng.throttle():
             try:
                 if self.engine_type == "async":
                     async with self.engine.connect() as conn:
@@ -81,6 +84,3 @@ class SQLConnector:
                     )
             except asyncio.TimeoutError:
                 raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
-        finally:
-            for sem in semaphores:
-                sem.release()

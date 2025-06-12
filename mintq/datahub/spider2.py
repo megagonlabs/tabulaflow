@@ -110,7 +110,7 @@ class Spider2SnowDatasetLoader:
                     name,
                     "sync",
                     f"{base_url}/{name}",
-                    pool_size=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
+                    max_concurrency_per_db=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
                     dbms_semaphore=dbms_semaphore,
                     connect_args={"disable_ocsp_checks": True},
                 )
