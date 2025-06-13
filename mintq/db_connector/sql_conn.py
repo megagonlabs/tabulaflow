@@ -2,6 +2,7 @@ from typing import Any, Sequence, Mapping, Literal
 from dataclasses import dataclass
 import pandas as pd
 import hashlib
+import time
 import os
 import asyncio
 from contextlib import asynccontextmanager
@@ -147,16 +148,6 @@ def get_num_unique_stmt(
         return stmts[dialect]
 
 
-def get_examples_stmt(
-    dialect: str, col: sqlalchemy.Column, tbl: sqlalchemy.Table, mode: Literal["exact", "approx"] = "approx"
-) -> sqlalchemy.sql.expression.Executable:
-    stmts = {
-        "exact": select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21),
-        # "approx": select(select(col).select_from(tbl).where(col.isnot(None)).limit(10000).subquery("T")).distinct().limit(10),  # seems that this is slower
-    }
-    return stmts["exact"]
-
-
 async def build_column_async(
     t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
@@ -164,17 +155,12 @@ async def build_column_async(
     tbl = sqlalchemy.table(table_name, schema=schema_name)
 
     if num_rows > 0:
-        tasks = []
         dialect = t_eng.engine.dialect.name
-        tasks.append(
-            asyncio.create_task(t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))
+        num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))[0][0]
+        num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx")))[0][0]
+        examples = await t_eng.run_query_async(
+            select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
         )
-        tasks.append(asyncio.create_task(t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx"))))
-        tasks.append(asyncio.create_task(t_eng.run_query_async(get_examples_stmt(dialect, col, tbl, mode="approx"))))
-
-        num_null, num_unique, examples = await asyncio.gather(*tasks)
-        num_null = num_null[0][0]
-        num_unique = num_unique[0][0]
         null_ratio = num_null / num_rows
         unique_ratio = num_unique / num_rows
         # Note: examples will contain all possible values if cardinality <= 20
@@ -252,7 +238,7 @@ async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_sc
             continue
 
         for table_name in await async_inspector.get_table_names(schema=schema_name):
-            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name)))
+            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name, is_view=False)))
 
         for table_name in await async_inspector.get_view_names(
             schema=schema_name
