@@ -3,6 +3,7 @@ import copy
 import time
 import asyncio
 import random
+from tqdm import trange
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round
@@ -30,7 +31,7 @@ async def evaluate_async(
     random.shuffle(result.tasks)
 
     tasks_with_metrics = []
-    for i in range(0, len(result.tasks), batch_size):
+    for i in trange(0, len(result.tasks), batch_size):
         batch = result.tasks[i : i + batch_size]
         batch_with_metrics = await asyncio.gather(
             *[compute_metrics_async(item, metrics, dataset.db_connectors[item.db]) for item in batch]
