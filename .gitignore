@@ -4,11 +4,11 @@ __pycache__/
 *$py.class
 
 # Added by me
-exp*/
-log*/
-data*/
-output*/
-cache*/
+/exp*/
+/log*/
+/data*/
+/output*/
+/cache*/
 *.db
 *.sqlite
 .envrc
