@@ -264,6 +264,7 @@ class SQLConnector:
         url: str | SQLAlchemyURL,
         max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
+        schema: SQLSchema | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
@@ -273,7 +274,8 @@ class SQLConnector:
             engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
-        schema = await load_schema_with_cache_async(name, t_eng)
+        if schema is None:
+            schema = await load_schema_with_cache_async(name, t_eng)
         return cls(name, schema, t_eng)
 
     async def run_query_async(

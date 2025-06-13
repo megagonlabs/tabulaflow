@@ -47,10 +47,7 @@ class BeaverDatasetLoader:
                     urls[item["db_id"]] = f"mysql+asyncmy://root:root@localhost:{port}/{item['db_id']}"
 
         db_connectors = await asyncio.gather(
-            *[
-                SQLConnector.from_url_async(name, "async", url, max_concurrency_per_db=16)
-                for name, url in urls.items()
-            ]
+            *[SQLConnector.from_url_async(name, "async", url, max_concurrency_per_db=16) for name, url in urls.items()]
         )
 
         return NL2QDataset(

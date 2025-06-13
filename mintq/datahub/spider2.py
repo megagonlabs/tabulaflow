@@ -101,22 +101,33 @@ class Spider2SnowDatasetLoader:
         encoded_password = quote_plus(sf_password)
         base_url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}"
 
-        # the default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
-        dbms_semaphore = asyncio.Semaphore(16)
+        common_args = {
+            "engine_type": "sync",
+            "connect_args": {"disable_ocsp_checks": True, "client_session_keep_alive": True},
+        }
 
-        db_connectors = await asyncio.gather(
-            *[
-                SQLConnector.from_url_async(
-                    name,
-                    "sync",
-                    f"{base_url}/{name}",
-                    max_concurrency_per_db=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
-                    dbms_semaphore=dbms_semaphore,
-                    connect_args={"disable_ocsp_checks": True, "client_session_keep_alive": True},
-                )
-                for name in db_names
-            ]
-        )
+        # We use a higher per-db concurrency for loading schemas
+        schemas = []
+        for name in db_names:
+            db_conn = await SQLConnector.from_url_async(
+                name, url=f"{base_url}/{name}", max_concurrency_per_db=16, **common_args
+            )
+            schemas.append(db_conn.schema)
+
+        # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
+        dbms_semaphore = asyncio.Semaphore(16)
+        # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
+        db_connectors = [
+            await SQLConnector.from_url_async(
+                name,
+                url=f"{base_url}/{name}",
+                max_concurrency_per_db=2,
+                dbms_semaphore=dbms_semaphore,
+                schema=schema,
+                **common_args,
+            )
+            for name, schema in zip(db_names, schemas)
+        ]
 
         return NL2QDataset(
             name=self.name,
