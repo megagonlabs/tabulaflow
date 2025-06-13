@@ -249,8 +249,8 @@ Contact: yanlin@megagon.ai
 
 - [ ] Include views in the schema (some spider2 db has views instead of tables)
 - [ ] Metadata ablation
-- [ ] Optimize evaluation (share execution results between metrics)
-
+- [ ] Optimize evaluation - share execution results between metrics
+- [ ] Optimize schema fetching - approximate `num_unique` and `null_ratio`
 ```
 1126
 944
