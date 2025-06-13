@@ -104,22 +104,19 @@ class Spider2SnowDatasetLoader:
         # the default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
         dbms_semaphore = asyncio.Semaphore(16)
 
-        db_connectors = []
-        batch_size = 16
-        for i in range(0, len(db_names), batch_size):
-            db_connectors += await asyncio.gather(
-                *[
-                    SQLConnector.from_url_async(
-                        name,
-                        "sync",
-                        f"{base_url}/{name}",
-                        max_concurrency_per_db=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
-                        dbms_semaphore=dbms_semaphore,
-                        connect_args={"disable_ocsp_checks": True, "client_session_keep_alive": True},
-                    )
-                    for name in db_names[i : i + batch_size]
-                ]
-            )
+        db_connectors = await asyncio.gather(
+            *[
+                SQLConnector.from_url_async(
+                    name,
+                    "sync",
+                    f"{base_url}/{name}",
+                    max_concurrency_per_db=2,  # there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
+                    dbms_semaphore=dbms_semaphore,
+                    connect_args={"disable_ocsp_checks": True, "client_session_keep_alive": True},
+                )
+                for name in db_names
+            ]
+        )
 
         return NL2QDataset(
             name=self.name,
