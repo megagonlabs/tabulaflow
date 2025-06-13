@@ -140,31 +140,30 @@ async def build_column_async(
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
 
-    tasks = []
-    tasks.append(
-        asyncio.create_task(
-            t_eng.run_query_async(select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
-        )
-    )
     if num_rows > 0:
+        tasks = []
         tasks.append(
             asyncio.create_task(t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))
         )
         tasks.append(asyncio.create_task(t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))))
+        tasks.append(
+            asyncio.create_task(
+                t_eng.run_query_async(select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
+            )
+        )
 
-    results = await asyncio.gather(*tasks)
+        num_null, num_unique, examples = await asyncio.gather(*tasks)
 
-    if num_rows > 0:
-        num_null = results[1][0][0]
-        num_unique = results[2][0][0]
+        num_null = num_null[0][0]
+        num_unique = num_unique[0][0]
         null_ratio = num_null / num_rows
         unique_ratio = num_unique / num_rows
+        # Note: examples will contain all possible values if cardinality <= 20
+        examples = [_convert(row[0]) for row in examples]
     else:
         null_ratio = unique_ratio = 0.0
         num_unique = 0
-
-    # Note: examples will contain all possible values if cardinality <= 20
-    examples = [_convert(row[0]) for row in results[0]]
+        examples = []
 
     return SQLColumnSchema(
         name=column["name"],
@@ -177,7 +176,9 @@ async def build_column_async(
     )
 
 
-async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name: str, is_view: bool = False) -> SQLTableSchema:
+async def build_table_async(
+    t_eng: ThrottledEngine, table_name: str, schema_name: str, is_view: bool = False
+) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl)))[0][0]
 
@@ -235,7 +236,9 @@ async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_sc
         for table_name in await async_inspector.get_table_names(schema=schema_name):
             tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name)))
 
-        for table_name in await async_inspector.get_view_names(schema=schema_name):  # does not include materialized views
+        for table_name in await async_inspector.get_view_names(
+            schema=schema_name
+        ):  # does not include materialized views
             tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name, is_view=True)))
 
     tables = await asyncio.gather(*tasks)
