@@ -152,9 +152,9 @@ def get_examples_stmt(
 ) -> sqlalchemy.sql.expression.Executable:
     stmts = {
         "exact": select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21),
-        "approx": select(select(col).select_from(tbl).limit(10000).subquery("T")).distinct().limit(21),
+        # "approx": select(select(col).select_from(tbl).where(col.isnot(None)).limit(10000).subquery("T")).distinct().limit(10),  # seems that this is slower
     }
-    return stmts[mode]
+    return stmts["exact"]
 
 
 async def build_column_async(
@@ -175,7 +175,6 @@ async def build_column_async(
         num_null, num_unique, examples = await asyncio.gather(*tasks)
         num_null = num_null[0][0]
         num_unique = num_unique[0][0]
-        print(table_name, column["name"], num_null, num_unique)
         null_ratio = num_null / num_rows
         unique_ratio = num_unique / num_rows
         # Note: examples will contain all possible values if cardinality <= 20
