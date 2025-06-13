@@ -57,6 +57,8 @@ class HSchemaFormatter:
         return self._full_table_name(table.name, table.schema_name)
 
     def format(self, schema: HSQLSchema) -> str:
+        if not schema.table_groups:
+            return f"Database: {schema.name}\n(database has no tables)"
         return f"Database: {schema.name}\n\n" + "\n\n".join([self.format_table_group(tg) for tg in schema.table_groups])
 
     def format_table_group(self, tg: HTableGroup) -> str:

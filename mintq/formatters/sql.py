@@ -31,6 +31,8 @@ class SQLDefaultSchemaFormatter:
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False) -> str:
         res = f"Database: {schema.name}"
+        if not schema.tables:
+            return f"{res}\n(database has no tables)"
         res += "\n\n"
         res += "\n\n".join([self.format_table(table, pk_fk_column_only) for table in schema.tables])
         return res
