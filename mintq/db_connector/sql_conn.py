@@ -147,6 +147,16 @@ def get_num_unique_stmt(
         return stmts[dialect]
 
 
+def get_examples_stmt(
+    dialect: str, col: sqlalchemy.Column, tbl: sqlalchemy.Table, mode: Literal["exact", "approx"] = "approx"
+) -> sqlalchemy.sql.expression.Executable:
+    stmts = {
+        "exact": select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21),
+        "approx": select(select(col).select_from(tbl).limit(10000).subquery("T")).distinct().limit(21),
+    }
+    return stmts[mode]
+
+
 async def build_column_async(
     t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
@@ -159,17 +169,13 @@ async def build_column_async(
         tasks.append(
             asyncio.create_task(t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))
         )
-        tasks.append(asyncio.create_task(t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl))))
-        tasks.append(
-            asyncio.create_task(
-                t_eng.run_query_async(select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
-            )
-        )
+        tasks.append(asyncio.create_task(t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx"))))
+        tasks.append(asyncio.create_task(t_eng.run_query_async(get_examples_stmt(dialect, col, tbl, mode="approx"))))
 
         num_null, num_unique, examples = await asyncio.gather(*tasks)
-
         num_null = num_null[0][0]
         num_unique = num_unique[0][0]
+        print(table_name, column["name"], num_null, num_unique)
         null_ratio = num_null / num_rows
         unique_ratio = num_unique / num_rows
         # Note: examples will contain all possible values if cardinality <= 20
