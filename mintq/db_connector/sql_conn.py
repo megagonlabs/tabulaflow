@@ -134,6 +134,19 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
+def get_num_unique_stmt(
+    dialect: str, col: sqlalchemy.Column, tbl: sqlalchemy.Table, mode: Literal["exact", "approx"] = "approx"
+) -> sqlalchemy.sql.expression.Executable:
+    stmts = {
+        "exact": select(func.count(distinct(col))).select_from(tbl),
+        "snowflake": select(func.hll(col)).select_from(tbl),
+    }
+    if mode == "exact" or dialect not in stmts:
+        return stmts["exact"]
+    else:
+        return stmts[dialect]
+
+
 async def build_column_async(
     t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
 ) -> SQLColumnSchema:
@@ -142,10 +155,11 @@ async def build_column_async(
 
     if num_rows > 0:
         tasks = []
+        dialect = t_eng.engine.dialect.name
         tasks.append(
             asyncio.create_task(t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))
         )
-        tasks.append(asyncio.create_task(t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))))
+        tasks.append(asyncio.create_task(t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl))))
         tasks.append(
             asyncio.create_task(
                 t_eng.run_query_async(select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(21))
@@ -161,8 +175,7 @@ async def build_column_async(
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
-        null_ratio = unique_ratio = 0.0
-        num_unique = 0
+        null_ratio = num_unique = unique_ratio = 0.0
         examples = []
 
     return SQLColumnSchema(
