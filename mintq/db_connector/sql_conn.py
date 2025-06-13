@@ -177,7 +177,7 @@ async def build_column_async(
     )
 
 
-async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name: str) -> SQLTableSchema:
+async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name: str, is_view: bool = False) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl)))[0][0]
 
@@ -211,6 +211,7 @@ async def build_table_async(t_eng: ThrottledEngine, table_name: str, schema_name
     return SQLTableSchema(
         name=table_name,
         schema_name=schema_name,
+        is_view=is_view,
         columns=columns,
         primary_key=primary_key,
         num_rows=num_rows,
@@ -233,6 +234,9 @@ async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_sc
 
         for table_name in await async_inspector.get_table_names(schema=schema_name):
             tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name)))
+
+        for table_name in await async_inspector.get_view_names(schema=schema_name):  # does not include materialized views
+            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name, is_view=True)))
 
     tables = await asyncio.gather(*tasks)
 

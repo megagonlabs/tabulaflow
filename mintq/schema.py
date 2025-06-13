@@ -128,6 +128,7 @@ class SQLColumnSchema(BaseModel):
 class SQLTableSchema(BaseModel):
     name: str
     schema_name: str | None = None
+    is_view: bool
     columns: list[SQLColumnSchema]
     primary_key: list[str]
     num_rows: int
