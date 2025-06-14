@@ -276,6 +276,7 @@ class SQLConnector:
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
             schema = await load_schema_with_cache_async(name, t_eng)
+            engine.dispose()
         return cls(name, schema, t_eng)
 
     async def run_query_async(
