@@ -122,6 +122,7 @@ async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQL
     dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
     schema = await build_schema_async(t_eng, name, dbms_supports_schema)
+    t_eng.engine.dispose()
 
     if config.cache_enabled:
         with open(cache_path, "w", encoding="utf-8") as f:
@@ -276,7 +277,6 @@ class SQLConnector:
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
             schema = await load_schema_with_cache_async(name, t_eng)
-            engine.dispose()
         return cls(name, schema, t_eng)
 
     async def run_query_async(
