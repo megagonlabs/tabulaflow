@@ -122,8 +122,10 @@ async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQL
     dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
     schema = await build_schema_async(t_eng, name, dbms_supports_schema)
-    t_eng.engine.dispose()
-
+    if t_eng.engine_type == "async":
+        await t_eng.engine.dispose()
+    else:
+        t_eng.engine.dispose()
     if config.cache_enabled:
         with open(cache_path, "w", encoding="utf-8") as f:
             f.write(schema.model_dump_json(indent=2))
