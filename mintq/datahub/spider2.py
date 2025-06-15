@@ -109,7 +109,7 @@ class Spider2SnowDatasetLoader:
         schemas = []
         for name in db_names:
             db_conn = await SQLConnector.from_url_async(
-                name, "sync", f"{base_url}/{name}", max_concurrency_per_db=16, connect_args=connect_args
+                name, "sync", f"{base_url}/{name}", max_concurrency_per_db=8, connect_args=connect_args
             )
             schemas.append(db_conn.schema)
 
