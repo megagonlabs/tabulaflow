@@ -2,7 +2,6 @@ import os
 import json
 import random
 import asyncio
-from tqdm import tqdm
 from typing import Optional, Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector

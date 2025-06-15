@@ -6,7 +6,6 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Optional, Any
 import pandas as pd
-from tqdm import tqdm
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 

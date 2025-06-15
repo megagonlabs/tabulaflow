@@ -2,7 +2,6 @@ from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
 import pandas as pd
 import hashlib
-import time
 import os
 import asyncio
 from contextlib import asynccontextmanager
@@ -141,7 +140,10 @@ def _convert(value: Any) -> str | int | float | bool:
 
 
 def get_num_unique_stmt(
-    dialect: str, col: sqlalchemy.ColumnElement[Any], tbl: sqlalchemy.FromClause, mode: Literal["exact", "approx"] = "approx"
+    dialect: str,
+    col: sqlalchemy.ColumnElement[Any],
+    tbl: sqlalchemy.FromClause,
+    mode: Literal["exact", "approx"] = "approx",
 ) -> sqlalchemy.sql.expression.Executable:
     stmts = {
         "exact": select(func.count(distinct(col))).select_from(tbl),
