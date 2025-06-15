@@ -55,7 +55,7 @@ class LLMOutput(BaseModel):
 class BaseClusterer(Protocol):
     trajectory_: Trajectory | None
 
-    def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]: ...
+    async def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]: ...
 
 
 LLM_CLUSTERER_PROMPT = """

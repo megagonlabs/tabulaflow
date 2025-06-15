@@ -118,7 +118,7 @@ class SQLColumnSchema(BaseModel):
     dtype: str
     nullable: bool
     null_ratio: float
-    num_unique: float
+    num_unique: int
     unique_ratio: float
     examples: list[Any]
     primary_key_type: Literal["single", "composite"] | None = None
