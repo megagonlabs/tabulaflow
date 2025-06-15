@@ -10,7 +10,7 @@ from mintq.metadata_synthesizer.hschema import HSchemaSynthesizer
 from mintq.utils import format_trajectory
 
 
-async def main():
+async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", type=str, default="bird-sql")
     parser.add_argument("--split", type=str, default="dev")

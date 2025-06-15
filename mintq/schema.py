@@ -158,7 +158,7 @@ class HColumnGroup(BaseModel):
 
 class HTableSection(BaseModel):
     name: str
-    description: str
+    description: str | None
     column_groups: list[HColumnGroup]
 
 
