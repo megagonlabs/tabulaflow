@@ -211,12 +211,14 @@ class SQLAgent:
             result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
         )
+        self.agent.instrument_all()
         self.agent_no_tools = Agent[TaskContext, str](
             get_pydantic_ai_llm(llm),
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )
+        self.agent_no_tools.instrument_all()
         self.formatter = schema_formatter
 
     def get_config(self) -> dict[str, str | int | float | bool]:
