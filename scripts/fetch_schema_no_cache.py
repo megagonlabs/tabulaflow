@@ -9,7 +9,7 @@ from mintq.formatters import SQLDefaultSchemaFormatter
 os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 
-async def main():
+async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="beaver")
     parser.add_argument("--split", default="dev")

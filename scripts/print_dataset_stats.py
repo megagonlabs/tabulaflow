@@ -4,7 +4,7 @@ import asyncio
 from mintq.datahub import get_dataset_loader
 
 
-async def main():
+async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="spider2-snow")
     parser.add_argument("--split", default="dev")
