@@ -100,16 +100,16 @@ class Spider2SnowDatasetLoader:
         encoded_password = quote_plus(sf_password)
         base_url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}"
 
-        common_args = {
-            "engine_type": "sync",
-            "connect_args": {"disable_ocsp_checks": True, "client_session_keep_alive": True},
+        connect_args = {
+            "disable_ocsp_checks": True,
+            "client_session_keep_alive": True,
         }
 
         # We use a higher per-db concurrency for loading schemas
         schemas = []
         for name in db_names:
             db_conn = await SQLConnector.from_url_async(
-                name, url=f"{base_url}/{name}", max_concurrency_per_db=16, **common_args
+                name, "sync", f"{base_url}/{name}", max_concurrency_per_db=16, connect_args=connect_args
             )
             schemas.append(db_conn.schema)
 
@@ -119,11 +119,12 @@ class Spider2SnowDatasetLoader:
         db_connectors = [
             await SQLConnector.from_url_async(
                 name,
-                url=f"{base_url}/{name}",
+                "sync",
+                f"{base_url}/{name}",
                 max_concurrency_per_db=2,
                 dbms_semaphore=dbms_semaphore,
                 schema=schema,
-                **common_args,
+                connect_args=connect_args,
             )
             for name, schema in zip(db_names, schemas)
         ]
