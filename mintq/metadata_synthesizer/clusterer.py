@@ -90,7 +90,7 @@ class ClusterStore:
         self.ignore_cluster_not_exists = ignore_cluster_not_exists
 
         self._descriptions: dict[str, str | None] = {}
-        self._items: dict[str, list[int]] = {}
+        self._items: dict[str, list[str]] = {}
 
     def create_cluster(self, action: CreateCluster) -> None:
         if action.name in self._descriptions:
@@ -224,8 +224,7 @@ class AffixClusterer:
                     res.append(Cluster(name=name, description=None, item_names=[name]))
                 continue
 
-            variations = [re.search(r"\d+", name).group() for name in names]
-            variations = sorted([int(v) for v in variations])
+            variations = sorted([int(re.search(r"\d+", name).group()) for name in names])  # type: ignore
             a = variations[0]
             b = variations[-1]
             if variations != list(range(a, b + 1)):
