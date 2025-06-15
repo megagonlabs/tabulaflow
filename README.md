@@ -234,12 +234,12 @@ Contact: yanlin@megagon.ai
 ### Agent
 
 - [x] SQL Agent starting with table names and foreign keys, with tools `list_columns`, `search_keywords`, `run_query`
+- [ ] Reproduce previous performance
 - [ ] Hierarchical schemas
   - [x] HSchema generation v1
   - [x] HSchema generation v2
   - [ ] HSchema formatting
   - [ ] Design tools
-- [ ] Reproduce previous performance
 - [ ] Code diff tool
 - [ ] Schema linking agent + SQL writing agent
 - [ ] Hierarchical documents
@@ -247,10 +247,10 @@ Contact: yanlin@megagon.ai
 
 ### Framework
 
-- [ ] Include views in the schema (some spider2 db has views instead of tables)
+- [x] Include views in the schema (some spider2 db has views instead of tables)
+- [x] Optimize schema fetching - approximate `num_unique` and `null_ratio`
 - [ ] Metadata ablation
 - [ ] Optimize evaluation - share execution results between metrics
-- [ ] Optimize schema fetching - approximate `num_unique` and `null_ratio`
 ```
 1126
 944

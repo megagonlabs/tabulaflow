@@ -1,4 +1,4 @@
-from typing import Any, Sequence, Mapping, Literal
+from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
 import pandas as pd
 import hashlib
@@ -22,7 +22,7 @@ class ThrottledEngine:
     db_semaphore: asyncio.Semaphore | None
 
     @asynccontextmanager
-    async def throttle(self):
+    async def throttle(self) -> AsyncGenerator[None, None]:
         semaphores = [sem for sem in [self.dbms_semaphore, self.db_semaphore] if sem is not None]
         for sem in semaphores:
             await sem.acquire()
@@ -35,10 +35,10 @@ class ThrottledEngine:
     def _run_query(
         self,
         statement: sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | dict[str, Any] = (),
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        with self.engine.connect() as conn:
+        with self.engine.connect() as conn:  # type: ignore
             result = conn.execute(statement, parameters)
             rows = result.fetchall()
             if return_df:
@@ -48,7 +48,7 @@ class ThrottledEngine:
     async def run_query_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | dict[str, Any] = (),
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
@@ -58,7 +58,7 @@ class ThrottledEngine:
         async with self.throttle():
             try:
                 if self.engine_type == "async":
-                    async with self.engine.connect() as conn:
+                    async with self.engine.connect() as conn:  # type: ignore
                         result = await asyncio.wait_for(conn.execute(query, parameters), timeout=timeout)
                         rows = result.fetchall()
                         if return_df:
@@ -78,19 +78,21 @@ class ThrottledEngine:
 class AsyncInspector:
     t_eng: ThrottledEngine
 
-    def _run_inspector_conn(self, conn, method: str, args, kwargs) -> Any:
+    def _run_inspector_conn(
+        self, conn: sqlalchemy.engine.Connection, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]
+    ) -> Any:
         inspector = inspect(conn)
         return getattr(inspector, method)(*args, **kwargs)
 
-    def _run_inspector(self, method: str, args, kwargs) -> Any:
-        with self.t_eng.engine.connect() as conn:
+    def _run_inspector(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
+        with self.t_eng.engine.connect() as conn:  # type: ignore
             return self._run_inspector_conn(conn, method, args, kwargs)
 
     def __getattr__(self, method: str) -> Any:
-        async def _stub_async(*args, **kwargs) -> Any:
+        async def _stub_async(*args: Any, **kwargs: Any) -> Any:
             async with self.t_eng.throttle():
                 if self.t_eng.engine_type == "async":
-                    async with self.t_eng.engine.connect() as conn:
+                    async with self.t_eng.engine.connect() as conn:  # type: ignore
                         return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
                 else:
                     loop = asyncio.get_running_loop()
@@ -123,7 +125,7 @@ async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQL
 
     schema = await build_schema_async(t_eng, name, dbms_supports_schema)
     if t_eng.engine_type == "async":
-        await t_eng.engine.dispose()
+        await t_eng.engine.dispose()  # type: ignore
     else:
         t_eng.engine.dispose()
     if config.cache_enabled:
@@ -139,7 +141,7 @@ def _convert(value: Any) -> str | int | float | bool:
 
 
 def get_num_unique_stmt(
-    dialect: str, col: sqlalchemy.Column, tbl: sqlalchemy.Table, mode: Literal["exact", "approx"] = "approx"
+    dialect: str, col: sqlalchemy.ColumnElement[Any], tbl: sqlalchemy.FromClause, mode: Literal["exact", "approx"] = "approx"
 ) -> sqlalchemy.sql.expression.Executable:
     stmts = {
         "exact": select(func.count(distinct(col))).select_from(tbl),
@@ -152,7 +154,7 @@ def get_num_unique_stmt(
 
 
 async def build_column_async(
-    t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str, num_rows: int
+    t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str | None, num_rows: int
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
@@ -184,7 +186,7 @@ async def build_column_async(
 
 
 async def build_table_async(
-    t_eng: ThrottledEngine, table_name: str, schema_name: str, is_view: bool = False
+    t_eng: ThrottledEngine, table_name: str, schema_name: str | None, is_view: bool = False
 ) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl)))[0][0]
@@ -233,7 +235,7 @@ async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_sc
     if not dbms_supports_schema:
         schema_names = [None]
     else:
-        schema_names = await async_inspector.get_schema_names()  # type: ignore
+        schema_names = await async_inspector.get_schema_names()
 
     tasks = []
     for schema_name in schema_names:
@@ -274,7 +276,7 @@ class SQLConnector:
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
-            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)  # type: ignore
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:

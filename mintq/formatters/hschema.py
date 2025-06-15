@@ -53,7 +53,7 @@ class HSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format_table_name(self, table) -> str:
+    def format_table_name(self, table: HTableGroup) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
     def format(self, schema: HSQLSchema) -> str:
