@@ -119,7 +119,7 @@ async def main_async() -> None:
     )
 
     model_class = get_nl2q_model_class(args.model)
-    result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)  # type: ignore
+    result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)
     save_results(result, args.result_dir)
 
 

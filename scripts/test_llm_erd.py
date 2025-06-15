@@ -17,7 +17,7 @@ async def main() -> None:
         "AIRLINES",
     )
     synthesizer = LLMERDiagramSynthesizer()
-    erd = synthesizer.run(connector)
+    erd = await synthesizer.run_async(connector)
     print(json.dumps(erd.model_dump(), indent=2))
     print(f"Time taken: {time.time() - t0} seconds")
 

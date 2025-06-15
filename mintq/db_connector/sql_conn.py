@@ -289,7 +289,7 @@ class SQLConnector:
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int = 30,
+        timeout: int | None = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         return await self._t_eng.run_query_async(query, parameters, timeout, return_df)

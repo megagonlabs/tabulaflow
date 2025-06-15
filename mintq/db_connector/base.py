@@ -25,6 +25,6 @@ class BaseAsyncSQLDBConnector(Protocol):
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int | None = None,
+        timeout: int | None = 30,
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame: ...

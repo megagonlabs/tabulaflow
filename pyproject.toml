@@ -51,6 +51,7 @@ dev = [
 [tool.mypy]
 strict = true
 ignore_missing_imports = true
+exclude = ["scripts/test_readme.py"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["data/*"]
