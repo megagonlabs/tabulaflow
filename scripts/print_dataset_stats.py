@@ -9,7 +9,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="spider2-snow")
     parser.add_argument("--split", default="dev")
-    parser.add_argument("--overwrite", action="store_true")
+    parser.add_argument("--format", default="github")
     args = parser.parse_args()
     print(args)
     print()
@@ -30,7 +30,7 @@ async def main() -> None:
         per_db_stats["num_columns"].append(sum(len(table.columns) for table in schema.tables))
     print()
     print("### Per-Database Stats")
-    print(tabulate(per_db_stats, headers=per_db_stats.keys(), tablefmt="github"))
+    print(tabulate(per_db_stats, headers=per_db_stats.keys(), tablefmt=args.format))
 
     aggregated_stats = {
         "dataset": args.dataset,
@@ -49,10 +49,11 @@ async def main() -> None:
     print("### Aggregated Stats")
     print(
         tabulate(
-            [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()], tablefmt="github"
+            [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
+            headers=("Stat", "Value"),
+            tablefmt=args.format,
         )
     )
-
 
 if __name__ == "__main__":
     asyncio.run(main())
