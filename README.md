@@ -247,10 +247,12 @@ Contact: yanlin@megagon.ai
 
 ### Framework
 
-- [x] Include views in the schema (some spider2 db has views instead of tables)
-- [x] Optimize schema fetching - approximate `num_unique` and `null_ratio`
+- [x] [Jun 13] Include views in the schema (some spider2 db has views instead of tables) 
+- [x] [Jun 13] Optimize schema fetching - approximate `num_unique` and `null_ratio` 
+- [x] [Jun 15] Tracing with [langfuse](https://langfuse.com/) 
 - [ ] Metadata ablation
 - [ ] Optimize evaluation - share execution results between metrics
+
 ```
 1126
 944
