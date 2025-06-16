@@ -67,7 +67,10 @@ class SQLDefaultSchemaFormatter:
         elif column.null_ratio > 0.0:
             res += " NULLABLE"
         is_categorical = (
-            column.dtype in ("TEXT", "VARCHAR") and 0 < column.num_unique <= 20 and column.unique_ratio < 0.01
+            column.dtype in ("TEXT", "VARCHAR")
+            and column.num_unique
+            and 0 < column.num_unique <= 20
+            and column.unique_ratio < 0.01
         )
         if is_categorical:  # show all possible values
             valid_values = [self._quote(self._truncate(v)) for v in column.examples]

@@ -118,11 +118,11 @@ class SQLColumnSchema(BaseModel):
     dtype: str
     nullable: bool
     null_ratio: float
-    num_unique: int
-    unique_ratio: float
+    num_unique: int | None  # Only for text or integer columns
+    unique_ratio: float | None  # Only for text or integer columns
     examples: list[Any]
     primary_key_type: Literal["single", "composite"] | None = None
-    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # include composite foreign keys
+    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
 
 
 class SQLTableSchema(BaseModel):

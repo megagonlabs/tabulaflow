@@ -155,30 +155,54 @@ def get_num_unique_stmt(
         return stmts[dialect]
 
 
+# Types that might be categorical
+CATEGORICAL_TYPES = [
+    "CHAR",
+    "VARCHAR",
+    "NCHAR",
+    "NVARCHAR",
+    "TEXT",
+    "CLOB",
+    "BOOLEAN",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "ENUM",
+]
+
+
 async def build_column_async(
     t_eng: ThrottledEngine, column: dict[str, Any], table_name: str, schema_name: str | None, num_rows: int
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
+    dtype = column["type"].__visit_name__
 
     if num_rows > 0:
         dialect = t_eng.engine.dialect.name
         num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))[0][0]
-        num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx")))[0][0]
-        examples = await t_eng.run_query_async(
-            select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
-        )
         null_ratio = num_null / num_rows
-        unique_ratio = num_unique / num_rows
+
+        if dtype in CATEGORICAL_TYPES:
+            num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx")))[0][0]
+            unique_ratio = num_unique / num_rows
+            examples = await t_eng.run_query_async(
+                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
+            )
+        else:
+            num_unique = None
+            unique_ratio = None
+            examples = await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(20))
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
-        null_ratio = num_unique = unique_ratio = 0.0
+        null_ratio = unique_ratio = 0.0
+        num_unique = 0
         examples = []
 
     return SQLColumnSchema(
         name=column["name"],
-        dtype=column["type"].__visit_name__,
+        dtype=dtype,
         nullable=column["nullable"],
         null_ratio=null_ratio,
         num_unique=num_unique,
