@@ -1,6 +1,7 @@
 import argparse
 import time
 import asyncio
+from tabulate import tabulate
 from mintq.datahub import get_dataset_loader
 
 
@@ -20,28 +21,37 @@ async def main() -> None:
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    num_dbs = len(dataset.db_connectors)
-    num_tables = sum(len(db.schema.tables) for db in dataset.db_connectors.values())
-    num_columns = sum(sum(len(table.columns) for table in db.schema.tables) for db in dataset.db_connectors.values())
+    per_db_stats = {"database": [], "num_tables": [], "num_columns": []}
+    db_names = sorted(dataset.db_connectors.keys())
+    for db_name in db_names:
+        schema = dataset.db_connectors[db_name].schema
+        per_db_stats["database"].append(db_name)
+        per_db_stats["num_tables"].append(len(schema.tables))
+        per_db_stats["num_columns"].append(sum(len(table.columns) for table in schema.tables))
+    print()
+    print("### Per-Database Stats")
+    print(tabulate(per_db_stats, headers=per_db_stats.keys(), tablefmt="github"))
 
-    db_to_columns = {
-        name: sum(len(table.columns) for table in db.schema.tables) for name, db in dataset.db_connectors.items()
+    aggregated_stats = {
+        "dataset": args.dataset,
+        "split": args.split,
+        "total_tasks": len(dataset.tasks),
+        "total_databases": len(dataset.db_connectors),
+        "max_tables_per_db": max(per_db_stats["num_tables"]),
+        "avg_tables_per_db": sum(per_db_stats["num_tables"]) / len(dataset.db_connectors),
+        "min_tables_per_db": min(per_db_stats["num_tables"]),
+        "max_columns_per_db": max(per_db_stats["num_columns"]),
+        "avg_columns_per_db": sum(per_db_stats["num_columns"]) / len(dataset.db_connectors),
+        "min_columns_per_db": min(per_db_stats["num_columns"]),
+        "avg_columns_per_table": sum(per_db_stats["num_columns"]) / sum(per_db_stats["num_tables"]),
     }
-    db_to_columns = dict(sorted(db_to_columns.items(), key=lambda x: x[0]))
     print()
-    print("### Column counts per database")
-    for db, columns in db_to_columns.items():
-        print(f"- {db}: {columns}")
-
-    print()
-    print("### Overall stats")
-    print(f"Dataset: {args.dataset}")
-    print(f"Split: {args.split}")
-    print(f"total_tasks: {len(dataset.tasks)}")
-    print(f"total_databases: {num_dbs}")
-    print(f"avg_tables_per_db: {num_tables / num_dbs:.2f}")
-    print(f"avg_columns_per_table: {num_columns / num_tables:.2f}")
-    print(f"avg_columns_per_db: {num_columns / num_dbs:.2f}")
+    print("### Aggregated Stats")
+    print(
+        tabulate(
+            [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()], tablefmt="github"
+        )
+    )
 
 
 if __name__ == "__main__":
