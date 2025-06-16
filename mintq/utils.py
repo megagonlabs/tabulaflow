@@ -1,6 +1,7 @@
 import json
 import math
 import os
+import pandas as pd
 import litellm
 from mintq.schema import Trajectory, NL2QRunResult
 
@@ -36,6 +37,20 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
             summ = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
             res[f"total_{key}"] = round(summ, 4) if isinstance(summ, float) else summ
     return res
+
+
+def save_csv(result: NL2QRunResult, path: str, metrics_to_include: list[str] = []) -> None:
+    df_headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
+    df = []
+
+    for task in result.tasks:
+        df.append(
+            (task.qid, task.db, task.question, task.evidence, "\n\n".join(task.gold_queries), task.pred_query)
+            + tuple(task.metrics[m] for m in metrics_to_include)
+        )
+
+    df = pd.DataFrame(df, columns=df_headers)
+    df.to_csv(path, index=False)
 
 
 def save_results(result: NL2QRunResult, result_dir: str) -> None:
