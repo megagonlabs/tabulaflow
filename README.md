@@ -233,8 +233,8 @@ Contact: yanlin@megagon.ai
 
 ### Agent
 
-- [x] SQL Agent starting with table names and foreign keys, with tools `list_columns`, `search_keywords`, `run_query`
-- [ ] Reproduce previous performance
+- [x] Agent V2 starting with table names and foreign keys, with tools `list_columns`, `search_keywords`, `run_query`
+- [ ] Reproduce performance of Agent V1
 - [ ] Hierarchical schemas
   - [x] HSchema generation v1
   - [x] HSchema generation v2
