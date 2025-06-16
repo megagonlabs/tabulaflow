@@ -25,6 +25,7 @@ class TaskContext:
     db_connector: BaseAsyncSQLDBConnector
     formatter: BaseSQLSchemaFormatter
     table_id_to_schema: dict[str, SQLTableSchema]
+    max_steps: int
 
 
 SYSTEM_PROMPT = """
@@ -85,6 +86,12 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
     return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
 
 
+def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
+    if ctx.usage.requests == ctx.deps.max_steps:
+        res += "\n(Warning: You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool)"
+    return res
+
+
 async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
     """
     Execute a SQL query and return the results.
@@ -108,7 +115,7 @@ async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
 
     if df.isnull().all().any():
         res += "\n(Warning: a column is entirely null, the query might be incorrect)"
-    return res
+    return add_max_steps_reached(ctx, res)
 
 
 async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
@@ -126,7 +133,8 @@ async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
     if not table_schema.columns:
         ctx.usage.incr(Usage(details={"list_columns_table_has_no_columns": 1}))
         return f"(table {table} has no columns)"
-    return ctx.deps.formatter.format_table(table_schema)
+    res = ctx.deps.formatter.format_table(table_schema)
+    return add_max_steps_reached(ctx, res)
 
 
 async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
@@ -172,7 +180,7 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
     res += "\n".join(matches[:10])
     if len(matches) > 10:
         res += "\n..."
-    return res
+    return add_max_steps_reached(ctx, res)
 
 
 def finish(ctx: RunContext[TaskContext]) -> str:
@@ -197,11 +205,18 @@ class SQLAgent:
     name = "sql_agent"
 
     def __init__(
-        self, llm: str, schema_formatter: BaseSQLSchemaFormatter, temperature: float = 0.0, num_candidates: int = 1
+        self,
+        llm: str,
+        schema_formatter: BaseSQLSchemaFormatter,
+        temperature: float = 0.0,
+        num_candidates: int = 1,
+        max_steps: int = 20,
     ):
         self.llm = llm
         self.temperature = temperature
         self.num_candidates = num_candidates
+        self.max_steps = max_steps
+
         self.agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(llm),
             tools=[Tool(list_columns), Tool(search_keywords), Tool(run_query)],
@@ -246,6 +261,7 @@ class SQLAgent:
             db_connector=db_connector,
             formatter=self.formatter,
             table_id_to_schema=table_id_to_schema,
+            max_steps=self.max_steps,
         )
 
         # Run the agent
