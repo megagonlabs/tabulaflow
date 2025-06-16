@@ -4,6 +4,7 @@ __pycache__/
 *$py.class
 
 # Added by me
+/backup/
 /exp*/
 /log*/
 /data*/
