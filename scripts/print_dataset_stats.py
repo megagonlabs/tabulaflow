@@ -50,10 +50,11 @@ async def main() -> None:
     print(
         tabulate(
             [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
-            headers=("Stat", "Value"),
+            headers=("key", "value"),
             tablefmt=args.format,
         )
     )
+
 
 if __name__ == "__main__":
     asyncio.run(main())
