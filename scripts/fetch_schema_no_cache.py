@@ -14,9 +14,13 @@ async def main() -> None:
     parser.add_argument("--dataset", default="beaver")
     parser.add_argument("--split", default="dev")
     parser.add_argument("--database", default="keystone")
+    parser.add_argument("--enable_cache", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.enable_cache:
+        os.environ["MINTQ_CACHE_ENABLED"] = "1"
 
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
