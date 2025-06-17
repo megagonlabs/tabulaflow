@@ -14,8 +14,7 @@ __all__ = [
 all_schema_formatter_classes = [SQLDefaultSchemaFormatter]
 
 schema_formatter_registry: dict[str, type[BaseSchemaFormatter] | type[BaseSQLSchemaFormatter]] = {
-    cls.name: cls
-    for cls in all_schema_formatter_classes
+    cls.name: cls for cls in all_schema_formatter_classes
 }
 
 

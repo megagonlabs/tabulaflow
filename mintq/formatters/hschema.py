@@ -81,6 +81,7 @@ class HSchemaFormatter:
         res = f"- {self._quote_if_needed(column_group.name)}{desc}: {column_group.dtype}"
         is_categorical = (
             column_group.dtype in ("TEXT", "VARCHAR")
+            and column_group.num_unique and column_group.unique_ratio
             and 0 < column_group.num_unique <= 20
             and column_group.unique_ratio < 0.01
         )

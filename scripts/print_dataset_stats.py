@@ -21,7 +21,7 @@ async def main() -> None:
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    per_db_stats = {"database": [], "num_tables": [], "num_columns": []}
+    per_db_stats = {"database": [], "num_tables": [], "num_columns": []}  # type: ignore
     db_names = sorted(dataset.db_connectors.keys())
     for db_name in db_names:
         schema = dataset.db_connectors[db_name].schema
@@ -30,7 +30,7 @@ async def main() -> None:
         per_db_stats["num_columns"].append(sum(len(table.columns) for table in schema.tables))
     print()
     print("### Per-Database Stats")
-    print(tabulate(per_db_stats, headers=per_db_stats.keys(), tablefmt=args.format))
+    print(tabulate(per_db_stats, headers=list(per_db_stats.keys()), tablefmt=args.format))
 
     aggregated_stats = {
         "dataset": args.dataset,

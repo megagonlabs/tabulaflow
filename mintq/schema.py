@@ -147,8 +147,8 @@ class HColumnGroup(BaseModel):
     dtype: str
     nullable: bool
     null_ratio: float
-    num_unique: int
-    unique_ratio: float
+    num_unique: int | None
+    unique_ratio: float | None
     examples: list[Any]
     primary_key_type: Literal["single", "composite"] | None = None
     foreign_keys: list[ForeignKeySchema] = Field(

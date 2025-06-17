@@ -40,16 +40,19 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
 
 
 def save_csv(result: NL2QRunResult, path: str, metrics_to_include: list[str] = []) -> None:
-    df_headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
-    df = []
+    headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
+    data = []
 
     for task in result.tasks:
-        df.append(
+        if task.task_type != "simple":
+            raise ValueError("Only simple NL2Q tasks are supported currently")
+
+        data.append(
             (task.qid, task.db, task.question, task.evidence, "\n\n".join(task.gold_queries), task.pred_query)
             + tuple(task.metrics[m] for m in metrics_to_include)
         )
 
-    df = pd.DataFrame(df, columns=df_headers)
+    df = pd.DataFrame(data, columns=headers)
     df.to_csv(path, index=False)
 
 
