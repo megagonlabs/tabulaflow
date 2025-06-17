@@ -166,9 +166,16 @@ async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str,
         ctx.usage.incr(Usage(details={"search_keywords_column_not_string": 1}))
         return f"(column {column} is not a string)"
 
+    if "." in table:
+        schema_name, table_name = table.split(".")
+    else:
+        schema_name, table_name = None, table
+
     matches = []
     for keyword in keywords:
-        sql_table = sqlalchemy.Table(table, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String))
+        sql_table = sqlalchemy.Table(
+            table_name, sqlalchemy.MetaData(), sqlalchemy.Column(column, sqlalchemy.String), schema=schema_name
+        )
         stmt = select(distinct(sql_table.c[column])).where(sql_table.c[column].like(f"%{keyword}%"))
         result = await db_connector.run_query_async(stmt, timeout=None)
         matches += [row[0] for row in result]
