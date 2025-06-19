@@ -1,17 +1,18 @@
 import json
 import math
 import os
+import re
 import pandas as pd
 import litellm
 from mintq.schema import Trajectory, NL2QRunResult
 
 
 def extract_code(response: str) -> str:
-    response = response.strip()
-    lines = response.split("\n")
-    if lines[0].startswith("```") and lines[-1].startswith("```"):
-        response = "\n".join(lines[1:-1])
-    return response
+    m = re.search(r"```(?:([\w+-]+))?\n([\s\S]*?)\n```", response)
+    if m:
+        return m.group(2).strip()
+    else:
+        return response.strip()
 
 
 def avg_and_round(nums: list[float], n: int = 4) -> float:
