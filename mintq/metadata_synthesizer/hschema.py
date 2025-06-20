@@ -43,8 +43,11 @@ class TableSectionSynthesizer:
         Columns in the same group must have the same digest.
         """
         is_categorical = (
-            column.dtype in ("TEXT", "VARCHAR") and column.num_unique and column.unique_ratio
-            and 0 < column.num_unique <= 20 and column.unique_ratio < 0.01
+            column.dtype in ("TEXT", "VARCHAR")
+            and column.num_unique
+            and column.unique_ratio
+            and 0 < column.num_unique <= 20
+            and column.unique_ratio < 0.01
         )
         values = tuple(sorted(column.examples)) if is_categorical else None
         foreign_keys = tuple(

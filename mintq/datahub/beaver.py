@@ -2,7 +2,7 @@ import os
 import json
 import random
 import asyncio
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 
@@ -17,10 +17,7 @@ class BeaverDatasetLoader:
         self.directory = directory
         self._data: dict[Any, NL2QDataset] = {}
 
-    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
-        if split != "dev":
-            raise ValueError("Only dev split is supported for beaver")
-
+    async def _load_split_async(self, split: Literal["dev"], databases: Optional[list[str]] = None) -> NL2QDataset:
         urls = {}
         tasks = []
         for file, port in [("dev_dw.json", 3311), ("dev_nw.json", 3312)]:

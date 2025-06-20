@@ -4,7 +4,7 @@ import re
 import random
 import asyncio
 from urllib.parse import quote_plus
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
@@ -26,10 +26,10 @@ class Spider2SnowDatasetLoader:
         self.sf_account = sf_account
         self._data: dict[Any, NL2QDataset] = {}
 
-    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
-        if split != "dev":
-            raise ValueError("Only dev split is supported for spider2-snow")
+        # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
+        self._dbms_semaphore = asyncio.Semaphore(16)
 
+    async def _load_split_async(self, split: Literal["dev"], databases: Optional[list[str]] = None) -> NL2QDataset:
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
         # Load spider2snow_eval.jsonl
@@ -113,8 +113,6 @@ class Spider2SnowDatasetLoader:
             )
             schemas.append(db_conn.schema)
 
-        # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
-        dbms_semaphore = asyncio.Semaphore(16)
         # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
         db_connectors = [
             await SQLConnector.from_url_async(
@@ -122,7 +120,7 @@ class Spider2SnowDatasetLoader:
                 "sync",
                 f"{base_url}/{name}",
                 max_concurrency_per_db=2,
-                dbms_semaphore=dbms_semaphore,
+                dbms_semaphore=self._dbms_semaphore,
                 schema=schema,
                 connect_args=connect_args,
             )

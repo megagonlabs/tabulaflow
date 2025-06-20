@@ -2,7 +2,7 @@ import os
 import json
 import random
 import asyncio
-from typing import Optional, Any
+from typing import Optional, Any, Literal
 from mintq.schema import SimpleNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 
@@ -17,13 +17,13 @@ class BirdSQLDatasetLoader:
         self.directory = directory
         self._data: dict[Any, NL2QDataset] = {}
 
-    async def _load_split_async(self, split: str, databases: Optional[list[str]] = None) -> NL2QDataset:
+    async def _load_split_async(
+        self, split: Literal["train", "dev"], databases: Optional[list[str]] = None
+    ) -> NL2QDataset:
         if split == "train":
             directory = os.path.join(self.directory, "train")
         elif split == "dev":
             directory = os.path.join(self.directory, "dev_20240627")
-        else:
-            raise ValueError(f"Split {split} not supported")
 
         tasks = []
         with open(os.path.join(directory, f"{split}.json"), "r") as f:

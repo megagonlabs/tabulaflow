@@ -68,7 +68,8 @@ class SQLDefaultSchemaFormatter:
             res += " NULLABLE"
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR")
-            and column.num_unique and column.unique_ratio
+            and column.num_unique
+            and column.unique_ratio
             and 0 < column.num_unique <= 20
             and column.unique_ratio < 0.01
         )
