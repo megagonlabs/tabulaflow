@@ -192,10 +192,6 @@ class Spider2SimpleDatasetLoader:
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             for line in f:
                 item = json.loads(line)
-
-                if databases and item["db_id"] not in databases:
-                    continue
-
                 if item["external_knowledge"]:
                     evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
                     with open(evidence_file, "r") as f:
@@ -212,11 +208,16 @@ class Spider2SimpleDatasetLoader:
             if qid.endswith(".sql"):
                 qid = qid[:-4]
 
+            db = row["db"].upper()
+
+            if databases and db not in databases:
+                continue
+
             tasks.append(
                 SimpleNL2QTask(
                     qid=qid,
                     language="SnowflakeSQL",
-                    db=row["db"],
+                    db=db,
                     question=row["instruction"],
                     evidence=qid_to_evidence[qid],
                     gold_queries=[row["sql"]],
