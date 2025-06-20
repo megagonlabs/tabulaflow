@@ -141,13 +141,16 @@ class Spider2SnowDatasetLoader:
         else:
             split, sample_size = split_id, None
 
+        if split != "dev":
+            raise ValueError(f"Split {split} not supported")
+
         if sample_size and databases:
             raise ValueError("sample_size and databases cannot be both specified")
 
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = await self._load_split_async(split, databases=databases)
+            self._data[(split, key)] = await self._load_split_async(split, databases=databases)  # type: ignore
 
         dataset = self._data[(split, key)]
         if sample_size:
@@ -277,13 +280,16 @@ class Spider2SimpleDatasetLoader:
         else:
             split, sample_size = split_id, None
 
+        if split != "dev":
+            raise ValueError(f"Split {split} not supported")
+
         if sample_size and databases:
             raise ValueError("sample_size and databases cannot be both specified")
 
         key = tuple(sorted(databases)) if isinstance(databases, list) else None
 
         if (split, key) not in self._data:
-            self._data[(split, key)] = await self._load_split_async(split, databases=databases)
+            self._data[(split, key)] = await self._load_split_async(split, databases=databases)  # type: ignore
 
         dataset = self._data[(split, key)]
         if sample_size:
