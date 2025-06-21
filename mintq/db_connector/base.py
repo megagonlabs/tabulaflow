@@ -5,10 +5,10 @@ from mintq.schema import BaseDBSchema, SQLSchema
 
 
 class BaseAsyncDBConnector(Protocol):
-    name: str  # note: for db connectors, name is an instance attribute
+    global_id: str
     schema: BaseDBSchema
 
-    def __init__(self, name: str, **kwargs: Any): ...
+    def __init__(self, global_id: str, **kwargs: Any): ...
 
     async def run_query_async(
         self, query: str, parameters: Sequence[Any] = (), timeout: int = 30
@@ -16,10 +16,10 @@ class BaseAsyncDBConnector(Protocol):
 
 
 class BaseAsyncSQLDBConnector(Protocol):
-    name: str  # note: for db connectors, name is an instance attribute
+    global_id: str
     schema: SQLSchema
 
-    def __init__(self, name: str, **kwargs: Any): ...
+    def __init__(self, global_id: str, **kwargs: Any): ...
 
     async def run_query_async(
         self,

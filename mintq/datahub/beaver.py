@@ -43,7 +43,10 @@ class BeaverDatasetLoader:
                     urls[item["db_id"]] = f"mysql+asyncmy://root:root@localhost:{port}/{item['db_id']}"
 
         db_connectors = await asyncio.gather(
-            *[SQLConnector.from_url_async(name, "async", url, max_concurrency_per_db=16) for name, url in urls.items()]
+            *[
+                SQLConnector.from_url_async(f"beaver+{name}", name, "async", url, max_concurrency_per_db=16)
+                for name, url in urls.items()
+            ]
         )
 
         return NL2QDataset(
@@ -51,7 +54,7 @@ class BeaverDatasetLoader:
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors={conn.name: conn for conn in db_connectors},
+            db_connectors={name: conn for name, conn in zip(urls.keys(), db_connectors)},
         )
 
     async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:

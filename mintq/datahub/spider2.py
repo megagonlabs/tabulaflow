@@ -109,13 +109,19 @@ class Spider2SnowDatasetLoader:
         schemas = []
         for name in db_names:
             db_conn = await SQLConnector.from_url_async(
-                name, "sync", f"{base_url}/{name}", max_concurrency_per_db=2, connect_args=connect_args
+                f"spider2-snow+{name}",
+                name,
+                "sync",
+                f"{base_url}/{name}",
+                max_concurrency_per_db=2,
+                connect_args=connect_args,
             )
             schemas.append(db_conn.schema)
 
         # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
         db_connectors = [
             await SQLConnector.from_url_async(
+                f"spider2-snow+{name}",
                 name,
                 "sync",
                 f"{base_url}/{name}",
@@ -132,7 +138,7 @@ class Spider2SnowDatasetLoader:
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors={conn.name: conn for conn in db_connectors},
+            db_connectors={name: conn for name, conn in zip(db_names, db_connectors)},
         )
 
     async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
@@ -249,13 +255,19 @@ class Spider2SimpleDatasetLoader:
         schemas = []
         for name in db_names:
             db_conn = await SQLConnector.from_url_async(
-                name, "sync", f"{base_url}/{name}", max_concurrency_per_db=2, connect_args=connect_args
+                f"spider2-snow+{name}",
+                name,
+                "sync",
+                f"{base_url}/{name}",
+                max_concurrency_per_db=2,
+                connect_args=connect_args,
             )
             schemas.append(db_conn.schema)
 
         # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
         db_connectors = [
             await SQLConnector.from_url_async(
+                f"spider2-snow+{name}",
                 name,
                 "sync",
                 f"{base_url}/{name}",
@@ -272,7 +284,7 @@ class Spider2SimpleDatasetLoader:
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors={conn.name: conn for conn in db_connectors},
+            db_connectors={name: conn for name, conn in zip(db_names, db_connectors)},
         )
 
     async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:

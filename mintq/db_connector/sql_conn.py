@@ -100,17 +100,14 @@ class AsyncInspector:
         return _stub_async
 
 
-async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQLSchema:
+async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: ThrottledEngine) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
     schema_cache_dir = os.path.join(config.cache_dir, "schemas")
-
     os.makedirs(schema_cache_dir, exist_ok=True)
 
-    engine_url_str = str(t_eng.engine.url)
-    hashed = hashlib.sha256(engine_url_str.encode()).hexdigest()
-    cache_path = os.path.join(schema_cache_dir, f"{name}.{hashed}.json")
+    cache_path = os.path.join(schema_cache_dir, f"{global_id}.json")
 
     if config.cache_refresh and os.path.exists(cache_path):
         os.remove(cache_path)
@@ -122,7 +119,7 @@ async def load_schema_with_cache_async(name: str, t_eng: ThrottledEngine) -> SQL
 
     dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
-    schema = await build_schema_async(t_eng, name, dbms_supports_schema)
+    schema = await build_schema_async(t_eng, db_name, dbms_supports_schema)
     if t_eng.engine_type == "async":
         await t_eng.engine.dispose()  # type: ignore
     else:
@@ -255,7 +252,7 @@ async def build_table_async(
     )
 
 
-async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_schema: bool) -> SQLSchema:
+async def build_schema_async(t_eng: ThrottledEngine, db_name: str, dbms_supports_schema: bool) -> SQLSchema:
     async_inspector = AsyncInspector(t_eng)
 
     if not dbms_supports_schema:
@@ -278,19 +275,20 @@ async def build_schema_async(t_eng: ThrottledEngine, name: str, dbms_supports_sc
 
     tables = await asyncio.gather(*tasks)
 
-    return SQLSchema(name=name, tables=tables)
+    return SQLSchema(name=db_name, tables=tables)
 
 
 @dataclass
 class SQLConnector:
-    name: str
+    global_id: str
     schema: SQLSchema
     _t_eng: ThrottledEngine
 
     @classmethod
     async def from_url_async(
         cls,
-        name: str,
+        global_id: str,
+        db_name: str,
         engine_type: Literal["async", "sync"],
         url: str | SQLAlchemyURL,
         max_concurrency_per_db: int = 8,
@@ -306,8 +304,8 @@ class SQLConnector:
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
-            schema = await load_schema_with_cache_async(name, t_eng)
-        return cls(name, schema, t_eng)
+            schema = await load_schema_with_cache_async(global_id, db_name, t_eng)
+        return cls(global_id, schema, t_eng)
 
     async def run_query_async(
         self,

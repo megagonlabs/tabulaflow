@@ -50,6 +50,7 @@ class BirdSQLDatasetLoader:
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
+                    f"bird-sql+{name}",
                     name,
                     "async",
                     f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
@@ -64,7 +65,7 @@ class BirdSQLDatasetLoader:
             split_id=split,
             databases=databases,
             tasks=tasks,  # type: ignore
-            db_connectors={conn.name: conn for conn in db_connectors},
+            db_connectors={name: conn for name, conn in zip(db_names, db_connectors)},
         )
 
     async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
