@@ -1,5 +1,5 @@
-from typing import ClassVar
-from pydantic_ai import Tool, RunContext, ModelRetry
+from typing import ClassVar, Callable
+from pydantic_ai import RunContext, ModelRetry
 import json
 from dataclasses import field, dataclass
 from collections import defaultdict
@@ -13,7 +13,7 @@ class FinishTool:
     def __call__(self) -> None:
         pass
 
-    def as_pydantic_ai_tool(self) -> Tool:
+    def as_pydantic_ai_tool(self) -> Callable[[RunContext], str]:
         def finish(ctx: RunContext) -> str:
             """
             Finish the task and return the last executed query as final answer.
