@@ -109,13 +109,12 @@ async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: Thro
 
     cache_path = os.path.join(schema_cache_dir, f"{global_id}.json")
 
-    if config.cache_refresh and os.path.exists(cache_path):
-        os.remove(cache_path)
-
     if config.cache_enabled and os.path.exists(cache_path):
-        with open(cache_path, "r", encoding="utf-8") as f:
-            content = f.read()
-            return SQLSchema.model_validate_json(content)
+        if config.cache_refresh:
+            os.remove(cache_path)
+        else:
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return SQLSchema.model_validate_json(f.read())
 
     dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
