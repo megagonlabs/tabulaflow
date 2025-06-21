@@ -18,6 +18,8 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.config import config
 
+_db_locks = collections.defaultdict(asyncio.Lock)
+
 SECTION_PROMPT = """
 You are a helpful database expert that organizes the columns in a SQL table into sections.
 - A **section** is a collection of semantically relevant columns that describe one aspect of the table.
@@ -213,17 +215,19 @@ class HSchemaSynthesizer:
     async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
         hschema_cache_dir = os.path.join(config.cache_dir, "hschema")
         os.makedirs(hschema_cache_dir, exist_ok=True)
-
         cache_path = os.path.join(hschema_cache_dir, f"{db_connector.global_id}.json")
-        if config.cache_enabled and os.path.exists(cache_path):
-            if config.cache_refresh:
-                os.remove(cache_path)
-            else:
-                with open(cache_path, "r") as f:
-                    return HSQLSchema.model_validate_json(f.read())
 
-        hschema = await self._run_async(db_connector)
-        if config.cache_enabled:
-            with open(cache_path, "w") as f:
-                f.write(hschema.model_dump_json())
-        return hschema
+        lock = _db_locks[db_connector.global_id]
+        async with lock:
+            if config.cache_enabled and os.path.exists(cache_path):
+                if config.cache_refresh:
+                    os.remove(cache_path)
+                else:
+                    with open(cache_path, "r") as f:
+                        return HSQLSchema.model_validate_json(f.read())
+
+            hschema = await self._run_async(db_connector)
+            if config.cache_enabled:
+                with open(cache_path, "w") as f:
+                    f.write(hschema.model_dump_json())
+            return hschema
