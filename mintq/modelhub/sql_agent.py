@@ -1,23 +1,16 @@
 from dataclasses import dataclass
 import jinja2
 import time
-import pandas as pd
-import numpy as np
 import json
-from typing import cast
-from tabulate import tabulate
-import sqlalchemy
-from sqlalchemy.sql import quoted_name
-from sqlalchemy import select, distinct
 from pydantic_ai import Agent, RunContext, ModelRetry
 from pydantic_ai.usage import Usage
-from pydantic_ai.tools import Tool
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
+from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool
 
 
 @dataclass
@@ -63,133 +56,10 @@ def get_system_prompt(ctx: RunContext[TaskContext]) -> str:
     return jinja2.Template(SYSTEM_PROMPT).render(language=ctx.deps.task.language)
 
 
-def truncate(s: str, max_chars: int) -> str:
-    if len(s) <= max_chars:
-        return s
-    return s[: max_chars // 2] + "\n...content truncated...\n" + s[-max_chars // 2 :]
-
-
-def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "simple") -> str:
-    n = len(df)
-    if n > max_visible_rows:
-        first_n = (max_visible_rows + 1) // 2
-        last_n = max_visible_rows - first_n
-        head = df.head(first_n)
-        tail = df.tail(last_n)
-        ellipsis_row = {col: "..." for col in df.columns}
-        display_df = pd.concat([head, pd.DataFrame([ellipsis_row]), tail], ignore_index=True)
-    else:
-        display_df = df
-
-    display_df = display_df.replace({np.nan: "[null]"})
-
-    # showindex=False hides the automatic row numbers
-    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
-
-
 def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
     if ctx.usage.requests == ctx.deps.max_steps:
         res += "\n(Warning: You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool)"
     return res
-
-
-async def run_query(ctx: RunContext[TaskContext], query: str) -> str:
-    """
-    Execute a SQL query and return the results.
-
-    Args:
-        query: The SQL query to execute.
-    """
-    db_connector = ctx.deps.db_connector
-    try:
-        df = await db_connector.run_query_async(query, return_df=True)
-        df = cast(pd.DataFrame, df)
-    except TimeoutError:
-        return "(query timed out after 30 seconds)"
-    except Exception as e:
-        return f"(query failed: {e})"
-
-    if df.empty:
-        return "(Warning: query executed successfully, but results are empty, the query might be incorrect)"
-
-    res = format_df(df, max_visible_rows=5)
-
-    if df.isnull().all().any():
-        res += "\n(Warning: a column is entirely null, the query might be incorrect)"
-    return add_max_steps_reached(ctx, res)
-
-
-async def list_columns(ctx: RunContext[TaskContext], table: str) -> str:
-    """
-    List the columns of a table.
-
-    Args:
-        table: The name of the table to list the columns of.
-    """
-    try:
-        table_schema = ctx.deps.table_id_to_schema[table]
-    except KeyError:
-        ctx.usage.incr(Usage(details={"list_columns_table_not_found": 1}))
-        return f"(table {table} not found)"
-    if not table_schema.columns:
-        ctx.usage.incr(Usage(details={"list_columns_table_has_no_columns": 1}))
-        return f"(table {table} has no columns)"
-    res = ctx.deps.formatter.format_table(table_schema)
-    return add_max_steps_reached(ctx, res)
-
-
-async def search_keywords(ctx: RunContext[TaskContext], table: str, column: str, keywords: list[str]) -> str:
-    """
-    Search for values in a column of a table that match any of the keywords.
-
-    Args:
-        table: The name of the table to search in.
-        column: The name of the column to search in. The datatype of the column must be text-like.
-        keywords: A list of keywords to search for. A value is considered a match if it contains any of the keywords.
-    """
-    db_connector = ctx.deps.db_connector
-
-    # Remove the quote characters from the column name if they exist
-    for quote_char in '"`':
-        if column.startswith(quote_char) and column.endswith(quote_char):
-            column = column[1:-1]
-            break
-
-    if table not in ctx.deps.table_id_to_schema:
-        ctx.usage.incr(Usage(details={"search_keywords_table_not_found": 1}))
-        return f"(table {table} not found)"
-
-    column_dtypes = {col.name: col.dtype for col in ctx.deps.table_id_to_schema[table].columns}
-    if column not in column_dtypes:
-        ctx.usage.incr(Usage(details={"search_keywords_column_not_found": 1}))
-        return f"(column {column} not found in table {table})"
-    if column_dtypes[column] not in ("VARCHAR", "TEXT", "STRING"):
-        ctx.usage.incr(Usage(details={"search_keywords_column_not_string": 1}))
-        return f"(column {column} is not a string)"
-
-    if "." in table:
-        schema_name, table_name = table.split(".")
-    else:
-        schema_name, table_name = None, table
-    column_name = quoted_name(column, quote=True)
-
-    matches = []
-    for keyword in keywords:
-        sql_table = sqlalchemy.Table(
-            table_name, sqlalchemy.MetaData(), sqlalchemy.Column(column_name, sqlalchemy.String), schema=schema_name
-        )
-        stmt = select(distinct(sql_table.c[column_name])).where(sql_table.c[column_name].like(f"%{keyword}%"))
-        result = await db_connector.run_query_async(stmt, timeout=None)
-        matches += [row[0] for row in result]
-    matches = sorted(list(set(matches)))
-    if not matches:
-        return "(no matches found)"
-
-    res = f"{len(matches)} matches:\n"
-    res += "\n".join(matches[:10])
-    if len(matches) > 10:
-        res += "\n..."
-    return add_max_steps_reached(ctx, res)
 
 
 def finish(ctx: RunContext[TaskContext]) -> str:
@@ -226,16 +96,6 @@ class SQLAgent:
         self.num_candidates = num_candidates
         self.max_steps = max_steps
 
-        self.agent = Agent[TaskContext, str](  # type: ignore
-            get_pydantic_ai_llm(llm),
-            tools=[Tool(list_columns), Tool(search_keywords), Tool(run_query)],
-            deps_type=TaskContext,
-            output_type=finish,
-            result_tool_name="finish",
-            result_tool_description="Finish the task and return the last executed query as final answer.",
-            instructions=get_system_prompt,
-        )
-        self.agent.instrument_all()
         self.agent_no_tools = Agent[TaskContext, str](
             get_pydantic_ai_llm(llm),
             tools=[],
@@ -255,6 +115,21 @@ class SQLAgent:
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
+
+        self.agent = Agent[TaskContext, str](  # type: ignore
+            get_pydantic_ai_llm(self.llm),
+            tools=[
+                ListColumnsTool(db_connector.schema, self.formatter).as_pydantic_ai_tool(),
+                SearchKeywordsTool(db_connector, self.formatter).as_pydantic_ai_tool(),
+                RunQueryTool(db_connector).as_pydantic_ai_tool(),
+            ],
+            deps_type=TaskContext,
+            output_type=finish,
+            result_tool_name="finish",
+            result_tool_description="Finish the task and return the last executed query as final answer.",
+            instructions=get_system_prompt,
+        )
+        self.agent.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
             schema=self.formatter.format(db_connector.schema, pk_fk_column_only=True),

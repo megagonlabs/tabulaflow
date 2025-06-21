@@ -1,0 +1,21 @@
+import pandas as pd
+import numpy as np
+from tabulate import tabulate
+
+
+def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "simple") -> str:
+    n = len(df)
+    if n > max_visible_rows:
+        first_n = (max_visible_rows + 1) // 2
+        last_n = max_visible_rows - first_n
+        head = df.head(first_n)
+        tail = df.tail(last_n)
+        ellipsis_row = {col: "..." for col in df.columns}
+        display_df = pd.concat([head, pd.DataFrame([ellipsis_row]), tail], ignore_index=True)
+    else:
+        display_df = df
+
+    display_df = display_df.replace({np.nan: "[null]"})
+
+    # showindex=False hides the automatic row numbers
+    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
