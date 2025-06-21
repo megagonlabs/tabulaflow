@@ -10,7 +10,7 @@ from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema
 from mintq.modelhub.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool
+from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool
 
 
 @dataclass
@@ -61,25 +61,6 @@ def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
         res += "\n(Warning: You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool)"
     return res
 
-
-def finish(ctx: RunContext[TaskContext]) -> str:
-    """
-    Finish the task and return the last executed query as final answer.
-    """
-    for msg in ctx.messages[::-1]:
-        if msg.kind == "response":
-            for part in msg.parts[::-1]:
-                if part.part_kind == "tool-call" and part.tool_name == "run_query":
-                    if isinstance(part.args, str):
-                        return json.loads(part.args)["query"]  # type: ignore
-                    elif isinstance(part.args, dict):
-                        return part.args["query"]  # type: ignore
-                    else:
-                        raise ValueError(f"Unexpected tool call argument type: {type(part.args)}")
-    ctx.usage.incr(Usage(details={"finish_no_query_executed": 1}))
-    raise ModelRetry("No query has been executed, you cannot finish yet")
-
-
 class SQLAgent:
     name = "sql_agent"
 
@@ -112,7 +93,7 @@ class SQLAgent:
         list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
         search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
         run_query_tool = RunQueryTool(db_connector)
-
+        finish_tool = FinishTool()
         agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(self.llm),
             tools=[
@@ -121,9 +102,9 @@ class SQLAgent:
                 run_query_tool.as_pydantic_ai_tool(),
             ],
             deps_type=TaskContext,
-            output_type=finish,
+            output_type=finish_tool.as_pydantic_ai_tool(),
             result_tool_name="finish",
-            result_tool_description="Finish the task and return the last executed query as final answer.",
+            # result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
         )
         agent.instrument_all()
@@ -179,7 +160,7 @@ class SQLAgent:
         metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_[
             "search_keywords_column_not_string"
         ]
-        metrics["finish_no_query_executed"] = usage.details.get("finish_no_query_executed", 0)
+        metrics["finish_no_query_executed"] = finish_tool.metrics_["finish_no_query_executed"]
         metrics["fallback"] = 1 if fallback else 0
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
 

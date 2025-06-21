@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from collections import defaultdict
 from pydantic_ai import Tool
 from typing import ClassVar
 from mintq.schema import SQLSchema
@@ -10,7 +11,7 @@ class ListColumnsTool:
     name: ClassVar[str] = "list_columns"
     schema: SQLSchema
     formatter: BaseSQLSchemaFormatter
-    metrics_: dict = field(default_factory=dict)
+    metrics_: dict = field(default_factory=lambda: defaultdict(int))
 
     async def __call__(self, table: str) -> str:
         """
