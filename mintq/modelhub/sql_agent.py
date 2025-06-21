@@ -96,13 +96,6 @@ class SQLAgent:
         self.num_candidates = num_candidates
         self.max_steps = max_steps
 
-        self.agent_no_tools = Agent[TaskContext, str](
-            get_pydantic_ai_llm(llm),
-            tools=[],
-            deps_type=TaskContext,
-            instructions=get_system_prompt,
-        )
-        self.agent_no_tools.instrument_all()
         self.formatter = schema_formatter
 
     def get_config(self) -> dict[str, str | int | float | bool]:
@@ -116,12 +109,16 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        self.agent = Agent[TaskContext, str](  # type: ignore
+        list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
+        search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
+        run_query_tool = RunQueryTool(db_connector)
+
+        agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(self.llm),
             tools=[
-                ListColumnsTool(db_connector.schema, self.formatter).as_pydantic_ai_tool(),
-                SearchKeywordsTool(db_connector, self.formatter).as_pydantic_ai_tool(),
-                RunQueryTool(db_connector).as_pydantic_ai_tool(),
+                list_columns_tool.as_pydantic_ai_tool(),
+                search_keywords_tool.as_pydantic_ai_tool(),
+                run_query_tool.as_pydantic_ai_tool(),
             ],
             deps_type=TaskContext,
             output_type=finish,
@@ -129,7 +126,15 @@ class SQLAgent:
             result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
         )
-        self.agent.instrument_all()
+        agent.instrument_all()
+
+        agent_no_tools = Agent[TaskContext, str](
+            get_pydantic_ai_llm(self.llm),
+            tools=[],
+            deps_type=TaskContext,
+            instructions=get_system_prompt,
+        )
+        agent_no_tools.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
             schema=self.formatter.format(db_connector.schema, pk_fk_column_only=True),
@@ -151,10 +156,10 @@ class SQLAgent:
         # Run the agent
         fallback = False
         try:
-            result = await self.agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
             messages = result.all_messages()[:-1]
         except (UsageLimitExceeded, UnexpectedModelBehavior):
-            result = await self.agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
             messages = result.all_messages()
             fallback = True
         pred_query = extract_code(result.output)
@@ -168,11 +173,12 @@ class SQLAgent:
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
         metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
-        metrics["list_columns_table_not_found"] = usage.details.get("list_columns_table_not_found", 0)
-        metrics["list_columns_table_has_no_columns"] = usage.details.get("list_columns_table_has_no_columns", 0)
-        metrics["search_keywords_table_not_found"] = usage.details.get("search_keywords_table_not_found", 0)
-        metrics["search_keywords_column_not_found"] = usage.details.get("search_keywords_column_not_found", 0)
-        metrics["search_keywords_column_not_string"] = usage.details.get("search_keywords_column_not_string", 0)
+        metrics["list_columns_table_not_found"] = list_columns_tool.metrics_["list_columns_table_not_found"]
+        metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_["search_keywords_table_not_found"]
+        metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_["search_keywords_column_not_found"]
+        metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_[
+            "search_keywords_column_not_string"
+        ]
         metrics["finish_no_query_executed"] = usage.details.get("finish_no_query_executed", 0)
         metrics["fallback"] = 1 if fallback else 0
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
