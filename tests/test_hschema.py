@@ -7,7 +7,7 @@ from mintq.db_connector import SQLConnector
 async def test_hschema_synthesizer() -> None:
     sqlite_path = "data/BIRD-SQL/dev_20240627/dev_databases/european_football_2/european_football_2.sqlite"
     db_connector = await SQLConnector.from_url_async(
-        "european_football_2", "async", f"sqlite+aiosqlite:///{sqlite_path}"
+        "bird-sql+european_football_2", "european_football_2", "async", f"sqlite+aiosqlite:///{sqlite_path}"
     )
     synthesizer = HSchemaSynthesizer(
         llm="gpt-4o",

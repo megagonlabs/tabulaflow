@@ -18,7 +18,7 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.config import config
 
-_db_locks = collections.defaultdict(asyncio.Lock)
+_db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 SECTION_PROMPT = """
 You are a helpful database expert that organizes the columns in a SQL table into sections.

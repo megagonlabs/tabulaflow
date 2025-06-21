@@ -1,5 +1,6 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, cast
+from collections import defaultdict
 import pandas as pd
 from pydantic_ai import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector
@@ -10,6 +11,7 @@ from mintq.toolhub.utils import format_df
 class RunQueryTool:
     name: ClassVar[str] = "run_query"
     db_connector: BaseAsyncSQLDBConnector
+    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     async def __call__(self, query: str) -> str:
         """

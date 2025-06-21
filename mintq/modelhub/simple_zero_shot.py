@@ -74,7 +74,7 @@ class SimpleZeroShotNL2Q:
         schema_str = self.schema_formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
-                f"Schema {db_connector.name} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
+                f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
             )
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
 

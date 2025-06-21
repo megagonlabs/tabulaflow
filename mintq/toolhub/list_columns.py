@@ -11,7 +11,7 @@ class ListColumnsTool:
     name: ClassVar[str] = "list_columns"
     schema: SQLSchema
     formatter: BaseSQLSchemaFormatter
-    metrics_: dict = field(default_factory=lambda: defaultdict(int))
+    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     async def __call__(self, table: str) -> str:
         """

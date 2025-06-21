@@ -14,7 +14,7 @@ class SearchKeywordsTool:
     name: ClassVar[str] = "search_keywords"
     db_connector: BaseAsyncSQLDBConnector
     formatter: BaseSQLSchemaFormatter
-    metrics_: dict = field(default_factory=lambda: defaultdict(int))
+    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
 
     async def __call__(self, table: str, column: str, keywords: list[str]) -> str:
         """
@@ -34,7 +34,8 @@ class SearchKeywordsTool:
                 break
 
         table_id_to_schema = {
-            self.formatter.format_table_name(table_schema): table_schema for table_schema in self.db_connector.schema.tables
+            self.formatter.format_table_name(table_schema): table_schema
+            for table_schema in self.db_connector.schema.tables
         }
 
         if table not in table_id_to_schema:

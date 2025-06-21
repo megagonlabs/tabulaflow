@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 import jinja2
 import time
-import json
-from pydantic_ai import Agent, RunContext, ModelRetry
-from pydantic_ai.usage import Usage
+from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
@@ -60,6 +58,7 @@ def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
     if ctx.usage.requests == ctx.deps.max_steps:
         res += "\n(Warning: You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool)"
     return res
+
 
 class SQLAgent:
     name = "sql_agent"
