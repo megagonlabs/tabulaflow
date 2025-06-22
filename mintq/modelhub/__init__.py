@@ -2,8 +2,9 @@ from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.modelhub.base import BaseAsyncNL2QModel
 from mintq.modelhub.sql_agent import SQLAgent
 from mintq.modelhub.sql_agent_v1 import SQLAgentV1
+from mintq.modelhub.sql_agent_v2 import SQLAgentV2
 
-all_model_classes = [SimpleZeroShotNL2Q, SQLAgent, SQLAgentV1]
+all_model_classes = [SimpleZeroShotNL2Q, SQLAgent, SQLAgentV1, SQLAgentV2]
 
 model_registry: dict[str, type[BaseAsyncNL2QModel]] = {cls.name: cls for cls in all_model_classes}  # type: ignore
 
@@ -20,4 +21,5 @@ __all__ = [
     "SimpleZeroShotNL2Q",
     "SQLAgent",
     "SQLAgentV1",
+    "SQLAgentV2",
 ]

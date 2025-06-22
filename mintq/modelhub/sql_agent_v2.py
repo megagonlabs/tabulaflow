@@ -58,8 +58,8 @@ def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
     return res
 
 
-class SQLAgent:
-    name = "sql_agent"
+class SQLAgentV2:
+    name = "sql_agent_v2"
 
     def __init__(
         self,
