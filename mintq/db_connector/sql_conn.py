@@ -1,5 +1,6 @@
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
+import collections
 import pandas as pd
 import os
 import asyncio
@@ -10,6 +11,9 @@ from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, select, func, distinct, inspect
 from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema
 from mintq.config import config
+
+
+_db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
 @dataclass
@@ -105,27 +109,28 @@ async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: Thro
     """
     schema_cache_dir = os.path.join(config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
-
     cache_path = os.path.join(schema_cache_dir, f"{global_id}.json")
 
-    if config.cache_enabled and os.path.exists(cache_path):
-        if config.cache_refresh:
-            os.remove(cache_path)
+    lock = _db_locks[global_id]
+    async with lock:
+        if config.cache_enabled and os.path.exists(cache_path):
+            if config.cache_refresh:
+                os.remove(cache_path)
+            else:
+                with open(cache_path, "r", encoding="utf-8") as f:
+                    return SQLSchema.model_validate_json(f.read())
+
+        dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
+
+        schema = await build_schema_async(t_eng, db_name, dbms_supports_schema)
+        if t_eng.engine_type == "async":
+            await t_eng.engine.dispose()  # type: ignore
         else:
-            with open(cache_path, "r", encoding="utf-8") as f:
-                return SQLSchema.model_validate_json(f.read())
-
-    dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
-
-    schema = await build_schema_async(t_eng, db_name, dbms_supports_schema)
-    if t_eng.engine_type == "async":
-        await t_eng.engine.dispose()  # type: ignore
-    else:
-        t_eng.engine.dispose()
-    if config.cache_enabled:
-        with open(cache_path, "w", encoding="utf-8") as f:
-            f.write(schema.model_dump_json(indent=2))
-    return schema
+            t_eng.engine.dispose()
+        if config.cache_enabled:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(schema.model_dump_json(indent=2))
+        return schema
 
 
 def _convert(value: Any) -> str | int | float | bool:
