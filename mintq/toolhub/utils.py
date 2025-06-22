@@ -19,3 +19,14 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
 
     # showindex=False hides the automatic row numbers
     return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
+
+
+def equals_ci(a: str | None, b: str | None) -> bool:
+    """
+    Compare two strings case-insensitively, treating None == None.
+    """
+    if a is None and b is None:
+        return True
+    if a is None or b is None:
+        return False
+    return a.lower() == b.lower()
