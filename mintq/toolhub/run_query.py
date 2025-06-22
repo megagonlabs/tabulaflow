@@ -1,17 +1,22 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, cast
-from collections import defaultdict
 import pandas as pd
 from pydantic_ai import Tool
+from pydantic import BaseModel
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.toolhub.utils import format_df
+
+
+class RunQueryToolMetrics(BaseModel):
+    error_timeout: int = 0
+    error_query_failed: int = 0
 
 
 @dataclass
 class RunQueryTool:
     name: ClassVar[str] = "run_query"
     db_connector: BaseAsyncSQLDBConnector
-    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    metrics_: RunQueryToolMetrics = field(default_factory=RunQueryToolMetrics)
 
     async def __call__(self, query: str) -> str:
         """
@@ -25,8 +30,10 @@ class RunQueryTool:
             df = await db_connector.run_query_async(query, return_df=True)
             df = cast(pd.DataFrame, df)
         except TimeoutError:
+            self.metrics_.error_timeout += 1
             return "(query timed out after 30 seconds)"
         except Exception as e:
+            self.metrics_.error_query_failed += 1
             return f"(query failed: {e})"
 
         if df.empty:

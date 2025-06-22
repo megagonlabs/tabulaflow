@@ -1,13 +1,19 @@
 from typing import ClassVar
 from dataclasses import dataclass, field
-from collections import defaultdict
 import sqlalchemy
 from sqlalchemy.sql import quoted_name
 from sqlalchemy import select, distinct
+from pydantic import BaseModel
 from pydantic_ai import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.toolhub.utils import equals_ci
+
+
+class SearchKeywordsToolMetrics(BaseModel):
+    error_table_not_found: int = 0
+    error_column_not_found: int = 0
+    error_column_not_string: int = 0
 
 
 @dataclass
@@ -15,7 +21,7 @@ class SearchKeywordsTool:
     name: ClassVar[str] = "search_keywords"
     db_connector: BaseAsyncSQLDBConnector
     formatter: BaseSQLSchemaFormatter
-    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    metrics_: SearchKeywordsToolMetrics = field(default_factory=SearchKeywordsToolMetrics)
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str, keywords: list[str]) -> str:
         """
@@ -47,20 +53,20 @@ class SearchKeywordsTool:
                 break
 
         if table is None:
-            self.metrics_["search_keywords_table_not_found"] += 1
+            self.metrics_.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
         column = None
         for c in table.columns:
             if c.name.lower() == column_name.lower():
                 if c.dtype not in ("VARCHAR", "TEXT", "STRING"):
-                    self.metrics_["search_keywords_column_not_string"] += 1
+                    self.metrics_.error_column_not_string += 1
                     return f"(column {column_name} is not a string)"
                 column = c
                 break
 
         if column is None:
-            self.metrics_["search_keywords_column_not_found"] += 1
+            self.metrics_.error_column_not_found += 1
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
         column_name = quoted_name(column_name, quote=True)

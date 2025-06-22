@@ -1,15 +1,19 @@
 from typing import ClassVar, Callable
 from pydantic_ai import RunContext, ModelRetry
 from dataclasses import field, dataclass
-from collections import defaultdict
+from pydantic import BaseModel
 from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.schema import Trajectory
+
+
+class FinishToolMetrics(BaseModel):
+    error_no_query_executed: int = 0
 
 
 @dataclass
 class FinishTool:
     name: ClassVar[str] = "finish"
-    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    metrics_: FinishToolMetrics = field(default_factory=FinishToolMetrics)
 
     def __call__(self, trajectory: Trajectory) -> str:
         """
@@ -20,7 +24,7 @@ class FinishTool:
                 for tool_call in msg.tool_calls[::-1]:
                     if tool_call.name == "run_query":
                         return tool_call.arguments["query"]  # type: ignore
-        self.metrics_["finish_no_query_executed"] += 1
+        self.metrics_.error_no_query_executed += 1
         raise ValueError("No query has been executed, you cannot finish yet")
 
     def as_pydantic_ai_tool(self) -> Callable[[RunContext], str]:
@@ -29,7 +33,7 @@ class FinishTool:
             try:
                 return self(trajectory)
             except ValueError:
-                self.metrics_["finish_no_query_executed"] += 1
+                self.metrics_.error_no_query_executed += 1
                 raise ModelRetry("No query has been executed, you cannot finish yet")
 
         finish.__doc__ = self.__call__.__doc__

@@ -1,10 +1,14 @@
 from dataclasses import dataclass, field
-from collections import defaultdict
 from pydantic_ai import Tool
+from pydantic import BaseModel
 from typing import ClassVar
 from mintq.schema import SQLSchema
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.toolhub.utils import equals_ci
+
+
+class ListColumnsToolMetrics(BaseModel):
+    error_table_not_found: int = 0
 
 
 @dataclass
@@ -12,7 +16,7 @@ class ListColumnsTool:
     name: ClassVar[str] = "list_columns"
     schema: SQLSchema
     formatter: BaseSQLSchemaFormatter
-    metrics_: dict[str, int] = field(default_factory=lambda: defaultdict(int))
+    metrics_: ListColumnsToolMetrics = field(default_factory=ListColumnsToolMetrics)
 
     async def __call__(self, schema_name: str | None, table_name: str) -> str:
         """
@@ -30,7 +34,7 @@ class ListColumnsTool:
         for table in self.schema.tables:
             if equals_ci(table.schema_name, schema_name) and table.name.lower() == table_name.lower():
                 return self.formatter.format_table(table)
-        self.metrics_["list_columns_table_not_found"] += 1
+        self.metrics_.error_table_not_found += 1
         return f"(table {table_name} in schema {schema_name} not found)"
 
     def as_pydantic_ai_tool(self) -> Tool:

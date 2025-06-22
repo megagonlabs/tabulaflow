@@ -148,13 +148,13 @@ class SQLAgent:
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
         metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
-        metrics["list_columns_table_not_found"] = list_columns_tool.metrics_["list_columns_table_not_found"]
-        metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_["search_keywords_table_not_found"]
-        metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_["search_keywords_column_not_found"]
-        metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_[
-            "search_keywords_column_not_string"
-        ]
-        metrics["finish_no_query_executed"] = finish_tool.metrics_["finish_no_query_executed"]
+        metrics["run_query_timeout"] = run_query_tool.metrics_.error_timeout
+        metrics["run_query_failed"] = run_query_tool.metrics_.error_query_failed
+        metrics["list_columns_table_not_found"] = list_columns_tool.metrics_.error_table_not_found
+        metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_.error_table_not_found
+        metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_.error_column_not_found
+        metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_.error_column_not_string
+        metrics["finish_no_query_executed"] = finish_tool.metrics_.error_no_query_executed
         metrics["fallback"] = 1 if fallback else 0
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
 
