@@ -4,11 +4,12 @@ import time
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter
+from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool
+from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
 @dataclass
@@ -75,6 +76,8 @@ class SQLAgent:
         self.max_steps = max_steps
 
         self.formatter = schema_formatter
+        self.hschema_synthesizer = HSchemaSynthesizer()
+        self.hschema_formatter = HSchemaFormatter()
 
     def get_config(self) -> dict[str, str | int | float | bool]:
         return {
@@ -86,6 +89,8 @@ class SQLAgent:
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
+
+        hschema = await self.hschema_synthesizer.run_async(db_connector)
 
         list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
         search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
@@ -115,7 +120,7 @@ class SQLAgent:
         agent_no_tools.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.formatter.format(db_connector.schema, pk_fk_column_only=True),
+            schema=self.hschema_formatter.format(hschema),
             hints=task.evidence,
             question=task.question,
             language=task.language,
