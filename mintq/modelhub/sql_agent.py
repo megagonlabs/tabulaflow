@@ -15,8 +15,6 @@ from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, Fin
 class TaskContext:
     task: SimpleNL2QTask
     db_connector: BaseAsyncSQLDBConnector
-    formatter: BaseSQLSchemaFormatter
-    table_id_to_schema: dict[str, SQLTableSchema]
     max_steps: int
 
 
@@ -124,12 +122,9 @@ class SQLAgent:
         )
 
         # Construct dependencies
-        table_id_to_schema = {self.formatter.format_table_name(table): table for table in db_connector.schema.tables}
         deps = TaskContext(
             task=task,
             db_connector=db_connector,
-            formatter=self.formatter,
-            table_id_to_schema=table_id_to_schema,
             max_steps=self.max_steps,
         )
 

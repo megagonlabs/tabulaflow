@@ -1,4 +1,4 @@
-from typing import Optional, ClassVar
+from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
@@ -12,10 +12,12 @@ class SQLDefaultSchemaFormatter:
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
 
-    def _quote_if_needed(self, s: str) -> str:
+    def _quote_if_needed(self, s: str | None) -> str:
+        if s is None:
+            return "NULL"
         return self._quote(s) if " " in s else s
 
-    def _full_table_name(self, table: str, schema: Optional[str]) -> str:
+    def _full_table_name(self, table: str, schema: str | None) -> str:
         if schema is None:
             return self._quote_if_needed(table)
         else:
@@ -26,9 +28,6 @@ class SQLDefaultSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format_table_name(self, table: SQLTableSchema) -> str:
-        return self._full_table_name(table.name, table.schema_name)
-
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False) -> str:
         res = f"Database: {schema.name}"
         if not schema.tables:
@@ -38,7 +37,7 @@ class SQLDefaultSchemaFormatter:
         return res
 
     def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False) -> str:
-        res = f"=== TABLE: {self._full_table_name(table.name, table.schema_name)} ({table.num_rows} rows) ===\n"
+        res = f"=== (SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)} ({table.num_rows} rows) ===\n"
 
         composite_fks = []
         for fk in table.foreign_keys:

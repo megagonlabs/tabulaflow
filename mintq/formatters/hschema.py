@@ -39,7 +39,9 @@ class HSchemaFormatter:
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
 
-    def _quote_if_needed(self, s: str) -> str:
+    def _quote_if_needed(self, s: str | None) -> str:
+        if s is None:
+            return "NULL"
         return self._quote(s) if " " in s else s
 
     def _full_table_name(self, table: str, schema: str | None) -> str:
@@ -53,9 +55,6 @@ class HSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format_table_name(self, table: HTableGroup) -> str:
-        return self._full_table_name(table.name, table.schema_name)
-
     def format(self, schema: HSQLSchema) -> str:
         if not schema.table_groups:
             return f"Database: {schema.name}\n(database has no tables)"
@@ -63,7 +62,7 @@ class HSchemaFormatter:
 
     def format_table_group(self, tg: HTableGroup) -> str:
         return (
-            f"=== TABLE: {self._full_table_name(tg.name, tg.schema_name)} ===\n"
+            f"=== (SCHEMA: {self._quote_if_needed(tg.schema_name)}) TABLE: {self._quote_if_needed(tg.name)} ===\n"
             + "\n\n".join([self.format_section(section) for section in tg.sections])
             + "\n=== END OF TABLE ==="
         )
