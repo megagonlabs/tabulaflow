@@ -234,14 +234,16 @@ Contact: yanlin@megagon.ai
 ### Agent
 
 - [x] Agent V2 starting with table names and foreign keys, with tools `list_columns`, `search_keywords`, `run_query`
-- [ ] Reproduce performance of Agent V1
+- [x] Reproduce performance of Agent V1
 - [ ] Hierarchical schemas
   - [x] HSchema generation v1
   - [x] HSchema generation v2
-  - [ ] HSchema formatting
-  - [ ] Design tools
+  - [x] HSchema formatting
+  - [x] Design tools
+  - [x] Benchmark performance: `bird-sql.dev_199: 64.32 / 68.34 (soft)` `spider2-snow.dev_63: 25.40`
+  - [ ] Support grouping tables with date suffixes (e.g. `order_20240627`)
+- [ ] Orchestrator + Schema linking agent + SQL writing agent + Final refinement agent
 - [ ] Code diff tool
-- [ ] Schema linking agent + SQL writing agent
 - [ ] Hierarchical documents
 - [ ] Engineer individual components
 
@@ -249,13 +251,20 @@ Contact: yanlin@megagon.ai
 
 - [x] [Jun 13] Include views in the schema (some spider2 db has views instead of tables) 
 - [x] [Jun 13] Optimize schema fetching - approximate `num_unique` and `null_ratio` 
-- [x] [Jun 15] Tracing with [langfuse](https://langfuse.com/) 
-- [ ] Optimize evaluation - share execution results between metrics
+- [x] [Jun 15] Tracing with [langfuse](https://langfuse.com/)
+- [x] [Jun 20] Add `global_id` field  for db connectors for schema/metadata caching
+- [x] [Jun 21] `toolhub` sub-package
+- [x] [Jun 23] Support max steps
+- [ ] HSchema viewing and statistics script
+- [ ] Optimize evaluation - share execution results between metrics, record execution results
 - [ ] Metadata ablation
 
-```
-1126
-944
-```
 
+## Misc
 
+Interesting BIRD question IDs:
+```
+1126: State the name of players who came from Belgium.
+
+944:  How much faster in percentage is the champion than the driver who finished the race last in the 2008 Australian Grand Prix?
+```
