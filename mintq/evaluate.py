@@ -97,7 +97,7 @@ async def main_async() -> None:
     elif result.dataset == "bird-sql":
         metrics_to_include = ["bird_sql_ex"]
     else:
-        metrics_to_include = []
+        metrics_to_include = ["spider2_ex", "bird_sql_ex"]
     csv_path = args.result_json.replace(".json", "_with_metrics.csv")
     save_csv(result, csv_path, metrics_to_include)
     print(f"Saved csv to {csv_path}")
