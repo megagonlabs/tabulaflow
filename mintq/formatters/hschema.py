@@ -55,21 +55,36 @@ class HSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format(self, schema: HSQLSchema) -> str:
+    def format(self, schema: HSQLSchema, collapse_non_core_sections: bool = False) -> str:
         if not schema.table_groups:
             return f"Database: {schema.name}\n(database has no tables)"
-        return f"Database: {schema.name}\n\n" + "\n\n".join([self.format_table_group(tg) for tg in schema.table_groups])
+        return f"Database: {schema.name}\n\n" + "\n\n".join(
+            [self.format_table_group(tg, collapse_non_core_sections) for tg in schema.table_groups]
+        )
 
-    def format_table_group(self, tg: HTableGroup) -> str:
+    def format_table_group(self, tg: HTableGroup, collapse_non_core_sections: bool = False) -> str:
         return (
             f"=== (SCHEMA: {self._quote_if_needed(tg.schema_name)}) TABLE: {self._quote_if_needed(tg.name)} ===\n"
-            + "\n\n".join([self.format_section(section) for section in tg.sections])
+            + "\n\n".join(
+                [
+                    self.format_section(
+                        section,
+                        first_k_only=2 if collapse_non_core_sections and section.name.lower() != "core" else None,
+                    )
+                    for section in tg.sections
+                ]
+            )
             + "\n=== END OF TABLE ==="
         )
 
-    def format_section(self, section: HTableSection) -> str:
+    def format_section(self, section: HTableSection, first_k_only: int | None = None) -> str:
         res = f"[{section.name}] ({section.description})\n"
-        res += "\n".join([self.format_column_group(column_group) for column_group in section.column_groups])
+        column_groups = section.column_groups
+        if first_k_only is not None:
+            column_groups = column_groups[:first_k_only]
+        res += "\n".join([self.format_column_group(cg) for cg in column_groups])
+        if first_k_only is not None and len(section.column_groups) > first_k_only:
+            res += "\n(and more...)"
         return res
 
     def format_column_group(self, column_group: HColumnGroup) -> str:

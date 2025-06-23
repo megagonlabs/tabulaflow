@@ -99,7 +99,7 @@ class SQLAgent:
         agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(self.llm),
             tools=[
-                list_columns_tool.as_pydantic_ai_tool(),
+                # list_columns_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],
@@ -120,7 +120,7 @@ class SQLAgent:
         agent_no_tools.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.hschema_formatter.format(hschema),
+            schema=self.hschema_formatter.format(hschema, collapse_non_core_sections=True),
             hints=task.evidence,
             question=task.question,
             language=task.language,
