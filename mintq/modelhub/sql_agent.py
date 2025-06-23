@@ -59,7 +59,7 @@ def max_steps_reached_processor(
     ctx: RunContext[TaskContext],
     messages: list[ModelMessage],
 ) -> list[ModelMessage]:
-    assert messages is ctx.messages
+    assert messages is ctx.messages  # We want the injected message to be preserved in the message history as well
     if ctx.run_step == ctx.deps.max_steps:
         content = "You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool"
         messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
