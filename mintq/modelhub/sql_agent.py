@@ -3,6 +3,8 @@ import jinja2
 import time
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
+from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
+from typing import Any
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
@@ -53,10 +55,15 @@ def get_system_prompt(ctx: RunContext[TaskContext]) -> str:
     return jinja2.Template(SYSTEM_PROMPT).render(language=ctx.deps.task.language)
 
 
-def add_max_steps_reached(ctx: RunContext[TaskContext], res: str) -> str:
-    if ctx.usage.requests == ctx.deps.max_steps:
-        res += "\n(Warning: You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool)"
-    return res
+def max_steps_reached_processor(
+    ctx: RunContext[TaskContext],
+    messages: list[ModelMessage],
+) -> list[ModelMessage]:
+    assert messages is ctx.messages
+    if ctx.run_step == ctx.deps.max_steps:
+        content = "You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool"
+        messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+    return messages
 
 
 class SQLAgent:
@@ -110,6 +117,7 @@ class SQLAgent:
             result_tool_name="finish",
             # result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
+            history_processors=[max_steps_reached_processor],
         )
         agent.instrument_all()
 
