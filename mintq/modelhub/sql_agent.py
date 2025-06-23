@@ -8,7 +8,7 @@ from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool
+from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
@@ -92,7 +92,8 @@ class SQLAgent:
 
         hschema = await self.hschema_synthesizer.run_async(db_connector)
 
-        list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
+        # list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
+        show_table_section_tool = ShowTableSectionTool(hschema, self.hschema_formatter)
         search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
@@ -100,6 +101,7 @@ class SQLAgent:
             get_pydantic_ai_llm(self.llm),
             tools=[
                 # list_columns_tool.as_pydantic_ai_tool(),
+                show_table_section_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],
@@ -155,7 +157,8 @@ class SQLAgent:
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["run_query_timeout"] = run_query_tool.metrics_.error_timeout
         metrics["run_query_failed"] = run_query_tool.metrics_.error_query_failed
-        metrics["list_columns_table_not_found"] = list_columns_tool.metrics_.error_table_not_found
+        metrics["show_table_section_table_not_found"] = show_table_section_tool.metrics_.error_table_not_found
+        metrics["show_table_section_section_not_found"] = show_table_section_tool.metrics_.error_section_not_found
         metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_.error_table_not_found
         metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_.error_column_not_found
         metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_.error_column_not_string
