@@ -245,6 +245,7 @@ Contact: yanlin@megagon.ai
   - [x] Design tools
   - [x] Benchmark performance: `bird-sql.dev_199: 64.32 / 68.34 (soft)` `spider2-snow.dev_63: 25.40`
   - [ ] Support grouping tables with date suffixes (e.g. `order_20240627`)
+- [ ] Add table and column descriptions
 - [ ] Foreign key inference
 - [ ] Orchestrator + Schema linking agent + SQL writing agent + Final refinement agent
 - [ ] Code diff tool
