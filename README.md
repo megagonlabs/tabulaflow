@@ -105,6 +105,7 @@ Currently, the following datasets are supported:
 |---------|-----|------------------|
 | BIRD-SQL | `bird-sql` | `train`, `dev` |
 | Spider 2.0-snow | `spider2-snow` | `dev`|
+| Spider 2.0-simple (from Aaron) | `spider2-simple` | `dev` |
 | Beaver | `beaver` | `dev` |
 
 ### BIRD-SQL
@@ -142,6 +143,8 @@ Next, clone the Spider2 repository and save it as `data/Spider2`:
 ```bash
 git clone https://github.com/xlang-ai/Spider2.git data/Spider2
 ```
+
+To run the simplied Spider 2.0 snow dataset, export the Google spreadsheet as a CSV file and save it as `data/spider2-simple/spider2-simple-v1.csv`. Then, run the run_model.py and evaluate.py scripts as shown in the Quick Start section. The results will be available in the `result_with_metrics.csv` file which you can then import into Google spreadsheet.
 
 ### Beaver
 
