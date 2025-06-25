@@ -58,11 +58,6 @@ def create_db(db_path: str):
     return engine
 
 
-def list_tables(engine):
-    inspector = inspect(engine)
-    return inspector.get_table_names()
-
-
 async def main():
     os.environ["MINTQ_CACHE_ENABLED"] = "0"
     db_path = "output/test.db"
