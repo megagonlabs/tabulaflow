@@ -19,6 +19,12 @@ A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 
 ## 🚀 Quick Start
 
+### Installation
+
+First, follow the [Development](#-development) section to install the library.
+
+### Using `mintq` as a library
+
 ```python
 import asyncio
 from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
@@ -55,6 +61,8 @@ async def main():
 if __name__ == "__main__":
     asyncio.run(main())
 ```
+
+### Running experiments with provided scripts
 
 We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
 
