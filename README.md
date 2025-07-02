@@ -21,7 +21,7 @@ A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
 
 ### Installation
 
-First, follow the [Development](#-development) section to install the library.
+First, follow the [Development](#-development) section to install the library. Next, follow the [Dataset Setup](#-dataset-setup) section to download the datasets you want to use.
 
 ### Using `mintq` as a library
 
