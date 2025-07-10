@@ -6,9 +6,7 @@ from sqlalchemy import (
     Column,
     String,
     Integer,
-    select,
     insert,
-    inspect,
 )
 import os
 from mintq.db_connector import SQLConnector

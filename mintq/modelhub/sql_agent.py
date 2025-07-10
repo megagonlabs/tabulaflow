@@ -4,13 +4,12 @@ import time
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from typing import Any
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool
+from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
