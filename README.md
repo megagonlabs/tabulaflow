@@ -256,6 +256,7 @@ Contact: yanlin@megagon.ai
 - [ ] Add table and column descriptions
 - [ ] Foreign key inference
 - [ ] Orchestrator + Schema linking agent + SQL writing agent + Final refinement agent
+- [ ] JOIN discovery agent
 - [ ] Code diff tool
 - [ ] Tools for control columns like `is_deleted`
 - [ ] Tools for handling ambiguity
