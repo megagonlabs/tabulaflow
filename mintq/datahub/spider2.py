@@ -34,11 +34,11 @@ class Spider2SnowDatasetLoader:
         directory = os.path.join(self.directory, "resource", "databases")
         for db_name in os.listdir(directory):
             for schema_name in os.listdir(os.path.join(directory, db_name)):
-                for f in os.listdir(os.path.join(directory, db_name, schema_name)):
-                    if not f.endswith(".json"):
+                for table_file in os.listdir(os.path.join(directory, db_name, schema_name)):
+                    if not table_file.endswith(".json"):
                         continue
-                    table_name = f.replace(".json", "")
-                    with open(os.path.join(directory, db_name, schema_name, f), "r") as f:
+                    table_name = table_file.replace(".json", "")
+                    with open(os.path.join(directory, db_name, schema_name, table_file), "r") as f:
                         data = json.load(f)
                         for column, description in zip(data["column_names"], data["description"]):
                             res[(db_name, schema_name, table_name, column)] = description
@@ -152,7 +152,7 @@ class Spider2SnowDatasetLoader:
         for conn in db_connectors:
             for table in conn.schema.tables:
                 table.name = table.name.upper()
-                table.schema_name = table.schema_name.upper()
+                table.schema_name = table.schema_name.upper()  # type: ignore
                 for column in table.columns:
                     column.description = column_descriptions.get(
                         (conn.schema.name, table.schema_name, table.name, column.name), None
