@@ -101,5 +101,5 @@ class SQLDefaultSchemaFormatter:
             )
 
         if column.description:
-            res += f" // {column.description}"
+            res += f" /* {column.description} */"
         return res
