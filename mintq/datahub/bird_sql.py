@@ -13,8 +13,10 @@ class BirdSQLDatasetLoader:
     def __init__(
         self,
         directory: str = "data/BIRD-SQL",
+        column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
     ):
         self.directory = directory
+        self.column_meaning_directory = column_meaning_directory
         self._data: dict[Any, NL2QDataset] = {}
 
     async def _load_split_async(
@@ -28,6 +30,9 @@ class BirdSQLDatasetLoader:
         tasks = []
         with open(os.path.join(directory, f"{split}.json"), "r") as f:
             data = json.load(f)
+
+        with open(os.path.join(self.column_meaning_directory, f"{split}_column_meaning.json"), "r") as f:
+            column_descriptions = json.load(f)
 
         for i, item in enumerate(data):
             if databases and item["db_id"] not in databases:
@@ -59,6 +64,10 @@ class BirdSQLDatasetLoader:
                 for name in db_names
             ]
         )
+        for conn in db_connectors:
+            for table in conn.schema.tables:
+                for column in table.columns:
+                    column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
 
         return NL2QDataset(
             name=self.name,

@@ -116,6 +116,7 @@ class ForeignKeySchema(BaseModel):
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
+    description: str | None = None
     nullable: bool
     null_ratio: float
     num_unique: int | None  # Only for text or integer columns
@@ -128,6 +129,7 @@ class SQLColumnSchema(BaseModel):
 class SQLTableSchema(BaseModel):
     name: str
     schema_name: str | None = None
+    description: str | None = None
     is_view: bool
     columns: list[SQLColumnSchema]
     primary_key: list[str]
