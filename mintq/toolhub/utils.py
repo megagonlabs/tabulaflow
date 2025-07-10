@@ -18,7 +18,7 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
     display_df = display_df.replace({np.nan: "[null]"})
 
     # showindex=False hides the automatic row numbers
-    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, floatfmt=".2f", missingval="[null]")
+    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[null]")
 
 
 def equals_ci(a: str | None, b: str | None) -> bool:
