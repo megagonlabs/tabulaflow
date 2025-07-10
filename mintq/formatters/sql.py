@@ -99,4 +99,7 @@ class SQLDefaultSchemaFormatter:
                 if not is_composite_fk
                 else " [FK-composite]"
             )
+
+        if column.description:
+            res += f" // {column.description}"
         return res

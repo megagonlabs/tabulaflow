@@ -11,9 +11,9 @@ os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="beaver")
+    parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
-    parser.add_argument("--database", default="keystone")
+    parser.add_argument("--database", default="european_football_2")
     parser.add_argument("--enable_cache", action="store_true")
     args = parser.parse_args()
     print(args)
