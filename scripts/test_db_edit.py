@@ -16,7 +16,7 @@ from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.utils import format_trajectory
 
 
-def create_db(db_path: str):
+def create_db(db_path: str) -> None:
     if os.path.exists(db_path):
         os.remove(db_path)
     engine = create_engine(f"sqlite:///{db_path}")
@@ -53,10 +53,9 @@ def create_db(db_path: str):
         stmt = insert(city_stats_table).values(**row)
         with engine.begin() as connection:
             connection.execute(stmt)
-    return engine
 
 
-async def main():
+async def main() -> None:
     os.environ["MINTQ_CACHE_ENABLED"] = "0"
     db_path = "output/test.db"
     create_db(db_path)
@@ -68,7 +67,7 @@ async def main():
     )
     model = SimpleZeroShotNL2Q(
         llm="openai/gpt-4.1-mini",
-        schema_formatter=SQLDefaultSchemaFormatter(),
+        schema_formatter=SQLDefaultSchemaFormatter(),  # type: ignore
     )
     task = SimpleNL2QTask(
         qid="001",
@@ -76,7 +75,7 @@ async def main():
         db="city_stats",
         question="What is the population of Toronto?",
     )
-    output = await model.predict_async(task, db_connector)
+    output = await model.predict_async(task, db_connector)  # type: ignore
     print(format_trajectory(output.trajectory))  # or print(output.pred_query)
     result = await db_connector.run_query_async(output.pred_query)
     print(result)
