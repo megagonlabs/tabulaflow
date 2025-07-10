@@ -16,7 +16,7 @@ async def main() -> None:
     # define the model arguments
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
     model_args = {"llm": "openai/gpt-4o-mini", "schema_formatter": SQLDefaultSchemaFormatter()}
-    # run the model on the dataset using multi-threading
+    # run the model on the dataset using async coroutines
     result = await run_model_async(SimpleZeroShotNL2Q, model_args, dataset=dataset, batch_size=8)
     print(result.tasks[0].pred_query)
     # SELECT MAX("Percent (%) Eligible Free (K-12)")

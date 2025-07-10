@@ -29,16 +29,16 @@ First, follow the [Development](#-development) section to install the library. N
 import asyncio
 from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.datahub.bird_sql import BirdSQLDatasetLoader
-from mintq.schema_formatter import SQLDefaultSchemaFormatter
+from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.metric import BirdSQLEx
 from mintq.run_model import run_model_async
 from mintq.evaluate import evaluate_async
 
 
-async def main():
+async def main() -> None:
     dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
     # dataset includes the text-to-query tasks and the database connectors
-    dataset = await dataloader.get_split_async("dev")  
+    dataset = await dataloader.get_split_async("dev")
     dataset.tasks = dataset.tasks[:3]
 
     # define the model arguments
