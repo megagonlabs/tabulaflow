@@ -74,6 +74,7 @@ class TableSectionSynthesizer:
             SQLColumnSchema(
                 name=cg.name,
                 dtype=cg.dtype,
+                description=cg.description,
                 nullable=cg.nullable,
                 null_ratio=cg.null_ratio,
                 num_unique=cg.num_unique,
@@ -98,10 +99,14 @@ class TableSectionSynthesizer:
             )
             for cluster in clusters:
                 cols = [name2column[name] for name in cluster.item_names]
+                if not cols[0].description and not cluster.description:
+                    description = None
+                else:
+                    description = " ".join([desc for desc in [cols[0].description, cluster.description] if desc])
                 column_groups.append(
                     HColumnGroup(
                         name=cluster.name,
-                        description=cluster.description,
+                        description=description,
                         column_names=cluster.item_names,
                         dtype=cols[0].dtype,
                         nullable=any(c.nullable for c in cols),
