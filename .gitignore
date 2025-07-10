@@ -7,7 +7,9 @@ __pycache__/
 /backup/
 /exp*/
 /log*/
-/data*/
+/data/*
+!/data/BIRD-SQL_column_meaning/
+!/data/BIRD-SQL_column_meaning/*.json
 /output*/
 /cache*/
 *.db
