@@ -29,6 +29,21 @@ class Spider2SnowDatasetLoader:
         # The default warehouse for Spider2 snowflake is "small" which allows for 16 concurrent queries
         self._dbms_semaphore = asyncio.Semaphore(16)
 
+    def _load_column_descriptions(self) -> dict[tuple[str, str, str, str], str]:
+        res = {}
+        directory = os.path.join(self.directory, "resource", "databases")
+        for db_name in os.listdir(directory):
+            for schema_name in os.listdir(os.path.join(directory, db_name)):
+                for f in os.listdir(os.path.join(directory, db_name, schema_name)):
+                    if not f.endswith(".json"):
+                        continue
+                    table_name = f.replace(".json", "")
+                    with open(os.path.join(directory, db_name, schema_name, f), "r") as f:
+                        data = json.load(f)
+                        for column, description in zip(data["column_names"], data["description"]):
+                            res[(db_name, schema_name, table_name, column)] = description
+        return res
+
     async def _load_split_async(self, split: Literal["dev"], databases: Optional[list[str]] = None) -> NL2QDataset:
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
@@ -132,6 +147,16 @@ class Spider2SnowDatasetLoader:
             )
             for name, schema in zip(db_names, schemas)
         ]
+
+        column_descriptions = self._load_column_descriptions()
+        for conn in db_connectors:
+            for table in conn.schema.tables:
+                table.name = table.name.upper()
+                table.schema_name = table.schema_name.upper()
+                for column in table.columns:
+                    column.description = column_descriptions.get(
+                        (conn.schema.name, table.schema_name, table.name, column.name), None
+                    )
 
         return NL2QDataset(
             name=self.name,
