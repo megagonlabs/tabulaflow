@@ -88,11 +88,7 @@ class HSchemaFormatter:
         return res
 
     def format_column_group(self, column_group: HColumnGroup) -> str:
-        if column_group.description:
-            desc = f" ({column_group.description})"
-        else:
-            desc = ""
-        res = f"- {self._quote_if_needed(column_group.name)}{desc}: {column_group.dtype}"
+        res = f"- {self._quote_if_needed(column_group.name)}: {column_group.dtype}"
         is_categorical = (
             column_group.dtype in ("TEXT", "VARCHAR")
             and column_group.num_unique
@@ -116,4 +112,6 @@ class HSchemaFormatter:
                 example = str(example)
             example = self._truncate(example)
             res += f" (e.g. {example})"
+        if column_group.description:
+            res += f" /* {column_group.description} */"
         return res
