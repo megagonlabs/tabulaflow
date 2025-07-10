@@ -12,9 +12,6 @@ async def main() -> None:
     print(args)
     print()
 
-    if not os.path.exists(args.input_path):
-        raise FileNotFoundError(f"File {args.input_path} does not exist")
-
     with open(args.input_path, "r") as f:
         hschema = HSQLSchema.model_validate_json(f.read())
 
