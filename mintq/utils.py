@@ -91,6 +91,7 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
 
         with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
             f.write(format_trajectory(task.trajectory))
+            f.write("\n\n\n" + "\n\n".join(f"<gold_query>\n{g}\n</gold_query>" for g in task.gold_queries))
 
     print(f"Saved results to {result_dir}")
 
@@ -126,4 +127,4 @@ def format_trajectory(trajectory: Trajectory) -> str:
             res.append(s)
         elif msg.role == "tool":
             res.append(f'<message role="tool">\n{msg.response}\n</message>')
-    return "\n\n\n".join(res)
+    return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
