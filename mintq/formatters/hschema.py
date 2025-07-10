@@ -89,6 +89,10 @@ class HSchemaFormatter:
 
     def format_column_group(self, column_group: HColumnGroup) -> str:
         res = f"- {self._quote_if_needed(column_group.name)}: {column_group.dtype}"
+        if column_group.null_ratio == 1.0:
+            res += " (all values are null)"
+        elif column_group.null_ratio > 0.0:
+            res += " NULLABLE"
         is_categorical = (
             column_group.dtype in ("TEXT", "VARCHAR")
             and column_group.num_unique
