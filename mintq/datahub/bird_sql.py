@@ -32,7 +32,7 @@ class BirdSQLDatasetLoader:
             data = json.load(f)
 
         with open(os.path.join(self.column_meaning_directory, f"{split}_column_meaning.json"), "r") as f:
-            column_descriptions = json.load(f)
+            column_descriptions = {key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()}
 
         for i, item in enumerate(data):
             if databases and item["db_id"] not in databases:
