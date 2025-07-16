@@ -36,16 +36,16 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 
 
 TASK_PROMPT = """
+=== START OF DATABASE SCHEMA ===
+{{schema}}
+=== END OF DATABASE SCHEMA ===
+
 Question: {{question}}
 {% if hints %}
 === START OF HINTS ===
 {{hints}}
 === END OF HINTS ===
 {% endif %}
-=== START OF DATABASE SCHEMA ===
-{{schema}}
-=== END OF DATABASE SCHEMA ===
-
 {{language}} query:
 """.strip()
 
@@ -99,7 +99,7 @@ class SQLAgent:
         hschema = await self.hschema_synthesizer.run_async(db_connector)
 
         # list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
-        show_table_section_tool = ShowTableSectionTool(hschema, self.hschema_formatter)
+        # show_table_section_tool = ShowTableSectionTool(hschema, self.hschema_formatter)
         search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
@@ -107,7 +107,7 @@ class SQLAgent:
             get_pydantic_ai_llm(self.llm),
             tools=[
                 # list_columns_tool.as_pydantic_ai_tool(),
-                show_table_section_tool.as_pydantic_ai_tool(),
+                # show_table_section_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],
@@ -129,7 +129,7 @@ class SQLAgent:
         agent_no_tools.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.hschema_formatter.format(hschema, collapse_non_core_sections=True),
+            schema=self.hschema_formatter.format(hschema, collapse_non_core_sections=False),
             hints=task.evidence,
             question=task.question,
             language=task.language,
@@ -164,8 +164,8 @@ class SQLAgent:
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["run_query_timeout"] = run_query_tool.metrics_.error_timeout
         metrics["run_query_failed"] = run_query_tool.metrics_.error_query_failed
-        metrics["show_table_section_table_not_found"] = show_table_section_tool.metrics_.error_table_not_found
-        metrics["show_table_section_section_not_found"] = show_table_section_tool.metrics_.error_section_not_found
+        # metrics["show_table_section_table_not_found"] = show_table_section_tool.metrics_.error_table_not_found
+        # metrics["show_table_section_section_not_found"] = show_table_section_tool.metrics_.error_section_not_found
         metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_.error_table_not_found
         metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_.error_column_not_found
         metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_.error_column_not_string
