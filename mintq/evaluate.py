@@ -11,10 +11,32 @@ from mintq.datahub import get_dataset_loader
 from mintq.metric import get_metric, BaseAsyncNL2QMetric
 
 
+async def populate_exec_results_async(
+    item: NL2QTaskOutput,
+    db_connector: BaseAsyncDBConnector,
+) -> NL2QTaskOutput:
+    if item.task_type != "simple":
+        raise ValueError("Only simple NL2Q tasks are supported currently")
+
+    item = copy.deepcopy(item)
+
+    if item.gold_queries:
+        dfs = await asyncio.gather(
+            *[db_connector.run_query_async(query, return_df=True) for query in item.gold_queries]
+        )
+        item.gold_exec_results = [df.to_dict(orient="records") for df in dfs]
+    else:
+        assert item.gold_exec_results
+
+    df = await db_connector.run_query_async(item.pred_query, return_df=True)
+    item.pred_exec_result = df.to_dict(orient="records")
+    return item
+
+
 async def compute_metrics_async(
     item: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
 ) -> NL2QTaskOutput:
-    item = copy.deepcopy(item)
+    item = await populate_exec_results_async(item, db_connector)
     for m in metrics:
         item.metrics[m.name] = await m.compute_async(task=item, db_connector=db_connector)
     return item

@@ -57,6 +57,7 @@ class SimpleNL2QTask(BaseModel):
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     metrics: dict[str, float | int]
     pred_query: str
+    pred_exec_result: list[dict[str, Any]] | None = None
     trajectory: Trajectory
 
 
@@ -75,6 +76,7 @@ class MultiNL2QTask(BaseModel):
 class MultiNL2QTaskOutput(MultiNL2QTask):
     metrics: dict[str, float | int]
     pred_queries: list[str]
+    pred_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
     trajectories: list[Trajectory]
 
 
