@@ -3,6 +3,7 @@ import copy
 import time
 import asyncio
 import random
+import pandas as pd
 from tqdm import trange
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
@@ -22,14 +23,18 @@ async def populate_exec_results_async(
 
     if item.gold_queries:
         dfs = await asyncio.gather(
-            *[db_connector.run_query_async(query, return_df=True) for query in item.gold_queries]
+            *[db_connector.run_query_async(query, return_df=True) for query in item.gold_queries],
+            return_exceptions=True,
         )
-        item.gold_exec_results = [df.to_dict(orient="records") for df in dfs]
+        item.gold_exec_results = [df.to_dict(orient="records") for df in dfs if isinstance(df, pd.DataFrame)]
     else:
         assert item.gold_exec_results
 
-    df = await db_connector.run_query_async(item.pred_query, return_df=True)
-    item.pred_exec_result = df.to_dict(orient="records")
+    try:
+        df = await db_connector.run_query_async(item.pred_query, return_df=True)
+        item.pred_exec_result = df.to_dict(orient="records")
+    except Exception:
+        item.pred_exec_result = None
     return item
 
 
