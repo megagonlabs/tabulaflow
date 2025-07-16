@@ -3,6 +3,7 @@ import copy
 import time
 import asyncio
 import random
+import os
 import pandas as pd
 from tqdm import trange
 from mintq.db_connector import BaseAsyncDBConnector
@@ -10,6 +11,7 @@ from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round, save_csv
 from mintq.datahub import get_dataset_loader
 from mintq.metric import get_metric, BaseAsyncNL2QMetric
+from mintq.toolhub.utils import format_df
 
 
 async def populate_exec_results_async(
@@ -77,7 +79,7 @@ async def evaluate_async(
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--result_json", default="output/test/result.json")
+    parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug", action="store_true")
     parser.add_argument(
@@ -96,7 +98,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    with open(args.result_json, "r") as f:
+    with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
@@ -114,11 +116,23 @@ async def main_async() -> None:
     for m in metrics:
         print(f"- {m.name}: {result.aggregated_metrics[m.name]:.4f}")
 
-    output_path = args.result_json.replace(".json", "_with_metrics.json")
+    output_path = os.path.join(args.result_dir, "result_with_metrics.json")
     with open(output_path, "w") as fout:
         fout.write(result.model_dump_json(indent=2))
     print()
     print(f"Saved result with metrics to {output_path}")
+
+    # Update trajectory with the gold execution results
+    for task in result.tasks:
+        trajectory_path = os.path.join(args.result_dir, "trajectory", f"{task.qid}.xml")
+        with open(trajectory_path, "r") as f:
+            if f.read().strip().endswith("</gold_exec_result>"):
+                continue
+        with open(trajectory_path, "a") as f:
+            gold_dfs = [pd.DataFrame(g) for g in task.gold_exec_results]
+            f.write(
+                "\n\n\n" + "\n\n".join(f"<gold_exec_result>\n{format_df(df)}\n</gold_exec_result>" for df in gold_dfs)
+            )
 
     if result.dataset == "spider2-snow":
         metrics_to_include = ["spider2_ex"]
@@ -126,7 +140,7 @@ async def main_async() -> None:
         metrics_to_include = ["bird_sql_ex"]
     else:
         metrics_to_include = ["spider2_ex", "bird_sql_ex"]
-    csv_path = args.result_json.replace(".json", "_with_metrics.csv")
+    csv_path = os.path.join(args.result_dir, "result_with_metrics.csv")
     save_csv(result, csv_path, metrics_to_include)
     print(f"Saved csv to {csv_path}")
 
