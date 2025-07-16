@@ -83,26 +83,12 @@ class Spider2Ex:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
-        if not task.gold_exec_results and not task.gold_queries:
-            raise ValueError("No gold queries or gold execution results provided")
-
-        try:
-            pred_df = await db_connector.run_query_async(task.pred_query, timeout=self.timeout, return_df=True)
-        except Exception:
+        if task.pred_exec_result is None:
             return 0.0
 
-        if task.gold_exec_results:
-            gold_dfs = [pd.DataFrame(exec_result) for exec_result in task.gold_exec_results]
-        else:
-            gold_dfs = []
-            for gold_query in task.gold_queries:
-                try:
-                    gold_dfs.append(
-                        await db_connector.run_query_async(gold_query, timeout=self.timeout, return_df=True)
-                    )
-                except Exception as e:
-                    print(f"Warning: Exception {e} occurred while executing gold queries")
-                    continue
+        pred_df = pd.DataFrame(task.pred_exec_result)
+
+        gold_dfs = [pd.DataFrame(exec_result) for exec_result in task.gold_exec_results]
 
         if not gold_dfs:
             return 0.0

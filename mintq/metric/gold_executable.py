@@ -13,11 +13,7 @@ class GoldExecutable:
         if not task.gold_queries:
             return math.nan
 
-        for gold_query in task.gold_queries:
-            try:
-                await db_connector.run_query_async(gold_query, timeout=self.timeout)
-            except Exception as e:
-                print(f"Warning: Exception {e} occurred while executing gold queries")
-                return 0.0
-
-        return 1.0
+        if len(task.gold_queries) == len(task.gold_exec_results):
+            return 1.0
+        else:
+            return 0.0

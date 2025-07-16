@@ -9,23 +9,7 @@ class GoldResultNotEmpty:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
-        if not task.gold_exec_results and not task.gold_queries:
-            raise ValueError("No gold queries or gold execution results provided")
-
-        if task.gold_exec_results:
-            for exec_result in task.gold_exec_results:
-                if len(exec_result) == 0:
-                    return 0.0
-            return 1.0
-
-        for gold_query in task.gold_queries:
-            try:
-                gold_executed = await db_connector.run_query_async(gold_query, timeout=self.timeout)
-            except Exception as e:
-                print(f"Warning: Exception {e} occurred while executing gold queries")
+        for exec_result in task.gold_exec_results:
+            if len(exec_result) == 0:
                 return 0.0
-
-            if len(gold_executed) == 0:
-                return 0.0
-
         return 1.0

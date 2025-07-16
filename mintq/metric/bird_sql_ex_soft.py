@@ -37,32 +37,12 @@ class BirdSQLExSoft:
         return 0.0
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
-        if not task.gold_exec_results and not task.gold_queries:
-            raise ValueError("No gold queries or gold execution results provided")
-
-        try:
-            pred_executed = await db_connector.run_query_async(task.pred_query, timeout=self.timeout)
-        except Exception:
+        if task.pred_exec_result is None:
             return 0.0
 
-        if task.gold_exec_results:
-            for exec_result in task.gold_exec_results:
-                keys = list(exec_result[0])
-                gold_executed = [tuple(row[key] for key in keys) for row in exec_result]
-                if self._compare(pred_executed, gold_executed) == 1.0:
-                    return 1.0
-            return 0.0
-
-        for gold_query in task.gold_queries:
-            if task.pred_query == gold_query:
-                return 1.0
-
-            try:
-                gold_executed = await db_connector.run_query_async(gold_query, timeout=self.timeout)
-            except Exception as e:
-                print(f"Warning: Exception {e} occurred while executing gold queries")
-                continue
-
+        pred_executed = [tuple(d.values()) for d in task.pred_exec_result]
+        for exec_result in task.gold_exec_results:
+            gold_executed = [tuple(d.values()) for d in exec_result]
             if self._compare(pred_executed, gold_executed) == 1.0:
                 return 1.0
         return 0.0

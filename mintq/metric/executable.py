@@ -9,10 +9,4 @@ class Executable:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
-        try:
-            await db_connector.run_query_async(task.pred_query, timeout=self.timeout)
-        except Exception as e:
-            print(f"Warning: Exception {e} occurred while executing queries")
-            return 0.0
-
-        return 1.0
+        return float(task.pred_exec_result is not None)
