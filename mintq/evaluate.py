@@ -28,7 +28,8 @@ async def populate_exec_results_async(
         )
         item.gold_exec_results = [df.to_dict(orient="records") for df in dfs if isinstance(df, pd.DataFrame)]
     else:
-        assert item.gold_exec_results
+        if not item.gold_exec_results:
+            raise ValueError("No gold queries or gold execution results provided")
 
     try:
         df = await db_connector.run_query_async(item.pred_query, return_df=True)
