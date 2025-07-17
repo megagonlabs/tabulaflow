@@ -218,7 +218,7 @@ class HSchemaSynthesizer:
         )
 
     async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
-        hschema_cache_dir = os.path.join(config.cache_dir, "hschema")
+        hschema_cache_dir = os.path.join(config.cache_dir, "hschemas")
         os.makedirs(hschema_cache_dir, exist_ok=True)
         cache_path = os.path.join(hschema_cache_dir, f"{db_connector.global_id}.json")
 

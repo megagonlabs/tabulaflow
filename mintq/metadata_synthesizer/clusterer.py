@@ -4,7 +4,7 @@ from typing import Protocol, Callable, Any
 import re
 import collections
 from pydantic import BaseModel
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 import logging
 import random
@@ -204,33 +204,58 @@ class LLMClusterer:
         return store.clusters
 
 
+class BaseClusterFunc(Protocol):
+    def extract(name: str) -> tuple[str, str | None]: ...
+
+    def summarize(variations: list[str]) -> str | None: ...
+
+
+class IndexClusterFunc:
+    @staticmethod
+    def extract(name: str) -> tuple[str, str | None]:
+        match = re.search(r"\d+", name)
+        if not match:
+            return name, None
+        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        return pattern, match.group()
+
+    @staticmethod
+    def summarize(variations: list[str]) -> str | None:
+        nums = sorted([int(v) for v in variations])
+        a = nums[0]
+        b = nums[-1]
+        if nums != list(range(a, b + 1)):
+            return None
+        return f"# from {a} to {b}"
+
+
 @dataclass
 class AffixClusterer:
+    cluster_funcs: list[BaseClusterFunc] = field(default_factory=lambda: [IndexClusterFunc()])
+    minimum_cluster_size: int = 5
     trajectory_: None = None
 
     async def cluster_async(self, item_names: list[str], items: list[Any]) -> list[Cluster]:
         if len(item_names) != len(set(item_names)):
             raise ValueError("Items must have unique names")
 
-        groups = collections.defaultdict(list)
-        for name in item_names:
-            pattern = re.sub(r"\d+", "{#}", name, count=1)
-            groups[pattern].append(name)
-
+        remaining = set(item_names)
         res = []
-        for pattern, names in groups.items():
-            if len(names) <= 5:
-                for name in names:
-                    res.append(Cluster(name=name, description=None, item_names=[name]))
-                continue
+        for func in self.cluster_funcs:
+            groups = collections.defaultdict(list)
+            for name in remaining:
+                pattern, variation = func.extract(name)
+                groups[pattern].append((name, variation))
 
-            variations = sorted([int(re.search(r"\d+", name).group()) for name in names])  # type: ignore
-            a = variations[0]
-            b = variations[-1]
-            if variations != list(range(a, b + 1)):
-                for name in names:
-                    res.append(Cluster(name=name, description=None, item_names=[name]))
-                continue
+            for pattern in groups:
+                if len(groups[pattern]) >= self.minimum_cluster_size:
+                    summary = func.summarize([v for _, v in groups[pattern]])
+                    if summary is not None:
+                        names = [n for n, _ in groups[pattern]]
+                        res.append(Cluster(name=pattern, description=summary, item_names=names))
+                        remaining -= set(names)
 
-            res.append(Cluster(name=pattern, description=f"# from {a} to {b}", item_names=names))
+        for name in remaining:
+            res.append(Cluster(name=name, description=None, item_names=[name]))
+
         return res
