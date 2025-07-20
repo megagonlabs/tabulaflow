@@ -7,9 +7,6 @@ from mintq.formatters import HSchemaFormatter
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
-os.environ["MINTQ_CACHE_ENABLED"] = "0"
-
-
 async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="bird-sql")
@@ -20,17 +17,20 @@ async def main() -> None:
     print(args)
     print()
 
-    if args.enable_cache:
-        os.environ["MINTQ_CACHE_ENABLED"] = "1"
-
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     db_connector = dataset.db_connectors[args.database]
+    print(f"Database loaded in {time.time() - t0} seconds")
+
+    os.environ["MINTQ_CACHE_ENABLED"] = "0"
+    if args.enable_cache:
+        os.environ["MINTQ_CACHE_ENABLED"] = "1"
+    t0 = time.time()
     hschema = await HSchemaSynthesizer().run_async(db_connector)
+    print(f"HSchema synthesized in {time.time() - t0} seconds")
     print(HSchemaFormatter().format(hschema))
     print()
-    print(f"Time taken: {time.time() - t0} seconds")
     print(f"Table groups: {[tg.name for tg in hschema.table_groups]}")
 
 
