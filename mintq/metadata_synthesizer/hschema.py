@@ -17,6 +17,9 @@ from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer, B
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.config import config
+import logging
+
+logger = logging.getLogger(__name__)
 
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
@@ -154,6 +157,7 @@ class HSchemaSynthesizer:
     llm: str = "gpt-4o"
     batch_size: int = 10
     temperature: float = 0.0
+    max_table_groups: int = 100
     table_section_synthesizers_: list[TableSectionSynthesizer] = field(default_factory=list)
 
     def _table_digest(self, table: SQLTableSchema) -> Any:
@@ -188,6 +192,11 @@ class HSchemaSynthesizer:
             clusters = await clusterer.cluster_async([t.name for t in tables], tables)
             for c in clusters:
                 table_groups.append((c.name, [name2table[name] for name in c.item_names]))
+
+        if len(table_groups) >= self.max_table_groups:
+            raise ValueError(
+                f"Number of table groups for {schema.name} is too large: {len(table_groups)} ({', '.join([tg[0] for tg in table_groups])})"
+            )
 
         self.table_section_synthesizers_ = [
             TableSectionSynthesizer(
