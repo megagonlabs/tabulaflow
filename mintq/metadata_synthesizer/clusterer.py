@@ -248,7 +248,7 @@ class YearAffixClusterFunc:
         nums = sorted([int(v) for v in variations])
         a = nums[0]
         b = nums[-1]
-        return f"# from {a} to {b}"
+        return f"YEAR from {a} to {b}"
 
 
 @dataclass
