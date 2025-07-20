@@ -253,7 +253,7 @@ Contact: yanlin@megagon.ai
   - [x] Design tools
   - [x] Benchmark performance: `bird-sql.dev_199: 64.32 / 68.34 (soft)` `spider2-snow.dev_63: 25.40`
   - [ ] Support grouping tables with date suffixes (e.g. `order_20240627`)
-- [ ] Add table and column descriptions
+- [x] Add table and column descriptions
 - [ ] Foreign key inference
 - [ ] Orchestrator + Schema linking agent + SQL writing agent + Final refinement agent
 - [ ] JOIN discovery agent
@@ -271,8 +271,8 @@ Contact: yanlin@megagon.ai
 - [x] [Jun 20] Add `global_id` field  for db connectors for schema/metadata caching
 - [x] [Jun 21] `toolhub` sub-package
 - [x] [Jun 23] Support max steps
+- [x] [Jul 16] Optimize evaluation - share execution results between metrics, record execution results
 - [ ] HSchema viewing and statistics script
-- [ ] Optimize evaluation - share execution results between metrics, record execution results
 - [ ] Metadata ablation
 
 
