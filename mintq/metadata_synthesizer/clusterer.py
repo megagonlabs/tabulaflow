@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 import json
 import logging
 import random
-from datetime import datetime
+import datetime
 from mintq.schema import Trajectory, UserMessage, AssistantMessage
 
 logger = logging.getLogger(__name__)
@@ -239,7 +239,7 @@ class YearAffixClusterFunc:
         if not match:
             return name, None
         year = int(match.group())
-        if year < 1000 or year > datetime.now().year:
+        if year < 1000 or year > datetime.datetime.now().year:
             return name, None
         pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
         return pattern, year
@@ -256,7 +256,7 @@ class YearAffixClusterFunc:
 
 class YearMonthAffixClusterFunc:
     @staticmethod
-    def extract(name: str) -> tuple[str, datetime.date | None]:
+    def extract(name: str) -> tuple[str, datetime.datetime | None]:
         match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
         if not match:
             return name, None
