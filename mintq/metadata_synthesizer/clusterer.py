@@ -215,40 +215,67 @@ class BaseClusterFunc(Protocol):
 
 class IndexAffixClusterFunc:
     @staticmethod
-    def extract(name: str) -> tuple[str, str | None]:
+    def extract(name: str) -> tuple[str, int | None]:
         match = re.search(r"\d+", name)
         if not match:
             return name, None
-        pattern = re.sub(r"\d+", "{YEAR}", name, count=1)
-        return pattern, match.group()
+        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        return pattern, int(match.group())
 
     @staticmethod
-    def summarize(variations: list[str]) -> str | None:
-        nums = sorted([int(v) for v in variations])
-        a = nums[0]
-        b = nums[-1]
-        if nums != list(range(a, b + 1)):
+    def summarize(indexes: list[int]) -> str | None:
+        indexes = sorted(indexes)
+        a = indexes[0]
+        b = indexes[-1]
+        if indexes != list(range(a, b + 1)):
             return None
-        return f"YEAR from {a} to {b}"
+        return f"# from {a} to {b}"
 
 
 class YearAffixClusterFunc:
     @staticmethod
-    def extract(name: str) -> tuple[str, str | None]:
+    def extract(name: str) -> tuple[str, int | None]:
         match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
         if not match:
             return name, None
         year = int(match.group())
         if year < 1000 or year > datetime.now().year:
             return name, None
-        return match.group(), match.group()
+        pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
+        return pattern, year
 
     @staticmethod
-    def summarize(variations: list[str]) -> str | None:
-        nums = sorted([int(v) for v in variations])
-        a = nums[0]
-        b = nums[-1]
+    def summarize(years: list[int]) -> str | None:
+        years = sorted(years)
+        a = years[0]
+        b = years[-1]
+        if years != list(range(a, b + 1)):
+            return None
         return f"YEAR from {a} to {b}"
+
+
+class YearMonthAffixClusterFunc:
+    @staticmethod
+    def extract(name: str) -> tuple[str, datetime.date | None]:
+        match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group()[:4])
+        month = int(match.group()[4:])
+        day = 1
+        if year < 1000 or datetime.date(year, month, day) > datetime.date.today():
+            return name, None
+        pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
+        return pattern, datetime.date(year, month, day)
+
+    @staticmethod
+    def summarize(dates: list[datetime.date]) -> str | None:
+        dates = sorted(dates)
+        a = dates[0]
+        b = dates[-1]
+        if dates != list(range(a, b + 1)):
+            return None
+        return f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
 
 
 @dataclass
