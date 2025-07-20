@@ -8,6 +8,7 @@ from dataclasses import dataclass, field
 import json
 import logging
 import random
+from datetime import datetime
 from mintq.schema import Trajectory, UserMessage, AssistantMessage
 
 logger = logging.getLogger(__name__)
@@ -205,18 +206,20 @@ class LLMClusterer:
 
 
 class BaseClusterFunc(Protocol):
+    @staticmethod
     def extract(name: str) -> tuple[str, str | None]: ...
 
+    @staticmethod
     def summarize(variations: list[str]) -> str | None: ...
 
 
-class IndexClusterFunc:
+class IndexAffixClusterFunc:
     @staticmethod
     def extract(name: str) -> tuple[str, str | None]:
         match = re.search(r"\d+", name)
         if not match:
             return name, None
-        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        pattern = re.sub(r"\d+", "{YEAR}", name, count=1)
         return pattern, match.group()
 
     @staticmethod
@@ -226,12 +229,33 @@ class IndexClusterFunc:
         b = nums[-1]
         if nums != list(range(a, b + 1)):
             return None
+        return f"YEAR from {a} to {b}"
+
+
+class YearAffixClusterFunc:
+    @staticmethod
+    def extract(name: str) -> tuple[str, str | None]:
+        match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group())
+        if year < 1000 or year > datetime.now().year:
+            return name, None
+        return match.group(), match.group()
+
+    @staticmethod
+    def summarize(variations: list[str]) -> str | None:
+        nums = sorted([int(v) for v in variations])
+        a = nums[0]
+        b = nums[-1]
         return f"# from {a} to {b}"
 
 
 @dataclass
 class AffixClusterer:
-    cluster_funcs: list[BaseClusterFunc] = field(default_factory=lambda: [IndexClusterFunc()])
+    cluster_funcs: list[BaseClusterFunc] = field(
+        default_factory=lambda: [YearAffixClusterFunc(), IndexAffixClusterFunc()]
+    )
     minimum_cluster_size: int = 5
     trajectory_: None = None
 
