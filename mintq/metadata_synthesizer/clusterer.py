@@ -268,7 +268,13 @@ class YearMonthAffixClusterFunc:
         year = int(match.group()[:4])
         month = int(match.group()[4:])
         day = 1
-        if year < 1000 or datetime.date(year, month, day) > datetime.date.today():
+        if (
+            year < 1000
+            or month < 12
+            and datetime.date(year, month + 1, day) > datetime.date.today()
+            or month == 12
+            and datetime.date(year + 1, 1, day) > datetime.date.today()
+        ):
             return name, None
         pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
         return pattern, datetime.date(year, month, day)
