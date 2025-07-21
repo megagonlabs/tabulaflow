@@ -1,5 +1,10 @@
 import collections
-from mintq.metadata_synthesizer.clusterer import IndexAffixClusterFunc, YearAffixClusterFunc, YearMonthAffixClusterFunc
+from mintq.metadata_synthesizer.clusterer import (
+    IndexAffixClusterFunc,
+    YearAffixClusterFunc,
+    YearMonthAffixClusterFunc,
+    DateAffixClusterFunc,
+)
 
 
 def test_index_affix_cluster_func() -> None:
@@ -64,3 +69,25 @@ def test_year_month_affix_cluster_func() -> None:
         assert len(groups) == 1
         desc = fn.summarize([v for v in groups[list(groups.keys())[0]]])
         assert desc == "YYYYMM from 202001 to 202005 except 202004"
+
+
+def test_date_affix_cluster_func() -> None:
+    test_cases = [
+        [
+            "stats_20200105",
+            "stats_20200101",
+            "stats_20200102",
+            "stats_20200103",
+        ]
+    ]
+    for test_case in test_cases:
+        fn = DateAffixClusterFunc(max_missing_ratio=0.2)
+        groups = collections.defaultdict(list)
+        for name in test_case:
+            pattern, variation = fn.extract(name)
+            groups[pattern].append(variation)
+
+        print(groups)
+        assert len(groups) == 1
+        desc = fn.summarize([v for v in groups[list(groups.keys())[0]]])
+        assert desc == "YYYYMMDD from 20200101 to 20200105 except 20200104"

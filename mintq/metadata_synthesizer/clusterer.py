@@ -261,7 +261,7 @@ class YearAffixClusterFunc:
 class YearMonthAffixClusterFunc:
     max_missing_ratio: float = 0.2
 
-    def extract(self, name: str) -> tuple[str, datetime.datetime | None]:
+    def extract(self, name: str) -> tuple[str, datetime.date | None]:
         match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
         if not match:
             return name, None
@@ -293,9 +293,46 @@ class YearMonthAffixClusterFunc:
 
 
 @dataclass
+class DateAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, datetime.date | None]:
+        match = re.search(r"(?<!\d)\d{4}\d{2}\d{2}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group()[:4])
+        month = int(match.group()[4:6])
+        day = int(match.group()[6:])
+        if year < 1000 or datetime.date(year, month, day) > datetime.date.today():
+            return name, None
+        pattern = re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", name, count=1)
+        return pattern, datetime.date(year, month, day)
+
+    def summarize(self, dates: list[datetime.date]) -> str | None:
+        dates = sorted(dates)
+        a = dates[0]
+        b = dates[-1]
+        dates_set = set(dates)
+        missing_dates = []
+        current = a
+        while current <= b:
+            if current not in dates_set:
+                missing_dates.append(current)
+            current += datetime.timedelta(days=1)
+        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
+            return None
+        return f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')} except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+
+
+@dataclass
 class AffixClusterer:
     cluster_funcs: list[BaseClusterFunc] = field(
-        default_factory=lambda: [YearAffixClusterFunc(), IndexAffixClusterFunc()]
+        default_factory=lambda: [
+            YearAffixClusterFunc(),
+            YearMonthAffixClusterFunc(),
+            DateAffixClusterFunc(),
+            IndexAffixClusterFunc(),
+        ]
     )
     minimum_cluster_size: int = 5
     trajectory_: None = None
