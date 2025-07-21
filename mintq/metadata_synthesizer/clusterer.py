@@ -206,24 +206,20 @@ class LLMClusterer:
 
 
 class BaseClusterFunc(Protocol):
-    @staticmethod
-    def extract(name: str) -> tuple[str, str | None]: ...
+    def extract(self, name: str) -> tuple[str, str | None]: ...
 
-    @staticmethod
-    def summarize(variations: list[str]) -> str | None: ...
+    def summarize(self, variations: list[str]) -> str | None: ...
 
 
 class IndexAffixClusterFunc:
-    @staticmethod
-    def extract(name: str) -> tuple[str, int | None]:
+    def extract(self, name: str) -> tuple[str, int | None]:
         match = re.search(r"\d+", name)
         if not match:
             return name, None
         pattern = re.sub(r"\d+", "{#}", name, count=1)
         return pattern, int(match.group())
 
-    @staticmethod
-    def summarize(indexes: list[int]) -> str | None:
+    def summarize(self, indexes: list[int]) -> str | None:
         indexes = sorted(indexes)
         a = indexes[0]
         b = indexes[-1]
@@ -233,8 +229,9 @@ class IndexAffixClusterFunc:
 
 
 class YearAffixClusterFunc:
-    @staticmethod
-    def extract(name: str) -> tuple[str, int | None]:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, int | None]:
         match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
         if not match:
             return name, None
@@ -244,19 +241,22 @@ class YearAffixClusterFunc:
         pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
         return pattern, year
 
-    @staticmethod
-    def summarize(years: list[int]) -> str | None:
+    def summarize(self, years: list[int]) -> str | None:
         years = sorted(years)
         a = years[0]
         b = years[-1]
-        if years != list(range(a, b + 1)):
+        years_set = set(years)
+        missing_years = [y for y in range(a, b + 1) if y not in years_set]
+        if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
             return None
-        return f"YEAR from {a} to {b}"
+        return f"YEAR from {a} to {b} except {', '.join([str(y) for y in missing_years])}"
 
 
+@dataclass
 class YearMonthAffixClusterFunc:
-    @staticmethod
-    def extract(name: str) -> tuple[str, datetime.datetime | None]:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, datetime.datetime | None]:
         match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
         if not match:
             return name, None
@@ -268,14 +268,15 @@ class YearMonthAffixClusterFunc:
         pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
         return pattern, datetime.date(year, month, day)
 
-    @staticmethod
-    def summarize(dates: list[datetime.date]) -> str | None:
+    def summarize(self, dates: list[datetime.date]) -> str | None:
         dates = sorted(dates)
         a = dates[0]
         b = dates[-1]
-        if dates != list(range(a, b + 1)):
+        dates_set = set(dates)
+        missing_dates = [d for d in range(a, b + 1) if d not in dates_set]
+        if len(missing_dates) / (b - a + 1) > self.max_missing_ratio:
             return None
-        return f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
+        return f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')} except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
 
 
 @dataclass
