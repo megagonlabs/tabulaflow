@@ -273,8 +273,16 @@ class YearMonthAffixClusterFunc:
         a = dates[0]
         b = dates[-1]
         dates_set = set(dates)
-        missing_dates = [d for d in range(a, b + 1) if d not in dates_set]
-        if len(missing_dates) / (b - a + 1) > self.max_missing_ratio:
+        missing_dates = []
+        current = a
+        while current <= b:
+            if current not in dates_set:
+                missing_dates.append(current)
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
             return None
         return f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')} except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
 
