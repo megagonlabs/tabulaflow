@@ -191,7 +191,7 @@ class HSchemaSynthesizer:
         for _, tables in digest2tables.items():
             clusters = await clusterer.cluster_async([t.name for t in tables], tables)
             for c in clusters:
-                table_groups.append((c.name, [name2table[name] for name in c.item_names]))
+                table_groups.append((c.name, c.description, [name2table[name] for name in c.item_names]))
 
         if len(table_groups) >= self.max_table_groups:
             raise ValueError(
@@ -208,7 +208,7 @@ class HSchemaSynthesizer:
         ]
 
         all_sections = await asyncio.gather(
-            *[synth.run_async(tables) for synth, (_, tables) in zip(self.table_section_synthesizers_, table_groups)]
+            *[synth.run_async(tables) for synth, (_, _, tables) in zip(self.table_section_synthesizers_, table_groups)]
         )
 
         return HSQLSchema(
@@ -216,13 +216,14 @@ class HSchemaSynthesizer:
             table_groups=[
                 HTableGroup(
                     name=name,
+                    description=description,
                     table_names=[t.name for t in tables],
                     schema_name=tables[0].schema_name,
                     primary_key=tables[0].primary_key,
                     foreign_keys=tables[0].foreign_keys,
                     sections=sections,
                 )
-                for ((name, tables), sections) in zip(table_groups, all_sections)
+                for ((name, description, tables), sections) in zip(table_groups, all_sections)
             ],
         )
 

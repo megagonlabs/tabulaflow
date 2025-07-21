@@ -63,8 +63,11 @@ class HSchemaFormatter:
         )
 
     def format_table_group(self, tg: HTableGroup, collapse_non_core_sections: bool = False) -> str:
+        desc = f"SCHEMA: {self._quote_if_needed(tg.schema_name)} TABLE: {self._quote_if_needed(tg.name)}"
+        if tg.description:
+            desc += f" /* {tg.description} */"
         return (
-            f"=== (SCHEMA: {self._quote_if_needed(tg.schema_name)}) TABLE: {self._quote_if_needed(tg.name)} ===\n"
+            f"=== {desc} ===\n"
             + "\n\n".join(
                 [
                     self.format_section(

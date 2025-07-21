@@ -229,7 +229,10 @@ class IndexAffixClusterFunc:
         missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
         if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
             return None
-        return f"# from {a} to {b} except {', '.join([str(i) for i in missing_indexes])}"
+        res = f"# from {a} to {b}"
+        if missing_indexes:
+            res += f" except {', '.join([str(i) for i in missing_indexes])}"
+        return res
 
 
 @dataclass
@@ -254,7 +257,10 @@ class YearAffixClusterFunc:
         missing_years = [y for y in range(a, b + 1) if y not in years_set]
         if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
             return None
-        return f"YEAR from {a} to {b} except {', '.join([str(y) for y in missing_years])}"
+        res = f"YEAR from {a} to {b}"
+        if missing_years:
+            res += f" except {', '.join([str(y) for y in missing_years])}"
+        return res
 
 
 @dataclass
@@ -295,7 +301,10 @@ class YearMonthAffixClusterFunc:
                 current = current.replace(month=current.month + 1)
         if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
             return None
-        return f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')} except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
+        res = f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
+        if missing_dates:
+            res += f" except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
+        return res
 
 
 @dataclass
@@ -327,7 +336,10 @@ class DateAffixClusterFunc:
             current += datetime.timedelta(days=1)
         if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
             return None
-        return f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')} except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+        res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
+        if missing_dates:
+            res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+        return res
 
 
 @dataclass

@@ -168,6 +168,7 @@ class HTableSection(BaseModel):
 
 class HTableGroup(BaseModel):
     name: str
+    description: str | None
     table_names: list[str]
     schema_name: str | None = None
     primary_key: list[str]
