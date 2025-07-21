@@ -12,6 +12,8 @@ async def test_extract_code() -> None:
         "```sql\nSELECT * FROM users\n```\n",
         "```\nSELECT * FROM users\n```",
         "```\n\nSELECT * FROM users\n```",
+        "This is the SQL code:\n```sql\nSELECT * FROM users\n```",
+        "This is the SQL code:\n```sql\nSELECT * FROM users\n```. This is another SQL code:\n```sql\nSELECT * FROM products\n```",
     ]
     for response in responses:
         code = extract_code(response)
