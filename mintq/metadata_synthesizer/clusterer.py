@@ -211,7 +211,10 @@ class BaseClusterFunc(Protocol):
     def summarize(self, variations: list[str]) -> str | None: ...
 
 
+@dataclass
 class IndexAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
     def extract(self, name: str) -> tuple[str, int | None]:
         match = re.search(r"\d+", name)
         if not match:
@@ -223,11 +226,13 @@ class IndexAffixClusterFunc:
         indexes = sorted(indexes)
         a = indexes[0]
         b = indexes[-1]
-        if indexes != list(range(a, b + 1)):
+        missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
+        if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
             return None
-        return f"# from {a} to {b}"
+        return f"# from {a} to {b} except {', '.join([str(i) for i in missing_indexes])}"
 
 
+@dataclass
 class YearAffixClusterFunc:
     max_missing_ratio: float = 0.2
 
