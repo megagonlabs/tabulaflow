@@ -1,3 +1,4 @@
+import json
 from dataclasses import dataclass, field
 from pydantic_ai import Tool
 from pydantic import BaseModel
@@ -25,7 +26,7 @@ def locate_path(
             table_group = tg
             break
     if table_group is None:
-        raise ValueError(f"(table {table_name} in schema {schema_name} not found)")
+        raise ValueError(f"table {table_name} in schema {schema_name} not found")
 
     section = None
     column_group = None
@@ -36,7 +37,7 @@ def locate_path(
                 column_group = cg
                 break
     if column_group is None:
-        raise ValueError(f"(column {column_name} not found in table {table_name} in schema {schema_name})")
+        raise ValueError(f"column {column_name} not found in table {table_name} in schema {schema_name}")
 
     return table_group, section, column_group
 
@@ -88,40 +89,46 @@ class MarkRelevantColumnTool:
     relevant_hschema: HSQLSchema | None = None
     metrics_: MarkRelevantColumnToolMetrics = field(default_factory=MarkRelevantColumnToolMetrics)
 
-    async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
+    async def __call__(self, schema_name: str | None, table_name: str, column_names: list[str]) -> str:
         """
         Mark a column as relevant to the query.
 
         Args:
             schema_name: The name of the schema to which the table belongs, or None if schema is not applicable.
             table_name: The name of the table to which the column belongs.
-            column_name: The name of the column to mark as relevant.
+            column_names: The names of the columns to mark as relevant.
         """
         # If there is only a single schema, use it regardless of what the agent specified
         all_schema_names = [tg.schema_name for tg in self.hschema.table_groups]
         if len(set(all_schema_names)) == 1:
             schema_name = all_schema_names[0]
 
-        try:
-            src_table_group, src_section, src_column_group = locate_path(
-                self.hschema, schema_name, table_name, column_name
-            )
-        except ValueError as e:
-            if "(column" in str(e):
-                self.metrics_.error_column_not_found += 1
-                return str(e)
-            elif "(table" in str(e):
-                self.metrics_.error_table_not_found += 1
-                return str(e)
-            else:
-                raise e
+        marked_columns = []
 
-        if self.relevant_hschema is None:
-            self.relevant_hschema = HSQLSchema(name=self.hschema.name, table_groups=[])
+        for column_name in column_names:
 
-        create_path(self.relevant_hschema, src_table_group, src_section, src_column_group)
+            try:
+                src_table_group, src_section, src_column_group = locate_path(
+                    self.hschema, schema_name, table_name, column_name
+                )
+            except ValueError as e:
+                if str(e).startswith("column"):
+                    self.metrics_.error_column_not_found += 1
+                    return f"The following columns in table {table_name} in schema {schema_name} have been marked as relevant: {json.dumps(marked_columns)}. Error occurred while marking column {column_name}: {str(e)}"
+                elif str(e).startswith("table"):
+                    self.metrics_.error_table_not_found += 1
+                    return f"Error occurred while marking column {column_name}: {str(e)}"
+                else:
+                    raise e
 
-        return "Relevant column marked."
+            if self.relevant_hschema is None:
+                self.relevant_hschema = HSQLSchema(name=self.hschema.name, table_groups=[])
+
+            create_path(self.relevant_hschema, src_table_group, src_section, src_column_group)
+
+            marked_columns.append(column_name)
+
+        return f"The following columns in table {table_name} in schema {schema_name} have been marked as relevant: {json.dumps(marked_columns)}."
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
