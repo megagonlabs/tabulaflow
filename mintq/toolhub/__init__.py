@@ -4,5 +4,14 @@ from mintq.toolhub.search_keywords import SearchKeywordsTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.finish import FinishTool
 from mintq.toolhub.show_table_section import ShowTableSectionTool
+from mintq.toolhub.mark_relevant_column import MarkRelevantColumnTool
 
-__all__ = ["BaseTool", "ListColumnsTool", "SearchKeywordsTool", "RunQueryTool", "FinishTool", "ShowTableSectionTool"]
+__all__ = [
+    "BaseTool",
+    "ListColumnsTool",
+    "SearchKeywordsTool",
+    "RunQueryTool",
+    "FinishTool",
+    "ShowTableSectionTool",
+    "MarkRelevantColumnTool",
+]
