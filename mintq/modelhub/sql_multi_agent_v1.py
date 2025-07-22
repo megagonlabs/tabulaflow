@@ -44,6 +44,8 @@ from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 SCHEMA_LINKING_SYSTEM_PROMPT = """
 You are a helpful assistant that can identify the relevant columns in the database schema for the given question.
+
+- Include all columns that are relevant to the question in the final query, including primary keys and foreign keys.
 """.strip()
 
 SCHEMA_LINKING_TASK_PROMPT = """
