@@ -200,6 +200,7 @@ class SQLMultiAgentV1:
                 schema_linking_prompt, model_settings={"temperature": self.temperature}
             )
             schema_linking_messages = schema_linking_result.all_messages()[:-1]  # Remove the output of the finish tool
+            schema_linking_trajectory = pydantic_ai_messages_to_trajectory(schema_linking_messages)
             relevant_hschema = mark_relevant_column_tool.relevant_hschema
             sql_writing_prompt = jinja2.Template(SQL_WRITING_TASK_PROMPT).render(
                 schema=self.hschema_formatter.format(relevant_hschema, collapse_non_core_sections=False),
@@ -208,8 +209,8 @@ class SQLMultiAgentV1:
                 language=task.language,
             )
             result = await sql_writing_agent.run(sql_writing_prompt, model_settings={"temperature": self.temperature})
-            messages = result.all_messages()[:-1]  # Remove the output of the finish tool
-            messages = schema_linking_messages + messages
+            trajectory = pydantic_ai_messages_to_trajectory(result.all_messages()[:-1])
+            trajectory.messages = schema_linking_trajectory.messages + trajectory.messages
         except (UsageLimitExceeded, UnexpectedModelBehavior):
             prompt = jinja2.Template(SQL_WRITING_TASK_PROMPT).render(
                 schema=self.hschema_formatter.format(hschema, collapse_non_core_sections=False),
@@ -218,10 +219,9 @@ class SQLMultiAgentV1:
                 language=task.language,
             )
             result = await agent_no_tools.run(prompt, model_settings={"temperature": self.temperature})
-            messages = result.all_messages()
+            trajectory = pydantic_ai_messages_to_trajectory(result.all_messages())
             fallback = True
         pred_query = extract_code(result.output)
-        trajectory = pydantic_ai_messages_to_trajectory(messages)
 
         usage = result.usage()
         metrics = {}
