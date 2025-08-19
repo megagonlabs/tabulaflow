@@ -284,3 +284,14 @@ Interesting BIRD question IDs:
 
 944:  How much faster in percentage is the champion than the driver who finished the race last in the 2008 Australian Grand Prix?
 ```
+
+```
+npx @modelcontextprotocol/inspector \
+  uv \
+  --directory /zfs1/users/yanlin/projects/nl2q-rl \
+  run \
+  -m mintq.mcp \
+  --dataset spider2-snow \
+  --split dev \
+  --database AIRLINES
+```
