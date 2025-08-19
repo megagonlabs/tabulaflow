@@ -5,7 +5,7 @@ from mintq.toolhub import RunQueryTool
 from mcp.server.fastmcp import FastMCP
 
 
-mcp = FastMCP("mintq")
+mcp = FastMCP("mintq", host="0.0.0.0", port=8125)
 
 
 async def main():
@@ -25,4 +25,4 @@ async def main():
 
 if __name__ == "__main__":
     asyncio.run(main())
-    mcp.run(transport="stdio")
+    mcp.run(transport="streamable-http")
