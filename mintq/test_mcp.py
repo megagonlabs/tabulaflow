@@ -5,7 +5,7 @@ from mintq.toolhub import RunQueryTool
 from mcp.server.fastmcp import FastMCP
 
 
-mcp = FastMCP("test_mintq", host="0.0.0.0", port=8126)
+mcp = FastMCP("test_mintq", host="0.0.0.0", port=8126, json_response=False, stateless_http=False)
 
 
 async def get_schema() -> str:
