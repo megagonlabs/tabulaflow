@@ -6,7 +6,6 @@ from sqlalchemy import select, distinct
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.toolhub.utils import equals_ci
 
 
@@ -20,7 +19,6 @@ class SearchKeywordsToolMetrics(BaseModel):
 class SearchKeywordsTool:
     name: ClassVar[str] = "search_keywords"
     db_connector: BaseAsyncSQLDBConnector
-    formatter: BaseSQLSchemaFormatter
     metrics_: SearchKeywordsToolMetrics = field(default_factory=SearchKeywordsToolMetrics)
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str, keywords: list[str]) -> str:

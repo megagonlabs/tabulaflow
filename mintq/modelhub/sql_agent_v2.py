@@ -88,7 +88,7 @@ class SQLAgentV2:
         t0 = time.time()
 
         list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
-        search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
+        search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         agent = Agent[TaskContext, str](  # type: ignore

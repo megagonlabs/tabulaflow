@@ -162,7 +162,7 @@ class SQLMultiAgentV1:
             history_processors=[get_max_steps_reached_processor(self.schema_linking_max_steps)],
         )
 
-        search_keywords_tool = SearchKeywordsTool(db_connector, self.formatter)
+        search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         sql_writing_agent = Agent[None, str](  # type: ignore
