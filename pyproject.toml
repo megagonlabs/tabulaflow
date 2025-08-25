@@ -13,6 +13,7 @@ dependencies = [
     "aiosqlite>=0.21.0",
     "arize-phoenix-otel>=0.10.1",
     "asyncmy>=0.2.10",
+    "asyncpg>=0.30.0",
     "func-timeout>=4.3.5",
     "graphviz>=0.20.3",
     "httpx>=0.28.1",
