@@ -61,7 +61,12 @@ async def main():
 
     mcp.add_tool(get_schema_tool.__call__, name="get_schema")
     mcp.add_tool(run_query_tool.__call__, name="run_query")
-    mcp.add_tool(search_keywords_tool.__call__, name="search_keywords")
+
+    async def search_keywords(schema_name: str, table_name: str, column_name: str, keywords: list[str]) -> str:
+        return await search_keywords_tool.__call__(schema_name, table_name, column_name, keywords)
+
+    search_keywords.__doc__ = search_keywords_tool.__call__.__doc__
+    mcp.add_tool(search_keywords, name="search_keywords")
 
     print(f"Started MCP server for database with the following schema:\n{await get_schema_tool()}")
 
