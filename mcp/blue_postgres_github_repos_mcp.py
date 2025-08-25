@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 
-mcp = FastMCP("mintq", host="0.0.0.0", port=8127)
+mcp = FastMCP("postgres_github_repos", host="0.0.0.0", port=8127)
 
 
 @dataclass

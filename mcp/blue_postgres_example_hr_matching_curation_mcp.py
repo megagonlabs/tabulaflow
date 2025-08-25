@@ -15,7 +15,7 @@ from mcp.server.fastmcp import FastMCP
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 
-mcp = FastMCP("mintq", host="0.0.0.0", port=8125)
+mcp = FastMCP("postgres_example_hr_matching_curation", host="0.0.0.0", port=8125)
 
 
 @dataclass
