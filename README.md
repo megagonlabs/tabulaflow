@@ -295,3 +295,60 @@ npx @modelcontextprotocol/inspector \
   --split dev \
   --database AIRLINES
 ```
+
+### Starting initial postgres databases
+```
+docker run -d --name postgres_financial \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=financial \
+  -p 5440:5432 \
+  postgres
+
+docker run -d --name postgres_github_repos \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=github_repos \
+  -p 5441:5432 \
+  postgres
+```
+
+#### Convert sqlite to postgres
+
+```
+pgloader \
+  /home/yanlin/mintq/data/BIRD-SQL/dev_20240627/dev_databases/financial/financial.sqlite \
+  postgresql://postgres:postgres@localhost:5440/financial
+
+pgloader \
+  /home/yanlin/github_repos_date.sqlite \
+  postgresql://postgres:postgres@localhost:5441/github_repos
+```
+
+#### Dump the database to .sql file
+
+```
+pg_dump -h localhost -p 5440 -U postgres -d financial > financial.sql
+
+pg_dump -h localhost -p 5441 -U postgres -d github_repos > github_repos.sql
+```
+
+#### Start a new postgres database from the .sql file
+
+```
+docker run -d --name postgres_financial \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=financial \
+  -p 5440:5432 \
+  -v /home/yanlin/financial.sql:/docker-entrypoint-initdb.d/financial.sql \
+  postgres
+
+docker run -d --name postgres_github_repos \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=github_repos \
+  -p 5441:5432 \
+  -v /home/yanlin/github_repos.sql:/docker-entrypoint-initdb.d/github_repos.sql \
+  postgres
+```
