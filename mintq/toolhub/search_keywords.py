@@ -70,10 +70,11 @@ class SearchKeywordsTool:
         column_name = quoted_name(column_name, quote=True)
         matches = []
         for keyword in keywords:
+            keyword = keyword.lower()
             sql_table = sqlalchemy.Table(
                 table_name, sqlalchemy.MetaData(), sqlalchemy.Column(column_name, sqlalchemy.String), schema=schema_name
             )
-            stmt = select(distinct(sql_table.c[column_name])).where(sql_table.c[column_name].like(f"%{keyword}%"))
+            stmt = select(sql_table.c[column_name]).distinct().where(sql_table.c[column_name].ilike(f"%{keyword}%"))
             result = await db_connector.run_query_async(stmt, timeout=None)
             matches += [row[0] for row in result]
         matches = sorted(list(set(matches)))
