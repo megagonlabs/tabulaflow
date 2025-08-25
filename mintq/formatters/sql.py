@@ -69,7 +69,7 @@ class SQLDefaultSchemaFormatter:
         elif column.null_ratio > 0.0:
             res += " NULLABLE"
         is_categorical = (
-            column.dtype in ("TEXT", "VARCHAR")
+            column.dtype in ("TEXT", "VARCHAR", "ENUM")
             and column.num_unique
             and column.unique_ratio
             and 0 < column.num_unique <= 20

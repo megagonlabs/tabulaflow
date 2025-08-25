@@ -97,7 +97,7 @@ class HSchemaFormatter:
         elif column_group.null_ratio > 0.0:
             res += " NULLABLE"
         is_categorical = (
-            column_group.dtype in ("TEXT", "VARCHAR")
+            column_group.dtype in ("TEXT", "VARCHAR", "ENUM")
             and column_group.num_unique
             and column_group.unique_ratio
             and 0 < column_group.num_unique <= 20

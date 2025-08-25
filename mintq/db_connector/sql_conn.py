@@ -176,7 +176,7 @@ async def build_column_async(
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    dtype = column["type"].__visit_name__
+    dtype = column["type"].__visit_name__.upper()
 
     if num_rows > 0:
         dialect = t_eng.engine.dialect.name
@@ -186,6 +186,7 @@ async def build_column_async(
         if dtype in CATEGORICAL_TYPES:
             num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx")))[0][0]
             unique_ratio = num_unique / num_rows
+            print(column["name"], dtype, num_unique, num_rows, unique_ratio)
             examples = await t_eng.run_query_async(
                 select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
             )
