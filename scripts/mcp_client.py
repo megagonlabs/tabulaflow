@@ -48,9 +48,25 @@ class MCPClient:
         ]
         return available_tools
 
+    async def test_get_schema(self):
+        response = await self.session.call_tool("get_schema", {})
+        return response.content[0].text
+
     async def test_run_query(self, query: str):
         response = await self.session.call_tool("run_query", {"query": query})
-        return response.content
+        return response.content[0].text
+
+    async def test_search_keywords(self, schema_name: str, table_name: str, column_name: str, keywords: list[str]):
+        response = await self.session.call_tool(
+            "search_keywords",
+            {
+                "schema_name": schema_name,
+                "table_name": table_name,
+                "column_name": column_name,
+                "keywords": keywords,
+            },
+        )
+        return response.content[0].text
 
     async def cleanup(self):
         """Properly clean up the session and streams"""
@@ -70,8 +86,22 @@ async def main():
 
     try:
         await client.connect_to_streamable_http_server(f"http://10.0.175.210:{args.mcp_localhost_port}/mcp/")
+        print()
+        print("Listing tools:")
         print(await client.list_tools())
+        print()
+        print("Getting schema:")
+        print(await client.test_get_schema())
+        print()
+        print("Running query:")
         print(await client.test_run_query("SELECT * FROM job_seeker LIMIT 10"))
+        print()
+        print("Searching keywords:")
+        print(
+            await client.test_search_keywords(
+                "job_seeker", "job_seeker", "skills", ["YTHON"]
+            )
+        )
     finally:
         await client.cleanup()
 
