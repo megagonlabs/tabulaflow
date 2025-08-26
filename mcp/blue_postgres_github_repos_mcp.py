@@ -69,6 +69,10 @@ async def main():
     mcp.add_tool(search_keywords, name="search_keywords")
 
     print(f"Started MCP server for database with the following schema:\n{await get_schema_tool()}")
+    num_tables = len(db_connector.schema.tables)
+    print(f"Number of tables: {num_tables}")
+    num_columns = sum(len(table.columns) for table in db_connector.schema.tables)
+    print(f"Number of columns: {num_columns}")
 
 
 if __name__ == "__main__":
