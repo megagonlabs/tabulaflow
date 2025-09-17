@@ -1,6 +1,8 @@
 import datetime
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
+from dataclasses import dataclass, field
 from typing import Any, Literal, Annotated, Union
+import pandas as pd
 
 
 class SystemMessage(BaseModel):
@@ -55,33 +57,165 @@ class SimpleNL2QTask(BaseModel):
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
+    output_type: Literal["simple"] = "simple"
     metrics: dict[str, float | int]
     pred_query: str
     pred_exec_result: list[dict[str, Any]] | None = None
     trajectory: Trajectory
 
 
-class MultiNL2QTask(BaseModel):
-    task_type: Literal["multi"] = "multi"
+@dataclass
+class GoldQuery:
+    id: str
+    """Example: QUERY-A.2-B.0"""
+    query: str
+    parameter_names: list[str] = field(default_factory=list)
+    parameter_values: dict[str, Any] = field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    result_df: pd.DataFrame | None = None
+    required_columns: list[int] | None = None
+    required_sorted: bool = False
+
+
+@dataclass
+class PredQuery:
+    id: str
+    query: str
+    parameter_names: list[str] = field(default_factory=list)
+    parameter_values: dict[str, Any] = field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    result_df: pd.DataFrame | None = None
+
+
+ARCSAmbiguityType = Literal[
+    "semantic_column",
+    "semantic_table",
+    "semantic_value",
+    "semantic_computation",
+    "syntactic_column",
+    "syntactic_table",
+    "syntactic_value",
+    "syntactic_computation",
+]
+
+
+class GoldAmbiguityPointFinite(BaseModel):
+    id: str
+    """A, B, C, etc."""
+    phrase: str
+    type: Literal["finite"] = "finite"
+    ambiguity_type: ARCSAmbiguityType
+    interpretations: list[str]
+    intended_interpretation_idx: int | None
+
+    @model_validator(mode="after")
+    def validate(self):
+        if self.gold_interpretation not in self.interpretations:
+            raise ValueError(f"gold_interpretation '{self.gold_interpretation}' not in interpretations")
+        return self
+
+
+class GoldAmbiguityPointInfinite(BaseModel):
+    id: str
+    """A, B, C, etc."""
+    phrase: str
+    type: Literal["infinite"] = "infinite"
+    ambiguity_type: ARCSAmbiguityType
+    parent_ambiguity_point_id: str | None = None
+    parameter_name: str
+    parameter_operator: Literal["<", ">", "<=", ">="]
+    parameter_sample_values: list[Any] | list[list[Any]]
+    """list[list[Any]] only allowed when `parent_ambiguity_point_id` is not None"""
+    indended_parameter_value: Any | None
+
+
+GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
+
+
+class AmbigNL2QTask(BaseModel):
+    task_type: Literal["ambig"] = "ambig"
     qid: str
     language: str
     db: str
     question: str
-    evidence: str | None = None
-    extra_info: dict[str, Any] = {}
-    gold_queries: list[str] = Field(default_factory=list)
-    gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
+    gold_ambiguity_points: list[GoldAmbiguityPoint]
+    gold_queries: list[GoldQuery]
+    gold_intended_gold_query_id: str | None
+    """Ground-truth query intended by the user"""
+    extra_info: dict[str, Any] = Field(default_factory=dict)
 
 
-class MultiNL2QTaskOutput(MultiNL2QTask):
+class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
+    """
+    The model only predicts the final disambiguated query
+    """
+
+    output_type: Literal["ambig-simple"] = "ambig-simple"
+    pred_intended_query: PredQuery
     metrics: dict[str, float | int]
-    pred_queries: list[str]
-    pred_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
-    trajectories: list[Trajectory]
 
 
-NL2QTask = Annotated[Union[SimpleNL2QTask, MultiNL2QTask], Field(discriminator="task_type")]
-NL2QTaskOutput = Annotated[Union[SimpleNL2QTaskOutput, MultiNL2QTaskOutput], Field(discriminator="task_type")]
+class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
+    """
+    The model predicts a list of interpretations, the SQL for each interpretation, and the final disambiguated query
+    (e.g. the "Disambiguate First Parse Later" paper https://arxiv.org/pdf/2502.18448)
+    """
+
+    output_type: Literal["ambig-flat"] = "ambig-flat"
+    pred_queries: list[PredQuery]
+    pred_intended_query_id: str
+    metrics: dict[str, float | int]
+
+
+class PredAmbiguityPointFinite(BaseModel):
+    phrase: str
+    type: Literal["finite"] = "finite"
+    interpretations: list[str] | None
+    intended_interpretation_idx: int | None
+
+
+class PredAmbiguityPointInfinite(BaseModel):
+    phrase: str
+    type: Literal["infinite"] = "infinite"
+    parent_ambiguity_point_id: str | None
+    parameter_name: str
+    parameter_operator: Literal["<", ">", "<=", ">="]
+    parameter_sample_values: list[Any] | list[list[Any]]
+    intended_parameter_value: Any | None
+
+
+PredAmbiguityPoint = Annotated[Union[PredAmbiguityPointFinite, PredAmbiguityPointInfinite], Field(discriminator="type")]
+
+
+class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
+    """
+    The model predicts all the ambiguity points, their interpretations, the SQL for each interpretation combination, as well as the final disambiguated query
+    """
+
+    output_type: Literal["ambig-structured"] = "ambig-structured"
+    pred_ambiguity_points: list[PredAmbiguityPoint]
+    pred_queries: list[PredQuery]
+    pred_intended_query_id: str
+    metrics: dict[str, float | int]
+
+    @model_validator(mode="after")
+    def validate_pred_queries(self):
+        correct_len = 1
+        for ap in self.pred_ambiguity_points:
+            if ap.type == "finite":
+                correct_len *= len(ap.interpretations)
+        if len(self.pred_queries) != correct_len:
+            raise ValueError(
+                f"qid {self.qid}: The number of pred queries ({len(self.pred_queries)}) must be equal to the number of all combinations of interpretations ({correct_len})."
+            )
+        return self
+
+
+NL2QTask = Annotated[Union[SimpleNL2QTask, AmbigNL2QTask], Field(discriminator="task_type")]
+NL2QTaskOutput = Annotated[
+    Union[SimpleNL2QTaskOutput, SimpleAmbigNL2QTaskOutput, FlatAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput],
+    Field(discriminator="output_type"),
+]
 
 
 class NL2QDataset(BaseModel):
@@ -101,7 +235,7 @@ class NL2QRunResult(BaseModel):
     model: str
     model_args: dict[str, Any]
     aggregated_metrics: dict[str, float | int]
-    tasks: list[NL2QTaskOutput]
+    task_outputs: list[NL2QTaskOutput]
 
 
 class BaseDBSchema(BaseModel):
