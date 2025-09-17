@@ -1,10 +1,11 @@
 import datetime
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, Field, model_validator, field_validator
 from pydantic.types import StringConstraints
 from dataclasses import dataclass, field
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
 import math
+import itertools
 
 
 class SystemMessage(BaseModel):
@@ -141,13 +142,27 @@ class AmbigNL2QTask(BaseModel):
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
+    @field_validator("gold_ambiguity_points", "gold_queries")
+    def validate_gold_id_uniqueness(self, objs: list[Any]) -> list[Any]:
+        ids = [obj.id for obj in objs]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+        return objs
+
     @model_validator(mode="after")
     def validate_gold_queries(self):
-        correct_len = math.prod(len(ap.interpretations) for ap in self.gold_ambiguity_points if ap.type == "finite")
-        if len(self.gold_queries) != correct_len:
-            raise ValueError(
-                f"qid {self.qid}: The number of gold queries ({len(self.gold_queries)}) must be equal to the number of all combinations of interpretations ({correct_len})."
-            )
+        finite_aps = sorted([ap for ap in self.gold_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
+        required_ids = [
+            "GQRY-" + "-".join(f"{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
+            for indexes in itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
+        ]
+        for gq in self.gold_queries:
+            if gq.id not in required_ids:
+                raise ValueError(f"qid {self.qid}: Gold query {gq.id} is not required.")
+        for required_id in required_ids:
+            if required_id not in self.gold_queries:
+                raise ValueError(f"qid {self.qid}: Gold query {required_id} is not found.")
+        assert len(self.gold_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
     @model_validator(mode="after")
@@ -215,6 +230,13 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_intended_query_id: str
     metrics: dict[str, float | int]
 
+    @field_validator("pred_queries")
+    def validate_pred_id_uniqueness(self, objs: list[Any]) -> list[Any]:
+        ids = [obj.id for obj in objs]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+        return objs
+
 
 class PredAmbiguityPointFinite(BaseModel):
     id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
@@ -250,6 +272,13 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_queries: list[PredQuery]
     pred_intended_query_id: str
     metrics: dict[str, float | int]
+
+    @field_validator("pred_ambiguity_points", "pred_queries")
+    def validate_pred_id_uniqueness(self, objs: list[Any]) -> list[Any]:
+        ids = [obj.id for obj in objs]
+        if len(ids) != len(set(ids)):
+            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+        return objs
 
     @model_validator(mode="after")
     def validate_pred_queries(self):
