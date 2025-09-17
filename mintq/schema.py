@@ -181,7 +181,7 @@ class AmbigNL2QTask(BaseModel):
 
 @dataclass
 class PredQuery:
-    id: Annotated[str, StringConstraints(pattern=r"^PRED_QRY(-[A-Za-z]+\.[0-9]+)*$")]
+    id: Annotated[str, StringConstraints(pattern=r"^PQRY(-[A-Za-z]+\.[0-9]+)*$")]
     """Example: PQRY-A.2-B.0"""
     query: str
     parameter_names: list[str] = field(default_factory=list)
