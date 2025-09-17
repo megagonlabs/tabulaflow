@@ -3,6 +3,7 @@ from pydantic import BaseModel, Field, model_validator
 from dataclasses import dataclass, field
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
+import math
 
 
 class SystemMessage(BaseModel):
@@ -133,8 +134,9 @@ GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPoin
 
 
 class AmbigNL2QTask(BaseModel):
-    task_type: Literal["ambig"] = "ambig"
     qid: str
+    task_type: Literal["ambig"] = "ambig"
+    has_intended_resolution: bool
     language: str
     db: str
     question: str
@@ -145,15 +147,44 @@ class AmbigNL2QTask(BaseModel):
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
-    def validate_pred_queries(self):
-        correct_len = 1
-        for ap in self.gold_ambiguity_points:
-            if ap.type == "finite":
-                correct_len *= len(ap.interpretations)
+    def validate_gold_queries(self):
+        correct_len = math.prod(len(ap.interpretations) for ap in self.gold_ambiguity_points if ap.type == "finite")
         if len(self.gold_queries) != correct_len:
             raise ValueError(
                 f"qid {self.qid}: The number of gold queries ({len(self.gold_queries)}) must be equal to the number of all combinations of interpretations ({correct_len})."
             )
+        return self
+
+    @model_validator(mode="after")
+    def validate_has_intended_resolution(self):
+        if self.has_intended_resolution:
+            assert self.gold_intended_gold_query_id is not None
+            assert all(
+                ap.intended_interpretation_idx is not None for ap in self.gold_ambiguity_points if ap.type == "finite"
+            )
+            assert all(
+                ap.indended_parameter_value is not None for ap in self.gold_ambiguity_points if ap.type == "infinite"
+            )
+        else:
+            assert self.gold_intended_gold_query_id is None
+            assert all(
+                ap.intended_interpretation_idx is None for ap in self.gold_ambiguity_points if ap.type == "finite"
+            )
+            assert all(
+                ap.indended_parameter_value is None for ap in self.gold_ambiguity_points if ap.type == "infinite"
+            )
+        return self
+
+    @model_validator(mode="after")
+    def validate_id_reference(self):
+        ap_ids = set(ap.id for ap in self.gold_ambiguity_points)
+        assert all(
+            ap.parent_ambiguity_point_id is None or ap.parent_ambiguity_point_id in ap_ids
+            for ap in self.gold_ambiguity_points
+            if ap.type == "infinite"
+        )
+        gold_query_ids = set(gq.id for gq in self.gold_queries)
+        assert self.gold_intended_gold_query_id is None or self.gold_intended_gold_query_id in gold_query_ids
         return self
 
 
