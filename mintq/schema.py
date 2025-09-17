@@ -144,6 +144,18 @@ class AmbigNL2QTask(BaseModel):
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
+    @model_validator(mode="after")
+    def validate_pred_queries(self):
+        correct_len = 1
+        for ap in self.gold_ambiguity_points:
+            if ap.type == "finite":
+                correct_len *= len(ap.interpretations)
+        if len(self.gold_queries) != correct_len:
+            raise ValueError(
+                f"qid {self.qid}: The number of gold queries ({len(self.gold_queries)}) must be equal to the number of all combinations of interpretations ({correct_len})."
+            )
+        return self
+
 
 class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
