@@ -123,6 +123,10 @@ class GoldQuery:
     required_columns: list[int] | None = None
     required_sorted: bool = False
 
+    @property
+    def resolution_mapping(self) -> dict[str, int]:
+        return {part.split(".")[0]: int(part.split(".")[1]) for part in self.id.split("-")[1:]}
+
 
 class AmbigNL2QTask(BaseModel):
     qid: str
