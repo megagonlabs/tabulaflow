@@ -1,5 +1,6 @@
 import datetime
 from pydantic import BaseModel, Field, model_validator
+from pydantic.types import StringConstraints
 from dataclasses import dataclass, field
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
@@ -65,29 +66,6 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     trajectory: Trajectory
 
 
-@dataclass
-class GoldQuery:
-    id: str
-    """Example: QUERY-A.2-B.0"""
-    query: str
-    parameter_names: list[str] = field(default_factory=list)
-    parameter_values: dict[str, Any] = field(default_factory=dict)
-    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    result_df: pd.DataFrame | None = None
-    required_columns: list[int] | None = None
-    required_sorted: bool = False
-
-
-@dataclass
-class PredQuery:
-    id: str
-    query: str
-    parameter_names: list[str] = field(default_factory=list)
-    parameter_values: dict[str, Any] = field(default_factory=dict)
-    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    result_df: pd.DataFrame | None = None
-
-
 ARCSAmbiguityType = Literal[
     "semantic_column",
     "semantic_table",
@@ -101,7 +79,7 @@ ARCSAmbiguityType = Literal[
 
 
 class GoldAmbiguityPointFinite(BaseModel):
-    id: str
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["finite"] = "finite"
@@ -117,7 +95,7 @@ class GoldAmbiguityPointFinite(BaseModel):
 
 
 class GoldAmbiguityPointInfinite(BaseModel):
-    id: str
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["infinite"] = "infinite"
@@ -131,6 +109,19 @@ class GoldAmbiguityPointInfinite(BaseModel):
 
 
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
+
+
+@dataclass
+class GoldQuery:
+    id: Annotated[str, StringConstraints(pattern=r"^GQRY(-[A-Za-z]+\.[0-9]+)*$")]
+    """Example: GQRY-A.2-B.0"""
+    query: str
+    parameter_names: list[str] = field(default_factory=list)
+    parameter_values: dict[str, Any] = field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    result_df: pd.DataFrame | None = None
+    required_columns: list[int] | None = None
+    required_sorted: bool = False
 
 
 class AmbigNL2QTask(BaseModel):
@@ -188,6 +179,17 @@ class AmbigNL2QTask(BaseModel):
         return self
 
 
+@dataclass
+class PredQuery:
+    id: Annotated[str, StringConstraints(pattern=r"^PRED_QRY(-[A-Za-z]+\.[0-9]+)*$")]
+    """Example: PQRY-A.2-B.0"""
+    query: str
+    parameter_names: list[str] = field(default_factory=list)
+    parameter_values: dict[str, Any] = field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    result_df: pd.DataFrame | None = None
+
+
 class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
     The model only predicts the final disambiguated query
@@ -211,6 +213,8 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
 
 class PredAmbiguityPointFinite(BaseModel):
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    """A, B, C, etc."""
     phrase: str
     type: Literal["finite"] = "finite"
     interpretations: list[str] | None
@@ -218,6 +222,8 @@ class PredAmbiguityPointFinite(BaseModel):
 
 
 class PredAmbiguityPointInfinite(BaseModel):
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    """A, B, C, etc."""
     phrase: str
     type: Literal["infinite"] = "infinite"
     parent_ambiguity_point_id: str | None
