@@ -1,5 +1,5 @@
 import datetime
-from pydantic import BaseModel, Field, model_validator, field_validator
+from pydantic import BaseModel, Field, model_validator, field_validator, AfterValidator
 from pydantic.types import StringConstraints
 from dataclasses import dataclass, field
 from typing import Any, Literal, Annotated, Union
@@ -79,6 +79,13 @@ ARCSAmbiguityType = Literal[
 ]
 
 
+def is_id_unique(objs: list[Any]) -> list[Any]:
+    ids = [obj.id for obj in objs]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+    return objs
+
+
 class GoldAmbiguityPointFinite(BaseModel):
     id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
     """A, B, C, etc."""
@@ -139,18 +146,11 @@ class AmbigNL2QTask(BaseModel):
     language: str
     db: str
     question: str
-    gold_ambiguity_points: list[GoldAmbiguityPoint]
-    gold_queries: list[GoldQuery]
+    gold_ambiguity_points: Annotated[list[GoldAmbiguityPoint], AfterValidator(is_id_unique)]
+    gold_queries: Annotated[list[GoldQuery], AfterValidator(is_id_unique)]
     gold_intended_gold_query_id: str | None
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
-
-    @field_validator("gold_ambiguity_points", "gold_queries")
-    def validate_gold_id_uniqueness(self, objs: list[Any]) -> list[Any]:
-        ids = [obj.id for obj in objs]
-        if len(ids) != len(set(ids)):
-            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
-        return objs
 
     @model_validator(mode="after")
     def validate_gold_queries(self):
@@ -229,16 +229,9 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
 
     output_type: Literal["ambig-flat"] = "ambig-flat"
-    pred_queries: list[PredQuery]
+    pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str
     metrics: dict[str, float | int]
-
-    @field_validator("pred_queries")
-    def validate_pred_id_uniqueness(self, objs: list[Any]) -> list[Any]:
-        ids = [obj.id for obj in objs]
-        if len(ids) != len(set(ids)):
-            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
-        return objs
 
 
 class PredAmbiguityPointFinite(BaseModel):
@@ -271,17 +264,10 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
 
     output_type: Literal["ambig-structured"] = "ambig-structured"
-    pred_ambiguity_points: list[PredAmbiguityPoint]
-    pred_queries: list[PredQuery]
+    pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
+    pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str
     metrics: dict[str, float | int]
-
-    @field_validator("pred_ambiguity_points", "pred_queries")
-    def validate_pred_id_uniqueness(self, objs: list[Any]) -> list[Any]:
-        ids = [obj.id for obj in objs]
-        if len(ids) != len(set(ids)):
-            raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
-        return objs
 
     @model_validator(mode="after")
     def validate_pred_queries(self):
