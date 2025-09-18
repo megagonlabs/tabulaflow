@@ -269,6 +269,10 @@ async def main():
     print(tabulate(df, headers=header, tablefmt="github"))
 
     if args.check_only:
+        output_path = os.path.join(args.output_dir, "all_data.json")
+        with open(output_path, "w") as f:
+            json.dump([task.model_dump() for task in all_data], f, indent=2)
+        print(f"{len(all_data)} tasks saved to {output_path}")
         print("Checking only. Exiting...")
         return
 
