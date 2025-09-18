@@ -86,7 +86,7 @@ def is_id_unique(objs: list[Any]) -> list[Any]:
 
 
 class GoldAmbiguityPointFinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["finite"] = "finite"
@@ -105,7 +105,7 @@ class GoldAmbiguityPointFinite(BaseModel):
 
 
 class GoldAmbiguityPointInfinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["infinite"] = "infinite"
@@ -124,7 +124,7 @@ GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPoin
 class GoldQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    id: Annotated[str, StringConstraints(pattern=r"^GQRY(-[A-Za-z]+\.[0-9]+)*$")]
+    id: Annotated[str, StringConstraints(pattern=r"^GQRY(-[A-Z]+\.[0-9]+)*$")]
     """Example: GQRY-A.2-B.0"""
     query: str
     parameter_names: list[str] = Field(default_factory=list)
@@ -207,7 +207,7 @@ class AmbigNL2QTask(BaseModel):
 class PredQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    id: Annotated[str, StringConstraints(pattern=r"^PQRY(-[A-Za-z]+\.[0-9]+)*$")]
+    id: Annotated[str, StringConstraints(pattern=r"^PQRY(-[A-Z]+\.[0-9]+)*$")]
     """Example: PQRY-A.2-B.0"""
     query: str
     parameter_names: list[str] = Field(default_factory=list)
@@ -239,7 +239,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
 
 class PredAmbiguityPointFinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["finite"] = "finite"
@@ -248,7 +248,7 @@ class PredAmbiguityPointFinite(BaseModel):
 
 
 class PredAmbiguityPointInfinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Za-z]+$")]
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
     """A, B, C, etc."""
     phrase: str
     type: Literal["infinite"] = "infinite"
