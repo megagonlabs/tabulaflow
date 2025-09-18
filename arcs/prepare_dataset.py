@@ -78,17 +78,27 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
     # all_parameter_names = [ap.parameter_name for ap in gold_ambiguity_points if ap.type == "infinite"]
     all_parameter_values = {ap.parameter_name: ap.indended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"}
 
+    required_columns = data.get("required_columns")
+    if required_columns is not None:
+        assert len(required_columns) > 0
+        if isinstance(required_columns[0], list):
+            assert len(required_columns) == len(sqls)
+            assert all(len(cols) > 0 for cols in required_columns)
+
     gold_queries = []
-    for indexes, sql in zip(all_indexes, sqls):
+    for i, (indexes, sql) in enumerate(zip(all_indexes, sqls)):
         id = "GQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
         parameter_names = re.findall(r":([\w_]+)", sql)
         assert all(param_name in all_parameter_values for param_name in parameter_names)
+
         gold_queries.append(
             GoldQuery(
                 id=id,
                 query=sql,
                 parameter_names=parameter_names,
-                parameter_values={k: all_parameter_values[k] for k in parameter_names}
+                parameter_values={k: all_parameter_values[k] for k in parameter_names},
+                required_columns=required_columns[i] if required_columns and isinstance(required_columns[0], list) else required_columns,
+                required_sorted=False
             )
         )
 
@@ -103,6 +113,8 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
     assert data["qid"] == filename.replace(".sql", ""), f"QID mismatch: {data['qid']} != {filename.replace('.sql', '')}"
 
     assert data["generated_task"][-1] in (".", "?"), "Generated task must end with '.' or '?'"
+
+    
 
     task = AmbigNL2QTask(
         qid=data["qid"],
