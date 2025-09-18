@@ -1,3 +1,4 @@
+import itertools
 import json
 import math
 import os
@@ -132,8 +133,21 @@ def format_trajectory(trajectory: Trajectory) -> str:
     return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
 
 
+def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
+    task = copy.deepcopy(task)
+    finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]
+    gold_query_ids = [
+        "GQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
+        for indexes in itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
+    ]
+    id_to_query = {gq.id: gq for gq in task.gold_queries}
+    task.gold_queries = [id_to_query[gq_id] for gq_id in gold_query_ids]
+    return AmbigNL2QTask.model_validate(task.model_dump())
+
+
 def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     task = copy.deepcopy(task)
+    task = sort_gold_queries(task)
     ambiguity_point_ids = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
     def get_ap_location(ap: GoldAmbiguityPoint) -> tuple[int, int, int]:
