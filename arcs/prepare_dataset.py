@@ -71,13 +71,13 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
             raise ValueError(f"Unknown ambiguity point type: {ap['type']}")
 
     finite_aps = [ap for ap in gold_ambiguity_points if ap.type == "finite"]
-    all_indexes = list(
-        itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
-    )
+    all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
     assert len(all_indexes) == len(sqls)
 
     # all_parameter_names = [ap.parameter_name for ap in gold_ambiguity_points if ap.type == "infinite"]
-    all_parameter_values = {ap.parameter_name: ap.indended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"}
+    all_parameter_values = {
+        ap.parameter_name: ap.indended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"
+    }
 
     required_columns = data.get("required_columns")
     if required_columns is not None:
@@ -98,24 +98,20 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                 query=sql,
                 parameter_names=parameter_names,
                 parameter_values={k: all_parameter_values[k] for k in parameter_names},
-                required_columns=required_columns[i] if required_columns and isinstance(required_columns[0], list) else required_columns,
-                required_sorted=False
+                required_columns=required_columns[i]
+                if required_columns and isinstance(required_columns[0], list)
+                else required_columns,
+                required_sorted=False,
             )
         )
 
-
-    gold_intended_query_idx = all_indexes.index(
-        tuple(ap.intended_interpretation_idx for ap in finite_aps)
-    )
+    gold_intended_query_idx = all_indexes.index(tuple(ap.intended_interpretation_idx for ap in finite_aps))
     gold_intended_query_id = gold_queries[gold_intended_query_idx].id
-    
 
     filename = os.path.basename(sql_path)
     assert data["qid"] == filename.replace(".sql", ""), f"QID mismatch: {data['qid']} != {filename.replace('.sql', '')}"
 
     assert data["generated_task"][-1] in (".", "?"), "Generated task must end with '.' or '?'"
-
-    
 
     task = AmbigNL2QTask(
         qid=data["qid"],
@@ -128,6 +124,45 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
         has_intended_resolution=True,
     )
     return sort_ambiguity_points(task)
+
+
+DB_ORDER = ["retails", "professional_basketball", "github_repos", "financial", "codebase_community", "student_club"]
+
+PICKED_SAMPLES = {
+    "retails": ["0543", "0711", "0576", "0606", "0579"],
+    "professional_basketball": ["0796", "0791"],
+    "github_repos": ["0537", "0371", "0512"],
+    "financial": ["1212", "1090", "1159"],
+    "codebase_community": ["0169", "0047"],
+    "student_club": ["0238", "0182", "0191"],
+}
+
+DB_NAME_MAPPING = {
+    "github_repos_date": "github_repos",
+}
+
+
+def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[AmbigNL2QTask]:
+    sampler = random.Random(seed)
+    for task in tasks:
+        if task.db in DB_NAME_MAPPING:
+            task.db = DB_NAME_MAPPING[task.db]
+
+    res = []
+    for db in DB_ORDER:
+        qid2task = {task.qid: task for task in tasks if task.db == db}
+        for qid in PICKED_SAMPLES[db]:
+            task = qid2task.pop(qid)
+            task.qid = f"{len(res) + 1:03d}"  # 3-digit number padded with zeros
+            res.append(task)
+        # shuffle the remaining tasks
+        remaining_tasks = list(qid2task.values())
+        sampler.shuffle(remaining_tasks)
+        for task in remaining_tasks:
+            task.qid = f"{len(res) + 1:03d}"  # 3-digit number padded with zeros
+            res.append(task)
+
+    return res
 
 
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector):
@@ -213,6 +248,7 @@ async def main():
                 all_data.append(task)
             except Exception as e:
                 import traceback
+
                 print(traceback.format_exc())
                 errors[qid] = str(e)
         print("-" * 100)
@@ -225,6 +261,9 @@ async def main():
     qids = [task.qid for task in all_data]
     assert len(qids) == len(set(qids)), "Duplicate QIDs found"
     print(f"Total number of tasks: {len(all_data)}")
+
+    all_data = sort_tasks_and_reindex(all_data, args.seed)
+    print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
 
     # Print stats for ambiguity types
     domains = sorted(set([task.db for task in all_data]))
