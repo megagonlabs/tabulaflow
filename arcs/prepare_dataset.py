@@ -14,6 +14,7 @@ import pandas as pd
 from tabulate import tabulate
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
 from mintq.datahub import get_dataset_loader
+from mintq.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -126,7 +127,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
         gold_intended_gold_query_id=gold_intended_query_id,
         has_intended_resolution=True,
     )
-    return task
+    return sort_ambiguity_points(task)
 
 
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector):

@@ -2,9 +2,11 @@ import json
 import math
 import os
 import re
+import copy
 import pandas as pd
 import litellm
-from mintq.schema import Trajectory, NL2QRunResult
+import numpy as np
+from mintq.schema import Trajectory, NL2QRunResult, AmbigNL2QTask, GoldAmbiguityPoint
 
 
 def extract_code(response: str) -> str:
@@ -128,3 +130,46 @@ def format_trajectory(trajectory: Trajectory) -> str:
         elif msg.role == "tool":
             res.append(f'<message role="tool">\n{msg.response}\n</message>')
     return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+
+
+def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
+    task = copy.deepcopy(task)
+    ambiguity_point_ids = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+    def get_ap_location(ap: GoldAmbiguityPoint) -> tuple[int, int, int]:
+        return (task.question.index(ap.phrase), len(ap.phrase), 0 if ap.type == "finite" else 1)
+
+    def get_new_query_id(query_id: str, char_mapping: dict[str, str]) -> str:
+        parts = query_id.split("-")
+        parts = [parts[0]] + sorted([p.translate(str.maketrans(char_mapping)) for p in parts[1:]])
+        return "-".join(parts)
+
+    # Update the order of ambiguity points
+    new_order = sorted(
+        range(len(task.gold_ambiguity_points)), key=lambda x: get_ap_location(task.gold_ambiguity_points[x])
+    )
+    new_gold_ambiguity_points = [task.gold_ambiguity_points[i] for i in new_order]
+
+    # Update the order of SQLs
+    finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]
+    finite_ap_new_order = sorted(range(len(finite_aps)), key=lambda x: get_ap_location(finite_aps[x]))
+    sql_idx = np.arange(len(task.gold_queries))
+    sql_idx = sql_idx.reshape([len(ap.interpretations) for ap in finite_aps])
+    sql_idx = np.permute_dims(sql_idx, finite_ap_new_order)
+    sql_idx = sql_idx.flatten()
+    new_gold_queries = [task.gold_queries[i] for i in sql_idx]
+
+    # Replace the ambiguity point IDs
+    task.gold_ambiguity_points = new_gold_ambiguity_points
+    task.gold_queries = new_gold_queries
+    ap_id_mapping = {ap.id: ambiguity_point_ids[i] for i, ap in enumerate(new_gold_ambiguity_points)}
+    for ap in task.gold_ambiguity_points:
+        ap.id = ap_id_mapping[ap.id]
+        if ap.type == "infinite" and ap.parent_ambiguity_point_id is not None:
+            ap.parent_ambiguity_point_id = ap_id_mapping[ap.parent_ambiguity_point_id]
+    for gq in task.gold_queries:
+        gq.id = get_new_query_id(gq.id, ap_id_mapping)
+
+    task.gold_intended_gold_query_id = get_new_query_id(task.gold_intended_gold_query_id, ap_id_mapping)
+
+    return AmbigNL2QTask.model_validate(task.model_dump())
