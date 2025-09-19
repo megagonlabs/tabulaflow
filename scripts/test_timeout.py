@@ -94,6 +94,8 @@ async def run_with_interrupt(sqlite_path, sql, timeout):
             async for row in result:
                 rows.append(row)
             return rows
+        except sqlite3.OperationalError:
+            raise TimeoutError(f"Query {sql} timed out after {timeout} seconds")
         finally:
             interrupter.cancel()
 
