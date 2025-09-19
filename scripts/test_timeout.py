@@ -4,6 +4,7 @@ import time
 import func_timeout
 import sqlite3
 from mintq.db_connector import SQLConnector
+from concurrent.futures import ProcessPoolExecutor
 
 
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
@@ -60,5 +61,22 @@ async def test_func_timeout() -> None:
     print(rows[:5])
 
 
+async def run_query_in_process_pool(sqlite_path, sql):
+    loop = asyncio.get_running_loop()
+    process_pool = ProcessPoolExecutor(max_workers=4)
+    return await asyncio.wait_for(
+        loop.run_in_executor(process_pool, run_query, sqlite_path, sql),
+        timeout=5,
+    )
+
+
+async def test_process_pool() -> None:
+    print("Testing test_func_timeout...")
+    rows = await run_query_in_process_pool(SQLITE_PATH, SHORT_QUERY)
+    print(rows[:5])
+    rows = await run_query_in_process_pool(SQLITE_PATH, LONG_QUERY)
+    print(rows[:5])
+
+
 if __name__ == "__main__":
-    asyncio.run(test_func_timeout())
+    asyncio.run(test_process_pool())
