@@ -171,7 +171,7 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
 
     dfs = await asyncio.gather(
         *[
-            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, return_df=True, timeout=10)
+            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, return_df=True, timeout=30)
             for gq in task.gold_queries
         ],
         return_exceptions=True,
@@ -187,6 +187,7 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
             gq.result_df = df
     if has_error:
         return None
+    print(f"{task.qid} done")
     return task
 
 
@@ -198,6 +199,8 @@ async def main():
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--no_exec", action="store_true")
     args = parser.parse_args()
+    print(args)
+    print()
 
     random.seed(args.seed)
 
