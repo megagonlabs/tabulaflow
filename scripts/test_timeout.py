@@ -148,4 +148,4 @@ async def test_interrupt_sqlalchemy() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(test_interrupt_sqlalchemy())
+    asyncio.run(test_timeout_aiosqlite())

@@ -58,7 +58,40 @@ class ThrottledEngine:
             result = await conn.stream(statement, parameters)
             async for row in result:
                 rows.append(row)
-            
+
+        if return_df:
+            return pd.DataFrame(rows, columns=result.keys())
+        return rows
+
+    def _create_interrupter(self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int) -> asyncio.Task:
+        async def interrupt_after():
+            await asyncio.sleep(timeout)
+            raw_conn = await conn.get_raw_connection()
+            await raw_conn.driver_connection.interrupt()
+
+        return asyncio.create_task(interrupt_after())
+
+    async def _run_query_aiosqlite(
+        self,
+        statement: sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        return_df: bool = False,
+        timeout: int | None = None,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
+        rows = []
+        async with self.engine.connect() as conn:
+            interrupter = self._create_interrupter(conn, timeout)
+
+            try:
+                result = await conn.stream(statement, parameters)
+                async for row in result:
+                    rows.append(row)
+            except sqlalchemy.exc.OperationalError:
+                raise asyncio.TimeoutError()
+            finally:
+                interrupter.cancel()
+
         if return_df:
             return pd.DataFrame(rows, columns=result.keys())
         return rows
@@ -76,7 +109,10 @@ class ThrottledEngine:
         async with self.throttle():
             try:
                 if self.engine_type == "async":
-                    return await asyncio.wait_for(self._run_query_a(query, parameters, return_df), timeout=timeout)
+                    if self.engine.dialect.name == "sqlite":
+                        return await self._run_query_aiosqlite(query, parameters, return_df, timeout)
+                    else:
+                        return await asyncio.wait_for(self._run_query_a(query, parameters, return_df), timeout=timeout)
                 else:
                     loop = asyncio.get_running_loop()
                     return await asyncio.wait_for(
