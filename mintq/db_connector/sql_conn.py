@@ -34,7 +34,7 @@ class ThrottledEngine:
             for sem in reversed(semaphores):
                 sem.release()
 
-    def _run_query(
+    def _run_query_s(
         self,
         statement: sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
@@ -46,6 +46,22 @@ class ThrottledEngine:
             if return_df:
                 return pd.DataFrame(rows, columns=result.keys())
             return rows
+
+    async def _run_query_a_async(
+        self,
+        statement: sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        return_df: bool = False,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        rows = []
+        async with self.engine.connect() as conn:  # type: ignore
+            result = await conn.execute(statement, parameters)
+            async for row in result:
+                rows.append(row)
+            
+        if return_df:
+            return pd.DataFrame(rows, columns=result.keys())
+        return rows
 
     async def run_query_async(
         self,
@@ -60,16 +76,11 @@ class ThrottledEngine:
         async with self.throttle():
             try:
                 if self.engine_type == "async":
-                    async with self.engine.connect() as conn:  # type: ignore
-                        result = await asyncio.wait_for(conn.execute(query, parameters), timeout=timeout)
-                        rows = result.fetchall()
-                        if return_df:
-                            return pd.DataFrame(rows, columns=result.keys())
-                        return rows
+                    return await asyncio.wait_for(self._run_query_a_async(query, parameters, return_df), timeout=timeout)
                 else:
                     loop = asyncio.get_running_loop()
                     return await asyncio.wait_for(
-                        loop.run_in_executor(None, self._run_query, query, parameters, return_df),
+                        loop.run_in_executor(None, self._run_query_s, query, parameters, return_df),
                         timeout=timeout,
                     )
             except asyncio.TimeoutError:
