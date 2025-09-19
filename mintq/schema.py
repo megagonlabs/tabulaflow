@@ -301,7 +301,6 @@ NL2QTaskOutput = Annotated[
 class NL2QDataset(BaseModel):
     name: str
     split_id: str
-    databases: list[str] | None  # None means all databases
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 

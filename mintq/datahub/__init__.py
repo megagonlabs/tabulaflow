@@ -2,6 +2,7 @@ from mintq.datahub.base import BaseAsyncNL2QDatasetLoader
 from mintq.datahub.bird_sql import BirdSQLDatasetLoader
 from mintq.datahub.spider2 import Spider2SnowDatasetLoader, Spider2SimpleDatasetLoader
 from mintq.datahub.beaver import BeaverDatasetLoader
+from mintq.datahub.arcs import ARCSDatasetLoader
 
 __all__ = [
     "BaseAsyncNL2QDatasetLoader",
@@ -9,6 +10,7 @@ __all__ = [
     "Spider2SnowDatasetLoader",
     "Spider2SimpleDatasetLoader",
     "BeaverDatasetLoader",
+    "ARCSDatasetLoader",
     "get_dataset_loader",
 ]
 
@@ -17,6 +19,7 @@ dataset_loader_classes = [
     Spider2SnowDatasetLoader,
     Spider2SimpleDatasetLoader,
     BeaverDatasetLoader,
+    ARCSDatasetLoader,
 ]
 dataset_loader_registry: dict[str, type[BaseAsyncNL2QDatasetLoader]] = {cls.name: cls for cls in dataset_loader_classes}  # type: ignore
 
