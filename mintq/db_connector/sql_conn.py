@@ -55,7 +55,7 @@ class ThrottledEngine:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         rows = []
         async with self.engine.connect() as conn:  # type: ignore
-            result = await conn.execute(statement, parameters)
+            result = await conn.stream(statement, parameters)
             async for row in result:
                 rows.append(row)
             
