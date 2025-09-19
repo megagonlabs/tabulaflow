@@ -3,6 +3,8 @@ import asyncio
 import time
 import func_timeout
 import sqlite3
+import sqlalchemy
+from sqlalchemy.ext.asyncio import create_async_engine
 import aiosqlite
 from mintq.db_connector import SQLConnector
 from concurrent.futures import ProcessPoolExecutor
@@ -108,5 +110,42 @@ async def test_interrupt_aiosqlite() -> None:
     print(rows[:5])
 
 
+async def run_with_interrupt_sqlalchemy(sqlite_path, sql, timeout):
+    engine = create_async_engine(f"sqlite+aiosqlite:///{sqlite_path}")
+
+    async with engine.connect() as conn:
+
+        async def interrupt_after():
+            await asyncio.sleep(timeout)
+            print("Interrupt sending...")
+            print(type(conn))
+            raw_conn = await conn.get_raw_connection()
+            print(type(raw_conn))
+            print(type(raw_conn.driver_connection))
+            await raw_conn.driver_connection.interrupt()
+            print("Interrupt sent!")
+
+        interrupter = asyncio.create_task(interrupt_after())
+
+        try:
+            rows = []
+            result = await conn.stream(sqlalchemy.text(sql))
+            async for row in result:
+                rows.append(row)
+            return rows
+        except sqlalchemy.exc.OperationalError as e:
+            raise TimeoutError(f"Query {sql} timed out after {timeout} seconds")
+        finally:
+            interrupter.cancel()
+
+
+async def test_interrupt_sqlalchemy() -> None:
+    print("Testing test_interrupt_sqlalchemy...")
+    rows = await run_with_interrupt_sqlalchemy(SQLITE_PATH, SHORT_QUERY, 5)
+    print(rows[:5])
+    rows = await run_with_interrupt_sqlalchemy(SQLITE_PATH, LONG_QUERY, 5)
+    print(rows[:5])
+
+
 if __name__ == "__main__":
-    asyncio.run(test_interrupt_aiosqlite())
+    asyncio.run(test_interrupt_sqlalchemy())
