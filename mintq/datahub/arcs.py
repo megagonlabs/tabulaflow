@@ -18,6 +18,7 @@ class ARCSDatasetLoader:
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
         self._split_data: dict[str, NL2QDataset] = {}
+        self._dbms_semaphore = asyncio.Semaphore(1)
 
     async def _load_tasks_async(self, split_id: str) -> list[SimpleNL2QTask]:
         return []
@@ -30,7 +31,8 @@ class ARCSDatasetLoader:
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', f'{name}.sqlite')}",
-                    max_concurrency_per_db=4,
+                    max_concurrency_per_db=1,
+                    dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases
             ]
