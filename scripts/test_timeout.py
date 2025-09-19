@@ -3,6 +3,7 @@ import asyncio
 import time
 import func_timeout
 import sqlite3
+import aiosqlite
 from mintq.db_connector import SQLConnector
 from concurrent.futures import ProcessPoolExecutor
 
@@ -78,5 +79,32 @@ async def test_process_pool() -> None:
     print(rows[:5])
 
 
+async def run_with_interrupt(sqlite_path, sql, timeout):
+    async with aiosqlite.connect(sqlite_path) as conn:
+        # Schedule interrupt after timeout
+        async def interrupt_after():
+            await asyncio.sleep(timeout)
+            await conn.interrupt()
+            print("Interrupt sent!")
+
+        interrupter = asyncio.create_task(interrupt_after())
+        try:
+            rows = []
+            result = await conn.execute(sql)
+            async for row in result:
+                rows.append(row)
+            return rows
+        finally:
+            interrupter.cancel()
+
+
+async def test_interrupt_aiosqlite() -> None:
+    print("Testing test_interrupt_aiosqlite...")
+    rows = await run_with_interrupt(SQLITE_PATH, SHORT_QUERY, 5)
+    print(rows[:5])
+    rows = await run_with_interrupt(SQLITE_PATH, LONG_QUERY, 5)
+    print(rows[:5])
+
+
 if __name__ == "__main__":
-    asyncio.run(test_process_pool())
+    asyncio.run(test_interrupt_aiosqlite())
