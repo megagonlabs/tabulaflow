@@ -14,6 +14,7 @@ import pandas as pd
 from tabulate import tabulate
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
 from mintq.datahub import get_dataset_loader
+from mintq.db_connector import SQLConnector
 from mintq.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
@@ -165,48 +166,25 @@ def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[A
     return res
 
 
-async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector):
+async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConnector) -> AmbigNL2QTask | None:
     has_error = False
-
-    params = {ap.parameter_name: ap.gold_parameter_value for ap in task.gold_ambiguity_points if ap.parameter_name}
-
-    try:
-        gold_final_exec_result = await db_connector.run_query_async(
-            task.gold_final_query, parameters=params, return_df=True, timeout=10
-        )
-        gold_final_exec_result = gold_final_exec_result.to_dict(orient="records")
-        if not gold_final_exec_result:
-            print(f"[ERROR] gold_final_query returns empty result for QID {task.qid} (db: {task.db})")
-            task.gold_final_exec_result = None
-            has_error = True
-        else:
-            task.gold_final_exec_result = gold_final_exec_result
-    except Exception as e:
-        print(f"[ERROR] Error executing gold_final_query for QID {task.qid} (db: {task.db}): {e}")
-        task.gold_final_exec_result = None
-        has_error = True
 
     dfs = await asyncio.gather(
         *[
-            db_connector.run_query_async(query, parameters=params, return_df=True, timeout=10)
-            for query in task.gold_queries
+            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, return_df=True, timeout=10)
+            for gq in task.gold_queries
         ],
         return_exceptions=True,
     )
-    gold_exec_results = []
-    for query, df in zip(task.gold_queries, dfs):
+    for gq, df in zip(task.gold_queries, dfs):
         if not isinstance(df, pd.DataFrame):
             print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {df}")
-            gold_exec_results.append(None)
             has_error = True
         elif df.empty:
-            print(f"[ERROR] gold_query {query} returns empty result for QID {task.qid} (db: {task.db})")
-            gold_exec_results.append(None)
+            print(f"[ERROR] gold_query {gq.query} returns empty result for QID {task.qid} (db: {task.db})")
             has_error = True
         else:
-            gold_exec_results.append(df.to_dict(orient="records"))
-    task.gold_exec_results = gold_exec_results
-
+            gq.result_df = df
     if has_error:
         return None
     return task
@@ -218,18 +196,16 @@ async def main():
     parser.add_argument("--output_dir", default="data/ARCS/")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=10)
-    parser.add_argument("--check_only", action="store_true")
+    parser.add_argument("--no_exec", action="store_true")
     args = parser.parse_args()
 
     random.seed(args.seed)
 
     t0 = time.time()
-    if not args.check_only:
-        dataset_loader = get_dataset_loader("ambig-text2sql")
-        dataset = await dataset_loader.get_split_async("dev_0")
-        print(
-            f"Loaded {len(dataset.db_connectors)} databases from ambig-text2sql dev_0 set in {time.time() - t0:.2f} seconds."
-        )
+    if not args.no_exec:
+        dataset_loader = get_dataset_loader("arcs")
+        dataset = await dataset_loader.get_split_async("dev")
+        print(f"Loaded {len(dataset.db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
 
     # with open(os.path.join(args.input_dir, "annotated_qids.json"), "r") as f:
     #     annoated_qids = json.load(f)
@@ -308,7 +284,7 @@ async def main():
     print()
     print(tabulate(df, headers=header, tablefmt="github"))
 
-    if args.check_only:
+    if args.no_exec:
         output_path = os.path.join(args.output_dir, "all_data.json")
         with open(output_path, "w") as f:
             json.dump([task.model_dump() for task in all_data], f, indent=2)
