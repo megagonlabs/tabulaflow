@@ -50,4 +50,4 @@ async def test_timeout_sqlite() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(test_timeout_sqlite())
+    asyncio.run(test_timeout_aiosqlite())

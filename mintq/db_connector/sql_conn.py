@@ -47,7 +47,7 @@ class ThrottledEngine:
                 return pd.DataFrame(rows, columns=result.keys())
             return rows
 
-    async def _run_query_a_async(
+    async def _run_query_a(
         self,
         statement: sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
@@ -76,7 +76,7 @@ class ThrottledEngine:
         async with self.throttle():
             try:
                 if self.engine_type == "async":
-                    return await asyncio.wait_for(self._run_query_a_async(query, parameters, return_df), timeout=timeout)
+                    return await asyncio.wait_for(self._run_query_a(query, parameters, return_df), timeout=timeout)
                 else:
                     loop = asyncio.get_running_loop()
                     return await asyncio.wait_for(
