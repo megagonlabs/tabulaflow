@@ -108,6 +108,10 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
         parameter_names = re.findall(r":([\w_]+)", sql)
         assert all(param_name in all_parameter_values for param_name in parameter_names)
 
+        ambiguity_resolution = {f"[{ap.id}] {ap.phrase}": ap.interpretations[idx] for ap, idx in zip(finite_aps, indexes)}
+        ambiguity_resolution.update({f"[{ap.id}] {ap.phrase}": f":{ap.parameter_name}" for ap in gold_ambiguity_points if ap.type == "infinite"})
+        ambiguity_resolution = dict(sorted(ambiguity_resolution.items()))
+
         gold_queries.append(
             GoldQuery(
                 id=id,
@@ -118,6 +122,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                 if required_columns and isinstance(required_columns[0], list)
                 else required_columns,
                 required_sorted=False,
+                extra_info={"ambiguity_resolution": ambiguity_resolution},
             )
         )
 

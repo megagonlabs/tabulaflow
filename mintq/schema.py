@@ -161,6 +161,7 @@ class GoldQuery(BaseModel):
     exec_result: ExecResult | None = None
     required_columns: list[int] | None = None
     required_sorted: bool = False
+    extra_info: dict[str, Any] = Field(default_factory=dict)
 
     @property
     def resolution_mapping(self) -> dict[str, int]:
