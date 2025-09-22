@@ -1,6 +1,7 @@
 import argparse
 import time
 import asyncio
+import os
 from tabulate import tabulate
 from mintq.datahub import get_dataset_loader
 
@@ -10,9 +11,13 @@ async def main() -> None:
     parser.add_argument("--dataset", default="spider2-snow")
     parser.add_argument("--split", default="dev")
     parser.add_argument("--format", default="github")
+    parser.add_argument("--no_cache", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.no_cache:
+        os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
