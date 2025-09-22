@@ -166,29 +166,31 @@ def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[A
     return res
 
 
+TIMEOUT_SECONDS = 60
+
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConnector) -> AmbigNL2QTask | None:
     has_error = False
 
-    dfs = await asyncio.gather(
+    exec_results = await asyncio.gather(
         *[
-            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, return_df=True, timeout=30)
+            db_connector.run_query_async(gq.query, parameters=gq.parameter_values, timeout=TIMEOUT_SECONDS)
             for gq in task.gold_queries
         ],
         return_exceptions=True,
     )
-    for gq, df in zip(task.gold_queries, dfs):
-        if not isinstance(df, pd.DataFrame):
-            print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {df}")
+    for gq, exec_result in zip(task.gold_queries, exec_results):
+        if isinstance(exec_result, Exception):
+            print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {exec_result}")
             has_error = True
-        else:
-            gq.result_df = df
-    if all(df.empty for df in dfs):
+    if not has_error and all(exec_result.result_df.empty for exec_result in exec_results):
         print(f"[ERROR] All gold_queries return empty result for QID {task.qid} (db: {task.db})")
         has_error = True
     if has_error:
         return None
+    for gq, exec_result in zip(task.gold_queries, exec_results):
+        gq.exec_result = exec_result
     print(f"{task.qid} done")
-    return task
+    return AmbigNL2QTask.model_validate(task.model_dump())
 
 
 async def main():
@@ -212,6 +214,10 @@ async def main():
 
     # with open(os.path.join(args.input_dir, "annotated_qids.json"), "r") as f:
     #     annoated_qids = json.load(f)
+
+    task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1227.sql"), "financial")
+    task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
+    exit(9)
 
     all_data = []
 

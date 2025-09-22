@@ -3,13 +3,14 @@ from dataclasses import dataclass
 import collections
 import pandas as pd
 import os
+import time
 import asyncio
 from contextlib import asynccontextmanager
 import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, select, func, distinct, inspect
-from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema
+from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema, ExecResult
 from mintq.config import config
 
 
@@ -361,7 +362,8 @@ class SQLConnector:
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
-        timeout: int | None = 30,
-        return_df: bool = False,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        return await self._t_eng.run_query_async(query, parameters, timeout, return_df)
+        timeout: int | None = None,
+    ) -> ExecResult:
+        t0 = time.time()
+        df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
+        return ExecResult(result_df=df, latency_seconds=time.time() - t0)

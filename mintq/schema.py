@@ -121,6 +121,13 @@ class GoldAmbiguityPointInfinite(BaseModel):
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
 
 
+class ExecResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    result_df: pd.DataFrame | None = None
+    latency_seconds: float | None = None
+
+
 class GoldQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -130,7 +137,7 @@ class GoldQuery(BaseModel):
     parameter_names: list[str] = Field(default_factory=list)
     parameter_values: dict[str, Any] = Field(default_factory=dict)
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    result_df: pd.DataFrame | None = None
+    exec_result: ExecResult | None = None
     required_columns: list[int] | None = None
     required_sorted: bool = False
 
@@ -164,10 +171,14 @@ class AmbigNL2QTask(BaseModel):
         gold_query_ids = set(gq.id for gq in self.gold_queries)
         for gq_id in gold_query_ids:
             if gq_id not in required_ids:
-                raise ValueError(f"qid {self.qid}: Gold query {gq_id} is not required. Only {required_ids} are required.")
+                raise ValueError(
+                    f"qid {self.qid}: Gold query {gq_id} is not required. Only {required_ids} are required."
+                )
         for required_id in required_ids:
             if required_id not in gold_query_ids:
-                raise ValueError(f"qid {self.qid}: Gold query {required_id} is not found. Only {gold_query_ids} are found.")
+                raise ValueError(
+                    f"qid {self.qid}: Gold query {required_id} is not found. Only {gold_query_ids} are found."
+                )
         assert len(self.gold_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
@@ -213,7 +224,7 @@ class PredQuery(BaseModel):
     parameter_names: list[str] = Field(default_factory=list)
     parameter_values: dict[str, Any] = Field(default_factory=dict)
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    result_df: pd.DataFrame | None = None
+    exec_result: ExecResult | None = None
 
 
 class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
