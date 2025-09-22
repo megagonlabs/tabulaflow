@@ -3,12 +3,13 @@ import json
 import random
 import asyncio
 from typing import Optional, Any, Literal
-from mintq.schema import SimpleNL2QTask, NL2QDataset
+from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
 
 
 class BirdSQLDatasetLoader:
     name = "bird-sql"
+    splits = ["train", "dev"]
 
     def __init__(
         self,
@@ -17,92 +18,83 @@ class BirdSQLDatasetLoader:
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
-        self._data: dict[Any, NL2QDataset] = {}
+        self._split_data: dict[str, NL2QDataset] = {}
+        self._dbms_semaphore = asyncio.Semaphore(1)
 
-    async def _load_split_async(
-        self, split: Literal["train", "dev"], databases: Optional[list[str]] = None
-    ) -> NL2QDataset:
-        if split == "train":
-            directory = os.path.join(self.directory, "train")
-        elif split == "dev":
-            directory = os.path.join(self.directory, "dev_20240627")
-
+    async def _load_tasks_async(self, split: str) -> list[SimpleNL2QTask]:
         tasks = []
-        with open(os.path.join(directory, f"{split}.json"), "r") as f:
-            data = json.load(f)
-
-        with open(os.path.join(self.column_meaning_directory, f"{split}_column_meaning.json"), "r") as f:
-            column_descriptions = {key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()}
-
-        for i, item in enumerate(data):
-            if databases and item["db_id"] not in databases:
-                continue
-
-            tasks.append(
-                SimpleNL2QTask(
-                    qid=f"{self.name}_{split}_{i}",
-                    language="SQLite",
-                    db=item["db_id"],
-                    question=item["question"],
-                    evidence=item["evidence"],
-                    gold_queries=[item["SQL"]],
+        with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:
+            for i, item in enumerate(json.load(f)):
+                tasks.append(
+                    SimpleNL2QTask(
+                        qid=f"{self.name}_{split}_{i}",
+                        language="SQLite",
+                        db=item["db_id"],
+                        question=item["question"],
+                        evidence=item["evidence"],
+                        gold_queries=[GoldQuery(id="GQRY", query=item["SQL"])],
+                    )
                 )
-            )
+        return tasks
 
-        db_names = list(dict.fromkeys([task.db for task in tasks]))
-
-        db_dir = os.path.join(directory, f"{split}_databases")
+    async def _load_databases_async(self, split: str, databases: list[str]) -> dict[str, SQLConnector]:
+        db_dir = os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}_databases")
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    f"bird-sql+{name}",
-                    name,
-                    "async",
-                    f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
-                    max_concurrency_per_db=4,
+                    global_id=f"arcs+{name}",
+                    db_name=name,
+                    engine_type="async",
+                    url=f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
+                    max_concurrency_per_db=1,
+                    dbms_semaphore=self._dbms_semaphore,
                 )
-                for name in db_names
+                for name in databases
             ]
         )
+        with open(os.path.join(self.column_meaning_directory, f"{split}_column_meaning.json"), "r") as f:
+            column_descriptions = {
+                key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()
+            }
         for conn in db_connectors:
             for table in conn.schema.tables:
                 for column in table.columns:
                     column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
+        return {name: conn for name, conn in zip(databases, db_connectors)}
+
+    def _get_all_databases(self, split: str) -> list[str]:
+        with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:
+            return list(dict.fromkeys([item["db_id"] for item in json.load(f)]))
+
+    async def get_split_async(
+        self, split: str, databases: Optional[list[str]] = None, database_only: bool = False
+    ) -> NL2QDataset:
+        if split not in self.splits:
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
+        if split not in self._split_data:
+            self._split_data[split] = NL2QDataset(
+                name=self.name,
+                split=split,
+                subsample_size=None,
+                tasks=[],
+                db_connectors={},
+            )
+
+        dataset = self._split_data[split]
+        if not dataset.tasks and not database_only:
+            dataset.tasks = await self._load_tasks_async(split)
+
+        if databases is None:
+            databases = self._get_all_databases(split)
+        missing_databases = sorted(set(databases) - set(dataset.db_connectors.keys()))
+        if missing_databases:
+            dataset.db_connectors.update(await self._load_databases_async(split, missing_databases))
 
         return NL2QDataset(
             name=self.name,
-            split_id=split,
-            databases=databases,
-            tasks=tasks,  # type: ignore
-            db_connectors={name: conn for name, conn in zip(db_names, db_connectors)},
+            split=split,
+            subsample_size=None,
+            tasks=dataset.tasks,
+            db_connectors={db: dataset.db_connectors[db] for db in databases},
         )
-
-    async def get_split_async(self, split_id: str, databases: Optional[list[str]] = None) -> NL2QDataset:
-        if "_" in split_id:
-            split, sample_size = split_id.split("_")
-        else:
-            split, sample_size = split_id, None
-
-        if split not in ["train", "dev"]:
-            raise ValueError(f"Split {split} not supported")
-
-        if sample_size and databases:
-            raise ValueError("sample_size and databases cannot be both specified")
-
-        key = tuple(sorted(databases)) if isinstance(databases, list) else None
-
-        if (split, key) not in self._data:
-            self._data[(split, key)] = await self._load_split_async(split, databases=databases)  # type: ignore
-
-        dataset = self._data[(split, key)]
-        if sample_size:
-            sampler = random.Random(42)
-            return NL2QDataset(
-                name=self.name,
-                split_id=split_id,
-                databases=databases,
-                tasks=sampler.sample(dataset.tasks, int(sample_size)),
-                db_connectors=dataset.db_connectors,
-            )
-        else:
-            return dataset

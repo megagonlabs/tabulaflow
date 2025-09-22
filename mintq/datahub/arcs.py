@@ -72,11 +72,12 @@ class ARCSDatasetLoader:
             databases = self._get_all_databases(split)
         missing_databases = sorted(set(databases) - set(dataset.db_connectors.keys()))
         if missing_databases:
-            dataset.db_connectors.update(await self._load_databases_async(missing_databases))
+            dataset.db_connectors.update(await self._load_databases_async(split, missing_databases))
 
         return NL2QDataset(
             name=self.name,
             split=split,
+            subsample_size=None,
             tasks=dataset.tasks,
             db_connectors={db: dataset.db_connectors[db] for db in databases},
         )
