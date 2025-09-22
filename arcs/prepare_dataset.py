@@ -279,7 +279,7 @@ async def main():
     all_data = sort_tasks_and_reindex(all_data, args.seed)
     print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
 
-    all_data = all_data[2:3]
+    # all_data = all_data[1:4]
 
     # Print stats for ambiguity types
     domains = sorted(set([task.db for task in all_data]))
