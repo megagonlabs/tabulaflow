@@ -1,3 +1,4 @@
+from doctest import DocFileCase
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
 import collections
@@ -366,4 +367,4 @@ class SQLConnector:
     ) -> ExecResult:
         t0 = time.time()
         df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
-        return ExecResult(result_df=df, latency_seconds=time.time() - t0)
+        return ExecResult(df=df, latency_seconds=time.time() - t0)

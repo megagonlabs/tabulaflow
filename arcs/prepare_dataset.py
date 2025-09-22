@@ -183,7 +183,7 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
         if isinstance(exec_result, Exception):
             print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {exec_result}")
             has_error = True
-    if not has_error and all(exec_result.result_df.empty for exec_result in exec_results):
+    if not has_error and all(exec_result.df.empty for exec_result in exec_results):
         print(f"[ERROR] All gold_queries return empty result for QID {task.qid} (db: {task.db})")
         has_error = True
     if has_error:
@@ -218,13 +218,9 @@ async def main():
 
     task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
     task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
-    for gq in task_061.gold_queries:
-        gq.exec_result.result_df_path = f"output/tmp/{gq.id}"
-    with open("output/tmp/task_061.json", "w") as f:
-        f.write(task_061.model_dump_json(indent=2))
-    with open("output/tmp/task_061.json", "r") as f:
-        task_061 = AmbigNL2QTask.model_validate_json(f.read())
-    print(task_061.gold_queries[0].exec_result.result_df)
+    task_061.to_directory("output/tmp/061/")
+    task_061 = AmbigNL2QTask.from_directory("output/tmp/061/")
+    print(task_061.gold_queries[0].exec_result.df)
     exit(9)
 
     all_data = []

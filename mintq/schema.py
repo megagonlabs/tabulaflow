@@ -4,9 +4,7 @@ import os
 from pydantic import (
     BaseModel,
     Field,
-    SerializationInfo,
     field_serializer,
-    field_validator,
     model_validator,
     AfterValidator,
     ConfigDict,
@@ -135,32 +133,20 @@ GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPoin
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    result_df: pd.DataFrame
-    result_df_path: str | None = None
+    df: pd.DataFrame
     latency_seconds: float
 
-    @field_serializer("result_df", when_used="json")
-    def save_df(self, result_df: pd.DataFrame, info: SerializationInfo) -> None:
-        if not self.result_df_path:
-            return None
-
-        os.makedirs(self.result_df_path, exist_ok=True)
-        schema = {"dtypes": {col: str(dtype) for col, dtype in result_df.dtypes.items()}}
-        with open(os.path.join(self.result_df_path, "df_schema.json"), "w") as f:
-            f.write(json.dumps(schema, indent=2))
-
-        result_df.to_csv(os.path.join(self.result_df_path, "df_data.csv"), index=False)
+    @field_serializer("df", when_used="json")
+    def save_df(self, df: pd.DataFrame) -> None:
         return None
 
-    @model_validator(mode="before")
-    @classmethod
-    def load_df(cls, v: Any) -> Any:
-        if isinstance(v, dict) and isinstance(v.get("result_df_path"), str) and v.get("result_df") is None:
-            directory = v["result_df_path"]
-            with open(os.path.join(directory, "df_schema.json"), "r") as f:
-                schema = json.load(f)
-            v["result_df"] = pd.read_csv(os.path.join(directory, "df_data.csv"), dtype=schema["dtypes"])
-        return v
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        schema = {"dtypes": {col: str(dtype) for col, dtype in self.df.dtypes.items()}}
+        with open(os.path.join(directory, "df_schema.json"), "w") as f:
+            json.dump(schema, f, indent=2)
+
+        self.df.to_csv(os.path.join(directory, "df_data.csv"), index=False)
 
 
 class GoldQuery(BaseModel):
@@ -180,6 +166,11 @@ class GoldQuery(BaseModel):
     def resolution_mapping(self) -> dict[str, int]:
         return {part.split(".")[0]: int(part.split(".")[1]) for part in self.id.split("-")[1:]}
 
+    def to_directory(self, directory: str) -> None:
+        self.exec_result.to_directory(directory)
+        with open(os.path.join(directory, "query.sql"), "w") as f:
+            f.write(self.query)
+
 
 class AmbigNL2QTask(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -195,6 +186,24 @@ class AmbigNL2QTask(BaseModel):
     gold_intended_gold_query_id: str | None
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        for gq in self.gold_queries:
+            gq.to_directory(os.path.join(directory, gq.id))
+        with open(os.path.join(directory, "task.json"), "w") as f:
+            f.write(self.model_dump_json(indent=2))
+
+    @classmethod
+    def from_directory(cls, directory: str) -> "AmbigNL2QTask":
+        with open(os.path.join(directory, "task.json"), "r") as f:
+            data = json.load(f)
+        for gq in data["gold_queries"]:
+            with open(os.path.join(directory, gq["id"], "df_schema.json"), "r") as f:
+                schema = json.load(f)
+            df = pd.read_csv(os.path.join(directory, gq["id"], "df_data.csv"), dtype=schema["dtypes"])
+            gq["exec_result"]["df"] = df
+        return cls.model_validate(data)
 
     @model_validator(mode="after")
     def validate_gold_queries(self):
