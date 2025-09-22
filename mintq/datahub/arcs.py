@@ -40,7 +40,7 @@ class ARCSDatasetLoader:
         )
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
-    async def _get_all_databases_async(self) -> list[str]:
+    def _get_all_databases(self, split: str) -> list[str]:
         return [
             "retails",
             "professional_basketball",
@@ -69,8 +69,8 @@ class ARCSDatasetLoader:
             dataset.tasks = await self._load_tasks_async(split)
 
         if databases is None:
-            databases = await self._get_all_databases_async()
-        missing_databases = sorted(set(databases) - set([task.db for task in dataset.tasks]))
+            databases = self._get_all_databases(split)
+        missing_databases = sorted(set(databases) - set(dataset.db_connectors.keys()))
         if missing_databases:
             dataset.db_connectors.update(await self._load_databases_async(missing_databases))
 
