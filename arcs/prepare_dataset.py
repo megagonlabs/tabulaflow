@@ -260,7 +260,7 @@ async def main():
     all_data = sort_tasks_and_reindex(all_data, args.seed)
     print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
 
-    # all_data = all_data[:3]
+    # all_data = all_data[2:3]
 
     # Print stats for ambiguity types
     domains = sorted(set([task.db for task in all_data]))
@@ -329,7 +329,7 @@ async def main():
 
     output_path = os.path.join(args.output_dir, "all_data.json")
     with open(output_path, "w") as f:
-        task.model_dump_json(f, indent=2)
+        f.write(task.model_dump_json(indent=2))
 
     for task in res:
         task.to_directory(os.path.join(args.output_dir, task.qid))
