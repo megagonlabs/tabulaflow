@@ -10,6 +10,7 @@ import itertools
 import time
 import sqlparse
 import asyncio
+from pydantic import TypeAdapter
 from tqdm import tqdm
 import pandas as pd
 from tabulate import tabulate
@@ -198,7 +199,7 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", default="../ambig-text2sql/dataset_v1_filtered/")
-    parser.add_argument("--output_dir", default="data/ARCS/tasks/")
+    parser.add_argument("--output_dir", default="data/ARCS/tasks_1/")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--no_exec", action="store_true")
@@ -260,7 +261,7 @@ async def main():
     all_data = sort_tasks_and_reindex(all_data, args.seed)
     print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
 
-    # all_data = all_data[2:3]
+    all_data = all_data[2:3]
 
     # Print stats for ambiguity types
     domains = sorted(set([task.db for task in all_data]))
@@ -327,9 +328,9 @@ async def main():
 
     print("Please fix the errors and run the script again.")
 
-    output_path = os.path.join(args.output_dir, "all_data.json")
+    output_path = os.path.join(args.output_dir, "all_tasks.json")
     with open(output_path, "w") as f:
-        f.write(task.model_dump_json(indent=2))
+        f.write(TypeAdapter(list[AmbigNL2QTask]).dump_json(res, indent=2).decode())
 
     for task in res:
         task.to_directory(os.path.join(args.output_dir, task.qid))
