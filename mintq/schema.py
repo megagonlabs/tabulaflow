@@ -171,6 +171,10 @@ class GoldQuery(BaseModel):
         with open(os.path.join(directory, "query.sql"), "w") as f:
             f.write(self.query)
 
+    def to_readable_sql(self) -> str:
+        header = self.model_dump_json(indent=2, exclude=["query"])
+        return f"/*\n{header}\n*/\n{self.query}"
+
 
 class AmbigNL2QTask(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -193,6 +197,12 @@ class AmbigNL2QTask(BaseModel):
             gq.to_directory(os.path.join(directory, gq.id))
         with open(os.path.join(directory, "task.json"), "w") as f:
             f.write(self.model_dump_json(indent=2))
+        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
+            f.write(self.to_readable_sql() + "\n")
+
+    def to_readable_sql(self) -> str:
+        header = self.model_dump_json(indent=2, exclude=["gold_queries", "gold_intended_gold_query_id"])
+        return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable_sql()}" for gq in self.gold_queries)
 
     @classmethod
     def from_directory(cls, directory: str) -> "AmbigNL2QTask":
