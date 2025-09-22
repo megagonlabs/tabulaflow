@@ -140,6 +140,16 @@ class ExecResult(BaseModel):
     def save_df(self, df: pd.DataFrame) -> None:
         return None
 
+    def to_readable(self) -> str:
+        df = self.df
+        if len(df) > 10:
+            head_str = df.head(5).to_string(index=False)
+            tail_str = df.tail(5).to_string(index=False)
+            truncation_line = "... TRUNCATED ..."
+            tail_lines = tail_str.split('\n')[1:]  # Skip header line
+            return '\n'.join([head_str, truncation_line] + tail_lines)
+        return df.to_string(index=False)
+
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         schema = {"dtypes": {col: str(dtype) for col, dtype in self.df.dtypes.items()}}
@@ -172,9 +182,9 @@ class GoldQuery(BaseModel):
         with open(os.path.join(directory, "query.sql"), "w") as f:
             f.write(self.query)
 
-    def to_readable_sql(self) -> str:
+    def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude=["query"])
-        return f"/*\n{header}\n*/\n{self.query}"
+        return f"/*\n{header}\n*/\n{self.query}\n/*\n{self.exec_result.to_readable()}\n*/"
 
 
 class AmbigNL2QTask(BaseModel):
@@ -199,11 +209,11 @@ class AmbigNL2QTask(BaseModel):
         with open(os.path.join(directory, "task.json"), "w") as f:
             f.write(self.model_dump_json(indent=2))
         with open(os.path.join(directory, "task_readable.sql"), "w") as f:
-            f.write(self.to_readable_sql() + "\n")
+            f.write(self.to_readable() + "\n")
 
-    def to_readable_sql(self) -> str:
+    def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude=["gold_queries"])
-        return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable_sql()}" for gq in self.gold_queries)
+        return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable()}" for gq in self.gold_queries)
 
     @classmethod
     def from_directory(cls, directory: str) -> "AmbigNL2QTask":
