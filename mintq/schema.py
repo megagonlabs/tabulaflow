@@ -376,7 +376,8 @@ NL2QTaskOutput = Annotated[
 
 class NL2QDataset(BaseModel):
     name: str
-    split_id: str
+    split: str
+    subsample_size: int | None
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
@@ -385,7 +386,8 @@ class NL2QRunResult(BaseModel):
     start_time: datetime.datetime
     end_time: datetime.datetime
     dataset: str
-    split_id: str
+    split: str
+    subsample_size: int | None
     databases: list[str] | None  # None means all databases
     model: str
     model_args: dict[str, Any]
