@@ -201,7 +201,7 @@ class AmbigNL2QTask(BaseModel):
             f.write(self.to_readable_sql() + "\n")
 
     def to_readable_sql(self) -> str:
-        header = self.model_dump_json(indent=2, exclude=["gold_queries", "gold_intended_gold_query_id"])
+        header = self.model_dump_json(indent=2, exclude=["gold_queries"])
         return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable_sql()}" for gq in self.gold_queries)
 
     @classmethod
