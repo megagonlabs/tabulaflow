@@ -137,8 +137,8 @@ class ExecResult(BaseModel):
     latency_seconds: float
 
     @field_serializer("df", when_used="json")
-    def save_df(self, df: pd.DataFrame) -> None:
-        return None
+    def save_df(self, df: pd.DataFrame) -> str:
+        return f"[PREVIEW] {self.to_readable()}"
 
     def to_readable(self) -> str:
         df = self.df
@@ -146,8 +146,8 @@ class ExecResult(BaseModel):
             head_str = df.head(5).to_string(index=False)
             tail_str = df.tail(5).to_string(index=False)
             truncation_line = "... TRUNCATED ..."
-            tail_lines = tail_str.split('\n')[1:]  # Skip header line
-            return '\n'.join([head_str, truncation_line] + tail_lines)
+            tail_lines = tail_str.split("\n")[1:]  # Skip header line
+            return "\n".join([head_str, truncation_line] + tail_lines)
         return df.to_string(index=False)
 
     def to_directory(self, directory: str) -> None:
