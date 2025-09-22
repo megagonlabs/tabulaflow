@@ -180,11 +180,11 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
         if not isinstance(df, pd.DataFrame):
             print(f"[ERROR] Error executing gold_query for QID {task.qid} (db: {task.db}): {df}")
             has_error = True
-        elif df.empty:
-            print(f"[ERROR] gold_query {gq.query} returns empty result for QID {task.qid} (db: {task.db})")
-            has_error = True
         else:
             gq.result_df = df
+    if all(df.empty for df in dfs):
+        print(f"[ERROR] All gold_queries return empty result for QID {task.qid} (db: {task.db})")
+        has_error = True
     if has_error:
         return None
     print(f"{task.qid} done")
