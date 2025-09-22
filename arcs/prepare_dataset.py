@@ -22,6 +22,19 @@ from mintq.utils import sort_ambiguity_points
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
+def clean_sql(sql: str) -> str:
+    sql = re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL).strip()
+    lines = sql.split("\n")
+    res = []
+    for line in lines:
+        if "--" in line:
+            line = line.split("--")[0]
+        line = line.strip()
+        if line:
+            res.append(line)
+    return "\n".join(res)
+
+
 def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
     with open(sql_path, "r") as f:
         content = f.read()
@@ -32,8 +45,8 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
 
     # Extract the list of SQL queries from the .sql file
     sqls = [str(stmt).strip() for stmt in sqlparse.parse(content) if str(stmt).strip()]
-    # Remove the surrounding comments
-    sqls = [re.sub(r"/\*.*?\*/", "", sql, flags=re.DOTALL).strip() for sql in sqls]
+    # Remove comments in SQL
+    sqls = [clean_sql(sql) for sql in sqls]
 
     gold_ambiguity_points = []
     for ap_idx, ap in enumerate(data["ambiguity_points"]):
