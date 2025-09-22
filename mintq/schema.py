@@ -1,6 +1,7 @@
 import datetime
 import json
 import os
+import re
 from pydantic import (
     BaseModel,
     Field,
@@ -55,6 +56,69 @@ class Trajectory(BaseModel):
     messages: list[Message]
 
 
+class ExecResult(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    df: pd.DataFrame
+    latency_seconds: float
+
+    @field_serializer("df", when_used="json")
+    def save_df(self, df: pd.DataFrame) -> str:
+        return f"[PREVIEW] {self.to_readable()}"
+
+    def to_readable(self) -> str:
+        df = self.df
+        if len(df) > 10:
+            head_str = df.head(5).to_string(index=False)
+            tail_str = df.tail(5).to_string(index=False)
+            truncation_line = "... TRUNCATED ..."
+            tail_lines = tail_str.split("\n")[1:]  # Skip header line
+            return "\n".join([head_str, truncation_line] + tail_lines)
+        return df.to_string(index=False)
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        schema = {"dtypes": {col: str(dtype) for col, dtype in self.df.dtypes.items()}}
+        with open(os.path.join(directory, "df_schema.json"), "w") as f:
+            json.dump(schema, f, indent=2)
+
+        self.df.to_csv(os.path.join(directory, "df_data.csv"), index=False)
+
+
+class GoldQuery(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    query: str
+    parameter_names: list[str] = Field(default_factory=list)
+    parameter_values: dict[str, Any] = Field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    exec_result: ExecResult | None = None
+    required_columns: list[int] | None = None
+    required_sorted: bool = False
+    extra_info: dict[str, Any] = Field(default_factory=dict)
+
+    def to_directory(self, directory: str) -> None:
+        self.exec_result.to_directory(directory)
+        with open(os.path.join(directory, "query.sql"), "w") as f:
+            f.write(self.query)
+
+    def to_readable(self) -> str:
+        header = self.model_dump_json(indent=2, exclude=["query"])
+        return f"/*\n{header}\n*/\n{self.query}\n/*\n{self.exec_result.to_readable()}\n*/"
+
+
+class PredQuery(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str
+    query: str
+    parameter_names: list[str] = Field(default_factory=list)
+    parameter_values: dict[str, Any] = Field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    exec_result: ExecResult | None = None
+
+
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
@@ -63,16 +127,15 @@ class SimpleNL2QTask(BaseModel):
     question: str
     evidence: str | None = None
     extra_info: dict[str, Any] = {}
-    gold_queries: list[str] = Field(default_factory=list)
+    gold_queries: list[GoldQuery] = Field(default_factory=list)
     gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
-    metrics: dict[str, float | int]
-    pred_query: str
-    pred_exec_result: list[dict[str, Any]] | None = None
+    pred_query: PredQuery
     trajectory: Trajectory
+    metrics: dict[str, Any]
 
 
 ARCSAmbiguityType = Literal[
@@ -130,63 +193,6 @@ class GoldAmbiguityPointInfinite(BaseModel):
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
 
 
-class ExecResult(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    df: pd.DataFrame
-    latency_seconds: float
-
-    @field_serializer("df", when_used="json")
-    def save_df(self, df: pd.DataFrame) -> str:
-        return f"[PREVIEW] {self.to_readable()}"
-
-    def to_readable(self) -> str:
-        df = self.df
-        if len(df) > 10:
-            head_str = df.head(5).to_string(index=False)
-            tail_str = df.tail(5).to_string(index=False)
-            truncation_line = "... TRUNCATED ..."
-            tail_lines = tail_str.split("\n")[1:]  # Skip header line
-            return "\n".join([head_str, truncation_line] + tail_lines)
-        return df.to_string(index=False)
-
-    def to_directory(self, directory: str) -> None:
-        os.makedirs(directory, exist_ok=True)
-        schema = {"dtypes": {col: str(dtype) for col, dtype in self.df.dtypes.items()}}
-        with open(os.path.join(directory, "df_schema.json"), "w") as f:
-            json.dump(schema, f, indent=2)
-
-        self.df.to_csv(os.path.join(directory, "df_data.csv"), index=False)
-
-
-class GoldQuery(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    id: Annotated[str, StringConstraints(pattern=r"^GQRY(-[A-Z]+\.[0-9]+)*$")]
-    """Example: GQRY-A.2-B.0"""
-    query: str
-    parameter_names: list[str] = Field(default_factory=list)
-    parameter_values: dict[str, Any] = Field(default_factory=dict)
-    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    exec_result: ExecResult | None = None
-    required_columns: list[int] | None = None
-    required_sorted: bool = False
-    extra_info: dict[str, Any] = Field(default_factory=dict)
-
-    @property
-    def resolution_mapping(self) -> dict[str, int]:
-        return {part.split(".")[0]: int(part.split(".")[1]) for part in self.id.split("-")[1:]}
-
-    def to_directory(self, directory: str) -> None:
-        self.exec_result.to_directory(directory)
-        with open(os.path.join(directory, "query.sql"), "w") as f:
-            f.write(self.query)
-
-    def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude=["query"])
-        return f"/*\n{header}\n*/\n{self.query}\n/*\n{self.exec_result.to_readable()}\n*/"
-
-
 class AmbigNL2QTask(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -228,6 +234,10 @@ class AmbigNL2QTask(BaseModel):
 
     @model_validator(mode="after")
     def validate_gold_queries(self):
+        # Gold query ID must match the pattern "GQRY(-[A-Z]+\.[0-9]+)*" (e.g. "GQRY-A.2-B.0")
+        pattern = r"^GQRY(-[A-Z]+\.[0-9]+)*$"
+        assert all(re.match(pattern, gq.id) for gq in self.gold_queries)
+
         finite_aps = sorted([ap for ap in self.gold_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
         required_ids = [
             "GQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
@@ -280,18 +290,6 @@ class AmbigNL2QTask(BaseModel):
         return self
 
 
-class PredQuery(BaseModel):
-    model_config = ConfigDict(arbitrary_types_allowed=True)
-
-    id: Annotated[str, StringConstraints(pattern=r"^PQRY(-[A-Z]+\.[0-9]+)*$")]
-    """Example: PQRY-A.2-B.0"""
-    query: str
-    parameter_names: list[str] = Field(default_factory=list)
-    parameter_values: dict[str, Any] = Field(default_factory=dict)
-    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
-    exec_result: ExecResult | None = None
-
-
 class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
     The model only predicts the final disambiguated query
@@ -299,7 +297,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
-    metrics: dict[str, float | int]
+    metrics: dict[str, Any]
 
 
 class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
@@ -311,7 +309,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-flat"] = "ambig-flat"
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str
-    metrics: dict[str, float | int]
+    metrics: dict[str, Any]
 
 
 class PredAmbiguityPointFinite(BaseModel):
@@ -347,10 +345,14 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str
-    metrics: dict[str, float | int]
+    metrics: dict[str, Any]
 
     @model_validator(mode="after")
     def validate_pred_queries(self):
+        # Pred query ID must match the pattern "PQRY(-[A-Z]+\.[0-9]+)*" (e.g. "PQRY-A.2-B.0")
+        pattern = r"^PQRY(-[A-Z]+\.[0-9]+)*$"
+        assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
+
         finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
         required_ids = [
             "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
@@ -391,7 +393,7 @@ class NL2QRunResult(BaseModel):
     databases: list[str] | None  # None means all databases
     model: str
     model_args: dict[str, Any]
-    aggregated_metrics: dict[str, float | int]
+    aggregated_metrics: dict[str, Any]
     task_outputs: list[NL2QTaskOutput]
 
 
