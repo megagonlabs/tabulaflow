@@ -4,6 +4,7 @@ import os
 import json
 import random
 import re
+import shutil
 from typing import cast
 import itertools
 import time
@@ -197,13 +198,23 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", default="../ambig-text2sql/dataset_v1_filtered/")
-    parser.add_argument("--output_dir", default="data/ARCS/")
+    parser.add_argument("--output_dir", default="data/ARCS/tasks/")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--no_exec", action="store_true")
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
+
+    # If output_dir exists and is not empty, exit
+    if os.path.exists(args.output_dir) and os.listdir(args.output_dir):
+        if not args.overwrite:
+            print(f"{args.output_dir} already exists and is not empty")
+            return
+        else:
+            shutil.rmtree(args.output_dir)
+    os.makedirs(args.output_dir, exist_ok=True)
 
     random.seed(args.seed)
 
@@ -213,23 +224,18 @@ async def main():
         dataset = await dataset_loader.get_split_async("dev")
         print(f"Loaded {len(dataset.db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
 
-    # with open(os.path.join(args.input_dir, "annotated_qids.json"), "r") as f:
-    #     annoated_qids = json.load(f)
-
-    task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
-    task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
-    task_061.to_directory("output/tmp/061/")
-    task_061 = AmbigNL2QTask.from_directory("output/tmp/061/")
-    print(task_061.gold_queries[0].exec_result.df)
-    exit(9)
+    # task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
+    # task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
+    # print(task_061.model_dump())
+    # task_061.to_directory("output/tmp/061/")
+    # task_061 = AmbigNL2QTask.from_directory("output/tmp/061/")
+    # print(task_061.gold_queries[0].exec_result.df)
+    # exit(9)
 
     all_data = []
-
     for db in os.listdir(args.input_dir):
         errors = {}
         input_sql_dir = os.path.join(args.input_dir, db, "sql")
-        output_sql_dir = os.path.join(args.output_dir, db, "sql")
-        os.makedirs(output_sql_dir, exist_ok=True)
         qids = [fname.replace(".sql", "") for fname in os.listdir(input_sql_dir) if fname.endswith(".sql")]
         for qid in qids:
             try:
@@ -253,6 +259,8 @@ async def main():
 
     all_data = sort_tasks_and_reindex(all_data, args.seed)
     print(f"Total number of tasks after sorting and reindexing: {len(all_data)}")
+
+    # all_data = all_data[:3]
 
     # Print stats for ambiguity types
     domains = sorted(set([task.db for task in all_data]))
@@ -321,7 +329,10 @@ async def main():
 
     output_path = os.path.join(args.output_dir, "all_data.json")
     with open(output_path, "w") as f:
-        json.dump([task.model_dump() for task in res], f, indent=2)
+        task.model_dump_json(f, indent=2)
+
+    for task in res:
+        task.to_directory(os.path.join(args.output_dir, task.qid))
 
     print(f"{len(res)} tasks saved to {output_path}")
     print(f"Finished in {time.time() - t0:.2f} seconds.")
