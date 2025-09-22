@@ -168,6 +168,7 @@ def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[A
 
 TIMEOUT_SECONDS = 60
 
+
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConnector) -> AmbigNL2QTask | None:
     has_error = False
 
@@ -215,8 +216,15 @@ async def main():
     # with open(os.path.join(args.input_dir, "annotated_qids.json"), "r") as f:
     #     annoated_qids = json.load(f)
 
-    task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1227.sql"), "financial")
+    task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
     task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
+    for gq in task_061.gold_queries:
+        gq.exec_result.result_df_path = f"output/tmp/{gq.id}"
+    with open("output/tmp/task_061.json", "w") as f:
+        f.write(task_061.model_dump_json(indent=2))
+    with open("output/tmp/task_061.json", "r") as f:
+        task_061 = AmbigNL2QTask.model_validate_json(f.read())
+    print(task_061.gold_queries[0].exec_result.result_df)
     exit(9)
 
     all_data = []

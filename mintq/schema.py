@@ -1,5 +1,16 @@
 import datetime
-from pydantic import BaseModel, Field, model_validator, AfterValidator, ConfigDict
+import json
+import os
+from pydantic import (
+    BaseModel,
+    Field,
+    SerializationInfo,
+    field_serializer,
+    field_validator,
+    model_validator,
+    AfterValidator,
+    ConfigDict,
+)
 from pydantic.types import StringConstraints
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
@@ -124,8 +135,32 @@ GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPoin
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    result_df: pd.DataFrame | None = None
-    latency_seconds: float | None = None
+    result_df: pd.DataFrame
+    result_df_path: str | None = None
+    latency_seconds: float
+
+    @field_serializer("result_df", when_used="json")
+    def save_df(self, result_df: pd.DataFrame, info: SerializationInfo) -> None:
+        if not self.result_df_path:
+            return None
+
+        os.makedirs(self.result_df_path, exist_ok=True)
+        schema = {"dtypes": {col: str(dtype) for col, dtype in result_df.dtypes.items()}}
+        with open(os.path.join(self.result_df_path, "df_schema.json"), "w") as f:
+            f.write(json.dumps(schema, indent=2))
+
+        result_df.to_csv(os.path.join(self.result_df_path, "df_data.csv"), index=False)
+        return None
+
+    @model_validator(mode="before")
+    @classmethod
+    def load_df(cls, v: Any) -> Any:
+        if isinstance(v, dict) and isinstance(v.get("result_df_path"), str) and v.get("result_df") is None:
+            directory = v["result_df_path"]
+            with open(os.path.join(directory, "df_schema.json"), "r") as f:
+                schema = json.load(f)
+            v["result_df"] = pd.read_csv(os.path.join(directory, "df_data.csv"), dtype=schema["dtypes"])
+        return v
 
 
 class GoldQuery(BaseModel):
