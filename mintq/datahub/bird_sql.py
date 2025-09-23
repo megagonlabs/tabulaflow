@@ -25,7 +25,6 @@ class BirdSQLDatasetLoader(GetSplitMixin):
         with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:
             return list(dict.fromkeys([item["db_id"] for item in json.load(f)]))
 
-
     async def get_tasks_async(self, split: str) -> list[SimpleNL2QTask]:
         tasks = []
         with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:

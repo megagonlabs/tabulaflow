@@ -60,7 +60,7 @@ class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pd.DataFrame
-    latency_seconds: float
+    latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
     def save_df(self, df: pd.DataFrame) -> str:
@@ -89,7 +89,8 @@ class GoldQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     id: str
-    query: str
+    query: str | None
+    """For Spider2, some gold queries are not available, so we allow it to be None"""
     parameter_names: list[str] = Field(default_factory=list)
     parameter_values: dict[str, Any] = Field(default_factory=dict)
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
