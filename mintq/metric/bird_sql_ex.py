@@ -9,12 +9,11 @@ class BirdSQLEx:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
-        if task.pred_exec_result is None:
+        if task.pred_query.exec_result.error or task.gold_query.exec_result.error:
             return 0.0
 
-        pred_executed = [tuple(d.values()) for d in task.pred_exec_result]
-        for exec_result in task.gold_exec_results:
-            gold_executed = [tuple(d.values()) for d in exec_result]
-            if set(pred_executed) == set(gold_executed):
-                return 1.0
+        pred_executed = [row for row in task.pred_query.exec_result.df.itertuples(index=False, name=None)]
+        gold_executed = [row for row in task.gold_query.exec_result.df.itertuples(index=False, name=None)]
+        if set(pred_executed) == set(gold_executed):
+            return 1.0
         return 0.0

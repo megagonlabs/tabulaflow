@@ -9,16 +9,16 @@ from mintq.datahub import get_dataset_loader
 
 
 async def populate_task_async(
-    item: NL2QTaskOutput,
+    task: NL2QTaskOutput,
     db_connector: BaseAsyncDBConnector,
     timeout: int | None = None,
 ) -> NL2QTaskOutput:
     for prefix in ["gold", "pred"]:
         all_queries = []
-        if getattr(item, f"{prefix}_query", None):
-            all_queries.append(getattr(item, f"{prefix}_query"))
-        if getattr(item, f"{prefix}_queries", None):
-            all_queries += getattr(item, f"{prefix}_queries")
+        if getattr(task, f"{prefix}_query", None):
+            all_queries.append(getattr(task, f"{prefix}_query"))
+        if getattr(task, f"{prefix}_queries", None):
+            all_queries += getattr(task, f"{prefix}_queries")
         results = await asyncio.gather(
             *[
                 db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
@@ -28,13 +28,13 @@ async def populate_task_async(
         )
         for q, exec_result in zip(all_queries, results):
             q.exec_result = exec_result
-    return item
+    return task
 
 
 async def populate_exec_results_async(result: NL2QRunResult, dataset: NL2QDataset, batch_size: int) -> NL2QRunResult:
     for i in trange(0, len(result.tasks), batch_size):
         await asyncio.gather(
-            *[populate_task_async(item, dataset.db_connectors[item.db]) for item in result.tasks[i : i + batch_size]]
+            *[populate_task_async(task, dataset.db_connectors[task.db]) for task in result.tasks[i : i + batch_size]]
         )
     return result
 

@@ -14,65 +14,26 @@ from mintq.metric import get_metric, BaseAsyncNL2QMetric
 from mintq.toolhub.utils import format_df
 
 
-async def populate_exec_results_async(
-    item: NL2QTaskOutput,
-    db_connector: BaseAsyncDBConnector,
-) -> NL2QTaskOutput:
-    if item.task_type != "simple":
-        raise ValueError("Only simple NL2Q tasks are supported currently")
-
-    item = copy.deepcopy(item)
-
-    if item.gold_queries:
-        dfs = await asyncio.gather(
-            *[db_connector.run_query_async(query, return_df=True) for query in item.gold_queries],
-            return_exceptions=True,
-        )
-        item.gold_exec_results = [df.to_dict(orient="records") for df in dfs if isinstance(df, pd.DataFrame)]
-    else:
-        if not item.gold_exec_results:
-            raise ValueError("No gold queries or gold execution results provided")
-
-    try:
-        df = await db_connector.run_query_async(item.pred_query, return_df=True)
-        item.pred_exec_result = df.to_dict(orient="records")
-    except Exception:
-        item.pred_exec_result = None
-    return item
-
-
 async def compute_metrics_async(
-    item: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
+    task: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
 ) -> NL2QTaskOutput:
-    item = await populate_exec_results_async(item, db_connector)
-    for m in metrics:
-        item.metrics[m.name] = await m.compute_async(task=item, db_connector=db_connector)
-    return item
+    results = await asyncio.gather(*[m.compute_async(task=task, db_connector=db_connector) for m in metrics])
+    for m, r in zip(metrics, results):
+        task.metrics[m.name] = r
+    return task
 
 
 async def evaluate_async(
     result: NL2QRunResult, dataset: NL2QDataset, metrics: list[BaseAsyncNL2QMetric], batch_size: int
 ) -> NL2QRunResult:
-    result = copy.deepcopy(result)
-
-    # Shuffle the result to reduce concurent query execution on the same database
-    qids = {item.qid: i for i, item in enumerate(result.tasks)}
-    random.seed(42)
-    random.shuffle(result.tasks)
-
-    tasks_with_metrics = []
     for i in trange(0, len(result.tasks), batch_size):
-        batch = result.tasks[i : i + batch_size]
-        batch_with_metrics = await asyncio.gather(
-            *[compute_metrics_async(item, metrics, dataset.db_connectors[item.db]) for item in batch]
+        await asyncio.gather(
+            *[
+                compute_metrics_async(task, metrics, dataset.db_connectors[task.db])
+                for task in result.tasks[i : i + batch_size]
+            ]
         )
-        tasks_with_metrics += batch_with_metrics
-
-    # Sort the result so that the order is the same as the original result
-    tasks_with_metrics.sort(key=lambda x: qids[x.qid])
-    result.tasks = tasks_with_metrics
-
-    aggregated_metrics = {m.name: avg_and_round([item.metrics[m.name] for item in tasks_with_metrics]) for m in metrics}
+    aggregated_metrics = {m.name: avg_and_round([task.metrics[m.name] for task in result.tasks]) for m in metrics}
     result.aggregated_metrics.update(aggregated_metrics)
     return result
 
@@ -103,46 +64,22 @@ async def main_async() -> None:
 
     t0 = time.time()
     dataset_loader = get_dataset_loader(result.dataset)
-    dataset = await dataset_loader.get_split_async(result.split_id, databases=result.databases)
-    print(
-        f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split_id} set in {time.time() - t0:.2f} seconds."
+    dataset = await dataset_loader.get_split_async(
+        result.split, databases=result.databases, subsample_size=result.subsample_size
     )
-
+    print(
+        f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
+    )
     metrics = [get_metric(m) for m in args.metrics]
     result = await evaluate_async(result, dataset, metrics, args.batch_size)
+
+    result.to_directory(args.result_dir)
+    print(f"Saved evaluated result to {args.result_dir}")
 
     print()
     print("Aggregated metrics:")
     for m in metrics:
         print(f"- {m.name}: {result.aggregated_metrics[m.name]:.4f}")
-
-    output_path = os.path.join(args.result_dir, "result_with_metrics.json")
-    with open(output_path, "w") as fout:
-        fout.write(result.model_dump_json(indent=2))
-    print()
-    print(f"Saved result with metrics to {output_path}")
-
-    # Update trajectory with the gold execution results
-    for task in result.tasks:
-        trajectory_path = os.path.join(args.result_dir, "trajectory", f"{task.qid}.xml")
-        with open(trajectory_path, "r") as f:
-            if f.read().strip().endswith("</gold_exec_result>"):
-                continue
-        with open(trajectory_path, "a") as f:
-            gold_dfs = [pd.DataFrame(g) for g in task.gold_exec_results]
-            f.write(
-                "\n\n\n" + "\n\n".join(f"<gold_exec_result>\n{format_df(df)}\n</gold_exec_result>" for df in gold_dfs)
-            )
-
-    if result.dataset == "spider2-snow":
-        metrics_to_include = ["spider2_ex"]
-    elif result.dataset == "bird-sql":
-        metrics_to_include = ["bird_sql_ex"]
-    else:
-        metrics_to_include = ["spider2_ex", "bird_sql_ex"]
-    csv_path = os.path.join(args.result_dir, "result_with_metrics.csv")
-    save_csv(result, csv_path, metrics_to_include)
-    print(f"Saved csv to {csv_path}")
 
     if args.debug:
         print()

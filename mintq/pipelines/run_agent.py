@@ -29,7 +29,7 @@ async def run_model_async(
         batch = dataset.tasks[i:j]
 
         tasks_with_predictions += await asyncio.gather(
-            *[agent_cls(**agent_args).predict_async(item, dataset.db_connectors[item.db]) for item in batch]
+            *[agent_cls(**agent_args).predict_async(task, dataset.db_connectors[task.db]) for task in batch]
         )
 
         if i == 0:
@@ -38,7 +38,7 @@ async def run_model_async(
             print(trajectory.to_readable())
 
     sample_agent = agent_cls(**agent_args)
-    aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
+    aggregated_metrics = get_aggregated_metrics([task.metrics for task in tasks_with_predictions])
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(
