@@ -90,18 +90,26 @@ class GoldQuery(BaseModel):
 
     id: str = "GQRY"
     query: str | None
-    """For Spider2, some gold queries are not available, so we allow it to be None"""
+    """In Spider2, some gold queries are not available, so we allow it to be None"""
     parameter_names: list[str] = Field(default_factory=list)
     parameter_values: dict[str, Any] = Field(default_factory=dict)
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
     exec_result: ExecResult | None = None
+    other_exec_results: list[ExecResult] = Field(default_factory=list)
+    """Some queries have multiple exec results (usually caused by argmax with ties), which is common in Spider2"""
     required_columns: list[int] | None = None
     required_sorted: bool = False
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
+    @property
+    def all_exec_results(self) -> list[ExecResult]:
+        return ([self.exec_result] if self.exec_result is not None else []) + self.other_exec_results
+
     def to_directory(self, directory: str) -> None:
         if self.exec_result is not None:
             self.exec_result.to_directory(directory)
+        for i, exec_result in enumerate(self.other_exec_results):
+            exec_result.to_directory(os.path.join(directory, f"other_exec_result_{i}"))
         if self.query is not None:
             with open(os.path.join(directory, "query.sql"), "w") as f:
                 f.write(self.query)
@@ -109,8 +117,7 @@ class GoldQuery(BaseModel):
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query"})
         res = f"/*\n{header}\n*/\n{self.query}"
-        if self.exec_result is not None:
-            res += f"\n/*\n{self.exec_result.to_readable()}\n*/"
+        res += "".join(f"\n/*\n{exec_result.to_readable()}\n*/" for exec_result in self.all_exec_results)
         return res
 
 
@@ -139,9 +146,24 @@ class SimpleNL2QTask(BaseModel):
     db: str
     question: str
     evidence: str | None = None
+    gold_query: GoldQuery
     extra_info: dict[str, Any] = {}
-    gold_queries: Annotated[list[GoldQuery], AfterValidator(is_id_unique)] = Field(default_factory=list)
-    gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        self.gold_query.to_directory(os.path.join(directory, self.gold_query.id))
+        with open(os.path.join(directory, "task.json"), "w") as f:
+            f.write(self.model_dump_json(indent=2))
+        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
+            f.write(self.to_readable() + "\n")
+
+    def to_readable(self) -> str:
+        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query"})
+        res = f"/*\n{header}\n*/"
+        if self.evidence is not None:
+            res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
+        res += f"\n\n\n{self.gold_query.to_readable()}"
+        return res
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
@@ -199,6 +221,13 @@ class GoldAmbiguityPointInfinite(BaseModel):
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
 
 
+def read_df(directory: str) -> pd.DataFrame:
+    with open(os.path.join(directory, "df_schema.json"), "r") as f:
+        schema = json.load(f)
+    df = pd.read_csv(os.path.join(directory, "df_data.csv"), dtype=schema["dtypes"])
+    return df
+
+
 class AmbigNL2QTask(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -232,10 +261,9 @@ class AmbigNL2QTask(BaseModel):
         with open(os.path.join(directory, "task.json"), "r") as f:
             data = json.load(f)
         for gq in data["gold_queries"]:
-            with open(os.path.join(directory, gq["id"], "df_schema.json"), "r") as f:
-                schema = json.load(f)
-            df = pd.read_csv(os.path.join(directory, gq["id"], "df_data.csv"), dtype=schema["dtypes"])
-            gq["exec_result"]["df"] = df
+            gq["exec_result"]["df"] = read_df(os.path.join(directory, gq["id"]))
+            for i in range(len(gq["other_exec_results"]) + 1):
+                gq["other_exec_results"][i]["df"] = read_df(os.path.join(directory, gq["id"], f"other_exec_result_{i}"))
         return cls.model_validate(data)
 
     @model_validator(mode="after")
