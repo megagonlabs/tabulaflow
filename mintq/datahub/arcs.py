@@ -18,7 +18,7 @@ class ARCSDatasetLoader:
         self.column_meaning_directory = column_meaning_directory
         self._dbms_semaphore = asyncio.Semaphore(1)
 
-    def get_database_names(self, split: str) -> list[str]:
+    def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
@@ -31,16 +31,19 @@ class ARCSDatasetLoader:
             "student_club",
         ]
 
-    async def get_tasks_async(self, split: str) -> list[AmbigNL2QTask]:
+    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[AmbigNL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        return [AmbigNL2QTask.from_directory(os.path.join(self.directory, "tasks", f"{i:03d}")) for i in range(1, 102)]
+        databases = databases or self.get_database_names(split)
+        tasks = [AmbigNL2QTask.from_directory(os.path.join(self.directory, "tasks", f"{i:03d}")) for i in range(1, 102)]
+        return [task for task in tasks if task.db in databases]
 
-    async def get_databases_async(self, split: str, databases: list[str]) -> dict[str, SQLConnector]:
+    async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
+        databases = databases or self.get_database_names(split)
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
@@ -59,11 +62,10 @@ class ARCSDatasetLoader:
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split)
-        db_connectors = await self.get_databases_async(split, databases or self.get_database_names(split))
-        tasks = [task for task in tasks if task.db in db_connectors]
+        tasks = await self.get_tasks_async(split, databases)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
+        db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,
             split=split,

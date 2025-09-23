@@ -2,7 +2,7 @@ import os
 import json
 import random
 import asyncio
-from typing import Optional, Any, Literal
+from typing import Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
 
@@ -22,7 +22,7 @@ class BeaverDatasetLoader:
         self.nw_dbms_port = nw_port
         self._data: dict[Any, NL2QDataset] = {}
 
-    def get_database_names(self, split: str) -> list[str]:
+    def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
@@ -35,32 +35,35 @@ class BeaverDatasetLoader:
             "keystone",
         ]
 
-    async def get_tasks_async(self, split: str) -> list[SimpleNL2QTask]:
+    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
+        databases = databases or self.get_databases(split)
         tasks = []
         for file in ["dev_dw.json", "dev_nw.json"]:
             with open(os.path.join(self.directory, file), "r") as f:
                 data = json.load(f)
 
             for i, item in enumerate(data):
-                tasks.append(
-                    SimpleNL2QTask(
-                        qid=f"{self.name}_{split}_{i}",
-                        language="MySQL",
-                        db=item["db_id"],
-                        question=item["question"],
-                        evidence=None,
-                        gold_queries=[GoldQuery(id="GQRY", query=item["sql"])],
+                if item["db_id"] in databases:
+                    tasks.append(
+                        SimpleNL2QTask(
+                            qid=f"{self.name}_{split}_{i}",
+                            language="MySQL",
+                            db=item["db_id"],
+                            question=item["question"],
+                            evidence=None,
+                            gold_queries=[GoldQuery(id="GQRY", query=item["sql"])],
+                        )
                     )
-                )
         return tasks
 
-    async def get_databases_async(self, split: str, databases: list[str]) -> dict[str, SQLConnector]:
+    async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
+        databases = databases or self.get_databases(split)
         urls = {
             db: f"mysql+asyncmy://root:root@localhost:{self.dw_dbms_port if db == 'dw' else self.nw_dbms_port}/{db}"
             for db in databases
@@ -76,11 +79,10 @@ class BeaverDatasetLoader:
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split)
-        db_connectors = await self.get_databases_async(split, databases or self.get_database_names(split))
-        tasks = [task for task in tasks if task.db in db_connectors]
+        tasks = await self.get_tasks_async(split, databases)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
+        db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,
             split=split,

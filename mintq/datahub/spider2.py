@@ -44,16 +44,18 @@ class Spider2SnowDatasetLoader:
                             res[(db_name, schema_name, table_name, column)] = description
         return res
 
-    def get_database_names(self, split: str) -> list[str]:
+    def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             return list(dict.fromkeys([json.loads(line)["db_id"] for line in f]))
 
-    async def get_tasks_async(self, split: str) -> list[NL2QTask]:
+    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[NL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
+        databases = databases or self.get_databases(split)
 
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
@@ -70,6 +72,8 @@ class Spider2SnowDatasetLoader:
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             for line in f:
                 item = json.loads(line)
+                if item["db_id"] not in databases:
+                    continue
 
                 if item["external_knowledge"]:
                     evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
@@ -112,9 +116,13 @@ class Spider2SnowDatasetLoader:
 
         return tasks
 
-    async def get_databases_async(self, split: str, databases: list[str]) -> dict[str, BaseAsyncDBConnector]:
+    async def get_db_connectors_async(
+        self, split: str, databases: list[str] | None = None
+    ) -> dict[str, BaseAsyncDBConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
+        databases = databases or self.get_databases(split)
 
         sf_user = self.sf_user or os.environ["SF_USER"]
         sf_password = self.sf_password or os.environ["SF_PASSWORD"]
@@ -168,11 +176,10 @@ class Spider2SnowDatasetLoader:
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
-        tasks = await self.get_tasks_async(split)
-        db_connectors = await self.get_databases_async(split, databases or self.get_database_names(split))
-        tasks = [task for task in tasks if task.db in db_connectors]
+        tasks = await self.get_tasks_async(split, databases)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
+        db_connectors = await self.get_db_connectors_async(split, databases)
         return NL2QDataset(
             name=self.name,
             split=split,
