@@ -12,8 +12,8 @@ from .base import BaseAsyncNL2QDatasetLoader, GetSplitMixin
 
 
 class Spider2SnowDatasetLoader(GetSplitMixin):
-    name: ClassVar[str] = "spider2-snow"
-    splits: ClassVar[list[str]] = ["dev"]
+    name = "spider2-snow"
+    splits = ["dev"]
 
     def __init__(
         self,
@@ -108,22 +108,10 @@ class Spider2SnowDatasetLoader(GetSplitMixin):
         return tasks
 
     async def get_databases_async(self, split: str, databases: list[str]) -> dict[str, BaseAsyncDBConnector]:
-        """Get database connectors for the specified databases."""
-        if split != "dev":
-            raise ValueError(f"Split {split} not supported")
-
-        sf_user, sf_password, sf_account = self.sf_user, self.sf_password, self.sf_account
-        if sf_user is None:
-            sf_user = os.environ["SF_USER"]
-        if sf_password is None:
-            sf_password = os.environ["SF_PASSWORD"]
-        if sf_account is None:
-            sf_account = os.environ["SF_ACCOUNT"]
-
-        encoded_user = quote_plus(sf_user)
-        encoded_password = quote_plus(sf_password)
-        base_url = f"snowflake://{encoded_user}:{encoded_password}@{sf_account}"
-
+        sf_user = self.sf_user or os.environ["SF_USER"]
+        sf_password = self.sf_password or os.environ["SF_PASSWORD"]
+        sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
+        base_url = f"snowflake://{quote_plus(sf_user)}:{quote_plus(sf_password)}@{sf_account}"
         connect_args = {
             "disable_ocsp_checks": True,
             "client_session_keep_alive": True,
