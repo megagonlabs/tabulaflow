@@ -35,7 +35,7 @@ class ARCSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_database_names(split)
+        databases = databases or self.get_databases(split)
         tasks = [AmbigNL2QTask.from_directory(os.path.join(self.directory, "tasks", f"{i:03d}")) for i in range(1, 102)]
         return [task for task in tasks if task.db in databases]
 
@@ -43,7 +43,7 @@ class ARCSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        databases = databases or self.get_database_names(split)
+        databases = databases or self.get_databases(split)
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
