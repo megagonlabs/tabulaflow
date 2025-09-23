@@ -173,7 +173,7 @@ class PredQuery(BaseModel):
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None:
-            self.exec_result.df.to_directory(os.path.join(directory, f"{self.id}.csv"), index=False)
+            self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})

@@ -22,9 +22,9 @@ async def populate_task_async(
     for prefix in ["gold", "pred"]:
         all_queries = []
         if getattr(item, f"{prefix}_query", None):
-            all_queries.append(item.gold_query)
+            all_queries.append(getattr(item, f"{prefix}_query"))
         if getattr(item, f"{prefix}_queries", None):
-            all_queries += item.gold_queries
+            all_queries += getattr(item, f"{prefix}_queries")
         results = await asyncio.gather(
             *[
                 db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
