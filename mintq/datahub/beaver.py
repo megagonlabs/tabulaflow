@@ -54,7 +54,7 @@ class BeaverDatasetLoader:
                             db=item["db_id"],
                             question=item["question"],
                             evidence=None,
-                            gold_queries=[GoldQuery(id="GQRY", query=item["sql"])],
+                            gold_query=GoldQuery(query=item["sql"]),
                         )
                     )
         return tasks

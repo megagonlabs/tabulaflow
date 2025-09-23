@@ -42,7 +42,7 @@ class BirdSQLDatasetLoader:
                             db=item["db_id"],
                             question=item["question"],
                             evidence=item["evidence"],
-                            gold_queries=[GoldQuery(id="GQRY", query=item["SQL"])],
+                            gold_query=GoldQuery(query=item["SQL"]),
                         )
                     )
         return tasks

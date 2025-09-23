@@ -106,10 +106,11 @@ class Spider2SnowDatasetLoader:
                         db=item["db_id"],
                         question=item["instruction"],
                         evidence=evidence,
-                        gold_queries=[
-                            GoldQuery(id=f"GQRY-{i}", query=gold_sql, exec_result=ExecResult(df=df))
-                            for i, df in enumerate(gold_exec_results)
-                        ],
+                        gold_query=GoldQuery(
+                            query=gold_sql,
+                            exec_result=ExecResult(df=gold_exec_results[0]),
+                            other_exec_results=[ExecResult(df=df) for df in gold_exec_results[1:]],
+                        ),
                         extra_info=eval_standard[item["instance_id"]],
                     )
                 )
