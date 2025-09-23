@@ -401,7 +401,7 @@ class NL2QRunResult(BaseModel):
     model: str
     model_args: dict[str, Any]
     aggregated_metrics: dict[str, Any]
-    task_outputs: list[NL2QTaskOutput]
+    tasks: list[NL2QTaskOutput]
 
 
 class BaseDBSchema(BaseModel):
