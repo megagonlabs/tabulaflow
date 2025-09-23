@@ -154,7 +154,7 @@ class GoldQuery(BaseModel):
             exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"query"})
+        header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
         res = f"/*\n{header}\n*/\n{self.query}"
         res += "".join(f"\n/*\n{exec_result.to_readable()}\n*/" for exec_result in self.all_exec_results)
         return res
@@ -176,7 +176,7 @@ class PredQuery(BaseModel):
             self.exec_result.df.to_directory(os.path.join(directory, f"{self.id}.csv"), index=False)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"query"})
+        header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
         res = f"/*\n{header}\n*/\n{self.query}"
         if self.exec_result is not None:
             res += f"\n/*\n{self.exec_result.to_readable()}\n*/"
