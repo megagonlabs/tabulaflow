@@ -125,6 +125,13 @@ class PredQuery(BaseModel):
     exec_result: ExecResult | None = None
 
 
+def is_id_unique(objs: list[Any]) -> list[Any]:
+    ids = [obj.id for obj in objs]
+    if len(ids) != len(set(ids)):
+        raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
+    return objs
+
+
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
@@ -133,7 +140,7 @@ class SimpleNL2QTask(BaseModel):
     question: str
     evidence: str | None = None
     extra_info: dict[str, Any] = {}
-    gold_queries: list[GoldQuery] = Field(default_factory=list)
+    gold_queries: Annotated[list[GoldQuery], AfterValidator(is_id_unique)] = Field(default_factory=list)
     gold_exec_results: list[list[dict[str, Any]]] = Field(default_factory=list)
 
 
@@ -154,13 +161,6 @@ ARCSAmbiguityType = Literal[
     "syntactic_value",
     "syntactic_computation",
 ]
-
-
-def is_id_unique(objs: list[Any]) -> list[Any]:
-    ids = [obj.id for obj in objs]
-    if len(ids) != len(set(ids)):
-        raise ValueError(f"IDs of {type(objs[0]).__name__} are not unique.")
-    return objs
 
 
 class GoldAmbiguityPointFinite(BaseModel):
