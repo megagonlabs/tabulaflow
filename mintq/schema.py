@@ -88,11 +88,11 @@ class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pd.DataFrame | None
-    error: str | None
+    error: str | None = None
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
-    def serialize_df(self, df: pd.DataFrame) -> str:
+    def serialize_df(self, df: pd.DataFrame) -> dict[str, Any]:
         return {
             "schema": {
                 "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},

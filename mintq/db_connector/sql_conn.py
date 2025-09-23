@@ -367,5 +367,10 @@ class SQLConnector:
         timeout: int | None = None,
     ) -> ExecResult:
         t0 = time.time()
-        df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
-        return ExecResult(df=df, latency_seconds=time.time() - t0)
+        df = None
+        error = None
+        try:
+            df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
+        except Exception as e:
+            error = str(e)
+        return ExecResult(df=df, error=error, latency_seconds=time.time() - t0)
