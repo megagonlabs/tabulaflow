@@ -1,17 +1,15 @@
 import os
 import json
 import re
-import random
 import asyncio
 from urllib.parse import quote_plus
-from typing import Optional, Any, Literal, ClassVar
+from typing import Optional
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, NL2QTask, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseAsyncDBConnector
-from .base import BaseAsyncNL2QDatasetLoader, GetSplitMixin
 
 
-class Spider2SnowDatasetLoader(GetSplitMixin):
+class Spider2SnowDatasetLoader:
     name = "spider2-snow"
     splits = ["dev"]
 
@@ -46,10 +44,16 @@ class Spider2SnowDatasetLoader(GetSplitMixin):
         return res
 
     def get_database_names(self, split: str) -> list[str]:
+        if split not in self.splits:
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             return list(dict.fromkeys([json.loads(line)["db_id"] for line in f]))
 
     async def get_tasks_async(self, split: str) -> list[NL2QTask]:
+        if split not in self.splits:
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
         all_gold_exec_result_files = os.listdir(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result"))
 
         # Load spider2snow_eval.jsonl
@@ -108,6 +112,9 @@ class Spider2SnowDatasetLoader(GetSplitMixin):
         return tasks
 
     async def get_databases_async(self, split: str, databases: list[str]) -> dict[str, BaseAsyncDBConnector]:
+        if split not in self.splits:
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
+
         sf_user = self.sf_user or os.environ["SF_USER"]
         sf_password = self.sf_password or os.environ["SF_PASSWORD"]
         sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
@@ -156,3 +163,14 @@ class Spider2SnowDatasetLoader(GetSplitMixin):
                     )
 
         return {name: conn for name, conn in zip(databases, db_connectors)}
+
+    async def get_split_async(
+        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+    ) -> NL2QDataset:
+        return NL2QDataset(
+            name=self.name,
+            split=split,
+            subsample_size=None,
+            tasks=await self.get_tasks_async(split),
+            db_connectors=await self.get_databases_async(split, databases or self.get_database_names(split)),
+        )

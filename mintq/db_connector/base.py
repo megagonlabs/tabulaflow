@@ -1,6 +1,5 @@
 from typing import Any, Protocol, Sequence, Mapping
 import sqlalchemy
-import pandas as pd
 from mintq.schema import BaseDBSchema, SQLSchema, ExecResult
 
 
