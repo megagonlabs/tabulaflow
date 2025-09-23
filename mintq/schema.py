@@ -82,8 +82,6 @@ class Trajectory(BaseModel):
         return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
 
 
-
-
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -105,7 +103,10 @@ class ExecResult(BaseModel):
     def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
         if isinstance(df_dict, pd.DataFrame):
             return df_dict
-        return pd.DataFrame(df_dict["data"], dtype=df_dict["schema"]["dtypes"])
+        df = pd.DataFrame(df_dict["data"])
+        for col, dtype in df_dict["schema"]["dtypes"].items():
+            df[col] = df[col].astype(dtype)
+        return df
 
     @model_validator(mode="after")
     def validate_df_or_error(self) -> "ExecResult":
