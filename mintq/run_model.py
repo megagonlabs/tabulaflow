@@ -10,7 +10,7 @@ import litellm
 from tqdm import trange
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
 from mintq.formatters import get_schema_formatter
-from mintq.modelhub import get_nl2q_model_class, BaseAsyncNL2QModel
+from mintq.agenthub import get_nl2q_model_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
 from mintq.schema import NL2QDataset, NL2QRunResult
 
@@ -20,7 +20,7 @@ logfire.instrument_pydantic_ai()
 
 
 async def run_model_async(
-    model_cls: Type[BaseAsyncNL2QModel], model_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
+    agent_cls: Type[BaseAsyncNL2QAgent], agent_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     tasks_with_predictions = []
@@ -29,7 +29,7 @@ async def run_model_async(
         batch = dataset.tasks[i:j]
 
         tasks_with_predictions += await asyncio.gather(
-            *[model_cls(**model_args).predict_async(item, dataset.db_connectors[item.db]) for item in batch]
+            *[agent_cls(**agent_args).predict_async(item, dataset.db_connectors[item.db]) for item in batch]
         )
 
         if i == 0:
@@ -37,7 +37,7 @@ async def run_model_async(
             trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
             print(format_trajectory(trajectory))
 
-    sample_model = model_cls(**model_args)
+    sample_agent = agent_cls(**agent_args)
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])
 
     end_time = datetime.datetime.now()
@@ -48,8 +48,8 @@ async def run_model_async(
         split=dataset.split,
         subsample_size=dataset.subsample_size,
         databases=dataset.databases,
-        model=sample_model.name,
-        model_args=sample_model.get_config(),
+        agent=sample_agent.name,
+        agent_args=sample_agent.get_config(),
         aggregated_metrics=aggregated_metrics,
         tasks=tasks_with_predictions,
     )

@@ -398,8 +398,8 @@ class NL2QRunResult(BaseModel):
     split: str
     databases: list[str] | None  # None means all databases
     subsample_size: int | None
-    model: str
-    model_args: dict[str, Any]
+    agent: str
+    agent_args: dict[str, Any]
     aggregated_metrics: dict[str, Any]
     tasks: list[NL2QTaskOutput]
 

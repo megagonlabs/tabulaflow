@@ -18,8 +18,8 @@ from mintq.metadata_synthesizer import HSchemaSynthesizer
 #     task: SimpleNL2QTask
 #     db_connector: BaseAsyncSQLDBConnector
 #     max_steps: int
-#     original_hschema: HSQLSchema
-#     relevant_hschema: HSQLSchema
+#     original_hschema: HSQLSchemra
+#     relevant_hschema: HSQLSchemra
 
 
 # @dataclass

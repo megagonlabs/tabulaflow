@@ -3,7 +3,7 @@ from mintq.schema import NL2QTask, NL2QTaskOutput
 from mintq.db_connector import BaseAsyncDBConnector
 
 
-class BaseAsyncNL2QModel(Protocol):
+class BaseAsyncNL2QAgent(Protocol):
     name: ClassVar[str]
 
     async def predict_async(self, task: NL2QTask, db_connector: BaseAsyncDBConnector) -> NL2QTaskOutput: ...
