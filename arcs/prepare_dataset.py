@@ -136,7 +136,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
 
     task = AmbigNL2QTask(
         qid=data["qid"],
-        language="sqlite",
+        language="SQLite",
         db=db,
         question=data["generated_task"],
         gold_ambiguity_points=gold_ambiguity_points,
