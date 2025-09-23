@@ -122,6 +122,7 @@ async def main_async() -> None:
     model_class = get_nl2q_model_class(args.model)
     result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)
     result.to_directory(args.result_dir)
+    print(f"Saved result to {args.result_dir}")
 
 
 if __name__ == "__main__":

@@ -49,6 +49,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
+    parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
@@ -58,13 +59,15 @@ async def main_async() -> None:
 
     t0 = time.time()
     dataset_loader = get_dataset_loader(result.dataset)
-    dataset = await dataset_loader.get_db_connectors_async(
+    dataset = await dataset_loader.get_split_async(
         result.split, databases=result.databases, subsample_size=result.subsample_size
     )
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
     )
+    result = await populate_exec_results_async(result, dataset, args.batch_size)
     result.to_directory(args.result_dir)
+    print(f"Saved populated exec results to {args.result_dir}")
 
 
 if __name__ == "__main__":

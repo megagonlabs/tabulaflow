@@ -39,6 +39,7 @@ test-bird-multi-agent-v1:
 .PHONY: test-bird-agent
 test-bird-agent:
 	uv run mintq/pipelines/run_agent.py --model sql_agent --dataset bird-sql --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-bird-agent-v1
