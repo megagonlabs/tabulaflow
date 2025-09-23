@@ -4,7 +4,6 @@ import time
 import pandas as pd
 import numpy as np
 import json
-from typing import cast
 from tabulate import tabulate
 import sqlalchemy
 from sqlalchemy.sql import quoted_name

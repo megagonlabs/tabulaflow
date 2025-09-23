@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, cast
-import pandas as pd
+from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector import BaseAsyncSQLDBConnector

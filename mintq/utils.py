@@ -1,13 +1,11 @@
 import itertools
-import json
 import math
-import os
 import re
 import copy
 import pandas as pd
 import litellm
 import numpy as np
-from mintq.schema import Trajectory, NL2QRunResult, AmbigNL2QTask, GoldAmbiguityPoint
+from mintq.schema import NL2QRunResult, AmbigNL2QTask, GoldAmbiguityPoint
 
 
 def extract_code(response: str) -> str:
