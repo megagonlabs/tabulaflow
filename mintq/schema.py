@@ -232,7 +232,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
             f.write(self.trajectory.to_readable())
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query"})
+        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query", "pred_query", "trajectory"})
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
