@@ -210,9 +210,9 @@ class SimpleNL2QTask(BaseModel):
         header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query"})
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
-            res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
+            res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
         res += (
-            f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+            f"\n\n\n----- START OF GOLD QUERY -----\n{self.gold_query.to_readable()}\n----- END OF GOLD QUERY -----"
         )
         return res
 
@@ -236,12 +236,12 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query", "pred_query", "trajectory"})
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
-            res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
+            res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
         res += (
-            f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+            f"\n\n\n----- START OF GOLD QUERY -----\n{self.gold_query.to_readable()}\n----- END OF GOLD QUERY -----"
         )
         res += (
-            f"\n\n\n/* === START OF PRED QUERY === */\n{self.pred_query.to_readable()}\n/* === END OF PRED QUERY === */"
+            f"\n\n\n----- START OF PRED QUERY -----\n{self.pred_query.to_readable()}\n----- END OF PRED QUERY -----"
         )
         return res
 
