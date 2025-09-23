@@ -8,7 +8,7 @@ import asyncio
 import logfire
 import litellm
 from tqdm import trange
-from mintq.utils import get_llm_api_cost, get_aggregated_metrics, save_results
+from mintq.utils import get_llm_api_cost, get_aggregated_metrics
 from mintq.formatters import get_schema_formatter
 from mintq.agenthub import get_nl2q_model_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
@@ -121,7 +121,7 @@ async def main_async() -> None:
 
     model_class = get_nl2q_model_class(args.model)
     result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)
-    save_results(result, args.result_dir)
+    result.to_directory(args.result_dir)
 
 
 if __name__ == "__main__":
