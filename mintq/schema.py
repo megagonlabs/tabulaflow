@@ -103,6 +103,8 @@ class ExecResult(BaseModel):
     @field_validator("df", mode="before")
     @classmethod
     def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
+        if isinstance(df_dict, pd.DataFrame):
+            return df_dict
         return pd.DataFrame(df_dict["data"], dtype=df_dict["schema"]["dtypes"])
 
     @model_validator(mode="after")
