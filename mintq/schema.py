@@ -87,7 +87,8 @@ class Trajectory(BaseModel):
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    df: pd.DataFrame
+    df: pd.DataFrame | None
+    error: str | None
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
@@ -104,7 +105,15 @@ class ExecResult(BaseModel):
     def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
         return pd.DataFrame(df_dict["data"], dtype=df_dict["schema"]["dtypes"])
 
+    @model_validator(mode="after")
+    def validate_df_or_error(self) -> "ExecResult":
+        if self.df is None and self.error is None:
+            raise ValueError("Either df or error must be set")
+        return self
+
     def to_readable(self) -> str:
+        if self.error is not None:
+            return f"(query failed: {self.error})"
         df = self.df
         if len(df) > 10:
             df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
