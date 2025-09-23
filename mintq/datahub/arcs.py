@@ -1,5 +1,6 @@
 import os
 import asyncio
+import random
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 
@@ -58,10 +59,15 @@ class ARCSDatasetLoader:
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
+        tasks = await self.get_tasks_async(split)
+        db_connectors = await self.get_databases_async(split, databases or self.get_database_names(split))
+        tasks = [task for task in tasks if task.db in db_connectors]
+        if subsample_size:
+            tasks = random.Random(42).sample(tasks, subsample_size)
         return NL2QDataset(
             name=self.name,
             split=split,
             subsample_size=None,
-            tasks=await self.get_tasks_async(split),
-            db_connectors=await self.get_databases_async(split, databases or self.get_database_names(split)),
+            tasks=tasks,
+            db_connectors=db_connectors,
         )
