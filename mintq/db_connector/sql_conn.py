@@ -64,11 +64,11 @@ class ThrottledEngine:
             return pd.DataFrame(rows, columns=result.keys())
         return rows
 
-    def _create_interrupter(self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int) -> asyncio.Task:
-        async def interrupt_after():
+    def _create_interrupter(self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int) -> asyncio.Task[None]:
+        async def interrupt_after() -> None:
             await asyncio.sleep(timeout)
             raw_conn = await conn.get_raw_connection()
-            await raw_conn.driver_connection.interrupt()
+            await raw_conn.driver_connection.interrupt()  # type: ignore
 
         return asyncio.create_task(interrupt_after())
 
@@ -81,8 +81,9 @@ class ThrottledEngine:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
         rows = []
-        async with self.engine.connect() as conn:
-            interrupter = self._create_interrupter(conn, timeout)
+        async with self.engine.connect() as conn:  # type: ignore
+            if timeout is not None:
+                interrupter = self._create_interrupter(conn, timeout)
 
             try:
                 result = await conn.stream(statement, parameters)
@@ -91,7 +92,8 @@ class ThrottledEngine:
             except sqlalchemy.exc.OperationalError:
                 raise asyncio.TimeoutError()
             finally:
-                interrupter.cancel()
+                if timeout is not None:
+                    interrupter.cancel()
 
         if return_df:
             return pd.DataFrame(rows, columns=result.keys())

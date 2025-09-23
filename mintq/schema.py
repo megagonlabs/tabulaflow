@@ -74,7 +74,7 @@ class ExecResult(BaseModel):
             truncation_line = "... TRUNCATED ..."
             tail_lines = tail_str.split("\n")[1:]  # Skip header line
             return "\n".join([head_str, truncation_line] + tail_lines)
-        return df.to_string(index=False)
+        return df.to_string(index=False)  # type: ignore
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
@@ -100,13 +100,18 @@ class GoldQuery(BaseModel):
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
     def to_directory(self, directory: str) -> None:
-        self.exec_result.to_directory(directory)
-        with open(os.path.join(directory, "query.sql"), "w") as f:
-            f.write(self.query)
+        if self.exec_result is not None:
+            self.exec_result.to_directory(directory)
+        if self.query is not None:
+            with open(os.path.join(directory, "query.sql"), "w") as f:
+                f.write(self.query)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude=["query"])
-        return f"/*\n{header}\n*/\n{self.query}\n/*\n{self.exec_result.to_readable()}\n*/"
+        header = self.model_dump_json(indent=2, exclude={"query"})
+        res = f"/*\n{header}\n*/\n{self.query}"
+        if self.exec_result is not None:
+            res += f"\n/*\n{self.exec_result.to_readable()}\n*/"
+        return res
 
 
 class PredQuery(BaseModel):
@@ -168,7 +173,7 @@ class GoldAmbiguityPointFinite(BaseModel):
     intended_interpretation_idx: int | None
 
     @model_validator(mode="after")
-    def validate_intended_interpretation_idx(self):
+    def validate_intended_interpretation_idx(self) -> "GoldAmbiguityPointFinite":
         if self.intended_interpretation_idx is not None:
             if self.intended_interpretation_idx < 0 or self.intended_interpretation_idx >= len(self.interpretations):
                 raise ValueError(
@@ -219,7 +224,7 @@ class AmbigNL2QTask(BaseModel):
             f.write(self.to_readable() + "\n")
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude=["gold_queries"])
+        header = self.model_dump_json(indent=2, exclude={"gold_queries"})
         return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable()}" for gq in self.gold_queries)
 
     @classmethod
@@ -234,7 +239,7 @@ class AmbigNL2QTask(BaseModel):
         return cls.model_validate(data)
 
     @model_validator(mode="after")
-    def validate_gold_queries(self):
+    def validate_gold_queries(self) -> "AmbigNL2QTask":
         # Gold query ID must match the pattern "GQRY(-[A-Z]+\.[0-9]+)*" (e.g. "GQRY-A.2-B.0")
         pattern = r"^GQRY(-[A-Z]+\.[0-9]+)*$"
         assert all(re.match(pattern, gq.id) for gq in self.gold_queries)
@@ -259,7 +264,7 @@ class AmbigNL2QTask(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_has_intended_resolution(self):
+    def validate_has_intended_resolution(self) -> "AmbigNL2QTask":
         if self.has_intended_resolution:
             assert self.gold_intended_gold_query_id is not None
             assert all(
@@ -279,7 +284,7 @@ class AmbigNL2QTask(BaseModel):
         return self
 
     @model_validator(mode="after")
-    def validate_id_reference(self):
+    def validate_id_reference(self) -> "AmbigNL2QTask":
         ap_ids = set(ap.id for ap in self.gold_ambiguity_points)
         assert all(
             ap.parent_ambiguity_point_id is None or ap.parent_ambiguity_point_id in ap_ids
@@ -318,7 +323,7 @@ class PredAmbiguityPointFinite(BaseModel):
     """A, B, C, etc."""
     phrase: str
     type: Literal["finite"] = "finite"
-    interpretations: list[str] | None
+    interpretations: list[str]
     intended_interpretation_idx: int | None
 
 
@@ -349,7 +354,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     metrics: dict[str, Any]
 
     @model_validator(mode="after")
-    def validate_pred_queries(self):
+    def validate_pred_queries(self) -> "StructuredAmbigNL2QTaskOutput":
         # Pred query ID must match the pattern "PQRY(-[A-Z]+\.[0-9]+)*" (e.g. "PQRY-A.2-B.0")
         pattern = r"^PQRY(-[A-Z]+\.[0-9]+)*$"
         assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
