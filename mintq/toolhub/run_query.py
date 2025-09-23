@@ -27,8 +27,8 @@ class RunQueryTool:
         """
         db_connector = self.db_connector
         try:
-            df = await db_connector.run_query_async(query, return_df=True)
-            df = cast(pd.DataFrame, df)
+            exec_result = await db_connector.run_query_async(query)
+            df = exec_result.df
         except TimeoutError:
             self.metrics_.error_timeout += 1
             return "(query timed out after 30 seconds)"

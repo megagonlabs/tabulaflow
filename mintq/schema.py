@@ -139,6 +139,7 @@ class GoldQuery(BaseModel):
         return ([self.exec_result] if self.exec_result is not None else []) + self.other_exec_results
 
     def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None:
             self.exec_result.to_directory(directory)
         for i, exec_result in enumerate(self.other_exec_results):
@@ -165,6 +166,7 @@ class PredQuery(BaseModel):
     exec_result: ExecResult | None = None
 
     def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None:
             self.exec_result.to_directory(directory)
         with open(os.path.join(directory, "query.sql"), "w") as f:
