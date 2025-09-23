@@ -66,71 +66,9 @@ def save_results(result: NL2QRunResult, result_dir: str) -> None:
     with open(os.path.join(result_dir, "result.json"), "w") as f:
         f.write(result.model_dump_json(indent=2))
 
-    language = result.tasks[0].language.lower()
-    if language.startswith("sql") or language.endswith("sql"):
-        extension = "sql"
-    elif language == "cypher":
-        extension = "cypher"
-    else:
-        extension = "query"
-
-    gold_query_dir = os.path.join(result_dir, "gold_query")
-    pred_query_dir = os.path.join(result_dir, "pred_query")
-    trajectory_dir = os.path.join(result_dir, "trajectory")
-
-    os.makedirs(gold_query_dir, exist_ok=True)
-    os.makedirs(pred_query_dir, exist_ok=True)
-    os.makedirs(trajectory_dir, exist_ok=True)
-
     for task in result.tasks:
-        if task.task_type != "simple":
-            raise ValueError("Only simple NL2Q tasks are supported currently")
-
-        with open(os.path.join(gold_query_dir, f"{task.qid}.{extension}"), "w") as f:
-            f.write("\n\n".join(task.gold_queries))
-
-        with open(os.path.join(pred_query_dir, f"{task.qid}.{extension}"), "w") as f:
-            f.write(task.pred_query)
-
-        with open(os.path.join(trajectory_dir, f"{task.qid}.xml"), "w") as f:
-            f.write(format_trajectory(task.trajectory))
-            f.write("\n\n\n" + "\n\n".join(f"<gold_query>\n{g}\n</gold_query>" for g in task.gold_queries))
-
+        task.to_directory(os.path.join(result_dir, task.qid))
     print(f"Saved results to {result_dir}")
-
-
-def format_trajectory(trajectory: Trajectory) -> str:
-    res = []
-    for msg in trajectory.messages:
-        if msg.role == "system":
-            res.append(f'<message role="system">\n{msg.content}\n</message>')
-        elif msg.role == "user":
-            res.append(f'<message role="user">\n{msg.content}\n</message>')
-        elif msg.role == "assistant":
-            s = '<message role="assistant">\n'
-            if msg.content:
-                try:
-                    content = json.loads(msg.content)
-                    content = json.dumps(content, indent=2)
-                except Exception:
-                    content = msg.content
-                s += f"{content}\n"
-            for tool_call in msg.tool_calls:
-                s += f'<function name="{tool_call.name}">\n'
-                for key, value in tool_call.arguments.items():
-                    if isinstance(value, (list, dict)):
-                        value = json.dumps(value, indent=2)
-                    else:
-                        value = str(value)
-                    s += f'<arg name="{key}">'
-                    s += f"\n{value}\n" if "\n" in value else value
-                    s += "</arg>\n"
-                s += "</function>\n"
-            s += "</message>"
-            res.append(s)
-        elif msg.role == "tool":
-            res.append(f'<message role="tool">\n{msg.response}\n</message>')
-    return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
 
 
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:

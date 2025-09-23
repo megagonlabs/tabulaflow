@@ -8,7 +8,7 @@ import asyncio
 import logfire
 import litellm
 from tqdm import trange
-from mintq.utils import get_llm_api_cost, get_aggregated_metrics, format_trajectory, save_results
+from mintq.utils import get_llm_api_cost, get_aggregated_metrics, save_results
 from mintq.formatters import get_schema_formatter
 from mintq.agenthub import get_nl2q_model_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
@@ -35,7 +35,7 @@ async def run_model_async(
         if i == 0:
             task = tasks_with_predictions[0]
             trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
-            print(format_trajectory(trajectory))
+            print(trajectory.to_readable())
 
     sample_agent = agent_cls(**agent_args)
     aggregated_metrics = get_aggregated_metrics([item.metrics for item in tasks_with_predictions])

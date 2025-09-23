@@ -55,6 +55,39 @@ Message = Annotated[
 class Trajectory(BaseModel):
     messages: list[Message]
 
+    def to_readable(self) -> str:
+        res = []
+        for msg in self.messages:
+            if msg.role == "system":
+                res.append(f'<message role="system">\n{msg.content}\n</message>')
+            elif msg.role == "user":
+                res.append(f'<message role="user">\n{msg.content}\n</message>')
+            elif msg.role == "assistant":
+                s = '<message role="assistant">\n'
+                if msg.content:
+                    try:
+                        content = json.loads(msg.content)
+                        content = json.dumps(content, indent=2)
+                    except Exception:
+                        content = msg.content
+                    s += f"{content}\n"
+                for tool_call in msg.tool_calls:
+                    s += f'<function name="{tool_call.name}">\n'
+                    for key, value in tool_call.arguments.items():
+                        if isinstance(value, (list, dict)):
+                            value = json.dumps(value, indent=2)
+                        else:
+                            value = str(value)
+                        s += f'<arg name="{key}">'
+                        s += f"\n{value}\n" if "\n" in value else value
+                        s += "</arg>\n"
+                    s += "</function>\n"
+                s += "</message>"
+                res.append(s)
+            elif msg.role == "tool":
+                res.append(f'<message role="tool">\n{msg.response}\n</message>')
+        return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+
 
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -131,6 +164,19 @@ class PredQuery(BaseModel):
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
     exec_result: ExecResult | None = None
 
+    def to_directory(self, directory: str) -> None:
+        if self.exec_result is not None:
+            self.exec_result.to_directory(directory)
+        with open(os.path.join(directory, "query.sql"), "w") as f:
+            f.write(self.query)
+
+    def to_readable(self) -> str:
+        header = self.model_dump_json(indent=2, exclude={"query"})
+        res = f"/*\n{header}\n*/\n{self.query}"
+        if self.exec_result is not None:
+            res += f"\n/*\n{self.exec_result.to_readable()}\n*/"
+        return res
+
 
 def is_id_unique(objs: list[Any]) -> list[Any]:
     ids = [obj.id for obj in objs]
@@ -162,7 +208,7 @@ class SimpleNL2QTask(BaseModel):
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
-        res += f"\n\n\n{self.gold_query.to_readable()}"
+        res += f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
         return res
 
 
@@ -171,6 +217,26 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     pred_query: PredQuery
     trajectory: Trajectory
     metrics: dict[str, Any]
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        self.gold_query.to_directory(os.path.join(directory, self.gold_query.id))
+        self.pred_query.to_directory(os.path.join(directory, self.pred_query.id))
+        with open(os.path.join(directory, "task.json"), "w") as f:
+            f.write(self.model_dump_json(indent=2))
+        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
+            f.write(self.to_readable() + "\n")
+        with open(os.path.join(directory, "trajectory.xml"), "w") as f:
+            f.write(self.trajectory.to_readable())
+
+    def to_readable(self) -> str:
+        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query"})
+        res = f"/*\n{header}\n*/"
+        if self.evidence is not None:
+            res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
+        res += f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+        res += f"\n\n\n/* === START OF PRED QUERY === */\n{self.pred_query.to_readable()}\n/* === END OF PRED QUERY === */"
+        return res
 
 
 ARCSAmbiguityType = Literal[
