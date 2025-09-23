@@ -6,8 +6,8 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Optional
 import pandas as pd
-from mintq.schema import SimpleNL2QTask, NL2QDataset, NL2QTask, GoldQuery, ExecResult
-from mintq.db_connector import SQLConnector, BaseAsyncDBConnector
+from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
+from mintq.db_connector import SQLConnector, BaseAsyncSQLDBConnector
 
 
 class Spider2SnowDatasetLoader:
@@ -51,7 +51,7 @@ class Spider2SnowDatasetLoader:
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
             return list(dict.fromkeys([json.loads(line)["db_id"] for line in f]))
 
-    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[NL2QTask]:
+    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
@@ -118,7 +118,7 @@ class Spider2SnowDatasetLoader:
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseAsyncDBConnector]:
+    ) -> dict[str, BaseAsyncSQLDBConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 

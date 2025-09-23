@@ -11,7 +11,7 @@ from pydantic import (
     ConfigDict,
 )
 from pydantic.types import StringConstraints
-from typing import Any, Literal, Annotated, Union
+from typing import Any, Literal, Annotated, Union, Sequence
 import pandas as pd
 import math
 import itertools
@@ -386,7 +386,7 @@ class NL2QDataset(BaseModel):
     name: str
     split: str
     subsample_size: int | None
-    tasks: list[NL2QTask]
+    tasks: Sequence[NL2QTask]
     db_connectors: dict[str, Any]
 
 
