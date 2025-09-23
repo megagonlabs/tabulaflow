@@ -6,7 +6,7 @@ from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool
@@ -151,7 +151,7 @@ class SQLAgent:
             result = await agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
             messages = result.all_messages()
             fallback = True
-        pred_query = extract_code(result.output)
+        pred_query = PredQuery(query=extract_code(result.output))
         trajectory = pydantic_ai_messages_to_trajectory(messages)
 
         usage = result.usage()

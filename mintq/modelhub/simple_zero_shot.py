@@ -8,7 +8,7 @@ from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.formatters import BaseSchemaFormatter
 from mintq.db_connector import BaseAsyncDBConnector
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage, PredQuery
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -107,7 +107,7 @@ class SimpleZeroShotNL2Q:
         queries = [extract_code(q) for q in raw_outputs]
         # Select the best query using self-consistency voting
         best_query_idx = await self.select_best_query_async(queries, db_connector)
-        pred_query = queries[best_query_idx]
+        pred_query = PredQuery(query=queries[best_query_idx])
 
         # Re-construct the trajectory of the best query
         trajectory = Trajectory(
