@@ -8,7 +8,15 @@ from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.formatters import BaseSchemaFormatter
 from mintq.db_connector import BaseAsyncDBConnector
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, SystemMessage, UserMessage, AssistantMessage, PredQuery
+from mintq.schema import (
+    SimpleNL2QTask,
+    SimpleNL2QTaskOutput,
+    Trajectory,
+    SystemMessage,
+    UserMessage,
+    AssistantMessage,
+    PredQuery,
+)
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.

@@ -86,7 +86,8 @@ class BeaverDatasetLoader:
         return NL2QDataset(
             name=self.name,
             split=split,
-            subsample_size=None,
+            databases=databases,
+            subsample_size=subsample_size,
             tasks=tasks,
             db_connectors=db_connectors,
         )
