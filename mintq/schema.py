@@ -88,7 +88,7 @@ class ExecResult(BaseModel):
 class GoldQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    id: str
+    id: str = "GQRY"
     query: str | None
     """For Spider2, some gold queries are not available, so we allow it to be None"""
     parameter_names: list[str] = Field(default_factory=list)
@@ -117,7 +117,7 @@ class GoldQuery(BaseModel):
 class PredQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    id: str
+    id: str = "PQRY"
     query: str
     parameter_names: list[str] = Field(default_factory=list)
     parameter_values: dict[str, Any] = Field(default_factory=dict)
