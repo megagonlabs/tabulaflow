@@ -1,6 +1,5 @@
 import asyncio
 import argparse
-import os
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.schema import SQLSchema
 

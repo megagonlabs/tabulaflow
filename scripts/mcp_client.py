@@ -97,11 +97,7 @@ async def main():
         print(await client.test_run_query("SELECT * FROM job_seeker LIMIT 10"))
         print()
         print("Searching keywords:")
-        print(
-            await client.test_search_keywords(
-                "job_seeker", "job_seeker", "skills", ["YTHON"]
-            )
-        )
+        print(await client.test_search_keywords("job_seeker", "job_seeker", "skills", ["YTHON"]))
     finally:
         await client.cleanup()
 

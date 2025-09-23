@@ -1,6 +1,5 @@
 import asyncio
 import argparse
-import os
 from mintq.formatters import HSchemaFormatter
 from mintq.schema import HSQLSchema
 

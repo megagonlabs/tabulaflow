@@ -106,7 +106,6 @@ class MarkRelevantColumnTool:
         marked_columns = []
 
         for column_name in column_names:
-
             try:
                 src_table_group, src_section, src_column_group = locate_path(
                     self.hschema, schema_name, table_name, column_name

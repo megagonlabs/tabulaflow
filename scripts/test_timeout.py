@@ -1,4 +1,3 @@
-import os
 import asyncio
 import time
 import func_timeout
@@ -133,7 +132,7 @@ async def run_with_interrupt_sqlalchemy(sqlite_path, sql, timeout):
             async for row in result:
                 rows.append(row)
             return rows
-        except sqlalchemy.exc.OperationalError as e:
+        except sqlalchemy.exc.OperationalError:
             raise TimeoutError(f"Query {sql} timed out after {timeout} seconds")
         finally:
             interrupter.cancel()

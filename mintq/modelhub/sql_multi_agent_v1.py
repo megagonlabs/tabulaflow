@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import jinja2
 import time
 from typing import Any, Callable
@@ -7,7 +6,7 @@ from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, HSQLSchema
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool, MarkRelevantColumnTool

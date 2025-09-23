@@ -9,7 +9,7 @@ from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool
+from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
