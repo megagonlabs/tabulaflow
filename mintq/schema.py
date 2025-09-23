@@ -116,14 +116,17 @@ class ExecResult(BaseModel):
 
     def to_readable(self) -> str:
         if self.error is not None:
-            return f"(query failed: {self.error})"
-        df = self.df
-        if len(df) > 10:
-            df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
-            lines = df.to_string(index=False).split("\n")
-            assert len(lines) == 11
-            return "\n".join(lines[:6] + ["... TRUNCATED ..."] + lines[6:])
-        return df.to_string(index=False)  # type: ignore
+            res = f"(query failed: {self.error})"
+        else:
+            df = self.df
+            if len(df) > 10:
+                df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
+                lines = df.to_string(index=False).split("\n")
+                assert len(lines) == 11
+                res = "\n".join(lines[:6] + ["... TRUNCATED ..."] + lines[6:])
+            else:
+                res = df.to_string(index=False)  # type: ignore
+        return f"/* EXEC RESULT\n{res}\n*/"
 
 
 class GoldQuery(BaseModel):
@@ -156,8 +159,8 @@ class GoldQuery(BaseModel):
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
         res = f"/*\n{header}\n*/\n{self.query}"
-        res += "".join(f"\n/*\n{exec_result.to_readable()}\n*/" for exec_result in self.all_exec_results)
-        return res
+        res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
+        return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
 
 
 class PredQuery(BaseModel):
@@ -179,8 +182,8 @@ class PredQuery(BaseModel):
         header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
         res = f"/*\n{header}\n*/\n{self.query}"
         if self.exec_result is not None:
-            res += f"\n/*\n{self.exec_result.to_readable()}\n*/"
-        return res
+            res += f"\n{self.exec_result.to_readable()}"
+        return f"----- START OF PRED QUERY `{self.id}` -----\n{res}\n----- END OF PRED QUERY -----"
 
 
 def is_id_unique(objs: list[Any]) -> list[Any]:
@@ -211,9 +214,7 @@ class SimpleNL2QTask(BaseModel):
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
-        res += (
-            f"\n\n\n----- START OF GOLD QUERY -----\n{self.gold_query.to_readable()}\n----- END OF GOLD QUERY -----"
-        )
+        res += f"\n\n\n{self.gold_query.to_readable()}"
         return res
 
 
@@ -237,12 +238,8 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
-        res += (
-            f"\n\n\n----- START OF GOLD QUERY -----\n{self.gold_query.to_readable()}\n----- END OF GOLD QUERY -----"
-        )
-        res += (
-            f"\n\n\n----- START OF PRED QUERY -----\n{self.pred_query.to_readable()}\n----- END OF PRED QUERY -----"
-        )
+        res += f"\n\n\n{self.gold_query.to_readable()}"
+        res += f"\n\n\n{self.pred_query.to_readable()}"
         return res
 
 
