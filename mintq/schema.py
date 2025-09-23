@@ -2,14 +2,7 @@ import datetime
 import json
 import os
 import re
-from pydantic import (
-    BaseModel,
-    Field,
-    field_serializer,
-    model_validator,
-    AfterValidator,
-    ConfigDict,
-)
+from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 from typing import Any, Literal, Annotated, Union, Sequence
 import pandas as pd
@@ -89,6 +82,8 @@ class Trajectory(BaseModel):
         return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
 
 
+
+
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
@@ -96,26 +91,27 @@ class ExecResult(BaseModel):
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
-    def save_df(self, df: pd.DataFrame) -> str:
-        return f"[PREVIEW] {self.to_readable()}"
+    def serialize_df(self, df: pd.DataFrame) -> str:
+        return {
+            "schema": {
+                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+            },
+            "data": df.to_dict(orient="records"),
+        }
+
+    @field_validator("df", mode="before")
+    @classmethod
+    def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
+        return pd.DataFrame(df_dict["data"], dtype=df_dict["schema"]["dtypes"])
 
     def to_readable(self) -> str:
         df = self.df
         if len(df) > 10:
-            head_str = df.head(5).to_string(index=False)
-            tail_str = df.tail(5).to_string(index=False)
-            truncation_line = "... TRUNCATED ..."
-            tail_lines = tail_str.split("\n")[1:]  # Skip header line
-            return "\n".join([head_str, truncation_line] + tail_lines)
+            df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
+            lines = df.to_string(index=False).split("\n")
+            assert len(lines) == 11
+            return "\n".join(lines[:6] + ["... TRUNCATED ..."] + lines[6:])
         return df.to_string(index=False)  # type: ignore
-
-    def to_directory(self, directory: str) -> None:
-        os.makedirs(directory, exist_ok=True)
-        schema = {"dtypes": {col: str(dtype) for col, dtype in self.df.dtypes.items()}}
-        with open(os.path.join(directory, "df_schema.json"), "w") as f:
-            json.dump(schema, f, indent=2)
-
-        self.df.to_csv(os.path.join(directory, "df_data.csv"), index=False)
 
 
 class GoldQuery(BaseModel):
@@ -141,12 +137,9 @@ class GoldQuery(BaseModel):
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None:
-            self.exec_result.to_directory(directory)
+            self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
         for i, exec_result in enumerate(self.other_exec_results):
-            exec_result.to_directory(os.path.join(directory, f"other_exec_result_{i}"))
-        if self.query is not None:
-            with open(os.path.join(directory, "query.sql"), "w") as f:
-                f.write(self.query)
+            exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query"})
@@ -168,9 +161,7 @@ class PredQuery(BaseModel):
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None:
-            self.exec_result.to_directory(directory)
-        with open(os.path.join(directory, "query.sql"), "w") as f:
-            f.write(self.query)
+            self.exec_result.df.to_directory(os.path.join(directory, f"{self.id}.csv"), index=False)
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query"})
@@ -199,9 +190,7 @@ class SimpleNL2QTask(BaseModel):
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
-        self.gold_query.to_directory(os.path.join(directory, self.gold_query.id))
-        with open(os.path.join(directory, "task.json"), "w") as f:
-            f.write(self.model_dump_json(indent=2))
+        self.gold_query.to_directory(os.path.join(directory, "gold_csv"))
         with open(os.path.join(directory, "task_readable.sql"), "w") as f:
             f.write(self.to_readable() + "\n")
 
@@ -210,7 +199,9 @@ class SimpleNL2QTask(BaseModel):
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
-        res += f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+        res += (
+            f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+        )
         return res
 
 
@@ -222,11 +213,9 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
-        self.gold_query.to_directory(os.path.join(directory, self.gold_query.id))
-        self.pred_query.to_directory(os.path.join(directory, self.pred_query.id))
-        with open(os.path.join(directory, "task.json"), "w") as f:
-            f.write(self.model_dump_json(indent=2))
-        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
+        self.gold_query.to_directory(os.path.join(directory, "gold_csv"))
+        self.pred_query.to_directory(os.path.join(directory, "pred_csv"))
+        with open(os.path.join(directory, "result_readable.sql"), "w") as f:
             f.write(self.to_readable() + "\n")
         with open(os.path.join(directory, "trajectory.xml"), "w") as f:
             f.write(self.trajectory.to_readable())
@@ -236,8 +225,12 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         res = f"/*\n{header}\n*/"
         if self.evidence is not None:
             res += f"\n\n\n/* === START OF EVIDENCE === */\n/*{self.evidence}\n*/\n/* === END OF EVIDENCE === */"
-        res += f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
-        res += f"\n\n\n/* === START OF PRED QUERY === */\n{self.pred_query.to_readable()}\n/* === END OF PRED QUERY === */"
+        res += (
+            f"\n\n\n/* === START OF GOLD QUERY === */\n{self.gold_query.to_readable()}\n/* === END OF GOLD QUERY === */"
+        )
+        res += (
+            f"\n\n\n/* === START OF PRED QUERY === */\n{self.pred_query.to_readable()}\n/* === END OF PRED QUERY === */"
+        )
         return res
 
 
@@ -314,25 +307,13 @@ class AmbigNL2QTask(BaseModel):
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         for gq in self.gold_queries:
-            gq.to_directory(os.path.join(directory, gq.id))
-        with open(os.path.join(directory, "task.json"), "w") as f:
-            f.write(self.model_dump_json(indent=2))
+            gq.to_directory(os.path.join(directory, "gold_csv"))
         with open(os.path.join(directory, "task_readable.sql"), "w") as f:
             f.write(self.to_readable() + "\n")
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"gold_queries"})
         return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable()}" for gq in self.gold_queries)
-
-    @classmethod
-    def from_directory(cls, directory: str) -> "AmbigNL2QTask":
-        with open(os.path.join(directory, "task.json"), "r") as f:
-            data = json.load(f)
-        for gq in data["gold_queries"]:
-            gq["exec_result"]["df"] = read_df(os.path.join(directory, gq["id"]))
-            for i in range(len(gq["other_exec_results"]) + 1):
-                gq["other_exec_results"][i]["df"] = read_df(os.path.join(directory, gq["id"], f"other_exec_result_{i}"))
-        return cls.model_validate(data)
 
     @model_validator(mode="after")
     def validate_gold_queries(self) -> "AmbigNL2QTask":
@@ -498,6 +479,14 @@ class NL2QRunResult(BaseModel):
     agent_args: dict[str, Any]
     aggregated_metrics: dict[str, Any]
     tasks: list[NL2QTaskOutput]
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "result.json"), "w") as f:
+            f.write(self.model_dump_json(indent=2))
+
+        for task in self.tasks:
+            task.to_directory(os.path.join(directory, "readable", task.qid))
 
 
 class BaseDBSchema(BaseModel):

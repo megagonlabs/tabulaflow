@@ -60,17 +60,6 @@ def save_csv(result: NL2QRunResult, path: str, metrics_to_include: list[str] = [
     df.to_csv(path, index=False)
 
 
-def save_results(result: NL2QRunResult, result_dir: str) -> None:
-    os.makedirs(result_dir, exist_ok=True)
-
-    with open(os.path.join(result_dir, "result.json"), "w") as f:
-        f.write(result.model_dump_json(indent=2))
-
-    for task in result.tasks:
-        task.to_directory(os.path.join(result_dir, task.qid))
-    print(f"Saved results to {result_dir}")
-
-
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
     task = copy.deepcopy(task)
     finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]
