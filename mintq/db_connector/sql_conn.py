@@ -10,7 +10,7 @@ import sqlalchemy
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, select, func, distinct, inspect
-from mintq.schema import SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema, ExecResult
+from mintq.schema import ErrorInfo, SQLSchema, SQLColumnSchema, SQLTableSchema, ForeignKeySchema, ExecResult
 from mintq.config import config
 
 
@@ -372,5 +372,5 @@ class SQLConnector:
         try:
             df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
         except Exception as e:
-            error = str(e)
+            error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
         return ExecResult(df=df, error=error, latency_seconds=time.time() - t0)

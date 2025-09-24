@@ -82,11 +82,16 @@ class Trajectory(BaseModel):
         return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
 
 
+class ErrorInfo(BaseModel):
+    exc_type: str
+    message: str
+
+
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pd.DataFrame | None
-    error: str | None = None
+    error: ErrorInfo | None = None
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")

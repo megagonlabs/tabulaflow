@@ -27,7 +27,7 @@ class RunQueryTool:
         db_connector = self.db_connector
         exec_result = await db_connector.run_query_async(query, timeout=30)
         if exec_result.df is None:
-            if "timed out" in exec_result.error:  # type: ignore
+            if exec_result.error.exc_type == "TimeoutError":  # type: ignore
                 self.metrics_.error_timeout += 1
                 return "(query timed out after 30 seconds)"
             else:
