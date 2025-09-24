@@ -6,4 +6,7 @@ class GoldResultNotEmpty:
     name = "gold_result_not_empty"
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
+        if not task.gold_query.exec_result:
+            raise ValueError("ExecResult not populated")
+
         return float(task.gold_query.exec_result.df is not None and len(task.gold_query.exec_result.df) > 0)

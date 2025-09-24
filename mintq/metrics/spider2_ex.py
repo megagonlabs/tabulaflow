@@ -83,6 +83,9 @@ class Spider2Ex:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
+        if not task.pred_query.exec_result or not task.gold_query.exec_result:
+            raise ValueError("ExecResult not populated")
+
         if task.pred_query.exec_result.error:
             return 0.0
 
