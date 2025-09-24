@@ -115,7 +115,7 @@ class ExecResult(BaseModel):
         return self
 
     def to_readable(self) -> str:
-        if self.error is not None:
+        if self.df is None:
             res = f"(query failed: {self.error})"
         else:
             df = self.df
@@ -125,7 +125,7 @@ class ExecResult(BaseModel):
                 assert len(lines) == 11
                 res = "\n".join(lines[:6] + ["... TRUNCATED ..."] + lines[6:])
             else:
-                res = df.to_string(index=False)  # type: ignore
+                res = df.to_string(index=False)
         return f"/* EXEC RESULT\n{res}\n*/"
 
 
@@ -151,10 +151,11 @@ class GoldQuery(BaseModel):
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
-        if self.exec_result is not None:
+        if self.exec_result is not None and self.exec_result.df is not None:
             self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
         for i, exec_result in enumerate(self.other_exec_results):
-            exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
+            if exec_result.df is not None:
+                exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
