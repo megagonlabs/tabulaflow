@@ -199,6 +199,24 @@ def is_id_unique(objs: list[Any]) -> list[Any]:
     return objs
 
 
+class CSVSummaryRow(BaseModel):
+    qid: str
+    db: str
+    question: str
+    evidence: str | None = None
+    gold_query: str | None = None
+    pred_query: str | None = None
+    gold_exec_result: str | None = None
+    pred_exec_result: str | None = None
+    metrics: dict[str, Any] = Field(default_factory=dict)
+
+    def fields(self) -> list[str]:
+        return list(CSVSummaryRow.model_fields.keys())[:-1] + list(self.metrics.keys())
+
+    def data(self) -> list[Any]:
+        return list(self.model_dump().values())[:-1] + list(self.metrics.values())
+
+
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
@@ -247,6 +265,19 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         res += f"\n\n\n{self.gold_query.to_readable()}"
         res += f"\n\n\n{self.pred_query.to_readable()}"
         return res
+
+    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+        return CSVSummaryRow(
+            qid=self.qid,
+            db=self.db,
+            question=self.question,
+            evidence=self.evidence,
+            gold_query=self.gold_query.query,
+            pred_query=self.pred_query.query,
+            gold_exec_result="\n".join([exec_result.to_readable() for exec_result in self.gold_query.all_exec_results]),
+            pred_exec_result=self.pred_query.exec_result.to_readable() if self.pred_query.exec_result else None,
+            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+        )
 
 
 ARCSAmbiguityType = Literal[
@@ -320,7 +351,9 @@ class AmbigNL2QTask(BaseModel):
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
     @property
-    def gold_intended_query(self) -> GoldQuery:
+    def gold_intended_query(self) -> GoldQuery | None:
+        if self.gold_intended_query_id is None:
+            return None
         id_to_query = {gq.id: gq for gq in self.gold_queries}
         return id_to_query[self.gold_intended_query_id]
 
@@ -447,11 +480,13 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-structured"] = "ambig-structured"
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
-    pred_intended_query_id: str
+    pred_intended_query_id: str | None
     metrics: dict[str, Any]
 
     @property
-    def pred_intended_query(self) -> PredQuery:
+    def pred_intended_query(self) -> PredQuery | None:
+        if self.pred_intended_query_id is None:
+            return None
         id_to_query = {pq.id: pq for pq in self.pred_queries}
         return id_to_query[self.pred_intended_query_id]
 
@@ -475,6 +510,22 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
                 raise ValueError(f"qid {self.qid}: Pred query {required_id} is not found.")
         assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
+
+    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+        return CSVSummaryRow(
+            qid=self.qid,
+            db=self.db,
+            question=self.question,
+            gold_query=self.gold_intended_query.query,
+            pred_query=self.pred_intended_query.query,
+            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
+            if getattr(self.gold_intended_query, "exec_result", None)
+            else None,
+            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
+            if getattr(self.pred_intended_query, "exec_result", None)
+            else None,
+            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+        )
 
 
 NL2QTask = Annotated[Union[SimpleNL2QTask, AmbigNL2QTask], Field(discriminator="task_type")]
@@ -516,51 +567,8 @@ class NL2QRunResult(BaseModel):
             task.to_directory(os.path.join(directory, "readable", task.qid))
 
     def to_csv(self, path: str, metrics_in_summary: list[str] = []) -> None:
-        headers = [
-            "qid",
-            "db",
-            "question",
-            "evidence",
-            "gold_query",
-            "pred_query",
-            "gold_exec_result",
-            "pred_exec_result",
-        ] + metrics_in_summary
-        data = []
-
-        for task in self.tasks:
-            if task.task_type == "simple":
-                data.append(
-                    (
-                        task.qid,
-                        task.db,
-                        task.question,
-                        task.evidence,
-                        task.gold_query.query,
-                        task.pred_query.query,
-                        task.gold_query.exec_result.to_readable() if task.gold_query.exec_result else "",
-                        task.pred_query.exec_result.to_readable() if task.pred_query.exec_result else "",
-                    )
-                    + tuple(task.metrics[m] for m in metrics_in_summary)
-                )
-            elif task.task_type == "ambig":
-                data.append(
-                    (
-                        task.qid,
-                        task.db,
-                        task.question,
-                        "",
-                        task.gold_intended_query.query,
-                        task.pred_intended_query.query,
-                        task.gold_intended_query.exec_result.to_readable() if task.gold_intended_query.exec_result else "",
-                        task.pred_intended_query.exec_result.to_readable() if task.pred_intended_query.exec_result else "",
-                    )
-                    + tuple(task.metrics[m] for m in metrics_in_summary)
-                )
-            else:
-                raise ValueError(f"Unsupported task type: {task.task_type}")
-
-        df = pd.DataFrame(data, columns=headers)
+        summaries = [task.to_summary(metrics_in_summary) for task in self.tasks]
+        df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
         df.to_csv(path, index=False)
 
 
