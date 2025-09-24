@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+import json
 from pydantic import TypeAdapter
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
@@ -37,7 +38,7 @@ class ARCSDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        with open(os.path.join(self.directory, "all_tasks.json"), "r") as f:
+        with open(os.path.join(self.directory, "tasks", "all_tasks.json"), "r") as f:
             tasks = TypeAdapter(list[AmbigNL2QTask]).validate_json(f.read())
         return [task for task in tasks if task.db in databases]
 
@@ -52,13 +53,22 @@ class ARCSDatasetLoader:
                     global_id=f"arcs+{name}",
                     db_name=name,
                     engine_type="async",
-                    url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', f'{name}.sqlite')}",
+                    url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', 'sqlite', f'{name}.sqlite')}",
                     max_concurrency_per_db=1,
                     dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases
             ]
         )
+
+        with open(os.path.join(self.directory, "databases", "column_meanings.json"), "r") as f:
+            column_descriptions = {
+                key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()
+            }
+        for conn in db_connectors:
+            for table in conn.schema.tables:
+                for column in table.columns:
+                    column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
     async def get_split_async(
