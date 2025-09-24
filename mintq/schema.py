@@ -505,17 +505,17 @@ class NL2QRunResult(BaseModel):
     aggregated_metrics: dict[str, Any]
     tasks: list[NL2QTaskOutput]
 
-    def to_directory(self, directory: str) -> None:
+    def to_directory(self, directory: str, metrics_in_summary: list[str] = []) -> None:
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "result.json"), "w") as f:
             f.write(self.model_dump_json(indent=2))
 
-        self.to_csv(os.path.join(directory, "result_tabular.csv"))
+        self.to_csv(os.path.join(directory, "result_summary.csv"), metrics_in_summary)
 
         for task in self.tasks:
             task.to_directory(os.path.join(directory, "readable", task.qid))
 
-    def to_csv(self, path: str, metrics_to_include: list[str] = []) -> None:
+    def to_csv(self, path: str, metrics_in_summary: list[str] = []) -> None:
         headers = [
             "qid",
             "db",
@@ -525,7 +525,7 @@ class NL2QRunResult(BaseModel):
             "pred_query",
             "gold_exec_result",
             "pred_exec_result",
-        ] + metrics_to_include
+        ] + metrics_in_summary
         data = []
 
         for task in self.tasks:
@@ -541,7 +541,7 @@ class NL2QRunResult(BaseModel):
                         task.gold_query.exec_result.to_readable() if task.gold_query.exec_result else "",
                         task.pred_query.exec_result.to_readable() if task.pred_query.exec_result else "",
                     )
-                    + tuple(task.metrics[m] for m in metrics_to_include)
+                    + tuple(task.metrics[m] for m in metrics_in_summary)
                 )
             elif task.task_type == "ambig":
                 data.append(
@@ -555,7 +555,7 @@ class NL2QRunResult(BaseModel):
                         task.gold_intended_query.exec_result.to_readable() if task.gold_intended_query.exec_result else "",
                         task.pred_intended_query.exec_result.to_readable() if task.pred_intended_query.exec_result else "",
                     )
-                    + tuple(task.metrics[m] for m in metrics_to_include)
+                    + tuple(task.metrics[m] for m in metrics_in_summary)
                 )
             else:
                 raise ValueError(f"Unsupported task type: {task.task_type}")
