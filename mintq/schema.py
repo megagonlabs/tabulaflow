@@ -4,7 +4,7 @@ import os
 import re
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
-from typing import Any, Literal, Annotated, Union, Sequence
+from typing import Any, Literal, Annotated, Union
 import pandas as pd
 import math
 import itertools
@@ -579,7 +579,7 @@ class NL2QDataset(BaseModel):
     split: str
     databases: list[str] | None  # None means all databases
     subsample_size: int | None
-    tasks: Sequence[NL2QTask]
+    tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
 

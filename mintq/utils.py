@@ -92,6 +92,7 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     for gq in task.gold_queries:
         gq.id = get_new_query_id(gq.id, ap_id_mapping)
 
+    assert task.gold_intended_query_id is not None
     task.gold_intended_query_id = get_new_query_id(task.gold_intended_query_id, ap_id_mapping)
 
     return AmbigNL2QTask.model_validate(task.model_dump())

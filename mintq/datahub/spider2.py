@@ -186,6 +186,6 @@ class Spider2SnowDatasetLoader:
             split=split,
             databases=databases,
             subsample_size=subsample_size,
-            tasks=tasks,
+            tasks=tasks,  # type: ignore
             db_connectors=db_connectors,
         )

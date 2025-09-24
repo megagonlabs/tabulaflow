@@ -23,22 +23,21 @@ async def run_model_async(
     agent_cls: Type[BaseAsyncNL2QAgent], agent_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
-    tasks_with_predictions = []
+    task_outputs = []
     for i in trange(0, len(dataset.tasks), batch_size):
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
-        tasks_with_predictions += await asyncio.gather(
+        task_outputs += await asyncio.gather(
             *[agent_cls(**agent_args).predict_async(task, dataset.db_connectors[task.db]) for task in batch]
         )
 
         if i == 0:
-            task = tasks_with_predictions[0]
-            trajectory = task.trajectory if task.task_type == "simple" else task.trajectories[0]
-            print(trajectory.to_readable())
+            if getattr(task_outputs[0], "trajectory", None):
+                print(task_outputs[0].trajectory.to_readable())  # type: ignore
 
     sample_agent = agent_cls(**agent_args)
-    aggregated_metrics = get_aggregated_metrics([task.metrics for task in tasks_with_predictions])
+    aggregated_metrics = get_aggregated_metrics([task.metrics for task in task_outputs])
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(
@@ -51,7 +50,7 @@ async def run_model_async(
         agent=sample_agent.name,
         agent_args=sample_agent.get_config(),
         aggregated_metrics=aggregated_metrics,
-        tasks=tasks_with_predictions,
+        tasks=task_outputs,
     )
 
 
