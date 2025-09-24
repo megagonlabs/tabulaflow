@@ -10,7 +10,7 @@ from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import avg_and_round, save_csv
 from mintq.datahub import get_dataset_loader
-from mintq.metric import get_metric, BaseAsyncNL2QMetric
+from mintq.metrics import get_metric, BaseAsyncNL2QMetric
 from mintq.toolhub.utils import format_df
 
 
