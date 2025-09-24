@@ -63,7 +63,7 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
 
     def get_new_query_id(query_id: str, char_mapping: dict[str, str]) -> str:
         parts = query_id.split("-")
-        parts = [parts[0]] + sorted([p.translate(str.maketrans(char_mapping)) for p in parts[1:]])
+        parts = [parts[0]] + sorted([p.translate(str.maketrans(char_mapping)) for p in parts[1:]])  # type: ignore
         return "-".join(parts)
 
     # Update the order of ambiguity points
@@ -76,7 +76,7 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]
     finite_ap_new_order = sorted(range(len(finite_aps)), key=lambda x: get_ap_location(finite_aps[x]))
     sql_idx = np.arange(len(task.gold_queries))
-    sql_idx = sql_idx.reshape([len(ap.interpretations) for ap in finite_aps])
+    sql_idx = sql_idx.reshape([len(ap.interpretations) for ap in finite_aps])  # type: ignore
     sql_idx = np.permute_dims(sql_idx, finite_ap_new_order)
     sql_idx = sql_idx.flatten()
     new_gold_queries = [task.gold_queries[i] for i in sql_idx]
@@ -92,6 +92,6 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     for gq in task.gold_queries:
         gq.id = get_new_query_id(gq.id, ap_id_mapping)
 
-    task.gold_intended_gold_query_id = get_new_query_id(task.gold_intended_gold_query_id, ap_id_mapping)
+    task.gold_intended_query_id = get_new_query_id(task.gold_intended_query_id, ap_id_mapping)
 
     return AmbigNL2QTask.model_validate(task.model_dump())
