@@ -41,23 +41,6 @@ def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[st
     return res
 
 
-def save_csv(result: NL2QRunResult, path: str, metrics_to_include: list[str] = []) -> None:
-    headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
-    data = []
-
-    for task in result.tasks:
-        if task.task_type != "simple":
-            raise ValueError("Only simple NL2Q tasks are supported currently")
-
-        data.append(
-            (task.qid, task.db, task.question, task.evidence, "\n\n".join(task.gold_queries), task.pred_query)
-            + tuple(task.metrics[m] for m in metrics_to_include)
-        )
-
-    df = pd.DataFrame(data, columns=headers)
-    df.to_csv(path, index=False)
-
-
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
     task = copy.deepcopy(task)
     finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]

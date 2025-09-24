@@ -315,7 +315,7 @@ class AmbigNL2QTask(BaseModel):
     question: str
     gold_ambiguity_points: Annotated[list[GoldAmbiguityPoint], AfterValidator(is_id_unique)]
     gold_queries: Annotated[list[GoldQuery], AfterValidator(is_id_unique)]
-    gold_intended_gold_query_id: str | None
+    gold_intended_query_id: str | None
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
@@ -358,7 +358,7 @@ class AmbigNL2QTask(BaseModel):
     @model_validator(mode="after")
     def validate_has_intended_resolution(self) -> "AmbigNL2QTask":
         if self.has_intended_resolution:
-            assert self.gold_intended_gold_query_id is not None
+            assert self.gold_intended_query_id is not None
             assert all(
                 ap.intended_interpretation_idx is not None for ap in self.gold_ambiguity_points if ap.type == "finite"
             )
@@ -366,7 +366,7 @@ class AmbigNL2QTask(BaseModel):
                 ap.indended_parameter_value is not None for ap in self.gold_ambiguity_points if ap.type == "infinite"
             )
         else:
-            assert self.gold_intended_gold_query_id is None
+            assert self.gold_intended_query_id is None
             assert all(
                 ap.intended_interpretation_idx is None for ap in self.gold_ambiguity_points if ap.type == "finite"
             )
@@ -384,7 +384,7 @@ class AmbigNL2QTask(BaseModel):
             if ap.type == "infinite"
         )
         gold_query_ids = set(gq.id for gq in self.gold_queries)
-        assert self.gold_intended_gold_query_id is None or self.gold_intended_gold_query_id in gold_query_ids
+        assert self.gold_intended_query_id is None or self.gold_intended_query_id in gold_query_ids
         return self
 
 
@@ -502,6 +502,22 @@ class NL2QRunResult(BaseModel):
 
         for task in self.tasks:
             task.to_directory(os.path.join(directory, "readable", task.qid))
+
+    def to_csv(self, path: str, metrics_to_include: list[str] = []) -> None:
+        headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
+        data = []
+
+        for task in self.tasks:
+            if task.task_type != "simple":
+                raise ValueError("Only simple NL2Q tasks are supported currently")
+
+            data.append(
+                (task.qid, task.db, task.question, task.evidence, task.gold_query.query, task.pred_query)
+                + tuple(task.metrics[m] for m in metrics_to_include)
+            )
+
+        df = pd.DataFrame(data, columns=headers)
+        df.to_csv(path, index=False)
 
 
 class BaseDBSchema(BaseModel):
