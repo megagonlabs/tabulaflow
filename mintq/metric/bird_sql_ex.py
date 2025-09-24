@@ -5,9 +5,6 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 class BirdSQLEx:
     name = "bird_sql_ex"
 
-    def __init__(self, timeout: int = 30):
-        self.timeout = timeout
-
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
         if task.pred_query.exec_result.error or task.gold_query.exec_result.error:
             return 0.0

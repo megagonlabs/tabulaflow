@@ -7,9 +7,6 @@ from mintq.schema import SimpleNL2QTaskOutput
 class BirdSQLExSoft:
     name = "bird_sql_ex_soft"
 
-    def __init__(self, timeout: int = 30):
-        self.timeout = timeout
-
     def _compare(self, pred_executed: list[tuple[Any, ...]], gold_executed: list[tuple[Any, ...]]) -> float:
         if not gold_executed and not pred_executed:
             return 1.0
@@ -37,12 +34,11 @@ class BirdSQLExSoft:
         return 0.0
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
-        if task.pred_exec_result is None:
+        if task.pred_query.exec_result.error or task.gold_query.exec_result.error:
             return 0.0
 
-        pred_executed = [tuple(d.values()) for d in task.pred_exec_result]
-        for exec_result in task.gold_exec_results:
-            gold_executed = [tuple(d.values()) for d in exec_result]
-            if self._compare(pred_executed, gold_executed) == 1.0:
-                return 1.0
+        pred_executed = [row for row in task.pred_query.exec_result.df.itertuples(index=False, name=None)]
+        gold_executed = [row for row in task.gold_query.exec_result.df.itertuples(index=False, name=None)]
+        if self._compare(pred_executed, gold_executed) == 1.0:
+            return 1.0
         return 0.0

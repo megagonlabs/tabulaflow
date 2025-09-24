@@ -110,8 +110,8 @@ class ExecResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_df_or_error(self) -> "ExecResult":
-        if self.df is None and self.error is None:
-            raise ValueError("Either df or error must be set")
+        if self.df is None and self.error is None or self.df is not None and self.error is not None:
+            raise ValueError("ExecResult must have either df or error, but not both")
         return self
 
     def to_readable(self) -> str:

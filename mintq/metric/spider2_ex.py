@@ -83,12 +83,11 @@ class Spider2Ex:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
-        if task.pred_exec_result is None:
+        if task.pred_query.exec_result.error:
             return 0.0
 
-        pred_df = pd.DataFrame(task.pred_exec_result)
-
-        gold_dfs = [pd.DataFrame(exec_result) for exec_result in task.gold_exec_results]
+        pred_df = task.pred_query.exec_result.df
+        gold_dfs = [exec_result.df for exec_result in task.gold_query.all_exec_results if exec_result.df is not None]
 
         if not gold_dfs:
             return 0.0
