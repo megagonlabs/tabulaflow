@@ -10,10 +10,9 @@ from sqlalchemy import (
 )
 import os
 from mintq.db_connector import SQLConnector
-from mintq.modelhub import SimpleZeroShotNL2Q
-from mintq.schema import SimpleNL2QTask
+from mintq.agenthub import SimpleZeroShotNL2Q
+from mintq.schema import SimpleNL2QTask, GoldQuery
 from mintq.formatters import SQLDefaultSchemaFormatter
-from mintq.utils import format_trajectory
 
 
 def create_db(db_path: str) -> None:
@@ -67,18 +66,19 @@ async def main() -> None:
     )
     model = SimpleZeroShotNL2Q(
         llm="openai/gpt-4.1-mini",
-        schema_formatter=SQLDefaultSchemaFormatter(),  # type: ignore
+        schema_formatter=SQLDefaultSchemaFormatter(),
     )
     task = SimpleNL2QTask(
         qid="001",
         language="sqlite",
         db="city_stats",
         question="What is the population of Toronto?",
+        gold_query=GoldQuery(query="SELECT population FROM city_stats WHERE city_name = 'Toronto';"),
     )
-    output = await model.predict_async(task, db_connector)  # type: ignore
-    print(format_trajectory(output.trajectory))  # or print(output.pred_query)
-    result = await db_connector.run_query_async(output.pred_query)
-    print(result)
+    output = await model.predict_async(task, db_connector)
+    print(output.trajectory.to_readable())
+    exec_result = await db_connector.run_query_async(output.pred_query.query)
+    print(exec_result.to_readable())
 
 
 if __name__ == "__main__":

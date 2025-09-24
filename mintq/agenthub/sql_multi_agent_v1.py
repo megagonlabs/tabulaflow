@@ -176,7 +176,7 @@ class SQLMultiAgentV1:
             instructions=jinja2.Template(SQL_WRITING_SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_reached_processor(self.sql_writing_max_steps)],
         )
-        agent_no_tools = Agent[None, str](
+        agent_no_tools = Agent[None, str](  # type: ignore
             get_pydantic_ai_llm(self.llm),
             tools=[],
             deps_type=None,

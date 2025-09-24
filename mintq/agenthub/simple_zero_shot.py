@@ -6,8 +6,8 @@ import logging
 import asyncio
 from typing import Any
 from mintq.utils import extract_code, get_llm_api_cost
-from mintq.formatters import BaseSchemaFormatter
-from mintq.db_connector import BaseAsyncDBConnector
+from mintq.formatters import BaseSchemaFormatter, BaseSQLSchemaFormatter
+from mintq.db_connector import BaseAsyncDBConnector, BaseAsyncSQLDBConnector
 from mintq.schema import (
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
@@ -58,7 +58,7 @@ class SimpleZeroShotNL2Q:
     def __init__(
         self,
         llm: str,
-        schema_formatter: BaseSchemaFormatter,
+        schema_formatter: BaseSchemaFormatter | BaseSQLSchemaFormatter,
         temperature: float = 0.0,
         num_candidates: int = 1,
         litellm_kwargs: dict[str, Any] = {},
@@ -76,7 +76,9 @@ class SimpleZeroShotNL2Q:
             "num_candidates": self.num_candidates,
         }
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(
+        self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector | BaseAsyncSQLDBConnector
+    ) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self.schema_formatter.format(db_connector.schema)
