@@ -1,4 +1,3 @@
-import math
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseAsyncDBConnector
 

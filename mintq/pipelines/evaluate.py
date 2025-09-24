@@ -1,17 +1,13 @@
 import argparse
-import copy
 import time
 import asyncio
-import random
 import os
-import pandas as pd
 from tqdm import trange
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from mintq.utils import avg_and_round, save_csv
+from mintq.utils import avg_and_round
 from mintq.datahub import get_dataset_loader
 from mintq.metrics import get_metric, BaseAsyncNL2QMetric
-from mintq.toolhub.utils import format_df
 
 
 async def compute_metrics_async(
