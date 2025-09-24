@@ -108,9 +108,9 @@ class ExecResult(BaseModel):
     def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
         if isinstance(df_dict, pd.DataFrame):
             return df_dict
-        df = pd.DataFrame(df_dict["data"])
-        for col, dtype in df_dict["schema"]["dtypes"].items():
-            df[col] = df[col].astype(dtype)
+        dtypes = df_dict["schema"]["dtypes"]
+        df = pd.DataFrame(df_dict["data"], columns=list(dtypes.keys()))
+        df = df.astype(dtypes)
         return df
 
     @model_validator(mode="after")

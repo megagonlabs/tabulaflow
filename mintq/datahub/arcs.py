@@ -2,7 +2,6 @@ import os
 import asyncio
 import random
 import json
-from pydantic import TypeAdapter
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 
@@ -39,7 +38,7 @@ class ARCSDatasetLoader:
 
         databases = databases or self.get_databases(split)
         with open(os.path.join(self.directory, "tasks", "all_tasks.json"), "r") as f:
-            tasks = TypeAdapter(list[AmbigNL2QTask]).validate_json(f.read())
+            tasks = [AmbigNL2QTask.model_validate(dic) for dic in json.load(f)]
         return [task for task in tasks if task.db in databases]
 
     async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
