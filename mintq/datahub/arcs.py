@@ -37,7 +37,7 @@ class ARCSDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        with open(os.path.join(self.directory, "dataset.json"), "r") as f:
+        with open(os.path.join(self.directory, "all_tasks.json"), "r") as f:
             tasks = TypeAdapter(list[AmbigNL2QTask]).validate_json(f.read())
         return [task for task in tasks if task.db in databases]
 

@@ -141,7 +141,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
         question=data["generated_task"],
         gold_ambiguity_points=gold_ambiguity_points,
         gold_queries=gold_queries,
-        gold_intended_gold_query_id=gold_intended_query_id,
+        gold_intended_query_id=gold_intended_query_id,
         has_intended_resolution=True,
     )
     return sort_ambiguity_points(task)
@@ -217,7 +217,7 @@ async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConne
 async def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--input_dir", default="../ambig-text2sql/dataset_v1_filtered/")
-    parser.add_argument("--output_dir", default="data/ARCS/tasks_1/")
+    parser.add_argument("--output_dir", default="data/ARCS/tasks/")
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--no_exec", action="store_true")
@@ -240,8 +240,8 @@ async def main():
     t0 = time.time()
     if not args.no_exec:
         dataset_loader = get_dataset_loader("arcs")
-        dataset = await dataset_loader.get_split_async("dev")
-        print(f"Loaded {len(dataset.db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
+        db_connectors = await dataset_loader.get_db_connectors_async("dev")
+        print(f"Loaded {len(db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
 
     # task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
     # task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
@@ -340,7 +340,7 @@ async def main():
     for i in range(0, len(all_data), args.batch_size):
         batch = all_data[i : i + args.batch_size]
         tasks = await asyncio.gather(
-            *[populate_gold_exec_results(task, dataset.db_connectors[task.db]) for task in batch]
+            *[populate_gold_exec_results(task, db_connectors[task.db]) for task in batch]
         )
         res += [task for task in tasks if task is not None]
 
@@ -351,7 +351,7 @@ async def main():
         f.write(TypeAdapter(list[AmbigNL2QTask]).dump_json(res, indent=2).decode())
 
     for task in res:
-        task.to_directory(os.path.join(args.output_dir, task.qid))
+        task.to_directory(os.path.join(args.output_dir, "readable", task.qid))
 
     print(f"{len(res)} tasks saved to {output_path}")
     print(f"Finished in {time.time() - t0:.2f} seconds.")
