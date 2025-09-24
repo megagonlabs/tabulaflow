@@ -1,6 +1,7 @@
 import os
 import asyncio
 import random
+from pydantic import TypeAdapter
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 
@@ -36,7 +37,8 @@ class ARCSDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        tasks = [AmbigNL2QTask.from_directory(os.path.join(self.directory, "tasks", f"{i:03d}")) for i in range(1, 102)]
+        with open(os.path.join(self.directory, "dataset.json"), "r") as f:
+            tasks = TypeAdapter(list[AmbigNL2QTask]).validate_json(f.read())
         return [task for task in tasks if task.db in databases]
 
     async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:

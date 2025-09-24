@@ -176,7 +176,7 @@ class PredQuery(BaseModel):
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
-        if self.exec_result is not None:
+        if self.exec_result is not None and self.exec_result.df is not None:
             self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
 
     def to_readable(self) -> str:

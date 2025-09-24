@@ -25,16 +25,16 @@ class RunQueryTool:
             query: The SQL query to execute.
         """
         db_connector = self.db_connector
-        try:
-            exec_result = await db_connector.run_query_async(query)
-            df = exec_result.df
-        except TimeoutError:
-            self.metrics_.error_timeout += 1
-            return "(query timed out after 30 seconds)"
-        except Exception as e:
-            self.metrics_.error_query_failed += 1
-            return f"(query failed: {e})"
+        exec_result = await db_connector.run_query_async(query, timeout=30)
+        if exec_result.df is None:
+            if "timed out" in exec_result.error:  # type: ignore
+                self.metrics_.error_timeout += 1
+                return "(query timed out after 30 seconds)"
+            else:
+                self.metrics_.error_query_failed += 1
+                return f"(query failed: {exec_result.error})"
 
+        df = exec_result.df
         if df.empty:
             return "(Warning: query executed successfully, but results are empty, the query might be incorrect)"
 
