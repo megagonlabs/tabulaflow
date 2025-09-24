@@ -516,13 +516,13 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
             qid=self.qid,
             db=self.db,
             question=self.question,
-            gold_query=self.gold_intended_query.query,
-            pred_query=self.pred_intended_query.query,
+            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
+            pred_query=self.pred_intended_query.query if self.pred_intended_query else None,
             gold_exec_result=self.gold_intended_query.exec_result.to_readable()
-            if getattr(self.gold_intended_query, "exec_result", None)
+            if self.gold_intended_query and self.gold_intended_query.exec_result
             else None,
             pred_exec_result=self.pred_intended_query.exec_result.to_readable()
-            if getattr(self.pred_intended_query, "exec_result", None)
+            if self.pred_intended_query and self.pred_intended_query.exec_result
             else None,
             metrics={m: self.metrics.get(m) for m in metrics_in_summary},
         )
