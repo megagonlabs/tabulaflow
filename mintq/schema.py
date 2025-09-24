@@ -435,6 +435,22 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_intended_query: PredQuery
     metrics: dict[str, Any]
 
+    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+        return CSVSummaryRow(
+            qid=self.qid,
+            db=self.db,
+            question=self.question,
+            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
+            pred_query=self.pred_intended_query.query,
+            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
+            if self.gold_intended_query and self.gold_intended_query.exec_result
+            else None,
+            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
+            if self.pred_intended_query.exec_result
+            else None,
+            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+        )
+
 
 class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
@@ -444,8 +460,31 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-flat"] = "ambig-flat"
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
-    pred_intended_query_id: str
+    pred_intended_query_id: str | None
     metrics: dict[str, Any]
+
+    @property
+    def pred_intended_query(self) -> PredQuery | None:
+        if self.pred_intended_query_id is None:
+            return None
+        id_to_query = {pq.id: pq for pq in self.pred_queries}
+        return id_to_query[self.pred_intended_query_id]
+
+    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+        return CSVSummaryRow(
+            qid=self.qid,
+            db=self.db,
+            question=self.question,
+            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
+            pred_query=self.pred_intended_query.query if self.pred_intended_query else None,
+            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
+            if self.gold_intended_query and self.gold_intended_query.exec_result
+            else None,
+            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
+            if self.pred_intended_query and self.pred_intended_query.exec_result
+            else None,
+            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+        )
 
 
 class PredAmbiguityPointFinite(BaseModel):
