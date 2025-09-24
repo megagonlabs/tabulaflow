@@ -516,13 +516,31 @@ class NL2QRunResult(BaseModel):
             task.to_directory(os.path.join(directory, "readable", task.qid))
 
     def to_csv(self, path: str, metrics_to_include: list[str] = []) -> None:
-        headers = ["qid", "db", "question", "evidence", "gold_query", "pred_query"] + metrics_to_include
+        headers = [
+            "qid",
+            "db",
+            "question",
+            "evidence",
+            "gold_query",
+            "pred_query",
+            "gold_exec_result",
+            "pred_exec_result",
+        ] + metrics_to_include
         data = []
 
         for task in self.tasks:
             if task.task_type == "simple":
                 data.append(
-                    (task.qid, task.db, task.question, task.evidence, task.gold_query.query, task.pred_query.query)
+                    (
+                        task.qid,
+                        task.db,
+                        task.question,
+                        task.evidence,
+                        task.gold_query.query,
+                        task.pred_query.query,
+                        task.gold_query.exec_result.to_readable() if task.gold_query.exec_result else "",
+                        task.pred_query.exec_result.to_readable() if task.pred_query.exec_result else "",
+                    )
                     + tuple(task.metrics[m] for m in metrics_to_include)
                 )
             elif task.task_type == "ambig":
@@ -534,6 +552,8 @@ class NL2QRunResult(BaseModel):
                         "",
                         task.gold_intended_query.query,
                         task.pred_intended_query.query,
+                        task.gold_intended_query.exec_result.to_readable() if task.gold_intended_query.exec_result else "",
+                        task.pred_intended_query.exec_result.to_readable() if task.pred_intended_query.exec_result else "",
                     )
                     + tuple(task.metrics[m] for m in metrics_to_include)
                 )
