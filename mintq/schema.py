@@ -319,6 +319,11 @@ class AmbigNL2QTask(BaseModel):
     """Ground-truth query intended by the user"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
+    @property
+    def gold_intended_query(self) -> GoldQuery:
+        id_to_query = {gq.id: gq for gq in self.gold_queries}
+        return id_to_query[self.gold_intended_query_id]
+
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         for gq in self.gold_queries:
@@ -445,6 +450,11 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_intended_query_id: str
     metrics: dict[str, Any]
 
+    @property
+    def pred_intended_query(self) -> PredQuery:
+        id_to_query = {pq.id: pq for pq in self.pred_queries}
+        return id_to_query[self.pred_intended_query_id]
+
     @model_validator(mode="after")
     def validate_pred_queries(self) -> "StructuredAmbigNL2QTaskOutput":
         # Pred query ID must match the pattern "PQRY(-[A-Z]+\.[0-9]+)*" (e.g. "PQRY-A.2-B.0")
@@ -500,6 +510,8 @@ class NL2QRunResult(BaseModel):
         with open(os.path.join(directory, "result.json"), "w") as f:
             f.write(self.model_dump_json(indent=2))
 
+        self.to_csv(os.path.join(directory, "result_tabular.csv"))
+
         for task in self.tasks:
             task.to_directory(os.path.join(directory, "readable", task.qid))
 
@@ -508,13 +520,25 @@ class NL2QRunResult(BaseModel):
         data = []
 
         for task in self.tasks:
-            if task.task_type != "simple":
-                raise ValueError("Only simple NL2Q tasks are supported currently")
-
-            data.append(
-                (task.qid, task.db, task.question, task.evidence, task.gold_query.query, task.pred_query)
-                + tuple(task.metrics[m] for m in metrics_to_include)
-            )
+            if task.task_type == "simple":
+                data.append(
+                    (task.qid, task.db, task.question, task.evidence, task.gold_query.query, task.pred_query.query)
+                    + tuple(task.metrics[m] for m in metrics_to_include)
+                )
+            elif task.task_type == "ambig":
+                data.append(
+                    (
+                        task.qid,
+                        task.db,
+                        task.question,
+                        "",
+                        task.gold_intended_query.query,
+                        task.pred_intended_query.query,
+                    )
+                    + tuple(task.metrics[m] for m in metrics_to_include)
+                )
+            else:
+                raise ValueError(f"Unsupported task type: {task.task_type}")
 
         df = pd.DataFrame(data, columns=headers)
         df.to_csv(path, index=False)
