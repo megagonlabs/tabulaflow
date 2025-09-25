@@ -20,7 +20,7 @@ _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 @dataclass
 class QueryResult:
     result: list[tuple[Any, ...]] | pd.DataFrame
-    latency_seconds: float | None = None
+    latency_seconds: float
 
 
 @dataclass
