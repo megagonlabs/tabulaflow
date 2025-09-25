@@ -5,8 +5,7 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool
 
@@ -138,7 +137,7 @@ class SQLAgentV2:
             messages = result.all_messages()
             fallback = True
         pred_query = PredQuery(query=extract_code(result.output))
-        trajectory = pydantic_ai_messages_to_trajectory(messages)
+        trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
         usage = result.usage()
         metrics = {}

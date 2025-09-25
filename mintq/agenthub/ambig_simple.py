@@ -6,8 +6,7 @@ from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
+from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
 from mintq.agenthub.user_simulator import UserSimulator
@@ -149,7 +148,7 @@ class AmbigSimpleSQLAgent:
             messages = result.all_messages()
             fallback = True
         pred_query = PredQuery(query=extract_code(result.output))
-        trajectory = pydantic_ai_messages_to_trajectory(messages)
+        trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
         usage = result.usage()
         metrics = {}

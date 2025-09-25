@@ -2,7 +2,6 @@ from typing import ClassVar, Callable
 from pydantic_ai import RunContext, ModelRetry
 from dataclasses import field, dataclass
 from pydantic import BaseModel
-from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.schema import Trajectory
 
 
@@ -29,7 +28,7 @@ class FinishTool:
 
     def as_pydantic_ai_tool(self) -> Callable[[RunContext], str]:
         def finish(ctx: RunContext) -> str:
-            trajectory = pydantic_ai_messages_to_trajectory(ctx.messages)
+            trajectory = Trajectory.from_pydantic_ai_messages(ctx.messages)
             try:
                 return self(trajectory)
             except ValueError:
