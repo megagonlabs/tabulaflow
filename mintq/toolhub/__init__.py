@@ -5,6 +5,7 @@ from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.finish import FinishTool
 from mintq.toolhub.show_table_section import ShowTableSectionTool
 from mintq.toolhub.mark_relevant_column import MarkRelevantColumnTool
+from mintq.toolhub.ask_user import AskUserTool
 
 __all__ = [
     "BaseTool",
@@ -14,4 +15,5 @@ __all__ = [
     "FinishTool",
     "ShowTableSectionTool",
     "MarkRelevantColumnTool",
+    "AskUserTool",
 ]
