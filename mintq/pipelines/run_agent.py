@@ -8,7 +8,7 @@ import asyncio
 import logfire
 import litellm
 from tqdm import trange
-from mintq.utils import avg_and_round, aggregate_metrics
+from mintq.utils import aggregate_metrics
 from mintq.formatters import get_schema_formatter
 from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader

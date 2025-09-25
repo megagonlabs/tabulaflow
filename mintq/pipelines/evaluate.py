@@ -5,7 +5,7 @@ import os
 from tqdm import trange
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from mintq.utils import avg_and_round
+from mintq.utils import aggregate_metrics
 from mintq.datahub import get_dataset_loader
 from mintq.metrics import get_metric, BaseAsyncNL2QMetric
 
@@ -15,7 +15,7 @@ async def compute_metrics_async(
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task=task, db_connector=db_connector) for m in metrics])
     for m, r in zip(metrics, results):
-        task.metrics[m.name] = r
+        task.metrics["eval"][m.name] = r
     return task
 
 
@@ -29,8 +29,9 @@ async def evaluate_async(
                 for task in result.tasks[i : i + batch_size]
             ]
         )
-    aggregated_metrics = {m.name: avg_and_round([task.metrics[m.name] for task in result.tasks]) for m in metrics}
-    result.aggregated_metrics.update(aggregated_metrics)
+    result.aggregated_metrics["eval"] = aggregate_metrics(
+        [task.metrics["eval"] for task in result.tasks], ops=["avg"], decimals=4
+    )
     return result
 
 
