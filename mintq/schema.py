@@ -105,11 +105,11 @@ class ExecResult(BaseModel):
 
     @field_validator("df", mode="before")
     @classmethod
-    def deserialize_df(cls, df_dict: dict[str, Any]) -> pd.DataFrame:
-        if isinstance(df_dict, pd.DataFrame):
-            return df_dict
-        dtypes = df_dict["schema"]["dtypes"]
-        df = pd.DataFrame(df_dict["data"], columns=list(dtypes.keys()))
+    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame:
+        if v is None or isinstance(v, pd.DataFrame):
+            return v
+        dtypes = v["schema"]["dtypes"]
+        df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
         df = df.astype(dtypes)
         return df
 
@@ -433,6 +433,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
+    trajectory: Trajectory
     metrics: dict[str, Any]
 
     def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
