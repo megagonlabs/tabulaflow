@@ -49,13 +49,25 @@ async def run_agent_async(
 
     sample_agent = agent_cls(**agent_args)
     aggregated_metrics = {}
-    aggregated_metrics["avg_latency_seconds"] = avg_and_round([task.metrics["latency_seconds"] for task in task_outputs])
+    aggregated_metrics["avg_latency_seconds"] = avg_and_round(
+        [task.metrics["latency_seconds"] for task in task_outputs]
+    )
     aggregated_metrics["avg_steps"] = avg_and_round([task.metrics["steps"] for task in task_outputs])
-    aggregated_metrics["total_api_calls"] = sum([sum(usage.api_calls for usage in task.usages) for task in task_outputs])
-    aggregated_metrics["total_input_tokens"] = sum([sum(usage.input_tokens for usage in task.usages) for task in task_outputs])
-    aggregated_metrics["total_output_tokens"] = sum([sum(usage.output_tokens for usage in task.usages) for task in task_outputs])
-    aggregated_metrics["avg_api_cost_usd"] = avg_and_round([sum(usage.api_cost_usd for usage in task.usages) for task in task_outputs], 4)
-    aggregated_metrics["total_api_cost_usd"] = round(sum([usage.api_cost_usd for task in task_outputs for usage in task.usages]), 4)
+    aggregated_metrics["total_api_calls"] = sum(
+        [sum(usage.api_calls for usage in task.usages) for task in task_outputs]
+    )
+    aggregated_metrics["total_input_tokens"] = sum(
+        [sum(usage.input_tokens for usage in task.usages) for task in task_outputs]
+    )
+    aggregated_metrics["total_output_tokens"] = sum(
+        [sum(usage.output_tokens for usage in task.usages) for task in task_outputs]
+    )
+    aggregated_metrics["avg_api_cost_usd"] = avg_and_round(
+        [sum(usage.api_cost_usd for usage in task.usages) for task in task_outputs], 4
+    )
+    aggregated_metrics["total_api_cost_usd"] = round(
+        sum([usage.api_cost_usd for task in task_outputs for usage in task.usages]), 4
+    )
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(
@@ -76,7 +88,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
-    parser.add_argument("--llm", default="openai/gpt-4o")
+    parser.add_argument("--llm", default="openai:gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--local_llm_config", default="local_llm_config.json")

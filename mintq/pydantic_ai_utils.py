@@ -4,13 +4,6 @@ from pydantic_ai.models.openai import OpenAIModel
 from mintq.schema import Trajectory, ToolCall, AssistantMessage, ToolResponse, UserMessage, SystemMessage
 
 
-def get_pydantic_ai_llm(litellm_id: str) -> pydantic_ai.models.Model:
-    provider, model = litellm_id.split("/", 1)
-    if provider == "openai":
-        return OpenAIModel(model_name=model)
-    else:
-        raise ValueError(f"Unsupported provider: {provider}")
-
 
 def pydantic_ai_messages_to_trajectory(messages: list[pydantic_ai.messages.ModelMessage]) -> Trajectory:
     trajectory = Trajectory(messages=[])

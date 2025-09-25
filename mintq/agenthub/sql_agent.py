@@ -7,7 +7,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
+from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
@@ -111,7 +111,7 @@ class SQLAgent:
             finish_tool,
         ]
         agent = Agent[TaskContext, str](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[
                 # list_columns_tool.as_pydantic_ai_tool(),
                 # show_table_section_tool.as_pydantic_ai_tool(),
@@ -128,7 +128,7 @@ class SQLAgent:
         agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,

@@ -6,7 +6,7 @@ from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
+from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, ListColumnsTool, SearchKeywordsTool, FinishTool
 
@@ -92,7 +92,7 @@ class SQLAgentV2:
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         agent = Agent[TaskContext, str](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[
                 list_columns_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
@@ -107,7 +107,7 @@ class SQLAgentV2:
         agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,

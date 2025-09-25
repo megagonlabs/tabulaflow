@@ -7,7 +7,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
+from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool, MarkRelevantColumnTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
@@ -149,7 +149,7 @@ class SQLMultiAgentV1:
         show_table_section_tool = ShowTableSectionTool(hschema, self.hschema_formatter)
         mark_relevant_column_tool = MarkRelevantColumnTool(hschema)
         schema_linking_agent = Agent[None, None](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[
                 show_table_section_tool.as_pydantic_ai_tool(),
                 mark_relevant_column_tool.as_pydantic_ai_tool(),
@@ -165,7 +165,7 @@ class SQLMultiAgentV1:
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         sql_writing_agent = Agent[None, str](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
@@ -177,7 +177,7 @@ class SQLMultiAgentV1:
             history_processors=[get_max_steps_reached_processor(self.sql_writing_max_steps)],
         )
         agent_no_tools = Agent[None, str](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[],
             deps_type=None,
             instructions=jinja2.Template(SQL_WRITING_SYSTEM_PROMPT).render(language=task.language),

@@ -7,7 +7,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage
-from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
+from mintq.pydantic_ai_utils import pydantic_ai_messages_to_trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
 from mintq.agenthub.user_simulator import UserSimulator
@@ -104,7 +104,7 @@ class AmbigSimpleSQLAgent:
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         agent = Agent[TaskContext, str](  # type: ignore
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[
                 ask_user_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
@@ -119,7 +119,7 @@ class AmbigSimpleSQLAgent:
         agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
-            get_pydantic_ai_llm(self.llm),
+            model=self.llm,
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,
