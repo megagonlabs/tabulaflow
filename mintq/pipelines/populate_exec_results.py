@@ -31,10 +31,10 @@ async def populate_task_async(
     return task
 
 
-async def populate_exec_results_async(result: NL2QRunResult, dataset: NL2QDataset, batch_size: int) -> NL2QRunResult:
+async def populate_exec_results_async(result: NL2QRunResult, dataset: NL2QDataset, batch_size: int, timeout: int | None = None) -> NL2QRunResult:
     for i in trange(0, len(result.tasks), batch_size):
         await asyncio.gather(
-            *[populate_task_async(task, dataset.db_connectors[task.db]) for task in result.tasks[i : i + batch_size]]
+            *[populate_task_async(task, dataset.db_connectors[task.db], timeout) for task in result.tasks[i : i + batch_size]]
         )
     return result
 
