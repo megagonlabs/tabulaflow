@@ -11,14 +11,14 @@ all_model_classes = [SimpleZeroShotNL2Q, SQLAgent, SQLAgentV1, SQLAgentV2, SQLMu
 model_registry: dict[str, type[BaseAsyncNL2QAgent]] = {cls.name: cls for cls in all_model_classes}  # type: ignore
 
 
-def get_nl2q_model_class(name: str) -> type[BaseAsyncNL2QAgent]:
+def get_nl2q_agent_class(name: str) -> type[BaseAsyncNL2QAgent]:
     if name not in model_registry:
         raise ValueError(f"Unknown NL2Q model: {name}")
     return model_registry[name]
 
 
 __all__ = [
-    "get_nl2q_model_class",
+    "get_nl2q_agent_class",
     "BaseAsyncNL2QAgent",
     "SimpleZeroShotNL2Q",
     "SQLAgent",

@@ -10,7 +10,7 @@ import litellm
 from tqdm import trange
 from mintq.utils import get_llm_api_cost, get_aggregated_metrics
 from mintq.formatters import get_schema_formatter
-from mintq.agenthub import get_nl2q_model_class, BaseAsyncNL2QAgent
+from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult
@@ -20,7 +20,7 @@ logfire.configure(service_name="otel", send_to_logfire="if-token-present", conso
 logfire.instrument_pydantic_ai()
 
 
-async def run_model_async(
+async def run_agent_async(
     agent_cls: Type[BaseAsyncNL2QAgent], agent_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
@@ -67,7 +67,7 @@ async def run_model_async(
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="sql_agent")
+    parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai/gpt-4o")
     parser.add_argument("--temperature", default=0.0, type=float)
@@ -129,8 +129,8 @@ async def main_async() -> None:
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    model_class = get_nl2q_model_class(args.model)
-    result = await run_model_async(model_class, nl2q_kwargs, dataset, args.batch_size)
+    agent_class = get_nl2q_agent_class(args.agent)
+    result = await run_agent_async(agent_class, nl2q_kwargs, dataset, args.batch_size)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
 
