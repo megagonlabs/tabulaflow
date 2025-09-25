@@ -18,6 +18,12 @@ _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
 @dataclass
+class QueryResult:
+    result: list[tuple[Any, ...]] | pd.DataFrame
+    latency_seconds: float | None = None
+
+
+@dataclass
 class ThrottledEngine:
     engine_type: Literal["async", "sync"]
     engine: AsyncEngine | sqlalchemy.engine.Engine
@@ -105,22 +111,34 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
         return_df: bool = False,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+    ) -> QueryResult:
         if isinstance(query, str):
             query = sqlalchemy.text(query)
 
         async with self.throttle():
+            t0 = time.time()
             try:
                 if self.engine_type == "async":
                     if self.engine.dialect.name == "sqlite":
-                        return await self._run_query_aiosqlite(query, parameters, return_df, timeout)
+                        return QueryResult(
+                            result=await self._run_query_aiosqlite(query, parameters, return_df, timeout),
+                            latency_seconds=time.time() - t0,
+                        )
                     else:
-                        return await asyncio.wait_for(self._run_query_a(query, parameters, return_df), timeout=timeout)
+                        return QueryResult(
+                            result=await asyncio.wait_for(
+                                self._run_query_a(query, parameters, return_df), timeout=timeout
+                            ),
+                            latency_seconds=time.time() - t0,
+                        )
                 else:
                     loop = asyncio.get_running_loop()
-                    return await asyncio.wait_for(
-                        loop.run_in_executor(None, self._run_query_s, query, parameters, return_df),
-                        timeout=timeout,
+                    return QueryResult(
+                        result=await asyncio.wait_for(
+                            loop.run_in_executor(None, self._run_query_s, query, parameters, return_df),
+                            timeout=timeout,
+                        ),
+                        latency_seconds=time.time() - t0,
                     )
             except asyncio.TimeoutError:
                 raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
@@ -230,19 +248,27 @@ async def build_column_async(
 
     if num_rows > 0:
         dialect = t_eng.engine.dialect.name
-        num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None))))[0][0]
+        num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
+            0
+        ]
         null_ratio = num_null / num_rows
 
         if dtype in CATEGORICAL_TYPES:
-            num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx")))[0][0]
+            num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx"))).result[0][
+                0
+            ]
             unique_ratio = num_unique / num_rows
-            examples = await t_eng.run_query_async(
-                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
-            )
+            examples = (
+                await t_eng.run_query_async(
+                    select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
+                )
+            ).result
         else:
             num_unique = None
             unique_ratio = None
-            examples = await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(20))
+            examples = (
+                await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(20))
+            ).result
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
@@ -265,7 +291,7 @@ async def build_table_async(
     t_eng: ThrottledEngine, table_name: str, schema_name: str | None, is_view: bool = False
 ) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl)))[0][0]
+    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
 
     async_inspector = AsyncInspector(t_eng)
 
@@ -366,11 +392,11 @@ class SQLConnector:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult:
-        t0 = time.time()
-        df = None
-        error = None
+        df, error, latency_seconds = None, None, None
         try:
-            df = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
+            result = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
+            df = result.result
+            latency_seconds = result.latency_seconds
         except Exception as e:
             error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
-        return ExecResult(df=df, error=error, latency_seconds=time.time() - t0)
+        return ExecResult(df=df, error=error, latency_seconds=latency_seconds)
