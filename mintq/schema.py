@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_serializer, model_validator, AfterV
 from pydantic.types import StringConstraints
 import pydantic_ai
 from typing import Any, Literal, Annotated, Union
+from typing_extensions import TypeAliasType
 import pandas as pd
 import math
 import itertools
@@ -320,12 +321,18 @@ class SimpleNL2QTask(BaseModel):
         return res
 
 
+NestedMetrics = TypeAliasType(
+    "NestedMetrics",
+    "Union[dict[str, NestedMetrics], float, int, bool]",
+)
+
+
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
     trajectory: Trajectory
     usages: list[Usage]
-    metrics: dict[str, Any]
+    metrics: NestedMetrics
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
@@ -515,7 +522,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     trajectory: Trajectory
     usages: list[Usage]
     user_simulator_usage: Usage
-    metrics: dict[str, Any]
+    metrics: NestedMetrics
 
     def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
@@ -545,7 +552,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_intended_query_id: str | None
     usages: list[Usage]
     user_simulator_usage: Usage
-    metrics: dict[str, Any]
+    metrics: NestedMetrics
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
@@ -606,7 +613,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_intended_query_id: str | None
     usages: list[Usage]
     user_simulator_usage: Usage
-    metrics: dict[str, Any]
+    metrics: NestedMetrics
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
@@ -678,7 +685,7 @@ class NL2QRunResult(BaseModel):
     subsample_size: int | None
     agent: str
     agent_args: dict[str, Any]
-    aggregated_metrics: dict[str, Any]
+    aggregated_metrics: NestedMetrics
     tasks: list[NL2QTaskOutput]
 
     def to_directory(self, directory: str, metrics_in_summary: list[str] = []) -> None:
