@@ -2,8 +2,10 @@ import datetime
 import json
 import os
 import re
+import litellm
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
+import pydantic_ai
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
 import math
@@ -80,6 +82,37 @@ class Trajectory(BaseModel):
             elif msg.role == "tool":
                 res.append(f'<message role="tool">\n{msg.response}\n</message>')
         return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+
+
+class Usage(BaseModel):
+    llm: str
+    api_calls: int
+    input_tokens: int
+    output_tokens: int
+    api_cost_usd: float
+
+    @classmethod
+    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.Usage, llm: str) -> "Usage":
+        input_tokens = usage.request_tokens or 0
+        output_tokens = usage.response_tokens or 0
+        return cls(
+            api_calls=usage.requests,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            api_cost_usd=cls.get_llm_api_cost(llm, input_tokens, output_tokens),
+            llm=llm,
+        )
+
+    @staticmethod
+    def get_llm_api_cost(pydantic_ai_model: str, input_tokens: int, output_tokens: int) -> float:
+        try:
+            litellm_model = pydantic_ai_model.replace(":", "/")
+            input_cost, output_cost = litellm.cost_per_token(  # type: ignore
+                model=litellm_model, prompt_tokens=input_tokens, completion_tokens=output_tokens
+            )
+            return input_cost + output_cost
+        except Exception:
+            return 0.0
 
 
 class ErrorInfo(BaseModel):
@@ -246,6 +279,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
     trajectory: Trajectory
+    usages: list[Usage]
     metrics: dict[str, Any]
 
     def to_directory(self, directory: str) -> None:
@@ -434,6 +468,8 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
     trajectory: Trajectory
+    usages: list[Usage]
+    user_simulator_usage: Usage
     metrics: dict[str, Any]
 
     def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
@@ -462,6 +498,8 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-flat"] = "ambig-flat"
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
+    usages: list[Usage]
+    user_simulator_usage: Usage
     metrics: dict[str, Any]
 
     @property
@@ -521,6 +559,8 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
+    usages: list[Usage]
+    user_simulator_usage: Usage
     metrics: dict[str, Any]
 
     @property

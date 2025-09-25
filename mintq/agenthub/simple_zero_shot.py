@@ -5,7 +5,7 @@ import jinja2
 import logging
 import asyncio
 from typing import Any
-from mintq.utils import extract_code, get_llm_api_cost
+from mintq.utils import extract_code
 from mintq.formatters import BaseSchemaFormatter, BaseSQLSchemaFormatter
 from mintq.db_connector import BaseAsyncDBConnector, BaseAsyncSQLDBConnector
 from mintq.schema import (
@@ -16,6 +16,7 @@ from mintq.schema import (
     UserMessage,
     AssistantMessage,
     PredQuery,
+    Usage,
 )
 
 SYSTEM_PROMPT = """
@@ -134,7 +135,7 @@ class SimpleZeroShotNL2Q:
         metrics["api_calls"] = len(responses)
         metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
         metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
+        metrics["api_cost_usd"] = Usage.get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = 1
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

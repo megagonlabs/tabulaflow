@@ -6,9 +6,9 @@ from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
-from mintq.utils import extract_code, get_llm_api_cost
+from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
@@ -103,6 +103,13 @@ class SQLAgent:
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
+        all_tools = [
+            # list_columns_tool.as_pydantic_ai_tool(),
+            # show_table_section_tool.as_pydantic_ai_tool(),
+            search_keywords_tool,
+            run_query_tool,
+            finish_tool,
+        ]
         agent = Agent[TaskContext, str](  # type: ignore
             get_pydantic_ai_llm(self.llm),
             tools=[
@@ -154,28 +161,17 @@ class SQLAgent:
         pred_query = PredQuery(query=extract_code(result.output))
         trajectory = pydantic_ai_messages_to_trajectory(messages)
 
-        usage = result.usage()
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["api_calls"] = usage.requests
-        metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
-        metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
-        metrics["run_query_timeout"] = run_query_tool.metrics_.error_timeout
-        metrics["run_query_failed"] = run_query_tool.metrics_.error_query_failed
-        # metrics["show_table_section_table_not_found"] = show_table_section_tool.metrics_.error_table_not_found
-        # metrics["show_table_section_section_not_found"] = show_table_section_tool.metrics_.error_section_not_found
-        metrics["search_keywords_table_not_found"] = search_keywords_tool.metrics_.error_table_not_found
-        metrics["search_keywords_column_not_found"] = search_keywords_tool.metrics_.error_column_not_found
-        metrics["search_keywords_column_not_string"] = search_keywords_tool.metrics_.error_column_not_string
-        metrics["finish_no_query_executed"] = finish_tool.metrics_.error_no_query_executed
-        metrics["fallback"] = 1 if fallback else 0
+        metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
+        metrics["tools"] = {tool.name: tool.metrics_.model_dump() for tool in all_tools}
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=trajectory,
+            usages=[Usage.from_pydantic_ai_usage(result.usage(), self.llm)],
             metrics=metrics,
         )

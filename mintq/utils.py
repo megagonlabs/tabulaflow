@@ -2,10 +2,8 @@ import itertools
 import math
 import re
 import copy
-import pandas as pd
-import litellm
 import numpy as np
-from mintq.schema import NL2QRunResult, AmbigNL2QTask, GoldAmbiguityPoint
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
 
 
 def extract_code(response: str) -> str:
@@ -18,27 +16,6 @@ def extract_code(response: str) -> str:
 
 def avg_and_round(nums: list[float], n: int = 4) -> float:
     return round(sum(nums) / len(nums), n) if nums else math.nan
-
-
-def get_llm_api_cost(llm: str, input_tokens: int, output_tokens: int) -> float:
-    try:
-        input_cost, output_cost = litellm.cost_per_token(  # type: ignore
-            model=llm, prompt_tokens=input_tokens, completion_tokens=output_tokens
-        )
-        return input_cost + output_cost
-    except Exception:
-        return 0.0
-
-
-def get_aggregated_metrics(all_metrics: list[dict[str, float | int]]) -> dict[str, float | int]:
-    res = {}
-    keys = list(all_metrics[0].keys())
-    for key in keys:
-        res[f"avg_{key}"] = avg_and_round([m[key] for m in all_metrics if not math.isnan(m[key])], 4)
-        if key in ("api_calls", "input_tokens", "output_tokens", "api_cost_usd"):
-            summ = sum([m[key] for m in all_metrics if not math.isnan(m[key])])
-            res[f"total_{key}"] = round(summ, 4) if isinstance(summ, float) else summ
-    return res
 
 
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:

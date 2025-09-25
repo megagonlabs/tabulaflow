@@ -5,12 +5,11 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
-from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery
+from mintq.formatters import BaseSQLSchemaFormatter
+from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
-from mintq.utils import extract_code, get_llm_api_cost
+from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
-from mintq.metadata_synthesizer import HSchemaSynthesizer
 from mintq.agenthub.user_simulator import UserSimulator
 
 
@@ -158,7 +157,7 @@ class AmbigSimpleSQLAgent:
         metrics["api_calls"] = usage.requests
         metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
+        metrics["api_cost_usd"] = Usage.get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["run_query_timeout"] = run_query_tool.metrics_.error_timeout
         metrics["run_query_failed"] = run_query_tool.metrics_.error_query_failed
@@ -175,5 +174,6 @@ class AmbigSimpleSQLAgent:
             **task.model_dump(),
             pred_intended_query=pred_query,
             trajectory=trajectory,
+            usages=[Usage.from_pydantic_ai_usage(result.usage(), self.llm)],
             metrics=metrics,
         )

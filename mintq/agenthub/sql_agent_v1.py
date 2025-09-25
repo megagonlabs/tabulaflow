@@ -14,9 +14,9 @@ from pydantic_ai.tools import Tool
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema, PredQuery
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, SQLTableSchema, PredQuery, Usage
 from mintq.pydantic_ai_utils import get_pydantic_ai_llm, pydantic_ai_messages_to_trajectory
-from mintq.utils import extract_code, get_llm_api_cost
+from mintq.utils import extract_code
 
 
 @dataclass
@@ -277,7 +277,7 @@ class SQLAgentV1:
         metrics["api_calls"] = usage.requests
         metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
         metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
-        metrics["api_cost_usd"] = get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
+        metrics["api_cost_usd"] = Usage.get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["list_columns_table_not_found"] = usage.details.get("list_columns_table_not_found", 0)
         metrics["list_columns_table_has_no_columns"] = usage.details.get("list_columns_table_has_no_columns", 0)
@@ -292,5 +292,6 @@ class SQLAgentV1:
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=trajectory,
+            usages=[Usage.from_pydantic_ai_usage(result.usage(), self.llm)],
             metrics=metrics,
         )
