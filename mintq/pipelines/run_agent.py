@@ -8,7 +8,7 @@ import asyncio
 import logfire
 import litellm
 from tqdm import trange
-from mintq.utils import avg_and_round
+from mintq.utils import avg_and_round, aggregate_metrics
 from mintq.formatters import get_schema_formatter
 from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
@@ -48,26 +48,26 @@ async def run_agent_async(
                 print(task_outputs[0].trajectory.to_readable())  # type: ignore
 
     sample_agent = agent_cls(**agent_args)
-    aggregated_metrics = {}
-    aggregated_metrics["avg_latency_seconds"] = avg_and_round(
-        [task.metrics["latency_seconds"] for task in task_outputs]
-    )
-    aggregated_metrics["avg_steps"] = avg_and_round([task.metrics["steps"] for task in task_outputs])
-    aggregated_metrics["total_api_calls"] = sum(
-        [sum(usage.api_calls for usage in task.usages) for task in task_outputs]
-    )
-    aggregated_metrics["total_input_tokens"] = sum(
-        [sum(usage.input_tokens for usage in task.usages) for task in task_outputs]
-    )
-    aggregated_metrics["total_output_tokens"] = sum(
-        [sum(usage.output_tokens for usage in task.usages) for task in task_outputs]
-    )
-    aggregated_metrics["avg_api_cost_usd"] = avg_and_round(
-        [sum(usage.api_cost_usd for usage in task.usages) for task in task_outputs], 4
-    )
-    aggregated_metrics["total_api_cost_usd"] = round(
-        sum([usage.api_cost_usd for task in task_outputs for usage in task.usages]), 4
-    )
+    aggregated_metrics = aggregate_metrics([task.metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4)
+    # aggregated_metrics["avg_latency_seconds"] = avg_and_round(
+    #     [task.metrics["latency_seconds"] for task in task_outputs]
+    # )
+    # aggregated_metrics["avg_steps"] = avg_and_round([task.metrics["steps"] for task in task_outputs])
+    # aggregated_metrics["total_api_calls"] = sum(
+    #     [sum(usage.api_calls for usage in task.usages) for task in task_outputs]
+    # )
+    # aggregated_metrics["total_input_tokens"] = sum(
+    #     [sum(usage.input_tokens for usage in task.usages) for task in task_outputs]
+    # )
+    # aggregated_metrics["total_output_tokens"] = sum(
+    #     [sum(usage.output_tokens for usage in task.usages) for task in task_outputs]
+    # )
+    # aggregated_metrics["avg_api_cost_usd"] = avg_and_round(
+    #     [sum(usage.api_cost_usd for usage in task.usages) for task in task_outputs], 4
+    # )
+    # aggregated_metrics["total_api_cost_usd"] = round(
+    #     sum([usage.api_cost_usd for task in task_outputs for usage in task.usages]), 4
+    # )
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(

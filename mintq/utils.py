@@ -2,8 +2,11 @@ import itertools
 import math
 import re
 import copy
+import statistics
+from typing import Literal
 import numpy as np
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
+from pandas.io.formats.format import return_docstring
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NestedMetrics
 
 
 def extract_code(response: str) -> str:
@@ -14,8 +17,34 @@ def extract_code(response: str) -> str:
         return response.strip()
 
 
-def avg_and_round(nums: list[float], n: int = 4) -> float:
-    return round(sum(nums) / len(nums), n) if nums else math.nan
+def enforce_same_schema(metrics: list[NestedMetrics]) -> None:
+    if isinstance(metrics[0], (float, int, bool)):
+        assert all(type(m) == type(metrics[0]) for m in metrics)
+        return
+    assert all(m.keys() == metrics[0].keys() for m in metrics)
+    for k in metrics[0].keys():
+        enforce_same_schema([m[k] for m in metrics])
+
+
+def aggregate_metrics(
+    metrics: list[NestedMetrics],
+    ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
+    decimals: int = 4,
+) -> NestedMetrics:
+    try:
+        enforce_same_schema(metrics)
+    except AssertionError:
+        raise ValueError(f"All metrics to aggregate must have the same schema.")
+
+    if isinstance(metrics[0], (float, int, bool)):
+        op2func = {
+            "avg": statistics.mean,
+            "sum": sum,
+            "max": max,
+            "min": min,
+        }
+        return {op: round(op2func[op](metrics), decimals) for op in ops}
+    return {k: aggregate_metrics([m[k] for m in metrics], ops, decimals) for k in metrics[0].keys()}
 
 
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
