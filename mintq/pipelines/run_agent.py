@@ -12,6 +12,7 @@ from mintq.utils import get_llm_api_cost, get_aggregated_metrics
 from mintq.formatters import get_schema_formatter
 from mintq.agenthub import get_nl2q_model_class, BaseAsyncNL2QAgent
 from mintq.datahub import get_dataset_loader
+from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult
 
 
@@ -28,8 +29,18 @@ async def run_model_async(
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
+        batch_kwargs = []
+        for task in batch:
+            if task.task_type == "ambig":
+                batch_kwargs.append({"user_simulator": UserSimulator.from_ambig_nl2q_task(task)})
+            else:
+                batch_kwargs.append({})
+
         task_outputs += await asyncio.gather(
-            *[agent_cls(**agent_args).predict_async(task, dataset.db_connectors[task.db]) for task in batch]
+            *[
+                agent_cls(**agent_args).predict_async(task, dataset.db_connectors[task.db], **kwargs)
+                for task, kwargs in zip(batch, batch_kwargs)
+            ]
         )
 
         if i == 0:
