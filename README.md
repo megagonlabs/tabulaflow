@@ -272,7 +272,14 @@ Contact: yanlin@megagon.ai
 - [x] [Jun 21] `toolhub` sub-package
 - [x] [Jun 23] Support max steps
 - [x] [Jul 16] Optimize evaluation - share execution results between metrics, record execution results
-- [ ] HSchema viewing and statistics script
+- [x] [Jul 22] HSchema viewing and statistics script
+- [x] [Sep 22] ARCS data loader
+- [x] [Sep 22] New schema.py with AmbigNL2QTask
+- [x] [Sep 23] Rewrite metrics, pipelines
+- [x] [Sep 24] Simple user simulator, simple qa disambiguation
+- [x] [Sep 25] Rewrite usage and metrics storage, remove pydantic_ai_utils.py
+- [ ] [Sep 25] Replace schema in prompt with get_schema() tool
+- [ ] [Sep 25] Rewrite HSchema
 - [ ] Metadata ablation
 
 
