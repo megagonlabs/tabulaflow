@@ -141,7 +141,7 @@ class SimpleZeroShotNL2Q:
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=trajectory,
-            metrics=metrics,
+            inference_metrics=metrics,
         )
 
     async def select_best_query_async(self, candidates: list[str], db_connector: BaseAsyncDBConnector) -> int:

@@ -48,7 +48,7 @@ async def run_agent_async(
                 print(task_outputs[0].trajectory.to_readable())  # type: ignore
 
     sample_agent = agent_cls(**agent_args)
-    aggregated_metrics = aggregate_metrics([task.metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4)
+    aggregated_metrics = aggregate_metrics([task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4)
     # aggregated_metrics["avg_latency_seconds"] = avg_and_round(
     #     [task.metrics["latency_seconds"] for task in task_outputs]
     # )
@@ -79,7 +79,7 @@ async def run_agent_async(
         databases=dataset.databases,
         agent=sample_agent.name,
         agent_args=sample_agent.get_config(),
-        aggregated_metrics=aggregated_metrics,
+        aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,
     )
 

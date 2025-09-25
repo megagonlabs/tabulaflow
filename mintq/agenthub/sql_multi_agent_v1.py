@@ -247,5 +247,5 @@ class SQLMultiAgentV1:
             pred_query=pred_query,
             trajectory=trajectory,
             usages=[Usage.from_pydantic_ai_usage(result.usage(), self.llm)],
-            metrics=metrics,
+            inference_metrics=metrics,
         )

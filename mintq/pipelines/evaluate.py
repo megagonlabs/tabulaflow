@@ -14,7 +14,7 @@ async def compute_metrics_async(
     task: NL2QTaskOutput, metrics: list[BaseAsyncNL2QMetric], db_connector: BaseAsyncDBConnector
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task=task, db_connector=db_connector) for m in metrics])
-    task.metrics["eval"] = {m.name: r for m, r in zip(metrics, results)}
+    task.eval_metrics = {m.name: r for m, r in zip(metrics, results)}
     return task
 
 
@@ -28,8 +28,8 @@ async def evaluate_async(
                 for task in result.tasks[i : i + batch_size]
             ]
         )
-    result.aggregated_metrics["eval"] = aggregate_metrics(
-        [task.metrics["eval"] for task in result.tasks], ops=["avg"], decimals=4
+    result.aggregated_eval_metrics = aggregate_metrics(
+        [task.eval_metrics for task in result.tasks], ops=["avg"], decimals=4
     )
     return result
 
@@ -69,19 +69,19 @@ async def main_async() -> None:
     metrics = [get_metric(m) for m in args.metrics]
     result = await evaluate_async(result, dataset, metrics, args.batch_size)
 
-    result.to_directory(args.result_dir, metrics_in_summary=args.metrics)
+    result.to_directory(args.result_dir, eval_metrics_in_summary=args.metrics)
     print(f"Saved evaluated result to {args.result_dir}")
 
     print()
     print("Aggregated metrics:")
     for m in metrics:
-        print(f"- {m.name}: {result.aggregated_metrics['eval'][m.name]['avg']:.4f}")
+        print(f"- {m.name}: {result.aggregated_eval_metrics[m.name]['avg']:.4f}")
 
     if args.debug:
         print()
         print("=== DEBUG MODE === ")
         for task in result.tasks:
-            print(f"{task.qid}: {task.metrics['eval']['bird_sql_ex']['avg']:.4f}")
+            print(f"{task.qid}: {task.eval_metrics['bird_sql_ex']:.4f}")
 
 
 if __name__ == "__main__":

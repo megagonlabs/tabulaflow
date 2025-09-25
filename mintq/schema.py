@@ -331,8 +331,11 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
     trajectory: Trajectory
-    usages: list[Usage]
-    metrics: NestedMetrics
+    usages: list[Usage] = Field(default_factory=list)
+    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
+    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
@@ -340,8 +343,9 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         self.pred_query.to_directory(os.path.join(directory, "pred_csv"))
         with open(os.path.join(directory, "result_readable.sql"), "w") as f:
             f.write(self.to_readable() + "\n")
-        with open(os.path.join(directory, "trajectory.xml"), "w") as f:
-            f.write(self.trajectory.to_readable())
+        if self.trajectory is not None:
+            with open(os.path.join(directory, "trajectory.xml"), "w") as f:
+                f.write(self.trajectory.to_readable())
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query", "pred_query", "trajectory"})
@@ -352,7 +356,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         res += f"\n\n\n{self.pred_query.to_readable()}"
         return res
 
-    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
             db=self.db,
@@ -362,7 +366,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
             pred_query=self.pred_query.query,
             gold_exec_result="\n".join([exec_result.to_readable() for exec_result in self.gold_query.all_exec_results]),
             pred_exec_result=self.pred_query.exec_result.to_readable() if self.pred_query.exec_result else None,
-            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
         )
 
 
@@ -519,12 +523,15 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
-    trajectory: Trajectory
-    usages: list[Usage]
-    user_simulator_usage: Usage
-    metrics: NestedMetrics
+    trajectory: Trajectory | None = None
+    usages: list[Usage] = Field(default_factory=list)
+    user_simulator_usage: Usage | None = None
+    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
+    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during evaluation, e.g. accuracy, etc."""
 
-    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
             db=self.db,
@@ -537,7 +544,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
             pred_exec_result=self.pred_intended_query.exec_result.to_readable()
             if self.pred_intended_query.exec_result
             else None,
-            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
         )
 
 
@@ -550,9 +557,13 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-flat"] = "ambig-flat"
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
-    usages: list[Usage]
-    user_simulator_usage: Usage
-    metrics: NestedMetrics
+    trajectory: Trajectory | None = None
+    usages: list[Usage] = Field(default_factory=list)
+    user_simulator_usage: Usage | None = None
+    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
+    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
@@ -561,7 +572,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
         id_to_query = {pq.id: pq for pq in self.pred_queries}
         return id_to_query[self.pred_intended_query_id]
 
-    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
             db=self.db,
@@ -574,7 +585,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
             pred_exec_result=self.pred_intended_query.exec_result.to_readable()
             if self.pred_intended_query and self.pred_intended_query.exec_result
             else None,
-            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
         )
 
 
@@ -611,9 +622,13 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
-    usages: list[Usage]
-    user_simulator_usage: Usage
-    metrics: NestedMetrics
+    trajectory: Trajectory | None = None
+    usages: list[Usage] = Field(default_factory=list)
+    user_simulator_usage: Usage | None = None
+    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
+    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
@@ -643,7 +658,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
-    def to_summary(self, metrics_in_summary: list[str] = []) -> CSVSummaryRow:
+    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
             db=self.db,
@@ -656,7 +671,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
             pred_exec_result=self.pred_intended_query.exec_result.to_readable()
             if self.pred_intended_query and self.pred_intended_query.exec_result
             else None,
-            metrics={m: self.metrics.get(m) for m in metrics_in_summary},
+            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
         )
 
 
@@ -685,21 +700,22 @@ class NL2QRunResult(BaseModel):
     subsample_size: int | None
     agent: str
     agent_args: dict[str, Any]
-    aggregated_metrics: NestedMetrics
+    aggregated_inference_metrics: NestedMetrics = Field(default_factory=dict)
+    aggregated_eval_metrics: NestedMetrics = Field(default_factory=dict)
     tasks: list[NL2QTaskOutput]
 
-    def to_directory(self, directory: str, metrics_in_summary: list[str] = []) -> None:
+    def to_directory(self, directory: str, eval_metrics_in_summary: list[str] = []) -> None:
         os.makedirs(directory, exist_ok=True)
         with open(os.path.join(directory, "result.json"), "w") as f:
             f.write(self.model_dump_json(indent=2))
 
-        self.to_csv(os.path.join(directory, "result_summary.csv"), metrics_in_summary)
+        self.to_csv(os.path.join(directory, "result_summary.csv"), eval_metrics_in_summary)
 
         for task in self.tasks:
             task.to_directory(os.path.join(directory, "readable", task.qid))
 
-    def to_csv(self, path: str, metrics_in_summary: list[str] = []) -> None:
-        summaries = [task.to_summary(metrics_in_summary) for task in self.tasks]
+    def to_csv(self, path: str, eval_metrics: list[str] = []) -> None:
+        summaries = [task.to_summary(eval_metrics) for task in self.tasks]
         df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
         df.to_csv(path, index=False)
 
