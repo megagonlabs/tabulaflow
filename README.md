@@ -280,6 +280,7 @@ Contact: yanlin@megagon.ai
 - [x] [Sep 25] Rewrite usage and metrics storage, remove pydantic_ai_utils.py
 - [ ] [Sep 25] Replace schema in prompt with get_schema() tool
 - [ ] [Sep 25] Rewrite HSchema
+- [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 
 

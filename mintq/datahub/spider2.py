@@ -165,8 +165,8 @@ class Spider2SnowDatasetLoader:
         column_descriptions = self._load_column_descriptions()
         for conn in db_connectors:
             for table in conn.schema.tables:
-                table.name = table.name.upper()
-                table.schema_name = table.schema_name.upper()  # type: ignore
+                # table.name = table.name.upper()
+                # table.schema_name = table.schema_name.upper()  # type: ignore
                 for column in table.columns:
                     column.description = column_descriptions.get(
                         (conn.schema.name, table.schema_name, table.name, column.name), None
