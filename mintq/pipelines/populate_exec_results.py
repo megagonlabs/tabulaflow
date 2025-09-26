@@ -3,9 +3,9 @@ import time
 import asyncio
 import os
 from tqdm import trange
+from mintq import dataset_registry
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from mintq.datahub import get_dataset_loader
 
 
 async def populate_task_async(
@@ -58,7 +58,7 @@ async def main_async() -> None:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(result.dataset)
+    dataset_loader = dataset_registry.get_class(result.dataset)()
     dataset = await dataset_loader.get_split_async(
         result.split, databases=result.databases, subsample_size=result.subsample_size
     )
