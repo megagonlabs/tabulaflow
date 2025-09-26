@@ -2,6 +2,7 @@ import os
 import asyncio
 import random
 import json
+from typing import ClassVar
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 from mintq.registry import dataset_registry
@@ -9,8 +10,8 @@ from mintq.registry import dataset_registry
 
 @dataset_registry.register
 class ARCSDatasetLoader:
-    name = "arcs"
-    splits = ["dev"]
+    name: ClassVar = "arcs"
+    splits: ClassVar = ["dev"]
 
     def __init__(
         self,

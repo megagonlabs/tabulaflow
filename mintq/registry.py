@@ -1,11 +1,11 @@
-from typing import Protocol, Type, TypeVar, Generic, overload
-from mintq.agenthub.base import BaseAsyncNL2QAgent
+from typing import Protocol, Type, TypeVar, Generic, ClassVar
+from mintq.agenthub.base import NL2QAgent
 from mintq.datahub.base import BaseAsyncNL2QDatasetLoader
 from mintq.metrics.base import NL2QMetric
 
 
 class NamedClass(Protocol):
-    name: str
+    name: ClassVar[str]
 
 
 T = TypeVar("T", bound=NamedClass)
@@ -31,6 +31,6 @@ class Registry(Generic[T]):
         return list(self._name_to_cls.keys())
 
 
-agent_registry: Registry[BaseAsyncNL2QAgent] = Registry("agent")
+agent_registry: Registry[NL2QAgent] = Registry("agent")
 dataset_registry: Registry[BaseAsyncNL2QDatasetLoader] = Registry("dataset")
 metric_registry: Registry[NL2QMetric] = Registry("metric")

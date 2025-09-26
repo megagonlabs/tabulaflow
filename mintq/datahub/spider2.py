@@ -4,7 +4,7 @@ import random
 import re
 import asyncio
 from urllib.parse import quote_plus
-from typing import Optional
+from typing import Optional, ClassVar
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseAsyncSQLDBConnector
@@ -13,8 +13,8 @@ from mintq.registry import dataset_registry
 
 @dataset_registry.register
 class Spider2SnowDatasetLoader:
-    name = "spider2-snow"
-    splits = ["dev"]
+    name: ClassVar = "spider2-snow"
+    splits: ClassVar = ["dev"]
 
     def __init__(
         self,

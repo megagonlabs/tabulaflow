@@ -1,16 +1,22 @@
-from typing import Protocol, TypeVar, Generic
+from typing import Protocol, TypeVar, Generic, ClassVar, Type
 
 # Define a generic Config type
 C = TypeVar("C", bound="BaseConfig", covariant=True)
 
+
 class BaseConfig:
     """Base class for configuration objects."""
+
     pass
+
 
 class Agent(Protocol, Generic[C]):
     """
     Protocol for an Agent that accepts a Config class in __init__.
     """
+
+    name: ClassVar[str]
+    config_cls: ClassVar[Type[C]]
 
     def __init__(self, config: C) -> None:
         """
@@ -33,6 +39,9 @@ class MyConfig(BaseConfig):
 
 
 class MyAgent:
+    name: ClassVar = "my_agent"
+    config_cls: ClassVar = MyConfig
+    
     def __init__(self, config: MyConfig) -> None:
         self.config = config
 
@@ -46,5 +55,5 @@ cfg = MyConfig(model_name="gpt-neo", temperature=0.9)
 agent: Agent[BaseConfig] = MyAgent(cfg)
 print(agent.run("Hello!"))
 
-agent_cls: type[Agent[BaseConfig]] = MyAgent
+agent_cls: type[Agent] = MyAgent
 # agent_cls: type[Agent[MyConfig]] = MyAgent

@@ -1,4 +1,4 @@
-from typing import Any
+from typing import Any, ClassVar
 from itertools import combinations
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema import SimpleNL2QTaskOutput
@@ -7,7 +7,7 @@ from mintq.registry import metric_registry
 
 @metric_registry.register
 class BirdSQLExSoft:
-    name = "bird_sql_ex_soft"
+    name: ClassVar[str] = "bird_sql_ex_soft"
 
     def _compare(self, pred_executed: list[tuple[Any, ...]], gold_executed: list[tuple[Any, ...]]) -> float:
         if not gold_executed and not pred_executed:

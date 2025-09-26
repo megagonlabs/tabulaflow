@@ -6,9 +6,8 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
 )
 
-
 class BaseSimpleNL2QMetric(Protocol):
-    name: str
+    name: ClassVar[str]
 
     async def compute_async(self, task: SimpleNL2QTaskOutput) -> float: ...
 

@@ -1,8 +1,7 @@
 import math
 import pandas as pd
-from typing import Any
+from typing import Any, ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.registry import metric_registry
 
 
@@ -79,7 +78,7 @@ def compare_pandas_table(
 
 @metric_registry.register
 class Spider2Ex:
-    name = "spider2_ex"
+    name: ClassVar[str] = "spider2_ex"
 
     def __init__(self, timeout: int = 30):
         self.timeout = timeout

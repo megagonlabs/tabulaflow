@@ -2,6 +2,7 @@ import os
 import json
 import asyncio
 import random
+from typing import ClassVar
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
 from mintq.registry import dataset_registry
@@ -9,8 +10,8 @@ from mintq.registry import dataset_registry
 
 @dataset_registry.register
 class BirdSQLDatasetLoader:
-    name = "bird-sql"
-    splits = ["train", "dev"]
+    name: ClassVar = "bird-sql"
+    splits: ClassVar = ["train", "dev"]
 
     def __init__(
         self,

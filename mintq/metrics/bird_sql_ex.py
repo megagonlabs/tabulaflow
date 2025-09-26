@@ -1,3 +1,4 @@
+from typing import ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.registry import metric_registry
@@ -5,7 +6,7 @@ from mintq.registry import metric_registry
 
 @metric_registry.register
 class BirdSQLEx:
-    name = "bird_sql_ex"
+    name: ClassVar[str] = "bird_sql_ex"
 
     async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
         if not task.pred_query.exec_result or not task.gold_query.exec_result:
