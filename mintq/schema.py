@@ -321,20 +321,15 @@ class SimpleNL2QTask(BaseModel):
         return res
 
 
-NestedMetrics = TypeAliasType(
-    "NestedMetrics",
-    "Union[dict[str, NestedMetrics], float, int, bool]",
-)
-
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
     trajectory: Trajectory
     usages: list[Usage] = Field(default_factory=list)
-    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
-    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     def to_directory(self, directory: str) -> None:
@@ -526,9 +521,9 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     trajectory: Trajectory | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
-    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
-    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
@@ -560,9 +555,9 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     trajectory: Trajectory | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
-    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
-    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     @property
@@ -625,9 +620,9 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     trajectory: Trajectory | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
-    inference_metrics: NestedMetrics = Field(default_factory=dict)
+    inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
-    eval_metrics: NestedMetrics = Field(default_factory=dict)
+    eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     @property
@@ -700,8 +695,8 @@ class NL2QRunResult(BaseModel):
     subsample_size: int | None
     agent: str
     agent_args: dict[str, Any]
-    aggregated_inference_metrics: NestedMetrics = Field(default_factory=dict)
-    aggregated_eval_metrics: NestedMetrics = Field(default_factory=dict)
+    aggregated_inference_metrics: dict[str, Any] = Field(default_factory=dict)
+    aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)
     tasks: list[NL2QTaskOutput]
 
     def to_directory(self, directory: str, eval_metrics_in_summary: list[str] = []) -> None:

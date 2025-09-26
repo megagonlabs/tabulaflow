@@ -2,9 +2,9 @@ import itertools
 import re
 import copy
 import statistics
-from typing import Literal
+from typing import Literal, Any
 import numpy as np
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NestedMetrics
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
 
 
 def extract_code(response: str) -> str:
@@ -15,34 +15,35 @@ def extract_code(response: str) -> str:
         return response.strip()
 
 
-def enforce_same_schema(metrics: list[NestedMetrics]) -> None:
-    if isinstance(metrics[0], (float, int, bool)):
-        assert all(isinstance(m, type(metrics[0])) for m in metrics)
-        return
-    assert all(m.keys() == metrics[0].keys() for m in metrics)
+def enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
+    if not all(m.keys() == metrics[0].keys() for m in metrics):
+        raise ValueError("All metrics to aggregate must have the same schema.")
     for k in metrics[0].keys():
-        enforce_same_schema([m[k] for m in metrics])
+        if isinstance(metrics[0][k], dict):
+            enforce_same_schema([m[k] for m in metrics])
 
 
 def aggregate_metrics(
-    metrics: list[NestedMetrics],
+    metrics: list[dict[str, Any]],
     ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
     decimals: int = 4,
-) -> NestedMetrics:
-    try:
-        enforce_same_schema(metrics)
-    except AssertionError:
-        raise ValueError("All metrics to aggregate must have the same schema.")
+) -> dict[str, Any]:
+    enforce_same_schema(metrics)
 
-    if isinstance(metrics[0], (float, int, bool)):
-        op2func = {
-            "avg": statistics.mean,
-            "sum": sum,
-            "max": max,
-            "min": min,
-        }
-        return {op: round(op2func[op](metrics), decimals) for op in ops}
-    return {k: aggregate_metrics([m[k] for m in metrics], ops, decimals) for k in metrics[0].keys()}
+    op2func = {
+        "avg": statistics.mean,
+        "sum": sum,
+        "max": max,
+        "min": min,
+    }
+
+    res = {}
+    for k in metrics[0].keys():
+        if isinstance(metrics[0][k], dict):
+            res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)
+        else:
+            res[k] = {op: round(op2func[op]([m[k] for m in metrics]), decimals) for op in ops}  # type: ignore
+    return res
 
 
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
