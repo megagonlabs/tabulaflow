@@ -8,7 +8,7 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool
+from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
@@ -81,11 +81,13 @@ class SQLAgent:
         t0 = time.time()
 
         get_schema_tool = GetSchemaTool(db_connector, self.formatter)
+        get_column_description_tool = GetColumnDescriptionTool(db_connector)
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         all_tools = [
             get_schema_tool,
+            get_column_description_tool,
             search_keywords_tool,
             run_query_tool,
             finish_tool,
@@ -94,6 +96,7 @@ class SQLAgent:
             model=self.llm,
             tools=[
                 get_schema_tool.as_pydantic_ai_tool(),
+                get_column_description_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],

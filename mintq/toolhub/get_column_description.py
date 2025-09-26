@@ -1,0 +1,72 @@
+from typing import ClassVar
+from dataclasses import dataclass, field
+import sqlalchemy
+from sqlalchemy.sql import quoted_name
+from sqlalchemy import select
+from pydantic import BaseModel
+from pydantic_ai import Tool
+from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.toolhub.utils import equals_ci
+
+
+class GetColumnDescriptionToolMetrics(BaseModel):
+    error_table_not_found: int = 0
+    error_column_not_found: int = 0
+
+
+@dataclass
+class GetColumnDescriptionTool:
+    name: ClassVar[str] = "get_column_description"
+    db_connector: BaseAsyncSQLDBConnector
+    metrics_: GetColumnDescriptionToolMetrics = field(default_factory=GetColumnDescriptionToolMetrics)
+
+    async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
+        """
+        Get the description of a column of a table.
+
+        Args:
+            schema_name: The name of the schema, or None if schema is not applicable.
+            table_name: The name of the table.
+            column_name: The name of the column.
+        """
+        # If there is only a single schema, use it regardless of what the agent specified
+        all_schema_names = [t.schema_name for t in self.schema.tables]
+        if len(set(all_schema_names)) == 1:
+            schema_name = all_schema_names[0]
+
+        # Remove the quote characters from the column name if they exist
+        for quote_char in '"`':
+            if column_name.startswith(quote_char) and column_name.endswith(quote_char):
+                column_name = column_name[1:-1]
+                break
+
+        table = None
+        for t in self.schema.tables:
+            if equals_ci(t.schema_name, schema_name) and t.name.lower() == table_name.lower():
+                table = t
+                break
+
+        if table is None:
+            self.metrics_.error_table_not_found += 1
+            return f"(table {table_name} in schema {schema_name} not found)"
+
+        column = None
+        for c in table.columns:
+            if c.name.lower() == column_name.lower():
+                if c.dtype not in ("VARCHAR", "TEXT", "STRING"):
+                    self.metrics_.error_column_not_string += 1
+                    return f"(column {column_name} is not a string)"
+                column = c
+                break
+
+        if column is None:
+            self.metrics_.error_column_not_found += 1
+            return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
+
+        if column.description:
+            return column.description
+        else:
+            return f"(column {column_name} in table {table_name} in schema {schema_name} has no description)"
+
+    def as_pydantic_ai_tool(self) -> Tool:
+        return Tool(self.__call__, name=self.name)
