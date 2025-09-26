@@ -31,15 +31,15 @@ class SQLDefaultSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
-    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False) -> str:
+    def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         res = f"Database: {schema.name}"
         if not schema.tables:
             return f"{res}\n(database has no tables)"
         res += "\n\n"
-        res += "\n\n".join([self.format_table(table, pk_fk_column_only) for table in schema.tables])
+        res += "\n\n".join([self.format_table(table, pk_fk_column_only, add_description) for table in schema.tables])
         return res
 
-    def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False) -> str:
+    def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         res = f"=== (SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)} ({table.num_rows} rows) ===\n"
 
         composite_fks = []
@@ -54,7 +54,7 @@ class SQLDefaultSchemaFormatter:
 
         res += "\n".join(
             [
-                self.format_column(column)
+                self.format_column(column, add_description)
                 for column in table.columns
                 if not pk_fk_column_only or column.primary_key_type or column.foreign_keys
             ]
@@ -62,7 +62,7 @@ class SQLDefaultSchemaFormatter:
         res += "\n=== END OF TABLE ==="
         return res
 
-    def format_column(self, column: SQLColumnSchema) -> str:
+    def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
         res = f"- {self._quote_if_needed(column.name)}: {column.dtype}"
         if column.null_ratio == 1.0:
             res += " (all values are null)"
@@ -100,6 +100,6 @@ class SQLDefaultSchemaFormatter:
                 else " [FK-composite]"
             )
 
-        if column.description:
+        if add_description and column.description:
             res += f" /* {column.description} */"
         return res
