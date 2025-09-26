@@ -30,7 +30,7 @@ class GetColumnDescriptionTool:
             column_name: The name of the column.
         """
         # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.schema.tables]
+        all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
         if len(set(all_schema_names)) == 1:
             schema_name = all_schema_names[0]
 
@@ -41,7 +41,7 @@ class GetColumnDescriptionTool:
                 break
 
         table = None
-        for t in self.schema.tables:
+        for t in self.db_connector.schema.tables:
             if equals_ci(t.schema_name, schema_name) and t.name.lower() == table_name.lower():
                 table = t
                 break
