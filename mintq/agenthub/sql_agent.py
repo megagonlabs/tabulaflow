@@ -8,7 +8,7 @@ from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool
+from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
 
@@ -31,21 +31,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 {% if language == "SnowflakeSQL" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
-""".strip()
-
-
-TASK_PROMPT = """
-=== START OF DATABASE SCHEMA ===
-{{schema}}
-=== END OF DATABASE SCHEMA ===
-
-Question: {{question}}
-{% if hints %}
-=== START OF HINTS ===
-{{hints}}
-=== END OF HINTS ===
-{% endif %}
-{{language}} query:
 """.strip()
 
 
@@ -95,16 +80,12 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        hschema = await self.hschema_synthesizer.run_async(db_connector)
-
-        # list_columns_tool = ListColumnsTool(db_connector.schema, self.formatter)
-        # show_table_section_tool = ShowTableSectionTool(hschema, self.hschema_formatter)
+        get_schema_tool = GetSchemaTool(db_connector, self.formatter)
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
         all_tools = [
-            # list_columns_tool.as_pydantic_ai_tool(),
-            # show_table_section_tool.as_pydantic_ai_tool(),
+            get_schema_tool,
             search_keywords_tool,
             run_query_tool,
             finish_tool,
@@ -112,15 +93,13 @@ class SQLAgent:
         agent = Agent[TaskContext, str](  # type: ignore
             model=self.llm,
             tools=[
-                # list_columns_tool.as_pydantic_ai_tool(),
-                # show_table_section_tool.as_pydantic_ai_tool(),
+                get_schema_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],
             deps_type=TaskContext,
             output_type=finish_tool.as_pydantic_ai_tool(),
             result_tool_name="finish",
-            # result_tool_description="Finish the task and return the last executed query as final answer.",
             instructions=get_system_prompt,
             history_processors=[max_steps_reached_processor],
         )
@@ -134,21 +113,14 @@ class SQLAgent:
         )
         agent_no_tools.instrument_all()
 
-        prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.hschema_formatter.format(hschema, collapse_non_core_sections=False),
-            hints=task.evidence,
-            question=task.question,
-            language=task.language,
-        )
+        prompt = f"{task.question} {task.evidence}"
 
-        # Construct dependencies
         deps = TaskContext(
             task=task,
             db_connector=db_connector,
             max_steps=self.max_steps,
         )
 
-        # Run the agent
         fallback = False
         try:
             result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
