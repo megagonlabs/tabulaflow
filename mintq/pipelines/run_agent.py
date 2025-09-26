@@ -2,16 +2,15 @@ import argparse
 import os
 import shutil
 import time
-from typing import Type, Any
+from typing import Type
 import datetime
 import asyncio
 import logfire
 import litellm
 from tqdm import trange
+from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
-from mintq.formatters import get_schema_formatter
-from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent, BaseAgentConfig
-from mintq.datahub import get_dataset_loader
+from mintq.agenthub import BaseAsyncNL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult, Usage
 
@@ -111,7 +110,7 @@ async def main_async() -> None:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
+    dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     if args.debug:
         dataset.tasks = dataset.tasks[:5]
@@ -119,7 +118,7 @@ async def main_async() -> None:
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
-    agent_class = get_nl2q_agent_class(args.agent)
+    agent_class = agent_registry.get_class(args.agent)
     config_class = agent_class.config_cls
     config = config_class(
         llm=args.llm,

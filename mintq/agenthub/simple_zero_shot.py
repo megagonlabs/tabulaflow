@@ -18,6 +18,7 @@ from mintq.schema import (
     PredQuery,
     Usage,
 )
+from mintq.registry import agent_registry
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -53,6 +54,7 @@ SCHEMA_MAX_CHARS = 128000
 logger = logging.getLogger(__name__)
 
 
+@agent_registry.register
 class SimpleZeroShotNL2Q:
     name = "simple_zero_shot"
 

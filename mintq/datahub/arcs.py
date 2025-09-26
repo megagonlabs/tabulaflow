@@ -4,8 +4,10 @@ import random
 import json
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
+from mintq.registry import dataset_registry
 
 
+@dataset_registry.register
 class ARCSDatasetLoader:
     name = "arcs"
     splits = ["dev"]

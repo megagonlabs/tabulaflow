@@ -7,12 +7,11 @@ from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
-from mintq.metadata_synthesizer import HSchemaSynthesizer
 from mintq.formatters import get_schema_formatter
+from mintq.registry import agent_registry
 
 
 @dataclass
@@ -63,6 +62,7 @@ class SQLAgentConfig(BaseModel):
         return self.model_dump()
 
 
+@agent_registry.register
 class SQLAgent:
     name = "sql_agent"
     config_cls = SQLAgentConfig

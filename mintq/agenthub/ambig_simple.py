@@ -10,6 +10,7 @@ from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Us
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
 from mintq.agenthub.user_simulator import UserSimulator
+from mintq.registry import agent_registry
 
 
 @dataclass
@@ -65,6 +66,7 @@ def max_steps_reached_processor(
     return messages
 
 
+@agent_registry.register
 class AmbigSimpleSQLAgent:
     name = "ambig_simple_sql_agent"
 

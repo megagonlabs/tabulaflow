@@ -8,8 +8,10 @@ from typing import Optional
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseAsyncSQLDBConnector
+from mintq.registry import dataset_registry
 
 
+@dataset_registry.register
 class Spider2SnowDatasetLoader:
     name = "spider2-snow"
     splits = ["dev"]

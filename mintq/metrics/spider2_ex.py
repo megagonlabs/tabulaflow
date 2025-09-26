@@ -3,6 +3,7 @@ import pandas as pd
 from typing import Any
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.registry import metric_registry
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
@@ -76,6 +77,7 @@ def compare_pandas_table(
     return score
 
 
+@metric_registry.register
 class Spider2Ex:
     name = "spider2_ex"
 

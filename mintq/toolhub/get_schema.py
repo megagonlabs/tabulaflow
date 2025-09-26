@@ -3,7 +3,6 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.toolhub.utils import format_df
 from mintq.formatters import BaseSQLSchemaFormatter
 
 

@@ -10,6 +10,7 @@ from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage,
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool, MarkRelevantColumnTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
+from mintq.registry import agent_registry
 
 
 # @dataclass
@@ -110,6 +111,7 @@ async def finish_schema_linking() -> None:
     return None
 
 
+@agent_registry.register
 class SQLMultiAgentV1:
     name = "sql_multi_agent_v1"
 

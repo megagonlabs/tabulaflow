@@ -3,11 +3,11 @@ import time
 import asyncio
 import os
 from tqdm import trange
+from mintq import dataset_registry, metric_registry
 from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.utils import aggregate_metrics
-from mintq.datahub import get_dataset_loader
-from mintq.metrics import get_metric, BaseAsyncNL2QMetric
+from mintq.metrics import BaseAsyncNL2QMetric
 
 
 async def compute_metrics_async(
@@ -59,14 +59,14 @@ async def main_async() -> None:
         result = NL2QRunResult.model_validate_json(f.read())
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(result.dataset)
+    dataset_loader = dataset_registry.get_class(result.dataset)()
     dataset = await dataset_loader.get_split_async(
         result.split, databases=result.databases, subsample_size=result.subsample_size
     )
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
     )
-    metrics = [get_metric(m) for m in args.metrics]
+    metrics = [metric_registry.get_class(m)() for m in args.metrics]
     result = await evaluate_async(result, dataset, metrics, args.batch_size)
 
     result.to_directory(args.result_dir, eval_metrics_in_summary=args.metrics)

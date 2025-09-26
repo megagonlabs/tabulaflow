@@ -5,8 +5,10 @@ import asyncio
 from typing import Any
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
+from mintq.registry import dataset_registry
 
 
+@dataset_registry.register
 class BeaverDatasetLoader:
     name = "beaver"
     splits = ["dev"]

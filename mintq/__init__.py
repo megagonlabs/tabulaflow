@@ -2,6 +2,9 @@ import os
 import contextlib
 from langfuse import get_client
 from phoenix.otel import register
+from mintq.agenthub import agent_registry
+from mintq.datahub import dataset_registry
+from mintq.metrics import metric_registry
 
 
 if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
@@ -20,3 +23,9 @@ if os.getenv("LANGFUSE_HOST"):
         print("Langfuse client is authenticated and ready!")
     else:
         print("Authentication failed. Please check your credentials and host.")
+
+__all__ = [
+    "agent_registry",
+    "dataset_registry",
+    "metric_registry",
+]

@@ -1,8 +1,5 @@
 from typing import ClassVar
 from dataclasses import dataclass, field
-import sqlalchemy
-from sqlalchemy.sql import quoted_name
-from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from mintq.db_connector import BaseAsyncSQLDBConnector

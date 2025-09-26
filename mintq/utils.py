@@ -1,11 +1,9 @@
 import itertools
-import math
 import re
 import copy
 import statistics
 from typing import Literal
 import numpy as np
-from pandas.io.formats.format import return_docstring
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NestedMetrics
 
 
@@ -19,7 +17,7 @@ def extract_code(response: str) -> str:
 
 def enforce_same_schema(metrics: list[NestedMetrics]) -> None:
     if isinstance(metrics[0], (float, int, bool)):
-        assert all(type(m) == type(metrics[0]) for m in metrics)
+        assert all(isinstance(m, type(metrics[0])) for m in metrics)
         return
     assert all(m.keys() == metrics[0].keys() for m in metrics)
     for k in metrics[0].keys():
@@ -34,7 +32,7 @@ def aggregate_metrics(
     try:
         enforce_same_schema(metrics)
     except AssertionError:
-        raise ValueError(f"All metrics to aggregate must have the same schema.")
+        raise ValueError("All metrics to aggregate must have the same schema.")
 
     if isinstance(metrics[0], (float, int, bool)):
         op2func = {

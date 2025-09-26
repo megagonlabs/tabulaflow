@@ -2,8 +2,10 @@ from typing import Any
 from itertools import combinations
 from mintq.db_connector import BaseAsyncSQLDBConnector
 from mintq.schema import SimpleNL2QTaskOutput
+from mintq.registry import metric_registry
 
 
+@metric_registry.register
 class BirdSQLExSoft:
     name = "bird_sql_ex_soft"
 

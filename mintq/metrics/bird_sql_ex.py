@@ -1,7 +1,9 @@
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.registry import metric_registry
 
 
+@metric_registry.register
 class BirdSQLEx:
     name = "bird_sql_ex"
 

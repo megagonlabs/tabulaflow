@@ -39,7 +39,9 @@ class SQLDefaultSchemaFormatter:
         res += "\n\n".join([self.format_table(table, pk_fk_column_only, add_description) for table in schema.tables])
         return res
 
-    def format_table(self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
+    def format_table(
+        self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False
+    ) -> str:
         res = f"=== (SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)} ({table.num_rows} rows) ===\n"
 
         composite_fks = []
