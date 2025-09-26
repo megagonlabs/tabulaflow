@@ -19,14 +19,15 @@ async def populate_task_async(
             all_queries.append(getattr(task, f"{prefix}_query"))
         if getattr(task, f"{prefix}_queries", None):
             all_queries += getattr(task, f"{prefix}_queries")
+        queries_to_populate = [q for q in all_queries if not q.exec_result]
         results = await asyncio.gather(
             *[
                 db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
-                for q in all_queries
+                for q in queries_to_populate
             ],
             return_exceptions=True,
         )
-        for q, exec_result in zip(all_queries, results):
+        for q, exec_result in zip(queries_to_populate, results):
             q.exec_result = exec_result
     return task
 
