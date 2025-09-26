@@ -1,9 +1,39 @@
-from typing import Protocol, ClassVar
-from mintq.schema import NL2QTaskOutput
-from mintq.db_connector import BaseAsyncDBConnector
+from typing import Protocol, ClassVar, TypeAlias, Union
+from mintq.schema import (
+    SimpleNL2QTaskOutput,
+    SimpleAmbigNL2QTaskOutput,
+    FlatAmbigNL2QTaskOutput,
+    StructuredAmbigNL2QTaskOutput,
+)
 
 
-class BaseAsyncNL2QMetric(Protocol):
+class BaseSimpleNL2QMetric(Protocol):
+    name: str
+
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float: ...
+
+
+class BaseSimpleAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float: ...
+    async def compute_async(self, task: SimpleAmbigNL2QTaskOutput) -> float: ...
+
+
+class BaseFlatAmbigNL2QMetric(Protocol):
+    name: ClassVar[str]
+
+    async def compute_async(self, task: FlatAmbigNL2QTaskOutput) -> float: ...
+
+
+class BaseStructuredAmbigNL2QMetric(Protocol):
+    name: ClassVar[str]
+
+    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> float: ...
+
+
+NL2QMetric: TypeAlias = Union[
+    BaseSimpleNL2QMetric,
+    BaseSimpleAmbigNL2QMetric,
+    BaseFlatAmbigNL2QMetric,
+    BaseStructuredAmbigNL2QMetric,
+]

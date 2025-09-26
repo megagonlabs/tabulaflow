@@ -7,7 +7,7 @@ from mintq.registry import metric_registry
 class Executable:
     name = "executable"
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
         if not task.pred_query.exec_result:
             raise ValueError("ExecResult not populated")
 

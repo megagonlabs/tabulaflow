@@ -35,7 +35,7 @@ class BirdSQLExSoft:
                 return 1.0
         return 0.0
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncSQLDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
         if not task.pred_query.exec_result or not task.gold_query.exec_result:
             raise ValueError("ExecResult not populated")
 

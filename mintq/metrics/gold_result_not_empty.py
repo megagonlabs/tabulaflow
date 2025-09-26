@@ -7,7 +7,7 @@ from mintq.registry import metric_registry
 class GoldResultNotEmpty:
     name = "gold_result_not_empty"
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: BaseAsyncDBConnector) -> float:
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
         if not task.gold_query.exec_result:
             raise ValueError("ExecResult not populated")
 
