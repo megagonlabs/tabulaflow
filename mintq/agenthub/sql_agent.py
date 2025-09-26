@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 import jinja2
 import time
+from typing import Any
+from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
@@ -10,6 +12,7 @@ from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage,
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
+from mintq.formatters import get_schema_formatter
 
 
 @dataclass
@@ -49,33 +52,28 @@ def max_steps_reached_processor(
     return messages
 
 
+class SQLAgentConfig(BaseModel):
+    llm: str
+    schema_formatter: str
+    temperature: float = 0.0
+    num_candidates: int = 1
+    max_steps: int = 20
+
+    def to_dict(self) -> dict[str, Any]:
+        return self.model_dump()
+
+
 class SQLAgent:
     name = "sql_agent"
+    config_cls = SQLAgentConfig
 
-    def __init__(
-        self,
-        llm: str,
-        schema_formatter: BaseSQLSchemaFormatter,
-        temperature: float = 0.0,
-        num_candidates: int = 1,
-        max_steps: int = 20,
-    ):
-        self.llm = llm
-        self.temperature = temperature
-        self.num_candidates = num_candidates
-        self.max_steps = max_steps
+    def __init__(self, config: SQLAgentConfig):
+        self.config = config
+        self.formatter = get_schema_formatter(config.schema_formatter)
 
-        self.formatter = schema_formatter
-        self.hschema_synthesizer = HSchemaSynthesizer()
-        self.hschema_formatter = HSchemaFormatter()
-
-    def get_config(self) -> dict[str, str | int | float | bool]:
-        return {
-            "llm": self.llm,
-            "temperature": self.temperature,
-            "schema_formatter": self.formatter.name,
-            "num_candidates": self.num_candidates,
-        }
+    @classmethod
+    async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
+        return cls(config)
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
@@ -93,7 +91,7 @@ class SQLAgent:
             finish_tool,
         ]
         agent = Agent[TaskContext, str](  # type: ignore
-            model=self.llm,
+            model=self.config.llm,
             tools=[
                 get_schema_tool.as_pydantic_ai_tool(),
                 get_column_description_tool.as_pydantic_ai_tool(),
@@ -109,7 +107,7 @@ class SQLAgent:
         agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
-            model=self.llm,
+            model=self.config.llm,
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,
@@ -121,21 +119,23 @@ class SQLAgent:
         deps = TaskContext(
             task=task,
             db_connector=db_connector,
-            max_steps=self.max_steps,
+            max_steps=self.config.max_steps,
         )
 
         fallback = False
         try:
-            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.config.temperature})
             messages = result.all_messages()[:-1]
         except (UsageLimitExceeded, UnexpectedModelBehavior):
-            result = await agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent_no_tools.run(
+                prompt, deps=deps, model_settings={"temperature": self.config.temperature}
+            )
             messages = result.all_messages()
             fallback = True
         pred_query = PredQuery(query=extract_code(result.output))
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
-        usages = [Usage.from_pydantic_ai_usage(result.usage(), self.llm)]
+        usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0

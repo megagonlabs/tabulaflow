@@ -10,7 +10,7 @@ import litellm
 from tqdm import trange
 from mintq.utils import aggregate_metrics
 from mintq.formatters import get_schema_formatter
-from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent
+from mintq.agenthub import get_nl2q_agent_class, BaseAsyncNL2QAgent, BaseAgentConfig
 from mintq.datahub import get_dataset_loader
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult, Usage
@@ -21,7 +21,7 @@ logfire.instrument_pydantic_ai()
 
 
 async def run_agent_async(
-    agent_cls: Type[BaseAsyncNL2QAgent], agent_args: dict[str, Any], dataset: NL2QDataset, batch_size: int
+    agent_cls: Type[BaseAsyncNL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -36,10 +36,11 @@ async def run_agent_async(
             else:
                 batch_kwargs.append({})
 
+        agents = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])
         task_outputs += await asyncio.gather(
             *[
-                agent_cls(**agent_args).predict_async(task, dataset.db_connectors[task.db], **kwargs)
-                for task, kwargs in zip(batch, batch_kwargs)
+                agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)
+                for agent, task, kwargs in zip(agents, batch, batch_kwargs)
             ]
         )
 
@@ -47,27 +48,9 @@ async def run_agent_async(
             if getattr(task_outputs[0], "trajectory", None):
                 print(task_outputs[0].trajectory.to_readable())  # type: ignore
 
-    sample_agent = agent_cls(**agent_args)
-    aggregated_metrics = aggregate_metrics([task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4)
-    # aggregated_metrics["avg_latency_seconds"] = avg_and_round(
-    #     [task.metrics["latency_seconds"] for task in task_outputs]
-    # )
-    # aggregated_metrics["avg_steps"] = avg_and_round([task.metrics["steps"] for task in task_outputs])
-    # aggregated_metrics["total_api_calls"] = sum(
-    #     [sum(usage.api_calls for usage in task.usages) for task in task_outputs]
-    # )
-    # aggregated_metrics["total_input_tokens"] = sum(
-    #     [sum(usage.input_tokens for usage in task.usages) for task in task_outputs]
-    # )
-    # aggregated_metrics["total_output_tokens"] = sum(
-    #     [sum(usage.output_tokens for usage in task.usages) for task in task_outputs]
-    # )
-    # aggregated_metrics["avg_api_cost_usd"] = avg_and_round(
-    #     [sum(usage.api_cost_usd for usage in task.usages) for task in task_outputs], 4
-    # )
-    # aggregated_metrics["total_api_cost_usd"] = round(
-    #     sum([usage.api_cost_usd for task in task_outputs for usage in task.usages]), 4
-    # )
+    aggregated_metrics = aggregate_metrics(
+        [task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4
+    )
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(
@@ -77,8 +60,8 @@ async def run_agent_async(
         split=dataset.split,
         subsample_size=dataset.subsample_size,
         databases=dataset.databases,
-        agent=sample_agent.name,
-        agent_args=sample_agent.get_config(),
+        agent=agent_cls.name,
+        agent_args=agent_config.to_dict(),
         aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,
     )
@@ -127,18 +110,6 @@ async def main_async() -> None:
     if Usage.get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
         print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
 
-    # litellm_kwargs = {}
-    # if args.llm.startswith("hosted_vllm/"):
-    #     with open(args.local_llm_config, "r") as f:
-    #         litellm_kwargs["api_base"] = json.load(f)[args.llm]["api_base"]
-    schema_formatter = get_schema_formatter(args.schema_formatter)
-    nl2q_kwargs = {
-        "llm": args.llm,
-        "temperature": args.temperature,
-        "num_candidates": args.num_majority_voting_candidates,
-        # "litellm_kwargs": litellm_kwargs,
-        "schema_formatter": schema_formatter,
-    }
     t0 = time.time()
     dataset_loader = get_dataset_loader(args.dataset)
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
@@ -149,7 +120,14 @@ async def main_async() -> None:
     )
 
     agent_class = get_nl2q_agent_class(args.agent)
-    result = await run_agent_async(agent_class, nl2q_kwargs, dataset, args.batch_size)
+    config_class = agent_class.config_cls
+    config = config_class(
+        llm=args.llm,
+        schema_formatter=args.schema_formatter,
+        temperature=args.temperature,
+        num_candidates=args.num_majority_voting_candidates,
+    )
+    result = await run_agent_async(agent_class, config, dataset, args.batch_size)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
 
