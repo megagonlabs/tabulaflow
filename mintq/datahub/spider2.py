@@ -171,7 +171,7 @@ class Spider2SnowDatasetLoader:
                 # table.schema_name = table.schema_name.upper()  # type: ignore
                 for column in table.columns:
                     column.description = column_descriptions.get(
-                        (conn.schema.name, table.schema_name, table.name, column.name), None
+                        (conn.schema.name, table.schema_name, table.name, column.name), None  # type: ignore
                     )
 
         return {name: conn for name, conn in zip(databases, db_connectors)}

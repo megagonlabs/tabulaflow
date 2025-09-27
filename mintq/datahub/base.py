@@ -1,6 +1,6 @@
-from typing import Protocol, ClassVar
+from typing import Protocol, ClassVar, Sequence, Mapping
 from mintq.schema import NL2QDataset, NL2QTask
-from mintq.db_connector import BaseAsyncDBConnector
+from mintq.db_connector import NL2QDBConnector
 
 
 class BaseAsyncNL2QDatasetLoader(Protocol):
@@ -9,11 +9,11 @@ class BaseAsyncNL2QDatasetLoader(Protocol):
 
     def get_databases(self, split: str) -> list[str]: ...
 
-    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[NL2QTask]: ...
+    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> Sequence[NL2QTask]: ...
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseAsyncDBConnector]: ...
+    ) -> Mapping[str, NL2QDBConnector]: ...
 
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None

@@ -1,20 +1,9 @@
-from typing import Any, Protocol, Sequence, Mapping
+from typing import Any, Protocol, Sequence, Mapping, TypeAlias
 import sqlalchemy
-from mintq.schema import BaseDBSchema, SQLSchema, ExecResult
+from mintq.schema import SQLSchema, ExecResult
 
 
-class BaseAsyncDBConnector(Protocol):
-    global_id: str
-    schema: BaseDBSchema
-
-    def __init__(self, global_id: str, **kwargs: Any): ...
-
-    async def run_query_async(
-        self, query: str, parameters: Sequence[Any] = (), timeout: int | None = None
-    ) -> ExecResult: ...
-
-
-class BaseAsyncSQLDBConnector(Protocol):
+class BaseSQLDBConnector(Protocol):
     global_id: str
     schema: SQLSchema
 
@@ -26,3 +15,6 @@ class BaseAsyncSQLDBConnector(Protocol):
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult: ...
+
+
+NL2QDBConnector: TypeAlias = BaseSQLDBConnector

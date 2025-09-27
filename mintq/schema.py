@@ -715,9 +715,6 @@ class NL2QRunResult(BaseModel):
         df.to_csv(path, index=False)
 
 
-class BaseDBSchema(BaseModel):
-    pass
-
 
 class ForeignKeySchema(BaseModel):
     columns: list[str]
@@ -750,7 +747,7 @@ class SQLTableSchema(BaseModel):
     foreign_keys: list[ForeignKeySchema]
 
 
-class SQLSchema(BaseDBSchema):
+class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
 
