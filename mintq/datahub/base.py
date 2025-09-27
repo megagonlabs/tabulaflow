@@ -1,4 +1,4 @@
-from typing import Protocol, ClassVar, Sequence, Mapping
+from typing import Protocol, ClassVar, Sequence, Mapping, TypeAlias
 from mintq.schema import NL2QDataset, NL2QTask
 from mintq.db_connector import NL2QDBConnector
 
@@ -18,3 +18,6 @@ class BaseNL2QDatasetLoader(Protocol):
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset: ...
+
+
+NL2QDatasetLoader: TypeAlias = BaseNL2QDatasetLoader
