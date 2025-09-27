@@ -1,6 +1,6 @@
 from typing import Protocol, Type, TypeVar, Generic, ClassVar
 from mintq.agenthub.base import NL2QAgent
-from mintq.datahub.base import BaseAsyncNL2QDatasetLoader
+from mintq.datahub.base import BaseNL2QDatasetLoader
 from mintq.metrics.base import NL2QMetric
 
 
@@ -32,5 +32,5 @@ class Registry(Generic[T]):
 
 
 agent_registry: Registry[NL2QAgent] = Registry("agent")
-dataset_registry: Registry[BaseAsyncNL2QDatasetLoader] = Registry("dataset")
+dataset_registry: Registry[BaseNL2QDatasetLoader] = Registry("dataset")
 metric_registry: Registry[NL2QMetric] = Registry("metric")

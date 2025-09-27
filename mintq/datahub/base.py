@@ -3,7 +3,7 @@ from mintq.schema import NL2QDataset, NL2QTask
 from mintq.db_connector import NL2QDBConnector
 
 
-class BaseAsyncNL2QDatasetLoader(Protocol):
+class BaseNL2QDatasetLoader(Protocol):
     name: ClassVar[str]
     splits: ClassVar[list[str]]
 
