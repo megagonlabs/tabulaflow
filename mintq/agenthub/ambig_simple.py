@@ -11,8 +11,7 @@ from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
-from mintq.agenthub.user_simulator import UserSimulator
-from mintq.agenthub.base import agent_registry
+from mintq.agenthub.base import agent_registry, BaseUserSimulator
 
 
 @dataclass
@@ -93,7 +92,7 @@ class AmbigSimpleSQLAgent:
         return cls(config)
 
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: UserSimulator
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 

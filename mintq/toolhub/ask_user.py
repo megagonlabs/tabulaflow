@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from mintq.agenthub.user_simulator import UserSimulator
+from mintq.agenthub.base import BaseUserSimulator
 
 
 class AskUserToolMetrics(BaseModel):
@@ -12,7 +12,7 @@ class AskUserToolMetrics(BaseModel):
 @dataclass
 class AskUserTool:
     name: ClassVar[str] = "ask_user"
-    user_simulator: UserSimulator
+    user_simulator: BaseUserSimulator
     metrics_: AskUserToolMetrics = field(default_factory=AskUserToolMetrics)
 
     async def __call__(self, question: str) -> str:
