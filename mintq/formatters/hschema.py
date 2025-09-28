@@ -1,6 +1,7 @@
 from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import HSQLSchema, HColumnGroup, HTableSection, HTableGroup
+from mintq.formatters.base import formatter_registry
 
 
 """
@@ -30,6 +31,7 @@ DATABASE: european_football_2
 """
 
 
+@formatter_registry.register
 @dataclass
 class HSchemaFormatter:
     name: ClassVar[str] = "hschema"

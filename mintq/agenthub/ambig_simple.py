@@ -4,19 +4,19 @@ import time
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
 from mintq.agenthub.user_simulator import UserSimulator
-from mintq.registry import agent_registry
+from mintq.agenthub.base import agent_registry
 
 
 @dataclass
 class TaskContext:
     task: AmbigNL2QTask
-    db_connector: BaseAsyncSQLDBConnector
+    db_connector: BaseSQLDBConnector
     max_steps: int
 
 
@@ -96,7 +96,7 @@ class AmbigSimpleSQLAgent:
         }
 
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseAsyncSQLDBConnector, user_simulator: UserSimulator
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: UserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 

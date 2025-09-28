@@ -1,8 +1,10 @@
 from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
+from mintq.formatters.base import formatter_registry
 
 
+@formatter_registry.register
 @dataclass
 class SQLDefaultSchemaFormatter:
     name: ClassVar[str] = "sql_default"

@@ -4,13 +4,13 @@ import asyncio
 import os
 from tqdm import trange
 from mintq import dataset_registry
-from mintq.db_connector import BaseAsyncDBConnector
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
+from mintq.db_connector import NL2QDBConnector
 
 
 async def populate_task_async(
     task: NL2QTaskOutput,
-    db_connector: BaseAsyncDBConnector,
+    db_connector: NL2QDBConnector,
     timeout: int | None = None,
 ) -> NL2QTaskOutput:
     for prefix in ["gold", "pred"]:

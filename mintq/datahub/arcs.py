@@ -5,7 +5,7 @@ import json
 from typing import ClassVar
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
-from mintq.registry import dataset_registry
+from mintq.datahub.base import dataset_registry
 
 
 @dataset_registry.register

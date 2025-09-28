@@ -10,7 +10,7 @@ import litellm
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
-from mintq.agenthub import BaseAsyncNL2QAgent, BaseAgentConfig
+from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult, Usage
 
@@ -20,7 +20,7 @@ logfire.instrument_pydantic_ai()
 
 
 async def run_agent_async(
-    agent_cls: Type[BaseAsyncNL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
+    agent_cls: Type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []

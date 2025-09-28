@@ -2,9 +2,10 @@ import os
 import contextlib
 from langfuse import get_client
 from phoenix.otel import register
-from mintq.agenthub import agent_registry
-from mintq.datahub import dataset_registry
-from mintq.metrics import metric_registry
+from mintq.agenthub.base import agent_registry
+from mintq.datahub.base import dataset_registry
+from mintq.metrics.base import metric_registry
+from mintq.formatters.base import formatter_registry
 
 
 if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
@@ -28,4 +29,5 @@ __all__ = [
     "agent_registry",
     "dataset_registry",
     "metric_registry",
+    "formatter_registry",
 ]

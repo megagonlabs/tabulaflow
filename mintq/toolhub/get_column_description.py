@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass, field
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.utils import equals_ci
 
 
@@ -14,7 +14,7 @@ class GetColumnDescriptionToolMetrics(BaseModel):
 @dataclass
 class GetColumnDescriptionTool:
     name: ClassVar[str] = "get_column_description"
-    db_connector: BaseAsyncSQLDBConnector
+    db_connector: BaseSQLDBConnector
     metrics_: GetColumnDescriptionToolMetrics = field(default_factory=GetColumnDescriptionToolMetrics)
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:

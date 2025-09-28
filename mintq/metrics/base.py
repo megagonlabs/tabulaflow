@@ -5,6 +5,8 @@ from mintq.schema import (
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
+from mintq.registry import Registry
+
 
 class BaseSimpleNL2QMetric(Protocol):
     name: ClassVar[str]
@@ -36,3 +38,5 @@ NL2QMetric: TypeAlias = Union[
     BaseFlatAmbigNL2QMetric,
     BaseStructuredAmbigNL2QMetric,
 ]
+
+metric_registry = Registry[NL2QMetric]("metric")

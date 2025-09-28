@@ -1,24 +1,23 @@
 from dataclasses import dataclass
 import jinja2
 import time
-from typing import Any, ClassVar, Type
+from typing import Any, ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from mintq.db_connector import BaseAsyncSQLDBConnector
-from mintq.agenthub.base import BaseSimpleSQLAgent, BaseAgentConfig
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
-from mintq.formatters import get_schema_formatter
-from mintq.registry import agent_registry
+from mintq.formatters.base import formatter_registry
+from mintq.agenthub.base import agent_registry
 
 
 @dataclass
 class TaskContext:
     task: SimpleNL2QTask
-    db_connector: BaseAsyncSQLDBConnector
+    db_connector: BaseSQLDBConnector
     max_steps: int
 
 
@@ -70,13 +69,13 @@ class SQLAgent:
 
     def __init__(self, config: SQLAgentConfig):
         self.config = config
-        self.formatter = get_schema_formatter(config.schema_formatter)
+        self.formatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
     async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
         return cls(config)
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         get_schema_tool = GetSchemaTool(db_connector, self.formatter)

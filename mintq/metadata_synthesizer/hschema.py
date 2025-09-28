@@ -14,7 +14,7 @@ from mintq.schema import (
     ForeignKeySchema,
 )
 from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer, BaseClusterer
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.config import config
 import logging
@@ -178,7 +178,7 @@ class HSchemaSynthesizer:
         )
         return (schema_name, columns, primary_key, foreign_keys)
 
-    async def _run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
+    async def _run_async(self, db_connector: BaseSQLDBConnector) -> HSQLSchema:
         schema = db_connector.schema
 
         digest2tables = collections.defaultdict(list)
@@ -227,7 +227,7 @@ class HSchemaSynthesizer:
             ],
         )
 
-    async def run_async(self, db_connector: BaseAsyncSQLDBConnector) -> HSQLSchema:
+    async def run_async(self, db_connector: BaseSQLDBConnector) -> HSQLSchema:
         hschema_cache_dir = os.path.join(config.cache_dir, "hschemas")
         os.makedirs(hschema_cache_dir, exist_ok=True)
         cache_path = os.path.join(hschema_cache_dir, f"{db_connector.global_id}.json")

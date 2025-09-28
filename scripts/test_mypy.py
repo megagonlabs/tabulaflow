@@ -41,7 +41,7 @@ class MyConfig(BaseConfig):
 class MyAgent:
     name: ClassVar = "my_agent"
     config_cls: ClassVar = MyConfig
-    
+
     def __init__(self, config: MyConfig) -> None:
         self.config = config
 

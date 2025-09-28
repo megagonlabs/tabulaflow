@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.utils import format_df
 
 
@@ -14,7 +14,7 @@ class RunQueryToolMetrics(BaseModel):
 @dataclass
 class RunQueryTool:
     name: ClassVar[str] = "run_query"
-    db_connector: BaseAsyncSQLDBConnector
+    db_connector: BaseSQLDBConnector
     metrics_: RunQueryToolMetrics = field(default_factory=RunQueryToolMetrics)
 
     async def __call__(self, query: str) -> str:

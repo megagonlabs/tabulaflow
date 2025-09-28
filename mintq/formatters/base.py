@@ -1,11 +1,6 @@
-from typing import Protocol, ClassVar
-from mintq.schema import BaseDBSchema, SQLSchema, SQLTableSchema, SQLColumnSchema, HSQLSchema
-
-
-class BaseSchemaFormatter(Protocol):
-    name: ClassVar[str]
-
-    def format(self, schema: BaseDBSchema) -> str: ...
+from typing import Protocol, ClassVar, TypeAlias, Union
+from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema, HSQLSchema
+from mintq.registry import Registry
 
 
 class BaseSQLSchemaFormatter(Protocol):
@@ -26,3 +21,8 @@ class BaseHSchemaFormatter(Protocol):
     name: ClassVar[str]
 
     def format(self, schema: HSQLSchema) -> str: ...
+
+
+NL2QFormatter: TypeAlias = Union[BaseSQLSchemaFormatter, BaseHSchemaFormatter]
+
+formatter_registry = Registry[NL2QFormatter]("formatter")

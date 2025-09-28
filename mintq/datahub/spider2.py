@@ -7,8 +7,8 @@ from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
-from mintq.db_connector import SQLConnector, BaseAsyncSQLDBConnector
-from mintq.registry import dataset_registry
+from mintq.db_connector import SQLConnector, BaseSQLDBConnector
+from mintq.datahub.base import dataset_registry
 
 
 @dataset_registry.register
@@ -121,7 +121,7 @@ class Spider2SnowDatasetLoader:
 
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseAsyncSQLDBConnector]:
+    ) -> dict[str, BaseSQLDBConnector]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
@@ -171,7 +171,8 @@ class Spider2SnowDatasetLoader:
                 # table.schema_name = table.schema_name.upper()  # type: ignore
                 for column in table.columns:
                     column.description = column_descriptions.get(
-                        (conn.schema.name, table.schema_name, table.name, column.name), None  # type: ignore
+                        (conn.schema.name, table.schema_name, table.name, column.name),
+                        None,  # type: ignore
                     )
 
         return {name: conn for name, conn in zip(databases, db_connectors)}

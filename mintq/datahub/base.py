@@ -1,6 +1,7 @@
 from typing import Protocol, ClassVar, Sequence, Mapping, TypeAlias
 from mintq.schema import NL2QDataset, NL2QTask
 from mintq.db_connector import NL2QDBConnector
+from mintq.registry import Registry
 
 
 class BaseNL2QDatasetLoader(Protocol):
@@ -21,3 +22,6 @@ class BaseNL2QDatasetLoader(Protocol):
 
 
 NL2QDatasetLoader: TypeAlias = BaseNL2QDatasetLoader
+
+
+dataset_registry = Registry[NL2QDatasetLoader]("dataset")

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 
 
@@ -13,7 +13,7 @@ class GetSchemaToolMetrics(BaseModel):
 @dataclass
 class GetSchemaTool:
     name: ClassVar[str] = "get_schema"
-    db_connector: BaseAsyncSQLDBConnector
+    db_connector: BaseSQLDBConnector
     formatter: BaseSQLSchemaFormatter
     metrics_: GetSchemaToolMetrics = field(default_factory=GetSchemaToolMetrics)
 

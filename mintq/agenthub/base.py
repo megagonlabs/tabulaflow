@@ -1,4 +1,4 @@
-from typing import Protocol, ClassVar, Any, Type, TypeAlias, Union, TypeVar, Generic
+from typing import Protocol, ClassVar, Any, Type, TypeAlias, Union
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
@@ -7,7 +7,8 @@ from mintq.schema import (
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
-from mintq.db_connector import BaseAsyncDBConnector, BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
+from mintq.registry import Registry
 
 
 class BaseUserSimulator(Protocol):
@@ -25,9 +26,7 @@ class BaseSimpleSQLAgent(Protocol):
     @classmethod
     async def from_config_async(cls, config) -> "BaseSimpleSQLAgent": ...  # type: ignore
 
-    async def predict_async(
-        self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector
-    ) -> SimpleNL2QTaskOutput: ...
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput: ...
 
 
 class BaseAmbigSQLAgent(Protocol):
@@ -38,8 +37,11 @@ class BaseAmbigSQLAgent(Protocol):
     async def from_config_async(cls, config) -> "BaseAmbigSQLAgent": ...  # type: ignore
 
     async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseAsyncSQLDBConnector, user_simulator: BaseUserSimulator
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput: ...
 
 
 NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent]
+
+
+agent_registry = Registry[NL2QAgent]("agent")

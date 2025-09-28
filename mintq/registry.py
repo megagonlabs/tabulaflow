@@ -1,7 +1,4 @@
 from typing import Protocol, Type, TypeVar, Generic, ClassVar
-from mintq.agenthub.base import NL2QAgent
-from mintq.datahub.base import NL2QDatasetLoader
-from mintq.metrics.base import NL2QMetric
 
 
 class NamedClass(Protocol):
@@ -31,6 +28,7 @@ class Registry(Generic[T]):
         return list(self._name_to_cls.keys())
 
 
-agent_registry: Registry[NL2QAgent] = Registry("agent")
-dataset_registry: Registry[NL2QDatasetLoader] = Registry("dataset")
-metric_registry: Registry[NL2QMetric] = Registry("metric")
+# agent_registry: Registry[NL2QAgent] = Registry("agent")
+# dataset_registry: Registry[NL2QDatasetLoader] = Registry("dataset")
+# metric_registry: Registry[NL2QMetric] = Registry("metric")
+# formatter_registry: Registry[NL2QFormatter] = Registry("formatter")

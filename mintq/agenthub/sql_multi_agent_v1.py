@@ -4,19 +4,19 @@ from typing import Any, Callable
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from mintq.db_connector import BaseAsyncSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool, MarkRelevantColumnTool
 from mintq.metadata_synthesizer import HSchemaSynthesizer
-from mintq.registry import agent_registry
+from mintq.agenthub.base import agent_registry
 
 
 # @dataclass
 # class SchemaLinkingTaskContext:
 #     task: SimpleNL2QTask
-#     db_connector: BaseAsyncSQLDBConnector
+#     db_connector: BaseSQLDBConnector
 #     max_steps: int
 #     original_hschema: HSQLSchemra
 #     relevant_hschema: HSQLSchemra
@@ -30,7 +30,7 @@ from mintq.registry import agent_registry
 # @dataclass
 # class SQLWritingTaskContext:
 #     task: SimpleNL2QTask
-#     db_connector: BaseAsyncSQLDBConnector
+#     db_connector: BaseSQLDBConnector
 #     max_steps: int
 #     relevant_schema: HSQLSchema
 
@@ -142,7 +142,7 @@ class SQLMultiAgentV1:
             "num_candidates": self.num_candidates,
         }
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseAsyncSQLDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         hschema = await self.hschema_synthesizer.run_async(db_connector)

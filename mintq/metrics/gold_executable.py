@@ -1,7 +1,6 @@
 from typing import ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.db_connector import BaseAsyncDBConnector
-from mintq.registry import metric_registry
+from mintq.metrics.base import metric_registry
 
 
 @metric_registry.register

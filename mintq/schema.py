@@ -7,7 +7,6 @@ from pydantic import BaseModel, Field, field_serializer, model_validator, AfterV
 from pydantic.types import StringConstraints
 import pydantic_ai
 from typing import Any, Literal, Annotated, Union
-from typing_extensions import TypeAliasType
 import pandas as pd
 import math
 import itertools
@@ -319,7 +318,6 @@ class SimpleNL2QTask(BaseModel):
             res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
         res += f"\n\n\n{self.gold_query.to_readable()}"
         return res
-
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
@@ -713,7 +711,6 @@ class NL2QRunResult(BaseModel):
         summaries = [task.to_summary(eval_metrics) for task in self.tasks]
         df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
         df.to_csv(path, index=False)
-
 
 
 class ForeignKeySchema(BaseModel):

@@ -5,7 +5,7 @@ import asyncio
 from typing import Any, ClassVar
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
-from mintq.registry import dataset_registry
+from mintq.datahub.base import dataset_registry
 
 
 @dataset_registry.register

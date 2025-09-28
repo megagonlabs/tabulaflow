@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Any, ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
-from mintq.registry import metric_registry
+from mintq.metrics.base import metric_registry
 
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py

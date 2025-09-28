@@ -6,8 +6,8 @@ import logging
 import asyncio
 from typing import Any
 from mintq.utils import extract_code
-from mintq.formatters import BaseSchemaFormatter, BaseSQLSchemaFormatter
-from mintq.db_connector import BaseAsyncDBConnector, BaseAsyncSQLDBConnector
+from mintq.formatters import NL2QFormatter
+from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
@@ -18,7 +18,7 @@ from mintq.schema import (
     PredQuery,
     Usage,
 )
-from mintq.registry import agent_registry
+from mintq.agenthub.base import agent_registry
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -61,7 +61,7 @@ class SimpleZeroShotNL2Q:
     def __init__(
         self,
         llm: str,
-        schema_formatter: BaseSchemaFormatter | BaseSQLSchemaFormatter,
+        schema_formatter: NL2QFormatter,
         temperature: float = 0.0,
         num_candidates: int = 1,
         litellm_kwargs: dict[str, Any] = {},
@@ -79,9 +79,7 @@ class SimpleZeroShotNL2Q:
             "num_candidates": self.num_candidates,
         }
 
-    async def predict_async(
-        self, task: SimpleNL2QTask, db_connector: BaseAsyncDBConnector | BaseAsyncSQLDBConnector
-    ) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_str = self.schema_formatter.format(db_connector.schema)
@@ -146,7 +144,7 @@ class SimpleZeroShotNL2Q:
             inference_metrics=metrics,
         )
 
-    async def select_best_query_async(self, candidates: list[str], db_connector: BaseAsyncDBConnector) -> int:
+    async def select_best_query_async(self, candidates: list[str], db_connector: NL2QDBConnector) -> int:
         all_results = await asyncio.gather(
             *[db_connector.run_query_async(query) for query in candidates], return_exceptions=True
         )
