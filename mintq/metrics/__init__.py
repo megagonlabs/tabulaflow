@@ -4,6 +4,7 @@ from mintq.metrics.base import (
     BaseFlatAmbigNL2QMetric,
     BaseStructuredAmbigNL2QMetric,
     NL2QMetric,
+    metric_registry,
 )
 from mintq.metrics.bird_sql_ex import BirdSQLEx
 from mintq.metrics.bird_sql_ex_soft import BirdSQLExSoft

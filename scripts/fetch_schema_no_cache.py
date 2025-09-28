@@ -2,7 +2,7 @@ import asyncio
 import argparse
 import os
 import time
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import dataset_registry
 from mintq.formatters import SQLDefaultSchemaFormatter
 
 
@@ -23,7 +23,7 @@ async def main() -> None:
         os.environ["MINTQ_CACHE_ENABLED"] = "1"
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
+    dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     schema = dataset.db_connectors[args.database].schema
     print(SQLDefaultSchemaFormatter().format(schema))

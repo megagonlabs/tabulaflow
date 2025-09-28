@@ -2,7 +2,7 @@ import argparse
 import time
 import os
 import asyncio
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import dataset_registry
 
 
 async def main() -> None:
@@ -22,7 +22,7 @@ async def main() -> None:
         os.environ["MINTQ_CACHE_REFRESH"] = "0"
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
+    dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     print(
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."

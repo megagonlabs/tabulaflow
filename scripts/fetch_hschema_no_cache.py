@@ -2,7 +2,7 @@ import asyncio
 import argparse
 import os
 import time
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import dataset_registry
 from mintq.formatters import HSchemaFormatter
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 
@@ -18,7 +18,7 @@ async def main() -> None:
     print()
 
     t0 = time.time()
-    dataset_loader = get_dataset_loader(args.dataset)
+    dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     db_connector = dataset.db_connectors[args.database]
     print(f"Database loaded in {time.time() - t0} seconds")

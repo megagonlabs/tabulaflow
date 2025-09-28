@@ -3,6 +3,7 @@ from mintq.agenthub.base import (
     BaseSimpleSQLAgent,
     BaseAmbigSQLAgent,
     NL2QAgent,
+    agent_registry,
 )
 
 

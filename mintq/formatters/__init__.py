@@ -1,4 +1,4 @@
-from mintq.formatters.base import BaseSQLSchemaFormatter, BaseHSchemaFormatter, NL2QFormatter
+from mintq.formatters.base import BaseSQLSchemaFormatter, BaseHSchemaFormatter, NL2QFormatter, formatter_registry
 from mintq.formatters.sql import SQLDefaultSchemaFormatter
 from mintq.formatters.hschema import HSchemaFormatter
 

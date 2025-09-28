@@ -1,6 +1,4 @@
-from mintq.datahub.base import BaseNL2QDatasetLoader, NL2QDatasetLoader
-
-
+from mintq.datahub.base import BaseNL2QDatasetLoader, NL2QDatasetLoader, dataset_registry
 from mintq.datahub.bird_sql import BirdSQLDatasetLoader
 from mintq.datahub.spider2 import Spider2SnowDatasetLoader
 from mintq.datahub.beaver import BeaverDatasetLoader
