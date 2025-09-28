@@ -26,9 +26,3 @@ class Registry(Generic[T]):
 
     def list_names(self) -> list[str]:
         return list(self._name_to_cls.keys())
-
-
-# agent_registry: Registry[NL2QAgent] = Registry("agent")
-# dataset_registry: Registry[NL2QDatasetLoader] = Registry("dataset")
-# metric_registry: Registry[NL2QMetric] = Registry("metric")
-# formatter_registry: Registry[NL2QFormatter] = Registry("formatter")

@@ -10,7 +10,7 @@ import litellm
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
-from mintq.agenthub import NL2QAgent, BaseAgentConfig
+from mintq.agenthub import NL2QAgent, BaseAgentConfig, SQLAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult, Usage
 
@@ -35,10 +35,10 @@ async def run_agent_async(
             else:
                 batch_kwargs.append({})
 
-        agents = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])
+        agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])
         task_outputs += await asyncio.gather(
             *[
-                agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)
+                agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)
             ]
         )
@@ -64,6 +64,18 @@ async def run_agent_async(
         aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,
     )
+
+
+def parse_agent_config(agent_cls: Type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
+    if agent_cls.name == "sql_agent":
+        return SQLAgentConfig(
+            llm=args.llm,
+            schema_formatter=args.schema_formatter,
+            temperature=args.temperature,
+            num_candidates=args.num_majority_voting_candidates,
+        )
+    else:
+        raise ValueError(f"Unsupported agent: {agent_cls.name}")
 
 
 async def main_async() -> None:
@@ -119,13 +131,7 @@ async def main_async() -> None:
     )
 
     agent_class = agent_registry.get_class(args.agent)
-    config_class = agent_class.config_cls
-    config = config_class(
-        llm=args.llm,
-        schema_formatter=args.schema_formatter,
-        temperature=args.temperature,
-        num_candidates=args.num_majority_voting_candidates,
-    )
+    config = parse_agent_config(agent_class, args)
     result = await run_agent_async(agent_class, config, dataset, args.batch_size)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
