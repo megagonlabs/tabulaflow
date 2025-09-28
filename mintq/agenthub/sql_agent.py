@@ -10,7 +10,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
-from mintq.formatters.base import formatter_registry
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry
 
 
@@ -69,7 +69,7 @@ class SQLAgent:
 
     def __init__(self, config: SQLAgentConfig):
         self.config = config
-        self.formatter = formatter_registry.get_class(config.schema_formatter)()
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()  # type: ignore
 
     @classmethod
     async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
