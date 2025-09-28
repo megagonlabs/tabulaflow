@@ -10,7 +10,6 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import (
-    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
@@ -87,7 +86,7 @@ class SQLAgent:
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
-        all_tools: list[BaseTool] = [
+        all_tools = [
             get_schema_tool,
             get_column_description_tool,
             search_keywords_tool,
@@ -149,7 +148,7 @@ class SQLAgent:
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
-        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}
+        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}  # type: ignore
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

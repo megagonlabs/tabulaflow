@@ -84,8 +84,10 @@ def create_path(
 class MarkRelevantColumnTool:
     name: ClassVar = "mark_relevant_column"
 
-    def __init__(self, hschema: HSQLSchema, relevant_hschema: HSQLSchema):
+    def __init__(self, hschema: HSQLSchema, relevant_hschema: HSQLSchema | None = None):
         self.hschema = hschema
+        if relevant_hschema is None:
+            relevant_hschema = HSQLSchema(name=hschema.name, table_groups=[])
         self.relevant_hschema = relevant_hschema
         self._metrics = MarkRelevantColumnToolMetrics()
 

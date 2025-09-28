@@ -11,7 +11,7 @@ class FinishToolMetrics(BaseModel):
 class FinishTool:
     name: ClassVar = "finish"
 
-    def __init__(self):
+    def __init__(self) -> None:
         self._metrics = FinishToolMetrics()
 
     def __call__(self, trajectory: Trajectory) -> str:

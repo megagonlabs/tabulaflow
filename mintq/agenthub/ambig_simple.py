@@ -1,11 +1,13 @@
 from dataclasses import dataclass
 import jinja2
 import time
+from typing import ClassVar
+from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
@@ -66,34 +68,29 @@ def max_steps_reached_processor(
     return messages
 
 
+class AmbigSimpleSQLAgentConfig(BaseModel):
+    llm: str
+    schema_formatter: str
+    temperature: float = 0.0
+    num_candidates: int = 1
+    max_steps: int = 20
+
+
 @agent_registry.register
 class AmbigSimpleSQLAgent:
-    name = "ambig_simple_sql_agent"
+    name: ClassVar = "ambig_simple_sql_agent"
+    config_cls: ClassVar = AmbigSimpleSQLAgentConfig
 
     def __init__(
         self,
-        llm: str,
-        schema_formatter: BaseSQLSchemaFormatter,
-        temperature: float = 0.0,
-        num_candidates: int = 1,
-        max_steps: int = 20,
+        config: AmbigSimpleSQLAgentConfig,
     ):
-        self.llm = llm
-        self.temperature = temperature
-        self.num_candidates = num_candidates
-        self.max_steps = max_steps
+        self.config = config
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()  # type: ignore
 
-        self.formatter = schema_formatter
-        # self.hschema_synthesizer = HSchemaSynthesizer()
-        # self.hschema_formatter = HSchemaFormatter()
-
-    def get_config(self) -> dict[str, str | int | float | bool]:
-        return {
-            "llm": self.llm,
-            "temperature": self.temperature,
-            "schema_formatter": self.formatter.name,
-            "num_candidates": self.num_candidates,
-        }
+    @classmethod
+    async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
+        return cls(config)
 
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: UserSimulator
@@ -104,8 +101,14 @@ class AmbigSimpleSQLAgent:
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
+        all_tools = [
+            ask_user_tool,
+            search_keywords_tool,
+            run_query_tool,
+            finish_tool,
+        ]
         agent = Agent[TaskContext, str](  # type: ignore
-            model=self.llm,
+            model=self.config.llm,
             tools=[
                 ask_user_tool.as_pydantic_ai_tool(),
                 search_keywords_tool.as_pydantic_ai_tool(),
@@ -120,7 +123,7 @@ class AmbigSimpleSQLAgent:
         agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
-            model=self.llm,
+            model=self.config.llm,
             tools=[],
             deps_type=TaskContext,
             instructions=get_system_prompt,
@@ -137,44 +140,38 @@ class AmbigSimpleSQLAgent:
         deps = TaskContext(
             task=task,
             db_connector=db_connector,
-            max_steps=self.max_steps,
+            max_steps=self.config.max_steps,
         )
 
         # Run the agent
         fallback = False
         try:
-            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.config.temperature})
             messages = result.all_messages()[:-1]
         except (UsageLimitExceeded, UnexpectedModelBehavior):
-            result = await agent_no_tools.run(prompt, deps=deps, model_settings={"temperature": self.temperature})
+            result = await agent_no_tools.run(
+                prompt, deps=deps, model_settings={"temperature": self.config.temperature}
+            )
             messages = result.all_messages()
             fallback = True
         pred_query = PredQuery(query=extract_code(result.output))
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
-        usage = result.usage()
+        usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["api_calls"] = usage.requests
-        metrics["input_tokens"] = usage.request_tokens if usage.request_tokens else 0
-        metrics["output_tokens"] = usage.response_tokens if usage.response_tokens else 0
-        metrics["api_cost_usd"] = Usage.get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
+        metrics["api_cost_usd"] = sum(usage.api_cost_usd for usage in usages)
+        metrics["input_tokens"] = sum(usage.input_tokens for usage in usages)
+        metrics["output_tokens"] = sum(usage.output_tokens for usage in usages)
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
-        metrics["run_query_timeout"] = run_query_tool._metrics.error_timeout
-        metrics["run_query_failed"] = run_query_tool._metrics.error_query_failed
-        # metrics["show_table_section_table_not_found"] = show_table_section_tool._metrics.error_table_not_found
-        # metrics["show_table_section_section_not_found"] = show_table_section_tool._metrics.error_section_not_found
-        metrics["search_keywords_table_not_found"] = search_keywords_tool._metrics.error_table_not_found
-        metrics["search_keywords_column_not_found"] = search_keywords_tool._metrics.error_column_not_found
-        metrics["search_keywords_column_not_string"] = search_keywords_tool._metrics.error_column_not_string
-        metrics["finish_no_query_executed"] = finish_tool._metrics.error_no_query_executed
-        metrics["fallback"] = 1 if fallback else 0
+        metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
+        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}  # type: ignore
 
         return SimpleAmbigNL2QTaskOutput(
             **task.model_dump(),
             pred_intended_query=pred_query,
             trajectory=trajectory,
-            usages=[Usage.from_pydantic_ai_usage(result.usage(), self.llm)],
-            metrics=metrics,
+            usages=usages,
+            inference_metrics=metrics,
         )
