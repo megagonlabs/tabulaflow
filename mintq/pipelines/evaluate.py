@@ -16,7 +16,7 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
 
 async def evaluate_async(result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int) -> NL2QRunResult:
     for i in trange(0, len(result.tasks), batch_size):
-        await asyncio.gather(*[compute_metrics_async(task, metrics) for task in result.tasks[i : i + batch_size]])  
+        await asyncio.gather(*[compute_metrics_async(task, metrics) for task in result.tasks[i : i + batch_size]])
     result.aggregated_eval_metrics = aggregate_metrics(
         [task.eval_metrics for task in result.tasks], ops=["avg"], decimals=4
     )

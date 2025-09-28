@@ -4,9 +4,10 @@ import collections
 import jinja2
 import logging
 import asyncio
-from typing import Any
+from typing import Any, ClassVar
+from pydantic import BaseModel
 from mintq.utils import extract_code
-from mintq.formatters import NL2QFormatter
+from mintq.formatters import formatter_registry
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
     SimpleNL2QTask,
@@ -54,35 +55,30 @@ SCHEMA_MAX_CHARS = 128000
 logger = logging.getLogger(__name__)
 
 
+class SimpleZeroShotNL2QConfig(BaseModel):
+    llm: str
+    schema_formatter: str
+    temperature: float = 0.0
+    num_candidates: int = 1
+    litellm_kwargs: dict[str, Any] = {}
+
+
 @agent_registry.register
 class SimpleZeroShotNL2Q:
-    name = "simple_zero_shot"
+    name: ClassVar = "simple_zero_shot"
+    config_cls: ClassVar = SimpleZeroShotNL2QConfig
 
     def __init__(
         self,
-        llm: str,
-        schema_formatter: NL2QFormatter,
-        temperature: float = 0.0,
-        num_candidates: int = 1,
-        litellm_kwargs: dict[str, Any] = {},
+        config: SimpleZeroShotNL2QConfig,
     ):
-        self.llm = llm
-        self.schema_formatter = schema_formatter
-        self.temperature = temperature
-        self.num_candidates = num_candidates
-        self.litellm_kwargs = litellm_kwargs
-
-    def get_config(self) -> dict[str, str | int | float | bool]:
-        return {
-            "llm": self.llm,
-            "temperature": self.temperature,
-            "num_candidates": self.num_candidates,
-        }
+        self.config = config
+        self.formatter = formatter_registry.get_class(config.schema_formatter)()
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema_str = self.schema_formatter.format(db_connector.schema)
+        schema_str = self.formatter.format(db_connector.schema)  # type: ignore
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
@@ -101,12 +97,12 @@ class SimpleZeroShotNL2Q:
         responses = await asyncio.gather(
             *[
                 litellm.acompletion(
-                    model=self.llm,
+                    model=self.config.llm,
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
-                    temperature=self.temperature,
-                    **self.litellm_kwargs,
+                    temperature=self.config.temperature,
+                    **self.config.litellm_kwargs,
                 )
-                for _ in range(self.num_candidates)
+                for _ in range(self.config.num_candidates)
             ]
         )
 
@@ -135,7 +131,9 @@ class SimpleZeroShotNL2Q:
         metrics["api_calls"] = len(responses)
         metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
         metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
-        metrics["api_cost_usd"] = Usage.get_llm_api_cost(self.llm, metrics["input_tokens"], metrics["output_tokens"])  # type: ignore
+        metrics["api_cost_usd"] = Usage.get_llm_api_cost(
+            self.config.llm, metrics["input_tokens"], metrics["output_tokens"]
+        )  # type: ignore
         metrics["steps"] = 1
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
