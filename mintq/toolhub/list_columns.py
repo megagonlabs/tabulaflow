@@ -34,7 +34,7 @@ class ListColumnsTool:
         for table in self.schema.tables:
             if equals_ci(table.schema_name, schema_name) and table.name.lower() == table_name.lower():
                 return self.formatter.format_table(table)
-        self.metrics_.error_table_not_found += 1
+        self._metrics.error_table_not_found += 1
         return f"(table {table_name} in schema {schema_name} not found)"
 
     def as_pydantic_ai_tool(self) -> Tool:

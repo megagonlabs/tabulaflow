@@ -51,20 +51,20 @@ class SearchKeywordsTool:
                 break
 
         if table is None:
-            self.metrics_.error_table_not_found += 1
+            self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
         column = None
         for c in table.columns:
             if c.name.lower() == column_name.lower():
                 if c.dtype not in ("VARCHAR", "TEXT", "STRING"):
-                    self.metrics_.error_column_not_string += 1
+                    self._metrics.error_column_not_string += 1
                     return f"(column {column_name} is not a string)"
                 column = c
                 break
 
         if column is None:
-            self.metrics_.error_column_not_found += 1
+            self._metrics.error_column_not_found += 1
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
         column_name = quoted_name(column_name, quote=True)

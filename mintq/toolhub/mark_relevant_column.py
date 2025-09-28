@@ -112,10 +112,10 @@ class MarkRelevantColumnTool:
                 )
             except ValueError as e:
                 if str(e).startswith("column"):
-                    self.metrics_.error_column_not_found += 1
+                    self._metrics.error_column_not_found += 1
                     return f"The following columns in table {table_name} in schema {schema_name} have been marked as relevant: {json.dumps(marked_columns)}. Error occurred while marking column {column_name}: {str(e)}"
                 elif str(e).startswith("table"):
-                    self.metrics_.error_table_not_found += 1
+                    self._metrics.error_table_not_found += 1
                     return f"Error occurred while marking column {column_name}: {str(e)}"
                 else:
                     raise e

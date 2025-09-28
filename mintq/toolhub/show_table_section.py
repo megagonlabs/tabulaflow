@@ -40,7 +40,7 @@ class ShowTableSectionTool:
             ):
                 break
         if tg is None:
-            self.metrics_.error_table_not_found += 1
+            self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
         section = None
@@ -48,7 +48,7 @@ class ShowTableSectionTool:
             if equals_ci(section.name, section_name):
                 break
         if section is None:
-            self.metrics_.error_section_not_found += 1
+            self._metrics.error_section_not_found += 1
             return f"(section {section_name} not found in table {table_name} in schema {schema_name})"
 
         return self.formatter.format_section(section)
