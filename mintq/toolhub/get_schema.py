@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
@@ -10,12 +9,13 @@ class GetSchemaToolMetrics(BaseModel):
     pass
 
 
-@dataclass
 class GetSchemaTool:
-    name: ClassVar[str] = "get_schema"
-    db_connector: BaseSQLDBConnector
-    formatter: BaseSQLSchemaFormatter
-    metrics_: GetSchemaToolMetrics = field(default_factory=GetSchemaToolMetrics)
+    name: ClassVar = "get_schema"
+
+    def __init__(self, db_connector: BaseSQLDBConnector, formatter: BaseSQLSchemaFormatter):
+        self.db_connector = db_connector
+        self.formatter = formatter
+        self._metrics = GetSchemaToolMetrics()
 
     async def __call__(self) -> str:
         """
@@ -25,3 +25,6 @@ class GetSchemaTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> GetSchemaToolMetrics:
+        return self._metrics

@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from typing import ClassVar
@@ -11,12 +10,13 @@ class ListColumnsToolMetrics(BaseModel):
     error_table_not_found: int = 0
 
 
-@dataclass
 class ListColumnsTool:
-    name: ClassVar[str] = "list_columns"
-    schema: SQLSchema
-    formatter: BaseSQLSchemaFormatter
-    metrics_: ListColumnsToolMetrics = field(default_factory=ListColumnsToolMetrics)
+    name: ClassVar = "list_columns"
+
+    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter):
+        self.schema = schema
+        self.formatter = formatter
+        self._metrics = ListColumnsToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str) -> str:
         """

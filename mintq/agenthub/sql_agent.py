@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import jinja2
 import time
-from typing import Any, ClassVar
+from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
@@ -9,7 +9,14 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
+from mintq.toolhub import (
+    BaseTool,
+    RunQueryTool,
+    SearchKeywordsTool,
+    FinishTool,
+    GetSchemaTool,
+    GetColumnDescriptionTool,
+)
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry
 
@@ -80,7 +87,7 @@ class SQLAgent:
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)
         finish_tool = FinishTool()
-        all_tools = [
+        all_tools: list[BaseTool] = [
             get_schema_tool,
             get_column_description_tool,
             search_keywords_tool,
@@ -142,7 +149,7 @@ class SQLAgent:
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
-        metrics["tools"] = {tool.name: tool.metrics_.model_dump() for tool in all_tools}
+        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),

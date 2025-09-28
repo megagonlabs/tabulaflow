@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
@@ -11,11 +10,12 @@ class RunQueryToolMetrics(BaseModel):
     error_query_failed: int = 0
 
 
-@dataclass
 class RunQueryTool:
-    name: ClassVar[str] = "run_query"
-    db_connector: BaseSQLDBConnector
-    metrics_: RunQueryToolMetrics = field(default_factory=RunQueryToolMetrics)
+    name: ClassVar = "run_query"
+
+    def __init__(self, db_connector: BaseSQLDBConnector):
+        self.db_connector = db_connector
+        self._metrics = RunQueryToolMetrics()
 
     async def __call__(self, query: str) -> str:
         """
@@ -46,3 +46,6 @@ class RunQueryTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> RunQueryToolMetrics:
+        return self._metrics

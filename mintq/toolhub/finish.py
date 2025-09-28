@@ -1,6 +1,5 @@
 from typing import ClassVar, Callable
 from pydantic_ai import RunContext, ModelRetry
-from dataclasses import field, dataclass
 from pydantic import BaseModel
 from mintq.schema import Trajectory
 
@@ -9,10 +8,11 @@ class FinishToolMetrics(BaseModel):
     error_no_query_executed: int = 0
 
 
-@dataclass
 class FinishTool:
-    name: ClassVar[str] = "finish"
-    metrics_: FinishToolMetrics = field(default_factory=FinishToolMetrics)
+    name: ClassVar = "finish"
+
+    def __init__(self):
+        self._metrics = FinishToolMetrics()
 
     def __call__(self, trajectory: Trajectory) -> str:
         """
@@ -37,3 +37,6 @@ class FinishTool:
 
         finish.__doc__ = self.__call__.__doc__
         return finish
+
+    def get_metrics(self) -> FinishToolMetrics:
+        return self._metrics

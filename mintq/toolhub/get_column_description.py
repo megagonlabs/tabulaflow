@@ -1,5 +1,4 @@
 from typing import ClassVar
-from dataclasses import dataclass, field
 from pydantic import BaseModel
 from pydantic_ai import Tool
 from mintq.db_connector import BaseSQLDBConnector
@@ -11,11 +10,12 @@ class GetColumnDescriptionToolMetrics(BaseModel):
     error_column_not_found: int = 0
 
 
-@dataclass
 class GetColumnDescriptionTool:
-    name: ClassVar[str] = "get_column_description"
-    db_connector: BaseSQLDBConnector
-    metrics_: GetColumnDescriptionToolMetrics = field(default_factory=GetColumnDescriptionToolMetrics)
+    name: ClassVar = "get_column_description"
+
+    def __init__(self, db_connector: BaseSQLDBConnector):
+        self.db_connector = db_connector
+        self._metrics = GetColumnDescriptionToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
         """
@@ -67,3 +67,6 @@ class GetColumnDescriptionTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> GetColumnDescriptionToolMetrics:
+        return self._metrics

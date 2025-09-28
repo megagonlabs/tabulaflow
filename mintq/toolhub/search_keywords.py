@@ -1,5 +1,4 @@
 from typing import ClassVar
-from dataclasses import dataclass, field
 import sqlalchemy
 from sqlalchemy.sql import quoted_name
 from sqlalchemy import select
@@ -15,11 +14,12 @@ class SearchKeywordsToolMetrics(BaseModel):
     error_column_not_string: int = 0
 
 
-@dataclass
 class SearchKeywordsTool:
-    name: ClassVar[str] = "search_keywords"
-    db_connector: BaseSQLDBConnector
-    metrics_: SearchKeywordsToolMetrics = field(default_factory=SearchKeywordsToolMetrics)
+    name: ClassVar = "search_keywords"
+
+    def __init__(self, db_connector: BaseSQLDBConnector):
+        self.db_connector = db_connector
+        self._metrics = SearchKeywordsToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str, keywords: list[str]) -> str:
         """
@@ -89,3 +89,6 @@ class SearchKeywordsTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> SearchKeywordsToolMetrics:
+        return self._metrics

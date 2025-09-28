@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from typing import ClassVar
@@ -12,12 +11,13 @@ class ShowTableSectionToolMetrics(BaseModel):
     error_section_not_found: int = 0
 
 
-@dataclass
 class ShowTableSectionTool:
-    name: ClassVar[str] = "show_table_section"
-    hschema: HSQLSchema
-    formatter: HSchemaFormatter
-    metrics_: ShowTableSectionToolMetrics = field(default_factory=ShowTableSectionToolMetrics)
+    name: ClassVar = "show_table_section"
+
+    def __init__(self, hschema: HSQLSchema, formatter: HSchemaFormatter):
+        self.hschema = hschema
+        self.formatter = formatter
+        self._metrics = ShowTableSectionToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, section_name: str) -> str:
         """
@@ -55,3 +55,6 @@ class ShowTableSectionTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> ShowTableSectionToolMetrics:
+        return self._metrics

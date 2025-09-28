@@ -1,5 +1,4 @@
 import json
-from dataclasses import dataclass, field
 from pydantic_ai import Tool
 from pydantic import BaseModel
 import copy
@@ -82,12 +81,13 @@ def create_path(
     return [trg_table_group, trg_section, trg_column_group]
 
 
-@dataclass
 class MarkRelevantColumnTool:
-    name: ClassVar[str] = "mark_relevant_column"
-    hschema: HSQLSchema
-    relevant_hschema: HSQLSchema | None = None
-    metrics_: MarkRelevantColumnToolMetrics = field(default_factory=MarkRelevantColumnToolMetrics)
+    name: ClassVar = "mark_relevant_column"
+
+    def __init__(self, hschema: HSQLSchema, relevant_hschema: HSQLSchema):
+        self.hschema = hschema
+        self.relevant_hschema = relevant_hschema
+        self._metrics = MarkRelevantColumnToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_names: list[str]) -> str:
         """
@@ -131,3 +131,6 @@ class MarkRelevantColumnTool:
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
+
+    def get_metrics(self) -> MarkRelevantColumnToolMetrics:
+        return self._metrics

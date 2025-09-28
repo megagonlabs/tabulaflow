@@ -1,4 +1,4 @@
-from typing import Protocol, ClassVar, Any, Type, TypeAlias, Union
+from typing import Protocol, ClassVar, Type, TypeAlias, Union
 from pydantic import BaseModel
 from mintq.schema import (
     SimpleNL2QTask,

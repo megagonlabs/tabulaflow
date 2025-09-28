@@ -1,13 +1,11 @@
 import argparse
-import time
 import asyncio
 import os
 from tqdm import trange
-from mintq import dataset_registry, metric_registry
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
+from mintq import metric_registry
+from mintq.schema import NL2QTaskOutput, NL2QRunResult
 from mintq.utils import aggregate_metrics
 from mintq.metrics import NL2QMetric
-from mintq.db_connector import NL2QDBConnector
 
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
