@@ -75,6 +75,10 @@ class SimpleZeroShotNL2Q:
         self.config = config
         self.formatter = formatter_registry.get_class(config.schema_formatter)()
 
+    @classmethod
+    async def from_config_async(cls, config: SimpleZeroShotNL2QConfig) -> "SimpleZeroShotNL2Q":
+        return cls(config)
+
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
@@ -132,8 +136,8 @@ class SimpleZeroShotNL2Q:
         metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
         metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
         metrics["api_cost_usd"] = Usage.get_llm_api_cost(
-            self.config.llm, metrics["input_tokens"], metrics["output_tokens"]
-        )  # type: ignore
+            self.config.llm, metrics["input_tokens"], metrics["output_tokens"]  # type: ignore
+        )
         metrics["steps"] = 1
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
