@@ -1,4 +1,5 @@
 from typing import Protocol, ClassVar, Any, Type, TypeAlias, Union
+from pydantic import BaseModel
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
@@ -15,8 +16,7 @@ class BaseUserSimulator(Protocol):
     async def ask_async(self, question: str) -> str: ...
 
 
-class BaseAgentConfig(Protocol):
-    def to_dict(self) -> dict[str, Any]: ...
+BaseAgentConfig: TypeAlias = BaseModel
 
 
 class BaseSimpleSQLAgent(Protocol):

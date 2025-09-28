@@ -58,9 +58,6 @@ class SQLAgentConfig(BaseModel):
     num_candidates: int = 1
     max_steps: int = 20
 
-    def to_dict(self) -> dict[str, Any]:
-        return self.model_dump()
-
 
 @agent_registry.register
 class SQLAgent:

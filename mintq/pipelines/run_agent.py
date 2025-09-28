@@ -60,7 +60,7 @@ async def run_agent_async(
         subsample_size=dataset.subsample_size,
         databases=dataset.databases,
         agent=agent_cls.name,
-        agent_args=agent_config.to_dict(),
+        agent_args=agent_config.model_dump(),
         aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,
     )
