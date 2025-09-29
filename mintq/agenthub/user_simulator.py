@@ -34,12 +34,17 @@ class UserSimulator:
     def from_ambig_nl2q_task(
         cls, task: AmbigNL2QTask, llm: str = "openai:gpt-4.1-mini", temperature: float = 0.0
     ) -> "UserSimulator":
+        if any(ap.intended_interpretation_idx is None for ap in task.gold_ambiguity_points if ap.type == "finite"):
+            raise ValueError("All finite ambiguity points must have an intended interpretation")
+        if any(ap.indended_parameter_value is None for ap in task.gold_ambiguity_points if ap.type == "infinite"):
+            raise ValueError("All infinite ambiguity points must have an intended parameter value")
+
         system_prompt = jinja2.Template(USER_SIMULATOR_SYSTEM_PROMPT).render(
             task=task.question,
             ambiguity_points=[
                 {
                     "phrase": ap.phrase,
-                    "interpretation": ap.interpretations[ap.intended_interpretation_idx]
+                    "interpretation": ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                     if ap.type == "finite"
                     else f"{ap.parameter_operator} {ap.indended_parameter_value}",
                 }
@@ -54,5 +59,5 @@ class UserSimulator:
             model_settings={"temperature": self.temperature},
             message_history=self.message_history,
         )
-        self.message_history = result.all_messages()
+        self.message_history = result.all_messages()  # type: ignore
         return result.output
