@@ -44,7 +44,11 @@ class SQLDefaultSchemaFormatter:
     def format_table(
         self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False
     ) -> str:
-        res = f"=== (SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)} ({table.num_rows} rows) ===\n"
+        res = f"(SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)}"
+        if table.name_description:
+            res += f" /* {table.name_description} */"
+        res += f" ({table.num_rows} rows)\n"
+        res = f"=== {res} ===\n"
 
         composite_fks = []
         for fk in table.foreign_keys:
