@@ -12,7 +12,6 @@ import os
 from mintq.db_connector import SQLConnector
 from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from mintq.schema import SimpleNL2QTask, GoldQuery
-from mintq.formatters import SQLDefaultSchemaFormatter
 
 
 def create_db(db_path: str) -> None:
