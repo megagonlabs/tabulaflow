@@ -1,6 +1,6 @@
 import copy
 import collections
-from typing import Any
+from typing import Hashable
 from mintq.schema import (
     SQLSchema,
     SQLTableSchema,
@@ -14,7 +14,7 @@ class SchemaCompressor:
     Compresses the schema by iteratively merging tables with the same digest.
     """
 
-    def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> Any:
+    def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> Hashable:
         return (
             table.schema_name,
             table.name,
@@ -24,7 +24,7 @@ class SchemaCompressor:
             tuple(sorted(fk.foreign_columns)),
         )
 
-    def _table_digest(self, table: SQLTableSchema, full_schema: SQLSchema) -> Any:
+    def _table_digest(self, table: SQLTableSchema, full_schema: SQLSchema) -> Hashable:
         """
         The digest of a table includes:
         - the schema name
