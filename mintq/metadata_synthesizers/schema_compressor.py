@@ -1,7 +1,7 @@
 import copy
 import collections
-from pydantic import BaseModel
-from typing import Hashable
+from typing import Hashable, Protocol
+from dataclasses import dataclass, field
 import datetime
 import re
 from mintq.schema import (
@@ -12,41 +12,157 @@ from mintq.schema import (
 )
 
 
-def describe_YYYYMMDD(names: list[str]) -> str | None:
-    patterns = []
-    dates = []
-    for s in names:
-        match = re.search(r"(?<!\d)\d{4}\d{2}\d{2}(?!\d)", s)
-        if match:
-            patterns.append(re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", s, count=1))
-            year = int(match.group()[:4])
-            month = int(match.group()[4:6])
-            day = int(match.group()[6:])
-            dates.append(datetime.date(year, month, day))
-    if len(set(patterns)) > 1:
-        return None
+class BaseClusterFunc(Protocol):
+    def extract(self, name: str) -> tuple[str, str | None]: ...
 
-    dates = sorted(dates)
-    a = dates[0]
-    b = dates[-1]
-    dates = set(dates)
-    missing_dates = []
-    current = a
-    while current <= b:
-        if current not in dates:
-            missing_dates.append(current)
-        current += datetime.timedelta(days=1)
-
-    res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
-    if missing_dates:
-        res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
-    return res
+    def summarize(self, variations: list[str]) -> str | None: ...
 
 
+@dataclass
+class IndexAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, int | None]:
+        match = re.search(r"\d+", name)
+        if not match:
+            return name, None
+        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        return pattern, int(match.group())
+
+    def summarize(self, indexes: list[int]) -> str | None:
+        indexes = sorted(indexes)
+        a = indexes[0]
+        b = indexes[-1]
+        missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
+        if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
+            return None
+        res = f"# from {a} to {b}"
+        if missing_indexes:
+            res += f" except {', '.join([str(i) for i in missing_indexes])}"
+        return res
+
+
+@dataclass
+class YearAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, int | None]:
+        match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group())
+        if year < 1000 or year > datetime.datetime.now().year:
+            return name, None
+        pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
+        return pattern, year
+
+    def summarize(self, years: list[int]) -> str | None:
+        years = sorted(years)
+        a = years[0]
+        b = years[-1]
+        years_set = set(years)
+        missing_years = [y for y in range(a, b + 1) if y not in years_set]
+        if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
+            return None
+        res = f"YEAR from {a} to {b}"
+        if missing_years:
+            res += f" except {', '.join([str(y) for y in missing_years])}"
+        return res
+
+
+@dataclass
+class YearMonthAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, datetime.date | None]:
+        match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group()[:4])
+        month = int(match.group()[4:])
+        day = 1
+        if (
+            year < 1000
+            or month < 12
+            and datetime.date(year, month + 1, day) > datetime.date.today()
+            or month == 12
+            and datetime.date(year + 1, 1, day) > datetime.date.today()
+        ):
+            return name, None
+        pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
+        return pattern, datetime.date(year, month, day)
+
+    def summarize(self, dates: list[datetime.date]) -> str | None:
+        dates = sorted(dates)
+        a = dates[0]
+        b = dates[-1]
+        dates_set = set(dates)
+        missing_dates = []
+        current = a
+        while current <= b:
+            if current not in dates_set:
+                missing_dates.append(current)
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
+            return None
+        res = f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
+        if missing_dates:
+            res += f" except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
+        return res
+
+
+@dataclass
+class DateAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, datetime.date | None]:
+        match = re.search(r"(?<!\d)\d{4}\d{2}\d{2}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group()[:4])
+        month = int(match.group()[4:6])
+        day = int(match.group()[6:])
+        if year < 1000 or datetime.date(year, month, day) > datetime.date.today():
+            return name, None
+        pattern = re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", name, count=1)
+        return pattern, datetime.date(year, month, day)
+
+    def summarize(self, dates: list[datetime.date]) -> str | None:
+        dates = sorted(dates)
+        a = dates[0]
+        b = dates[-1]
+        dates_set = set(dates)
+        missing_dates = []
+        current = a
+        while current <= b:
+            if current not in dates_set:
+                missing_dates.append(current)
+            current += datetime.timedelta(days=1)
+        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
+            return None
+        res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
+        if missing_dates:
+            res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+        return res
+
+
+@dataclass
 class SchemaCompressor:
     """
     Compresses the schema by iteratively merging tables with the same digest.
     """
+
+    name_cluster_funcs: list[BaseClusterFunc] = field(
+        default_factory=lambda: [
+            YearAffixClusterFunc(),
+            YearMonthAffixClusterFunc(),
+            DateAffixClusterFunc(),
+            IndexAffixClusterFunc(),
+        ]
+    )
 
     def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> Hashable:
         return (
@@ -97,6 +213,21 @@ class SchemaCompressor:
             foreign_keys=columns[0].foreign_keys,
         )
 
+    def _describe_name(self, names: list[str]) -> tuple[str, str | None]:
+        for func in self.name_cluster_funcs:
+            groups = collections.defaultdict(list)
+            for name in names:
+                pattern, variation = func.extract(name)
+                groups[pattern].append((name, variation))
+
+            if len(groups) > 1:
+                continue
+            pattern = list(groups.keys())[0]
+            name_description = func.summarize([v for _, v in groups[pattern]])
+            if name_description is not None:
+                return pattern, name_description
+        return "{" + ",".join(names) + "}", None
+
     async def run_async(self, schema: SQLSchema) -> SQLSchema:
         schema = copy.deepcopy(schema)
 
@@ -109,10 +240,11 @@ class SchemaCompressor:
             if len(largest_group) == 1:
                 return schema
 
-            group_name = "{" + ",".join([t.name for t in largest_group]) + "}"
+            group_name, group_name_description = self._describe_name([t.name for t in largest_group])
 
             new_table = largest_group[0]
             new_table.name = group_name
+            new_table.name_description = group_name_description
             new_table.original_names = [t.name for t in largest_group]
             for i in range(len(new_table.columns)):
                 new_table.columns[i] = self._merge_columns([t.columns[i] for t in largest_group])

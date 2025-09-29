@@ -735,7 +735,10 @@ class SQLColumnSchema(BaseModel):
 
 class SQLTableSchema(BaseModel):
     name: str
+    name_description: str | None = None
+    """Used for describing the merged table name in the compressed schema (e.g. "YYYYMMDD from 20200101 to 20200102")"""
     original_names: list[str] | None = None
+    """Used for recording the original table names in the compressed schema (e.g. "20200101, 20200102")"""
     schema_name: str | None = None
     description: str | None = None
     is_view: bool
