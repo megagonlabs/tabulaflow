@@ -214,6 +214,11 @@ class SchemaCompressor:
         )
 
     def _describe_name(self, names: list[str]) -> tuple[str, str | None]:
+        """Example:
+        names = ["revenue_20200101", "revenue_20200102", "revenue_20200103"]
+        return ("revenue_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103")
+        """
+        candidates = [("{" + ",".join(names) + "}", None)]
         for func in self.name_cluster_funcs:
             groups = collections.defaultdict(list)
             for name in names:
@@ -225,8 +230,10 @@ class SchemaCompressor:
             pattern = list(groups.keys())[0]
             name_description = func.summarize([v for _, v in groups[pattern]])
             if name_description is not None:
-                return pattern, name_description
-        return "{" + ",".join(names) + "}", None
+                candidates.append((pattern, name_description))
+
+        # Choose the candidate with the shortest name + name_description
+        return min(candidates, key=lambda x: len(x[0] + (x[1] or "")))
 
     async def run_async(self, schema: SQLSchema) -> SQLSchema:
         schema = copy.deepcopy(schema)
