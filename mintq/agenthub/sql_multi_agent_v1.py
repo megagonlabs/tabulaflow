@@ -11,7 +11,7 @@ from mintq.formatters.hschema import HSchemaFormatter
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, ShowTableSectionTool, MarkRelevantColumnTool
-from mintq.metadata_synthesizer import HSchemaSynthesizer
+from mintq.metadata_synthesizers import HSchemaSynthesizer
 from mintq.agenthub.base import agent_registry
 
 

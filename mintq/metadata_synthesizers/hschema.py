@@ -13,7 +13,7 @@ from mintq.schema import (
     HTableGroup,
     ForeignKeySchema,
 )
-from mintq.metadata_synthesizer.clusterer import LLMClusterer, AffixClusterer, BaseClusterer
+from mintq.metadata_synthesizers.clusterer import LLMClusterer, AffixClusterer, BaseClusterer
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
 from mintq.config import config
