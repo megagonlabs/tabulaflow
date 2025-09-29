@@ -10,6 +10,10 @@ from mintq.schema import (
 
 
 class SchemaCompressor:
+    """
+    Compresses the schema by iteratively merging tables with the same digest.
+    """
+
     def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> Any:
         return (
             table.schema_name,
@@ -54,7 +58,7 @@ class SchemaCompressor:
             null_ratio=sum(c.null_ratio for c in columns) / len(columns),
             num_unique=max([c.num_unique for c in columns if c.num_unique is not None], default=None),
             unique_ratio=max([c.unique_ratio for c in columns if c.unique_ratio is not None], default=None),
-            examples=list(dict.fromkeys(sum(c.examples for c in columns))),
+            examples=list(dict.fromkeys(sum([c.examples for c in columns], []))),
             primary_key_type=columns[0].primary_key_type,
             foreign_keys=columns[0].foreign_keys,
         )
