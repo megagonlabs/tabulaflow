@@ -26,7 +26,10 @@ async def main() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     schema = dataset.db_connectors[args.database].schema
-    print(SQLDefaultSchemaFormatter().format(schema))
+    schema_str = SQLDefaultSchemaFormatter().format(schema)
+    print(schema_str)
+    print()
+    print(f"(schema length: {len(schema_str)} characters)")
     print()
     print(f"Time taken: {time.time() - t0} seconds")
     print(f"Tables: {[table.name for table in schema.tables]}")

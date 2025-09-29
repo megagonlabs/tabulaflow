@@ -22,6 +22,8 @@ async def main() -> None:
     formatter = SQLDefaultSchemaFormatter()
     schema_str = formatter.format(schema)
     print(schema_str)
+    print()
+    print(f"(schema length: {len(schema_str)} characters)")
 
 
 if __name__ == "__main__":
