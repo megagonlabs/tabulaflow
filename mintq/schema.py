@@ -735,6 +735,7 @@ class SQLColumnSchema(BaseModel):
 
 class SQLTableSchema(BaseModel):
     name: str
+    original_names: list[str] | None = None
     schema_name: str | None = None
     description: str | None = None
     is_view: bool
