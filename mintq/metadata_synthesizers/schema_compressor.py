@@ -1,12 +1,46 @@
 import copy
 import collections
+from pydantic import BaseModel
 from typing import Hashable
+import datetime
+import re
 from mintq.schema import (
     SQLSchema,
     SQLTableSchema,
     SQLColumnSchema,
     ForeignKeySchema,
 )
+
+
+def describe_YYYYMMDD(names: list[str]) -> str | None:
+    patterns = []
+    dates = []
+    for s in names:
+        match = re.search(r"(?<!\d)\d{4}\d{2}\d{2}(?!\d)", s)
+        if match:
+            patterns.append(re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", s, count=1))
+            year = int(match.group()[:4])
+            month = int(match.group()[4:6])
+            day = int(match.group()[6:])
+            dates.append(datetime.date(year, month, day))
+    if len(set(patterns)) > 1:
+        return None
+
+    dates = sorted(dates)
+    a = dates[0]
+    b = dates[-1]
+    dates = set(dates)
+    missing_dates = []
+    current = a
+    while current <= b:
+        if current not in dates:
+            missing_dates.append(current)
+        current += datetime.timedelta(days=1)
+
+    res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
+    if missing_dates:
+        res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+    return res
 
 
 class SchemaCompressor:
