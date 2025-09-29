@@ -50,9 +50,6 @@ class GetColumnDescriptionTool:
         column = None
         for c in table.columns:
             if c.name.lower() == column_name.lower():
-                if c.dtype not in ("VARCHAR", "TEXT", "STRING"):
-                    self._metrics.error_column_not_string += 1
-                    return f"(column {column_name} is not a string)"
                 column = c
                 break
 

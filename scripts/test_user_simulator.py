@@ -1,10 +1,10 @@
 import asyncio
 from mintq.agenthub.user_simulator import UserSimulator
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import dataset_registry
 
 
 async def main() -> None:
-    dataset_loader = get_dataset_loader("arcs")
+    dataset_loader = dataset_registry.get_class("arcs")()
     dataset = await dataset_loader.get_split_async("dev")
     user_simulator = UserSimulator.from_ambig_nl2q_task(dataset.tasks[3])
     print(f"<system_prompt>{user_simulator.system_prompt}</system_prompt>")

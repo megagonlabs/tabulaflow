@@ -10,7 +10,7 @@ from sqlalchemy import (
 )
 import os
 from mintq.db_connector import SQLConnector
-from mintq.agenthub import SimpleZeroShotNL2Q
+from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from mintq.schema import SimpleNL2QTask, GoldQuery
 from mintq.formatters import SQLDefaultSchemaFormatter
 
@@ -64,9 +64,11 @@ async def main() -> None:
         "sync",
         f"sqlite:///{db_path}",
     )
-    model = SimpleZeroShotNL2Q(
-        llm="openai/gpt-4.1-mini",
-        schema_formatter=SQLDefaultSchemaFormatter(),
+    model = await SimpleZeroShotNL2Q.from_config_async(
+        SimpleZeroShotNL2QConfig(
+            llm="openai/gpt-4.1-mini",
+            schema_formatter="sql_default",
+        )
     )
     task = SimpleNL2QTask(
         qid="001",
