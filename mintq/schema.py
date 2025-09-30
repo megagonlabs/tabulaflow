@@ -548,6 +548,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
 
     output_type: Literal["ambig-flat"] = "ambig-flat"
+    interpretations: list[str]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
     trajectory: Trajectory | None = None
@@ -557,6 +558,11 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
+
+    @model_validator(mode="after")
+    def validate_interpretations(self) -> "FlatAmbigNL2QTaskOutput":
+        assert len(self.interpretations) == len(self.pred_queries)
+        return self
 
     @property
     def pred_intended_query(self) -> PredQuery | None:
