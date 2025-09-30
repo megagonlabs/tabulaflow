@@ -8,8 +8,11 @@ from pydantic.types import StringConstraints
 import pydantic_ai
 from typing import Any, Literal, Annotated, Union
 import pandas as pd
+import logging
 import math
 import itertools
+
+logger = logging.getLogger(__name__)
 
 
 class SystemMessage(BaseModel):
@@ -48,11 +51,14 @@ Message = Annotated[
 
 
 class Trajectory(BaseModel):
+    id: str = "TRJY"
     messages: list[Message]
 
     @classmethod
-    def from_pydantic_ai_messages(cls, messages: list[pydantic_ai.messages.ModelMessage]) -> "Trajectory":
-        trajectory = cls(messages=[])
+    def from_pydantic_ai_messages(
+        cls, messages: list[pydantic_ai.messages.ModelMessage], id: str = "TRJY"
+    ) -> "Trajectory":
+        trajectory = cls(messages=[], id=id)
         if messages[0].kind == "request" and messages[0].instructions:
             trajectory.messages.append(SystemMessage(content=messages[0].instructions))
         for msg in messages:
@@ -320,10 +326,21 @@ class SimpleNL2QTask(BaseModel):
         return res
 
 
+def save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str) -> None:
+    os.makedirs(directory, exist_ok=True)
+    trajectories = trajectory if isinstance(trajectory, list) else [trajectory]
+    ids = [tr.id for tr in trajectories]
+    if len(ids) != len(set(ids)):
+        logger.warning(f"Trajectory IDs are not unique: {ids}, some trajectories will be overwritten")
+    for tr in trajectories:
+        with open(os.path.join(directory, f"{tr.id}.xml"), "w") as f:
+            f.write(tr.to_readable())
+
+
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
-    trajectory: Trajectory
+    trajectory: Trajectory | list[Trajectory] | None = None
     usages: list[Usage] = Field(default_factory=list)
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
@@ -337,8 +354,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         with open(os.path.join(directory, "result_readable.sql"), "w") as f:
             f.write(self.to_readable() + "\n")
         if self.trajectory is not None:
-            with open(os.path.join(directory, "trajectory.xml"), "w") as f:
-                f.write(self.trajectory.to_readable())
+            save_trajectories(self.trajectory, os.path.join(directory, "trajectory"))
 
     def to_readable(self) -> str:
         header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query", "pred_query", "trajectory"})
@@ -516,7 +532,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
-    trajectory: Trajectory | None = None
+    trajectory: Trajectory | list[Trajectory] | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
@@ -551,7 +567,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     interpretations: list[str]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
-    trajectory: Trajectory | None = None
+    trajectory: Trajectory | list[Trajectory] | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
@@ -621,7 +637,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_ambiguity_points: Annotated[list[PredAmbiguityPoint], AfterValidator(is_id_unique)]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
-    trajectory: Trajectory | None = None
+    trajectory: Trajectory | list[Trajectory] | None = None
     usages: list[Usage] = Field(default_factory=list)
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
