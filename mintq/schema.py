@@ -753,43 +753,6 @@ class SQLSchema(BaseModel):
     tables: list[SQLTableSchema]
 
 
-class HColumnGroup(BaseModel):
-    name: str
-    description: str | None
-    column_names: list[str]
-    dtype: str
-    nullable: bool
-    null_ratio: float
-    num_unique: int | None
-    unique_ratio: float | None
-    examples: list[Any]
-    primary_key_type: Literal["single", "composite"] | None = None
-    foreign_keys: list[ForeignKeySchema] = Field(
-        default_factory=list
-    )  # in hschemas, the column names in fk become column group names
-
-
-class HTableSection(BaseModel):
-    name: str
-    description: str | None
-    column_groups: list[HColumnGroup]
-
-
-class HTableGroup(BaseModel):
-    name: str
-    description: str | None
-    table_names: list[str]
-    schema_name: str | None = None
-    primary_key: list[str]
-    foreign_keys: list[ForeignKeySchema]
-    sections: list[HTableSection]
-
-
-class HSQLSchema(BaseModel):
-    name: str
-    table_groups: list[HTableGroup]
-
-
 class ERDiagramRelation(BaseModel):
     from_schema: str | None = None
     from_table: str

@@ -70,8 +70,7 @@ async def main() -> None:
         "avg_columns_compressed_per_db": sum(per_db_stats["columns_compressed"]) / len(dataset.db_connectors),
         "min_columns_compressed_per_db": min(per_db_stats["columns_compressed"]),
         "avg_columns_per_table": sum(per_db_stats["columns"]) / sum(per_db_stats["tables"]),
-        "avg_ratio_columns_with_desc": sum(per_db_stats["ratio_columns_with_desc"])
-        / len(dataset.db_connectors),
+        "avg_ratio_columns_with_desc": sum(per_db_stats["ratio_columns_with_desc"]) / len(dataset.db_connectors),
     }
     print()
     print("### Aggregated Stats")
