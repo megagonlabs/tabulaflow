@@ -9,6 +9,7 @@ from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
+from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     RunQueryTool,
     SearchKeywordsTool,
@@ -60,6 +61,7 @@ def max_steps_reached_processor(
 class SQLAgentConfig(BaseModel):
     llm: str
     schema_formatter: str
+    compress_schema: bool = True
     temperature: float = 0.0
     num_candidates: int = 1
     max_steps: int = 20
@@ -81,7 +83,11 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        get_schema_tool = GetSchemaTool(db_connector, self.formatter)
+        schema = db_connector.schema
+        if self.config.compress_schema:
+            schema = await SchemaCompressor().run_async(schema)
+
+        get_schema_tool = GetSchemaTool(schema, self.formatter)
         get_column_description_tool = GetColumnDescriptionTool(db_connector)
         search_keywords_tool = SearchKeywordsTool(db_connector)
         run_query_tool = RunQueryTool(db_connector)

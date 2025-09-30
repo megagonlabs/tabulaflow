@@ -7,6 +7,7 @@ import asyncio
 from typing import Any, ClassVar
 from pydantic import BaseModel
 from mintq.utils import extract_code
+from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.formatters import formatter_registry
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
@@ -58,6 +59,7 @@ logger = logging.getLogger(__name__)
 class SimpleZeroShotNL2QConfig(BaseModel):
     llm: str
     schema_formatter: str
+    compress_schema: bool = True
     temperature: float = 0.0
     num_candidates: int = 1
     litellm_kwargs: dict[str, Any] = {}
@@ -82,7 +84,11 @@ class SimpleZeroShotNL2Q:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema_str = self.formatter.format(db_connector.schema)
+        schema = db_connector.schema
+        if self.config.compress_schema:
+            schema = await SchemaCompressor().run_async(schema)
+
+        schema_str = self.formatter.format(schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
