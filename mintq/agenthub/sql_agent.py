@@ -72,7 +72,7 @@ class SQLAgent:
 
     def __init__(self, config: SQLAgentConfig):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()  # type: ignore
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
     async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":

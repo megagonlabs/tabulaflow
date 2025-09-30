@@ -82,7 +82,7 @@ class SimpleZeroShotNL2Q:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema_str = self.formatter.format(db_connector.schema)  # type: ignore
+        schema_str = self.formatter.format(db_connector.schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."
@@ -137,7 +137,7 @@ class SimpleZeroShotNL2Q:
         metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
         metrics["api_cost_usd"] = Usage.get_llm_api_cost(
             self.config.llm,
-            metrics["input_tokens"],
+            metrics["input_tokens"],  # type: ignore
             metrics["output_tokens"],  # type: ignore
         )
         metrics["steps"] = 1

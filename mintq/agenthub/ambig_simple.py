@@ -85,7 +85,7 @@ class AmbigSimpleSQLAgent:
         config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()  # type: ignore
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
     async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
