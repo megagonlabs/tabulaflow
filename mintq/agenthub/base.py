@@ -1,6 +1,6 @@
-from typing import Protocol, ClassVar, Type, TypeAlias, Union, Any, Literal
+from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated
 import datetime
-from pydantic import BaseModel, Annotated, Field
+from pydantic import BaseModel, Field
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
