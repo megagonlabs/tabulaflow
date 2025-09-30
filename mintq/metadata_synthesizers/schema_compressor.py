@@ -1,6 +1,6 @@
 import copy
 import collections
-from typing import Hashable, Protocol
+from typing import Any, Hashable, Protocol, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
@@ -12,10 +12,13 @@ from mintq.schema import (
 )
 
 
-class BaseClusterFunc(Protocol):
-    def extract(self, name: str) -> tuple[str, str | None]: ...
+T = TypeVar("T")
 
-    def summarize(self, variations: list[str]) -> str | None: ...
+
+class BaseClusterFunc(Protocol[T]):
+    def extract(self, name: str) -> tuple[str, T | None]: ...
+
+    def summarize(self, variations: list[T]) -> str | None: ...
 
 
 @dataclass
@@ -29,8 +32,8 @@ class IndexAffixClusterFunc:
         pattern = re.sub(r"\d+", "{#}", name, count=1)
         return pattern, int(match.group())
 
-    def summarize(self, indexes: list[int]) -> str | None:
-        indexes = sorted(indexes)
+    def summarize(self, variations: list[int]) -> str | None:
+        indexes = sorted(variations)
         a = indexes[0]
         b = indexes[-1]
         missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
@@ -56,8 +59,8 @@ class YearAffixClusterFunc:
         pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
         return pattern, year
 
-    def summarize(self, years: list[int]) -> str | None:
-        years = sorted(years)
+    def summarize(self, variations: list[int]) -> str | None:
+        years = sorted(variations)
         a = years[0]
         b = years[-1]
         years_set = set(years)
@@ -92,8 +95,8 @@ class YearMonthAffixClusterFunc:
         pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
         return pattern, datetime.date(year, month, day)
 
-    def summarize(self, dates: list[datetime.date]) -> str | None:
-        dates = sorted(dates)
+    def summarize(self, variations: list[datetime.date]) -> str | None:
+        dates = sorted(variations)
         a = dates[0]
         b = dates[-1]
         dates_set = set(dates)
@@ -130,8 +133,8 @@ class DateAffixClusterFunc:
         pattern = re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", name, count=1)
         return pattern, datetime.date(year, month, day)
 
-    def summarize(self, dates: list[datetime.date]) -> str | None:
-        dates = sorted(dates)
+    def summarize(self, variations: list[datetime.date]) -> str | None:
+        dates = sorted(variations)
         a = dates[0]
         b = dates[-1]
         dates_set = set(dates)
@@ -155,7 +158,7 @@ class SchemaCompressor:
     Compresses the schema by iteratively merging tables with the same digest.
     """
 
-    name_cluster_funcs: list[BaseClusterFunc] = field(
+    name_cluster_funcs: list[BaseClusterFunc[Any]] = field(
         default_factory=lambda: [
             YearAffixClusterFunc(),
             YearMonthAffixClusterFunc(),
@@ -164,7 +167,7 @@ class SchemaCompressor:
         ]
     )
 
-    def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> Hashable:
+    def _foreign_key_digest(self, fk: ForeignKeySchema, table: SQLTableSchema) -> tuple[Any, ...]:
         return (
             table.schema_name,
             table.name,
@@ -225,12 +228,12 @@ class SchemaCompressor:
                 pattern, variation = func.extract(name)
                 groups[pattern].append((name, variation))
 
-            if len(groups) > 1:
+            if len(groups) > 1 or any(v is None for vs in groups.values() for _, v in vs):
                 continue
             pattern = list(groups.keys())[0]
             name_description = func.summarize([v for _, v in groups[pattern]])
             if name_description is not None:
-                candidates.append((pattern, name_description))
+                candidates.append((pattern, name_description))  # type: ignore
 
         # Choose the candidate with the shortest name + name_description
         return min(candidates, key=lambda x: len(x[0] + (x[1] or "")))
