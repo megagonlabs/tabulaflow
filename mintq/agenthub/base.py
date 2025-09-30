@@ -12,8 +12,18 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.registry import Registry
 
 
+class UserQuestion(BaseModel):
+    question: str
+    options: list[str] | None = None
+
+
+class UserAnswer(BaseModel):
+    answer_text: str | None = None
+    answer_index: int | None = None
+
+
 class BaseUserSimulator(Protocol):
-    async def ask_async(self, question: str) -> str: ...
+    async def ask_async(self, questions: list[UserQuestion]) -> list[UserAnswer]: ...
 
 
 BaseAgentConfig: TypeAlias = BaseModel
