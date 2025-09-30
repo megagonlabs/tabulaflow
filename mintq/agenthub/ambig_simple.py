@@ -95,39 +95,24 @@ class AmbigSimpleSQLAgent:
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
-
-        ask_user_tool = AskUserTool(user_simulator)
-        search_keywords_tool = SearchKeywordsTool(db_connector)
-        run_query_tool = RunQueryTool(db_connector)
-        finish_tool = FinishTool()
         all_tools = [
-            ask_user_tool,
-            search_keywords_tool,
-            run_query_tool,
-            finish_tool,
+            AskUserTool(user_simulator),
+            SearchKeywordsTool(db_connector),
+            RunQueryTool(db_connector),
+            FinishTool(),
         ]
-        agent = Agent[TaskContext, str](  # type: ignore
+        agent = Agent[
+            TaskContext, str
+        ](  # type: ignore
             model=self.config.llm,
-            tools=[
-                ask_user_tool.as_pydantic_ai_tool(),
-                search_keywords_tool.as_pydantic_ai_tool(),
-                run_query_tool.as_pydantic_ai_tool(),
-            ],
+            tools=[tool.as_pydantic_ai_tool() for tool in all_tools[:-1]],
             deps_type=TaskContext,
-            output_type=finish_tool.as_pydantic_ai_tool(),
+            output_type=all_tools[-1].as_pydantic_ai_tool(),
             result_tool_name="finish",
             instructions=get_system_prompt,
             history_processors=[max_steps_reached_processor],
         )
         agent.instrument_all()
-
-        agent_no_tools = Agent[TaskContext, str](
-            model=self.config.llm,
-            tools=[],
-            deps_type=TaskContext,
-            instructions=get_system_prompt,
-        )
-        agent_no_tools.instrument_all()
 
         prompt = jinja2.Template(TASK_PROMPT).render(
             schema=self.formatter.format(db_connector.schema),
@@ -135,24 +120,14 @@ class AmbigSimpleSQLAgent:
             language=task.language,
         )
 
-        # Construct dependencies
         deps = TaskContext(
             task=task,
             db_connector=db_connector,
             max_steps=self.config.max_steps,
         )
 
-        # Run the agent
-        fallback = False
-        try:
-            result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.config.temperature})
-            messages = result.all_messages()[:-1]
-        except (UsageLimitExceeded, UnexpectedModelBehavior):
-            result = await agent_no_tools.run(
-                prompt, deps=deps, model_settings={"temperature": self.config.temperature}
-            )
-            messages = result.all_messages()
-            fallback = True
+        result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.config.temperature})
+        messages = result.all_messages()[:-1]
         pred_query = PredQuery(query=extract_code(result.output))
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
@@ -163,7 +138,6 @@ class AmbigSimpleSQLAgent:
         metrics["input_tokens"] = sum(usage.input_tokens for usage in usages)
         metrics["output_tokens"] = sum(usage.output_tokens for usage in usages)
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
-        metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}  # type: ignore
 
