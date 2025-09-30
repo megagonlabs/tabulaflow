@@ -12,7 +12,14 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import BaseTool, RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool, GetSchemaTool
+from mintq.toolhub import (
+    BaseTool,
+    RunQueryTool,
+    SearchKeywordsTool,
+    FinishTool,
+    GetSchemaTool,
+    GetColumnDescriptionTool,
+)
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion
 from mintq.metadata_synthesizers import SchemaCompressor
 
@@ -98,7 +105,9 @@ class AmbigFlatSQLAgent:
                     if self.config.compress_schema
                     else db_connector.schema,
                     self.formatter,
-                )
+                ),
+                GetColumnDescriptionTool(db_connector),
+                SearchKeywordsTool(db_connector),
             ],
         )
         result = await disamb_agent.run(task.question)
@@ -114,6 +123,7 @@ class AmbigFlatSQLAgent:
                 else db_connector.schema,
                 self.formatter,
             ),
+            GetColumnDescriptionTool(db_connector),
             SearchKeywordsTool(db_connector),
             RunQueryTool(db_connector),
             FinishTool(),
@@ -133,9 +143,12 @@ class AmbigFlatSQLAgent:
         t0 = time.time()
 
         interpretations = await self._disambiguate_async(task, db_connector)
-        pred_queries = asyncio.gather(*[self._generate_sql_async(task, db_connector, s, i) for i, s in enumerate(interpretations)])
-        user_response, = await user_simulator.ask_async([UserMultipleChoiceQuestion(question=task.question, options=interpretations)])
-
+        pred_queries = asyncio.gather(
+            *[self._generate_sql_async(task, db_connector, s, i) for i, s in enumerate(interpretations)]
+        )
+        (user_response,) = await user_simulator.ask_async(
+            [UserMultipleChoiceQuestion(question=task.question, options=interpretations)]
+        )
 
         messages = result.all_messages()[:-1]
         pred_query = PredQuery(query=extract_code(result.output))

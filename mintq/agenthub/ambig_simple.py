@@ -9,7 +9,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool, GetSchemaTool
+from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool, GetSchemaTool, GetColumnDescriptionTool
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
 from mintq.metadata_synthesizers import SchemaCompressor
 
@@ -78,6 +78,7 @@ class AmbigSimpleSQLAgent:
                 else db_connector.schema,
                 self.formatter,
             ),
+            GetColumnDescriptionTool(db_connector),
             AskUserTool(user_simulator),
             SearchKeywordsTool(db_connector),
             RunQueryTool(db_connector),
