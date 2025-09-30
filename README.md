@@ -281,8 +281,8 @@ Contact: yanlin@megagon.ai
 - [x] [Sep 25] Rewrite metrics aggregation
 - [x] [Sep 25] get_schema() and get_column_description() tools
 - [x] [Sep 25] Initialize agent with config
-- [x] [Sep 26, Sep 28] Registry for agents, datasets, metrics
-- [ ] HSchema
+- [x] [Sep 28] Registry for agents, datasets, metrics
+- [x] [Sep 29] Replace HSchema with SchemaCompressor
 - [ ] Ambig agents design
 - [ ] Support Ambrosia
 - [ ] Fix Spider table and column names casing
