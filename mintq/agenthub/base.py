@@ -1,5 +1,6 @@
-from typing import Protocol, ClassVar, Type, TypeAlias, Union
-from pydantic import BaseModel
+from typing import Protocol, ClassVar, Type, TypeAlias, Union, Any, Literal
+import datetime
+from pydantic import BaseModel, Annotated, Field
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
@@ -10,21 +11,6 @@ from mintq.schema import (
 )
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.registry import Registry
-
-
-class UserQuestion(BaseModel):
-    question: str
-    options: list[str] | None = None
-
-
-class UserAnswer(BaseModel):
-    answer_text: str | None = None
-    answer_index: int | None = None
-
-
-class BaseUserSimulator(Protocol):
-    async def ask_async(self, questions: list[UserQuestion]) -> list[UserAnswer]: ...
-
 
 BaseAgentConfig: TypeAlias = BaseModel
 
@@ -37,6 +23,52 @@ class BaseSimpleSQLAgent(Protocol):
     async def from_config_async(cls, config) -> "BaseSimpleSQLAgent": ...  # type: ignore
 
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput: ...
+
+
+class UserFreeTextQuestion(BaseModel):
+    type: Literal["free_text"] = "free_text"
+    question: str
+
+
+class UserMultipleChoiceQuestion(BaseModel):
+    type: Literal["multiple_choice"] = "multiple_choice"
+    question: str
+    options: list[str]
+
+
+class UserValueQuestion(BaseModel):
+    type: Literal["value"] = "value"
+    question: str
+    value_dtype: Literal["int", "float", "date", "bool", "str"]
+    value_operator_options: list[Literal["<", ">", "<=", ">=", "==", "!="]]
+
+
+class UserFreeTextAnswer(BaseModel):
+    type: Literal["free_text"] = "free_text"
+    answer_text: str
+
+
+class UserMultipleChoiceAnswer(BaseModel):
+    type: Literal["multiple_choice"] = "multiple_choice"
+    answer_index: int
+
+
+class UserValueAnswer(BaseModel):
+    type: Literal["value"] = "value"
+    operator: Literal["<", ">", "<=", ">=", "==", "!="]
+    value: int | float | datetime.date | bool | str
+
+
+UserQuestion: TypeAlias = Annotated[
+    Union[UserFreeTextQuestion, UserMultipleChoiceQuestion, UserValueQuestion], Field(discriminator="type")
+]
+UserAnswer: TypeAlias = Annotated[
+    Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, UserValueAnswer], Field(discriminator="type")
+]
+
+
+class BaseUserSimulator(Protocol):
+    async def ask_async(self, questions: list[UserQuestion]) -> list[UserAnswer]: ...
 
 
 class BaseAmbigSQLAgent(Protocol):

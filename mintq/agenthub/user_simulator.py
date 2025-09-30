@@ -10,14 +10,18 @@ Here,{% for ap in ambiguity_points %}
 - "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked questions regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
-For each question,
-- If the options are not provided, you must provide a natural language answer in the `answer_text` field. 
-    - Only answer what you are asked, do not provide additional information even if it is related.
-    - If the question is not related to ambiguity clarification, respond "I cannot answer this question."
-    - If the question cannot be answered based on the provided information, respond "I cannot answer this question."
-    - Your answer should be grammatical and linguistically diverse.
-- If the options are provided, you must select from the given options and provide the index in the `answer_index` field.
-  - If none of the options are correct, select the closest option.
+
+For "free_text" questions, you must provide a natural language answer in the `answer_text` field. 
+- Only answer what you are asked, do not provide additional information even if it is related.
+- If the question is not related to ambiguity clarification, respond "I cannot answer this question."
+- If the question cannot be answered based on the provided information, respond "I cannot answer this question."
+- Your answer should be grammatical and linguistically diverse.
+
+For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
+- If none of the options are correct, select the closest option.
+
+For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
+- The data type of the value should be the same as the one specified in the question.
 """
 
 # - If the question provides multiple options but none of them are correct, respond that none of the options are correct.
@@ -71,6 +75,10 @@ class UserSimulator:
         self.message_history = result.all_messages()  # type: ignore
         if len(result.output) != len(questions):
             raise ValueError(
-                "The number of answers does not match the number of questions. Please consider using a better LLM."
+                "The number of answers does not match the number of questions. Please consider using a stronger LLM."
+            )
+        if any(a.type != q.type for a, q in zip(result.output, questions)):
+            raise ValueError(
+                "The type of the answers does not match the type of the questions. Please consider using a stronger LLM."
             )
         return result.output
