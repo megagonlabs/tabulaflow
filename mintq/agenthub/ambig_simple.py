@@ -12,6 +12,7 @@ from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Us
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
+from mintq.metadata_synthesizers import SchemaCompressor
 
 
 @dataclass
@@ -70,6 +71,7 @@ def max_steps_reached_processor(
 class AmbigSimpleSQLAgentConfig(BaseModel):
     llm: str
     schema_formatter: str
+    compress_schema: bool
     temperature: float = 0.0
     num_candidates: int = 1
     max_steps: int = 20
@@ -95,6 +97,16 @@ class AmbigSimpleSQLAgent:
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
+
+        schema = db_connector.schema
+        if self.config.compress_schema:
+            schema = await SchemaCompressor().run_async(schema)
+        prompt = jinja2.Template(TASK_PROMPT).render(
+            schema=self.formatter.format(schema),
+            question=task.question,
+            language=task.language,
+        )
+
         all_tools = [
             AskUserTool(user_simulator),
             SearchKeywordsTool(db_connector),
@@ -113,12 +125,6 @@ class AmbigSimpleSQLAgent:
             history_processors=[max_steps_reached_processor],
         )
         agent.instrument_all()
-
-        prompt = jinja2.Template(TASK_PROMPT).render(
-            schema=self.formatter.format(db_connector.schema),
-            question=task.question,
-            language=task.language,
-        )
 
         deps = TaskContext(
             task=task,
