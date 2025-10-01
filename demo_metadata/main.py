@@ -1,16 +1,68 @@
 import streamlit as st
+import asyncio
 import argparse
 import os
 import logging
+from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
+from mintq.db_connector import SQLConnector
+
+# os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
 
 logger = logging.getLogger(__name__)
 
 
-def main():
+async def get_demo_dataset() -> NL2QDataset:
+    tasks = [
+        SimpleNL2QTask(
+            qid="1",
+            language="PostgresSQL",
+            db="NOAA_GSOD",
+            question="Retrieve the average temperature, average wind speed, and precipitation (null if incomplete) of station ID 725030 for each day from April 1 to 14, 2020?",
+            gold_query=GoldQuery(
+                query="""
+SELECT "date", "temp" AS "avg_temp", "wdsp"::FLOAT AS "avg_wdsp", 
+  CASE WHEN "flag_prcp" IN ('D', 'F', 'G') THEN "prcp" ELSE NULL END AS "prcp"
+FROM NOAA_DATA.NOAA_GSOD.GSOD2020
+WHERE "stn" = '725030'
+  AND "date" BETWEEN DATE '2020-04-01' AND DATE '2020-04-14'
+  AND "temp" != 9999.9 AND "wdsp" != '999.9' AND "prcp" != 99.99
+ORDER BY "date";""".strip()
+            ),
+        ),
+        SimpleNL2QTask(
+            qid="2",
+            language="PostgresSQL",
+            db="NOAA_GSOD",
+            question="Show all days with precipitation less than 0.1 inches.",
+            gold_query=GoldQuery(
+                query="""
+SELECT stn, date, prcp, flag_prcp
+FROM GSOD2020
+WHERE prcp < 0.1 AND prcp <> 99.99
+  AND flag_prcp NOT IN ('H','I');""".strip()
+            ),
+        ),
+    ]
+    import time
+    t0 = time.time()
+    db_connector = await SQLConnector.from_url_async(
+        "demo+NOAA_GSOD",
+        "NOAA_GSOD",
+        "async",
+        "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
+    )
+    print(f"Loaded db connector in {time.time() - t0:.2f} seconds.")
+    return NL2QDataset(
+        name="demo",
+        split="dev",
+        tasks=tasks,
+        db_connectors={"NOAA_GSOD": db_connector},
+    )
+
+
+async def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mongodb_url", default=f"mongodb://{os.environ.get('DB_HOST')}:27017")
-    parser.add_argument("--neo4j_url", default=f"bolt://{os.environ.get('DB_HOST')}:7687")
     args = parser.parse_args()
     logger.info(args)
     logger.info("")
@@ -35,8 +87,11 @@ def main():
     )
     st.title("📊 Megagon Metadata Demo")
 
+    dataset = await get_demo_dataset()
+    st.write(dataset)
+
     # datalake_browser, = st.tabs(['datalake_browser'])
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
