@@ -98,6 +98,44 @@ async def database_browser(dataset: NL2QDataset):
         side_effects = get_side_effect()
         st.text_area("Side Effect", json.dumps(side_effects, indent=2), height=600, label_visibility="collapsed")
 
+
+async def text2sql_panel(dataset: NL2QDataset):
+    c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
+    with c2:
+        selected_question = st.selectbox(
+            "Question", [task.question for task in dataset.tasks], label_visibility="collapsed"
+        )
+    with c1:
+        with st.container(height=98, border=False):
+            question = st.text_area("Question", selected_question, height="stretch", label_visibility="collapsed")
+    with c2:
+        run = st.button("Run")
+
+    st.chat_input
+
+    left, right = st.columns([0.5, 0.5])
+    with left:
+        st.pills(
+            "metadata",
+            ["DDL", "Schema", "Codebook", "Side Effect"],
+            default=["DDL"],
+            selection_mode="multi",
+            label_visibility="collapsed",
+            key="metadata_1",
+        )
+    with right:
+        st.pills(
+            "metadata",
+            ["DDL", "Schema", "Codebook", "Side Effect"],
+            default=["Schema", "Codebook", "Side Effect"],
+            selection_mode="multi",
+            label_visibility="collapsed",
+            key="metadata_2",
+        )
+    if not run:
+        st.stop()
+
+
 async def main():
     parser = argparse.ArgumentParser()
     args = parser.parse_args()
@@ -122,12 +160,15 @@ async def main():
         """,
         unsafe_allow_html=True,
     )
-    st.title("📊 Megagon Metadata Demo")
 
-    dataset = await get_demo_dataset()
     col1, col2 = st.columns([0.3, 0.7])
     with col1:
+        st.title("📊 Megagon Metadata Demo")
+    dataset = await get_demo_dataset()
+    with col1:
         await database_browser(dataset)
+    with col2:
+        await text2sql_panel(dataset)
 
     # datalake_browser, = st.tabs(['datalake_browser'])
 
