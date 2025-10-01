@@ -2,6 +2,7 @@ from typing import Any, ClassVar
 from itertools import combinations
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.metrics.base import metric_registry
+from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
 
 @metric_registry.register
@@ -35,14 +36,14 @@ class BirdSQLExSoft:
         return 0.0
 
     async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
-        if not task.pred_query.exec_result or not task.gold_query.exec_result:
-            raise ValueError("ExecResult not populated")
+        pred_query = get_final_pred_query(task)
+        gold_query = get_final_gold_query(task)
 
-        if task.pred_query.exec_result.df is None or task.gold_query.exec_result.df is None:
+        if pred_query.exec_result.df is None or gold_query.exec_result.df is None:
             return 0.0
 
-        pred_executed = [row for row in task.pred_query.exec_result.df.itertuples(index=False, name=None)]
-        gold_executed = [row for row in task.gold_query.exec_result.df.itertuples(index=False, name=None)]
+        pred_executed = [row for row in pred_query.exec_result.df.itertuples(index=False, name=None)]
+        gold_executed = [row for row in gold_query.exec_result.df.itertuples(index=False, name=None)]
         if self._compare(pred_executed, gold_executed) == 1.0:
             return 1.0
         return 0.0

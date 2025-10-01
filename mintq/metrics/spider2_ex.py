@@ -3,7 +3,7 @@ import pandas as pd
 from typing import Any, ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.metrics.base import metric_registry
-
+from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
 def compare_multi_pandas_table(
@@ -84,14 +84,14 @@ class Spider2Ex:
         self.timeout = timeout
 
     async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
-        if not task.pred_query.exec_result or not task.gold_query.exec_result:
-            raise ValueError("ExecResult not populated")
+        pred_query = get_final_pred_query(task)
+        gold_query = get_final_gold_query(task)
 
-        if task.pred_query.exec_result.error:
+        if pred_query.exec_result.df is None:
             return 0.0
 
-        pred_df = task.pred_query.exec_result.df
-        gold_dfs = [exec_result.df for exec_result in task.gold_query.all_exec_results if exec_result.df is not None]
+        pred_df = pred_query.exec_result.df
+        gold_dfs = [exec_result.df for exec_result in gold_query.all_exec_results if exec_result.df is not None]
 
         if not gold_dfs:
             return 0.0

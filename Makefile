@@ -41,13 +41,13 @@ test-bird-agent:
 test-arcs-simple:
 	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
-	uv run mintq/pipelines/evaluate.py --debug --metrics executable
+	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-flat
 test-arcs-flat:
 	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
-	uv run mintq/pipelines/evaluate.py --debug --metrics executable
+	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-spider2-agent
 test-spider2-agent:

@@ -1,6 +1,7 @@
 from typing import ClassVar
 from mintq.schema import SimpleNL2QTaskOutput
 from mintq.metrics.base import metric_registry
+from mintq.metrics.utils import get_final_gold_query
 
 
 @metric_registry.register
@@ -8,7 +9,6 @@ class GoldExecutable:
     name: ClassVar[str] = "gold_executable"
 
     async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
-        if not task.gold_query.exec_result:
-            raise ValueError("ExecResult not populated")
+        gold_query = get_final_gold_query(task)
 
-        return float(task.gold_query.exec_result.df is not None)
+        return float(gold_query.exec_result.df is not None)
