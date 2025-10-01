@@ -67,15 +67,14 @@ async def run_agent_async(
 
 
 def parse_agent_config(agent_cls: Type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
+    kwargs = {
+        "llm": args.llm,
+        "schema_formatter": args.schema_formatter,
+        "temperature": args.temperature,
+    }
     if agent_cls.name == "sql_agent":
-        return SQLAgentConfig(
-            llm=args.llm,
-            schema_formatter=args.schema_formatter,
-            temperature=args.temperature,
-            num_candidates=args.num_majority_voting_candidates,
-        )
-    else:
-        raise ValueError(f"Unsupported agent: {agent_cls.name}")
+        kwargs["num_candidates"] = args.num_majority_voting_candidates
+    return agent_cls.config_cls(**kwargs)
 
 
 async def main_async() -> None:
