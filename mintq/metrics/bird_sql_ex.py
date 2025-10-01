@@ -1,5 +1,5 @@
 from typing import ClassVar
-from mintq.schema import SimpleNL2QTaskOutput
+from mintq.schema import NL2QTaskOutput
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
@@ -8,7 +8,7 @@ from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 class BirdSQLEx:
     name: ClassVar[str] = "bird_sql_ex"
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
+    async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
 
