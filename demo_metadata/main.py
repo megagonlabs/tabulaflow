@@ -5,6 +5,7 @@ import os
 import logging
 from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
 from mintq.db_connector import SQLConnector
+from mintq.formatters import SQLDefaultSchemaFormatter
 
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
@@ -45,6 +46,7 @@ WHERE prcp < 0.1 AND prcp <> 99.99
         ),
     ]
     import time
+
     t0 = time.time()
     db_connector = await SQLConnector.from_url_async(
         "demo+NOAA_GSOD",
@@ -59,6 +61,19 @@ WHERE prcp < 0.1 AND prcp <> 99.99
         tasks=tasks,
         db_connectors={"NOAA_GSOD": db_connector},
     )
+
+
+async def database_browser(dataset: NL2QDataset):
+    db = st.selectbox("Database", list(dataset.db_connectors.keys()))
+    db_connector = dataset.db_connectors[db]
+    schema = db_connector.schema
+    formatter = SQLDefaultSchemaFormatter()
+
+    ddl_tab, schema_tab = st.tabs(["DDL", "Schema"])
+    with ddl_tab:
+        st.text_area("DDL", formatter.format(schema), height=600, label_visibility="collapsed")
+    with schema_tab:
+        st.text_area("Schema", formatter.format(schema), height=600, label_visibility="collapsed")
 
 
 async def main():
@@ -88,7 +103,9 @@ async def main():
     st.title("📊 Megagon Metadata Demo")
 
     dataset = await get_demo_dataset()
-    st.write(dataset)
+    col1, col2 = st.columns([0.3, 0.7])
+    with col1:
+        await database_browser(dataset)
 
     # datalake_browser, = st.tabs(['datalake_browser'])
 
