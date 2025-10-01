@@ -1,6 +1,7 @@
 import streamlit as st
 import asyncio
 import argparse
+import json
 import os
 import logging
 from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
@@ -63,6 +64,11 @@ WHERE prcp < 0.1 AND prcp <> 99.99
     )
 
 
+def get_ddl() -> list[str]:
+    with open("demo_metadata/metadata/ddl.json", "r") as f:
+        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+
+
 async def database_browser(dataset: NL2QDataset):
     db = st.selectbox("Database", list(dataset.db_connectors.keys()))
     db_connector = dataset.db_connectors[db]
@@ -71,7 +77,8 @@ async def database_browser(dataset: NL2QDataset):
 
     ddl_tab, schema_tab = st.tabs(["DDL", "Schema"])
     with ddl_tab:
-        st.text_area("DDL", formatter.format(schema), height=600, label_visibility="collapsed")
+        ddls = get_ddl()
+        st.text_area("DDL", "\n".join(ddls), height=600, label_visibility="collapsed")
     with schema_tab:
         st.text_area("Schema", formatter.format(schema), height=600, label_visibility="collapsed")
 
