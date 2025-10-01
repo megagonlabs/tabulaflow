@@ -1,5 +1,5 @@
 from typing import ClassVar
-from mintq.schema import SimpleNL2QTaskOutput
+from mintq.schema import NL2QTaskOutput
 from mintq.metrics.base import metric_registry
 
 
@@ -7,8 +7,15 @@ from mintq.metrics.base import metric_registry
 class Executable:
     name: ClassVar[str] = "executable"
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float:
-        if not task.pred_query.exec_result:
+    async def compute_async(self, task: NL2QTaskOutput) -> float:
+        if task.task_type == "simple":
+            pred_query = task.pred_query
+        elif task.task_type == "ambig":
+            pred_query = task.pred_intended_query
+        else:
+            raise ValueError(f"Invalid task type: {task.task_type}")
+
+        if not pred_query.exec_result:
             raise ValueError("ExecResult not populated")
 
-        return float(task.pred_query.exec_result.df is not None)
+        return float(pred_query.exec_result.df is not None)
