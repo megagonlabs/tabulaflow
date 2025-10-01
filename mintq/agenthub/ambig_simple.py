@@ -44,9 +44,8 @@ def max_steps_reached_processor(
 class AmbigSimpleSQLAgentConfig(BaseModel):
     llm: str
     schema_formatter: str
-    compress_schema: bool
+    compress_schema: bool = True
     temperature: float = 0.0
-    num_candidates: int = 1
     max_steps: int = 20
 
 
