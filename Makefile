@@ -31,25 +31,22 @@ test-agent:
 		uv run mintq/pipelines/evaluate.py --debug; \
 	done
 
-.PHONY: test-bird-multi-agent-v1
-test-bird-multi-agent-v1:
-	uv run mintq/pipelines/run_agent.py --agent sql_multi_agent_v1 --dataset bird-sql --debug
-	uv run mintq/pipelines/evaluate.py --debug
-
 .PHONY: test-bird-agent
 test-bird-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
-.PHONY: test-bird-agent-v1
-test-bird-agent-v1:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent_v1 --dataset bird-sql --debug
+.PHONY: test-arcs-simple
+test-arcs-simple:
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
-.PHONY: test-bird-agent-v2
-test-bird-agent-v2:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent_v2 --dataset bird-sql --debug
+.PHONY: test-arcs-flat
+test-arcs-flat:
+	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-spider2-agent
