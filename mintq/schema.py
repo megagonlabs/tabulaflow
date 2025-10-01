@@ -700,8 +700,8 @@ NL2QTaskOutput = Annotated[
 class NL2QDataset(BaseModel):
     name: str
     split: str
-    databases: list[str] | None  # None means all databases
-    subsample_size: int | None
+    databases: list[str] | None = None  # None means all databases
+    subsample_size: int | None = None
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
