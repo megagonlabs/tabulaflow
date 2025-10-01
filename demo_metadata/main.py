@@ -69,19 +69,34 @@ def get_ddl() -> list[str]:
         return json.load(f)["NOAA_DATA.NOAA_GSOD"]
 
 
+def get_codebook() -> dict:
+    with open("demo_metadata/metadata/code_book.json", "r") as f:
+        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+
+
+def get_side_effect() -> dict:
+    with open("demo_metadata/metadata/side_effect.json", "r") as f:
+        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+
+
 async def database_browser(dataset: NL2QDataset):
     db = st.selectbox("Database", list(dataset.db_connectors.keys()))
     db_connector = dataset.db_connectors[db]
     schema = db_connector.schema
     formatter = SQLDefaultSchemaFormatter()
 
-    ddl_tab, schema_tab = st.tabs(["DDL", "Schema"])
+    ddl_tab, schema_tab, codebook_tab, side_effect_tab = st.tabs(["DDL", "Schema", "Codebook", "Side Effect"])
     with ddl_tab:
         ddls = get_ddl()
         st.text_area("DDL", "\n".join(ddls), height=600, label_visibility="collapsed")
     with schema_tab:
         st.text_area("Schema", formatter.format(schema), height=600, label_visibility="collapsed")
-
+    with codebook_tab:
+        codebooks = get_codebook()
+        st.text_area("Codebook", json.dumps(codebooks, indent=2), height=600, label_visibility="collapsed")
+    with side_effect_tab:
+        side_effects = get_side_effect()
+        st.text_area("Side Effect", json.dumps(side_effects, indent=2), height=600, label_visibility="collapsed")
 
 async def main():
     parser = argparse.ArgumentParser()
