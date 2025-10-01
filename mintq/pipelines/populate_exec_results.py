@@ -17,6 +17,8 @@ async def populate_task_async(
         all_queries = []
         if getattr(task, f"{prefix}_query", None):
             all_queries.append(getattr(task, f"{prefix}_query"))
+        if getattr(task, f"{prefix}_intended_query", None):
+            all_queries.append(getattr(task, f"{prefix}_intended_query"))
         if getattr(task, f"{prefix}_queries", None):
             all_queries += getattr(task, f"{prefix}_queries")
         queries_to_populate = [q for q in all_queries if not q.exec_result]
