@@ -119,18 +119,23 @@ async def run_simple_zero_shot(
     question: str, db_connector: SQLConnector, metadata: dict[str, str], llm="openai/gpt-4o", language="PostgresSQL"
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
-    with st.container(height=600, border=False):
-        st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
+    with st.chat_message("assistant", avatar="human"):
+        with st.expander("View Prompt", expanded=False):
+            st.text(prompt)
+    # with st.container(height=600, border=False):
+    #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
     response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
     query = response["choices"][0]["message"]["content"]
     query = extract_code(query)
     exec_result = await db_connector.run_query_async(query)
     df = exec_result.df
-    st.code(query, language="sql")
-    if df is not None:
-        st.dataframe(df)
-    else:
-        st.error(exec_result.error)
+    with st.chat_message("assistant", avatar="assistant"):
+        st.code(query, language="sql")
+    with st.chat_message("assistant", avatar=":material/database:"):
+        if df is not None:
+            st.dataframe(df)
+        else:
+            st.error(exec_result.error)
 
 
 async def database_browser(dataset: NL2QDataset):
