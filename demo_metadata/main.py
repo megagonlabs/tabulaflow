@@ -119,7 +119,7 @@ def get_metadata(schema: str) -> dict[str, str]:
 
 
 async def run_simple_zero_shot(
-    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm="openai/gpt-4o", language="PostgresSQL",
+    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm: str, temperature: float, language="PostgresSQL",
     key="run_left",
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
@@ -130,7 +130,7 @@ async def run_simple_zero_shot(
     # with st.container(height=600, border=False):
     #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
     with st.spinner("Running LLM..."):
-        response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
+        response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=temperature)
     query = response["choices"][0]["message"]["content"]
     query = extract_code(query)
     logger.info(query)
@@ -152,9 +152,18 @@ async def run_simple_zero_shot(
     }
 
 
-async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tuple[SimpleNL2QTask, SQLConnector]:
-    db = st.selectbox("Database", list(dataset.db_connectors.keys()))
-    question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
+async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tuple[SimpleNL2QTask, SQLConnector, str, float]:
+    with st.container(border=True):
+        col1, col2 = st.columns([0.3, 0.7])
+        with col1:
+            db = st.selectbox("Database", list(dataset.db_connectors.keys()))
+        with col2:
+            question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
+        col1, col2 = st.columns([0.45, 0.55])
+        with col1:
+            llm = st.selectbox("LLM", ["openai/gpt-4o", "openai/gpt-4o-mini", "openai/gpt-5"])
+        with col2:
+            temperature = st.slider("Temperature", min_value=0.0, max_value=2.0, value=0.0, step=0.01)
 
     db_connector = dataset.db_connectors[db]
 
@@ -164,10 +173,10 @@ async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tu
             with st.container(height=500, border=False):
                 st.text_area(key, value, height="stretch", label_visibility="collapsed")
     task = next(task for task in dataset.tasks if task.question == question)
-    return task, db_connector
+    return task, db_connector, llm, temperature
 
 
-async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metadata: dict[str, str]):
+async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metadata: dict[str, str], llm: str, temperature: float):
     # c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
     # with c2:
     #     selected_question = st.selectbox(
@@ -241,14 +250,14 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
         with left:
             metadata_selected = {k: metadata[k] for k in meta_types_left}
             await run_simple_zero_shot(
-                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
+                task.question, db_connector, metadata_selected, llm, temperature, language="PostgresSQL", key="run_left_result"
             )
     
     if run_right:
         with right:
             metadata_selected = {k: metadata[k] for k in meta_types_right}
             await run_simple_zero_shot(
-                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
+                task.question, db_connector, metadata_selected, llm, temperature, language="PostgresSQL", key="run_right_result"
             )
 
 
@@ -283,9 +292,9 @@ async def main():
     dataset = await get_demo_dataset()
     metadata = get_metadata(SQLDefaultSchemaFormatter().format(dataset.db_connectors["NOAA_DATA"].schema))
     with col1:
-        task, db_connector = await database_browser(dataset, metadata)
+        task, db_connector, llm, temperature = await database_browser(dataset, metadata)
     with col2:
-        await text2sql_panel(task, db_connector, metadata)
+        await text2sql_panel(task, db_connector, metadata, llm, temperature)
 
     # datalake_browser, = st.tabs(['datalake_browser'])
 
