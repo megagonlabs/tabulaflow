@@ -125,13 +125,15 @@ async def run_simple_zero_shot(
 
     # with st.container(height=600, border=False):
     #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
-    response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
+    with st.spinner("Running LLM..."):
+        response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
     query = response["choices"][0]["message"]["content"]
     query = extract_code(query)
-    exec_result = await db_connector.run_query_async(query)
-    df = exec_result.df
     with st.chat_message("assistant", avatar="assistant"):
         st.code(query, language="sql")
+    with st.spinner("Querying database..."):
+        exec_result = await db_connector.run_query_async(query)
+    df = exec_result.df
     with st.chat_message("assistant", avatar=":material/database:"):
         if df is not None:
             st.dataframe(df)
