@@ -162,6 +162,7 @@ WHERE prcp > monthly_avg_temp
         "async",
         "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
     )
+    db_connector.schema.name = "weather"
     print(f"Loaded db connector in {time.time() - t0:.2f} seconds.")
     return NL2QDataset(
         name="demo",
@@ -261,7 +262,7 @@ async def database_browser(
             question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
         col1, col2 = st.columns([0.45, 0.55])
         with col1:
-            llm = st.selectbox("LLM", ["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-5"], index=2)
+            llm = st.selectbox("LLM", ["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-5"], index=0)
         with col2:
             if llm == "openai/gpt-5":
                 temperature = st.slider(
