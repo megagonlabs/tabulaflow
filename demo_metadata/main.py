@@ -235,9 +235,14 @@ async def run_simple_zero_shot(
     with st.spinner("Querying database..."):
         exec_result = await db_connector.run_query_async(query)
     df = exec_result.df
+    
     with st.chat_message("assistant", avatar=":material/database:"):
         if df is not None:
-            st.dataframe(df)
+            if len(df) > 1000:
+                st.dataframe(df.head(1000))
+                st.warning("Results truncated to 1000 rows.")
+            else:
+                st.dataframe(df)
         else:
             st.error(exec_result.error)
 
