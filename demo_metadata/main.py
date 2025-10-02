@@ -149,7 +149,7 @@ async def run_simple_zero_shot(
 
 async def database_browser(dataset: NL2QDataset) -> tuple[SimpleNL2QTask, SQLConnector]:
     db = st.selectbox("Database", list(dataset.db_connectors.keys()))
-    question = st.selectbox("Question", [task.question for task in dataset.tasks])
+    question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
 
     db_connector = dataset.db_connectors[db]
     schema = db_connector.schema
