@@ -92,26 +92,27 @@ WHERE prcp < 0.1 AND prcp <> 99.99
     )
 
 
-def get_ddl() -> list[str]:
+def get_ddl() -> str:
     with open("demo_metadata/metadata/ddl.json", "r") as f:
-        return json.load(f)["NOAA_DATA.noaa_gsod"]
+        return "\n".join(json.load(f)["NOAA_DATA.noaa_gsod"])
 
 
-def get_codebook() -> dict:
+def get_codebook() -> str:
     with open("demo_metadata/metadata/code_book.json", "r") as f:
-        return json.load(f)["NOAA_DATA.noaa_gsod"]
+        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
 
 
-def get_side_effect() -> dict:
+def get_side_effect() -> str:
     with open("demo_metadata/metadata/side_effect.json", "r") as f:
-        return json.load(f)["NOAA_DATA.noaa_gsod"]
+        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
 
 
-def get_metadata() -> dict[str, str]:
+def get_metadata(schema: str) -> dict[str, str]:
     return {
-        "ddl": get_ddl(),
-        "codebook": get_codebook(),
-        "side effect": get_side_effect(),
+        "DDL": get_ddl(),
+        "Schema": schema,
+        "Codebook": get_codebook(),
+        "Side Effect": get_side_effect(),
     }
 
 
@@ -147,27 +148,17 @@ async def run_simple_zero_shot(
     }
 
 
-async def database_browser(dataset: NL2QDataset) -> tuple[SimpleNL2QTask, SQLConnector]:
+async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tuple[SimpleNL2QTask, SQLConnector]:
     db = st.selectbox("Database", list(dataset.db_connectors.keys()))
     question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
 
     db_connector = dataset.db_connectors[db]
-    schema = db_connector.schema
-    formatter = SQLDefaultSchemaFormatter()
 
-    ddl_tab, schema_tab, codebook_tab, side_effect_tab = st.tabs(["DDL", "Schema", "Codebook", "Side Effect"])
-    with ddl_tab:
-        ddls = get_ddl()
-        st.text_area("DDL", "\n".join(ddls), height=600, label_visibility="collapsed")
-    with schema_tab:
-        st.text_area("Schema", formatter.format(schema), height=600, label_visibility="collapsed")
-    with codebook_tab:
-        codebooks = get_codebook()
-        st.text_area("Codebook", json.dumps(codebooks, indent=2), height=600, label_visibility="collapsed")
-    with side_effect_tab:
-        side_effects = get_side_effect()
-        st.text_area("Side Effect", json.dumps(side_effects, indent=2), height=600, label_visibility="collapsed")
-
+    tabs = st.tabs(list(metadata.keys()))
+    for tab, (key, value) in zip(tabs, metadata.items()):
+        with tab:
+            with st.container(height=500, border=False):
+                st.text_area(key, value, height="stretch", label_visibility="collapsed")
     task = next(task for task in dataset.tasks if task.question == question)
     return task, db_connector
 
@@ -240,21 +231,16 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
                     else:
                         st.error(exec_result.error)
 
-    if not run_left and not run_right:
-        st.stop()
-
-    meta_types_left = [v.lower() for v in meta_types_left]
-    meta_types_right = [v.lower() for v in meta_types_right]
     if run_left:
         with left:
-            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
+            metadata_selected = {k: metadata[k] for k in meta_types_left}
             await run_simple_zero_shot(
                 task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
             )
     
     if run_right:
         with right:
-            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
+            metadata_selected = {k: metadata[k] for k in meta_types_right}
             await run_simple_zero_shot(
                 task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
             )
@@ -289,11 +275,9 @@ async def main():
     with col1:
         st.title("📊 Text-to-SQL Metadata Demo")
     dataset = await get_demo_dataset()
-    metadata = get_metadata()
-    formatter = SQLDefaultSchemaFormatter()
-    metadata["schema"] = formatter.format(dataset.db_connectors["NOAA_DATA"].schema)
+    metadata = get_metadata(SQLDefaultSchemaFormatter().format(dataset.db_connectors["NOAA_DATA"].schema))
     with col1:
-        task, db_connector = await database_browser(dataset)
+        task, db_connector = await database_browser(dataset, metadata)
     with col2:
         await text2sql_panel(task, db_connector, metadata)
 
