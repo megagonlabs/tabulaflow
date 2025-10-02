@@ -195,7 +195,7 @@ def get_hints() -> str:
 def get_metadata(schema: str) -> dict[str, str]:
     return {
         "DDL": get_ddl(),
-        "Schema": schema,
+        "Enhanced Schema": schema,
         "Codebook": get_codebook(),
         "Semantic Dependency": get_side_effect(),
         "Hints": get_hints(),
