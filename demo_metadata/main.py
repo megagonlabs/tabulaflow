@@ -116,12 +116,14 @@ def get_metadata() -> dict[str, str]:
 
 
 async def run_simple_zero_shot(
-    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm="openai/gpt-4o", language="PostgresSQL"
+    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm="openai/gpt-4o", language="PostgresSQL",
+    key="run_left",
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
     with st.chat_message("assistant", avatar="human"):
         with st.expander("View Prompt", expanded=False):
             st.text(prompt)
+
     # with st.container(height=600, border=False):
     #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
     response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
@@ -136,6 +138,12 @@ async def run_simple_zero_shot(
             st.dataframe(df)
         else:
             st.error(exec_result.error)
+
+    st.session_state[key] = {
+        "prompt": prompt,
+        "query": query,
+        "exec_result": exec_result,
+    }
 
 
 async def database_browser(dataset: NL2QDataset):
@@ -167,45 +175,77 @@ async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
     with c1:
         with st.container(height=98, border=False):
             question = st.text_area("Question", selected_question, height="stretch", label_visibility="collapsed")
-    with c2:
-        run = st.button("Run")
+    # with c2:
+    #     run = st.button("Run")
 
     left, right = st.columns([0.5, 0.5])
     with left:
-        meta_types_left = st.pills(
-            "metadata",
-            ["DDL", "Schema", "Codebook", "Side Effect"],
-            default=["DDL"],
-            selection_mode="multi",
-            label_visibility="collapsed",
-            key="metadata_1",
-        )
+        left_c1, left_c2 = st.columns([0.7, 0.3])
+        with left_c1:
+            meta_types_left = st.pills(
+                "metadata",
+                ["DDL", "Schema", "Codebook", "Side Effect"],
+                default=["DDL"],
+                selection_mode="multi",
+                label_visibility="collapsed",
+                key="metadata_1",
+            )
+        with left_c2:
+            run_left = st.button("Run", key="run_left")
     with right:
-        meta_types_right = st.pills(
-            "metadata",
-            ["DDL", "Schema", "Codebook", "Side Effect"],
+        right_c1, right_c2 = st.columns([0.7, 0.3])
+        with right_c1:
+            meta_types_right = st.pills(
+                "metadata",
+                ["DDL", "Schema", "Codebook", "Side Effect"],
             default=["Schema", "Codebook", "Side Effect"],
-            selection_mode="multi",
-            label_visibility="collapsed",
-            key="metadata_2",
-        )
-    if not run:
-        st.stop()
+                selection_mode="multi",
+                label_visibility="collapsed",
+                key="metadata_2",
+            )
+        with right_c2:
+            run_right = st.button("Run", key="run_right")
 
     meta_types_left = [v.lower() for v in meta_types_left]
     meta_types_right = [v.lower() for v in meta_types_right]
     db_connector = dataset.db_connectors["NOAA_DATA"]
     with left:
-        metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
-        await run_simple_zero_shot(
-            question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL"
-        )
+        if run_left:
+            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
+            await run_simple_zero_shot(
+                question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
+            )
+        elif "run_left_result" in st.session_state:
+            with st.chat_message("assistant", avatar="human"):
+                with st.expander("View Prompt", expanded=False):
+                    st.text(st.session_state["run_left_result"]["prompt"])
+            with st.chat_message("assistant", avatar="assistant"):
+                st.code(st.session_state["run_left_result"]["query"], language="sql")
+            with st.chat_message("assistant", avatar=":material/database:"):
+                exec_result = st.session_state["run_left_result"]["exec_result"]
+                if exec_result.df is not None:
+                    st.dataframe(exec_result.df)
+                else:
+                    st.error(exec_result.error)
 
     with right:
-        metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
-        await run_simple_zero_shot(
-            question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL"
-        )
+        if run_right:
+            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
+            await run_simple_zero_shot(
+                question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
+            )
+        elif "run_right_result" in st.session_state:
+            with st.chat_message("assistant", avatar="human"):
+                with st.expander("View Prompt", expanded=False):
+                    st.text(st.session_state["run_right_result"]["prompt"])
+            with st.chat_message("assistant", avatar="assistant"):
+                st.code(st.session_state["run_right_result"]["query"], language="sql")
+            with st.chat_message("assistant", avatar=":material/database:"):
+                exec_result = st.session_state["run_right_result"]["exec_result"]
+                if exec_result.df is not None:
+                    st.dataframe(exec_result.df)
+                else:
+                    st.error(exec_result.error)
 
 
 async def main():
