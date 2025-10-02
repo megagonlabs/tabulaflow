@@ -75,6 +75,84 @@ WHERE prcp < 0.1 AND prcp <> 99.99
   AND flag_prcp NOT IN ('H','I');""".strip()
             ),
         ),
+        SimpleNL2QTask(
+            qid="3",
+            language="PostgresSQL",
+            db="NOAA_DATA",
+            question="List all days where snow depth was reported (sndp not missing) but snow/ice pellets event was 0.",
+            gold_query=GoldQuery(
+                query="""
+SELECT stn, date, sndp
+FROM GSOD2020
+WHERE sndp <> 999.9
+  AND snow_ice_pellets = '0';""".strip()
+            ),
+        ),
+        SimpleNL2QTask(
+            qid="4",
+            language="PostgresSQL",
+            db="NOAA_DATA",
+            question="Count, for each station, the number of wet days in 2020.",
+            gold_query=GoldQuery(
+                query="""
+SELECT stn, 
+       COUNT(*) AS wet_days
+FROM GSOD2020
+WHERE year = '2020'
+  AND (rain_drizzle = '1' OR snow_ice_pellets = '1' OR hail = '1')
+GROUP BY stn;
+""".strip()
+            ),
+        ),
+        SimpleNL2QTask(
+            qid="5",
+            language="PostgresSQL",
+            db="NOAA_DATA",
+            question="Find stations that rarely snow.",
+            gold_query=GoldQuery(
+                query="""
+SELECT DISTINCT stn
+FROM GSOD2020
+WHERE stn IN (
+    SELECT stn
+    FROM GSOD2020
+    WHERE snow_ice_pellets = '1'
+    GROUP BY stn, mo
+    HAVING COUNT(*) < 2
+);
+""".strip()
+            ),
+        ),
+        SimpleNL2QTask(
+            qid="6",
+            language="PostgresSQL",
+            db="NOAA_DATA",
+            question="Return the top 5 stations with the highest number of wet days in 2020. ",
+            gold_query=GoldQuery(
+                query="""
+SELECT stn, SUM(wet_day_flag) AS wet_days
+FROM GSOD2020
+WHERE year = '2020'
+GROUP BY stn
+ORDER BY wet_days DESC
+LIMIT 5;
+""".strip()
+            ),
+        ),
+        SimpleNL2QTask(
+            qid="7",
+            language="PostgresSQL",
+            db="NOAA_DATA",
+            question="Return all dates with extreme events with precipitation.",
+            gold_query=GoldQuery(
+                query="""
+SELECT date
+FROM GSOD2020
+WHERE prcp > monthly_avg_temp
+  AND extreme_event_flag = '1'
+""".strip()
+            ),
+        ),
     ]
     import time
 
