@@ -210,33 +210,7 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
         with right_c2:
             run_right = st.button("Run", key="run_right")
 
-    if not run_left and not run_right:
-        st.stop()
-
-    meta_types_left = [v.lower() for v in meta_types_left]
-    meta_types_right = [v.lower() for v in meta_types_right]
-    if run_left:
-        with right:
-            if "run_right_result" in st.session_state:
-                with st.chat_message("human", avatar="human"):
-                    st.write(st.session_state["run_right_result"]["prompt"])
-                with st.chat_message("assistant", avatar="assistant"):
-                    st.code(st.session_state["run_right_result"]["query"], language="sql")
-                with st.chat_message("assistant", avatar=":material/database:"):
-                    exec_result = st.session_state["run_right_result"]["exec_result"]
-                    if exec_result.df is not None:
-                        st.dataframe(exec_result.df)
-                    else:
-                        st.error(exec_result.error)
-        with left:
-            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
-            await run_simple_zero_shot(
-                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
-            )
-
-
-    
-    if run_right:
+    if not run_left:
         with left:
             if "run_left_result" in st.session_state:
                 with st.chat_message("human", avatar="human"):
@@ -249,6 +223,34 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
                         st.dataframe(exec_result.df)
                     else:
                         st.error(exec_result.error)
+
+    if not run_right:
+        with right:
+            if "run_right_result" in st.session_state:
+                with st.chat_message("human", avatar="human"):
+                    st.write(st.session_state["run_right_result"]["prompt"])
+                with st.chat_message("assistant", avatar="assistant"):
+                    st.code(st.session_state["run_right_result"]["query"], language="sql")
+                with st.chat_message("assistant", avatar=":material/database:"):
+                    exec_result = st.session_state["run_right_result"]["exec_result"]
+                    if exec_result.df is not None:
+                        st.dataframe(exec_result.df)
+                    else:
+                        st.error(exec_result.error)
+
+    if not run_left and not run_right:
+        st.stop()
+
+    meta_types_left = [v.lower() for v in meta_types_left]
+    meta_types_right = [v.lower() for v in meta_types_right]
+    if run_left:
+        with left:
+            metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
+            await run_simple_zero_shot(
+                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
+            )
+    
+    if run_right:
         with right:
             metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
             await run_simple_zero_shot(
