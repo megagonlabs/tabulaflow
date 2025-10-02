@@ -1,3 +1,5 @@
+import jinja2
+import litellm
 import streamlit as st
 import asyncio
 import argparse
@@ -7,6 +9,7 @@ import logging
 from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
 from mintq.db_connector import SQLConnector
 from mintq.formatters import SQLDefaultSchemaFormatter
+from mintq.utils import extract_code
 
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
 
@@ -14,12 +17,37 @@ from mintq.formatters import SQLDefaultSchemaFormatter
 logger = logging.getLogger(__name__)
 
 
+PROMPT = """
+You are a database expert responsible for translating natural language questions into {{language}} queries.
+- The query must follow the given database schema.
+- You must follow the hints if provided.
+- The final output should not include additional columns that are not required by the question.
+  - For example, if the question only ask for the highest score but not the name of the student, the final query should not fetch the name of the student.
+  - Similarly, if the question only ask for the student with the highest score but not the score, the final query should not fetch the score.
+  - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
+- The final output should only include the SQL query, without explanation or any other text.
+- Before returning the final output, always execute the query and check if the results match the question.
+{% if language == "SnowflakeSQL" %}
+- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
+{% endif %}
+
+{% for key, value in metadata.items() %}
+=== START OF {{ key.upper() }} ===
+{{ value }}
+=== END OF {{ key.upper() }} ===
+{% endfor %}
+
+Question to translate: {{question}}
+{{language}} query:
+""".strip()
+
+
 async def get_demo_dataset() -> NL2QDataset:
     tasks = [
         SimpleNL2QTask(
             qid="1",
             language="PostgresSQL",
-            db="NOAA_GSOD",
+            db="NOAA_DATA",
             question="Retrieve the average temperature, average wind speed, and precipitation (null if incomplete) of station ID 725030 for each day from April 1 to 14, 2020?",
             gold_query=GoldQuery(
                 query="""
@@ -35,7 +63,7 @@ ORDER BY "date";""".strip()
         SimpleNL2QTask(
             qid="2",
             language="PostgresSQL",
-            db="NOAA_GSOD",
+            db="NOAA_DATA",
             question="Show all days with precipitation less than 0.1 inches.",
             gold_query=GoldQuery(
                 query="""
@@ -50,8 +78,8 @@ WHERE prcp < 0.1 AND prcp <> 99.99
 
     t0 = time.time()
     db_connector = await SQLConnector.from_url_async(
-        "demo+NOAA_GSOD",
-        "NOAA_GSOD",
+        "demo+NOAA_DATA",
+        "NOAA_DATA",
         "async",
         "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
     )
@@ -60,23 +88,49 @@ WHERE prcp < 0.1 AND prcp <> 99.99
         name="demo",
         split="dev",
         tasks=tasks,
-        db_connectors={"NOAA_GSOD": db_connector},
+        db_connectors={"NOAA_DATA": db_connector},
     )
 
 
 def get_ddl() -> list[str]:
     with open("demo_metadata/metadata/ddl.json", "r") as f:
-        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+        return json.load(f)["NOAA_DATA.noaa_gsod"]
 
 
 def get_codebook() -> dict:
     with open("demo_metadata/metadata/code_book.json", "r") as f:
-        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+        return json.load(f)["NOAA_DATA.noaa_gsod"]
 
 
 def get_side_effect() -> dict:
     with open("demo_metadata/metadata/side_effect.json", "r") as f:
-        return json.load(f)["NOAA_DATA.NOAA_GSOD"]
+        return json.load(f)["NOAA_DATA.noaa_gsod"]
+
+
+def get_metadata() -> dict[str, str]:
+    return {
+        "ddl": get_ddl(),
+        "codebook": get_codebook(),
+        "side effect": get_side_effect(),
+    }
+
+
+async def run_simple_zero_shot(
+    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm="openai/gpt-4o", language="PostgresSQL"
+) -> str:
+    prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
+    with st.container(height=600, border=False):
+        st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
+    response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
+    query = response["choices"][0]["message"]["content"]
+    query = extract_code(query)
+    exec_result = await db_connector.run_query_async(query)
+    df = exec_result.df
+    st.code(query, language="sql")
+    if df is not None:
+        st.dataframe(df)
+    else:
+        st.error(exec_result.error)
 
 
 async def database_browser(dataset: NL2QDataset):
@@ -99,7 +153,7 @@ async def database_browser(dataset: NL2QDataset):
         st.text_area("Side Effect", json.dumps(side_effects, indent=2), height=600, label_visibility="collapsed")
 
 
-async def text2sql_panel(dataset: NL2QDataset):
+async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
     c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
     with c2:
         selected_question = st.selectbox(
@@ -111,11 +165,9 @@ async def text2sql_panel(dataset: NL2QDataset):
     with c2:
         run = st.button("Run")
 
-    st.chat_input
-
     left, right = st.columns([0.5, 0.5])
     with left:
-        st.pills(
+        meta_types_left = st.pills(
             "metadata",
             ["DDL", "Schema", "Codebook", "Side Effect"],
             default=["DDL"],
@@ -124,7 +176,7 @@ async def text2sql_panel(dataset: NL2QDataset):
             key="metadata_1",
         )
     with right:
-        st.pills(
+        meta_types_right = st.pills(
             "metadata",
             ["DDL", "Schema", "Codebook", "Side Effect"],
             default=["Schema", "Codebook", "Side Effect"],
@@ -134,6 +186,21 @@ async def text2sql_panel(dataset: NL2QDataset):
         )
     if not run:
         st.stop()
+
+    meta_types_left = [v.lower() for v in meta_types_left]
+    meta_types_right = [v.lower() for v in meta_types_right]
+    db_connector = dataset.db_connectors["NOAA_DATA"]
+    with left:
+        metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
+        await run_simple_zero_shot(
+            question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL"
+        )
+
+    with right:
+        metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
+        await run_simple_zero_shot(
+            question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL"
+        )
 
 
 async def main():
@@ -165,10 +232,13 @@ async def main():
     with col1:
         st.title("📊 Megagon Metadata Demo")
     dataset = await get_demo_dataset()
+    metadata = get_metadata()
+    formatter = SQLDefaultSchemaFormatter()
+    metadata["schema"] = formatter.format(dataset.db_connectors["NOAA_DATA"].schema)
     with col1:
         await database_browser(dataset)
     with col2:
-        await text2sql_panel(dataset)
+        await text2sql_panel(dataset, metadata)
 
     # datalake_browser, = st.tabs(['datalake_browser'])
 
