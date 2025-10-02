@@ -197,7 +197,12 @@ def get_metadata(schema: str) -> dict[str, str]:
 
 
 async def run_simple_zero_shot(
-    question: str, db_connector: SQLConnector, metadata: dict[str, str], llm: str, temperature: float, language="PostgresSQL",
+    question: str,
+    db_connector: SQLConnector,
+    metadata: dict[str, str],
+    llm: str,
+    temperature: float,
+    language="PostgresSQL",
     key="run_left",
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
@@ -208,7 +213,9 @@ async def run_simple_zero_shot(
     # with st.container(height=600, border=False):
     #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
     with st.spinner("Running LLM..."):
-        response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=temperature)
+        response = await litellm.acompletion(
+            model=llm, messages=[{"role": "user", "content": prompt}], temperature=temperature
+        )
     query = response["choices"][0]["message"]["content"]
     query = extract_code(query)
     logger.info(query)
@@ -230,7 +237,9 @@ async def run_simple_zero_shot(
     }
 
 
-async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tuple[SimpleNL2QTask, SQLConnector, str, float]:
+async def database_browser(
+    dataset: NL2QDataset, metadata: dict[str, str]
+) -> tuple[SimpleNL2QTask, SQLConnector, str, float]:
     with st.container(border=True):
         col1, col2 = st.columns([0.3, 0.7])
         with col1:
@@ -239,9 +248,14 @@ async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tu
             question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
         col1, col2 = st.columns([0.45, 0.55])
         with col1:
-            llm = st.selectbox("LLM", ["openai/gpt-4o", "openai/gpt-4o-mini", "openai/gpt-5"])
+            llm = st.selectbox("LLM", ["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-5"], index=2)
         with col2:
-            temperature = st.slider("Temperature", min_value=0.0, max_value=2.0, value=0.0, step=0.01)
+            if llm == "openai/gpt-5":
+                temperature = st.slider(
+                    "Temperature", min_value=0.0, max_value=2.0, value=1.0, step=0.01, disabled=True
+                )
+            else:
+                temperature = st.slider("Temperature", min_value=0.0, max_value=2.0, value=0.0, step=0.01)
 
     db_connector = dataset.db_connectors[db]
 
@@ -254,7 +268,9 @@ async def database_browser(dataset: NL2QDataset, metadata: dict[str, str]) -> tu
     return task, db_connector, llm, temperature
 
 
-async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metadata: dict[str, str], llm: str, temperature: float):
+async def text2sql_panel(
+    task: SimpleNL2QTask, db_connector: SQLConnector, metadata: dict[str, str], llm: str, temperature: float
+):
     # c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
     # with c2:
     #     selected_question = st.selectbox(
@@ -287,7 +303,7 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
             meta_types_right = st.pills(
                 "metadata",
                 ["DDL", "Schema", "Codebook", "Side Effect"],
-            default=["Schema", "Codebook", "Side Effect"],
+                default=["Schema", "Codebook", "Side Effect"],
                 selection_mode="multi",
                 label_visibility="collapsed",
                 key="metadata_2",
@@ -328,14 +344,26 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
         with left:
             metadata_selected = {k: metadata[k] for k in meta_types_left}
             await run_simple_zero_shot(
-                task.question, db_connector, metadata_selected, llm, temperature, language="PostgresSQL", key="run_left_result"
+                task.question,
+                db_connector,
+                metadata_selected,
+                llm,
+                temperature,
+                language="PostgresSQL",
+                key="run_left_result",
             )
-    
+
     if run_right:
         with right:
             metadata_selected = {k: metadata[k] for k in meta_types_right}
             await run_simple_zero_shot(
-                task.question, db_connector, metadata_selected, llm, temperature, language="PostgresSQL", key="run_right_result"
+                task.question,
+                db_connector,
+                metadata_selected,
+                llm,
+                temperature,
+                language="PostgresSQL",
+                key="run_right_result",
             )
 
 
