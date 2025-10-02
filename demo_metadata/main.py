@@ -120,9 +120,8 @@ async def run_simple_zero_shot(
     key="run_left",
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
-    with st.chat_message("assistant", avatar="human"):
-        with st.expander("View Prompt", expanded=False):
-            st.text(prompt)
+    with st.chat_message("human", avatar="human"):
+        st.write(question)
 
     # with st.container(height=600, border=False):
     #     st.text_area("Prompt", prompt, height="stretch", label_visibility="collapsed")
@@ -140,7 +139,7 @@ async def run_simple_zero_shot(
             st.error(exec_result.error)
 
     st.session_state[key] = {
-        "prompt": prompt,
+        "prompt": question,
         "query": query,
         "exec_result": exec_result,
     }
@@ -216,9 +215,8 @@ async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
                 question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
             )
         elif "run_left_result" in st.session_state:
-            with st.chat_message("assistant", avatar="human"):
-                with st.expander("View Prompt", expanded=False):
-                    st.text(st.session_state["run_left_result"]["prompt"])
+            with st.chat_message("human", avatar="human"):
+                st.write(st.session_state["run_left_result"]["prompt"])
             with st.chat_message("assistant", avatar="assistant"):
                 st.code(st.session_state["run_left_result"]["query"], language="sql")
             with st.chat_message("assistant", avatar=":material/database:"):
@@ -235,9 +233,8 @@ async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
                 question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
             )
         elif "run_right_result" in st.session_state:
-            with st.chat_message("assistant", avatar="human"):
-                with st.expander("View Prompt", expanded=False):
-                    st.text(st.session_state["run_right_result"]["prompt"])
+            with st.chat_message("human", avatar="human"):
+                st.write(st.session_state["run_right_result"]["prompt"])
             with st.chat_message("assistant", avatar="assistant"):
                 st.code(st.session_state["run_right_result"]["query"], language="sql")
             with st.chat_message("assistant", avatar=":material/database:"):
