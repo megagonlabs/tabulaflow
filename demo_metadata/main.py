@@ -191,6 +191,10 @@ def get_hints() -> str:
     with open("demo_metadata/metadata/hints.json", "r") as f:
         return "\n".join([f"- {hint}" for hint in json.load(f)])
 
+def get_column_desc() -> str:
+    with open("demo_metadata/metadata/column_desc_stripped.json", "r") as f:
+        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
+
 
 def get_metadata(schema: str) -> dict[str, str]:
     return {
@@ -199,6 +203,7 @@ def get_metadata(schema: str) -> dict[str, str]:
         "Codebook": get_codebook(),
         "Semantic Dependency": get_side_effect(),
         "Hints": get_hints(),
+        "Column Desc": get_column_desc(),
     }
 
 
