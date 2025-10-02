@@ -192,7 +192,7 @@ def get_metadata(schema: str) -> dict[str, str]:
         "DDL": get_ddl(),
         "Schema": schema,
         "Codebook": get_codebook(),
-        "Side Effect": get_side_effect(),
+        "Semantic Dependency": get_side_effect(),
     }
 
 
@@ -288,7 +288,7 @@ async def text2sql_panel(
         with left_c1:
             meta_types_left = st.pills(
                 "metadata",
-                ["DDL", "Schema", "Codebook", "Side Effect"],
+                list(metadata.keys()),
                 default=["DDL"],
                 selection_mode="multi",
                 label_visibility="collapsed",
@@ -302,8 +302,8 @@ async def text2sql_panel(
         with right_c1:
             meta_types_right = st.pills(
                 "metadata",
-                ["DDL", "Schema", "Codebook", "Side Effect"],
-                default=["Schema", "Codebook", "Side Effect"],
+                list(metadata.keys()),
+                default=list(metadata.keys())[1:],
                 selection_mode="multi",
                 label_visibility="collapsed",
                 key="metadata_2",
