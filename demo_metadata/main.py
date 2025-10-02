@@ -199,7 +199,7 @@ def get_column_desc() -> str:
 def get_metadata(schema: str) -> dict[str, str]:
     return {
         "DDL": get_ddl(),
-        "Enhanced Schema": schema,
+        "Schema+": schema,
         "Codebook": get_codebook(),
         "Semantic Dependency": get_side_effect(),
         "Hints": get_hints(),
@@ -273,7 +273,7 @@ async def database_browser(
     tabs = st.tabs(list(metadata.keys()))
     for tab, (key, value) in zip(tabs, metadata.items()):
         with tab:
-            with st.container(height=500, border=False):
+            with st.container(height=450, border=False):
                 st.text_area(key, value, height="stretch", label_visibility="collapsed")
     task = next(task for task in dataset.tasks if task.question == question)
     return task, db_connector, llm, temperature
@@ -293,7 +293,7 @@ async def text2sql_panel(
     # with c2:
     #     run = st.button("Run")
 
-    left, right = st.columns([0.5, 0.5])
+    left, right = st.columns([0.5, 0.5], gap="medium")
     with left:
         left_c1, left_c2 = st.columns([0.7, 0.3])
         with left_c1:
@@ -385,7 +385,7 @@ async def main():
     logger.info("")
 
     st.set_page_config(
-        page_title="Text-to-SQL Metadata Demo",
+        page_title="NL2SQL Metadata Demo",
         page_icon="📊",
         layout="wide",
     )
@@ -405,7 +405,7 @@ async def main():
 
     col1, col2 = st.columns([0.3, 0.7])
     with col1:
-        st.title("📊 Text-to-SQL Metadata Demo")
+        st.title("📊 NL2SQL Metadata Demo")
     dataset = await get_demo_dataset()
     metadata = get_metadata(SQLDefaultSchemaFormatter().format(dataset.db_connectors["NOAA_DATA"].schema))
     with col1:
