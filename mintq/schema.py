@@ -11,6 +11,7 @@ import pandas as pd
 import logging
 import math
 import itertools
+from mintq.config import config
 
 logger = logging.getLogger(__name__)
 
@@ -175,6 +176,8 @@ class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     df: pd.DataFrame | None
+    df_is_truncated: bool = False
+    """True if the df is truncated, e.g. when the result is too large"""
     error: ErrorInfo | None = None
     latency_seconds: float | None = None
 
@@ -196,6 +199,14 @@ class ExecResult(BaseModel):
         df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
         df = df.astype(dtypes)
         return df
+
+    @model_validator(mode="after")
+    def truncate_df(self) -> "ExecResult":
+        if config.df_max_rows and self.df is not None and len(self.df) > config.df_max_rows:
+            self.df = self.df.head(config.df_max_rows)
+            self.df_is_truncated = True
+            logger.warning(f"Truncated df to {config.df_max_rows} rows")
+        return self
 
     @model_validator(mode="after")
     def validate_df_or_error(self) -> "ExecResult":
