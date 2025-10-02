@@ -145,8 +145,10 @@ async def run_simple_zero_shot(
     }
 
 
-async def database_browser(dataset: NL2QDataset):
+async def database_browser(dataset: NL2QDataset) -> tuple[SimpleNL2QTask, SQLConnector]:
     db = st.selectbox("Database", list(dataset.db_connectors.keys()))
+    question = st.selectbox("Question", [task.question for task in dataset.tasks])
+
     db_connector = dataset.db_connectors[db]
     schema = db_connector.schema
     formatter = SQLDefaultSchemaFormatter()
@@ -164,16 +166,19 @@ async def database_browser(dataset: NL2QDataset):
         side_effects = get_side_effect()
         st.text_area("Side Effect", json.dumps(side_effects, indent=2), height=600, label_visibility="collapsed")
 
+    task = next(task for task in dataset.tasks if task.question == question)
+    return task, db_connector
 
-async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
-    c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
-    with c2:
-        selected_question = st.selectbox(
-            "Question", [task.question for task in dataset.tasks], label_visibility="collapsed"
-        )
-    with c1:
-        with st.container(height=98, border=False):
-            question = st.text_area("Question", selected_question, height="stretch", label_visibility="collapsed")
+
+async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metadata: dict[str, str]):
+    # c1, c2, c3 = st.columns([0.5, 0.3, 0.2])
+    # with c2:
+    #     selected_question = st.selectbox(
+    #         "Question", [task.question for task in dataset.tasks], label_visibility="collapsed"
+    #     )
+    # with c1:
+    #     with st.container(height=98, border=False):
+    #         question = st.text_area("Question", selected_question, height="stretch", label_visibility="collapsed")
     # with c2:
     #     run = st.button("Run")
 
@@ -207,12 +212,11 @@ async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
 
     meta_types_left = [v.lower() for v in meta_types_left]
     meta_types_right = [v.lower() for v in meta_types_right]
-    db_connector = dataset.db_connectors["NOAA_DATA"]
     with left:
         if run_left:
             metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_left}
             await run_simple_zero_shot(
-                question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
+                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_left_result"
             )
         elif "run_left_result" in st.session_state:
             with st.chat_message("human", avatar="human"):
@@ -230,7 +234,7 @@ async def text2sql_panel(dataset: NL2QDataset, metadata: dict[str, str]):
         if run_right:
             metadata_selected = {k: v for k, v in metadata.items() if k.lower() in meta_types_right}
             await run_simple_zero_shot(
-                question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
+                task.question, db_connector, metadata_selected, llm="openai/gpt-4o", language="PostgresSQL", key="run_right_result"
             )
         elif "run_right_result" in st.session_state:
             with st.chat_message("human", avatar="human"):
@@ -278,9 +282,9 @@ async def main():
     formatter = SQLDefaultSchemaFormatter()
     metadata["schema"] = formatter.format(dataset.db_connectors["NOAA_DATA"].schema)
     with col1:
-        await database_browser(dataset)
+        task, db_connector = await database_browser(dataset)
     with col2:
-        await text2sql_panel(dataset, metadata)
+        await text2sql_panel(task, db_connector, metadata)
 
     # datalake_browser, = st.tabs(['datalake_browser'])
 
