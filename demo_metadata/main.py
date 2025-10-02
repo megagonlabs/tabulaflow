@@ -238,11 +238,9 @@ async def run_simple_zero_shot(
     
     with st.chat_message("assistant", avatar=":material/database:"):
         if df is not None:
-            if len(df) > 1000:
-                st.dataframe(df.head(1000))
-                st.warning("Results truncated to 1000 rows.")
-            else:
-                st.dataframe(df)
+            st.dataframe(df)
+            if exec_result.df_is_truncated:
+                st.warning(f"Table truncated to {len(df)} rows.")
         else:
             st.error(exec_result.error)
 
@@ -339,6 +337,8 @@ async def text2sql_panel(
                     exec_result = st.session_state["run_left_result"]["exec_result"]
                     if exec_result.df is not None:
                         st.dataframe(exec_result.df)
+                        if exec_result.df_is_truncated:
+                            st.warning(f"Table truncated to {len(exec_result.df)} rows.")
                     else:
                         st.error(exec_result.error)
 
@@ -353,6 +353,8 @@ async def text2sql_panel(
                     exec_result = st.session_state["run_right_result"]["exec_result"]
                     if exec_result.df is not None:
                         st.dataframe(exec_result.df)
+                        if exec_result.df_is_truncated:
+                            st.warning(f"Table truncated to {len(exec_result.df)} rows.")
                     else:
                         st.error(exec_result.error)
 
