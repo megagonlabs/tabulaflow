@@ -4,9 +4,9 @@
         "PATENTS.PATENTS.CPC_DEFINITION": "",
         "PATENTS.PATENTS.DISCLOSURES_13": ""
     },
-    "NOAA_DATA.NOAA_GSOD": {
-        "NOAA_DATA.NOAA_GSOD.GSOD2020": "",
-        "NOAA_DATA.NOAA_GSOD.STATIONS": ""
+    "NOAA_DATA.noaa_gsod": {
+        "NOAA_DATA.noaa_gsod.gsod2020": "",
+        "NOAA_DATA.noaa_gsod.stations": ""
     },
     "US_ADDRESSES__POI.CYBERSYN": {
         "US_ADDRESSES__POI.CYBERSYN.GEOGRAPHY_RELATIONSHIPS": "",

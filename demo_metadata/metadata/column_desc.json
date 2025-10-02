@@ -42,8 +42,8 @@
         "PATENTS.PATENTS.CPC_DEFINITION": {},
         "PATENTS.PATENTS.DISCLOSURES_13": {}
     },
-    "NOAA_DATA.NOAA_GSOD": {
-        "NOAA_DATA.NOAA_GSOD.GSOD2020": {
+    "NOAA_DATA.noaa_gsod": {
+        "NOAA_DATA.noaa_gsod.gsod2020": {
             "hail": "Indicators (1 = yes, 0 = no/not reported) for the occurrence during the day",
             "prcp": "Total precipitation (rain and/or melted snow) reported during the day in inches and hundredths; will usually not end with the midnight observation--i.e., may include latter part of previous day.  .00 indicates no measurable precipitation (includes a trace). Missing = 99.99 Note: Many stations do not report '0' on days with no precipitation--therefore, '99.99' will often appear on these days. Also, for example, a station may only report a 6-hour amount for the period during which rain fell. See Flag field for source of data",
             "stn": "Cloud - GSOD NOAA",
@@ -78,7 +78,7 @@
             "fog": "Indicators (1 = yes, 0 = no/not reported) for the occurrence during the day",
             "date": "Date of the weather observations"
         },
-        "NOAA_DATA.NOAA_GSOD.STATIONS": {}
+        "NOAA_DATA.noaa_gsod.stations": {}
     },
     "US_ADDRESSES__POI.CYBERSYN": {
         "US_ADDRESSES__POI.CYBERSYN.GEOGRAPHY_RELATIONSHIPS": {
