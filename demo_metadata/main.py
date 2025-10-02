@@ -252,7 +252,7 @@ async def main():
     logger.info("")
 
     st.set_page_config(
-        page_title="Megagon Metadata Demo",
+        page_title="Text-to-SQL Metadata Demo",
         page_icon="📊",
         layout="wide",
     )
@@ -272,7 +272,7 @@ async def main():
 
     col1, col2 = st.columns([0.3, 0.7])
     with col1:
-        st.title("📊 Megagon Metadata Demo")
+        st.title("📊 Text-to-SQL Metadata Demo")
     dataset = await get_demo_dataset()
     metadata = get_metadata()
     formatter = SQLDefaultSchemaFormatter()
