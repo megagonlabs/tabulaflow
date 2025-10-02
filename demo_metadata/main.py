@@ -16,6 +16,8 @@ from mintq.utils import extract_code
 
 logger = logging.getLogger(__name__)
 
+logging.basicConfig(level=logging.INFO)
+
 
 PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -121,6 +123,7 @@ async def run_simple_zero_shot(
     key="run_left",
 ) -> str:
     prompt = jinja2.Template(PROMPT).render(question=question, metadata=metadata, language=language)
+    logger.info(prompt)
     with st.chat_message("human", avatar="human"):
         st.write(question)
 
@@ -130,6 +133,7 @@ async def run_simple_zero_shot(
         response = await litellm.acompletion(model=llm, messages=[{"role": "user", "content": prompt}], temperature=0.0)
     query = response["choices"][0]["message"]["content"]
     query = extract_code(query)
+    logger.info(query)
     with st.chat_message("assistant", avatar="assistant"):
         st.code(query, language="sql")
     with st.spinner("Querying database..."):
@@ -188,7 +192,8 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
                 key="metadata_1",
             )
         with left_c2:
-            run_left = st.button("Run", key="run_left")
+            with st.container(horizontal_alignment="right"):
+                run_left = st.button("Run", key="run_left")
     with right:
         right_c1, right_c2 = st.columns([0.7, 0.3])
         with right_c1:
@@ -201,7 +206,8 @@ async def text2sql_panel(task: SimpleNL2QTask, db_connector: SQLConnector, metad
                 key="metadata_2",
             )
         with right_c2:
-            run_right = st.button("Run", key="run_right")
+            with st.container(horizontal_alignment="right"):
+                run_right = st.button("Run", key="run_right")
 
     if not run_left:
         with left:
