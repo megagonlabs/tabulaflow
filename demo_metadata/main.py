@@ -163,6 +163,7 @@ WHERE prcp > monthly_avg_temp
         "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
     )
     db_connector.schema.name = "weather"
+    db_connector.schema.tables = [t for t in db_connector.schema.tables if t.name != "gsod2020_orig"]
     print(f"Loaded db connector in {time.time() - t0:.2f} seconds.")
     return NL2QDataset(
         name="demo",
