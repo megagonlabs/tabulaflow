@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Any
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector import BaseSQLDBConnector
@@ -17,15 +17,16 @@ class RunQueryTool:
         self.db_connector = db_connector
         self._metrics = RunQueryToolMetrics()
 
-    async def __call__(self, query: str) -> str:
+    async def __call__(self, query: str, parameters: dict[str, Any] = {}) -> str:
         """
         Execute a SQL query and return the results.
 
         Args:
             query: The SQL query to execute.
+            parameters: The parameters to use in the query.
         """
         db_connector = self.db_connector
-        exec_result = await db_connector.run_query_async(query, timeout=30)
+        exec_result = await db_connector.run_query_async(query, parameters, timeout=30)
         if exec_result.df is None:
             if exec_result.error.exc_type == "TimeoutError":  # type: ignore
                 self._metrics.error_timeout += 1

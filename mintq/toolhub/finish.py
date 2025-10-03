@@ -1,11 +1,17 @@
-from typing import ClassVar, Callable
+from typing import ClassVar, Callable, Any
 from pydantic_ai import RunContext, ModelRetry
 from pydantic import BaseModel
 from mintq.schema import Trajectory
+from mintq.utils import extract_code
 
 
 class FinishToolMetrics(BaseModel):
     error_no_query_executed: int = 0
+
+
+class Result(BaseModel):
+    query: str
+    parameters: dict[str, Any]
 
 
 class FinishTool:
@@ -14,7 +20,7 @@ class FinishTool:
     def __init__(self) -> None:
         self._metrics = FinishToolMetrics()
 
-    def __call__(self, trajectory: Trajectory) -> str:
+    def __call__(self, trajectory: Trajectory) -> Result:
         """
         Finish the task and return the last executed query as final answer.
         """
@@ -22,12 +28,14 @@ class FinishTool:
             if msg.role == "assistant":
                 for tool_call in msg.tool_calls[::-1]:
                     if tool_call.name == "run_query":
-                        return tool_call.arguments["query"]  # type: ignore
+                        query = tool_call.arguments["query"]
+                        parameters = tool_call.arguments.get("parameters", {})
+                        return Result(query=query, parameters=parameters)
         self._metrics.error_no_query_executed += 1
         raise ValueError("No query has been executed, you cannot finish yet")
 
-    def as_pydantic_ai_tool(self) -> Callable[[RunContext], str]:
-        def finish(ctx: RunContext) -> str:
+    def as_pydantic_ai_tool(self) -> Callable[[RunContext], Result]:
+        def finish(ctx: RunContext) -> Result:
             trajectory = Trajectory.from_pydantic_ai_messages(ctx.messages)
             try:
                 return self(trajectory)
