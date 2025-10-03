@@ -55,7 +55,7 @@ class UserMultipleChoiceAnswer(BaseModel):
 
 class UserValueAnswer(BaseModel):
     type: Literal["value"] = "value"
-    operator: Literal["<", ">", "<=", ">="] = Field(description="The operator to use in the query. Must be one of <, >, <=, >=.")  # TODO
+    operator: Literal["<", ">", "<=", ">="]
     value: int | float | datetime.date
 
 
