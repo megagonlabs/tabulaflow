@@ -295,6 +295,8 @@ async def text2sql_panel(
     #         question = st.text_area("Question", selected_question, height="stretch", label_visibility="collapsed")
     # with c2:
     #     run = st.button("Run")
+    with st.container(height=68, border=False):
+        question = st.text_area("Question", task.question, height="stretch", label_visibility="collapsed")
 
     left, right = st.columns([0.5, 0.5], gap="medium")
     with left:
@@ -362,7 +364,7 @@ async def text2sql_panel(
         with left:
             metadata_selected = {k: metadata[k] for k in meta_types_left}
             await run_simple_zero_shot(
-                task.question,
+                question,
                 db_connector,
                 metadata_selected,
                 llm,
@@ -375,7 +377,7 @@ async def text2sql_panel(
         with right:
             metadata_selected = {k: metadata[k] for k in meta_types_right}
             await run_simple_zero_shot(
-                task.question,
+                question,
                 db_connector,
                 metadata_selected,
                 llm,
