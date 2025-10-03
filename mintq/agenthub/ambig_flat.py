@@ -222,7 +222,7 @@ class AmbigFlatSQLAgent:
                 )
                 for ap in params
             ]
-            responses = await user_simulator.ask_async(questions)
+            responses = [(await user_simulator.ask_async(question)) for question in questions]
             resolved_params = [
                 ResolvedParameterAmbiguityPoint(
                     **ap.model_dump(), value_operator=response.operator, value=response.value
@@ -238,8 +238,8 @@ class AmbigFlatSQLAgent:
                 for i, s in enumerate(interpretations)
             ]
         )
-        (user_response,) = await user_simulator.ask_async(
-            [UserMultipleChoiceQuestion(question=task.question, options=interpretations)]
+        user_response = await user_simulator.ask_async(
+            UserMultipleChoiceQuestion(question=task.question, options=interpretations)
         )
 
         result = self._disamb_interpretations_result

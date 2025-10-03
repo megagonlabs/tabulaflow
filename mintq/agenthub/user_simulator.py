@@ -1,7 +1,16 @@
 from pydantic_ai import Agent
 import jinja2
 from pydantic import TypeAdapter
-from mintq.agenthub.base import UserQuestion, UserAnswer
+from mintq.agenthub.base import (
+    UserQuestion,
+    UserAnswer,
+    UserFreeTextQuestion,
+    UserFreeTextAnswer,
+    UserMultipleChoiceQuestion,
+    UserMultipleChoiceAnswer,
+    UserValueQuestion,
+    UserValueAnswer,
+)
 from mintq.schema import AmbigNL2QTask
 
 USER_SIMULATOR_SYSTEM_PROMPT = """
@@ -9,7 +18,8 @@ You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambiguity_points %}
 - "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
-You will be asked questions regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
+You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
+
 
 For "free_text" questions, you must provide a natural language answer in the `answer_text` field. 
 - Only answer what you are asked, do not provide additional information even if it is related.
@@ -38,6 +48,7 @@ class UserSimulator:
             model=self.llm,
             tools=[],
             instructions=self.system_prompt,
+            model_settings={"temperature": self.temperature},
         )
         self.agent.instrument_all()
         self.message_history = None
@@ -65,20 +76,37 @@ class UserSimulator:
         )
         return cls(system_prompt, llm, temperature)
 
-    async def ask_async(self, questions: list[UserQuestion]) -> list[UserAnswer]:
+    async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer:
         result = await self.agent.run(
-            TypeAdapter(list[UserQuestion]).dump_json(questions, indent=2).decode(),
-            output_type=list[UserAnswer],
-            model_settings={"temperature": self.temperature},
+            question.question,
+            output_type=UserFreeTextAnswer,
             message_history=self.message_history,
         )
-        self.message_history = result.all_messages()  # type: ignore
-        if len(result.output) != len(questions):
-            raise ValueError(
-                "The number of answers does not match the number of questions. Please consider using a stronger LLM."
-            )
-        if any(a.type != q.type for a, q in zip(result.output, questions)):
-            raise ValueError(
-                "The type of the answers does not match the type of the questions. Please consider using a stronger LLM."
-            )
         return result.output
+
+    async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
+        result = await self.agent.run(
+            question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
+            output_type=UserMultipleChoiceAnswer,
+            message_history=self.message_history,
+        )
+        result.output.answer_index -= 1
+        return result.output
+
+    async def ask_value_async(self, question: UserValueQuestion) -> UserValueAnswer:
+        result = await self.agent.run(
+            question.model_dump_json(indent=2),
+            output_type=UserValueAnswer,
+            message_history=self.message_history,
+        )
+        return result.output
+
+    async def ask_async(self, question: UserQuestion) -> UserAnswer:
+        if question.type == "free_text":
+            return await self.ask_free_text_async(question)
+        elif question.type == "multiple_choice":
+            return await self.ask_multiple_choice_async(question)
+        elif question.type == "value":
+            return await self.ask_value_async(question)
+        else:
+            raise ValueError(f"Invalid question type: {question.type}")
