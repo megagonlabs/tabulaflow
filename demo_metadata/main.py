@@ -29,7 +29,7 @@ You are a database expert responsible for translating natural language questions
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
 {% if language == "PostgresSQL" %}
-- When referencing tables, include the schema name if applicable.
+- When referencing tables, include the schema name if applicable. But do not include the database name.
 {% endif %}
 
 {% for key, value in metadata.items() %}
@@ -179,12 +179,16 @@ def get_ddl() -> str:
 
 def get_codebook() -> str:
     with open("demo_metadata/metadata/code_book.json", "r") as f:
-        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
+        d = json.load(f)["NOAA_DATA.noaa_gsod"]
+        d = {k.replace("NOAA_DATA.", ""): v for k, v in d.items()}
+        return json.dumps(d, indent=2)
 
 
 def get_side_effect() -> str:
     with open("demo_metadata/metadata/side_effect.json", "r") as f:
-        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
+        d = json.load(f)["NOAA_DATA.noaa_gsod"]
+        d = {k.replace("NOAA_DATA.", ""): v for k, v in d.items()}
+        return json.dumps(d, indent=2)
 
 
 def get_hints() -> str:
@@ -193,7 +197,9 @@ def get_hints() -> str:
 
 def get_column_desc() -> str:
     with open("demo_metadata/metadata/column_desc_stripped.json", "r") as f:
-        return json.dumps(json.load(f)["NOAA_DATA.noaa_gsod"], indent=2)
+        d = json.load(f)["NOAA_DATA.noaa_gsod"]
+        d = {k.replace("NOAA_DATA.", ""): v for k, v in d.items()}
+        return json.dumps(d, indent=2)
 
 
 def get_metadata(schema: str) -> dict[str, str]:
