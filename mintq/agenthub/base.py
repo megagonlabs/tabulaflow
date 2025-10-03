@@ -39,8 +39,8 @@ class UserMultipleChoiceQuestion(BaseModel):
 class UserValueQuestion(BaseModel):
     type: Literal["value"] = "value"
     question: str
-    value_dtype: Literal["int", "float", "date", "bool", "str"]
-    value_operator_options: list[Literal["<", ">", "<=", ">=", "==", "!="]]
+    value_dtype: Literal["int", "float", "date"]
+    value_operator_options: list[Literal["<", ">", "<=", ">="]]
 
 
 class UserFreeTextAnswer(BaseModel):
@@ -55,8 +55,8 @@ class UserMultipleChoiceAnswer(BaseModel):
 
 class UserValueAnswer(BaseModel):
     type: Literal["value"] = "value"
-    operator: Literal["<", ">", "<=", ">=", "==", "!="]
-    value: int | float | datetime.date | bool | str
+    operator: Literal["<", ">", "<=", ">="] = Field(description="The operator to use in the query. Must be one of <, >, <=, >=.")  # TODO
+    value: int | float | datetime.date
 
 
 UserQuestion: TypeAlias = Annotated[
