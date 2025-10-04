@@ -23,7 +23,7 @@ class AskUserTool:
         Args:
             question: The question to ask the user.
         """
-        (response,) = await self.user_simulator.ask_async([UserFreeTextQuestion(question=question)])
+        response = await self.user_simulator.ask_async(UserFreeTextQuestion(question=question))
         return response.answer_text
 
     def as_pydantic_ai_tool(self) -> Tool:

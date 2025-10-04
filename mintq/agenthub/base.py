@@ -64,7 +64,7 @@ UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, User
 
 
 class BaseUserSimulator(Protocol):
-    async def ask_async(self, questions: list[UserQuestion]) -> list[UserAnswer]: ...
+    async def ask_async(self, question: UserQuestion) -> UserAnswer: ...
 
 
 class BaseAmbigSQLAgent(Protocol):
