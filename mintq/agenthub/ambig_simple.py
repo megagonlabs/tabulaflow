@@ -11,6 +11,7 @@ from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Us
 from mintq.utils import extract_code
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool, GetSchemaTool, GetColumnDescriptionTool
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
+from mintq.agenthub.utils import get_max_steps_processor
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
@@ -29,16 +30,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 - Adhere strictly to the given database schema when constructing queries.
 """.strip()
 
-
-def max_steps_reached_processor(
-    ctx: RunContext[TaskContext],
-    messages: list[ModelMessage],
-) -> list[ModelMessage]:
-    assert messages is ctx.messages  # We want the injected message to be preserved in the message history as well
-    if ctx.run_step == ctx.deps.max_steps:
-        content = "You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool"
-        messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
-    return messages
 
 
 class AmbigSimpleSQLAgentConfig(BaseModel):
@@ -93,7 +84,7 @@ class AmbigSimpleSQLAgent:
             output_type=all_tools[-1].as_pydantic_ai_tool(),
             result_tool_name="finish",
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
-            history_processors=[max_steps_reached_processor],
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
         )
         agent.instrument_all()
 
