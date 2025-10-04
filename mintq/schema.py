@@ -349,17 +349,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
-        return CSVSummaryRow(
-            qid=self.qid,
-            db=self.db,
-            question=self.question,
-            evidence=self.evidence,
-            gold_query=self.gold_query.query,
-            pred_query=self.pred_query.query,
-            gold_exec_result="\n".join([exec_result.to_readable() for exec_result in self.gold_query.all_exec_results]),
-            pred_exec_result=self.pred_query.exec_result.to_readable() if self.pred_query.exec_result else None,
-            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
-        )
+        return _task_to_summary(self, eval_metrics)
 
 
 ARCSAmbiguityType = Literal[
@@ -525,20 +515,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
         return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
-        return CSVSummaryRow(
-            qid=self.qid,
-            db=self.db,
-            question=self.question,
-            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
-            pred_query=self.pred_intended_query.query,
-            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
-            if self.gold_intended_query and self.gold_intended_query.exec_result
-            else None,
-            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
-            if self.pred_intended_query.exec_result
-            else None,
-            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
-        )
+        return _task_to_summary(self, eval_metrics)
 
 
 class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
@@ -578,20 +555,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
         return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
-        return CSVSummaryRow(
-            qid=self.qid,
-            db=self.db,
-            question=self.question,
-            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
-            pred_query=self.pred_intended_query.query if self.pred_intended_query else None,
-            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
-            if self.gold_intended_query and self.gold_intended_query.exec_result
-            else None,
-            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
-            if self.pred_intended_query and self.pred_intended_query.exec_result
-            else None,
-            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
-        )
+        return _task_to_summary(self, eval_metrics)
 
 
 class PredAmbiguityPointFinite(BaseModel):
@@ -670,20 +634,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
-        return CSVSummaryRow(
-            qid=self.qid,
-            db=self.db,
-            question=self.question,
-            gold_query=self.gold_intended_query.query if self.gold_intended_query else None,
-            pred_query=self.pred_intended_query.query if self.pred_intended_query else None,
-            gold_exec_result=self.gold_intended_query.exec_result.to_readable()
-            if self.gold_intended_query and self.gold_intended_query.exec_result
-            else None,
-            pred_exec_result=self.pred_intended_query.exec_result.to_readable()
-            if self.pred_intended_query and self.pred_intended_query.exec_result
-            else None,
-            metrics={m: self.eval_metrics.get(m) for m in eval_metrics},
-        )
+        return _task_to_summary(self, eval_metrics)
 
 
 NL2QTask = Annotated[Union[SimpleNL2QTask, AmbigNL2QTask], Field(discriminator="task_type")]
@@ -740,6 +691,26 @@ def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
         for q in queries:
             res += f"\n\n\n{q.to_readable()}"
     return res
+
+
+def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    gold_query_field = "gold_query" if task.task_type == "simple" else "gold_intended_query"
+    gold_query = getattr(task, gold_query_field, None)
+    pred_query_field = "pred_query" if task.task_type == "simple" else "pred_intended_query"
+    pred_query = getattr(task, pred_query_field, None)
+    return CSVSummaryRow(
+        qid=task.qid,
+        db=task.db,
+        question=task.question,
+        evidence=getattr(task, "evidence", None),
+        gold_query=gold_query.query if gold_query else None,
+        pred_query=pred_query.query if pred_query else None,
+        gold_exec_result="\n".join([exec_result.to_readable() for exec_result in gold_query.all_exec_results])
+        if gold_query
+        else None,
+        pred_exec_result=pred_query.exec_result.to_readable() if pred_query and pred_query.exec_result else None,
+        metrics={m: task.eval_metrics.get(m) for m in eval_metrics},
+    )
 
 
 class NL2QDataset(BaseModel):
