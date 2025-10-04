@@ -75,8 +75,10 @@ class SearchKeywordsTool:
                 table_name, sqlalchemy.MetaData(), sqlalchemy.Column(column_name, sqlalchemy.String), schema=schema_name
             )
             stmt = select(sql_table.c[column_name]).distinct().where(sql_table.c[column_name].ilike(f"%{keyword}%"))
-            result = await db_connector.run_query_async(stmt, timeout=None)
-            matches += [row[0] for row in result]
+            exec_result = await db_connector.run_query_async(stmt, timeout=None)
+            if exec_result.df is None:
+                raise ValueError(f"Query {stmt} failed: {exec_result.error}")
+            matches += [row[0] for row in exec_result.df.itertuples()]
         matches = sorted(list(set(matches)))
         if not matches:
             return "(no matches found)"
