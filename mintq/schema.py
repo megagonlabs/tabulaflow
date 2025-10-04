@@ -183,7 +183,9 @@ class ExecResult(BaseModel):
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
-    def serialize_df(self, df: pd.DataFrame) -> dict[str, Any]:
+    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any]:
+        if df is None:
+            return None
         return {
             "schema": {
                 "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
