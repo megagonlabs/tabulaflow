@@ -23,17 +23,35 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
+from mintq.agenthub.utils import get_max_steps_processor
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
 DISAMBIGUATION_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can disambiguate questions about a {{language}} database.
-Given an ambiguous question, you need to output the list of all possible interpretations.
+You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
+Given an ambiguous question, you need to output the list of all possible interpretations of the question.
 Do not resolve threshold-like ambiguities where the number of interpretations is infinite.
+Do not add number index prefixes to the interpretations.
+
+=== START OF EXAMPLE ===
+Database Schema:
+    CREATE TABLE student (
+        id: INT,
+        name: TEXT,
+        gpa: FLOAT,
+        city: TEXT,
+        state: TEXT,
+    );
+Question: List all students from NY.
+Interpretations:
+- List all students from New York City.
+- List all students from New York State.
+=== END OF EXAMPLE ===
 """.strip()
 
+
 DISAMBIGUATE_PARAMETERS_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can identify ambiguity thresholds in a question about a {{language}} database.
+You are a helpful AI database expert that can identify ambiguity thresholds in a question about a {{language}} database.
 Given a question, you need to identify the threshold-like ambiguous phrases (e.g. "tall", "young", etc.) that correpond to integer, float, or date thresholds.
 Each threshold-like ambiguity will become a parameter in the final query and you need to output its relevant information.
 The question might or might not contain threshold-like ambiguities. Output an empty list if there are no threshold-like ambiguities.
@@ -41,25 +59,13 @@ The question might or might not contain threshold-like ambiguities. Output an em
 
 
 TEXT2SQL_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+You are a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
 - The question is ambiguous and you will need to ask the user to clarify the ambiguity. Only ask one question at a time.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
 - Adhere strictly to the given database schema when constructing queries.
 - If you use any of the provided parameters, you must write a parameterized query with placeholders and pass in the parameters in the `parameters` field when using the `run_query` tool.
 """.strip()
-
-
-def max_steps_reached_processor(
-    ctx: RunContext[None],
-    messages: list[ModelMessage],
-    max_steps: int,
-) -> list[ModelMessage]:
-    assert messages is ctx.messages  # We want the injected message to be preserved in the message history as well
-    if ctx.run_step == max_steps:
-        content = "You have reached the maximum number of steps. You have one more attempt to execute the `run_query` tool with the final query and then the `finish` tool"
-        messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
-    return messages
 
 
 class AmbigFlatSQLAgentConfig(BaseModel):
@@ -118,7 +124,7 @@ class AmbigFlatSQLAgent:
             tools=[tool.as_pydantic_ai_tool() for tool in tools],
             output_type=output_type,
             instructions=system_prompt,
-            history_processors=[partial(max_steps_reached_processor, max_steps=self.config.max_steps)],
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=model_settings,
         )
         agent.instrument_all()
@@ -127,9 +133,12 @@ class AmbigFlatSQLAgent:
     async def _disambiguate_interpretations_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
     ) -> list[str]:
+        class Output(BaseModel):
+            interpretations: list[str]
+
         disamb_agent = self._get_agent(
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=task.language),
-            output_type=list[str],
+            output_type=Output,
             tools=[
                 GetSchemaTool(
                     (await SchemaCompressor().run_async(db_connector.schema))
@@ -137,13 +146,13 @@ class AmbigFlatSQLAgent:
                     else db_connector.schema,
                     self.formatter,
                 ),
-                GetColumnDescriptionTool(db_connector),
+                # GetColumnDescriptionTool(db_connector),
                 SearchKeywordsTool(db_connector),
             ],
         )
-        result = await disamb_agent.run(task.question)
+        result = await disamb_agent.run(f"List all possible interpretations of the question: {task.question}")
         self._disamb_interpretations_result = result
-        return result.output
+        return result.output.interpretations
 
     async def _disambiguate_parameters_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
