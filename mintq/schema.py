@@ -1,3 +1,4 @@
+from collections.abc import Set
 import datetime
 import json
 import os
@@ -323,29 +324,10 @@ class SimpleNL2QTask(BaseModel):
     extra_info: dict[str, Any] = {}
 
     def to_directory(self, directory: str) -> None:
-        os.makedirs(directory, exist_ok=True)
-        self.gold_query.to_directory(os.path.join(directory, "gold_csv"))
-        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
-            f.write(self.to_readable() + "\n")
+        return _task_to_directory(self, directory)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query"})
-        res = f"/*\n{header}\n*/"
-        if self.evidence is not None:
-            res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
-        res += f"\n\n\n{self.gold_query.to_readable()}"
-        return res
-
-
-def save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str) -> None:
-    os.makedirs(directory, exist_ok=True)
-    trajectories = trajectory if isinstance(trajectory, list) else [trajectory]
-    ids = [tr.id for tr in trajectories]
-    if len(ids) != len(set(ids)):
-        logger.warning(f"Trajectory IDs are not unique: {ids}, some trajectories will be overwritten")
-    for tr in trajectories:
-        with open(os.path.join(directory, f"{tr.id}.xml"), "w") as f:
-            f.write(tr.to_readable())
+        return _task_to_readable(self)
 
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
@@ -359,22 +341,10 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
     def to_directory(self, directory: str) -> None:
-        os.makedirs(directory, exist_ok=True)
-        self.gold_query.to_directory(os.path.join(directory, "gold_csv"))
-        self.pred_query.to_directory(os.path.join(directory, "pred_csv"))
-        with open(os.path.join(directory, "result_readable.sql"), "w") as f:
-            f.write(self.to_readable() + "\n")
-        if self.trajectory is not None:
-            save_trajectories(self.trajectory, os.path.join(directory, "trajectory"))
+        return _task_to_directory(self, directory)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"evidence", "gold_query", "pred_query", "trajectory"})
-        res = f"/*\n{header}\n*/"
-        if self.evidence is not None:
-            res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{self.evidence}\n*/\n----- END OF EVIDENCE -----"
-        res += f"\n\n\n{self.gold_query.to_readable()}"
-        res += f"\n\n\n{self.pred_query.to_readable()}"
-        return res
+        return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
@@ -468,15 +438,10 @@ class AmbigNL2QTask(BaseModel):
         return id_to_query[self.gold_intended_query_id]
 
     def to_directory(self, directory: str) -> None:
-        os.makedirs(directory, exist_ok=True)
-        for gq in self.gold_queries:
-            gq.to_directory(os.path.join(directory, "gold_csv"))
-        with open(os.path.join(directory, "task_readable.sql"), "w") as f:
-            f.write(self.to_readable() + "\n")
+        return _task_to_directory(self, directory)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"gold_queries"})
-        return f"/*\n{header}\n*/" + "".join(f"\n\n\n{gq.to_readable()}" for gq in self.gold_queries)
+        return _task_to_readable(self)
 
     @model_validator(mode="after")
     def validate_gold_queries(self) -> "AmbigNL2QTask":
@@ -551,6 +516,12 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
+    def to_directory(self, directory: str) -> None:
+        return _task_to_directory(self, directory)
+
+    def to_readable(self) -> str:
+        return _task_to_readable(self)
+
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
@@ -597,6 +568,12 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
             return None
         id_to_query = {pq.id: pq for pq in self.pred_queries}
         return id_to_query[self.pred_intended_query_id]
+
+    def to_directory(self, directory: str) -> None:
+        return _task_to_directory(self, directory)
+
+    def to_readable(self) -> str:
+        return _task_to_readable(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
@@ -684,6 +661,12 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
+    def to_directory(self, directory: str) -> None:
+        return _task_to_directory(self, directory)
+
+    def to_readable(self) -> str:
+        return _task_to_readable(self)
+
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return CSVSummaryRow(
             qid=self.qid,
@@ -706,6 +689,55 @@ NL2QTaskOutput = Annotated[
     Union[SimpleNL2QTaskOutput, SimpleAmbigNL2QTaskOutput, FlatAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput],
     Field(discriminator="output_type"),
 ]
+
+
+def _get_query_fields(task: NL2QTask | NL2QTaskOutput, types: list[type[Any]]) -> list[str]:
+    res = []
+    for key, value in type(task).model_fields.items():
+        if value.annotation in types:
+            res.append(key)
+    return res
+
+
+def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str) -> None:
+    os.makedirs(directory, exist_ok=True)
+    trajectories = trajectory if isinstance(trajectory, list) else [trajectory]
+    ids = [tr.id for tr in trajectories]
+    if len(ids) != len(set(ids)):
+        logger.warning(f"Trajectory IDs are not unique: {ids}, some trajectories will be overwritten")
+    for tr in trajectories:
+        with open(os.path.join(directory, f"{tr.id}.xml"), "w") as f:
+            f.write(tr.to_readable())
+
+
+def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
+    os.makedirs(directory, exist_ok=True)
+    for prefix, t in [("gold", GoldQuery), ("pred", PredQuery)]:
+        for field in _get_query_fields(task, [t, list[t]]):
+            queries = getattr(task, field)
+            if not isinstance(queries, list):
+                queries = [queries]
+            for q in queries:
+                q.to_directory(os.path.join(directory, f"{prefix}_csv"))
+    with open(os.path.join(directory, "task_readable.sql"), "w") as f:
+        f.write(task.to_readable())
+    if getattr(task, "trajectory", None) is not None:
+        _save_trajectories(task.trajectory, os.path.join(directory, "trajectory"))
+
+
+def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
+    query_fields = _get_query_fields(task, [GoldQuery, list[GoldQuery], PredQuery, list[PredQuery]])
+    header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory"] + query_fields))
+    res = f"/*\n{header}\n*/"
+    if getattr(task, "evidence", None) is not None:
+        res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{task.evidence}\n*/\n----- END OF EVIDENCE -----"
+    for field in query_fields:
+        queries = getattr(task, field)
+        if not isinstance(queries, list):
+            queries = [queries]
+        for q in queries:
+            res += f"\n\n\n{q.to_readable()}"
+    return res
 
 
 class NL2QDataset(BaseModel):
