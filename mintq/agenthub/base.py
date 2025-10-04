@@ -44,12 +44,10 @@ class UserValueQuestion(BaseModel):
 
 
 class UserFreeTextAnswer(BaseModel):
-    type: Literal["free_text"] = "free_text"
     answer_text: str
 
 
 class UserMultipleChoiceAnswer(BaseModel):
-    type: Literal["multiple_choice"] = "multiple_choice"
     answer_index: int
 
 
@@ -62,9 +60,7 @@ class UserValueAnswer(BaseModel):
 UserQuestion: TypeAlias = Annotated[
     Union[UserFreeTextQuestion, UserMultipleChoiceQuestion, UserValueQuestion], Field(discriminator="type")
 ]
-UserAnswer: TypeAlias = Annotated[
-    Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, UserValueAnswer], Field(discriminator="type")
-]
+UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, UserValueAnswer]
 
 
 class BaseUserSimulator(Protocol):
