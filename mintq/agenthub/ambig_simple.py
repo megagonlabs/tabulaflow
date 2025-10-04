@@ -9,7 +9,14 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool, FinishTool, AskUserTool, GetSchemaTool, GetColumnDescriptionTool
+from mintq.toolhub import (
+    RunQueryTool,
+    SearchKeywordsTool,
+    FinishTool,
+    AskUserTool,
+    GetSchemaTool,
+    GetColumnDescriptionTool,
+)
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
 from mintq.agenthub.utils import get_max_steps_processor
 from mintq.metadata_synthesizers import SchemaCompressor
@@ -29,7 +36,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
 - Adhere strictly to the given database schema when constructing queries.
 """.strip()
-
 
 
 class AmbigSimpleSQLAgentConfig(BaseModel):
@@ -96,7 +102,11 @@ class AmbigSimpleSQLAgent:
 
         result = await agent.run(task.question, deps=deps, model_settings={"temperature": self.config.temperature})
         messages = result.all_messages()[:-1]
-        pred_query = PredQuery(query=extract_code(result.output))
+        pred_query = PredQuery(
+            query=result.output.query,
+            parameter_names=list(result.output.parameters.keys()),
+            parameter_values=result.output.parameters,
+        )
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
         usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
