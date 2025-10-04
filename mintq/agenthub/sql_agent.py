@@ -134,14 +134,17 @@ class SQLAgent:
         fallback = False
         try:
             result = await agent.run(prompt, deps=deps, model_settings={"temperature": self.config.temperature})
+            query = result.output.query
+            parameters = result.output.parameters
+            pred_query = PredQuery(query=query, parameters=parameters)
             messages = result.all_messages()[:-1]
         except (UsageLimitExceeded, UnexpectedModelBehavior):
             result = await agent_no_tools.run(
                 prompt, deps=deps, model_settings={"temperature": self.config.temperature}
             )
+            pred_query = PredQuery(query=extract_code(result.output))
             messages = result.all_messages()
             fallback = True
-        pred_query = PredQuery(query=extract_code(result.output))
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
         usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
