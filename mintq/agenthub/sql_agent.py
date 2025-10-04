@@ -5,7 +5,6 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
-from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.utils import extract_code
@@ -46,7 +45,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 
 def get_system_prompt(ctx: RunContext[TaskContext]) -> str:
     return jinja2.Template(SYSTEM_PROMPT).render(language=ctx.deps.task.language)
-
 
 
 class SQLAgentConfig(BaseModel):

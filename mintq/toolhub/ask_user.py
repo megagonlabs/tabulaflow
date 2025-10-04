@@ -1,4 +1,3 @@
-from dataclasses import dataclass, field
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel

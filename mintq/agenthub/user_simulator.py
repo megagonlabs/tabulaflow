@@ -1,6 +1,5 @@
 from pydantic_ai import Agent
 import jinja2
-from pydantic import TypeAdapter
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,

@@ -3,12 +3,10 @@ import jinja2
 import time
 from typing import ClassVar
 from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
+from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
-from mintq.utils import extract_code
 from mintq.toolhub import (
     RunQueryTool,
     SearchKeywordsTool,

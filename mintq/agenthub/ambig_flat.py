@@ -1,19 +1,14 @@
 import asyncio
-from dataclasses import dataclass
 import datetime
-from functools import partial
 import json
 import jinja2
 import time
 from typing import ClassVar, Literal
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, RunContext
-from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from regex.regex import T
+from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
-from mintq.utils import extract_code
 from mintq.toolhub import (
     BaseTool,
     RunQueryTool,

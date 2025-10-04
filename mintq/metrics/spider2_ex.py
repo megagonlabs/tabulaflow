@@ -5,6 +5,7 @@ from mintq.schema import NL2QTaskOutput
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
+
 # Borrowed from https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/evaluation_suite/evaluate.py
 def compare_multi_pandas_table(
     pred: pd.DataFrame, multi_gold: list[pd.DataFrame], multi_condition_cols: Any = [], ignore_order: bool = False

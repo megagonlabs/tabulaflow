@@ -2,7 +2,6 @@ from typing import ClassVar, Callable, Any
 from pydantic_ai import RunContext, ModelRetry
 from pydantic import BaseModel
 from mintq.schema import Trajectory
-from mintq.utils import extract_code
 
 
 class FinishToolMetrics(BaseModel):
