@@ -150,7 +150,7 @@ class AmbigFlatSQLAgent:
                 SearchKeywordsTool(db_connector),
             ],
         )
-        result = await disamb_agent.run(f"List all possible interpretations of the question: {task.question}")
+        result = await disamb_agent.run(f"List all interpretations: {task.question}")
         self._disamb_interpretations_result = result
         return result.output.interpretations
 
