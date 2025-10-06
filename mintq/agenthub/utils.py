@@ -9,10 +9,10 @@ def max_steps_processor(
     messages: list[ModelMessage],
     max_steps: int,
 ) -> list[ModelMessage]:
-    assert messages is ctx.messages  # We want the injected message to be preserved in the message history as well
     if ctx.run_step >= max_steps - 1:
         content = "You are about to reach the maximum number of steps. You have one more attempt to execute a tool before submitting the final answer."
-        messages.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+        msg = ModelRequest(parts=[UserPromptPart(content=content)])
+        return messages + [msg]
     return messages
 
 
