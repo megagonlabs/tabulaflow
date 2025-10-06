@@ -201,13 +201,9 @@ class AmbigFlatSQLAgent:
         params = f"You can use any of the following parameters as placeholders in the query: {json.dumps(params)}"
         result = await sql_agent.run(f"{task.question} {interpretation}\n{params}")
         self._generate_sql_results.append(result)
-
-        return PredQuery(
-            id=f"PQRY-{idx}",
-            query=result.output.query,
-            parameter_names=list(result.output.parameters.keys()),
-            parameter_values=result.output.parameters,
-        )
+        pred_query: PredQuery = result.output
+        pred_query.id = f"PQRY-{idx}"
+        return pred_query
 
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator

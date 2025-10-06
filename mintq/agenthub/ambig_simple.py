@@ -100,11 +100,7 @@ class AmbigSimpleSQLAgent:
 
         result = await agent.run(task.question, deps=deps, model_settings={"temperature": self.config.temperature})
         messages = result.all_messages()[:-1]
-        pred_query = PredQuery(
-            query=result.output.query,
-            parameter_names=list(result.output.parameters.keys()),
-            parameter_values=result.output.parameters,
-        )
+        pred_query: PredQuery = result.output
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
         usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
