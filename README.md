@@ -283,7 +283,13 @@ Contact: yanlin@megagon.ai
 - [x] [Sep 25] Initialize agent with config
 - [x] [Sep 28] Registry for agents, datasets, metrics
 - [x] [Sep 29] Replace HSchema with SchemaCompressor
-- [ ] Ambig agents design
+- [x] ambig-flat
+- [x] to_{readable, directory, summary}
+- [ ] Usage tracking
+- [ ] Trajectory
+- [ ] langfuse
+- [ ] User simulator - message history?
+- [ ] ambig-structured
 - [ ] Support Ambrosia
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
