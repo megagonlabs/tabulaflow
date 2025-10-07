@@ -285,7 +285,7 @@ Contact: yanlin@megagon.ai
 - [x] [Sep 29] Replace HSchema with SchemaCompressor
 - [x] ambig-flat
 - [x] to_{readable, directory, summary}
-- [ ] Usage tracking
+- [x] Usage tracking
 - [ ] Trajectory
 - [ ] langfuse
 - [ ] User simulator - message history?
