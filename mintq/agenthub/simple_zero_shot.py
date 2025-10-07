@@ -144,7 +144,6 @@ class SimpleZeroShotNL2Q:
                 requests=len(responses),
                 input_tokens=sum(r["usage"]["prompt_tokens"] for r in responses),
                 output_tokens=sum(r["usage"]["completion_tokens"] for r in responses),
-                is_user_simulator=False,
             )
         ]
         metrics["steps"] = 1

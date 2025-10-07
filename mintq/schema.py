@@ -142,8 +142,6 @@ class Usage(BaseModel):
     input_tokens: int
     output_tokens: int
     api_cost_usd: float
-    is_user_simulator: bool = False
-    """True if the usage is for the user simulator"""
 
     @classmethod
     def create(
@@ -153,7 +151,6 @@ class Usage(BaseModel):
         input_tokens: int,
         output_tokens: int,
         api_cost_usd: float | None = None,
-        is_user_simulator: bool = False,
     ) -> "Usage":
         if api_cost_usd is None:
             provider, model = llm.split(":")
@@ -173,19 +170,17 @@ class Usage(BaseModel):
             output_tokens=output_tokens,
             api_cost_usd=api_cost_usd,
             llm=llm,
-            is_user_simulator=is_user_simulator,
         )
 
     @classmethod
     def from_pydantic_ai_usage(
-        cls, usage: pydantic_ai.usage.RunUsage, llm: str, is_user_simulator: bool = False
+        cls, usage: pydantic_ai.usage.RunUsage, llm: str
     ) -> "Usage":
         return cls.create(
             llm=llm,
             api_requests=usage.requests,
             input_tokens=usage.input_tokens,
             output_tokens=usage.output_tokens,
-            is_user_simulator=is_user_simulator,
         )
 
 
