@@ -12,7 +12,7 @@ from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
-from mintq.schema import NL2QDataset, NL2QRunResult, Usage
+from mintq.schema import NL2QDataset, NL2QRunResult
 
 
 logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
