@@ -10,7 +10,7 @@ from mintq.agenthub.base import (
     UserValueQuestion,
     UserValueAnswer,
 )
-from mintq.schema import AmbigNL2QTask
+from mintq.schema import AmbigNL2QTask, Usage
 
 USER_SIMULATOR_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
@@ -50,7 +50,11 @@ class UserSimulator:
             model_settings={"temperature": self.temperature},
         )
         self.agent.instrument_all()
-        self.message_history = None
+        self._message_history = None
+        self._usage = Usage.create(llm=self.llm)
+
+    def usage(self) -> Usage:
+        return self._usage
 
     @classmethod
     def from_ambig_nl2q_task(
@@ -79,16 +83,18 @@ class UserSimulator:
         result = await self.agent.run(
             question.question,
             output_type=UserFreeTextAnswer,
-            message_history=self.message_history,
+            message_history=self._message_history,
         )
+        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
         result = await self.agent.run(
             question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
             output_type=UserMultipleChoiceAnswer,
-            message_history=self.message_history,
+            message_history=self._message_history,
         )
+        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         result.output.answer_index -= 1
         return result.output
 
@@ -96,8 +102,9 @@ class UserSimulator:
         result = await self.agent.run(
             question.model_dump_json(indent=2),
             output_type=UserValueAnswer,
-            message_history=self.message_history,
+            message_history=self._message_history,
         )
+        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output
 
     async def ask_async(self, question: UserQuestion) -> UserAnswer:

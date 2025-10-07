@@ -86,7 +86,6 @@ class AmbigSimpleSQLAgent:
             tools=[tool.as_pydantic_ai_tool() for tool in all_tools[:-1]],
             deps_type=TaskContext,
             output_type=all_tools[-1].as_pydantic_ai_tool(),
-            result_tool_name="finish",
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
         )
@@ -118,5 +117,6 @@ class AmbigSimpleSQLAgent:
             pred_intended_query=pred_query,
             trajectory=trajectory,
             usages=usages,
+            user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )

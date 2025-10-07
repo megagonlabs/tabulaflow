@@ -8,6 +8,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    Usage,
 )
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.registry import Registry
@@ -65,6 +66,8 @@ UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, User
 
 class BaseUserSimulator(Protocol):
     async def ask_async(self, question: UserQuestion) -> UserAnswer: ...
+
+    def usage(self) -> Usage: ...
 
 
 class BaseAmbigSQLAgent(Protocol):

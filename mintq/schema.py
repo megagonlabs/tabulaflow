@@ -143,13 +143,23 @@ class Usage(BaseModel):
     output_tokens: int
     api_cost_usd: float
 
+    def __add__(self, other: "Usage") -> "Usage":
+        assert self.llm == other.llm
+        return Usage(
+            llm=self.llm,
+            api_requests=self.api_requests + other.api_requests,
+            input_tokens=self.input_tokens + other.input_tokens,
+            output_tokens=self.output_tokens + other.output_tokens,
+            api_cost_usd=self.api_cost_usd + other.api_cost_usd,
+        )
+
     @classmethod
     def create(
         cls,
         llm: str,
-        api_requests: int,
-        input_tokens: int,
-        output_tokens: int,
+        api_requests: int = 0,
+        input_tokens: int = 0,
+        output_tokens: int = 0,
         api_cost_usd: float | None = None,
     ) -> "Usage":
         if api_cost_usd is None:
@@ -173,9 +183,7 @@ class Usage(BaseModel):
         )
 
     @classmethod
-    def from_pydantic_ai_usage(
-        cls, usage: pydantic_ai.usage.RunUsage, llm: str
-    ) -> "Usage":
+    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.RunUsage, llm: str) -> "Usage":
         return cls.create(
             llm=llm,
             api_requests=usage.requests,
