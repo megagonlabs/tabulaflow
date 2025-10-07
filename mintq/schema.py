@@ -142,16 +142,16 @@ class Usage(BaseModel):
     input_tokens: int
     output_tokens: int
     api_cost_usd: float
+    is_user_simulator: bool = False
+    """True if the usage is for the user simulator"""
 
     @classmethod
-    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.Usage, llm: str) -> "Usage":
-        input_tokens = usage.request_tokens or 0
-        output_tokens = usage.response_tokens or 0
+    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.RunUsage, llm: str) -> "Usage":
         return cls(
             api_calls=usage.requests,
-            input_tokens=input_tokens,
-            output_tokens=output_tokens,
-            api_cost_usd=cls.get_llm_api_cost(llm, input_tokens, output_tokens),
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            api_cost_usd=cls.get_llm_api_cost(llm, usage.input_tokens, usage.output_tokens),
             llm=llm,
         )
 
