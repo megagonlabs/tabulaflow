@@ -98,7 +98,6 @@ class SQLAgent:
             ],
             deps_type=TaskContext,
             output_type=finish_tool.as_pydantic_ai_tool(),
-            result_tool_name="finish",
             instructions=get_system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
         )

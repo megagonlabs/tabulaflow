@@ -1,5 +1,5 @@
-from typing import ClassVar, Callable, Any
-from pydantic_ai import RunContext, ModelRetry
+from typing import ClassVar, Callable
+from pydantic_ai import RunContext, ModelRetry, ToolOutput
 from pydantic import BaseModel
 from mintq.schema import Trajectory, PredQuery
 
@@ -30,7 +30,7 @@ class FinishTool:
         self._metrics.error_no_query_executed += 1
         raise ValueError("No query has been executed, you cannot finish yet")
 
-    def as_pydantic_ai_tool(self) -> Callable[[RunContext], PredQuery]:
+    def as_pydantic_ai_tool(self) -> ToolOutput[PredQuery]:
         def finish(ctx: RunContext) -> PredQuery:
             trajectory = Trajectory.from_pydantic_ai_messages(ctx.messages)
             try:
@@ -40,7 +40,7 @@ class FinishTool:
                 raise ModelRetry("No query has been executed, you cannot finish yet")
 
         finish.__doc__ = self.__call__.__doc__
-        return finish
+        return ToolOutput(finish, name="finish")
 
     def get_metrics(self) -> FinishToolMetrics:
         return self._metrics
