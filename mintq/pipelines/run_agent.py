@@ -117,9 +117,6 @@ async def main_async() -> None:
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
 
-    if Usage.get_llm_api_cost(args.llm, 1000000, 1000000) == 0.0:
-        print(f"Warning: LLM {args.llm} is not supported for API cost calculation.")
-
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)

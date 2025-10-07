@@ -2,7 +2,7 @@ import datetime
 import json
 import os
 import re
-import litellm
+from genai_prices import calc_price
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 import pydantic_ai
@@ -138,7 +138,7 @@ class Trajectory(BaseModel):
 
 class Usage(BaseModel):
     llm: str
-    api_calls: int
+    api_requests: int
     input_tokens: int
     output_tokens: int
     api_cost_usd: float
@@ -146,25 +146,47 @@ class Usage(BaseModel):
     """True if the usage is for the user simulator"""
 
     @classmethod
-    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.RunUsage, llm: str) -> "Usage":
+    def create(
+        cls,
+        llm: str,
+        api_requests: int,
+        input_tokens: int,
+        output_tokens: int,
+        api_cost_usd: float | None = None,
+        is_user_simulator: bool = False,
+    ) -> "Usage":
+        if api_cost_usd is None:
+            provider, model = llm.split(":")
+            price_data = calc_price(
+                pydantic_ai.usage.RunUsage(
+                    requests=api_requests,
+                    input_tokens=input_tokens,
+                    output_tokens=output_tokens,
+                ),
+                model_ref=model,
+                provider_id=provider,
+            )
+            api_cost_usd = price_data.total_price
         return cls(
-            api_calls=usage.requests,
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-            api_cost_usd=cls.get_llm_api_cost(llm, usage.input_tokens, usage.output_tokens),
+            api_requests=api_requests,
+            input_tokens=input_tokens,
+            output_tokens=output_tokens,
+            api_cost_usd=api_cost_usd,
             llm=llm,
+            is_user_simulator=is_user_simulator,
         )
 
-    @staticmethod
-    def get_llm_api_cost(pydantic_ai_model: str, input_tokens: int, output_tokens: int) -> float:
-        try:
-            litellm_model = pydantic_ai_model.replace(":", "/")
-            input_cost, output_cost = litellm.cost_per_token(  # type: ignore
-                model=litellm_model, prompt_tokens=input_tokens, completion_tokens=output_tokens
-            )
-            return input_cost + output_cost
-        except Exception:
-            return 0.0
+    @classmethod
+    def from_pydantic_ai_usage(
+        cls, usage: pydantic_ai.usage.RunUsage, llm: str, is_user_simulator: bool = False
+    ) -> "Usage":
+        return cls.create(
+            llm=llm,
+            api_requests=usage.requests,
+            input_tokens=usage.input_tokens,
+            output_tokens=usage.output_tokens,
+            is_user_simulator=is_user_simulator,
+        )
 
 
 class ErrorInfo(BaseModel):

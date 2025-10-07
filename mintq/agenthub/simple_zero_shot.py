@@ -107,7 +107,7 @@ class SimpleZeroShotNL2Q:
         responses = await asyncio.gather(
             *[
                 litellm.acompletion(
-                    model=self.config.llm,
+                    model=self.config.llm.replace(":", "/"),
                     messages=[{"role": "system", "content": system_prompt}, {"role": "user", "content": user_prompt}],
                     temperature=self.config.temperature,
                     **self.config.litellm_kwargs,
@@ -138,14 +138,15 @@ class SimpleZeroShotNL2Q:
         # Compute metrics
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["api_calls"] = len(responses)
-        metrics["input_tokens"] = sum([r["usage"]["prompt_tokens"] for r in responses])
-        metrics["output_tokens"] = sum([r["usage"]["completion_tokens"] for r in responses])
-        metrics["api_cost_usd"] = Usage.get_llm_api_cost(
-            self.config.llm,
-            metrics["input_tokens"],  # type: ignore
-            metrics["output_tokens"],  # type: ignore
-        )
+        metrics["usages"] = [
+            Usage.create(
+                llm=self.config.llm,
+                requests=len(responses),
+                input_tokens=sum(r["usage"]["prompt_tokens"] for r in responses),
+                output_tokens=sum(r["usage"]["completion_tokens"] for r in responses),
+                is_user_simulator=False,
+            )
+        ]
         metrics["steps"] = 1
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
