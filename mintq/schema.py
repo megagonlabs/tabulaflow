@@ -754,7 +754,7 @@ class NL2QRunResult(BaseModel):
     databases: list[str] | None  # None means all databases
     subsample_size: int | None
     agent: str
-    agent_args: dict[str, Any]
+    agent_config: dict[str, Any]
     total_usage: Usage | None = None
     total_user_simulator_usage: Usage | None = None
     aggregated_inference_metrics: dict[str, Any] = Field(default_factory=dict)

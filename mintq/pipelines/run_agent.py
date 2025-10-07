@@ -60,7 +60,7 @@ async def run_agent_async(
         subsample_size=dataset.subsample_size,
         databases=dataset.databases,
         agent=agent_cls.name,
-        agent_args=agent_config.model_dump(),
+        agent_config=agent_config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, [task.usage for task in task_outputs])
         if getattr(task_outputs[0], "usage", None)
         else None,
