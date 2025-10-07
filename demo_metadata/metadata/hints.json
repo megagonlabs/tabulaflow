@@ -7,6 +7,7 @@
     "Snow_ice_pellets is a VARCHAR; compare to '0'.",
     "Wet means rain, snow or hail.",
     "Rare means snow events are less than 2 in a month.",
-    "Use wet_day flag",
-    "Extreme precipitation events have prcp greater than monthly average."
+    "Prefer using the pre-computed wet-day flag for efficiency and consistency instead of recalculating conditions manually.",
+    "Extreme precipitation events have prcp greater than monthly average.",
+    "The flag_prcp column encodes data quality. Only certain flags indicate completeness (especially 'D', 'F', 'G'). Other flag values indicate data incompleteness or errors."
 ]
