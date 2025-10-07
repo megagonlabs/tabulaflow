@@ -2,7 +2,7 @@ import argparse
 import os
 import shutil
 import time
-from typing import Type
+from functools import reduce
 import datetime
 import asyncio
 import logfire
@@ -20,7 +20,7 @@ logfire.instrument_pydantic_ai()
 
 
 async def run_agent_async(
-    agent_cls: Type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
+    agent_cls: type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -61,12 +61,16 @@ async def run_agent_async(
         databases=dataset.databases,
         agent=agent_cls.name,
         agent_args=agent_config.model_dump(),
+        total_usage=reduce(lambda x, y: x + y, [usage for task in task_outputs for usage in task.usages]),
+        total_user_simulator_usage=reduce(lambda x, y: x + y, [task.user_simulator_usage for task in task_outputs])
+        if hasattr(task_outputs[0], "user_simulator_usage")
+        else None,
         aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,
     )
 
 
-def parse_agent_config(agent_cls: Type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
+def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
     kwargs = {
         "llm": args.llm,
         "schema_formatter": args.schema_formatter,

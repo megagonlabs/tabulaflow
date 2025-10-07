@@ -138,7 +138,7 @@ class SimpleZeroShotNL2Q:
         # Compute metrics
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["usages"] = [
+        usages = [
             Usage.create(
                 llm=self.config.llm,
                 requests=len(responses),
@@ -151,6 +151,7 @@ class SimpleZeroShotNL2Q:
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=trajectory,
+            usages=usages,
             inference_metrics=metrics,
         )
 

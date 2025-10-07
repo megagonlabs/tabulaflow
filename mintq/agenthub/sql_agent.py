@@ -137,9 +137,6 @@ class SQLAgent:
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["api_cost_usd"] = sum(usage.api_cost_usd for usage in usages)
-        metrics["input_tokens"] = sum(usage.input_tokens for usage in usages)
-        metrics["output_tokens"] = sum(usage.output_tokens for usage in usages)
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["fallback"] = fallback
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)

@@ -137,16 +137,15 @@ class Trajectory(BaseModel):
 
 
 class Usage(BaseModel):
-    llm: str
+    llm: str | Literal["MULTI"]
     api_requests: int
     input_tokens: int
     output_tokens: int
     api_cost_usd: float
 
     def __add__(self, other: "Usage") -> "Usage":
-        assert self.llm == other.llm
         return Usage(
-            llm=self.llm,
+            llm="MULTI" if self.llm != other.llm else self.llm,
             api_requests=self.api_requests + other.api_requests,
             input_tokens=self.input_tokens + other.input_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
@@ -755,6 +754,8 @@ class NL2QRunResult(BaseModel):
     subsample_size: int | None
     agent: str
     agent_args: dict[str, Any]
+    total_usage: Usage
+    total_user_simulator_usage: Usage | None = None
     aggregated_inference_metrics: dict[str, Any] = Field(default_factory=dict)
     aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)
     tasks: list[NL2QTaskOutput]
