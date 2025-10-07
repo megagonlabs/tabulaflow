@@ -269,7 +269,7 @@ async def database_browser(
             question = st.selectbox("Question", [task.question for task in dataset.tasks], index=1)
         col1, col2 = st.columns([0.45, 0.55])
         with col1:
-            llm = st.selectbox("LLM", ["openai/gpt-4o-mini", "openai/gpt-4o", "openai/gpt-5"], index=0)
+            llm = st.selectbox("LLM", ["openai/gpt-4.1", "openai/gpt-5", "openai/gpt-4o-mini", "openai/gpt-4o", ], index=0)
         with col2:
             if llm == "openai/gpt-5":
                 temperature = st.slider(
