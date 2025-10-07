@@ -47,10 +47,6 @@ async def run_agent_async(
             if getattr(task_outputs[0], "trajectory", None):
                 print(task_outputs[0].trajectory.to_readable())  # type: ignore
 
-    aggregated_metrics = aggregate_metrics(
-        [task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4
-    )
-
     end_time = datetime.datetime.now()
     return NL2QRunResult(
         start_time=start_time,
@@ -67,7 +63,9 @@ async def run_agent_async(
         total_user_simulator_usage=reduce(lambda x, y: x + y, [task.user_simulator_usage for task in task_outputs])
         if getattr(task_outputs[0], "user_simulator_usage", None)
         else None,
-        aggregated_inference_metrics=aggregated_metrics,
+        aggregated_inference_metrics=aggregate_metrics(
+            [task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4
+        ),
         tasks=task_outputs,
     )
 
