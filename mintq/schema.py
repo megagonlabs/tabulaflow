@@ -43,6 +43,7 @@ class ToolResponse(BaseModel):
     tool_call_id: str
     response: str
     is_retry_prompt: bool = False
+    """True if the response is a automatic retry prompt from Pydantic AI"""
 
 
 Message = Annotated[
