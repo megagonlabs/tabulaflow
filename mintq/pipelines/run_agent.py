@@ -61,9 +61,11 @@ async def run_agent_async(
         databases=dataset.databases,
         agent=agent_cls.name,
         agent_args=agent_config.model_dump(),
-        total_usage=reduce(lambda x, y: x + y, [usage for task in task_outputs for usage in task.usages]),
+        total_usage=reduce(lambda x, y: x + y, [task.usage for task in task_outputs])
+        if getattr(task_outputs[0], "usage", None)
+        else None,
         total_user_simulator_usage=reduce(lambda x, y: x + y, [task.user_simulator_usage for task in task_outputs])
-        if hasattr(task_outputs[0], "user_simulator_usage")
+        if getattr(task_outputs[0], "user_simulator_usage", None)
         else None,
         aggregated_inference_metrics=aggregated_metrics,
         tasks=task_outputs,

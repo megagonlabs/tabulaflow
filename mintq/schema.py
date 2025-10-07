@@ -360,7 +360,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery
     trajectory: Trajectory | list[Trajectory] | None = None
-    usages: list[Usage] = Field(default_factory=list)
+    usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
@@ -525,7 +525,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     output_type: Literal["ambig-simple"] = "ambig-simple"
     pred_intended_query: PredQuery
     trajectory: Trajectory | list[Trajectory] | None = None
-    usages: list[Usage] = Field(default_factory=list)
+    usage: Usage | None = None
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
@@ -553,7 +553,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
     trajectory: Trajectory | list[Trajectory] | None = None
-    usages: list[Usage] = Field(default_factory=list)
+    usage: Usage | None = None
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
@@ -616,7 +616,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
     trajectory: Trajectory | list[Trajectory] | None = None
-    usages: list[Usage] = Field(default_factory=list)
+    usage: Usage | None = None
     user_simulator_usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
@@ -755,7 +755,7 @@ class NL2QRunResult(BaseModel):
     subsample_size: int | None
     agent: str
     agent_args: dict[str, Any]
-    total_usage: Usage
+    total_usage: Usage | None = None
     total_user_simulator_usage: Usage | None = None
     aggregated_inference_metrics: dict[str, Any] = Field(default_factory=dict)
     aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)

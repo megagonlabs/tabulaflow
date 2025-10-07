@@ -132,9 +132,7 @@ class SQLAgent:
             messages = result.all_messages()
             fallback = True
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
-
-        usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
-
+        usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
@@ -146,6 +144,6 @@ class SQLAgent:
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=trajectory,
-            usages=usages,
+            usage=usage,
             inference_metrics=metrics,
         )

@@ -260,7 +260,7 @@ class AmbigFlatSQLAgent:
             pred_queries=pred_queries,
             pred_intended_query_id=pred_queries[user_response.answer_index].id,
             trajectory=self._trajectories,
-            usages=[self._usage],
+            usage=self._usage,
             user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )

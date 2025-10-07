@@ -102,7 +102,6 @@ class AmbigSimpleSQLAgent:
         pred_query: PredQuery = result.output
         trajectory = Trajectory.from_pydantic_ai_messages(messages)
 
-        usages = [Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)]
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
@@ -113,7 +112,7 @@ class AmbigSimpleSQLAgent:
             **task.model_dump(),
             pred_intended_query=pred_query,
             trajectory=trajectory,
-            usages=usages,
+            usage=Usage.from_pydantic_ai_usage(result.usage(), self.config.llm),
             user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )
