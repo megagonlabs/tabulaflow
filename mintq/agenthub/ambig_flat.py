@@ -144,7 +144,7 @@ class AmbigFlatSQLAgent:
                     self.formatter,
                 ),
                 # GetColumnDescriptionTool(db_connector),
-                SearchKeywordsTool(db_connector),
+                # SearchKeywordsTool(db_connector),
             ],
         )
         result = await disamb_agent.run(f"List all interpretations: {task.question}")
@@ -166,8 +166,8 @@ class AmbigFlatSQLAgent:
                     else db_connector.schema,
                     self.formatter,
                 ),
-                GetColumnDescriptionTool(db_connector),
-                SearchKeywordsTool(db_connector),
+                # GetColumnDescriptionTool(db_connector),
+                # SearchKeywordsTool(db_connector),
             ],
         )
         result = await disamb_agent.run(task.question)

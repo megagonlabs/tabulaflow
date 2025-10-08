@@ -45,7 +45,11 @@ async def run_agent_async(
 
         if i == 0:
             if getattr(task_outputs[0], "trajectory", None):
-                print(task_outputs[0].trajectory.to_readable())  # type: ignore
+                trajectory = task_outputs[0].trajectory
+                if not isinstance(trajectory, list):
+                    trajectory = [trajectory]
+                for tr in trajectory:
+                    print(tr.to_readable())  # type: ignore
 
     end_time = datetime.datetime.now()
     return NL2QRunResult(
@@ -85,7 +89,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
-    parser.add_argument("--llm", default="openai:gpt-4o")
+    parser.add_argument("--llm", default="openai:gpt-4.1")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--local_llm_config", default="local_llm_config.json")

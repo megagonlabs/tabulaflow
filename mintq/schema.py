@@ -134,7 +134,8 @@ class Trajectory(BaseModel):
                 res.append(s)
             elif msg.role == "tool":
                 res.append(f'<message role="tool">\n{msg.response}\n</message>')
-        return "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+        res = "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+        return f"----- START OF TRAJECTORY `{self.id}` -----\n{res}\n----- END OF TRAJECTORY -----"
 
 
 class Usage(BaseModel):
