@@ -20,6 +20,7 @@ test-simple:
 	set -e; \
 	for dataset in bird-sql spider2-snow beaver; do \
 		uv run mintq/pipelines/run_agent.py --agent simple_zero_shot --debug --dataset $$dataset; \
+		uv run mintq/pipelines/populate_exec_results.py --debug; \
 		uv run mintq/pipelines/evaluate.py --debug; \
 	done
 
@@ -28,6 +29,7 @@ test-agent:
 	set -e; \
 	for dataset in bird-sql spider2-snow beaver; do \
 		uv run mintq/pipelines/run_agent.py --agent sql_agent --debug --dataset $$dataset; \
+		uv run mintq/pipelines/populate_exec_results.py --debug; \
 		uv run mintq/pipelines/evaluate.py --debug; \
 	done
 
