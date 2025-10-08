@@ -58,7 +58,7 @@ class UserSimulator:
 
     @classmethod
     def from_ambig_nl2q_task(
-        cls, task: AmbigNL2QTask, llm: str = "openai:gpt-4.1-mini", temperature: float = 0.0
+        cls, task: AmbigNL2QTask, llm: str = "openai:gpt-4.1", temperature: float = 0.0
     ) -> "UserSimulator":
         if any(ap.intended_interpretation_idx is None for ap in task.gold_ambiguity_points if ap.type == "finite"):
             raise ValueError("All finite ambiguity points must have an intended interpretation")
