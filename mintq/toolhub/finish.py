@@ -16,7 +16,7 @@ class FinishTool:
 
     def __call__(self, trajectory: Trajectory) -> PredQuery:
         """
-        Finish the task and return the last executed query as final answer.
+        Finish the task. The last executed query will be considered as the final answer. No parameters needed.
         """
         for msg in trajectory.messages[::-1]:
             if msg.role == "assistant":
