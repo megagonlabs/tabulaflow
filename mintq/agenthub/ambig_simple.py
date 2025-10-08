@@ -98,9 +98,8 @@ class AmbigSimpleSQLAgent:
         )
 
         result = await agent.run(task.question, deps=deps, model_settings={"temperature": self.config.temperature})
-        messages = result.all_messages()[:-1]
         pred_query: PredQuery = result.output
-        trajectory = Trajectory.from_pydantic_ai_messages(messages)
+        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
