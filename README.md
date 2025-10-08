@@ -286,7 +286,7 @@ Contact: yanlin@megagon.ai
 - [x] ambig-flat
 - [x] to_{readable, directory, summary}
 - [x] Usage tracking
-- [ ] Trajectory
+- [x] Trajectory
 - [ ] langfuse
 - [ ] User simulator - message history?
 - [ ] ambig-structured
