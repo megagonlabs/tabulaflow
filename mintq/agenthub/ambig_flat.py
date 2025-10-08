@@ -170,7 +170,7 @@ class AmbigFlatSQLAgent:
                 # SearchKeywordsTool(db_connector),
             ],
         )
-        result = await disamb_agent.run(task.question)
+        result = await disamb_agent.run(f"List all parameter ambiguity points: {task.question}")
         self._disamb_parameters_result = result
         self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAMS"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
