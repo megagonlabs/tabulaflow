@@ -20,7 +20,7 @@ class Config:
 
     @property
     def instrument_prefix(self) -> str:
-        return os.getenv("MINTQ_INSTRUMENT_PREFIX", "exp0")
+        return os.getenv("MINTQ_INSTRUMENT_PREFIX", "exp")
 
     @property
     def df_max_rows(self) -> int | None:
