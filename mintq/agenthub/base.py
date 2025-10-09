@@ -9,6 +9,7 @@ from mintq.schema import (
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
     Usage,
+    Trajectory,
 )
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.registry import Registry
@@ -68,6 +69,8 @@ class BaseUserSimulator(Protocol):
     async def ask_async(self, question: UserQuestion) -> UserAnswer: ...
 
     def usage(self) -> Usage: ...
+
+    def trajectory(self) -> Trajectory: ...
 
 
 class BaseAmbigSQLAgent(Protocol):

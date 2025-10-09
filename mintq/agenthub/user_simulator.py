@@ -10,7 +10,7 @@ from mintq.agenthub.base import (
     UserValueQuestion,
     UserValueAnswer,
 )
-from mintq.schema import AmbigNL2QTask, Usage
+from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 
 USER_SIMULATOR_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
@@ -61,6 +61,9 @@ class UserSimulator:
 
     def usage(self) -> Usage:
         return self._usage
+
+    def trajectory(self) -> Trajectory:
+        return Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-USER-SIMULATOR")
 
     @classmethod
     def from_ambig_nl2q_task(

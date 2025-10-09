@@ -249,6 +249,7 @@ class AmbigFlatSQLAgent:
         user_response = await user_simulator.ask_async(
             UserMultipleChoiceQuestion(question=task.question, options=interpretations)
         )
+        self._trajectories.append(user_simulator.trajectory())
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
