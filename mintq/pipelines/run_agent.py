@@ -125,7 +125,7 @@ async def main_async() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     if args.debug:
-        dataset.tasks = dataset.tasks[:5]
+        dataset.tasks = dataset.tasks[:3]
     print(
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )

@@ -21,6 +21,7 @@ from mintq.schema import (
     Usage,
 )
 from mintq.agenthub.base import agent_registry
+from mintq.agenthub.utils import instrument
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -81,6 +82,7 @@ class SimpleZeroShotNL2Q:
     async def from_config_async(cls, config: SimpleZeroShotNL2QConfig) -> "SimpleZeroShotNL2Q":
         return cls(config)
 
+    @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 

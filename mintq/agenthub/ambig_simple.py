@@ -16,7 +16,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
-from mintq.agenthub.utils import get_max_steps_processor
+from mintq.agenthub.utils import get_max_steps_processor, instrument
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
@@ -60,6 +60,7 @@ class AmbigSimpleSQLAgent:
     async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
         return cls(config)
 
+    @instrument
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> SimpleAmbigNL2QTaskOutput:

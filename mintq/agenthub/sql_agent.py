@@ -18,7 +18,7 @@ from mintq.toolhub import (
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry
-from mintq.agenthub.utils import get_max_steps_processor
+from mintq.agenthub.utils import get_max_steps_processor, instrument
 
 
 @dataclass
@@ -69,6 +69,7 @@ class SQLAgent:
     async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
         return cls(config)
 
+    @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
