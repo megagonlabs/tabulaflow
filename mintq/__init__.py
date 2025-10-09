@@ -3,6 +3,7 @@ import contextlib
 from pydantic_ai import Agent
 from langfuse import get_client
 from phoenix.otel import register
+from importlib.metadata import version
 from mintq.agenthub.base import agent_registry
 from mintq.datahub.base import dataset_registry
 from mintq.metrics.base import metric_registry
@@ -43,3 +44,6 @@ __all__ = [
     "metric_registry",
     "formatter_registry",
 ]
+
+
+__version__ = version("mintq")

@@ -30,11 +30,12 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
     if not config.instrument_enabled:
         return predict_async_fn
 
-    tracer_provider = get_tracer_provider()
-    tracer = tracer_provider.get_tracer(__name__)
-
     @wraps(predict_async_fn)
     async def wrapper(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
+        from mintq import __version__
+
+        tracer_provider = get_tracer_provider()
+        tracer = tracer_provider.get_tracer("mintq", __version__)
         span_name = f"{task.qid} {self.name}".strip()
         if config.instrument_prefix:
             span_name = f"{config.instrument_prefix} {span_name}"
