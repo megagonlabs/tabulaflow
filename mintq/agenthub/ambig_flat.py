@@ -202,7 +202,7 @@ class AmbigFlatSQLAgent:
             output_type=all_tools[-1].as_pydantic_ai_tool(),
             tools=all_tools[:-1],
         )
-        params = [{"param_operator": p.value_operator, "param_name": p.name} for p in resolved_params]
+        params = [{"param_operator": p.value_operator, "param_name": p.name, "param_value": p.value} for p in resolved_params]
         params = f"You can use any of the following parameters as placeholders in the query: {json.dumps(params)}"
         result = await sql_agent.run(f"{task.question} {interpretation}\n{params}")
         self._generate_sql_results.append(result)
