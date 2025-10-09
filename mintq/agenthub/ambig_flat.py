@@ -74,7 +74,6 @@ class AmbigFlatSQLAgentConfig(BaseModel):
 class ParameterAmbiguityPoint(BaseModel):
     phrase: str = Field(description="The phrase in the questionthat is ambiguous.")
     name: str = Field(description="The variable name of the parameter that can be used in the query.")
-    explanation: str = Field(description="A short explanation of why this parameter is ambiguous.")
     value_dtype: Literal["int", "float", "date"] = Field(description="The data type of the parameter value.")
     value_operator_options: list[Literal["<", ">", "<=", ">="]] = Field(
         default_factory=list,
