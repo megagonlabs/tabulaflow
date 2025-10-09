@@ -37,10 +37,10 @@ Database Schema:
         city: TEXT,
         state: TEXT,
     );
-Question: List all students from NY.
+Question: List all students with high GPA from NY.
 Interpretations:
-- List all students from New York City.
-- List all students from New York State.
+- List all students with high GPA from New York City.
+- List all students with high GPA from New York State.
 === END OF EXAMPLE ===
 """.strip()
 
