@@ -10,8 +10,6 @@ from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 def compare_multi_pandas_table(
     pred: pd.DataFrame, multi_gold: list[pd.DataFrame], multi_condition_cols: Any = [], ignore_order: bool = False
 ) -> float:
-    print("multi_condition_cols", multi_condition_cols)
-
     if (
         multi_condition_cols == []
         or multi_condition_cols == [[]]
