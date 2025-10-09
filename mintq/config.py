@@ -23,5 +23,12 @@ class Config:
         value = int(os.getenv("MINTQ_DF_MAX_ROWS", "-1"))
         return value if value > 0 else None
 
+    def __repr__(self):
+        props = {
+            name: getattr(self, name) for name, attr in self.__class__.__dict__.items() if isinstance(attr, property)
+        }
+        values = ", ".join(f"{k}={v!r}" for k, v in props.items())
+        return f"Config({values})"
+
 
 config = Config()

@@ -8,7 +8,13 @@ from mintq.datahub.base import dataset_registry
 from mintq.metrics.base import metric_registry
 from mintq.formatters.base import formatter_registry
 from mintq.config import config
+import logging
 
+
+logger = logging.getLogger(__name__)
+
+
+logger.info("MINTQ Configuration: %s", config)
 
 if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
     with open(os.devnull, "w") as fnull, contextlib.redirect_stdout(fnull):
@@ -23,9 +29,9 @@ if os.getenv("LANGFUSE_HOST"):
 
     # Verify connection
     if langfuse.auth_check():
-        print("Langfuse client is authenticated and ready!")
+        logger.info("Langfuse client is authenticated and ready!")
     else:
-        print("Authentication failed. Please check your credentials and host.")
+        logger.error("Langfuse authentication failed. Please check your credentials and host.")
 
 
 if config.instrument_enabled:
