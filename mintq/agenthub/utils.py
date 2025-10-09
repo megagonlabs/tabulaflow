@@ -1,9 +1,10 @@
 from typing import Any
 from functools import partial
 from typing import Callable
-import opentelemetry
+from opentelemetry.trace import get_tracer_provider
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
+from functools import wraps
 from mintq.schema import NL2QTask
 from mintq.config import config
 
@@ -29,11 +30,12 @@ def instrument(predict_async: Callable[..., Any]) -> Callable[..., Any]:
     if not config.instrument_enabled:
         return predict_async
 
-    tracer_provider = opentelemetry.trace.get_tracer_provider()
+    tracer_provider = get_tracer_provider()
     tracer = tracer_provider.get_tracer(__name__)
 
-    async def _predict_async(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
+    @wraps(predict_async)
+    async def wrapper(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
         with tracer.start_as_current_span(task.qid):
-            return await predict_async(self, task, *args, **kwargs)
+            return await wrapper(self, task, *args, **kwargs)
 
-    return _predict_async
+    return wrapper
