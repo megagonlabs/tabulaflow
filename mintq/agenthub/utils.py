@@ -35,9 +35,9 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
 
     @wraps(predict_async_fn)
     async def wrapper(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
-        span_name = f"{task.qid}-{self.name}".strip()
+        span_name = f"{task.qid} {self.name}".strip()
         if config.instrument_prefix:
-            span_name = f"{config.instrument_prefix}-{span_name}"
+            span_name = f"{config.instrument_prefix} {span_name}"
         with tracer.start_as_current_span(span_name):
             return await predict_async_fn(self, task, *args, **kwargs)
 
