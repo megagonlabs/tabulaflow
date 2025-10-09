@@ -36,9 +36,9 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
 
         tracer_provider = get_tracer_provider()
         tracer = tracer_provider.get_tracer("mintq", __version__)
-        span_name = f"{task.qid} {self.name}".strip()
+        span_name = f"qid={task.qid}|agent={self.name}".strip()
         if config.instrument_prefix:
-            span_name = f"{config.instrument_prefix} {span_name}"
+            span_name = f"{config.instrument_prefix}|{span_name}"
         with tracer.start_as_current_span(span_name):
             return await predict_async_fn(self, task, *args, **kwargs)
 
