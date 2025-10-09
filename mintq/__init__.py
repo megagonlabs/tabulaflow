@@ -1,11 +1,13 @@
 import os
 import contextlib
+from pydantic_ai import Agent
 from langfuse import get_client
 from phoenix.otel import register
 from mintq.agenthub.base import agent_registry
 from mintq.datahub.base import dataset_registry
 from mintq.metrics.base import metric_registry
 from mintq.formatters.base import formatter_registry
+from mintq.config import config
 
 
 if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
@@ -24,6 +26,10 @@ if os.getenv("LANGFUSE_HOST"):
         print("Langfuse client is authenticated and ready!")
     else:
         print("Authentication failed. Please check your credentials and host.")
+
+
+if config.instrument_enabled:
+    Agent.instrument_all()
 
 __all__ = [
     "agent_registry",

@@ -124,7 +124,6 @@ class AmbigFlatSQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=model_settings,
         )
-        agent.instrument_all()
         return agent
 
     async def _disambiguate_interpretations_async(

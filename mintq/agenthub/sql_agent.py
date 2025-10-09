@@ -101,7 +101,6 @@ class SQLAgent:
             instructions=get_system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
         )
-        agent.instrument_all()
 
         agent_no_tools = Agent[TaskContext, str](
             model=self.config.llm,
@@ -109,7 +108,6 @@ class SQLAgent:
             deps_type=TaskContext,
             instructions=get_system_prompt,
         )
-        agent_no_tools.instrument_all()
 
         prompt = f"{task.question} {task.evidence}"
 

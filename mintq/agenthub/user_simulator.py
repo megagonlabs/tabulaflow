@@ -49,7 +49,6 @@ class UserSimulator:
             instructions=self.system_prompt,
             model_settings={"temperature": self.temperature},
         )
-        self.agent.instrument_all()
         self._message_history = None
         self._usage = Usage.create(llm=self.llm)
 

@@ -89,7 +89,6 @@ class AmbigSimpleSQLAgent:
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
         )
-        agent.instrument_all()
 
         deps = TaskContext(
             task=task,

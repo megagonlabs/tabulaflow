@@ -5,7 +5,6 @@ import time
 from functools import reduce
 import datetime
 import asyncio
-import logfire
 import litellm
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
@@ -14,9 +13,6 @@ from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult
 
-
-logfire.configure(service_name="otel", send_to_logfire="if-token-present", console=False)
-logfire.instrument_pydantic_ai()
 
 
 async def run_agent_async(
