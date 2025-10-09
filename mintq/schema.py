@@ -61,6 +61,9 @@ class Trajectory(BaseModel):
         cls, messages: list[pydantic_ai.messages.ModelMessage], id: str = "TRJY"
     ) -> "Trajectory":
         trajectory = cls(messages=[], id=id)
+        if not messages:
+            return trajectory
+
         if messages[0].kind == "request" and messages[0].instructions:
             trajectory.messages.append(SystemMessage(content=messages[0].instructions))
         for msg in messages:
