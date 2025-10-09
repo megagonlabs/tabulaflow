@@ -18,7 +18,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
-from mintq.agenthub.utils import get_max_steps_processor
+from mintq.agenthub.utils import get_max_steps_processor, instrument
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
@@ -212,6 +212,7 @@ class AmbigFlatSQLAgent:
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return pred_query
 
+    @instrument
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> FlatAmbigNL2QTaskOutput:
