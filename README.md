@@ -287,7 +287,7 @@ Contact: yanlin@megagon.ai
 - [x] to_{readable, directory, summary}
 - [x] Usage tracking
 - [x] Trajectory
-- [ ] langfuse
+- [x] langfuse
 - [ ] User simulator - message history?
 - [ ] ambig-structured
 - [ ] Support Ambrosia
