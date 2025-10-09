@@ -132,7 +132,7 @@ class AmbigFlatSQLAgent:
         class Output(BaseModel):
             interpretations: list[str]
 
-        disamb_agent = self._get_agent(
+        disamb_interp_agent = self._get_agent(
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=task.language),
             output_type=Output,
             tools=[
@@ -146,7 +146,7 @@ class AmbigFlatSQLAgent:
                 # SearchKeywordsTool(db_connector),
             ],
         )
-        result = await disamb_agent.run(f"List all interpretations: {task.question}")
+        result = await disamb_interp_agent.run(f"List all interpretations: {task.question}")
         self._disamb_interpretations_result = result
         self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-INTERP"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -155,7 +155,7 @@ class AmbigFlatSQLAgent:
     async def _disambiguate_parameters_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
     ) -> list[ParameterAmbiguityPoint]:
-        disamb_agent = self._get_agent(
+        disamb_param_agent = self._get_agent(
             system_prompt=jinja2.Template(DISAMBIGUATE_PARAMETERS_PROMPT).render(language=task.language),
             output_type=list[ParameterAmbiguityPoint],
             tools=[
@@ -169,9 +169,9 @@ class AmbigFlatSQLAgent:
                 # SearchKeywordsTool(db_connector),
             ],
         )
-        result = await disamb_agent.run(f"List all parameter ambiguity points: {task.question}")
+        result = await disamb_param_agent.run(f"List all parameter ambiguity points: {task.question}")
         self._disamb_parameters_result = result
-        self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAMS"))
+        self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return result.output
 
