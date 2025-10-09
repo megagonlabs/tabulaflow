@@ -26,16 +26,19 @@ def get_max_steps_processor(max_steps: int) -> Any:
     return partial(max_steps_processor, max_steps=max_steps)
 
 
-def instrument(predict_async: Callable[..., Any]) -> Callable[..., Any]:
+def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
     if not config.instrument_enabled:
-        return predict_async
+        return predict_async_fn
 
     tracer_provider = get_tracer_provider()
     tracer = tracer_provider.get_tracer(__name__)
 
-    @wraps(predict_async)
+    @wraps(predict_async_fn)
     async def wrapper(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
-        with tracer.start_as_current_span(task.qid):
-            return await wrapper(self, task, *args, **kwargs)
+        span_name = f"{task.qid}-{self.name}".strip()
+        if config.instrument_prefix:
+            span_name = f"{config.instrument_prefix}-{span_name}"
+        with tracer.start_as_current_span(span_name):
+            return await predict_async_fn(self, task, *args, **kwargs)
 
     return wrapper

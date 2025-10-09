@@ -19,6 +19,10 @@ class Config:
         return os.getenv("MINTQ_INSTRUMENT_ENABLED", "1") == "1"
 
     @property
+    def instrument_prefix(self) -> str:
+        return os.getenv("MINTQ_INSTRUMENT_PREFIX", "exp0")
+
+    @property
     def df_max_rows(self) -> int | None:
         value = int(os.getenv("MINTQ_DF_MAX_ROWS", "-1"))
         return value if value > 0 else None
