@@ -21,7 +21,7 @@ class FinishTool:
         for msg in trajectory.messages[::-1]:
             if msg.role == "assistant":
                 for tool_call in msg.tool_calls[::-1]:
-                    if tool_call.name == "run_query":
+                    if tool_call.name == "run_query" and tool_call.arguments is not None:
                         query = tool_call.arguments["query"]
                         parameters = tool_call.arguments.get("parameters", {})
                         return PredQuery(
