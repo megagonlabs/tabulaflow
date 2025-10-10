@@ -58,10 +58,13 @@ def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
     return AmbigNL2QTask.model_validate(task.model_dump())
 
 
+def int_to_letter(idx: int) -> str:
+    return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx]
+
+
 def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     task = copy.deepcopy(task)
     task = sort_gold_queries(task)
-    ambiguity_point_ids = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
     def get_ap_location(ap: GoldAmbiguityPoint) -> tuple[int, int, int]:
         return (task.question.index(ap.phrase), len(ap.phrase), 0 if ap.type == "finite" else 1)
@@ -89,7 +92,7 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     # Replace the ambiguity point IDs
     task.gold_ambiguity_points = new_gold_ambiguity_points
     task.gold_queries = new_gold_queries
-    ap_id_mapping = {ap.id: ambiguity_point_ids[i] for i, ap in enumerate(new_gold_ambiguity_points)}
+    ap_id_mapping = {ap.id: int_to_letter(i) for i, ap in enumerate(new_gold_ambiguity_points)}
     for ap in task.gold_ambiguity_points:
         ap.id = ap_id_mapping[ap.id]
         if ap.type == "infinite" and ap.parent_ambiguity_point_id is not None:

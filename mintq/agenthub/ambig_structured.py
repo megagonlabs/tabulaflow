@@ -31,6 +31,7 @@ from mintq.toolhub import (
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
 from mintq.agenthub.utils import get_max_steps_processor, instrument
 from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.utils import int_to_letter
 
 
 DISAMBIGUATION_PROMPT = """
@@ -84,9 +85,6 @@ class AmbigStructuredSQLAgentConfig(BaseModel):
     compress_schema: bool = True
     temperature: float = 0.0
     max_steps: int = 20
-
-
-AMBIGUITY_POINT_IDS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 
 
 @agent_registry.register
@@ -165,9 +163,9 @@ class AmbigStructuredSQLAgent:
         res = []
         for i, ap in enumerate(result.output.ambiguity_points):
             if isinstance(ap, LLMPredAmbiguityPointFinite):
-                res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=AMBIGUITY_POINT_IDS[i]))
+                res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(i)))
             elif isinstance(ap, LLMPredAmbiguityPointInfinite):
-                res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=AMBIGUITY_POINT_IDS[i]))
+                res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i)))
         return res
 
     async def _generate_sql_async(

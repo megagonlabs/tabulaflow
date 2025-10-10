@@ -27,6 +27,7 @@ from mintq.toolhub import (
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
 from mintq.agenthub.utils import get_max_steps_processor, instrument
 from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.utils import int_to_letter
 
 
 DISAMBIGUATION_PROMPT = """
@@ -79,8 +80,6 @@ class AmbigFlatSQLAgentConfig(BaseModel):
     temperature: float = 0.0
     max_steps: int = 20
 
-
-AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
 
 @agent_registry.register
@@ -177,7 +176,7 @@ class AmbigFlatSQLAgent:
         self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return [
-            PredAmbiguityPointInfinite(**ap.model_dump(), id=AMBIGUITY_POINT_IDS[i])
+            PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i))
             for i, ap in enumerate(result.output.parameter_ambiguity_points)
         ]
 
