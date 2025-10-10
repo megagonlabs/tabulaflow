@@ -228,19 +228,19 @@ class AmbigFlatSQLAgent:
     ) -> FlatAmbigNL2QTaskOutput:
         t0 = time.time()
 
-        tools = [
-            GetSchemaTool(
+        tools = {
+            "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
                 else db_connector.schema,
                 self.formatter,
             ),
-            GetColumnDescriptionTool(db_connector),
-            SearchKeywordsTool(db_connector),
-            RunQueryTool(db_connector),
-            FinishTool(),
-        ]
-        ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), {tool.name: tool for tool in tools})
+            "get_column_description": GetColumnDescriptionTool(db_connector),
+            "search_keywords": SearchKeywordsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
+            "finish": FinishTool(),
+        }
+        ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
 
         interpretations = await self._disambiguate_interpretations_async(ctx)
         parameters = await self._disambiguate_parameters_async(ctx)
