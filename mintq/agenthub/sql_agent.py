@@ -52,7 +52,6 @@ class SQLAgentConfig(BaseModel):
     schema_formatter: str
     compress_schema: bool = True
     temperature: float = 0.0
-    num_candidates: int = 1
     max_steps: int = 20
 
 

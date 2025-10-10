@@ -75,7 +75,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         "schema_formatter": args.schema_formatter,
         "temperature": args.temperature,
     }
-    if agent_cls.name == "sql_agent":
+    if agent_cls.name == "simple_zero_shot":
         kwargs["num_candidates"] = args.num_majority_voting_candidates
     return agent_cls.config_cls(**kwargs)
 
@@ -94,7 +94,7 @@ async def main_async() -> None:
     parser.add_argument("--databases", default=None, nargs="+")
 
     parser.add_argument("--batch_size", default=8, type=int)
-    parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
+    parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_litellm", action="store_true")
