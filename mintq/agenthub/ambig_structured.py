@@ -11,7 +11,6 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import (
     AmbigNL2QTask,
-    FlatAmbigNL2QTaskOutput,
     PredQuery,
     Usage,
     Trajectory,
@@ -256,10 +255,9 @@ class AmbigStructuredSQLAgent:
         )
         return pred_intended_query_id
 
-    @instrument
-    async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
-    ) -> FlatAmbigNL2QTaskOutput:
+    async def predict_no_user_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
+    ) -> StructuredAmbigNL2QTaskOutput:
         t0 = time.time()
 
         ambiguity_points = await self._disambiguate_async(task, db_connector)
@@ -274,21 +272,34 @@ class AmbigStructuredSQLAgent:
                 for indexes in all_indexes
             ]
         )
-
-        pred_intended_query_id = await self._resolve_async(ambiguity_points, pred_queries, user_simulator)
-
-        self._trajectories.append(user_simulator.trajectory())
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in self._tools}  # type: ignore
+        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in self._tools}
 
         return StructuredAmbigNL2QTaskOutput(
             **task.model_dump(),
             pred_ambiguity_points=ambiguity_points,
             pred_queries=pred_queries,
-            pred_intended_query_id=pred_intended_query_id,
+            pred_intended_query_id=None,
             trajectory=self._trajectories,
             usage=self._usage,
-            user_simulator_usage=user_simulator.usage(),
+            user_simulator_usage=None,
             inference_metrics=metrics,
         )
+
+    @instrument
+    async def predict_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
+    ) -> StructuredAmbigNL2QTaskOutput:
+        t0 = time.time()
+
+        task_output = await self.predict_no_user_async(task, db_connector)
+
+        pred_intended_query_id = await self._resolve_async(
+            task_output.pred_ambiguity_points, task_output.pred_queries, user_simulator
+        )
+        task_output.pred_intended_query_id = pred_intended_query_id
+        task_output.trajectory.append(user_simulator.trajectory())
+        task_output.inference_metrics["latency_seconds"] = time.time() - t0
+        task_output.user_simulator_usage = user_simulator.usage()
+        return StructuredAmbigNL2QTaskOutput.model_validate(task_output.model_dump())
