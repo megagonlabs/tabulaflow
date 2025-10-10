@@ -5,7 +5,7 @@ from mintq.agenthub.base import BaseUserSimulator, UserFreeTextQuestion
 
 
 class AskUserToolMetrics(BaseModel):
-    pass
+    user_refused_to_answer: int = 0
 
 
 class AskUserTool:
@@ -23,6 +23,8 @@ class AskUserTool:
             question: The question to ask the user.
         """
         response = await self.user_simulator.ask_async(UserFreeTextQuestion(question=question))
+        if "cannot answer" in response.answer_text.lower():
+            self._metrics.user_refused_to_answer += 1
         return response.answer_text
 
     def as_pydantic_ai_tool(self) -> Tool:
