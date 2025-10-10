@@ -41,7 +41,7 @@ class AmbigSimpleSQLAgentConfig(BaseModel):
     schema_formatter: str
     compress_schema: bool = True
     temperature: float = 0.0
-    max_steps: int = 20
+    max_steps: int = 10
 
 
 @agent_registry.register
