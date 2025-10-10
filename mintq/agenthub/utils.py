@@ -14,10 +14,16 @@ def max_steps_processor(
     messages: list[ModelMessage],
     max_steps: int,
 ) -> list[ModelMessage]:
+    print(ctx.run_step)
     if ctx.run_step >= max_steps - 1:
-        content = "You are about to reach the maximum number of steps. You have one more attempt to execute a tool before submitting the final answer."
+        if ctx.run_step == max_steps - 1:
+            content = "You are about to reach the maximum number of steps. You have one more attempt to execute a tool before submitting the final answer."
+        else:
+            content = "You have reached the maximum number of steps. Please submit the final answer right now."
         msg = ModelRequest(parts=[UserPromptPart(content=content)])
-        return messages + [msg]
+        assert messages == ctx.messages
+        ctx.messages.append(msg)
+        return ctx.messages
     return messages
 
 
