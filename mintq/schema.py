@@ -234,9 +234,9 @@ class ExecResult(BaseModel):
     @model_validator(mode="after")
     def truncate_df(self) -> "ExecResult":
         if config.df_max_rows and self.df is not None and len(self.df) > config.df_max_rows:
+            logger.warning(f"Truncated df from {len(self.df)} to {config.df_max_rows} rows")
             self.df = self.df.head(config.df_max_rows)
             self.df_is_truncated = True
-            logger.warning(f"Truncated df to {config.df_max_rows} rows")
         return self
 
     @model_validator(mode="after")
