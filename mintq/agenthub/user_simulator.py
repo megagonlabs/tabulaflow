@@ -1,3 +1,4 @@
+from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
 from mintq.agenthub.base import (
@@ -99,15 +100,17 @@ class UserSimulator:
         return result.output
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
+        class LLMOutput(BaseModel):
+            answer_number: int
+
         result = await self.user_agent.run(
             question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-            output_type=UserMultipleChoiceAnswer,
+            output_type=LLMOutput,
             message_history=self._message_history if self.include_history else None,
         )
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         self._message_history += result.new_messages()
-        result.output.answer_index -= 1
-        return result.output
+        return UserMultipleChoiceAnswer(answer_index=result.output.answer_number - 1)
 
     async def ask_value_async(self, question: UserValueQuestion) -> UserValueAnswer:
         result = await self.user_agent.run(
