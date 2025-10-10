@@ -14,7 +14,6 @@ from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import NL2QDataset, NL2QRunResult
 
 
-
 async def run_agent_async(
     agent_cls: type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
 ) -> NL2QRunResult:

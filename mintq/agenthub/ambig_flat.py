@@ -4,7 +4,7 @@ import json
 import jinja2
 import time
 from typing import ClassVar, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -94,7 +94,6 @@ class AmbigFlatSQLAgent:
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-
 
         self._tools = []
         self._trajectories = []

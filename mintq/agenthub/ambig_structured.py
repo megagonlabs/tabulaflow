@@ -4,8 +4,8 @@ import json
 import jinja2
 import time
 import itertools
-from typing import ClassVar, Literal, Union
-from pydantic import BaseModel, Field, TypeAdapter
+from typing import ClassVar, Literal
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -265,7 +265,7 @@ class AmbigStructuredSQLAgent:
         t0 = time.time()
 
         ambiguity_points = await self._disambiguate_async(task, db_connector)
-        
+
         finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
         all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
         infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
