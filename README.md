@@ -290,7 +290,11 @@ Contact: yanlin@megagon.ai
 - [x] langfuse
 - [x] User simulator - include_history
 - [x] ambig-structured
+- [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
+- [ ] Fix tool metrics
+- [ ] Make agent reusable across runs
 - [ ] Support Ambrosia
+- [ ] Metrics
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 
