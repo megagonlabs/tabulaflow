@@ -546,6 +546,33 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
         return _task_to_summary(self, eval_metrics)
 
 
+class PredAmbiguityPointFinite(BaseModel):
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
+    """A, B, C, etc."""
+    phrase: str
+    type: Literal["finite"] = "finite"
+    interpretations: list[str]
+    intended_interpretation_idx: int | None = None
+
+
+class PredAmbiguityPointInfinite(BaseModel):
+    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
+    """A, B, C, etc."""
+    phrase: str
+    type: Literal["infinite"] = "infinite"
+    parent_ambiguity_point_id: str | None = None
+    parameter_name: str
+    parameter_dtype: Literal["int", "float", "date"]
+    parameter_description: str
+    parameter_sample_operators: list[Literal["<", ">", "<=", ">="]]
+    parameter_sample_values: list[Any] | list[list[Any]]
+    intended_paramter_operator: Literal["<", ">", "<=", ">="] | None = None
+    intended_parameter_value: Any | None = None
+
+
+PredAmbiguityPoint = Annotated[Union[PredAmbiguityPointFinite, PredAmbiguityPointInfinite], Field(discriminator="type")]
+
+
 class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
     The model predicts a list of interpretations, the SQL for each interpretation, and the final disambiguated query
@@ -554,6 +581,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     output_type: Literal["ambig-flat"] = "ambig-flat"
     interpretations: list[str]
+    parameters: list[PredAmbiguityPointInfinite]
     pred_queries: Annotated[list[PredQuery], AfterValidator(is_id_unique)]
     pred_intended_query_id: str | None
     trajectory: Trajectory | list[Trajectory] | None = None
@@ -584,33 +612,6 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
-
-
-class PredAmbiguityPointFinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
-    """A, B, C, etc."""
-    phrase: str
-    type: Literal["finite"] = "finite"
-    interpretations: list[str]
-    intended_interpretation_idx: int | None = None
-
-
-class PredAmbiguityPointInfinite(BaseModel):
-    id: Annotated[str, StringConstraints(pattern=r"^[A-Z]+$")]
-    """A, B, C, etc."""
-    phrase: str
-    type: Literal["infinite"] = "infinite"
-    parent_ambiguity_point_id: str | None = None
-    parameter_name: str
-    parameter_dtype: Literal["int", "float", "date"]
-    parameter_description: str
-    parameter_sample_operators: list[Literal["<", ">", "<=", ">="]]
-    parameter_sample_values: list[Any] | list[list[Any]]
-    intended_paramter_operator: Literal["<", ">", "<=", ">="] | None = None
-    intended_parameter_value: Any | None = None
-
-
-PredAmbiguityPoint = Annotated[Union[PredAmbiguityPointFinite, PredAmbiguityPointInfinite], Field(discriminator="type")]
 
 
 class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
