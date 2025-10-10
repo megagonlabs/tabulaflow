@@ -256,6 +256,7 @@ class AmbigFlatSQLAgent:
         )
         return pred_queries[user_response.answer_index].id
 
+    @instrument
     async def predict_no_user_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
     ) -> FlatAmbigNL2QTaskOutput:

@@ -255,6 +255,7 @@ class AmbigStructuredSQLAgent:
         )
         return pred_intended_query_id
 
+    @instrument
     async def predict_no_user_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
     ) -> StructuredAmbigNL2QTaskOutput:
