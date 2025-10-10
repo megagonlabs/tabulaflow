@@ -94,9 +94,8 @@ class AmbigFlatSQLAgent:
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-        self._disamb_interpretations_result = None
-        self._disamb_parameters_result = None
-        self._generate_sql_results = []
+
+
         self._tools = []
         self._trajectories = []
         self._usage = Usage.create(llm=config.llm)
@@ -143,7 +142,6 @@ class AmbigFlatSQLAgent:
             ],
         )
         result = await disamb_interp_agent.run(f"List all interpretations: {task.question}")
-        self._disamb_interpretations_result = result
         self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-INTERP"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return result.output.interpretations
@@ -177,7 +175,6 @@ class AmbigFlatSQLAgent:
             ],
         )
         result = await disamb_param_agent.run(f"List all parameter ambiguity points: {task.question}")
-        self._disamb_parameters_result = result
         self._trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return [
@@ -222,7 +219,6 @@ class AmbigFlatSQLAgent:
         ]
         params = f"You can use any of the following parameters as placeholders in the query: {json.dumps(params)}"
         result = await sql_agent.run(f"{task.question} {interpretation}\n{params}")
-        self._generate_sql_results.append(result)
         pred_query: PredQuery = result.output
         pred_query.id = query_id
         self._trajectories.append(
