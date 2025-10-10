@@ -9,6 +9,7 @@ from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q
 from mintq.agenthub.sql_agent import SQLAgent, SQLAgentConfig
 from mintq.agenthub.ambig_simple import AmbigSimpleSQLAgent
 from mintq.agenthub.ambig_flat import AmbigFlatSQLAgent
+from mintq.agenthub.ambig_structured import AmbigStructuredSQLAgent
 
 __all__ = [
     "BaseSimpleSQLAgent",
@@ -20,5 +21,6 @@ __all__ = [
     "SQLAgentConfig",
     "AmbigSimpleSQLAgent",
     "AmbigFlatSQLAgent",
+    "AmbigStructuredSQLAgent",
     "agent_registry",
 ]
