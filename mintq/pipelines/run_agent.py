@@ -125,7 +125,9 @@ async def main_async() -> None:
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     if args.debug:
         if args.dataset == "arcs":
-            dataset.tasks = dataset.tasks[10:13]
+            # dataset.tasks = dataset.tasks[10:13]
+            qid = "059"
+            dataset.tasks = [task for task in dataset.tasks if task.qid == qid]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(

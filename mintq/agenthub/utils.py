@@ -4,9 +4,13 @@ from typing import Callable
 from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
+from dataclasses import dataclass, field
 from functools import wraps
 from mintq.schema import NL2QTask
 from mintq.config import config
+from mintq.db_connector import NL2QDBConnector
+from mintq.schema import Usage, Trajectory
+from mintq.toolhub import BaseTool
 
 
 def max_steps_processor(
@@ -55,3 +59,12 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
             return await predict_async_fn(self, task, *args, **kwargs)
 
     return wrapper
+
+
+@dataclass
+class TaskRunContext:
+    task: NL2QTask
+    db_connector: NL2QDBConnector
+    usage: Usage
+    tools: dict[str, BaseTool]
+    trajectories: list[Trajectory] = field(default_factory=list)
