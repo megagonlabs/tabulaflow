@@ -220,28 +220,16 @@ class AmbigStructuredSQLAgent:
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return pred_query
 
-    @instrument
-    async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
-    ) -> FlatAmbigNL2QTaskOutput:
-        t0 = time.time()
-
-        ambiguity_points = await self._disambiguate_async(task, db_connector)
-        finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
-        all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
-        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
-
-        pred_queries = await asyncio.gather(
-            *[
-                self._generate_sql_async(task, db_connector, finite_aps, indexes, infinite_aps)
-                for indexes in all_indexes
-            ]
-        )
-
+    async def _resolve_async(
+        self,
+        ambiguity_points: list[PredAmbiguityPoint],
+        pred_queries: list[PredQuery],
+        user_simulator: BaseUserSimulator,
+    ) -> str:
         for ap in ambiguity_points:
             if ap.type == "finite":
                 response = await user_simulator.ask_async(
-                    UserMultipleChoiceQuestion(question=task.question, options=ap.interpretations)
+                    UserMultipleChoiceQuestion(question=ap.phrase, options=ap.interpretations)
                 )
                 ap.intended_interpretation_idx = response.answer_index
             elif ap.type == "infinite":
@@ -256,6 +244,7 @@ class AmbigStructuredSQLAgent:
                 ap.intended_parameter_value = response.value
 
         # Fix the operator in the queries
+        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
         for pred_query in pred_queries:
             for ap in infinite_aps:
                 if ap.parameter_name in pred_query.parameter_names:
@@ -264,10 +253,33 @@ class AmbigStructuredSQLAgent:
                         original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
                     )
 
-        pred_intended_query_id = "PQRY" + "".join(f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in finite_aps)
+        pred_intended_query_id = "PQRY" + "".join(
+            f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points if ap.type == "finite"
+        )
+        return pred_intended_query_id
+
+    @instrument
+    async def predict_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
+    ) -> FlatAmbigNL2QTaskOutput:
+        t0 = time.time()
+
+        ambiguity_points = await self._disambiguate_async(task, db_connector)
+        
+        finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
+        all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
+        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
+
+        pred_queries = await asyncio.gather(
+            *[
+                self._generate_sql_async(task, db_connector, finite_aps, indexes, infinite_aps)
+                for indexes in all_indexes
+            ]
+        )
+
+        pred_intended_query_id = await self._resolve_async(ambiguity_points, pred_queries, user_simulator)
 
         self._trajectories.append(user_simulator.trajectory())
-
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in self._tools}  # type: ignore
