@@ -288,8 +288,8 @@ Contact: yanlin@megagon.ai
 - [x] Usage tracking
 - [x] Trajectory
 - [x] langfuse
-- [x] User simulator - message history?
-- [ ] ambig-structured
+- [x] User simulator - include_history
+- [x] ambig-structured
 - [ ] Support Ambrosia
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
