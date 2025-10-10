@@ -257,7 +257,7 @@ class AmbigStructuredSQLAgent:
 
         # Fix the operator in the queries
         for pred_query in pred_queries:
-            for ap in finite_aps:
+            for ap in infinite_aps:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
                     pred_query.query = pred_query.query.replace(
