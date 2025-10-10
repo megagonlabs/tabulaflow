@@ -93,7 +93,7 @@ async def main_async() -> None:
     parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
 
-    parser.add_argument("--batch_size", default=50, type=int)
+    parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--result_dir", default="output/nl2q_simple_zero_shot_gpt-4o/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
