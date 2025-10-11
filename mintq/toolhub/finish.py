@@ -28,16 +28,18 @@ class FinishTool:
                             query=query, parameter_names=list(parameters.keys()), parameter_values=parameters
                         )
         self._metrics.error_no_query_executed += 1
-        raise ValueError("No query has been executed, you cannot finish yet")
+        raise ValueError(
+            "No query has been executed, you need to call the `run_query` tool at least once before finishing"
+        )
 
     def as_pydantic_ai_tool(self) -> ToolOutput[PredQuery]:
         def finish(ctx: RunContext) -> PredQuery:
             trajectory = Trajectory.from_pydantic_ai_messages(ctx.messages)
             try:
                 return self(trajectory)
-            except ValueError:
+            except ValueError as e:
                 self._metrics.error_no_query_executed += 1
-                raise ModelRetry("No query has been executed, you cannot finish yet")
+                raise ModelRetry(e.message)
 
         finish.__doc__ = self.__call__.__doc__
         return ToolOutput(finish, name="finish")
