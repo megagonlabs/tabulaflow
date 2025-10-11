@@ -17,7 +17,6 @@ from mintq.schema import (
     PredAmbiguityPointInfinite,
 )
 from mintq.toolhub import (
-    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,

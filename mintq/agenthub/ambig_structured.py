@@ -20,7 +20,6 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
 )
 from mintq.toolhub import (
-    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
@@ -118,9 +117,7 @@ class AmbigStructuredSQLAgent:
             model_settings={"temperature": self.config.temperature},
         )
 
-    async def _disambiguate_async(
-        self, ctx: TaskRunContext
-    ) -> list[PredAmbiguityPoint]:
+    async def _disambiguate_async(self, ctx: TaskRunContext) -> list[PredAmbiguityPoint]:
         class LLMPredAmbiguityPointFinite(BaseModel):
             phrase: str
             interpretations: list[str]
@@ -257,10 +254,7 @@ class AmbigStructuredSQLAgent:
         infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
 
         pred_queries = await asyncio.gather(
-            *[
-                self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps)
-                for indexes in all_indexes
-            ]
+            *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
         )
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0

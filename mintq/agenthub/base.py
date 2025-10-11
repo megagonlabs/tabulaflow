@@ -1,10 +1,9 @@
-from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated, Any
+from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated
 import datetime
 from pydantic import BaseModel, Field
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
-    NL2QTask,
     SimpleNL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
@@ -12,7 +11,7 @@ from mintq.schema import (
     Usage,
     Trajectory,
 )
-from mintq.db_connector import BaseSQLDBConnector, NL2QDBConnector
+from mintq.db_connector import BaseSQLDBConnector
 from mintq.registry import Registry
 
 BaseAgentConfig: TypeAlias = BaseModel
@@ -90,5 +89,3 @@ NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent]
 
 
 agent_registry = Registry[NL2QAgent]("agent")
-
-
