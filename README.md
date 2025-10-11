@@ -291,9 +291,9 @@ Contact: yanlin@megagon.ai
 - [x] User simulator - include_history
 - [x] ambig-structured
 - [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
-- [ ] Fix tool metrics
-- [ ] Make agent reusable across runs
-- [ ] Refactor
+- [x] Fix tool metrics
+- [x] Make agent reusable across tasks using TaskRunContext
+- [x] Refactor
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
