@@ -5,6 +5,7 @@ import time
 from functools import reduce
 import datetime
 import asyncio
+import logging
 import litellm
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
@@ -98,6 +99,7 @@ async def main_async() -> None:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_litellm", action="store_true")
+    parser.add_argument("--log_level", default="INFO", type=str)
     args = parser.parse_args()
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="dev")
@@ -108,6 +110,8 @@ async def main_async() -> None:
     args = parser.parse_args()
     print(args)
     print()
+
+    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
     if args.debug_litellm:
         litellm._turn_on_debug()  # type: ignore
