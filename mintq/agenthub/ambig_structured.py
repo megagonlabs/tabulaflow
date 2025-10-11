@@ -203,12 +203,12 @@ class AmbigStructuredSQLAgent:
                 ap.intended_paramter_operator = response.operator
                 ap.intended_parameter_value = response.value
 
-            for pred_query in pred_queries:
-                if ap.parameter_name in pred_query.parameter_names:
-                    original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
-                    pred_query.query = pred_query.query.replace(
-                        original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
-                    )
+                for pred_query in pred_queries:
+                    if ap.parameter_name in pred_query.parameter_names:
+                        original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
+                        pred_query.query = pred_query.query.replace(
+                            original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
+                        )
 
         pred_intended_query_id = "PQRY" + "".join(
             f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points if ap.type == "finite"
