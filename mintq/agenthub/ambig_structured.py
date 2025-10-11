@@ -125,13 +125,13 @@ class AmbigStructuredSQLAgent:
         class LLMOutput(BaseModel):
             ambiguity_points: list[LLMPredAmbiguityPointFinite | LLMPredAmbiguityPointInfinite]
 
-        disamb_interp_agent = self._get_agent(
+        disamb_agent = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
             output_type=LLMOutput,
             tool_keys=["get_schema"],  # "get_column_description"
         )
-        result = await disamb_interp_agent.run(f"List all ambiguity points: {ctx.task.question}")
+        result = await disamb_agent.run(f"List all ambiguity points: {ctx.task.question}")
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
