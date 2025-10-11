@@ -106,7 +106,7 @@ class AmbigSimpleSQLAgent:
         metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
-        metrics["tools"] = {tool.name: tool.get_metrics().model_dump() for tool in all_tools}  # type: ignore
+        metrics["tools"] = {tool.name: tool.metrics().model_dump() for tool in all_tools}  # type: ignore
 
         return SimpleAmbigNL2QTaskOutput(
             **task.model_dump(),

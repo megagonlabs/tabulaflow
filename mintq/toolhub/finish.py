@@ -42,5 +42,5 @@ class FinishTool:
         finish.__doc__ = self.__call__.__doc__
         return ToolOutput(finish, name="finish")
 
-    def get_metrics(self) -> FinishToolMetrics:
+    def metrics(self) -> FinishToolMetrics:
         return self._metrics

@@ -92,5 +92,5 @@ class SearchKeywordsTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def get_metrics(self) -> SearchKeywordsToolMetrics:
+    def metrics(self) -> SearchKeywordsToolMetrics:
         return self._metrics

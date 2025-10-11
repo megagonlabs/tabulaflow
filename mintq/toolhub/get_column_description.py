@@ -65,5 +65,5 @@ class GetColumnDescriptionTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def get_metrics(self) -> GetColumnDescriptionToolMetrics:
+    def metrics(self) -> GetColumnDescriptionToolMetrics:
         return self._metrics

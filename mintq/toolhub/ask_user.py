@@ -30,5 +30,5 @@ class AskUserTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def get_metrics(self) -> AskUserToolMetrics:
+    def metrics(self) -> AskUserToolMetrics:
         return self._metrics

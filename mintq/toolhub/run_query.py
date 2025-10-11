@@ -48,5 +48,5 @@ class RunQueryTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def get_metrics(self) -> RunQueryToolMetrics:
+    def metrics(self) -> RunQueryToolMetrics:
         return self._metrics
