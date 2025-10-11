@@ -36,16 +36,16 @@ class RunQueryTool:
                 return f"(query timed out after {self.timeout} seconds)"
             else:
                 self._metrics.error_query_failed += 1
-                return f"(query failed: {exec_result.error})"
+                return f"(query failed: {exec_result.error.message})"
 
         df = exec_result.df
         if df.empty:
-            return "(Warning: query executed successfully, but results are empty, the query might be incorrect)"
+            return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=5)
 
         if df.isnull().all().any():
-            res += "\n(Warning: a column is entirely null, the query might be incorrect)"
+            res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:
