@@ -36,6 +36,9 @@ DISAMBIGUATION_PROMPT = """
 You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
 Given an ambiguous question, you need to output the list of all ambiguity points in the question.
 
+- For phrases where the number of interpretations is finite, put them in the `finite_ambiguity_points` field.
+  - Do not add number index prefixes to the interpretations.
+- For phrases with threshold-like ambiguities (e.g. "tall", "young", etc.), put them in the `parameter_ambiguity_points` field.
 === START OF EXAMPLE ===
 Database Schema:
     CREATE TABLE student (
@@ -45,21 +48,26 @@ Database Schema:
         city: TEXT,
         state: TEXT,
     );
-Question: List all students with from NY.
-Ambiguity Points:
-[
+Question: List all students with high GPA from NY.
+Output:
 {
-    "phrase": "high GPA",
-    "name": "gpa_threshold",
-    "value_dtype": "float",
-    "value_operator_options": [">", ">="],
-},
-{
-    "phrase": "NY",
-    "interpretations": [
+  "finite_ambiguity_points": [
+    {
+      "phrase": "NY",
+      "interpretations": [
         "New York City",
-        "New York State",
-    ]
+        "New York State"
+      ]
+    }
+  ],
+  "parameter_ambiguity_points": [
+    { 
+      "phrase": "high GPA",
+      "name": "gpa_threshold",
+      "value_dtype": "float",
+      "value_operator_options": [">", ">="]
+    }
+  ]
 }
 === END OF EXAMPLE ===
 """.strip()
@@ -123,7 +131,8 @@ class AmbigStructuredSQLAgent:
             parameter_sample_values: list[int | float | str]
 
         class LLMOutput(BaseModel):
-            ambiguity_points: list[LLMPredAmbiguityPointFinite | LLMPredAmbiguityPointInfinite]
+            finite_ambiguity_points: list[LLMPredAmbiguityPointFinite]
+            parameter_ambiguity_points: list[LLMPredAmbiguityPointInfinite]
 
         disamb_agent = self._get_agent(
             ctx,
@@ -135,12 +144,13 @@ class AmbigStructuredSQLAgent:
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
-        res = []
-        for i, ap in enumerate(result.output.ambiguity_points):
-            if isinstance(ap, LLMPredAmbiguityPointFinite):
-                res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(i)))
-            elif isinstance(ap, LLMPredAmbiguityPointInfinite):
-                res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i)))
+        res = [
+            PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(i))
+            for i, ap in enumerate(result.output.finite_ambiguity_points)
+        ] + [
+            PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i))
+            for i, ap in enumerate(result.output.parameter_ambiguity_points)
+        ]
         return res
 
     async def _generate_sql_async(
