@@ -210,11 +210,8 @@ class AmbigStructuredSQLAgent:
                 )
                 ap.intended_paramter_operator = response.operator
                 ap.intended_parameter_value = response.value
-
-        # Fix the operator in the queries
-        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
-        for pred_query in pred_queries:
-            for ap in infinite_aps:
+                
+            for pred_query in pred_queries:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
                     pred_query.query = pred_query.query.replace(
