@@ -144,13 +144,11 @@ class AmbigStructuredSQLAgent:
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
-        res = [
-            PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(i))
-            for i, ap in enumerate(result.output.finite_ambiguity_points)
-        ] + [
-            PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(i))
-            for i, ap in enumerate(result.output.parameter_ambiguity_points)
-        ]
+        res = []
+        for ap in result.output.finite_ambiguity_points:
+            res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(len(res))))
+        for ap in result.output.parameter_ambiguity_points:
+            res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(len(res))))
         return res
 
     async def _generate_sql_async(
