@@ -7,6 +7,7 @@ from mintq.toolhub.utils import equals_ci
 
 
 class ListColumnsToolMetrics(BaseModel):
+    num_calls: int = 0
     error_table_not_found: int = 0
 
 
@@ -26,6 +27,7 @@ class ListColumnsTool:
             schema_name: The name of the schema to which the table belongs, or None if schema is not applicable.
             table_name: The name of the table to list the columns of.
         """
+        self._metrics.num_calls += 1
         # If there is only a single schema, use it regardless of what the agent specified
         all_schema_names = [t.schema_name for t in self.schema.tables]
         if len(set(all_schema_names)) == 1:

@@ -6,6 +6,7 @@ from mintq.toolhub.utils import format_df
 
 
 class RunQueryToolMetrics(BaseModel):
+    num_calls: int = 0
     error_timeout: int = 0
     error_query_failed: int = 0
 
@@ -26,6 +27,7 @@ class RunQueryTool:
             query: The SQL query to execute.
             parameters: The parameters to use in the query.
         """
+        self._metrics.num_calls += 1
         db_connector = self.db_connector
         exec_result = await db_connector.run_query_async(query, parameters, timeout=self.timeout)
         if exec_result.df is None:

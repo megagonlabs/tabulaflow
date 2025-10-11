@@ -5,6 +5,7 @@ from mintq.schema import Trajectory, PredQuery
 
 
 class FinishToolMetrics(BaseModel):
+    num_calls: int = 0
     error_no_query_executed: int = 0
 
 
@@ -18,6 +19,8 @@ class FinishTool:
         """
         Finish the task. The last executed query will be considered as the final answer. No parameters needed.
         """
+        self._metrics.num_calls += 1
+
         for msg in trajectory.messages[::-1]:
             if msg.role == "assistant":
                 for tool_call in msg.tool_calls[::-1]:

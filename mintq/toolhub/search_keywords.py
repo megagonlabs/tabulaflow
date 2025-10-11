@@ -9,6 +9,7 @@ from mintq.toolhub.utils import equals_ci
 
 
 class SearchKeywordsToolMetrics(BaseModel):
+    num_calls: int = 0
     error_table_not_found: int = 0
     error_column_not_found: int = 0
     error_column_not_string: int = 0
@@ -31,6 +32,7 @@ class SearchKeywordsTool:
             column_name: The name of the column to search in. The datatype of the column must be text-like.
             keywords: A list of keywords to search for. A value is considered a match if it contains any of the keywords.
         """
+        self._metrics.num_calls += 1
         db_connector = self.db_connector
 
         # If there is only a single schema, use it regardless of what the agent specified

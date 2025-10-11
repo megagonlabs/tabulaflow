@@ -6,7 +6,7 @@ from mintq.schema import SQLSchema
 
 
 class GetSchemaToolMetrics(BaseModel):
-    pass
+    num_calls: int = 0
 
 
 class GetSchemaTool:
@@ -21,6 +21,7 @@ class GetSchemaTool:
         """
         Get the schema of the database.
         """
+        self._metrics.num_calls += 1
         return self.formatter.format(self.schema)
 
     def as_pydantic_ai_tool(self) -> Tool:

@@ -5,6 +5,7 @@ from mintq.agenthub.base import BaseUserSimulator, UserFreeTextQuestion
 
 
 class AskUserToolMetrics(BaseModel):
+    num_calls: int = 0
     user_refused_to_answer: int = 0
 
 
@@ -22,6 +23,8 @@ class AskUserTool:
         Args:
             question: The question to ask the user.
         """
+        self._metrics.num_calls += 1
+
         response = await self.user_simulator.ask_async(UserFreeTextQuestion(question=question))
         if "cannot answer" in response.answer_text.lower():
             self._metrics.user_refused_to_answer += 1

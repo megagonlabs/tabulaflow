@@ -6,6 +6,7 @@ from mintq.toolhub.utils import equals_ci
 
 
 class GetColumnDescriptionToolMetrics(BaseModel):
+    num_calls: int = 0
     error_table_not_found: int = 0
     error_column_not_found: int = 0
 
@@ -26,6 +27,8 @@ class GetColumnDescriptionTool:
             table_name: The name of the table.
             column_name: The name of the column.
         """
+        self._metrics.num_calls += 1
+
         # If there is only a single schema, use it regardless of what the agent specified
         all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
         if len(set(all_schema_names)) == 1:
