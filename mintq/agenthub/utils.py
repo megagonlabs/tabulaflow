@@ -6,6 +6,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from dataclasses import dataclass, field
 from functools import wraps
+from pydantic import BaseModel
 from mintq.schema import NL2QTask
 from mintq.config import config
 from mintq.db_connector import NL2QDBConnector
@@ -68,3 +69,11 @@ class TaskRunContext:
     usage: Usage
     tools: dict[str, BaseTool]
     trajectories: list[Trajectory] = field(default_factory=list)
+
+
+class BasicAgentConfig(BaseModel):
+    llm: str
+    schema_formatter: str
+    compress_schema: bool = True
+    temperature: float = 0.0
+    max_steps: int = 10

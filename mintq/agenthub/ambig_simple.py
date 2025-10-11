@@ -15,7 +15,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
-from mintq.agenthub.utils import get_max_steps_processor, instrument
+from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
@@ -29,28 +29,21 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 """.strip()
 
 
-class AmbigSimpleSQLAgentConfig(BaseModel):
-    llm: str
-    schema_formatter: str
-    compress_schema: bool = True
-    temperature: float = 0.0
-    max_steps: int = 10
-
 
 @agent_registry.register
 class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
-    config_cls: ClassVar = AmbigSimpleSQLAgentConfig
+    config_cls: ClassVar = BasicAgentConfig
 
     def __init__(
         self,
-        config: AmbigSimpleSQLAgentConfig,
+        config: BasicAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
+    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigSimpleSQLAgent":
         return cls(config)
 
     @instrument

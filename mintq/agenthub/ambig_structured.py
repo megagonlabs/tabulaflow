@@ -27,7 +27,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
-from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext
+from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
 
@@ -77,28 +77,20 @@ You are a helpful AI database expert that can translate natural language questio
 """.strip()
 
 
-class AmbigStructuredSQLAgentConfig(BaseModel):
-    llm: str
-    schema_formatter: str
-    compress_schema: bool = True
-    temperature: float = 0.0
-    max_steps: int = 10
-
-
 @agent_registry.register
 class AmbigStructuredSQLAgent:
     name: ClassVar = "ambig_structured_sql_agent"
-    config_cls: ClassVar = AmbigStructuredSQLAgentConfig
+    config_cls: ClassVar = BasicAgentConfig
 
     def __init__(
         self,
-        config: AmbigStructuredSQLAgentConfig,
+        config: BasicAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: AmbigStructuredSQLAgentConfig) -> "AmbigStructuredSQLAgent":
+    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigStructuredSQLAgent":
         return cls(config)
 
     def _get_agent(
@@ -210,7 +202,7 @@ class AmbigStructuredSQLAgent:
                 )
                 ap.intended_paramter_operator = response.operator
                 ap.intended_parameter_value = response.value
-                
+
             for pred_query in pred_queries:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"

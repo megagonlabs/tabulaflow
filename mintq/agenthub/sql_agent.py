@@ -18,7 +18,7 @@ from mintq.toolhub import (
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry
-from mintq.agenthub.utils import get_max_steps_processor, instrument
+from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 
 
 SYSTEM_PROMPT = """
@@ -36,25 +36,17 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 """.strip()
 
 
-class SQLAgentConfig(BaseModel):
-    llm: str
-    schema_formatter: str
-    compress_schema: bool = True
-    temperature: float = 0.0
-    max_steps: int = 20
-
-
 @agent_registry.register
 class SQLAgent:
     name: ClassVar = "sql_agent"
-    config_cls: ClassVar = SQLAgentConfig
+    config_cls: ClassVar = BasicAgentConfig
 
-    def __init__(self, config: SQLAgentConfig):
+    def __init__(self, config: BasicAgentConfig):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
+    async def from_config_async(cls, config: BasicAgentConfig) -> "SQLAgent":
         return cls(config)
 
     @instrument
@@ -87,7 +79,6 @@ class SQLAgent:
         agent_no_tools = Agent(model=self.config.llm, instructions=system_prompt)
 
         prompt = f"{task.question} {task.evidence}"
-
 
         fallback = False
         try:

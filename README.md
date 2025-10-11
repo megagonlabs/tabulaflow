@@ -293,6 +293,7 @@ Contact: yanlin@megagon.ai
 - [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
 - [ ] Fix tool metrics
 - [ ] Make agent reusable across runs
+- [ ] Refactor
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing

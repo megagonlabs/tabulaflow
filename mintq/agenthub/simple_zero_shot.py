@@ -21,7 +21,7 @@ from mintq.schema import (
     Usage,
 )
 from mintq.agenthub.base import agent_registry
-from mintq.agenthub.utils import instrument
+from mintq.agenthub.utils import instrument, BasicAgentConfig
 
 SYSTEM_PROMPT = """
 You are a database expert responsible for translating natural language questions into {{language}} queries.
@@ -57,11 +57,7 @@ SCHEMA_MAX_CHARS = 128000
 logger = logging.getLogger(__name__)
 
 
-class SimpleZeroShotNL2QConfig(BaseModel):
-    llm: str
-    schema_formatter: str
-    compress_schema: bool = True
-    temperature: float = 0.0
+class SimpleZeroShotNL2QConfig(BasicAgentConfig):
     num_candidates: int = 1
     litellm_kwargs: dict[str, Any] = {}
 

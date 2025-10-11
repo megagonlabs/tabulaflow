@@ -29,7 +29,7 @@ from mintq.agenthub.base import (
     UserMultipleChoiceQuestion,
     UserValueQuestion,
 )
-from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext
+from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
 
@@ -77,28 +77,20 @@ You are a helpful AI database expert that can translate natural language questio
 """.strip()
 
 
-class AmbigFlatSQLAgentConfig(BaseModel):
-    llm: str
-    schema_formatter: str
-    compress_schema: bool = True
-    temperature: float = 0.0
-    max_steps: int = 10
-
-
 @agent_registry.register
 class AmbigFlatSQLAgent:
     name: ClassVar = "ambig_flat_sql_agent"
-    config_cls: ClassVar = AmbigFlatSQLAgentConfig
+    config_cls: ClassVar = BasicAgentConfig
 
     def __init__(
         self,
-        config: AmbigFlatSQLAgentConfig,
+        config: BasicAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: AmbigFlatSQLAgentConfig) -> "AmbigFlatSQLAgent":
+    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigFlatSQLAgent":
         return cls(config)
 
     def _get_agent(
