@@ -1,4 +1,3 @@
-from dataclasses import dataclass
 import jinja2
 import time
 from typing import ClassVar
@@ -18,13 +17,6 @@ from mintq.toolhub import (
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
 from mintq.agenthub.utils import get_max_steps_processor, instrument
 from mintq.metadata_synthesizers import SchemaCompressor
-
-
-@dataclass
-class TaskContext:
-    task: AmbigNL2QTask
-    db_connector: BaseSQLDBConnector
-    max_steps: int
 
 
 SYSTEM_PROMPT = """
@@ -67,38 +59,30 @@ class AmbigSimpleSQLAgent:
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 
-        all_tools = [
-            GetSchemaTool(
+        tools = {
+            "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
                 else db_connector.schema,
                 self.formatter,
             ),
-            GetColumnDescriptionTool(db_connector),
-            AskUserTool(user_simulator),
-            SearchKeywordsTool(db_connector),
-            RunQueryTool(db_connector),
-            FinishTool(),
-        ]
+            "get_column_description": GetColumnDescriptionTool(db_connector),
+            "ask_user": AskUserTool(user_simulator),
+            "search_keywords": SearchKeywordsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
+            "finish": FinishTool(),
+        }
 
-        agent = Agent[
-            TaskContext, str
-        ](  # type: ignore
+        agent = Agent[None, PredQuery](
             model=self.config.llm,
-            tools=[tool.as_pydantic_ai_tool() for tool in all_tools[:-1]],
-            deps_type=TaskContext,
-            output_type=all_tools[-1].as_pydantic_ai_tool(),
+            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
+            output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings={"temperature": self.config.temperature},
         )
 
-        deps = TaskContext(
-            task=task,
-            db_connector=db_connector,
-            max_steps=self.config.max_steps,
-        )
-
-        result = await agent.run(task.question, deps=deps, model_settings={"temperature": self.config.temperature})
+        result = await agent.run(task.question)
         pred_query: PredQuery = result.output
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
@@ -106,7 +90,7 @@ class AmbigSimpleSQLAgent:
         metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
-        metrics["tools"] = {tool.name: tool.metrics().model_dump() for tool in all_tools}  # type: ignore
+        metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in tools.items()}  # type: ignore
 
         return SimpleAmbigNL2QTaskOutput(
             **task.model_dump(),
