@@ -569,7 +569,7 @@ class PredAmbiguityPointInfinite(BaseModel):
     type: Literal["infinite"] = "infinite"
     parent_ambiguity_point_id: str | None = None
     parameter_name: str
-    parameter_dtype: Literal["int", "float", "date"]
+    parameter_dtype: Literal["int", "float", "str"]
     parameter_description: str
     parameter_sample_operators: list[Literal["<", ">", "<=", ">="]]
     parameter_sample_values: list[Any] | list[list[Any]]

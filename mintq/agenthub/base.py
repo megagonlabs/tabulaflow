@@ -41,7 +41,7 @@ class UserMultipleChoiceQuestion(BaseModel):
 class UserValueQuestion(BaseModel):
     type: Literal["value"] = "value"
     question: str
-    value_dtype: Literal["int", "float", "date"]
+    value_dtype: Literal["int", "float", "str"]
     value_operator_options: list[Literal["<", ">", "<=", ">="]]
 
 
@@ -56,7 +56,7 @@ class UserMultipleChoiceAnswer(BaseModel):
 class UserValueAnswer(BaseModel):
     type: Literal["value"] = "value"
     operator: Literal["<", ">", "<=", ">="]
-    value: int | float | datetime.date
+    value: int | float | str
 
 
 UserQuestion: TypeAlias = Annotated[

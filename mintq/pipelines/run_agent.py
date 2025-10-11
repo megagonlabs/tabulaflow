@@ -126,7 +126,7 @@ async def main_async() -> None:
     if args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
-            dataset.tasks = [task for task in dataset.tasks if task.qid == "080"]
+            dataset.tasks = [task for task in dataset.tasks if task.qid == "094"]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(
