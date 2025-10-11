@@ -426,7 +426,7 @@ class GoldAmbiguityPointInfinite(BaseModel):
     ambiguity_type: ARCSAmbiguityType
     parent_ambiguity_point_id: str | None = None
     parameter_name: str
-    parameter_operator: Literal["<", ">", "<=", ">="]
+    parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     parameter_sample_values: list[Any] | list[list[Any]]
     """list[list[Any]] only allowed when `parent_ambiguity_point_id` is not None"""
     indended_parameter_value: Any | None
@@ -571,9 +571,9 @@ class PredAmbiguityPointInfinite(BaseModel):
     parameter_name: str
     parameter_dtype: Literal["int", "float", "str"]
     parameter_description: str
-    parameter_sample_operators: list[Literal["<", ">", "<=", ">="]]
+    parameter_sample_operators: list[Literal["<", ">", "<=", ">=", "=", "<>"]]
     parameter_sample_values: list[Any] | list[list[Any]]
-    intended_paramter_operator: Literal["<", ">", "<=", ">="] | None = None
+    intended_paramter_operator: Literal["<", ">", "<=", ">=", "=", "<>"] | None = None
     intended_parameter_value: Any | None = None
 
 

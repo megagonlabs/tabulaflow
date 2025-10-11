@@ -42,7 +42,7 @@ class UserValueQuestion(BaseModel):
     type: Literal["value"] = "value"
     question: str
     value_dtype: Literal["int", "float", "str"]
-    value_operator_options: list[Literal["<", ">", "<=", ">="]]
+    value_operator_options: list[Literal["<", ">", "<=", ">=", "=", "<>"]]
 
 
 class UserFreeTextAnswer(BaseModel):
@@ -55,7 +55,7 @@ class UserMultipleChoiceAnswer(BaseModel):
 
 class UserValueAnswer(BaseModel):
     type: Literal["value"] = "value"
-    operator: Literal["<", ">", "<=", ">="]
+    operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     value: int | float | str
 
 
