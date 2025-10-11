@@ -39,7 +39,7 @@ class FinishTool:
                 return self(trajectory)
             except ValueError as e:
                 self._metrics.error_no_query_executed += 1
-                raise ModelRetry(e.message)
+                raise ModelRetry(str(e))
 
         finish.__doc__ = self.__call__.__doc__
         return ToolOutput(finish, name="finish")
