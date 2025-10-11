@@ -171,7 +171,7 @@ class AmbigFlatSQLAgent:
             }
             for ap in params
         ]
-        params = f"You can use any of the following parameters as placeholders in the query: {json.dumps(params, default=str)}"
+        params = f"You can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params}")
         pred_query: PredQuery = result.output
         pred_query.id = query_id

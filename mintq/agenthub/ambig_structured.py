@@ -169,7 +169,7 @@ class AmbigStructuredSQLAgent:
             }
             for ap in infinite_aps
         ]
-        prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2)}"
+        prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
         pred_query: PredQuery = result.output
