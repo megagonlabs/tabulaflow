@@ -13,8 +13,9 @@ class RunQueryToolMetrics(BaseModel):
 class RunQueryTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 60):
         self.db_connector = db_connector
+        self.timeout = timeout
         self._metrics = RunQueryToolMetrics()
 
     async def __call__(self, query: str, parameters: dict[str, Any] = {}) -> str:
@@ -26,11 +27,11 @@ class RunQueryTool:
             parameters: The parameters to use in the query.
         """
         db_connector = self.db_connector
-        exec_result = await db_connector.run_query_async(query, parameters, timeout=30)
+        exec_result = await db_connector.run_query_async(query, parameters, timeout=self.timeout)
         if exec_result.df is None:
             if exec_result.error.exc_type == "TimeoutError":  # type: ignore
                 self._metrics.error_timeout += 1
-                return "(query timed out after 30 seconds)"
+                return f"(query timed out after {self.timeout} seconds)"
             else:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {exec_result.error})"
