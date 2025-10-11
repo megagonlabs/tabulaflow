@@ -1,7 +1,6 @@
 import jinja2
 import time
 from typing import ClassVar
-from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -27,7 +26,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
 - Adhere strictly to the given database schema when constructing queries.
 """.strip()
-
 
 
 @agent_registry.register

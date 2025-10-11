@@ -1,9 +1,7 @@
-from dataclasses import dataclass
 import jinja2
 import time
 from typing import ClassVar
-from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext
+from pydantic_ai import Agent
 from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory

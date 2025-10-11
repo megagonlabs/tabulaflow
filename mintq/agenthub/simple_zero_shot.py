@@ -5,7 +5,6 @@ import jinja2
 import logging
 import asyncio
 from typing import Any, ClassVar
-from pydantic import BaseModel
 from mintq.utils import extract_code
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.formatters import formatter_registry
