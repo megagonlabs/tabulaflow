@@ -80,6 +80,8 @@ You are a helpful AI database expert that can translate natural language questio
 @agent_registry.register
 class AmbigFlatSQLAgent:
     name: ClassVar = "ambig_flat_sql_agent"
+    task_type: ClassVar = "ambig"
+    output_type: ClassVar = "ambig-flat"
     config_cls: ClassVar = BasicAgentConfig
 
     def __init__(

@@ -19,6 +19,8 @@ BaseAgentConfig: TypeAlias = BaseModel
 
 class BaseSimpleSQLAgent(Protocol):
     name: ClassVar[str]
+    task_type: ClassVar[Literal["simple"]]
+    output_type: ClassVar[Literal["simple"]]
     config_cls: ClassVar[Type[BaseAgentConfig]]
 
     @classmethod
@@ -75,6 +77,8 @@ class BaseUserSimulator(Protocol):
 
 class BaseAmbigSQLAgent(Protocol):
     name: ClassVar[str]
+    task_type: ClassVar[Literal["ambig"]]
+    output_type: ClassVar[Literal["ambig-simple", "ambig-flat", "ambig-structured"]]
     config_cls: ClassVar[Type[BaseAgentConfig]]
 
     @classmethod

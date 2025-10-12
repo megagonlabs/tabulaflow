@@ -88,6 +88,8 @@ You are a helpful AI database expert that can translate natural language questio
 @agent_registry.register
 class AmbigStructuredSQLAgent:
     name: ClassVar = "ambig_structured_sql_agent"
+    task_type: ClassVar = "ambig"
+    output_type: ClassVar = "ambig-structured"
     config_cls: ClassVar = BasicAgentConfig
 
     def __init__(

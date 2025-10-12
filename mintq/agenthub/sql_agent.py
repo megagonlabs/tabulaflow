@@ -37,6 +37,8 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 @agent_registry.register
 class SQLAgent:
     name: ClassVar = "sql_agent"
+    task_type: ClassVar = "simple"
+    output_type: ClassVar = "simple"
     config_cls: ClassVar = BasicAgentConfig
 
     def __init__(self, config: BasicAgentConfig):

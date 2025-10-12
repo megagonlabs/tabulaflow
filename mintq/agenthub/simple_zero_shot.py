@@ -64,6 +64,8 @@ class SimpleZeroShotNL2QConfig(BasicAgentConfig):
 @agent_registry.register
 class SimpleZeroShotNL2Q:
     name: ClassVar = "simple_zero_shot"
+    task_type: ClassVar = "simple"
+    output_type: ClassVar = "simple"
     config_cls: ClassVar = SimpleZeroShotNL2QConfig
 
     def __init__(

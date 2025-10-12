@@ -32,6 +32,8 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 @agent_registry.register
 class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
+    task_type: ClassVar = "ambig"
+    output_type: ClassVar = "ambig-simple"
     config_cls: ClassVar = BasicAgentConfig
 
     def __init__(
