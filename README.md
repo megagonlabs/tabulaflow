@@ -294,6 +294,8 @@ Contact: yanlin@megagon.ai
 - [x] Fix tool metrics
 - [x] Make agent reusable across tasks using TaskRunContext
 - [x] Refactor
+- [x] Allow empty pred_query on exception
+- [ ] Rate limiting and maximum concurrency for LLM requests
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
