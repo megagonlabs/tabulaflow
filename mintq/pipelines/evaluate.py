@@ -38,6 +38,7 @@ async def main_async() -> None:
             "executable",
             "gold_executable",
             "gold_result_not_empty",
+            "pred_success",
         ],
     )
     args = parser.parse_args()
