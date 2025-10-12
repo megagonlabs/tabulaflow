@@ -39,7 +39,7 @@ class BirdSQLExSoft:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
 
-        if pred_query is None: 
+        if pred_query is None:
             return 0.0
 
         if pred_query.exec_result.df is None or gold_query.exec_result.df is None:
