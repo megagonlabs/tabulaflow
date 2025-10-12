@@ -77,6 +77,9 @@ async def run_agent_async(
                 for tr in trajectory:
                     print(tr.to_readable())  # type: ignore
 
+    usages = [t.usage for t in task_outputs if t.usage is not None]
+    user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.user_simulator_usage is not None]
+
     end_time = datetime.datetime.now()
     return NL2QRunResult(
         start_time=start_time,
@@ -87,12 +90,8 @@ async def run_agent_async(
         databases=dataset.databases,
         agent=agent_cls.name,
         agent_config=agent_config.model_dump(),
-        total_usage=reduce(lambda x, y: x + y, [task.usage for task in task_outputs])
-        if getattr(task_outputs[0], "usage", None)
-        else None,
-        total_user_simulator_usage=reduce(lambda x, y: x + y, [task.user_simulator_usage for task in task_outputs])
-        if getattr(task_outputs[0], "user_simulator_usage", None)
-        else None,
+        total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
+        total_user_simulator_usage=reduce(lambda x, y: x + y, user_simulator_usages) if user_simulator_usages else None,
         aggregated_inference_metrics=aggregate_metrics(
             [task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4
         ),
