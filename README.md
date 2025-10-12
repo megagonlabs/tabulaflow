@@ -290,11 +290,12 @@ Contact: yanlin@megagon.ai
 - [x] langfuse
 - [x] User simulator - include_history
 - [x] ambig-structured
-- [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
 - [x] Fix tool metrics
 - [x] Make agent reusable across tasks using TaskRunContext
 - [x] Refactor
 - [x] Allow empty pred_query on exception
+- [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
+- [ ] Fix run_query timeout 
 - [ ] Rate limiting and maximum concurrency for LLM requests
 - [ ] Support Ambrosia
 - [ ] Metrics
