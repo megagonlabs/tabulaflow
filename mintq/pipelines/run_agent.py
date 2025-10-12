@@ -12,7 +12,31 @@ from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
-from mintq.schema import NL2QDataset, NL2QRunResult
+from mintq.schema import (
+    NL2QDataset,
+    NL2QRunResult,
+    NL2QTask,
+    NL2QTaskOutput,
+    SimpleNL2QTaskOutput,
+    SimpleAmbigNL2QTaskOutput,
+    FlatAmbigNL2QTaskOutput,
+    StructuredAmbigNL2QTaskOutput,
+)
+
+
+def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutput:
+    if agent_cls.output_type == "simple":
+        return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=None)
+    elif agent_cls.output_type == "ambig-simple":
+        return SimpleAmbigNL2QTaskOutput(**task.model_dump(), pred_intended_query=None)
+    elif agent_cls.output_type == "ambig-flat":
+        return FlatAmbigNL2QTaskOutput(
+            **task.model_dump(), interpretations=[], parameters=[], pred_queries=[], pred_intended_query_id=None
+        )
+    elif agent_cls.output_type == "ambig-structured":
+        return StructuredAmbigNL2QTaskOutput(
+            **task.model_dump(), pred_ambiguity_points=[], pred_queries=[], pred_intended_query_id=None
+        )
 
 
 async def run_agent_async(
@@ -32,12 +56,18 @@ async def run_agent_async(
                 batch_kwargs.append({})
 
         agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])
-        task_outputs += await asyncio.gather(
+        batch_outputs = await asyncio.gather(
             *[
                 agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)
-            ]
+            ],
+            return_exceptions=True,
         )
+        for task, output in zip(batch, batch_outputs):
+            if isinstance(output, Exception):
+                task_outputs.append(get_empty_output(agent_cls, task))
+            else:
+                task_outputs.append(output)
 
         if i == 0:
             if getattr(task_outputs[0], "trajectory", None):
@@ -130,7 +160,7 @@ async def main_async() -> None:
     if args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
-            dataset.tasks = [task for task in dataset.tasks if task.qid == "006"]
+            dataset.tasks = [task for task in dataset.tasks if task.qid == "079"]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(

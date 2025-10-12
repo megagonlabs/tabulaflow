@@ -369,7 +369,7 @@ class SimpleNL2QTask(BaseModel):
 
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
-    pred_query: PredQuery
+    pred_query: PredQuery | None
     trajectory: Trajectory | list[Trajectory] | None = None
     usage: Usage | None = None
     inference_metrics: dict[str, Any] = Field(default_factory=dict)
@@ -534,7 +534,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     """
 
     output_type: Literal["ambig-simple"] = "ambig-simple"
-    pred_intended_query: PredQuery
+    pred_intended_query: PredQuery | None
     trajectory: Trajectory | list[Trajectory] | None = None
     usage: Usage | None = None
     user_simulator_usage: Usage | None = None
