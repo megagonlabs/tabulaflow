@@ -10,5 +10,4 @@ class GoldExecutable:
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         gold_query = get_final_gold_query(task)
-
         return float(gold_query.exec_result.df is not None)

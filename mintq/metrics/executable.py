@@ -10,4 +10,7 @@ class Executable:
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)
+        if pred_query is None:
+            return 0.0
+
         return float(pred_query.exec_result.df is not None)

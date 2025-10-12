@@ -86,6 +86,9 @@ class Spider2Ex:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
 
+        if pred_query is None:
+            return 0.0
+
         if pred_query.exec_result.df is None:
             return 0.0
 

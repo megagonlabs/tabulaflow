@@ -9,14 +9,16 @@ def get_final_gold_query(task: NL2QTaskOutput, check_exec_result: bool = True) -
     else:
         raise ValueError(f"Task type is not supported: {task.task_type}")
 
+    if res is not None and check_exec_result and res.exec_result is None:
+        raise ValueError("Gold query has no exec result")
+
     if res is None:
         raise ValueError("Gold query is None")
-    if check_exec_result and res.exec_result is None:
-        raise ValueError("Gold query has no exec result")
+
     return res
 
 
-def get_final_pred_query(task: NL2QTaskOutput, check_exec_result: bool = True) -> PredQuery:
+def get_final_pred_query(task: NL2QTaskOutput, check_exec_result: bool = True) -> PredQuery | None:
     if task.task_type == "simple":
         res = task.pred_query
     elif task.task_type == "ambig":
@@ -24,8 +26,7 @@ def get_final_pred_query(task: NL2QTaskOutput, check_exec_result: bool = True) -
     else:
         raise ValueError(f"Task type is not supported: {task.task_type}")
 
-    if res is None:
-        raise ValueError("Pred query is None")
-    if check_exec_result and res.exec_result is None:
+    if res is not None and check_exec_result and res.exec_result is None:
         raise ValueError("Pred query has no exec result")
+
     return res

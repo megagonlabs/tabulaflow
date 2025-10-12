@@ -11,7 +11,12 @@ class BirdSQLEx:
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
+        
+        # The agent failed to generate a query
+        if pred_query is None:
+            return 0.0
 
+        # The generated query is not executable
         if pred_query.exec_result.df is None or gold_query.exec_result.df is None:
             return 0.0
 
