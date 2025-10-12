@@ -651,6 +651,10 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         pattern = r"^PQRY(-[A-Z]+\.[0-9]+)*$"
         assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
 
+        if not self.pred_ambiguity_points:
+            assert not self.pred_queries
+            return self
+
         finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
         required_ids = [
             "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
