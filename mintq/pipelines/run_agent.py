@@ -77,10 +77,11 @@ async def run_agent_async(
                 for tr in trajectory:
                     print(tr.to_readable())  # type: ignore
 
+    end_time = datetime.datetime.now()
+
     usages = [t.usage for t in task_outputs if t.usage is not None]
     user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.user_simulator_usage is not None]
-
-    end_time = datetime.datetime.now()
+    
     return NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
@@ -93,7 +94,7 @@ async def run_agent_async(
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
         total_user_simulator_usage=reduce(lambda x, y: x + y, user_simulator_usages) if user_simulator_usages else None,
         aggregated_inference_metrics=aggregate_metrics(
-            [task.inference_metrics for task in task_outputs], ops=["avg", "sum", "max"], decimals=4
+            [task.inference_metrics for task in task_outputs if task.inference_metrics], ops=["avg", "sum", "max"], decimals=4
         ),
         tasks=task_outputs,
     )
@@ -159,7 +160,7 @@ async def main_async() -> None:
     if args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
-            dataset.tasks = [task for task in dataset.tasks if task.qid == "079"]
+            dataset.tasks = [task for task in dataset.tasks if task.qid in ["001", "002"]]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(
