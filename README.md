@@ -294,7 +294,10 @@ Contact: yanlin@megagon.ai
 - [x] Make agent reusable across tasks using TaskRunContext
 - [x] Refactor
 - [x] Allow empty pred_query on exception
-- [ ] Run ambig-{simple, flat, structured} on full ARCS dataset
+- [x] Run ambig-{simple, flat, structured} on full ARCS dataset
+  - ambig-simple: 20.79 spider2_ex, 19.8 bird_sql_ex
+  - ambig-flat: 17.82 spider2_ex, 14.85 bird_sql_ex
+  - ambig-structured: 20.79 spider2_ex, 18.81 bird_sql_ex
 - [ ] Fix run_query timeout 
 - [ ] Rate limiting and maximum concurrency for LLM requests
 - [ ] Support Ambrosia
