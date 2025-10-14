@@ -1,6 +1,7 @@
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ModelRetry
 import jinja2
+from functools import partial
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,
@@ -100,17 +101,19 @@ class UserSimulator:
         return result.output
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
-        class LLMOutput(BaseModel):
-            answer_number: int
+        def return_multiple_choice_answer(answer_number: int, num_options: int) -> int:
+            if answer_number < 1 or answer_number > num_options:
+                raise ModelRetry(f"Answer number should be between 1 and {num_options}")
+            return answer_number - 1
 
         result = await self.user_agent.run(
             question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-            output_type=LLMOutput,
+            output_type=partial(return_multiple_choice_answer, num_options=len(question.options)),
             message_history=self._message_history if self.include_history else None,
         )
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         self._message_history += result.new_messages()
-        return UserMultipleChoiceAnswer(answer_index=result.output.answer_number - 1)
+        return UserMultipleChoiceAnswer(answer_index=result.output)
 
     async def ask_value_async(self, question: UserValueQuestion) -> UserValueAnswer:
         result = await self.user_agent.run(
