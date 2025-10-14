@@ -79,9 +79,6 @@ def compare_pandas_table(
 class Spider2Ex:
     name: ClassVar[str] = "spider2_ex"
 
-    def __init__(self, timeout: int = 30):
-        self.timeout = timeout
-
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
