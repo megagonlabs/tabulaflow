@@ -35,7 +35,8 @@ DISAMBIGUATION_PROMPT = """
 You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
 Given an ambiguous question, you need to output the list of all ambiguity points in the question.
 
-- For phrases where the number of interpretations is finite, put them in the `finite_ambiguity_points` field.
+- For phrases where the number of interpretations is finite, put the list of all possible disambiguated interpretations in the `finite_ambiguity_points` field.
+  - There should be at least two interpretations for a phrase to be ambiguous.
   - Do not add number index prefixes to the interpretations.
 - For phrases with threshold-like ambiguities (e.g. "tall", "young", etc.), put them in the `parameter_ambiguity_points` field.
 === START OF EXAMPLE ===
