@@ -15,7 +15,7 @@ from tqdm import tqdm
 import pandas as pd
 from tabulate import tabulate
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
-from mintq.datahub import get_dataset_loader
+from mintq.datahub import dataset_registry
 from mintq.db_connector import SQLConnector
 from mintq.utils import sort_ambiguity_points
 
@@ -186,7 +186,7 @@ def sort_tasks_and_reindex(tasks: list[AmbigNL2QTask], seed: int = 42) -> list[A
     return res
 
 
-TIMEOUT_SECONDS = 60
+TIMEOUT_SECONDS = 120
 
 
 async def populate_gold_exec_results(task: AmbigNL2QTask, db_connector: SQLConnector) -> AmbigNL2QTask | None:
@@ -239,7 +239,7 @@ async def main():
 
     t0 = time.time()
     if not args.no_exec:
-        dataset_loader = get_dataset_loader("arcs")
+        dataset_loader = dataset_registry.get_class("arcs")()
         db_connectors = await dataset_loader.get_db_connectors_async("dev")
         print(f"Loaded {len(db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
 
