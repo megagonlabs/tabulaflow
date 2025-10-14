@@ -20,7 +20,7 @@ class ARCSDatasetLoader:
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
-        self._dbms_semaphore = asyncio.Semaphore(1)
+        self._dbms_semaphore = asyncio.Semaphore(4)
 
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
@@ -56,7 +56,7 @@ class ARCSDatasetLoader:
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', 'sqlite', f'{name}.sqlite')}",
-                    max_concurrency_per_db=1,
+                    max_concurrency_per_db=4,
                     dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases

@@ -51,7 +51,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--timeout", type=int, default=60)
+    parser.add_argument("--timeout", type=int, default=120)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
