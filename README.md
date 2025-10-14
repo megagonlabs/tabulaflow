@@ -299,6 +299,7 @@ Contact: yanlin@megagon.ai
   - ambig-flat: 17.82 spider2_ex, 14.85 bird_sql_ex
   - ambig-structured: 20.79 spider2_ex, 18.81 bird_sql_ex
 - [x] Fix run_query timeout, set max concurrency to 4 and timeout to 120
+- [ ] Fix gold query latency
 - [ ] parent_ambiguity_point_id, sample values
 - [ ] Rate limiting and maximum concurrency for LLM requests
 - [ ] Support Ambrosia
