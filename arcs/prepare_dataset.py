@@ -71,6 +71,24 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                     raise ValueError(f"parameter {parameter_name} not found in SQL {i}")
                 if s not in sql and i not in allowed_sql_ids_no_parameter and not ap.get("no_check", False):
                     raise ValueError(f"substring {s} not found in SQL {i}")
+
+            if all(isinstance(val, int) for val in ap["parameter_sample_values"]):
+                parameter_dtype = "int"
+            elif all(isinstance(val, float) for val in ap["parameter_sample_values"]):
+                parameter_dtype = "float"
+            elif all(isinstance(val, str) for val in ap["parameter_sample_values"]):
+                parameter_dtype = "str"
+            else:
+                raise ValueError(f"Unknown parameter dtype: {ap['parameter_sample_values']}")
+
+            if ap["parameter_operator"] in (">", ">="):
+                parameter_sample_operators = [">", ">="]
+            elif ap["parameter_operator"] in ("<", "<="):
+                parameter_sample_operators = ["<", "<="]
+            else:
+                raise ValueError(f"Unknown parameter operator: {ap['parameter_operator']}")
+
+
             gold_ambiguity_points.append(
                 GoldAmbiguityPointInfinite(
                     id=AMBIGUITY_POINT_IDS[ap_idx],
@@ -78,9 +96,11 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
                     phrase=ap["phrase"],
                     type="infinite",
                     parameter_name=ap["parameter_name"],
+                    parameter_dtype=parameter_dtype,
+                    parameter_sample_operators=parameter_sample_operators,
                     parameter_sample_values=ap["parameter_sample_values"],
-                    indended_parameter_value=ap["parameter_sample_values"][0],
-                    parameter_operator=ap["parameter_operator"],
+                    intended_parameter_operator=ap["parameter_operator"],
+                    intended_parameter_value=ap["parameter_sample_values"][0],
                 )
             )
         else:
@@ -92,7 +112,7 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
 
     # all_parameter_names = [ap.parameter_name for ap in gold_ambiguity_points if ap.type == "infinite"]
     all_parameter_values = {
-        ap.parameter_name: ap.indended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"
+        ap.parameter_name: ap.intended_parameter_value for ap in gold_ambiguity_points if ap.type == "infinite"
     }
 
     required_columns = data.get("required_columns")
