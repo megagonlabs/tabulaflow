@@ -426,10 +426,11 @@ class GoldAmbiguityPointInfinite(BaseModel):
     ambiguity_type: ARCSAmbiguityType
     parent_ambiguity_point_id: str | None = None
     parameter_name: str
-    parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"]
+    parameter_dtype: Literal["int", "float", "str"]
     parameter_sample_values: list[Any] | list[list[Any]]
     """list[list[Any]] only allowed when `parent_ambiguity_point_id` is not None"""
-    indended_parameter_value: Any | None
+    intended_parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"]
+    intended_parameter_value: Any | None
 
 
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
