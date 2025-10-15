@@ -221,6 +221,7 @@ async def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--batch_size", type=int, default=10)
     parser.add_argument("--no_exec", action="store_true")
+    parser.add_argument("--max_concurrency", type=int, default=1)
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     print(args)
@@ -242,6 +243,10 @@ async def main():
         dataset_loader = dataset_registry.get_class("arcs")()
         db_connectors = await dataset_loader.get_db_connectors_async("dev")
         print(f"Loaded {len(db_connectors)} databases from ARCS dev set in {time.time() - t0:.2f} seconds.")
+        dbms_semaphore = asyncio.Semaphore(args.max_concurrency)
+        for db_connector in db_connectors.values():
+            db_connector._t_eng.db_semaphore = asyncio.Semaphore(args.max_concurrency)
+            db_connector._t_eng.dbms_semaphore = dbms_semaphore
 
     # task_061 = parse_task(os.path.join(args.input_dir, "financial", "sql", "1101.sql"), "financial")  # 1227
     # task_061 = await populate_gold_exec_results(task_061, dataset.db_connectors["financial"])
