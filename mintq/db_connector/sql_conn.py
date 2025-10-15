@@ -95,8 +95,11 @@ class ThrottledEngine:
                 result = await conn.stream(statement, parameters)
                 async for row in result:
                     rows.append(row)
-            except sqlalchemy.exc.OperationalError:
-                raise asyncio.TimeoutError()
+            except sqlalchemy.exc.OperationalError as e:
+                if "interrupted" in str(e).lower():
+                    raise asyncio.TimeoutError()
+                else:
+                    raise e
             finally:
                 if timeout is not None:
                     interrupter.cancel()

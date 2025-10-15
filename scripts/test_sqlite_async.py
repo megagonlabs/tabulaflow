@@ -24,6 +24,10 @@ JOIN lineitem l_rail ON l_rail.l_suppkey = s.s_suppkey AND l_rail.l_shipmode = '
 WHERE n.n_name = 'UNITED STATES';
 """
 
+invalid_query = """
+SELECT * FROM asdfasdfasdf;
+"""
+
 
 def print_current_time() -> None:
     print(f"Current time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
@@ -40,15 +44,17 @@ async def run_query(db_connector: SQLConnector, query: str, timeout: int) -> Non
 
 async def main() -> None:
     dataset_loader = dataset_registry.get_class("arcs")()
-    dataset = await dataset_loader.get_split_async("dev")
-    db_connector: SQLConnector = dataset.db_connectors["retails"]
+    # dataset = await dataset_loader.get_split_async("dev")
+    # db_connector: SQLConnector = dataset.db_connectors["retails"]
+    db_connectors = await dataset_loader.get_db_connectors_async("dev")
+    db_connector = list(db_connectors.values())[0]
     db_connector._t_eng.dbms_semaphore = None
     db_connector._t_eng.db_semaphore = None
-    run_query_tool = RunQueryTool(db_connector, timeout=60)
+    run_query_tool = RunQueryTool(db_connector, timeout=1)
     # await run_query(db_connector, query, 60)
     t0 = time.time()
     # await asyncio.gather(*[run_query(db_connector, query, 60) for _ in range(10)])
-    result = await run_query_tool(query1)
+    result = await run_query_tool(invalid_query)
     print(result)
     print(f"Total time taken: {time.time() - t0} seconds")
 
