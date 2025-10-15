@@ -1,21 +1,29 @@
 # mintq
 
-A **Min**imalist **T**ext-to-**Q**uery Toolkit that offers:
+A **Min**imalist **T**ext-to-**Q**uery Library that offers:
 
-📐 **Structured Data**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
+📐 **Everything Structured**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
 
 🔍 **Type-safe**: Every method is type-hinted and checked with static type checker mypy.
 
-🧩 **Modular**: Core components like [database connectors](mintq/db_connector/base.py), [dataloaders](mintq/datahub/base.py), [models](mintq/modelhub/base.py), [metrics](mintq/metric/base.py) follow the interfaces defined in the base.py files.
+🧩 **Modular**: Core components like [database connectors](mintq/db_connector/base.py), [dataloaders](mintq/datahub/base.py), [agents](mintq/agenthub/base.py), [tools](mintq/toolhub/base.py), [metrics](mintq/metrics/base.py) follow the interfaces defined in the base.py files.
 
-🔌 **Extensible**: Intefaces are designed to be minimal and flexible, without heavy abstractions. You are free to use any agent library to build your own text-to-query model.
+🔌 **Extensible**: Intefaces are designed to be minimal and flexible, without heavy abstractions. You are free to use any agent library to build your own text-to-query agent.
 
-🌐 **Multi-DBMS**: Works with a wide variety of databases including all SQL databases supported by sqlalchemy as well as graph databases like Neo4j.
+🌐 **Multi-DBMS**: Works with a wide variety of databases including all SQL databases (e.g. PostgreSQL, MySQL, SQLite) supported by sqlalchemy as well as graph databases like Neo4j.
 
-🧠 **Built for Researchers**: Includes out-of-the-box support for popular research datasets like BIRD-SQL, Beaver, and Spider 2.0, including equivalent re-implementation of their official leaderboard metrics. Designed for efficient experimentation with:
-- Concurrent inference and evaluation with asyncio
-- Trajectory tracing
+⚡ **First-class Asyncio Support**: The library is built with asyncio with built-in rate limiting and maximum concurrency control.
+
+🧠 **Built for Researchers**: Key features:
+- Out-of-the-box support for BIRD-SQL, Beaver, Spider 2.0 and ARCS
+- Equivalent re-implementation of official leaderboard metrics
+- Re-implementation of state-of-the-art agents on leaderboards
+- Lightning-fast inference and evaluation using asyncio
+- Tracing with langfuse and other LLM observability platforms
+- Local trajectory tracing
 - Agent tool call and token usage tracking
+- Support for interactive task with user simulator
+- Schema compression for database with thousands of tables
 
 ## 🚀 Quick Start
 
@@ -81,34 +89,45 @@ uv run mintq/pipelines/evaluate.py --result_dir output/test/
 
 ```
 mintq
-├── modelhub/               # text-to-query methods
+├── agenthub/               # text-to-query methods
 │   ├── simple_zero_shot.py
-│   ├── sql_agent_table_names_only.py
+│   ├── sql_agent.py
+│   └── ...
+├── toolhub/                # tools used by agents
+│   ├── search_keywords.py
+│   ├── run_query.py
+│   ├── finish.py
+│   ├── ask_user.py
+│   ├── get_schema.py
 │   └── ...
 ├── datahub/                # text-to-query datasets
 │   ├── bird_sql.py
 │   ├── spider2.py
 │   ├── beaver.py
+│   ├── arcs.py
 │   └── ...
 ├── db_connector/           # database connectors
 │   ├── sql_conn.py
-│   ├── snowflake_conn.py
 │   └── ...
-├── metric/                 # evaluation metrics
+├── metrics/                 # evaluation metrics
 │   ├── bird_sql_ex.py
 │   ├── executable.py
 │   └── ...
 ├── metadata_synthesizer/   # metadata generation methods
 │   ├── er_diagram.py       # ER diagram inference
 │   └── ...
-├── schema_formatter/       # database schema formatters
+├── formatters/       # database schema formatters
 │   ├── sql.py
 │   └── ...
+├── pipelines/              # pipelines
+│   ├── run_agent.py
+│   ├── populate_exec_results.py
+│   ├── evaluate.py
+│   └── ...
 ├── schema.py               # data structures used in the project
-├── utils.py                # utility functions
-├── run_model.py            # entry point to run the text-to-query methods
-├── evaluate.py             # script to evaluate the results
-└── visualization.py        # visualization utilities
+├── config.py
+├── registry.py
+└── utils.py                # utility functions
 ```
 
 ## 📚 Dataset Setup
