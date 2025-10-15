@@ -17,10 +17,12 @@ class ARCSDatasetLoader:
         self,
         directory: str = "data/ARCS/",
         column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
+        max_concurrency: int = 16,
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
-        self._dbms_semaphore = asyncio.Semaphore(4)
+        self.max_concurrency = max_concurrency
+        self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
@@ -56,7 +58,7 @@ class ARCSDatasetLoader:
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', 'sqlite', f'{name}.sqlite')}",
-                    max_concurrency_per_db=4,
+                    max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases
