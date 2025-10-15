@@ -134,16 +134,20 @@ class SimpleZeroShotNL2Q:
             ]
         )
 
-        # Compute metrics
-        metrics = {}
-        metrics["latency_seconds"] = time.time() - t0
         usage = Usage.create(
             llm=self.config.llm,
             requests=len(responses),
             input_tokens=sum(r["usage"]["prompt_tokens"] for r in responses),
             output_tokens=sum(r["usage"]["completion_tokens"] for r in responses),
         )
+
+        # Compute metrics
+        metrics = {}
+        metrics["latency_seconds"] = time.time() - t0
         metrics["steps"] = 1
+
+        print(metrics)
+
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
             pred_query=pred_query,

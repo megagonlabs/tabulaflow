@@ -23,6 +23,8 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
 )
 
+logger = logging.getLogger(__name__)
+
 
 def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutput:
     if agent_cls.output_type == "simple":
@@ -65,6 +67,7 @@ async def run_agent_async(
         )
         for task, output in zip(batch, batch_outputs):
             if isinstance(output, Exception):
+                logger.error(f"Error running agent {agent_cls.name} for task {task.qid}: {output}")
                 task_outputs.append(get_empty_output(agent_cls, task))
             else:
                 task_outputs.append(output)
@@ -80,7 +83,10 @@ async def run_agent_async(
     end_time = datetime.datetime.now()
 
     usages = [t.usage for t in task_outputs if t.usage is not None]
-    user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.user_simulator_usage is not None]
+    if hasattr(task_outputs[0], "user_simulator_usage"):
+        user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.user_simulator_usage is not None]
+    else:
+        user_simulator_usages = []
 
     return NL2QRunResult(
         start_time=start_time,
