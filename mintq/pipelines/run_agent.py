@@ -134,7 +134,7 @@ async def main_async() -> None:
     parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
 
-    parser.add_argument("--batch_size", default=8, type=int)
+    parser.add_argument("--batch_size", default=1, type=int)
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
