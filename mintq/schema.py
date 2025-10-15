@@ -426,6 +426,7 @@ class GoldAmbiguityPointInfinite(BaseModel):
     ambiguity_type: ARCSAmbiguityType
     parameter_name: str
     parameter_dtype: Literal["int", "float", "str"]
+    parameter_sample_operators: list[Literal["<", ">", "<=", ">=", "=", "<>"]]
     parameter_sample_values: list[Any]
     intended_parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     intended_parameter_value: Any | None
@@ -502,7 +503,7 @@ class AmbigNL2QTask(BaseModel):
                 ap.intended_interpretation_idx is not None for ap in self.gold_ambiguity_points if ap.type == "finite"
             )
             assert all(
-                ap.indended_parameter_value is not None for ap in self.gold_ambiguity_points if ap.type == "infinite"
+                ap.intended_parameter_value is not None for ap in self.gold_ambiguity_points if ap.type == "infinite"
             )
         else:
             assert self.gold_intended_query_id is None
@@ -510,7 +511,7 @@ class AmbigNL2QTask(BaseModel):
                 ap.intended_interpretation_idx is None for ap in self.gold_ambiguity_points if ap.type == "finite"
             )
             assert all(
-                ap.indended_parameter_value is None for ap in self.gold_ambiguity_points if ap.type == "infinite"
+                ap.intended_parameter_value is None for ap in self.gold_ambiguity_points if ap.type == "infinite"
             )
         return self
 

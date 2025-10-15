@@ -73,7 +73,7 @@ class UserSimulator:
     ) -> "UserSimulator":
         if any(ap.intended_interpretation_idx is None for ap in task.gold_ambiguity_points if ap.type == "finite"):
             raise ValueError("All finite ambiguity points must have an intended interpretation")
-        if any(ap.indended_parameter_value is None for ap in task.gold_ambiguity_points if ap.type == "infinite"):
+        if any(ap.intended_parameter_value is None for ap in task.gold_ambiguity_points if ap.type == "infinite"):
             raise ValueError("All infinite ambiguity points must have an intended parameter value")
 
         system_prompt = jinja2.Template(USER_SIMULATOR_SYSTEM_PROMPT).render(
@@ -83,7 +83,7 @@ class UserSimulator:
                     "phrase": ap.phrase,
                     "interpretation": ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                     if ap.type == "finite"
-                    else f"{ap.parameter_operator} {ap.indended_parameter_value}",
+                    else f"{ap.parameter_operator} {ap.intended_parameter_value}",
                 }
                 for ap in task.gold_ambiguity_points
             ],
