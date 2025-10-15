@@ -7,6 +7,7 @@ import datetime
 import asyncio
 import logging
 import litellm
+import traceback
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
 from mintq.utils import aggregate_metrics
@@ -67,7 +68,8 @@ async def run_agent_async(
         )
         for task, output in zip(batch, batch_outputs):
             if isinstance(output, Exception):
-                logger.error(f"Error running agent {agent_cls.name} for task {task.qid}: {output}")
+                tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
+                logger.error(f"Error running agent {agent_cls.name} for task {task.qid}: {tb_str}")
                 task_outputs.append(get_empty_output(agent_cls, task))
             else:
                 task_outputs.append(output)
