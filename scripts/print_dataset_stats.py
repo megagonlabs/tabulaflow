@@ -64,6 +64,24 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print()
     print(tabulate(df, headers=headers, tablefmt="github"))
 
+    # Print distrubtion of parameter_dtype in infinite ambiguity points
+    print("note: this is the number of ambiguity points with the corresponding parameter_dtype")
+    db2counts = {db: {dtype: 0 for dtype in ["int", "float", "str"]} for db in db_names}
+    for task in dataset.tasks:
+        for ap in task.gold_ambiguity_points:
+            if ap.type == "infinite":
+                db2counts[task.db][ap.parameter_dtype] += 1
+    headers = ["parameter_dtype"] + db_names + ["Total"]
+    df = []
+    for dtype in ["int", "float", "str"]:
+        df.append((dtype, *[db2counts[db][dtype] for db in db_names], sum(db2counts[db][dtype] for db in db_names)))
+    total_counts_per_db = [sum(db2counts[db][dtype] for dtype in ["int", "float", "str"]) for db in db_names]
+    df.append(("Total", *total_counts_per_db, sum(total_counts_per_db)))
+    print()
+    print("### Distribution of parameter_dtype in Infinite Ambiguity Points")
+    print()
+    print(tabulate(df, headers=headers, tablefmt="github"))
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
