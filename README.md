@@ -27,39 +27,44 @@ First, follow the [Development](#-development) section to install the library. N
 
 ```python
 import asyncio
-from mintq.modelhub.simple_zero_shot import SimpleZeroShotNL2Q
-from mintq.datahub.bird_sql import BirdSQLDatasetLoader
-from mintq.formatters import SQLDefaultSchemaFormatter
-from mintq.metric import BirdSQLEx
-from mintq.run_model import run_model_async
-from mintq.evaluate import evaluate_async
+from mintq.agenthub import SQLAgent, BasicAgentConfig
+from mintq.datahub import BirdSQLDatasetLoader
+from mintq.metrics import BirdSQLEx
+from mintq.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
 
 
 async def main() -> None:
-    dataloader = BirdSQLDatasetLoader(directory="data/BIRD-SQL")
+    dataloader = BirdSQLDatasetLoader()
     # dataset includes the text-to-query tasks and the database connectors
     dataset = await dataloader.get_split_async("dev")
     dataset.tasks = dataset.tasks[:3]
 
     # define the model arguments
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
-    model_args = {"llm": "openai/gpt-4o-mini", "schema_formatter": SQLDefaultSchemaFormatter()}
+    config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_default")
     # run the model on the dataset using async coroutines
-    result = await run_model_async(SimpleZeroShotNL2Q, model_args, dataset=dataset, batch_size=8)
-    print(result.tasks[0].pred_query)
-    # SELECT MAX("Percent (%) Eligible Free (K-12)")
+    result = await run_agent_async(SQLAgent, config, dataset, batch_size=2)
+    print(result.tasks[0].pred_query.query)
+    # SELECT MAX(CASE WHEN "Enrollment (K-12)" > 0 THEN "Free Meal Count (K-12)" / "Enrollment (K-12)" ELSE NULL END) AS Highest_Eligible_Free_Rate
     # FROM frpm
-    # WHERE "County Name" = 'Alameda';
+    # WHERE "County Name" = 'Alameda' AND "Enrollment (K-12)" > 0;
+    print()
+    print(result.aggregated_inference_metrics)
+    # {'latency_seconds': {'avg': 7.4654, ...
+
+    # populate exec results
+    result = await populate_exec_results_async(result, dataset, batch_size=2, timeout=30)
 
     # evaluate execution accuracy
     metrics = [BirdSQLEx()]
-    result_with_metrics = await evaluate_async(result, dataset, metrics, batch_size=8)
-    print(result_with_metrics.aggregated_metrics)
-    # {'avg_latency_seconds': 1.472, 'avg_api_calls': 1.0, 'total_api_calls': 3, 'avg_input_tokens': 2490.6667, 'total_input_tokens': 7472, 'avg_output_tokens': 49.3333, 'total_output_tokens': 148, 'avg_api_cost_usd': 0.0004, 'total_api_cost_usd': 0.0012, 'avg_steps': 1.0, 'bird_sql_ex': 0.3333}
+    result_with_metrics = await evaluate_async(result, metrics, batch_size=2)
+    print(result_with_metrics.aggregated_eval_metrics)
+    # {'bird_sql_ex': {'avg': 0.3333}}
 
 
 if __name__ == "__main__":
     asyncio.run(main())
+
 ```
 
 ### Running experiments with provided scripts
@@ -67,8 +72,9 @@ if __name__ == "__main__":
 We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
 
 ```bash
-uv run mintq/run_model.py --model simple_zero_shot --dataset bird-sql --llm openai/gpt-4o-mini --result_dir output/test/ --debug
-uv run mintq/evaluate.py --result_json output/test/result.json
+uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
+uv run mintq/pipelines/populate_exec_results.py --result_dir output/test/
+uv run mintq/pipelines/evaluate.py --result_dir output/test/
 ```
 
 ## Project Structure
