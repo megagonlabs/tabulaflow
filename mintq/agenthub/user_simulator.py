@@ -1,4 +1,3 @@
-from pydantic import BaseModel
 from pydantic_ai import Agent, ModelRetry
 import jinja2
 from functools import partial

@@ -1,8 +1,5 @@
-import time
 import asyncio
 from mintq.datahub import dataset_registry
-from mintq.db_connector import SQLConnector
-from mintq.toolhub import RunQueryTool
 
 
 async def main() -> None:
