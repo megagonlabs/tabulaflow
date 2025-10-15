@@ -424,11 +424,9 @@ class GoldAmbiguityPointInfinite(BaseModel):
     phrase: str
     type: Literal["infinite"] = "infinite"
     ambiguity_type: ARCSAmbiguityType
-    parent_ambiguity_point_id: str | None = None
     parameter_name: str
     parameter_dtype: Literal["int", "float", "str"]
-    parameter_sample_values: list[Any] | list[list[Any]]
-    """list[list[Any]] only allowed when `parent_ambiguity_point_id` is not None"""
+    parameter_sample_values: list[Any]
     intended_parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     intended_parameter_value: Any | None
 
@@ -518,12 +516,6 @@ class AmbigNL2QTask(BaseModel):
 
     @model_validator(mode="after")
     def validate_id_reference(self) -> "AmbigNL2QTask":
-        ap_ids = set(ap.id for ap in self.gold_ambiguity_points)
-        assert all(
-            ap.parent_ambiguity_point_id is None or ap.parent_ambiguity_point_id in ap_ids
-            for ap in self.gold_ambiguity_points
-            if ap.type == "infinite"
-        )
         gold_query_ids = set(gq.id for gq in self.gold_queries)
         assert self.gold_intended_query_id is None or self.gold_intended_query_id in gold_query_ids
         return self
@@ -568,7 +560,6 @@ class PredAmbiguityPointInfinite(BaseModel):
     """A, B, C, etc."""
     phrase: str
     type: Literal["infinite"] = "infinite"
-    parent_ambiguity_point_id: str | None = None
     parameter_name: str
     parameter_dtype: Literal["int", "float", "str"]
     parameter_description: str
@@ -669,6 +660,12 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
             if required_id not in pred_query_ids:
                 raise ValueError(f"qid {self.qid}: Pred query {required_id} is not found.")
         assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
+        return self
+
+    @model_validator(mode="after")
+    def validate_pred_id_reference(self) -> "AmbigNL2QTask":
+        pred_query_ids = set(pq.id for pq in self.pred_queries)
+        assert self.pred_intended_query_id is None or self.pred_intended_query_id in pred_query_ids
         return self
 
     def to_directory(self, directory: str) -> None:
