@@ -6,7 +6,7 @@ async def main() -> None:
     latency = []
     dataset_loader = dataset_registry.get_class("arcs")()
     dataset = await dataset_loader.get_split_async("dev")
-    dataset.tasks = [task for task in dataset.tasks if task.qid in ["061"]]
+    # dataset.tasks = [task for task in dataset.tasks if task.qid in ["061"]]
     for task in dataset.tasks:
         for gq in task.gold_queries:
             latency.append((gq.exec_result.latency_seconds, task, gq))

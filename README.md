@@ -325,7 +325,8 @@ Contact: yanlin@megagon.ai
   - ambig-structured: 20.79 spider2_ex, 18.81 bird_sql_ex
 - [x] Fix run_query timeout, set max concurrency to 4 and timeout to 120
 - [x] Update README.md
-- [ ] Fix data format - gold query latency, sample values, parameter dtype
+- [x] Fix data format - gold query latency, sample values, parameter dtype
+- [ ] print_dataset_stats.py with ambiguity dataset metrics
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Test LLM providers - rate limiting and maximum concurrency for LLM requests
