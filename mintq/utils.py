@@ -95,8 +95,6 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     ap_id_mapping = {ap.id: int_to_letter(i) for i, ap in enumerate(new_gold_ambiguity_points)}
     for ap in task.gold_ambiguity_points:
         ap.id = ap_id_mapping[ap.id]
-        # if ap.type == "infinite" and ap.parent_ambiguity_point_id is not None:
-        #     ap.parent_ambiguity_point_id = ap_id_mapping[ap.parent_ambiguity_point_id]
     for gq in task.gold_queries:
         gq.id = get_new_query_id(gq.id, ap_id_mapping)
 
