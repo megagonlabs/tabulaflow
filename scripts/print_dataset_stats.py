@@ -5,6 +5,64 @@ import os
 from tabulate import tabulate
 from mintq.datahub import dataset_registry
 from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.schema import NL2QDataset
+
+
+def print_ambig_stats(dataset: NL2QDataset) -> None:
+    db_names = list(dataset.db_connectors.keys())
+
+    # Print stats for ambiguity types
+    ambiguities = [
+        "semantic_column",
+        "semantic_table",
+        "semantic_value",
+        "semantic_computation",
+        "syntactic_column",
+        "syntactic_table",
+        "syntactic_value",
+        "syntactic_computation",
+    ]
+    db2counts = {db: {amb: 0 for amb in ambiguities} for db in db_names}
+    for task in dataset.tasks:
+        db = task.db
+        unique_ambs = list(set([ap.ambiguity_type for ap in task.gold_ambiguity_points]))
+        for amb in unique_ambs:
+            db2counts[db][amb] += 1
+    headers = ["Ambiguity"] + db_names + ["Total"]
+    df = []
+    for amb in ambiguities:
+        counts = [db2counts[db][amb] for db in db_names]
+        df.append((amb, *counts, sum(counts)))
+    df.append(
+        ("Total", *[len([task for task in dataset.tasks if task.db == db]) for db in db_names], len(dataset.tasks))
+    )
+    print()
+    print("### Ambiguity Type Stats")
+    print("note: this is the number of tasks with at least one corresponding ambiguity type")
+    print()
+    print(tabulate(df, headers=headers, tablefmt="github"))
+
+    # Print number of ambiguity points per task
+    headers = ["Number of AP"] + db_names + ["Total"]
+    max_ap = max([len(task.gold_ambiguity_points) for task in dataset.tasks])
+    df = []
+    for i in range(1, max_ap + 1):
+        row = (
+            [f"{i} AP"]
+            + [
+                sum([1 for task in dataset.tasks if len(task.gold_ambiguity_points) == i and task.db == db])
+                for db in db_names
+            ]
+            + [sum([1 for task in dataset.tasks if len(task.gold_ambiguity_points) == i])]
+        )
+        df.append(row)
+    df.append(
+        ("Total", *[len([task for task in dataset.tasks if task.db == db]) for db in db_names], len(dataset.tasks))
+    )
+    print()
+    print("### Number of Ambiguity Points (AP) Stats")
+    print()
+    print(tabulate(df, headers=headers, tablefmt="github"))
 
 
 async def main() -> None:
@@ -50,6 +108,7 @@ async def main() -> None:
         )
     print()
     print("### Per-Database Stats")
+    print()
     print(tabulate(per_db_stats, headers=list(per_db_stats.keys()), tablefmt=args.format, floatfmt=".2f"))
 
     aggregated_stats = {
@@ -74,6 +133,7 @@ async def main() -> None:
     }
     print()
     print("### Aggregated Stats")
+    print()
     print(
         tabulate(
             [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
@@ -81,6 +141,8 @@ async def main() -> None:
             tablefmt=args.format,
         )
     )
+    if dataset.tasks[0].task_type == "ambig":
+        print_ambig_stats(dataset)
 
 
 if __name__ == "__main__":
