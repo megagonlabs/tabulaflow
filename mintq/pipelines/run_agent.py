@@ -43,7 +43,7 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
 
 
 async def run_agent_async(
-    agent_cls: type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int
+    agent_cls: type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int, verbose: bool = False
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -74,7 +74,7 @@ async def run_agent_async(
             else:
                 task_outputs.append(output)
 
-        if i == 0:
+        if i == 0 and verbose:
             if getattr(task_outputs[0], "trajectory", None):
                 trajectory = task_outputs[0].trajectory
                 if not isinstance(trajectory, list):
@@ -186,7 +186,7 @@ async def main_async() -> None:
 
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
-    result = await run_agent_async(agent_class, config, dataset, args.batch_size)
+    result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
 
