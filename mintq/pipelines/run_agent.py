@@ -125,7 +125,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
-    parser.add_argument("--llm", default="openai:gpt-4.1")
+    parser.add_argument("--llm", default="openai:gpt-4.1-mini")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--local_llm_config", default="local_llm_config.json")
@@ -175,7 +175,7 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid
                 in [
-                    "002",
+                    "083",
                 ]
             ]
         else:

@@ -16,7 +16,7 @@ from mintq.toolhub import (
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry
-from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
+from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig, ThrottledAgent
 
 
 SYSTEM_PROMPT = """
@@ -67,16 +67,16 @@ class SQLAgent:
         }
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
 
-        agent = Agent[None, PredQuery](
+        agent = ThrottledAgent(Agent[None, PredQuery](
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings={"temperature": self.config.temperature},
-        )
+        ))
 
-        agent_no_tools = Agent(model=self.config.llm, instructions=system_prompt)
+        agent_no_tools = ThrottledAgent(Agent(model=self.config.llm, instructions=system_prompt))
 
         prompt = f"{task.question} {task.evidence}"
 

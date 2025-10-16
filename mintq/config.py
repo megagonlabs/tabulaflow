@@ -27,6 +27,12 @@ class Config:
         value = int(os.getenv("MINTQ_DF_MAX_ROWS", "-1"))
         return value if value > 0 else None
 
+    @property
+    def max_pydantic_ai_agent_concurrency(self) -> int | None:
+        """Maximum number of concurrent pydantic-ai agent runs."""
+        value = int(os.getenv("MINTQ_MAX_PYDANTIC_AI_AGENT_CONCURRENCY", "16"))
+        return value if value > 0 else None
+
     def __repr__(self):
         props = {
             name: getattr(self, name) for name, attr in self.__class__.__dict__.items() if isinstance(attr, property)

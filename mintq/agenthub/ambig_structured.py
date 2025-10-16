@@ -26,7 +26,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
-from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
+from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig, ThrottledAgent
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
 
@@ -109,8 +109,8 @@ class AmbigStructuredSQLAgent:
         system_prompt: str,
         output_type: type[BaseModel],
         tool_keys: list[str],
-    ) -> Agent[None, str]:
-        return Agent[None, str](
+    ) -> ThrottledAgent:
+        agent = Agent[None, str](
             model=self.config.llm,
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
@@ -118,6 +118,7 @@ class AmbigStructuredSQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings={"temperature": self.config.temperature},
         )
+        return ThrottledAgent(agent)
 
     async def _disambiguate_async(self, ctx: TaskRunContext) -> list[PredAmbiguityPoint]:
         class LLMPredAmbiguityPointFinite(BaseModel):

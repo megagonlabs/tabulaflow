@@ -336,6 +336,7 @@ Contact: yanlin@megagon.ai
   - [ ] Fireworks
   - [ ] Gemini
   - [ ] Anthropic
+- [ ] run_query
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing

@@ -14,7 +14,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator
-from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
+from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig, ThrottledAgent
 from mintq.metadata_synthesizers import SchemaCompressor
 
 
@@ -67,14 +67,14 @@ class AmbigSimpleSQLAgent:
             "finish": FinishTool(),
         }
 
-        agent = Agent[None, PredQuery](
+        agent = ThrottledAgent(Agent[None, PredQuery](
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings={"temperature": self.config.temperature},
-        )
+        ))
 
         result = await agent.run(task.question)
         pred_query: PredQuery = result.output
