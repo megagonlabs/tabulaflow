@@ -1,4 +1,5 @@
 import argparse
+import math
 import time
 import asyncio
 import os
@@ -82,6 +83,20 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print()
     print(tabulate(df, headers=headers, tablefmt="github"))
 
+    # Print distrubtion of total number of interpretation combinations
+    num_intp = []
+    for task in dataset.tasks:
+        num_intp.append(math.prod(len(ap.interpretations) for ap in task.gold_ambiguity_points if ap.type == "finite"))
+    headers = ["Number of Interpretation Combinations", "Tasks"]
+    df = []
+    unqiue_num = sorted(set(num_intp))
+    for n in unqiue_num:
+        df.append((n, num_intp.count(n)))
+    df.append(("Total", sum(num_intp.count(n) for n in unqiue_num)))
+    print()
+    print("### Distribution of Total Number of Interpretation Combinations")
+    print()
+    print(tabulate(df, headers=headers, tablefmt="github"))
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
