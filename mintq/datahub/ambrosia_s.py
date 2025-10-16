@@ -1012,7 +1012,7 @@ class AmbrosiaSDatasetLoader:
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    global_id=f"ambrosia_s+{name}",
+                    global_id=f"ambrosia_s+{name.replace('/', '___')}",
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'ambrosia', f'{name}.sqlite')}",
