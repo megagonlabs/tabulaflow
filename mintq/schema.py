@@ -645,7 +645,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
 
         if not self.pred_ambiguity_points:
-            assert not self.pred_queries
+            assert not self.pred_queries or len(self.pred_queries) == 1
             return self
 
         finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
