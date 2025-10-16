@@ -211,6 +211,47 @@ docker run -d --name beaver-dw -p 3311:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd)/data/beaver/nw:/docker-entrypoint-initdb.d mysql:8.0 --lower-case-table-names=1
 ```
 
+## AMBROSIA-S (Structured)
+
+**Original Data**
+
+Download the AMBROSIA dataset (`data.zip`) from [here](https://ambrosia-benchmark.github.io/).
+
+Unzip the archive and move its contents into `data/ambrosia_s/`:
+
+```bash
+unzip data.zip && mv data data/ambrosia_s/ambrosia
+```
+
+Next, download the structured disambiguation annotations from Google Drive:
+
+```bash
+uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O data/ambrosia_s/ambrosia_few_shot_examples.json
+uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O data/ambrosia_s/ambrosia_test.json
+```
+
+Finally, run the following scripts to add question texts and gold queries to the annotations:
+
+```bash
+uv run python scripts/ambrosia_s/add_values_to_annotations.py --csv data/ambrosia_s/ambrosia/ambrosia.csv --input data/ambrosia_s/ambrosia_few_shot_examples.json --output data/ambrosia_s/ambrosia_few_shot_examples_processed.json
+uv run python scripts/ambrosia_s/add_values_to_annotations.py --csv data/ambrosia_s/ambrosia/ambrosia.csv --input data/ambrosia_s/ambrosia_test.json --output data/ambrosia_s/ambrosia_test_processed.json
+```
+
+```
+data/ambrosia_s
+├── ambrosia_few_shot_examples_processed.json  # processed annotations from the "few_shot_examples" split
+├── ambrosia_few_shot_examples.json  # structured disambiguation annotations from the "few_shot_examples" split
+├── ambrosia_test_processed.json  # processed annotations from the "test" split
+├── ambrosia_test.json  # structured disambiguation annotations from the "test" split
+├── ambrosia
+│   ├── ambrosia.csv  # main csv file
+│   ├── attachment    # DB files for "attachment" ambiguity type
+│   ├── scope  # DB files for "scope" ambiguity type
+│   └── vague  # DB Files for "vague" ambiguity type
+├── ...
+```
+
+
 ## 💻 Development
 
 ### Dependencies
@@ -290,8 +331,8 @@ Contact: yanlin@megagon.ai
 
 ### Framework
 
-- [x] [Jun 13] Include views in the schema (some spider2 db has views instead of tables) 
-- [x] [Jun 13] Optimize schema fetching - approximate `num_unique` and `null_ratio` 
+- [x] [Jun 13] Include views in the schema (some spider2 db has views instead of tables)
+- [x] [Jun 13] Optimize schema fetching - approximate `num_unique` and `null_ratio`
 - [x] [Jun 15] Tracing with [langfuse](https://langfuse.com/)
 - [x] [Jun 20] Add `global_id` field  for db connectors for schema/metadata caching
 - [x] [Jun 21] `toolhub` sub-package
