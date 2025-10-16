@@ -37,8 +37,11 @@ Given an ambiguous question, you need to output the list of all ambiguity points
 
 - For phrases where the number of interpretations is finite, put the list of all possible disambiguated interpretations in the `finite_ambiguity_points` field.
   - There should be at least two interpretations for a phrase to be ambiguous.
+  - Each interpretation should be unambiguous.
   - Do not add number index prefixes to the interpretations.
 - For phrases with threshold-like ambiguities (e.g. "tall", "young", etc.), put them in the `parameter_ambiguity_points` field.
+  - parameter_sample_operators is a list of valid operators that can be used in <expr> <operator> :<parameter_name>.
+  - parameter_sample_values is a list of sample values ordered from least strict to most strict
 === START OF EXAMPLE ===
 Database Schema:
     CREATE TABLE student (
@@ -63,9 +66,11 @@ Output:
   "parameter_ambiguity_points": [
     { 
       "phrase": "high GPA",
-      "name": "gpa_threshold",
-      "value_dtype": "float",
-      "value_operator_options": [">", ">="]
+      "parameter_name": "gpa_threshold",
+      "parameter_dtype": "float",
+      "parameter_description": "GPA threshold to be considered high",
+      "parameter_sample_operators": [">", ">="]
+      "parameter_sample_values": [3.5, 4.0]
     }
   ]
 }
@@ -171,16 +176,17 @@ class AmbigStructuredSQLAgent:
         )
         prompt = ctx.task.question
         for ap, idx in zip(finite_aps, finite_interpretation_indexes):
-            prompt += f"\n- {ap.phrase}: {ap.interpretations[idx]}"
-        params = [
-            {
-                "param_operator": ap.parameter_sample_operators[0],
-                "param_name": ap.parameter_name,
-                "param_value": ap.parameter_sample_values[0],
-            }
-            for ap in infinite_aps
-        ]
-        prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
+            prompt += f"\n- \"{ap.phrase}\" means \"{ap.interpretations[idx]}\""
+        if infinite_aps:
+            params = [
+                {
+                    "param_operator": ap.parameter_sample_operators[0],
+                    "param_name": ap.parameter_name,
+                    "param_value": ap.parameter_sample_values[0],
+                }
+                for ap in infinite_aps
+            ]
+            prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
         pred_query: PredQuery = result.output
