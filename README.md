@@ -326,10 +326,18 @@ Contact: yanlin@megagon.ai
 - [x] Fix run_query timeout, set max concurrency to 4 and timeout to 120
 - [x] Update README.md
 - [x] Fix data format - gold query latency, sample values, parameter dtype
-- [ ] print_dataset_stats.py with ambiguity dataset metrics
+- [x] print_dataset_stats.py with ambiguity dataset metrics
+- [ ] LLM
+  - [ ] Debug exp81
+  - [ ] Test pydantic-AI timeout behaviour
+  - [ ] Rate limiting
+  - [ ] OpenAI - chat vs. responses API
+  - [ ] batch size
+  - [ ] Fireworks
+  - [ ] Gemini
+  - [ ] Anthropic
 - [ ] Support Ambrosia
 - [ ] Metrics
-- [ ] Test LLM providers - rate limiting and maximum concurrency for LLM requests
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 
