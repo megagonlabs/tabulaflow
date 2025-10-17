@@ -328,14 +328,15 @@ Contact: yanlin@megagon.ai
 - [x] Fix data format - gold query latency, sample values, parameter dtype
 - [x] print_dataset_stats.py with ambiguity dataset metrics
 - [ ] LLM
-  - [ ] Debug exp81
-  - [ ] Test pydantic-AI timeout behaviour
-  - [ ] Rate limiting
-  - [ ] OpenAI - chat vs. responses API
-  - [ ] batch size
+  - [x] Max concurrency limiting with ThrottledAgent
+  - [x] OpenAI - chat vs. responses API
+  - [x] batch size
   - [ ] Fireworks
   - [ ] Gemini
   - [ ] Anthropic
+- [x] Fix empty ambiguity points
+- [x] print_run_stats.py, refactor print_dataset_stats.py
+- [ ] run sql for resolved only
 - [ ] run_query
 - [ ] Support Ambrosia
 - [ ] Metrics
