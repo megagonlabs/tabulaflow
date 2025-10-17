@@ -1,51 +1,12 @@
 import argparse
-import math
 import time
 import asyncio
 import os
-import pandas as pd
-from typing import Any, Literal
 from tabulate import tabulate
 from mintq.datahub import dataset_registry
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.schema import NL2QDataset
-
-
-def dict_to_df(
-    dic: dict[str, dict[str, Any]],
-    column_level: Literal["outer", "inner"] = "outer",
-    add_total_column: bool = True,
-    add_total_row: bool = True,
-) -> pd.DataFrame:
-    """Convert a dictionary of dictionaries to a dataframe.
-
-    Args:
-        dic: A dictionary of dictionaries.
-        column_level: The outer or inner level keys are used as the columns.
-        add_total_column: Whether to add a total column on the rightmost column.
-        add_total_row: Whether to add a total row on the bottom row.
-
-    Returns:
-        A pandas dataframe.
-    """
-    outer_keys = list(dic.keys())
-    inner_keys = list(dic[outer_keys[0]].keys())
-
-    if not all(set(inner_keys) == set(dic[outer].keys()) for outer in outer_keys):
-        raise ValueError("All inner keys must be the same.")
-
-    if column_level == "inner":
-        transposed = {inner: {outer: dic[outer][inner] for outer in outer_keys} for inner in inner_keys}
-        return dict_to_df(transposed, "outer", add_total_column, add_total_row)
-
-    columns, rows = outer_keys, inner_keys
-    df = [[dic[col][row] for col in columns] for row in rows]
-    df = pd.DataFrame(df, columns=columns, index=rows)
-    if add_total_row:
-        df.loc["Total"] = df.sum(axis=0)
-    if add_total_column:
-        df.loc[:, "Total"] = df.sum(axis=1)
-    return df
+from mintq.utils import dict_to_df
 
 
 def print_ambig_stats(dataset: NL2QDataset) -> None:
@@ -74,7 +35,6 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
 
     # Print number of ambiguity points per task
-    headers = ["Number of AP"] + db_names + ["Total"]
     max_ap = max([len(task.gold_ambiguity_points) for task in dataset.tasks])
     db2counts = {db: {ap: 0 for ap in range(1, max_ap + 1)} for db in db_names}
     for task in dataset.tasks:
@@ -85,37 +45,27 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
 
     # Print distrubtion of parameter_dtype in infinite ambiguity points
-    print("note: this is the number of ambiguity points with the corresponding parameter_dtype")
     db2counts = {db: {dtype: 0 for dtype in ["int", "float", "str"]} for db in db_names}
     for task in dataset.tasks:
         for ap in task.gold_ambiguity_points:
             if ap.type == "infinite":
                 db2counts[task.db][ap.parameter_dtype] += 1
-    headers = ["parameter_dtype"] + db_names + ["Total"]
-    df = []
-    for dtype in ["int", "float", "str"]:
-        df.append((dtype, *[db2counts[db][dtype] for db in db_names], sum(db2counts[db][dtype] for db in db_names)))
-    total_counts_per_db = [sum(db2counts[db][dtype] for dtype in ["int", "float", "str"]) for db in db_names]
-    df.append(("Total", *total_counts_per_db, sum(total_counts_per_db)))
     print()
     print("### Distribution of parameter_dtype in Infinite Ambiguity Points")
+    print("note: this is the number of ambiguity points with the corresponding parameter_dtype")
     print()
-    print(tabulate(df, headers=headers, tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
 
     # Print distrubtion of total number of interpretation combinations
-    num_intp = []
+    num_intp = sorted(set([len(task.gold_queries) for task in dataset.tasks]))
+    db2counts = {db: {n: 0 for n in num_intp} for db in db_names}
     for task in dataset.tasks:
-        num_intp.append(math.prod(len(ap.interpretations) for ap in task.gold_ambiguity_points if ap.type == "finite"))
-    headers = ["Number of Interpretation Combinations", "Tasks"]
-    df = []
-    unqiue_num = sorted(set(num_intp))
-    for n in unqiue_num:
-        df.append((n, num_intp.count(n)))
-    df.append(("Total", sum(num_intp.count(n) for n in unqiue_num)))
+        db2counts[task.db][len(task.gold_queries)] += 1
     print()
     print("### Distribution of Total Number of Interpretation Combinations")
+    print("note: this is the number of tasks with the corresponding number of interpretation combinations")
     print()
-    print(tabulate(df, headers=headers, tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
 
 
 async def main() -> None:

@@ -4,6 +4,7 @@ import copy
 import statistics
 from typing import Literal, Any
 import numpy as np
+import pandas as pd
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
 
 
@@ -102,3 +103,40 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     task.gold_intended_query_id = get_new_query_id(task.gold_intended_query_id, ap_id_mapping)
 
     return AmbigNL2QTask.model_validate(task.model_dump())
+
+
+def dict_to_df(
+    dic: dict[str, dict[str, Any]],
+    column_level: Literal["outer", "inner"] = "outer",
+    add_total_column: bool = True,
+    add_total_row: bool = True,
+) -> pd.DataFrame:
+    """Convert a dictionary of dictionaries to a dataframe.
+
+    Args:
+        dic: A dictionary of dictionaries.
+        column_level: The outer or inner level keys are used as the columns.
+        add_total_column: Whether to add a total column on the rightmost column.
+        add_total_row: Whether to add a total row on the bottom row.
+
+    Returns:
+        A pandas dataframe.
+    """
+    outer_keys = list(dic.keys())
+    inner_keys = list(dic[outer_keys[0]].keys())
+
+    if not all(set(inner_keys) == set(dic[outer].keys()) for outer in outer_keys):
+        raise ValueError("All inner keys must be the same.")
+
+    if column_level == "inner":
+        transposed = {inner: {outer: dic[outer][inner] for outer in outer_keys} for inner in inner_keys}
+        return dict_to_df(transposed, "outer", add_total_column, add_total_row)
+
+    columns, rows = outer_keys, inner_keys
+    df = [[dic[col][row] for col in columns] for row in rows]
+    df = pd.DataFrame(df, columns=columns, index=rows)
+    if add_total_row:
+        df.loc["Total"] = df.sum(axis=0)
+    if add_total_column:
+        df.loc[:, "Total"] = df.sum(axis=1)
+    return df
