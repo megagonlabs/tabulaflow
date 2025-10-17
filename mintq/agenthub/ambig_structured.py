@@ -69,7 +69,7 @@ Output:
       "parameter_name": "gpa_threshold",
       "parameter_dtype": "float",
       "parameter_description": "GPA threshold to be considered high",
-      "parameter_sample_operators": [">", ">="]
+      "parameter_sample_operators": [">", ">="],
       "parameter_sample_values": [3.5, 4.0]
     }
   ]
