@@ -3,6 +3,7 @@ from mintq.datahub.bird_sql import BirdSQLDatasetLoader
 from mintq.datahub.spider2 import Spider2SnowDatasetLoader
 from mintq.datahub.beaver import BeaverDatasetLoader
 from mintq.datahub.arcs import ARCSDatasetLoader
+from mintq.datahub.ambrosia_s import AmbrosiaSDatasetLoader
 
 
 __all__ = [
@@ -12,5 +13,6 @@ __all__ = [
     "Spider2SnowDatasetLoader",
     "BeaverDatasetLoader",
     "ARCSDatasetLoader",
+    "AmbrosiaSDatasetLoader",
     "dataset_registry",
 ]
