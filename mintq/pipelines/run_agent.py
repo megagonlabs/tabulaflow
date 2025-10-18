@@ -40,6 +40,8 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
         return StructuredAmbigNL2QTaskOutput(
             **task.model_dump(), pred_ambiguity_points=[], pred_queries=[], pred_intended_query_id=None
         )
+    else:
+        raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
 
 async def run_agent_async(
@@ -62,7 +64,7 @@ async def run_agent_async(
             else:
                 batch_kwargs.append({})
 
-        agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])
+        agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])  # type: ignore
         batch_outputs = await asyncio.gather(
             *[
                 agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
@@ -89,7 +91,9 @@ async def run_agent_async(
     end_time = datetime.datetime.now()
 
     usages = [t.usage for t in task_outputs if t.usage is not None]
-    user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.task_type == "ambig" and t.user_simulator_usage]
+    user_simulator_usages = [
+        t.user_simulator_usage for t in task_outputs if t.task_type == "ambig" and t.user_simulator_usage
+    ]
 
     return NL2QRunResult(
         start_time=start_time,

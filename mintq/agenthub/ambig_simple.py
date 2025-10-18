@@ -6,6 +6,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.toolhub import (
+    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
@@ -53,7 +54,7 @@ class AmbigSimpleSQLAgent:
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 
-        tools = {
+        tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
