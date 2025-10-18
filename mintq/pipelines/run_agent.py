@@ -43,7 +43,11 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
 
 
 async def run_agent_async(
-    agent_cls: type[NL2QAgent], agent_config: BaseAgentConfig, dataset: NL2QDataset, batch_size: int, verbose: bool = False
+    agent_cls: type[NL2QAgent],
+    agent_config: BaseAgentConfig,
+    dataset: NL2QDataset,
+    batch_size: int,
+    verbose: bool = False,
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
@@ -71,24 +75,21 @@ async def run_agent_async(
                 tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
                 logger.error(f"Error running agent {agent_cls.name} for task {task.qid}: {tb_str}")
                 task_outputs.append(get_empty_output(agent_cls, task))
+            elif isinstance(output, BaseException):
+                raise output
             else:
                 task_outputs.append(output)
 
         if i == 0 and verbose:
-            if getattr(task_outputs[0], "trajectory", None):
-                trajectory = task_outputs[0].trajectory
-                if not isinstance(trajectory, list):
-                    trajectory = [trajectory]
-                for tr in trajectory:
-                    print(tr.to_readable())  # type: ignore
+            trajectory = getattr(task_outputs[0], "trajectory", None)
+            if trajectory:
+                for tr in trajectory if isinstance(trajectory, list) else [trajectory]:
+                    print(tr.to_readable())
 
     end_time = datetime.datetime.now()
 
     usages = [t.usage for t in task_outputs if t.usage is not None]
-    if hasattr(task_outputs[0], "user_simulator_usage"):
-        user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.user_simulator_usage is not None]
-    else:
-        user_simulator_usages = []
+    user_simulator_usages = [t.user_simulator_usage for t in task_outputs if t.task_type == "ambig" and t.user_simulator_usage]
 
     return NL2QRunResult(
         start_time=start_time,
