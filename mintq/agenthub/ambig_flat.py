@@ -16,6 +16,7 @@ from mintq.schema import (
     PredAmbiguityPointInfinite,
 )
 from mintq.toolhub import (
+    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
@@ -28,7 +29,7 @@ from mintq.agenthub.base import (
     UserMultipleChoiceQuestion,
     UserValueQuestion,
 )
-from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig, ThrottledAgent
+from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
 
@@ -100,8 +101,8 @@ class AmbigFlatSQLAgent:
         system_prompt: str,
         output_type: type[BaseModel],
         tool_keys: list[str],
-    ) -> ThrottledAgent:
-        agent = Agent[None, str](
+    ) -> Agent:
+        return Agent[None, str](
             model=self.config.llm,
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
@@ -109,7 +110,6 @@ class AmbigFlatSQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings={"temperature": self.config.temperature},
         )
-        return ThrottledAgent(agent)
 
     async def _disambiguate_interpretations_async(self, ctx: TaskRunContext) -> list[str]:
         class LLMOutput(BaseModel):
@@ -215,13 +215,8 @@ class AmbigFlatSQLAgent:
         )
         return pred_queries[user_response.answer_index].id
 
-    @instrument
-    async def predict_no_user_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
-    ) -> FlatAmbigNL2QTaskOutput:
-        t0 = time.time()
-
-        tools = {
+    async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
+        return {
             "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
@@ -233,6 +228,14 @@ class AmbigFlatSQLAgent:
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
+
+    @instrument
+    async def predict_no_user_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
+    ) -> FlatAmbigNL2QTaskOutput:
+        t0 = time.time()
+
+        tools = await self._get_tools(db_connector)
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
 
         interpretations = await self._disambiguate_interpretations_async(ctx)

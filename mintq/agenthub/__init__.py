@@ -1,3 +1,4 @@
+from mintq.agenthub import patches  # noqa: F401
 from mintq.agenthub.base import (
     BaseAgentConfig,
     BaseSimpleSQLAgent,
@@ -26,3 +27,5 @@ __all__ = [
     "AmbigStructuredSQLAgent",
     "agent_registry",
 ]
+
+

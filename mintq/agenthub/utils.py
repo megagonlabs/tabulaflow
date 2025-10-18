@@ -1,8 +1,7 @@
 from typing import Any, Callable
 from functools import partial
-import asyncio
 from opentelemetry import trace
-from pydantic_ai import RunContext, Agent
+from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from dataclasses import dataclass, field
 from functools import wraps
@@ -77,22 +76,3 @@ class BasicAgentConfig(BaseModel):
     compress_schema: bool = True
     temperature: float = 0.0
     max_steps: int = 10
-
-
-if config.max_pydantic_ai_agent_concurrency is not None:
-    _pydantic_ai_agent_semaphore = asyncio.Semaphore(config.max_pydantic_ai_agent_concurrency)
-else:
-    _pydantic_ai_agent_semaphore = None
-
-
-class ThrottledAgent:
-    def __init__(self, agent: Agent):
-        self.agent = agent
-
-    @wraps(Agent.run)
-    async def run(self, *args, **kwargs):
-        semaphore = _pydantic_ai_agent_semaphore
-        if semaphore is not None:
-            async with semaphore:
-                return await self.agent.run(*args, **kwargs)
-        return await self.agent.run(*args, **kwargs)
