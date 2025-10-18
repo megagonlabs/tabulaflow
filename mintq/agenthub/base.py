@@ -1,4 +1,4 @@
-from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated
+from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated, overload
 from pydantic import BaseModel, Field
 from mintq.schema import (
     SimpleNL2QTask,
@@ -67,6 +67,13 @@ UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, User
 
 
 class BaseUserSimulator(Protocol):
+    @overload
+    async def ask_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer: ...
+    @overload
+    async def ask_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer: ...
+    @overload
+    async def ask_async(self, question: UserValueQuestion) -> UserValueAnswer: ...
+
     async def ask_async(self, question: UserQuestion) -> UserAnswer: ...
 
     def usage(self) -> Usage: ...
