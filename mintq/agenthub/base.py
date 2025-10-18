@@ -18,9 +18,9 @@ BaseAgentConfig: TypeAlias = BaseModel
 
 class BaseSimpleSQLAgent(Protocol):
     name: ClassVar[str]
-    task_type: ClassVar[Literal["simple"]]
-    output_type: ClassVar[Literal["simple"]]
-    config_cls: ClassVar[Type[BaseAgentConfig]]
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[type[BaseAgentConfig]]
 
     @classmethod
     async def from_config_async(cls, config) -> "BaseSimpleSQLAgent": ...  # type: ignore
@@ -83,12 +83,9 @@ class BaseUserSimulator(Protocol):
 
 class BaseAmbigSQLAgent(Protocol):
     name: ClassVar[str]
-    task_type: ClassVar[Literal["ambig"]]
-    output_type: ClassVar[Literal["ambig-simple", "ambig-flat", "ambig-structured"]]
-    config_cls: ClassVar[Type[BaseAgentConfig]]
-
-    @classmethod
-    async def from_config_async(cls, config) -> "BaseAmbigSQLAgent": ...  # type: ignore
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[type[BaseAgentConfig]]
 
     async def predict_async(
         self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator

@@ -25,7 +25,7 @@ from mintq.toolhub import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion
+from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion, BaseAgentConfig
 from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
@@ -95,7 +95,7 @@ class AmbigStructuredSQLAgent:
     name: ClassVar = "ambig_structured_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-structured"
-    config_cls: ClassVar = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

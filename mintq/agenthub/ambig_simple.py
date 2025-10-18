@@ -13,7 +13,7 @@ from mintq.toolhub import (
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from mintq.agenthub.base import agent_registry, BaseUserSimulator
+from mintq.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 
@@ -34,7 +34,7 @@ class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-simple"
-    config_cls: ClassVar = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

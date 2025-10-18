@@ -25,6 +25,7 @@ from mintq.toolhub import (
 )
 from mintq.agenthub.base import (
     agent_registry,
+    BaseAgentConfig,
     BaseUserSimulator,
     UserMultipleChoiceQuestion,
     UserValueQuestion,
@@ -82,7 +83,7 @@ class AmbigFlatSQLAgent:
     name: ClassVar = "ambig_flat_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-flat"
-    config_cls: ClassVar = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
 
     def __init__(
         self,

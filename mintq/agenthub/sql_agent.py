@@ -15,7 +15,7 @@ from mintq.toolhub import (
     GetColumnDescriptionTool,
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
-from mintq.agenthub.base import agent_registry
+from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 
 
@@ -39,7 +39,7 @@ class SQLAgent:
     name: ClassVar = "sql_agent"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
 
     def __init__(self, config: BasicAgentConfig):
         self.config = config
