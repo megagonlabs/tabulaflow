@@ -377,9 +377,10 @@ Contact: yanlin@megagon.ai
   - [ ] Anthropic
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
-- [ ] Retry on too many interpretation combinations
+- [ ] Raise ModelRetry on too many interpretation combinations
 - [ ] run sql for resolved only
-- [ ] run_query
+- [ ] Remove SQL from sqlalchemy errors
+- [ ] Fix mypy errors
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
