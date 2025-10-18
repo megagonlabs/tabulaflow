@@ -10,7 +10,7 @@ class AskUserToolMetrics(BaseModel):
 
 
 class AskUserTool:
-    name: ClassVar[str] = "ask_user"
+    name: ClassVar = "ask_user"
 
     def __init__(self, user_simulator: BaseUserSimulator):
         self.user_simulator = user_simulator

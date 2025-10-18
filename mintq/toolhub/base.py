@@ -1,9 +1,6 @@
 from typing import ClassVar, Protocol, Any, Callable, TypeAlias
-from pydantic_ai import Tool
+from pydantic_ai import Tool, ToolOutput
 from pydantic import BaseModel
-
-
-PydanticAIOutputTool: TypeAlias = Callable[..., Any]
 
 
 BaseToolMetrics: TypeAlias = BaseModel
@@ -14,6 +11,6 @@ class BaseTool(Protocol):
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
 
-    def as_pydantic_ai_tool(self) -> Tool | PydanticAIOutputTool: ...
+    def as_pydantic_ai_tool(self) -> Tool | ToolOutput[Any]: ...
 
     def metrics(self) -> BaseToolMetrics: ...
