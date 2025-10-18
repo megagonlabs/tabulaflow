@@ -10,21 +10,19 @@ from mintq.config import config
 
 
 # Initialize semaphore for throttling pydantic_ai Agent.run() calls
-if config.max_pydantic_ai_agent_concurrency is not None:
-    _pydantic_ai_agent_semaphore = asyncio.Semaphore(config.max_pydantic_ai_agent_concurrency)
+if config.max_llm_concurrency is not None:
+    _llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency)
 else:
-    _pydantic_ai_agent_semaphore = None
+    _llm_semaphore = None
 
 
 async def _throttled_run(self, *args, **kwargs):
-    """Throttled version of Agent.run() that respects max_pydantic_ai_agent_concurrency."""
-    semaphore = _pydantic_ai_agent_semaphore
+    """Throttled version of Agent.run() that respects max_llm_concurrency."""
+    semaphore = _llm_semaphore
     orig_run = Agent.__original_run__
     if semaphore is not None:
         async with semaphore:
-            print("Entered semaphore")
             return await orig_run(self, *args, **kwargs)
-    print("Not entered semaphore")
     return await orig_run(self, *args, **kwargs)
 
 

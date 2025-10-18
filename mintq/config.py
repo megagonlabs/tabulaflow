@@ -28,9 +28,9 @@ class Config:
         return value if value > 0 else None
 
     @property
-    def max_pydantic_ai_agent_concurrency(self) -> int | None:
-        """Maximum number of concurrent pydantic-ai agent runs."""
-        value = int(os.getenv("MINTQ_MAX_PYDANTIC_AI_AGENT_CONCURRENCY", "16"))
+    def max_llm_concurrency(self) -> int | None:
+        """Maximum number of concurrent LLM calls. Currently this is achieved by limiting the number of concurrent Agent.run() calls."""
+        value = int(os.getenv("MINTQ_MAX_LLM_CONCURRENCY", "16"))
         return value if value > 0 else None
 
     def __repr__(self):
