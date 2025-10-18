@@ -2,9 +2,9 @@ import asyncio
 import json
 import jinja2
 import time
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import (
@@ -99,10 +99,10 @@ class AmbigFlatSQLAgent:
         self,
         ctx: TaskRunContext,
         system_prompt: str,
-        output_type: type[BaseModel],
+        output_type: type[BaseModel] | ToolOutput[PredQuery],
         tool_keys: list[str],
-    ) -> Agent:
-        return Agent[None, str](
+    ) -> Agent[None, Any]:
+        return Agent[None, Any](  # type: ignore
             model=self.config.llm,
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
@@ -115,7 +115,7 @@ class AmbigFlatSQLAgent:
         class LLMOutput(BaseModel):
             interpretations: list[str]
 
-        disamb_interp_agent = self._get_agent(
+        disamb_interp_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
             output_type=LLMOutput,
@@ -138,7 +138,7 @@ class AmbigFlatSQLAgent:
         class LLMOutput(BaseModel):
             parameter_ambiguity_points: list[LLMPredAmbiguityPointInfinite]
 
-        disamb_param_agent = self._get_agent(
+        disamb_param_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATE_PARAMETERS_PROMPT).render(language=ctx.task.language),
             output_type=LLMOutput,
@@ -159,23 +159,27 @@ class AmbigFlatSQLAgent:
         query_id: str,
         params: list[PredAmbiguityPointInfinite],
     ) -> PredQuery:
-        sql_agent = self._get_agent(
+        sql_agent: Agent[None, PredQuery] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(language=ctx.task.language),
-            output_type=ctx.tools["finish"].as_pydantic_ai_tool(),
+            output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
             tool_keys=["get_schema", "get_column_description", "search_keywords", "run_query"],
         )
-        params = [
-            {
-                "param_operator": ap.parameter_sample_operators[0],
-                "param_name": ap.parameter_name,
-                "param_value": ap.parameter_sample_values[0],
-            }
-            for ap in params
-        ]
-        params = f"You can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
-        result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params}")
-        pred_query: PredQuery = result.output
+        params_str = json.dumps(
+            [
+                {
+                    "param_operator": ap.parameter_sample_operators[0],
+                    "param_name": ap.parameter_name,
+                    "param_value": ap.parameter_sample_values[0],
+                }
+                for ap in params
+            ],
+            indent=2,
+            default=str,
+        )
+        params_str = f"You can use any of the following parameters as placeholders in the query:\n{params_str}"
+        result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params_str}")
+        pred_query = result.output
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")
