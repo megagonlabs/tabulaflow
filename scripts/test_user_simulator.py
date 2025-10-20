@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import asyncio
 from mintq.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
 from mintq.datahub import dataset_registry

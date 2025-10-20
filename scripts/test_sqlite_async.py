@@ -1,8 +1,9 @@
+# mypy: ignore-errors
 import time
 import asyncio
 from typing import Any
 from mintq.datahub import dataset_registry
-from mintq.db_connector import SQLConnector
+from mintq.db_connector import BaseSQLDBConnector, SQLConnector
 from mintq.toolhub import RunQueryTool
 
 query = """
@@ -43,7 +44,7 @@ def print_current_time() -> None:
     print(f"Current time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
 
-async def run_query(db_connector: SQLConnector, query: str, parameters: dict[str, Any], timeout: int) -> None:
+async def run_query(db_connector: BaseSQLDBConnector, query: str, parameters: dict[str, Any], timeout: int) -> None:
     print_current_time()
     # t0 = time.time()
     result = await db_connector.run_query_async(query, parameters, timeout=timeout)

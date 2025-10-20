@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 from mintq.schema import AmbigNL2QTask
 import os
 
