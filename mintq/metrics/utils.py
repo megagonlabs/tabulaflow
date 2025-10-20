@@ -5,7 +5,7 @@ def get_final_gold_query(task: NL2QTaskOutput, check_exec_result: bool = True) -
     if task.task_type == "simple":
         res = task.gold_query
     elif task.task_type == "ambig":
-        res = task.gold_intended_query
+        res = task.gold_intended_query  # type: ignore
     else:
         raise ValueError(f"Task type is not supported: {task.task_type}")
 

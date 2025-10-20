@@ -1,3 +1,5 @@
+# This file is deprecated.
+# mypy: ignore-errors
 import re
 import logging
 import litellm

@@ -86,10 +86,10 @@ class Spider2Ex:
         if pred_query is None:
             return 0.0
 
-        if pred_query.exec_result.df is None:
+        if pred_query.exec_result.df is None:  # type: ignore
             return 0.0
 
-        pred_df = pred_query.exec_result.df
+        pred_df = pred_query.exec_result.df  # type: ignore
         gold_dfs = [exec_result.df for exec_result in gold_query.all_exec_results if exec_result.df is not None]
 
         if not gold_dfs:

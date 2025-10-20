@@ -42,11 +42,11 @@ class BirdSQLExSoft:
         if pred_query is None:
             return 0.0
 
-        if pred_query.exec_result.df is None or gold_query.exec_result.df is None:
+        if pred_query.exec_result.df is None or gold_query.exec_result.df is None:  # type: ignore
             return 0.0
 
-        pred_executed = [row for row in pred_query.exec_result.df.itertuples(index=False, name=None)]
-        gold_executed = [row for row in gold_query.exec_result.df.itertuples(index=False, name=None)]
+        pred_executed = [row for row in pred_query.exec_result.df.itertuples(index=False, name=None)]  # type: ignore
+        gold_executed = [row for row in gold_query.exec_result.df.itertuples(index=False, name=None)]  # type: ignore
         if self._compare(pred_executed, gold_executed) == 1.0:
             return 1.0
         return 0.0
