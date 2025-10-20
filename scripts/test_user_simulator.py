@@ -1,5 +1,5 @@
 import asyncio
-from mintq.agenthub.user_simulator import UserSimulator
+from mintq.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
 from mintq.datahub import dataset_registry
 
 
@@ -10,7 +10,9 @@ async def main() -> None:
     print(f"<system_prompt>{user_simulator.system_prompt}</system_prompt>")
     print(
         await user_simulator.ask_async(
-            "What is the name of the student with the highest score? What is the name of the student with the lowest score?"
+            UserFreeTextQuestion(
+                question="What is the name of the student with the highest score? What is the name of the student with the lowest score?"
+            )
         )
     )
 

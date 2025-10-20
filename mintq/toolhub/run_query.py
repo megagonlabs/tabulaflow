@@ -30,8 +30,8 @@ class RunQueryTool:
         self._metrics.num_calls += 1
         db_connector = self.db_connector
         exec_result = await db_connector.run_query_async(query, parameters, timeout=self.timeout)
-        if exec_result.df is None:
-            if exec_result.error.exc_type == "TimeoutError":  # type: ignore
+        if exec_result.error:
+            if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
                 return f"(query timed out after {self.timeout} seconds)"
             else:
@@ -39,12 +39,12 @@ class RunQueryTool:
                 return f"(query failed: {exec_result.error.message})"
 
         df = exec_result.df
-        if df.empty:
+        if df.empty:  # type: ignore
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=5)
 
-        if df.isnull().all().any():
+        if df.isnull().all().any():  # type: ignore
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 

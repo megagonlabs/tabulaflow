@@ -1,3 +1,4 @@
+import pydantic_ai
 from pydantic_ai import Agent, ModelRetry
 import jinja2
 from functools import partial
@@ -57,7 +58,7 @@ class UserSimulator:
             instructions=self.system_prompt,
             model_settings={"temperature": self.temperature},
         )
-        self._message_history = []
+        self._message_history: list[pydantic_ai.messages.ModelMessage] = []
         self._usage = Usage.create(llm=self.llm)
 
     def usage(self) -> Usage:
