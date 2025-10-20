@@ -1,4 +1,5 @@
 import datetime
+from decimal import Decimal
 import json
 import os
 import re
@@ -111,12 +112,12 @@ class Trajectory(BaseModel):
         return cls.model_validate(trajectory.model_dump())
 
     def to_readable(self) -> str:
-        res = []
+        formatted = []
         for msg in self.messages:
             if msg.role == "system":
-                res.append(f'<message role="system">\n{msg.content}\n</message>')
+                formatted.append(f'<message role="system">\n{msg.content}\n</message>')
             elif msg.role == "user":
-                res.append(f'<message role="user">\n{msg.content}\n</message>')
+                formatted.append(f'<message role="user">\n{msg.content}\n</message>')
             elif msg.role == "assistant":
                 s = '<message role="assistant">\n'
                 if msg.content:
@@ -141,10 +142,10 @@ class Trajectory(BaseModel):
                             s += "</arg>\n"
                         s += "</function>\n"
                 s += "</message>"
-                res.append(s)
+                formatted.append(s)
             elif msg.role == "tool":
-                res.append(f'<message role="tool">\n{msg.response}\n</message>')
-        res = "<trajectory>\n" + "\n\n\n".join(res) + "\n</trajectory>"
+                formatted.append(f'<message role="tool">\n{msg.response}\n</message>')
+        res = "<trajectory>\n" + "\n\n\n".join(formatted) + "\n</trajectory>"
         return f"----- START OF TRAJECTORY `{self.id}` -----\n{res}\n----- END OF TRAJECTORY -----"
 
 
@@ -153,7 +154,7 @@ class Usage(BaseModel):
     api_requests: int
     input_tokens: int
     output_tokens: int
-    api_cost_usd: float
+    api_cost_usd: Decimal
 
     def __add__(self, other: "Usage") -> "Usage":
         return Usage(
@@ -171,7 +172,7 @@ class Usage(BaseModel):
         api_requests: int = 0,
         input_tokens: int = 0,
         output_tokens: int = 0,
-        api_cost_usd: float | None = None,
+        api_cost_usd: float | Decimal | None = None,
     ) -> "Usage":
         if api_cost_usd is None:
             provider, model = llm.split(":")
@@ -185,6 +186,8 @@ class Usage(BaseModel):
                 provider_id=provider,
             )
             api_cost_usd = price_data.total_price
+        elif isinstance(api_cost_usd, float):
+            api_cost_usd = Decimal(api_cost_usd)
         return cls(
             api_requests=api_requests,
             input_tokens=input_tokens,
@@ -218,7 +221,7 @@ class ExecResult(BaseModel):
     latency_seconds: float | None = None
 
     @field_serializer("df", when_used="json")
-    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any]:
+    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
         if df is None:
             return None
         return {
@@ -664,7 +667,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         return self
 
     @model_validator(mode="after")
-    def validate_pred_id_reference(self) -> "AmbigNL2QTask":
+    def validate_pred_id_reference(self) -> "StructuredAmbigNL2QTaskOutput":
         pred_query_ids = set(pq.id for pq in self.pred_queries)
         assert self.pred_intended_query_id is None or self.pred_intended_query_id in pred_query_ids
         return self
