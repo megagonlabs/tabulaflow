@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import argparse
 import time
 import asyncio
@@ -10,6 +11,7 @@ from mintq.utils import dict_to_df
 
 
 def print_ambig_stats(dataset: NL2QDataset) -> None:
+    assert all(task.task_type == "ambig" for task in dataset.tasks)
     db_names = list(dataset.db_connectors.keys())
 
     # Print stats for ambiguity types

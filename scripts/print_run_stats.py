@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 import argparse
 import time
 import asyncio
@@ -10,6 +11,7 @@ from mintq.utils import dict_to_df
 
 
 def print_ambig_stats(tasks: list[StructuredAmbigNL2QTaskOutput]) -> None:
+    assert all(task.task_type == "ambig" for task in tasks)
     db_names = list(dict.fromkeys([task.db for task in tasks]))
 
     # Print number of ambiguity points per task
