@@ -595,10 +595,10 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
 
-    @model_validator(mode="after")
-    def validate_interpretations(self) -> "FlatAmbigNL2QTaskOutput":
-        assert len(self.interpretations) == len(self.pred_queries)
-        return self
+    # @model_validator(mode="after")
+    # def validate_interpretations(self) -> "FlatAmbigNL2QTaskOutput":
+    #     assert len(self.interpretations) == len(self.pred_queries)
+    #     return self
 
     @property
     def pred_intended_query(self) -> PredQuery | None:

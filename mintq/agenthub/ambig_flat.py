@@ -78,22 +78,26 @@ You are a helpful AI database expert that can translate natural language questio
 """.strip()
 
 
+class AmbigFlatSQLAgentConfig(BasicAgentConfig):
+    query_for_intended_only: bool = True
+
+
 @agent_registry.register
 class AmbigFlatSQLAgent:
     name: ClassVar = "ambig_flat_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-flat"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = AmbigFlatSQLAgentConfig
 
     def __init__(
         self,
-        config: BasicAgentConfig,
+        config: AmbigFlatSQLAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigFlatSQLAgent":
+    async def from_config_async(cls, config: AmbigFlatSQLAgentConfig) -> "AmbigFlatSQLAgent":
         return cls(config)
 
     def _get_agent(
@@ -193,9 +197,8 @@ class AmbigFlatSQLAgent:
         question: str,
         interpretations: list[str],
         params: list[PredAmbiguityPointInfinite],
-        pred_queries: list[PredQuery],
         user_simulator: BaseUserSimulator,
-    ) -> str:
+    ) -> int:
         for ap in params:
             response = await user_simulator.ask_async(
                 UserValueQuestion(
@@ -207,18 +210,21 @@ class AmbigFlatSQLAgent:
             ap.intended_paramter_operator = response.operator
             ap.intended_parameter_value = response.value
 
-            # Fix the operator in the queries
+        user_response = await user_simulator.ask_async(
+            UserMultipleChoiceQuestion(question=question, options=interpretations)
+        )
+        return user_response.answer_index
+
+    def _fix_pred_query_operators(
+        self, pred_queries: list[PredQuery], params: list[PredAmbiguityPointInfinite]
+    ) -> None:
+        for ap in params:
             for pred_query in pred_queries:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
                     pred_query.query = pred_query.query.replace(
                         original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
                     )
-
-        user_response = await user_simulator.ask_async(
-            UserMultipleChoiceQuestion(question=question, options=interpretations)
-        )
-        return pred_queries[user_response.answer_index].id
 
     async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
         return {
@@ -235,8 +241,8 @@ class AmbigFlatSQLAgent:
         }
 
     @instrument
-    async def predict_no_user_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
+    async def predict_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> FlatAmbigNL2QTaskOutput:
         t0 = time.time()
 
@@ -245,12 +251,24 @@ class AmbigFlatSQLAgent:
 
         interpretations = await self._disambiguate_interpretations_async(ctx)
         parameters = await self._disambiguate_parameters_async(ctx)
-        pred_queries = await asyncio.gather(
-            *[
-                self._generate_sql_async(ctx, interpretation, f"PQRY-{i}", parameters)
-                for i, interpretation in enumerate(interpretations)
+
+        intended_idx = await self._resolve_async(task.question, interpretations, parameters, user_simulator)
+        pred_intended_query_id = f"PQRY-{intended_idx}"
+
+        if self.config.query_for_intended_only:
+            pred_queries = [
+                await self._generate_sql_async(ctx, interpretations[intended_idx], pred_intended_query_id, parameters)
             ]
-        )
+        else:
+            pred_queries = await asyncio.gather(
+                *[
+                    self._generate_sql_async(ctx, interpretation, f"PQRY-{i}", parameters)
+                    for i, interpretation in enumerate(interpretations)
+                ]
+            )
+
+        self._fix_pred_query_operators(pred_queries, parameters)
+
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in ctx.tools.items()}  # type: ignore
@@ -260,25 +278,9 @@ class AmbigFlatSQLAgent:
             interpretations=interpretations,
             parameters=parameters,
             pred_queries=pred_queries,
-            pred_intended_query_id=None,
-            trajectory=ctx.trajectories,
+            pred_intended_query_id=pred_intended_query_id,
+            trajectory=ctx.trajectories + [user_simulator.trajectory()],
             usage=ctx.usage,
-            user_simulator_usage=None,
+            user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )
-
-    @instrument
-    async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
-    ) -> FlatAmbigNL2QTaskOutput:
-        t0 = time.time()
-
-        task_output = await self.predict_no_user_async(task, db_connector)
-        pred_intended_query_id = await self._resolve_async(
-            task.question, task_output.interpretations, task_output.parameters, task_output.pred_queries, user_simulator
-        )
-        task_output.pred_intended_query_id = pred_intended_query_id
-        task_output.trajectory.append(user_simulator.trajectory())
-        task_output.inference_metrics["latency_seconds"] = time.time() - t0
-        task_output.user_simulator_usage = user_simulator.usage()
-        return FlatAmbigNL2QTaskOutput.model_validate(task_output.model_dump())
