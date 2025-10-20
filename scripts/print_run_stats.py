@@ -1,11 +1,8 @@
 # mypy: ignore-errors
 import argparse
-import time
 import asyncio
 import os
 from tabulate import tabulate
-from mintq.datahub import dataset_registry
-from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.schema import NL2QRunResult, StructuredAmbigNL2QTaskOutput
 from mintq.utils import dict_to_df
 

@@ -1,4 +1,4 @@
-from typing import Protocol, ClassVar, Type, TypeAlias, Union, Literal, Annotated, overload
+from typing import Protocol, ClassVar, TypeAlias, Union, Literal, Annotated, overload
 from pydantic import BaseModel, Field
 from mintq.schema import (
     SimpleNL2QTask,

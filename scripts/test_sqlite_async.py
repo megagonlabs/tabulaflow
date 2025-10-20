@@ -3,8 +3,7 @@ import time
 import asyncio
 from typing import Any
 from mintq.datahub import dataset_registry
-from mintq.db_connector import BaseSQLDBConnector, SQLConnector
-from mintq.toolhub import RunQueryTool
+from mintq.db_connector import BaseSQLDBConnector
 
 query = """
 SELECT n.n_name AS nation, SUM(l.l_extendedprice) AS total_revenue
@@ -40,6 +39,7 @@ AND julianday(t2.date) - julianday(t1.date) <= :days_threshold
 WHERE t2.balance > t1.balance * (1 + :percentage_increase);
 """
 
+
 def print_current_time() -> None:
     print(f"Current time: {time.strftime('%Y-%m-%d %H:%M:%S')}")
 
@@ -61,10 +61,10 @@ async def main() -> None:
     db_connector = db_connectors["retails"]
     # db_connector._t_eng.dbms_semaphore = None
     # db_connector._t_eng.db_semaphore = None
-    run_query_tool = RunQueryTool(db_connector, timeout=120)
+    # run_query_tool = RunQueryTool(db_connector, timeout=120)
     # await run_query(db_connector, query, 60)
     t0 = time.time()
-    params = {'days_threshold': 7, 'percentage_increase': 0.5}
+    params = {"days_threshold": 7, "percentage_increase": 0.5}
     await asyncio.gather(*[run_query(db_connector, query2, params, 120) for _ in range(16)])
     # result = await run_query_tool(invalid_query)
     # print(result)

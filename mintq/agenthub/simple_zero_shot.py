@@ -1,4 +1,3 @@
-from httpx._transports import base
 import litellm
 import time
 import collections

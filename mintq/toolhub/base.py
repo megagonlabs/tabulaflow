@@ -1,4 +1,4 @@
-from typing import ClassVar, Protocol, Any, Callable, TypeAlias
+from typing import ClassVar, Protocol, Any, TypeAlias
 from pydantic_ai import Tool, ToolOutput
 from pydantic import BaseModel
 
