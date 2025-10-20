@@ -716,16 +716,18 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
                 q.to_directory(os.path.join(directory, f"{prefix}_csv"))
     with open(os.path.join(directory, "task_readable.sql"), "w") as f:
         f.write(task.to_readable())
-    if getattr(task, "trajectory", None) is not None:
-        _save_trajectories(task.trajectory, os.path.join(directory, "trajectory"))
+    trajectory = getattr(task, "trajectory", None)
+    if trajectory is not None:
+        _save_trajectories(trajectory, os.path.join(directory, "trajectory"))
 
 
 def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
     query_fields = _get_query_fields(task, [GoldQuery, list[GoldQuery], PredQuery, list[PredQuery]])
     header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory"] + query_fields))
     res = f"/*\n{header}\n*/"
-    if getattr(task, "evidence", None) is not None:
-        res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{task.evidence}\n*/\n----- END OF EVIDENCE -----"
+    evidence = getattr(task, "evidence", None)
+    if evidence is not None:
+        res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{evidence}\n*/\n----- END OF EVIDENCE -----"
     for field in query_fields:
         queries = getattr(task, field)
         if not isinstance(queries, list):
@@ -751,7 +753,7 @@ def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = 
         if gold_query
         else None,
         pred_exec_result=pred_query.exec_result.to_readable() if pred_query and pred_query.exec_result else None,
-        metrics={m: task.eval_metrics.get(m) for m in eval_metrics},
+        metrics={m: getattr(task, "eval_metrics", {}).get(m) for m in eval_metrics},
     )
 
 
