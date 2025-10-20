@@ -101,14 +101,14 @@ class UserSimulator:
         return result.output
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
-        def return_multiple_choice_answer(answer_number: int, num_options: int) -> int:
-            if answer_number < 1 or answer_number > num_options:
-                raise ModelRetry(f"Answer number should be between 1 and {num_options}")
+        def answer(answer_number: int) -> int:
+            if answer_number < 1 or answer_number > len(question.options):
+                raise ModelRetry(f"Answer number should be between 1 and {len(question.options)}")
             return answer_number - 1
 
         result = await self.user_agent.run(
             question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-            output_type=partial(return_multiple_choice_answer, num_options=len(question.options)),
+            output_type=answer,
             message_history=self._message_history if self.include_history else None,
         )
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
