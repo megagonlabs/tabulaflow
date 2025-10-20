@@ -14,7 +14,7 @@ class RunQueryToolMetrics(BaseModel):
 class RunQueryTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 120):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90):
         self.db_connector = db_connector
         self.timeout = timeout
         self._metrics = RunQueryToolMetrics()
