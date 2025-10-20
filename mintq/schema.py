@@ -6,7 +6,7 @@ from genai_prices import calc_price
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 import pydantic_ai
-from typing import Any, Literal, Annotated, Union
+from typing import Any, Literal, Annotated, TypeAlias, Union
 import pandas as pd
 import logging
 import math
@@ -686,10 +686,12 @@ NL2QTaskOutput = Annotated[
 ]
 
 
-def _get_query_fields(task: NL2QTask | NL2QTaskOutput, types: list[type[Any]]) -> list[str]:
+def _get_query_fields(task: NL2QTask | NL2QTaskOutput, t: TypeAlias, include_list_of_t: bool = False) -> list[str]:
     res = []
     for key, value in type(task).model_fields.items():
-        if value.annotation in types:
+        if value.annotation == t:
+            res.append(key)
+        if include_list_of_t and value.annotation == list[t]:
             res.append(key)
     return res
 
@@ -707,8 +709,8 @@ def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str
 
 def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
     os.makedirs(directory, exist_ok=True)
-    for prefix, t in [("gold", GoldQuery), ("pred", PredQuery)]:
-        for field in _get_query_fields(task, [t, list[t]]):
+    for prefix in ["gold", "pred"]:
+        for field in _get_query_fields(task, GoldQuery if prefix == "gold" else PredQuery, True):
             queries = getattr(task, field)
             if not isinstance(queries, list):
                 queries = [queries]
@@ -722,7 +724,8 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
 
 
 def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
-    query_fields = _get_query_fields(task, [GoldQuery, list[GoldQuery], PredQuery, list[PredQuery]])
+    query_fields = _get_query_fields(task, GoldQuery, True)
+    query_fields += _get_query_fields(task, PredQuery, True)
     header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory"] + query_fields))
     res = f"/*\n{header}\n*/"
     evidence = getattr(task, "evidence", None)
