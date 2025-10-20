@@ -377,8 +377,7 @@ Contact: yanlin@megagon.ai
   - [ ] Anthropic
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
-- [ ] Raise ModelRetry on too many interpretation combinations
-- [ ] run sql for resolved only
+- [x] run sql for resolved only
 - [ ] Remove SQL from sqlalchemy errors
 - [ ] Avoid race condition in user simulator history with lock
 - [ ] Fix mypy errors
@@ -387,7 +386,7 @@ Contact: yanlin@megagon.ai
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
-
+- [ ] Raise ModelRetry on too many interpretation combinations
 
 ## Misc
 

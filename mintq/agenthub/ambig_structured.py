@@ -278,7 +278,7 @@ class AmbigStructuredSQLAgent:
 
         if self.config.query_for_intended_only:
             indexes = [ap.intended_interpretation_idx for ap in finite_aps]
-            pred_queries = [await self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps)]
+            pred_queries = [await self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps)]  # type: ignore
         else:
             all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
             pred_queries = await asyncio.gather(

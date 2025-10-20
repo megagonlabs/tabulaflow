@@ -1,7 +1,6 @@
 import pydantic_ai
 from pydantic_ai import Agent, ModelRetry
 import jinja2
-from functools import partial
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,
