@@ -380,7 +380,9 @@ Contact: yanlin@megagon.ai
 - [ ] Raise ModelRetry on too many interpretation combinations
 - [ ] run sql for resolved only
 - [ ] Remove SQL from sqlalchemy errors
+- [ ] Avoid race condition in user simulator history with lock
 - [ ] Fix mypy errors
+- [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
