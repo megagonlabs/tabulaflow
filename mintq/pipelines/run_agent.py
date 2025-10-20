@@ -123,6 +123,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     }
     if agent_cls.name == "simple_zero_shot":
         kwargs["num_candidates"] = args.num_majority_voting_candidates
+    if args.no_query_for_intended_only:
+        kwargs["query_for_intended_only"] = False
     return agent_cls.config_cls(**kwargs)
 
 
@@ -133,7 +135,7 @@ async def main_async() -> None:
     parser.add_argument("--llm", default="openai-responses:gpt-4.1-mini")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
-    parser.add_argument("--local_llm_config", default="local_llm_config.json")
+    parser.add_argument("--no_query_for_intended_only", action="store_true")
 
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
@@ -191,6 +193,7 @@ async def main_async() -> None:
 
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
+    print(config)
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
