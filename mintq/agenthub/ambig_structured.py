@@ -3,7 +3,7 @@ import json
 import jinja2
 import time
 import itertools
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
@@ -121,8 +121,8 @@ class AmbigStructuredSQLAgent:
         system_prompt: str,
         output_type: type[BaseModel] | ToolOutput[PredQuery],
         tool_keys: list[str],
-    ) -> Agent:
-        return Agent[None, str](
+    ) -> Agent[None, Any]:
+        return Agent[None, Any](  # type: ignore
             model=self.config.llm,
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
@@ -148,7 +148,7 @@ class AmbigStructuredSQLAgent:
             finite_ambiguity_points: list[LLMPredAmbiguityPointFinite]
             parameter_ambiguity_points: list[LLMPredAmbiguityPointInfinite]
 
-        disamb_agent: Agent[None, LLMOutput] = self._get_agent(  # type: ignore
+        disamb_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
             output_type=LLMOutput,
@@ -161,7 +161,7 @@ class AmbigStructuredSQLAgent:
         res: list[PredAmbiguityPoint] = []
         for ap in result.output.finite_ambiguity_points:
             res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(len(res))))
-        for ap in result.output.parameter_ambiguity_points:
+        for ap in result.output.parameter_ambiguity_points:  # type: ignore
             res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(len(res))))
         return res
 
@@ -174,7 +174,7 @@ class AmbigStructuredSQLAgent:
     ) -> PredQuery:
         assert len(finite_aps) == len(finite_interpretation_indexes)
 
-        sql_agent: Agent[None, PredQuery] = self._get_agent(  # type: ignore
+        sql_agent: Agent[None, PredQuery] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(language=ctx.task.language),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
