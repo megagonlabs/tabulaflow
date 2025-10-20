@@ -5,7 +5,7 @@ import time
 import itertools
 from typing import ClassVar, Literal
 from pydantic import BaseModel
-from pydantic_ai import Agent
+from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import (
@@ -19,13 +19,20 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
 )
 from mintq.toolhub import (
+    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
     GetSchemaTool,
     GetColumnDescriptionTool,
 )
-from mintq.agenthub.base import agent_registry, BaseUserSimulator, UserMultipleChoiceQuestion, UserValueQuestion, BaseAgentConfig
+from mintq.agenthub.base import (
+    agent_registry,
+    BaseUserSimulator,
+    UserMultipleChoiceQuestion,
+    UserValueQuestion,
+    BaseAgentConfig,
+)
 from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.utils import int_to_letter
@@ -112,7 +119,7 @@ class AmbigStructuredSQLAgent:
         self,
         ctx: TaskRunContext,
         system_prompt: str,
-        output_type: type[BaseModel],
+        output_type: type[BaseModel] | ToolOutput[PredQuery],
         tool_keys: list[str],
     ) -> Agent:
         return Agent[None, str](
@@ -141,7 +148,7 @@ class AmbigStructuredSQLAgent:
             finite_ambiguity_points: list[LLMPredAmbiguityPointFinite]
             parameter_ambiguity_points: list[LLMPredAmbiguityPointInfinite]
 
-        disamb_agent = self._get_agent(
+        disamb_agent: Agent[None, LLMOutput] = self._get_agent(  # type: ignore
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
             output_type=LLMOutput,
@@ -151,7 +158,7 @@ class AmbigStructuredSQLAgent:
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
-        res = []
+        res: list[PredAmbiguityPoint] = []
         for ap in result.output.finite_ambiguity_points:
             res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(len(res))))
         for ap in result.output.parameter_ambiguity_points:
@@ -162,20 +169,20 @@ class AmbigStructuredSQLAgent:
         self,
         ctx: TaskRunContext,
         finite_aps: list[PredAmbiguityPointFinite],
-        finite_interpretation_indexes: list[int],
+        finite_interpretation_indexes: tuple[int, ...],
         infinite_aps: list[PredAmbiguityPointInfinite],
     ) -> PredQuery:
         assert len(finite_aps) == len(finite_interpretation_indexes)
 
-        sql_agent = self._get_agent(
+        sql_agent: Agent[None, PredQuery] = self._get_agent(  # type: ignore
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(language=ctx.task.language),
-            output_type=ctx.tools["finish"].as_pydantic_ai_tool(),
+            output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
             tool_keys=["get_schema", "get_column_description", "search_keywords", "run_query"],
         )
         prompt = ctx.task.question
         for ap, idx in zip(finite_aps, finite_interpretation_indexes):
-            prompt += f"\n- \"{ap.phrase}\" means \"{ap.interpretations[idx]}\""
+            prompt += f'\n- "{ap.phrase}" means "{ap.interpretations[idx]}"'
         if infinite_aps:
             params = [
                 {
@@ -188,7 +195,7 @@ class AmbigStructuredSQLAgent:
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
-        pred_query: PredQuery = result.output
+        pred_query = result.output
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")
@@ -204,20 +211,20 @@ class AmbigStructuredSQLAgent:
     ) -> str:
         for ap in ambiguity_points:
             if ap.type == "finite":
-                response = await user_simulator.ask_async(
+                response_mc = await user_simulator.ask_async(
                     UserMultipleChoiceQuestion(question=ap.phrase, options=ap.interpretations)
                 )
-                ap.intended_interpretation_idx = response.answer_index
+                ap.intended_interpretation_idx = response_mc.answer_index
             elif ap.type == "infinite":
-                response = await user_simulator.ask_async(
+                response_val = await user_simulator.ask_async(
                     UserValueQuestion(
                         question=f"{ap.phrase}: {ap.parameter_description}",
                         value_dtype=ap.parameter_dtype,
                         value_operator_options=ap.parameter_sample_operators,
                     )
                 )
-                ap.intended_paramter_operator = response.operator
-                ap.intended_parameter_value = response.value
+                ap.intended_paramter_operator = response_val.operator
+                ap.intended_parameter_value = response_val.value
 
                 for pred_query in pred_queries:
                     if ap.parameter_name in pred_query.parameter_names:
@@ -231,13 +238,8 @@ class AmbigStructuredSQLAgent:
         )
         return pred_intended_query_id
 
-    @instrument
-    async def predict_no_user_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
-    ) -> StructuredAmbigNL2QTaskOutput:
-        t0 = time.time()
-
-        tools = {
+    async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
+        return {
             "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
@@ -249,6 +251,14 @@ class AmbigStructuredSQLAgent:
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
+
+    @instrument
+    async def predict_no_user_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
+    ) -> StructuredAmbigNL2QTaskOutput:
+        t0 = time.time()
+
+        tools = await self._get_tools(db_connector)
 
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
 

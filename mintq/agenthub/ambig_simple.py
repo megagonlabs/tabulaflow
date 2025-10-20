@@ -68,7 +68,7 @@ class AmbigSimpleSQLAgent:
             "finish": FinishTool(),
         }
 
-        agent = Agent[None, PredQuery](
+        agent = Agent[None, PredQuery](  # type: ignore
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
