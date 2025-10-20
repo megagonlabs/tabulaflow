@@ -8,6 +8,7 @@ from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage,
 from mintq.utils import extract_code
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
+    BaseTool,
     RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
@@ -53,7 +54,7 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        tools = {
+        tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(
                 (await SchemaCompressor().run_async(db_connector.schema))
                 if self.config.compress_schema
@@ -67,7 +68,7 @@ class SQLAgent:
         }
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
 
-        agent = Agent[None, PredQuery](
+        agent = Agent[None, PredQuery](  # type: ignore
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),

@@ -40,7 +40,7 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
         return predict_async_fn
 
     @wraps(predict_async_fn)
-    async def wrapper(self, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
+    async def wrapper(self: Any, task: NL2QTask, *args: Any, **kwargs: Any) -> Any:
         from mintq import __version__
 
         tracer_provider = trace.get_tracer_provider()
