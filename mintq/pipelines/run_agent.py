@@ -132,7 +132,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
-    parser.add_argument("--llm", default="openai-responses:gpt-4.1-mini")
+    parser.add_argument("--llm", default="openai-responses:gpt-4.1")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
     parser.add_argument("--no_query_for_intended_only", action="store_true")
@@ -182,7 +182,7 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid
                 in [
-                    "001",
+                    "002",
                 ]
             ]
         else:
@@ -193,7 +193,7 @@ async def main_async() -> None:
 
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
-    print(config)
+    print(f"<config>{config.model_dump_json(indent=2)}</config>")
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
