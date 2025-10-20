@@ -33,7 +33,7 @@ class Config:
         value = int(os.getenv("MINTQ_MAX_LLM_CONCURRENCY", "16"))
         return value if value > 0 else None
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         props = {
             name: getattr(self, name) for name, attr in self.__class__.__dict__.items() if isinstance(attr, property)
         }

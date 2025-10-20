@@ -136,7 +136,7 @@ class SimpleZeroShotNL2Q:
 
         usage = Usage.create(
             llm=self.config.llm,
-            requests=len(responses),
+            api_requests=len(responses),
             input_tokens=sum(r["usage"]["prompt_tokens"] for r in responses),
             output_tokens=sum(r["usage"]["completion_tokens"] for r in responses),
         )
