@@ -648,22 +648,22 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         assert all(re.match(pattern, pq.id) for pq in self.pred_queries)
 
         if not self.pred_ambiguity_points:
-            assert not self.pred_queries or len(self.pred_queries) == 1
+            assert len(self.pred_queries) == 0 or len(self.pred_queries) == 1
             return self
 
-        finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
-        required_ids = [
-            "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
-            for indexes in itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
-        ]
-        pred_query_ids = set(pq.id for pq in self.pred_queries)
-        for pq_id in pred_query_ids:
-            if pq_id not in required_ids:
-                raise ValueError(f"qid {self.qid}: Pred query {pq_id} is not required.")
-        for required_id in required_ids:
-            if required_id not in pred_query_ids:
-                raise ValueError(f"qid {self.qid}: Pred query {required_id} is not found.")
-        assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
+        # finite_aps = sorted([ap for ap in self.pred_ambiguity_points if ap.type == "finite"], key=lambda x: x.id)
+        # required_ids = [
+        #     "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, indexes))
+        #     for indexes in itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps])
+        # ]
+        # pred_query_ids = set(pq.id for pq in self.pred_queries)
+        # for pq_id in pred_query_ids:
+        #     if pq_id not in required_ids:
+        #         raise ValueError(f"qid {self.qid}: Pred query {pq_id} is not required.")
+        # for required_id in required_ids:
+        #     if required_id not in pred_query_ids:
+        #         raise ValueError(f"qid {self.qid}: Pred query {required_id} is not found.")
+        # assert len(self.pred_queries) == len(required_ids) == math.prod(len(ap.interpretations) for ap in finite_aps)
         return self
 
     @model_validator(mode="after")

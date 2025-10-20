@@ -97,22 +97,26 @@ You are a helpful AI database expert that can translate natural language questio
 """.strip()
 
 
+class AmbigStructuredSQLAgentConfig(BasicAgentConfig):
+    query_for_intended_only: bool = True
+
+
 @agent_registry.register
 class AmbigStructuredSQLAgent:
     name: ClassVar = "ambig_structured_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-structured"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = AmbigStructuredSQLAgentConfig
 
     def __init__(
         self,
-        config: BasicAgentConfig,
+        config: AmbigStructuredSQLAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
 
     @classmethod
-    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigStructuredSQLAgent":
+    async def from_config_async(cls, config: AmbigStructuredSQLAgentConfig) -> "AmbigStructuredSQLAgent":
         return cls(config)
 
     def _get_agent(
@@ -203,10 +207,21 @@ class AmbigStructuredSQLAgent:
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return pred_query
 
+    def _fix_pred_query_operators(
+        self, pred_queries: list[PredQuery], ambiguity_points: list[PredAmbiguityPoint]
+    ) -> None:
+        for ap in ambiguity_points:
+            if ap.type == "infinite":
+                for pred_query in pred_queries:
+                    if ap.parameter_name in pred_query.parameter_names:
+                        original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
+                        pred_query.query = pred_query.query.replace(
+                            original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
+                        )
+
     async def _resolve_async(
         self,
         ambiguity_points: list[PredAmbiguityPoint],
-        pred_queries: list[PredQuery],
         user_simulator: BaseUserSimulator,
     ) -> str:
         for ap in ambiguity_points:
@@ -225,13 +240,6 @@ class AmbigStructuredSQLAgent:
                 )
                 ap.intended_paramter_operator = response_val.operator
                 ap.intended_parameter_value = response_val.value
-
-                for pred_query in pred_queries:
-                    if ap.parameter_name in pred_query.parameter_names:
-                        original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
-                        pred_query.query = pred_query.query.replace(
-                            original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
-                        )
 
         pred_intended_query_id = "PQRY" + "".join(
             f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points if ap.type == "finite"
@@ -253,8 +261,8 @@ class AmbigStructuredSQLAgent:
         }
 
     @instrument
-    async def predict_no_user_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector
+    async def predict_async(
+        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
     ) -> StructuredAmbigNL2QTaskOutput:
         t0 = time.time()
 
@@ -263,14 +271,22 @@ class AmbigStructuredSQLAgent:
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
 
         ambiguity_points = await self._disambiguate_async(ctx)
-
         finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
-        all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
         infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
 
-        pred_queries = await asyncio.gather(
-            *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
-        )
+        pred_intended_query_id = await self._resolve_async(ambiguity_points, user_simulator)
+
+        if self.config.query_for_intended_only:
+            indexes = [ap.intended_interpretation_idx for ap in finite_aps]
+            pred_queries = [await self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps)]
+        else:
+            all_indexes = list(itertools.product(*[range(len(ap.interpretations)) for ap in finite_aps]))
+            pred_queries = await asyncio.gather(
+                *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
+            )
+
+        self._fix_pred_query_operators(pred_queries, ambiguity_points)
+
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in ctx.tools.items()}  # type: ignore
@@ -279,26 +295,9 @@ class AmbigStructuredSQLAgent:
             **task.model_dump(),
             pred_ambiguity_points=ambiguity_points,
             pred_queries=pred_queries,
-            pred_intended_query_id=None,
-            trajectory=ctx.trajectories,
+            pred_intended_query_id=pred_intended_query_id,
+            trajectory=ctx.trajectories + [user_simulator.trajectory()],
             usage=ctx.usage,
-            user_simulator_usage=None,
+            user_simulator_usage=user_simulator.usage(),
             inference_metrics=metrics,
         )
-
-    @instrument
-    async def predict_async(
-        self, task: AmbigNL2QTask, db_connector: BaseSQLDBConnector, user_simulator: BaseUserSimulator
-    ) -> StructuredAmbigNL2QTaskOutput:
-        t0 = time.time()
-
-        task_output = await self.predict_no_user_async(task, db_connector)
-
-        pred_intended_query_id = await self._resolve_async(
-            task_output.pred_ambiguity_points, task_output.pred_queries, user_simulator
-        )
-        task_output.pred_intended_query_id = pred_intended_query_id
-        task_output.trajectory.append(user_simulator.trajectory())
-        task_output.inference_metrics["latency_seconds"] = time.time() - t0
-        task_output.user_simulator_usage = user_simulator.usage()
-        return StructuredAmbigNL2QTaskOutput.model_validate(task_output.model_dump())
