@@ -1,3 +1,4 @@
+from httpx._transports import base
 import litellm
 import time
 import collections
@@ -19,7 +20,7 @@ from mintq.schema import (
     PredQuery,
     Usage,
 )
-from mintq.agenthub.base import agent_registry
+from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import instrument, BasicAgentConfig
 
 SYSTEM_PROMPT = """
@@ -66,7 +67,7 @@ class SimpleZeroShotNL2Q:
     name: ClassVar = "simple_zero_shot"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar = SimpleZeroShotNL2QConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = SimpleZeroShotNL2QConfig
 
     def __init__(
         self,

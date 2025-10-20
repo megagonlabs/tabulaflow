@@ -22,9 +22,6 @@ class BaseSimpleSQLAgent(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[type[BaseAgentConfig]]
 
-    @classmethod
-    async def from_config_async(cls, config) -> "BaseSimpleSQLAgent": ...  # type: ignore
-
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput: ...
 
 
