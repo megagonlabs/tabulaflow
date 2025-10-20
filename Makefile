@@ -15,6 +15,10 @@ format:
 lint:
 	uv run ruff check .
 
+.PHONY: test
+test:
+	uv run pytest tests/
+
 .PHONY: test-simple
 test-simple:
 	set -e; \
