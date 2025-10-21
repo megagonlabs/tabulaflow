@@ -62,3 +62,4 @@ exclude = ["scripts/test_readme.py", "scripts/mcp_client.py"]
 
 [tool.pytest.ini_options]
 norecursedirs = ["data/*"]
+asyncio_mode = "auto"

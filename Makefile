@@ -17,7 +17,7 @@ lint:
 
 .PHONY: test
 test:
-	uv run pytest tests/
+	uv run pytest -s tests/
 
 .PHONY: test-simple
 test-simple:
