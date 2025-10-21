@@ -176,16 +176,20 @@ class Usage(BaseModel):
     ) -> "Usage":
         if api_cost_usd is None:
             provider, model = llm.split(":")
-            price_data = calc_price(
-                pydantic_ai.usage.RunUsage(
-                    requests=api_requests,
-                    input_tokens=input_tokens,
-                    output_tokens=output_tokens,
-                ),
-                model_ref=model,
-                provider_id=provider,
-            )
-            api_cost_usd = price_data.total_price
+            try:
+                price_data = calc_price(
+                    pydantic_ai.usage.RunUsage(
+                        requests=api_requests,
+                        input_tokens=input_tokens,
+                        output_tokens=output_tokens,
+                    ),
+                    model_ref=model,
+                    provider_id=provider,
+                )
+                api_cost_usd = price_data.total_price
+            except Exception as e:
+                logger.warning(f"Error calculating API cost for {llm}, setting to 0.0: {e}")
+                api_cost_usd = Decimal(0)
         elif isinstance(api_cost_usd, float):
             api_cost_usd = Decimal(api_cost_usd)
         return cls(
