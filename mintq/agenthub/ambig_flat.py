@@ -199,14 +199,19 @@ class AmbigFlatSQLAgent:
         params: list[PredAmbiguityPointInfinite],
         user_simulator: BaseUserSimulator,
     ) -> int:
-        for ap in params:
-            response = await user_simulator.ask_async(
-                UserValueQuestion(
-                    question=f"{ap.phrase}: {ap.parameter_description}",
-                    value_dtype=ap.parameter_dtype,
-                    value_operator_options=ap.parameter_sample_operators,
+        responses = await asyncio.gather(
+            *[
+                user_simulator.ask_async(
+                    UserValueQuestion(
+                        question=f"{ap.phrase}: {ap.parameter_description}",
+                        value_dtype=ap.parameter_dtype,
+                        value_operator_options=ap.parameter_sample_operators,
+                    )
                 )
-            )
+                for ap in params
+            ]
+        )
+        for ap, response in zip(params, responses):
             ap.intended_paramter_operator = response.operator
             ap.intended_parameter_value = response.value
 
