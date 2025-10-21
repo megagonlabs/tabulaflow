@@ -2,7 +2,7 @@ from typing import ClassVar, Any
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.toolhub.utils import format_df
+from mintq.toolhub.utils import format_df, format_sqlalchemy_error_msg
 
 
 class RunQueryToolMetrics(BaseModel):
@@ -36,7 +36,7 @@ class RunQueryTool:
                 return f"(query timed out after {self.timeout} seconds)"
             else:
                 self._metrics.error_query_failed += 1
-                return f"(query failed: {exec_result.error.message})"
+                return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
         df = exec_result.df
         if df.empty:  # type: ignore

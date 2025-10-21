@@ -97,6 +97,8 @@ async def test_run_query_failed(db_connector):
     print(result)
 
     assert "query failed:" in result
+    assert "[SQL" not in result
+    assert "(Background on this error" not in result
     assert tool.metrics().num_calls == 1
     assert tool.metrics().error_query_failed == 1
 
