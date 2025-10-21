@@ -1,4 +1,3 @@
-from mintq.agenthub import patches  # noqa: F401
 from mintq.agenthub.base import (
     BaseAgentConfig,
     BaseSimpleSQLAgent,

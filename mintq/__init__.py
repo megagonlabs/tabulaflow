@@ -1,3 +1,4 @@
+from mintq import patches  # noqa: F401
 import os
 import contextlib
 from pydantic_ai import Agent
