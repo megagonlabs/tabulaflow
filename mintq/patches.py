@@ -7,11 +7,47 @@ Import this module to ensure patches are applied.
 
 import asyncio
 from typing import Any
+import os
+from anthropic import AsyncAnthropicVertex
 from pydantic_ai import Agent
+import pydantic_ai.models
+from pydantic_ai.models import KnownModelName, Model
+from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.providers.anthropic import AnthropicProvider
 from mintq.config import config
 
+# =============================================================================================
+# |     Patch pydantic_ai.models.infer_model to support Claude models in Google Vertex AI     |
+# =============================================================================================
 
-# Create a semaphore for throttling Agent.run() calls, if concurrency is limited.
+
+def get_anthropic_vertex_model(model_name: str) -> Model:
+    return AnthropicModel(
+        model_name,
+        provider=AnthropicProvider(
+            anthropic_client=AsyncAnthropicVertex(
+                project_id=os.getenv("VERTEXAI_PROJECT"),
+                region=os.getenv("VERTEXAI_LOCATION"),
+            )  # type: ignore
+        ),
+    )
+
+
+_original_infer_model = pydantic_ai.models.infer_model
+
+
+def _patched_infer_model(model: Model | KnownModelName | str) -> Model:
+    if isinstance(model, str) and model.startswith("google-vertex:claude"):
+        return get_anthropic_vertex_model(model.split(":")[1])
+    return _original_infer_model(model)
+
+
+pydantic_ai.models.infer_model = _patched_infer_model
+
+# ===============================================================================
+# |     Patch pydantic_ai.Agent.run() to support max concurrency throttling     |
+# ===============================================================================
+
 _llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency) if config.max_llm_concurrency is not None else None
 
 
