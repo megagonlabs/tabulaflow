@@ -6,7 +6,7 @@ from mintq.toolhub.run_query import RunQueryTool
 from mintq.db_connector.sql_conn import SQLConnector
 from sqlalchemy.ext.asyncio import create_async_engine
 
-SQL_INIT = [
+INIT_SQL = [
     "CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(100), age INTEGER);",
     "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY (user_id) REFERENCES users(id));",
     "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 25), (2, 'Bob', 30), (3, 'Charlie', NULL);",
@@ -20,7 +20,7 @@ async def sql_engine():
         db_path = tmp.name
         engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
         async with engine.begin() as conn:
-            for sql in SQL_INIT:
+            for sql in INIT_SQL:
                 await conn.execute(sqlalchemy.text(sql))
         yield engine
         if os.path.exists(db_path):
@@ -103,25 +103,27 @@ async def test_run_query_failed(db_connector):
     assert tool.metrics().error_query_failed == 1
 
 
-# @pytest.mark.asyncio
-# async def test_run_query_timeout(db_connector):
-#     """Test query timeout."""
-#     tool = RunQueryTool(db_connector, timeout=1)
+@pytest.mark.asyncio
+async def test_run_query_timeout(db_connector):
+    """Test query timeout."""
+    tool = RunQueryTool(db_connector, timeout=1)
 
-#     # Create a query that takes a long time
-#     # For SQLite, we can simulate a long query by doing many cross joins
-#     result = await tool(
-#         """
-#         WITH RECURSIVE cnt(x) AS (
-#             SELECT 1
-#             UNION ALL
-#             SELECT x+1 FROM cnt
-#             LIMIT 10000000
-#         )
-#         SELECT COUNT(*) FROM cnt
-#         """
-#     )
+    # Create a query that takes a long time
+    # For SQLite, we can simulate a long query by doing many cross joins
+    result = await tool(
+        """
+        WITH RECURSIVE cnt(x) AS (
+            SELECT 1
+            UNION ALL
+            SELECT x+1 FROM cnt
+            LIMIT 10000000
+        )
+        SELECT COUNT(*) FROM cnt
+        """
+    )
 
-#     # The query should timeout
-#     assert "query timed out" in result or "query failed:" in result
-#     assert tool.metrics().num_calls == 1
+    # The query should timeout
+    assert "query timed out" in result or "query failed:" in result
+    assert tool.metrics().error_timeout == 1
+    assert tool.metrics().error_query_failed == 0
+    assert tool.metrics().num_calls == 1
