@@ -224,22 +224,25 @@ class AmbigStructuredSQLAgent:
         ambiguity_points: list[PredAmbiguityPoint],
         user_simulator: BaseUserSimulator,
     ) -> str:
+        questions = []
         for ap in ambiguity_points:
             if ap.type == "finite":
-                response_mc = await user_simulator.ask_async(
-                    UserMultipleChoiceQuestion(question=ap.phrase, options=ap.interpretations)
-                )
-                ap.intended_interpretation_idx = response_mc.answer_index
+                questions.append(UserMultipleChoiceQuestion(question=ap.phrase, options=ap.interpretations))
             elif ap.type == "infinite":
-                response_val = await user_simulator.ask_async(
+                questions.append(
                     UserValueQuestion(
                         question=f"{ap.phrase}: {ap.parameter_description}",
                         value_dtype=ap.parameter_dtype,
                         value_operator_options=ap.parameter_sample_operators,
                     )
                 )
-                ap.intended_paramter_operator = response_val.operator
-                ap.intended_parameter_value = response_val.value
+        responses = await asyncio.gather(*[user_simulator.ask_async(question) for question in questions])
+        for ap, response in zip(ambiguity_points, responses):
+            if ap.type == "finite":
+                ap.intended_interpretation_idx = response.answer_index
+            elif ap.type == "infinite":
+                ap.intended_paramter_operator = response.operator
+                ap.intended_parameter_value = response.value
 
         pred_intended_query_id = "PQRY" + "".join(
             f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points if ap.type == "finite"
