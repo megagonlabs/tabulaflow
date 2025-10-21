@@ -372,7 +372,7 @@ Contact: yanlin@megagon.ai
   - [x] Max concurrency limiting with ThrottledAgent
   - [x] OpenAI - chat vs. responses API
   - [x] batch size
-  - [ ] Fireworks
+  - [x] Fireworks
   - [ ] Gemini
   - [ ] Anthropic
 - [x] Fix empty ambiguity points

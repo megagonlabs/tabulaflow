@@ -75,7 +75,7 @@ test-arcs-structured-all-query:
 
 .PHONY: test-arcs-structured-fireworks
 test-arcs-structured-fireworks:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/deepseek-v3p1
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/deepseek-r1-0528
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
