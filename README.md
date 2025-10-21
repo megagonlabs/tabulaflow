@@ -378,7 +378,7 @@ Contact: yanlin@megagon.ai
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
 - [x] run sql for resolved only
-- [ ] Remove SQL from sqlalchemy errors
+- [x] Remove SQL from sqlalchemy errors
 - [ ] Avoid race condition in user simulator history with lock
 - [ ] Fix mypy errors
 - [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
