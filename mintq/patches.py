@@ -21,14 +21,16 @@ from mintq.config import config
 # =============================================================================================
 
 
+
 def get_anthropic_vertex_model(model_name: str) -> Model:
+    """Adpapted from https://github.com/pydantic/pydantic-ai/pull/1392#issuecomment-2851287096"""
     return AnthropicModel(
         model_name,
-        provider=AnthropicProvider(
+        provider=AnthropicProvider(  # type: ignore
             anthropic_client=AsyncAnthropicVertex(
-                project_id=os.getenv("VERTEXAI_PROJECT"),
-                region=os.getenv("VERTEXAI_LOCATION"),
-            )  # type: ignore
+                project_id=os.environ["VERTEXAI_PROJECT"],
+                region=os.environ["VERTEXAI_LOCATION"],
+            )
         ),
     )
 
