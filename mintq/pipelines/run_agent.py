@@ -194,7 +194,11 @@ async def main_async() -> None:
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
     print(f"<config>{config.model_dump_json(indent=2)}</config>")
+
+    t0 = time.time()
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
+    print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
+
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
 
