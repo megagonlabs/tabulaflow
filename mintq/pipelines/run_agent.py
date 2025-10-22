@@ -182,7 +182,7 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid
                 in [
-                    "002",
+                    "040",
                 ]
             ]
         else:

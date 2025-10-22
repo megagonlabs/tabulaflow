@@ -43,6 +43,7 @@ class AmbigSimpleSQLAgent:
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
     async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigSimpleSQLAgent":
@@ -55,12 +56,7 @@ class AmbigSimpleSQLAgent:
         t0 = time.time()
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(
-                (await SchemaCompressor().run_async(db_connector.schema))
-                if self.config.compress_schema
-                else db_connector.schema,
-                self.formatter,
-            ),
+            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "ask_user": AskUserTool(user_simulator),
             "search_keywords": SearchKeywordsTool(db_connector),

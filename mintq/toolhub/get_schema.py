@@ -3,6 +3,7 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SQLSchema
+from mintq.metadata_synthesizers import BaseSchemaCompressor
 
 
 class GetSchemaToolMetrics(BaseModel):
@@ -12,9 +13,12 @@ class GetSchemaToolMetrics(BaseModel):
 class GetSchemaTool:
     name: ClassVar = "get_schema"
 
-    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter):
+    def __init__(
+        self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, compressor: BaseSchemaCompressor | None = None
+    ):
         self.schema = schema
         self.formatter = formatter
+        self.compressor = compressor
         self._metrics = GetSchemaToolMetrics()
 
     async def __call__(self) -> str:
@@ -22,7 +26,8 @@ class GetSchemaTool:
         Get the schema of the database.
         """
         self._metrics.num_calls += 1
-        return self.formatter.format(self.schema)
+        schema = self.schema if self.compressor is None else await self.compressor.run_async(self.schema)
+        return self.formatter.format(schema)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
