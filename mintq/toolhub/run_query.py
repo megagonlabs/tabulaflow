@@ -1,6 +1,6 @@
 from typing import ClassVar, Any
 from pydantic_ai import Tool
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.utils import format_df, format_sqlalchemy_error_msg
 
@@ -11,6 +11,13 @@ class RunQueryToolMetrics(BaseModel):
     error_query_failed: int = 0
 
 
+class LLMParamter(BaseModel):
+    parameter_name: str = Field(
+        description="The parameter name that corresponds to the :<parameter_name> placeholder in the query."
+    )
+    parameter_value: int | float | str = Field(description="The intended value of the parameter.")
+
+
 class RunQueryTool:
     name: ClassVar = "run_query"
 
@@ -19,7 +26,7 @@ class RunQueryTool:
         self.timeout = timeout
         self._metrics = RunQueryToolMetrics()
 
-    async def __call__(self, query: str, parameters: dict[str, Any] = {}) -> str:
+    async def __call__(self, query: str, parameters: list[LLMParamter] = []) -> str:
         """
         Execute a SQL query and return the results.
 
@@ -29,7 +36,11 @@ class RunQueryTool:
         """
         self._metrics.num_calls += 1
         db_connector = self.db_connector
-        exec_result = await db_connector.run_query_async(query, parameters, timeout=self.timeout)
+        exec_result = await db_connector.run_query_async(
+            query,
+            parameters={p.parameter_name: p.parameter_value for p in parameters},
+            timeout=self.timeout,
+        )
         if exec_result.error:
             if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1

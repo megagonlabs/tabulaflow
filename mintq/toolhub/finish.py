@@ -26,9 +26,12 @@ class FinishTool:
                 for tool_call in msg.tool_calls[::-1]:
                     if tool_call.name == "run_query" and tool_call.arguments is not None:
                         query = tool_call.arguments["query"]
-                        parameters = tool_call.arguments.get("parameters", {})
+                        parameters = tool_call.arguments.get("parameters", [])
+                        parameter_values = {p["parameter_name"]: p["parameter_value"] for p in parameters}
                         return PredQuery(
-                            query=query, parameter_names=list(parameters.keys()), parameter_values=parameters
+                            query=query,
+                            parameter_names=list(parameter_values.keys()),
+                            parameter_values=parameter_values,
                         )
         self._metrics.error_no_query_executed += 1
         raise ValueError(
