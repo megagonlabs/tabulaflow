@@ -86,7 +86,7 @@ class UserSimulator:
                     "phrase": ap.phrase,
                     "interpretation": ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                     if ap.type == "finite"
-                    else f"{ap.intended_parameter_operator} {ap.intended_parameter_value}",
+                    else f"{ap.parameter_name} {ap.intended_parameter_operator} {ap.intended_parameter_value}",
                 }
                 for ap in task.gold_ambiguity_points
             ],
