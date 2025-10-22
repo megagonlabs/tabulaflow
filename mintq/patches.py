@@ -21,7 +21,6 @@ from mintq.config import config
 # =============================================================================================
 
 
-
 def get_anthropic_vertex_model(model_name: str) -> Model:
     """Adpapted from https://github.com/pydantic/pydantic-ai/pull/1392#issuecomment-2851287096"""
     return AnthropicModel(

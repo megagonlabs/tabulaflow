@@ -1,4 +1,4 @@
-from typing import ClassVar, Any
+from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from mintq.db_connector import BaseSQLDBConnector
