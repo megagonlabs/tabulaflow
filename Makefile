@@ -73,8 +73,8 @@ test-arcs-structured-all-query:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
-.PHONY: test-arcs-structured-fireworks
-test-arcs-structured-fireworks:
+.PHONY: test-arcs-structured-deepseek
+test-arcs-structured-deepseek:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/deepseek-r1-0528
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
@@ -88,6 +88,18 @@ test-arcs-structured-gemini:
 .PHONY: test-arcs-structured-claude
 test-arcs-structured-claude:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm anthropic:claude-sonnet-4-5-20250929
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-qwen
+test-arcs-structured-qwen:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-gptoss
+test-arcs-structured-gptoss:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/gpt-oss-120b
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
