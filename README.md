@@ -372,15 +372,21 @@ Contact: yanlin@megagon.ai
   - [x] Max concurrency limiting with ThrottledAgent
   - [x] OpenAI - chat vs. responses API
   - [x] batch size
-  - [x] Fireworks
-  - [x] Gemini
   - [x] Anthropic
+  - [ ] Deepseek
+  - [ ] Gemini
+  - [ ] Qwen
+  - [ ] Llama
+  - [ ] Gemma
+  - [ ] OpenAI OSS
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
 - [x] run sql for resolved only
 - [x] Remove SQL from sqlalchemy errors
 - [x] Avoid race condition in user simulator history with lock
 - [x] Fix mypy errors
+- [ ] Fix schema compressor
+- [ ] Fix Gemini on run_query tool's `parameters` field
 - [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
 - [ ] Read BIRD-INTERACT paper and design experiments
 - [ ] Support Ambrosia
