@@ -368,25 +368,26 @@ Contact: yanlin@megagon.ai
 - [x] Update README.md
 - [x] Fix data format - gold query latency, sample values, parameter dtype
 - [x] print_dataset_stats.py with ambiguity dataset metrics
-- [ ] LLM
+- [x] LLMs
   - [x] Max concurrency limiting with ThrottledAgent
   - [x] OpenAI - chat vs. responses API
   - [x] batch size
   - [x] Anthropic
-  - [ ] Deepseek
-  - [ ] Gemini
-  - [ ] Qwen
-  - [ ] Llama
-  - [ ] Gemma
-  - [ ] OpenAI OSS
+  - [x] Deepseek
+  - [x] Gemini
+  - [x] Qwen
+  - [x] Llama
+  - [x] Gemma (serverless not available)
+  - [x] OpenAI OSS
+  - [x] Kimi
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
 - [x] run sql for resolved only
 - [x] Remove SQL from sqlalchemy errors
 - [x] Avoid race condition in user simulator history with lock
 - [x] Fix mypy errors
-- [ ] Fix schema compressor
-- [ ] Fix Gemini on run_query tool's `parameters` field
+- [x] Fix schema compressor
+- [x] Fix Gemini on run_query tool's `parameters` field
 - [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
 - [ ] Read BIRD-INTERACT paper and design experiments
 - [ ] Support Ambrosia
