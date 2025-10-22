@@ -36,6 +36,7 @@ class ToolCall(BaseModel):
 
 class AssistantMessage(BaseModel):
     role: Literal["assistant"] = "assistant"
+    thinking: str | None = None
     content: str
     tool_calls: list[ToolCall] = Field(default_factory=list)
 
@@ -104,6 +105,8 @@ class Trajectory(BaseModel):
                         new_msg.tool_calls.append(
                             ToolCall(tool_call_id=part.tool_call_id, name=part.tool_name, arguments=arguments)
                         )
+                    elif part.part_kind == "thinking":
+                        new_msg.thinking = part.content
                     else:
                         raise ValueError(f"Unknown message part type: {part.part_kind}")
                 trajectory.messages.append(new_msg)
@@ -120,6 +123,8 @@ class Trajectory(BaseModel):
                 formatted.append(f'<message role="user">\n{msg.content}\n</message>')
             elif msg.role == "assistant":
                 s = '<message role="assistant">\n'
+                if msg.thinking:
+                    s += f"<thinking>\n{msg.thinking}\n</thinking>\n"
                 if msg.content:
                     try:
                         content = json.loads(msg.content)
