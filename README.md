@@ -373,8 +373,8 @@ Contact: yanlin@megagon.ai
   - [x] OpenAI - chat vs. responses API
   - [x] batch size
   - [x] Fireworks
-  - [ ] Gemini
-  - [ ] Anthropic
+  - [x] Gemini
+  - [x] Anthropic
 - [x] Fix empty ambiguity points
 - [x] print_run_stats.py, refactor print_dataset_stats.py
 - [x] run sql for resolved only
@@ -382,6 +382,7 @@ Contact: yanlin@megagon.ai
 - [x] Avoid race condition in user simulator history with lock
 - [x] Fix mypy errors
 - [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
+- [ ] Read BIRD-INTERACT paper and design experiments
 - [ ] Support Ambrosia
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
