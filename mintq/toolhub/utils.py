@@ -35,5 +35,6 @@ def equals_ci(a: str | None, b: str | None) -> bool:
 
 def format_sqlalchemy_error_msg(error_msg: str) -> str:
     error_msg = re.sub(r"\[SQL:.*?\]", "", error_msg)
+    error_msg = re.sub(r"\[parameters:.*?\]", "", error_msg)
     error_msg = re.sub(r"\(Background on this error at: https://sqlalche\.me/e/\S+\)", "", error_msg)
     return error_msg.strip()
