@@ -146,7 +146,7 @@ async def main_async() -> None:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_litellm", action="store_true")
-    parser.add_argument("--log_level", default="INFO", type=str)
+    parser.add_argument("--log_level", default="WARNING", type=str)
     args = parser.parse_args()
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="dev")

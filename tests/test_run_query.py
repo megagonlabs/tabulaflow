@@ -3,7 +3,7 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
-from mintq.toolhub.run_query import RunQueryTool
+from mintq.toolhub.run_query import RunQueryTool, LLMParameter
 from mintq.db_connector.sql_conn import SQLConnector
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -61,7 +61,7 @@ async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
     tool = RunQueryTool(db_connector, timeout=10)
     result: str = await tool(
         "SELECT * FROM users WHERE age > :min_age ORDER BY id",
-        parameters={"min_age": 25},
+        parameters=[LLMParameter(parameter_name="min_age", parameter_value=25)],
     )
 
     assert "Bob" in result

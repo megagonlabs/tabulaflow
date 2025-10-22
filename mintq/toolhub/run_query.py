@@ -11,7 +11,7 @@ class RunQueryToolMetrics(BaseModel):
     error_query_failed: int = 0
 
 
-class LLMParamter(BaseModel):
+class LLMParameter(BaseModel):
     parameter_name: str = Field(
         description="The parameter name that corresponds to the :<parameter_name> placeholder in the query."
     )
@@ -26,7 +26,7 @@ class RunQueryTool:
         self.timeout = timeout
         self._metrics = RunQueryToolMetrics()
 
-    async def __call__(self, query: str, parameters: list[LLMParamter] = []) -> str:
+    async def __call__(self, query: str, parameters: list[LLMParameter] = []) -> str:
         """
         Execute a SQL query and return the results.
 
