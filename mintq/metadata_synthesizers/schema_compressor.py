@@ -1,6 +1,6 @@
 import copy
 import collections
-from typing import Any, Hashable, Protocol, TypeVar
+from typing import Any, Hashable, Protocol, Sequence, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
@@ -160,9 +160,9 @@ class SchemaCompressor:
 
     name_cluster_funcs: list[BaseClusterFunc[Any]] = field(
         default_factory=lambda: [
-            YearAffixClusterFunc(),
-            YearMonthAffixClusterFunc(),
             DateAffixClusterFunc(),
+            YearMonthAffixClusterFunc(),
+            YearAffixClusterFunc(),
             IndexAffixClusterFunc(),
         ]
     )
@@ -216,54 +216,70 @@ class SchemaCompressor:
             foreign_keys=columns[0].foreign_keys,
         )
 
-    def _describe_name(self, names: list[str]) -> tuple[str, str | None]:
+    def _describe_name(self, names: list[str]) -> Sequence[tuple[str, str | None, list[str]]]:
         """Example:
-        names = ["revenue_20200101", "revenue_20200102", "revenue_20200103"]
-        return ("revenue_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103")
+        _describe_name(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
+        returns: [
+          ("revenue_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103", ["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
+          ("profit_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103", ["profit_20200101", "profit_20200102", "profit_20200103"]),
+        ]
         """
-        candidates = [("{" + ",".join(names) + "}", None)]
+        res = []
+        remaining = names
         for func in self.name_cluster_funcs:
             groups = collections.defaultdict(list)
-            for name in names:
+            for name in remaining:
                 pattern, variation = func.extract(name)
                 groups[pattern].append((name, variation))
 
-            if len(groups) > 1 or any(v is None for vs in groups.values() for _, v in vs):
-                continue
-            pattern = list(groups.keys())[0]
-            name_description = func.summarize([v for _, v in groups[pattern]])
-            if name_description is not None:
-                candidates.append((pattern, name_description))  # type: ignore
+            for pattern, group in groups.items():
+                group_names = [name for name, _ in group]
+                variations = [v for _, v in group]
+                if len(group) == 1 or any(v is None for v in variations):
+                    continue
+                remaining = [name for name in remaining if name not in group_names]
+                name_description = func.summarize(variations)
+                if name_description is not None:
+                    res.append((pattern, name_description, group_names))
 
-        # Choose the candidate with the shortest name + name_description
-        return min(candidates, key=lambda x: len(x[0] + (x[1] or "")))
+        if remaining:
+            res.append(("{" + ",".join(remaining) + "}", None, remaining))  # type: ignore
+        return res
 
     async def run_async(self, schema: SQLSchema) -> SQLSchema:
         schema = copy.deepcopy(schema)
 
+        # We don't allow merging already merged tables
+        is_merged = set()
+
         while True:
             digest2tables = collections.defaultdict(list)
             for table in schema.tables:
-                digest2tables[self._table_digest(table, schema)].append(table)
+                if table.name not in is_merged:
+                    digest2tables[self._table_digest(table, schema)].append(table)
 
             largest_group = max(digest2tables.values(), key=len)
             if len(largest_group) == 1:
                 return schema
 
-            group_name, group_name_description = self._describe_name([t.name for t in largest_group])
+            for group_name, group_name_description, original_names in self._describe_name(
+                [t.name for t in largest_group]
+            ):
+                tables_to_merge = [t for t in largest_group if t.name in original_names]
+                merged_table = copy.deepcopy(largest_group[0])
+                merged_table.name = group_name
+                merged_table.name_description = group_name_description
+                merged_table.original_names = original_names
+                for i in range(len(merged_table.columns)):
+                    merged_table.columns[i] = self._merge_columns([t.columns[i] for t in tables_to_merge])
 
-            new_table = largest_group[0]
-            new_table.name = group_name
-            new_table.name_description = group_name_description
-            new_table.original_names = [t.name for t in largest_group]
-            for i in range(len(new_table.columns)):
-                new_table.columns[i] = self._merge_columns([t.columns[i] for t in largest_group])
+                name_mapping = {(t.schema_name, t.name): merged_table.name for t in tables_to_merge}
+                new_tables = [merged_table] + [t for t in schema.tables if (t.schema_name, t.name) not in name_mapping]
+                for table in new_tables:
+                    for fk in table.foreign_keys:
+                        if (fk.foreign_schema_name, fk.foreign_table) in name_mapping:
+                            fk.foreign_table = name_mapping[(fk.foreign_schema_name, fk.foreign_table)]
 
-            name_mapping = {(t.schema_name, t.name): new_table.name for t in largest_group}
-            new_tables = [new_table] + [t for t in schema.tables if (t.schema_name, t.name) not in name_mapping]
-            for table in new_tables:
-                for fk in table.foreign_keys:
-                    if (fk.foreign_schema_name, fk.foreign_table) in name_mapping:
-                        fk.foreign_table = name_mapping[(fk.foreign_schema_name, fk.foreign_table)]
+                is_merged.add(merged_table.name)
 
-            schema.tables = new_tables
+                schema.tables = new_tables
