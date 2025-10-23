@@ -193,7 +193,7 @@ class Usage(BaseModel):
                 )
                 api_cost_usd = price_data.total_price
             except Exception as e:
-                logger.warning(f"Error calculating API cost for {llm}, setting to 0.0: {e}")
+                logger.debug(f"Error calculating API cost for {llm}, setting to 0.0: {e}")
                 api_cost_usd = Decimal(0)
         elif isinstance(api_cost_usd, float):
             api_cost_usd = Decimal(api_cost_usd)

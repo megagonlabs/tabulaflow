@@ -22,6 +22,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    Usage,
 )
 
 logger = logging.getLogger(__name__)
@@ -170,6 +171,9 @@ async def main_async() -> None:
         else:
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
+
+    if Usage.create(args.llm, 1, 1000000, 1000000).api_cost_usd == 0:
+        print(f"Warning: API cost for {args.llm} is 0.0. API cost calculation might not be supported for {args.llm}.")
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
