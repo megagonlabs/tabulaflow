@@ -30,9 +30,17 @@ class RunQueryTool:
         """
         Execute a SQL query and return the results.
 
+        Example:
+        ```python
+        run_query(
+            query="SELECT * FROM student WHERE gpa > :gpa_threshold",
+            parameters=[{"parameter_name": "gpa_threshold", "parameter_value": 3.5}],
+        )
+        ```
+
         Args:
             query: The SQL query to execute.
-            parameters: The parameters to use in the query.
+            parameters: The parameters to use in the query. A list of dictionaries, each containing a `parameter_name` and a `parameter_value` field.
         """
         self._metrics.num_calls += 1
         db_connector = self.db_connector

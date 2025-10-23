@@ -24,6 +24,11 @@ class GetSchemaTool:
     async def __call__(self) -> str:
         """
         Get the schema of the database.
+
+        Example:
+        ```python
+        get_schema()
+        ```
         """
         self._metrics.num_calls += 1
         schema = self.schema if self.compressor is None else await self.compressor.run_async(self.schema)

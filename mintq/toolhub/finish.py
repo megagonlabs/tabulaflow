@@ -18,6 +18,11 @@ class FinishTool:
     def __call__(self, trajectory: Trajectory) -> PredQuery:
         """
         Finish the task. The last executed query will be considered as the final answer. No parameters needed.
+
+        Example:
+        ```python
+        finish()
+        ```
         """
         self._metrics.num_calls += 1
 
