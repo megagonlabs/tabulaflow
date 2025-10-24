@@ -204,7 +204,7 @@ class AmbigFlatSQLAgent:
             *[
                 user_simulator.ask_async(
                     UserValueQuestion(
-                        question=f"{ap.phrase}: {ap.parameter_description}",
+                        question=f'What is {ap.parameter_name} for "{ap.phrase}"? {ap.parameter_description or ""}',
                         value_dtype=ap.parameter_dtype,
                         value_operator_options=ap.parameter_sample_operators,
                     )

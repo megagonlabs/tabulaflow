@@ -4,7 +4,7 @@ import jinja2
 import time
 import itertools
 from typing import ClassVar, Literal, Any
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -100,6 +100,7 @@ You are a helpful AI database expert that can translate natural language questio
 class AmbigStructuredSQLAgentConfig(BasicAgentConfig):
     query_for_intended_only: bool = True
     use_gold_phrases: bool = False
+    use_gold_ambiguity_points: bool = False
 
 
 @agent_registry.register
@@ -240,7 +241,7 @@ class AmbigStructuredSQLAgent:
             elif ap.type == "infinite":
                 questions.append(
                     UserValueQuestion(  # type: ignore
-                        question=f"{ap.phrase}: {ap.parameter_description}",
+                        question=f'What is {ap.parameter_name} for "{ap.phrase}"? {ap.parameter_description or ""}',
                         value_dtype=ap.parameter_dtype,
                         value_operator_options=ap.parameter_sample_operators,
                     )
@@ -277,11 +278,17 @@ class AmbigStructuredSQLAgent:
 
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
 
-        ambiguity_points = await self._disambiguate_async(ctx)
+        if self.config.use_gold_ambiguity_points:
+            ambiguity_points = [
+                TypeAdapter(PredAmbiguityPoint).validate_python(ap.model_dump()) for ap in task.gold_ambiguity_points
+            ]
+            pred_intended_query_id = task.gold_intended_query_id.replace("GQRY", "PQRY")
+        else:
+            ambiguity_points = await self._disambiguate_async(ctx)
+            pred_intended_query_id = await self._resolve_async(ambiguity_points, user_simulator)
+
         finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
         infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
-
-        pred_intended_query_id = await self._resolve_async(ambiguity_points, user_simulator)
 
         if self.config.query_for_intended_only:
             indexes = [ap.intended_interpretation_idx for ap in finite_aps]
