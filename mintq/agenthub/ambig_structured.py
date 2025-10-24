@@ -164,9 +164,13 @@ class AmbigStructuredSQLAgent:
         prompt = f"List all ambiguity points: {ctx.task.question}"
 
         if self.config.use_gold_phrases:
-            prompt += "\nOutput one ambiguity point for each phrase listed below:"
+            prompt += "\nOutput one ambiguity point for each phrase listed below, in the given order:"
             for ap in ctx.task.gold_ambiguity_points:
-                prompt += f'\n- "{ap.phrase}" ({"finite" if ap.type == "finite" else "parameter"})'
+                if ap.type == "finite":
+                    prompt += f'\n- "{ap.phrase}" (finite)'
+            for ap in ctx.task.gold_ambiguity_points:
+                if ap.type == "infinite":
+                    prompt += f'\n- "{ap.phrase}" (parameter)'
 
         result = await disamb_agent.run(prompt)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
