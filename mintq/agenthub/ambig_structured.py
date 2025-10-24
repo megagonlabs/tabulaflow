@@ -170,10 +170,10 @@ class AmbigStructuredSQLAgent:
                 "\nFor each phrase listed below, and in the given order, output a single ambiguity point."
                 " If a phrase appears more than once, each occurrence represents a distinct dimension of ambiguity."
             )
-            for ap in ctx.task.gold_ambiguity_points:
+            for ap in ctx.task.gold_ambiguity_points:  # type: ignore
                 if ap.type == "finite":
                     prompt += f'\n- "{ap.phrase}" (finite)'
-            for ap in ctx.task.gold_ambiguity_points:
+            for ap in ctx.task.gold_ambiguity_points:  # type: ignore
                 if ap.type == "infinite":
                     prompt += f'\n- "{ap.phrase}" (parameter)'
 
@@ -184,7 +184,7 @@ class AmbigStructuredSQLAgent:
         res: list[PredAmbiguityPoint] = []
         for ap in result.output.finite_ambiguity_points:
             res.append(PredAmbiguityPointFinite(**ap.model_dump(), id=int_to_letter(len(res))))
-        for ap in result.output.parameter_ambiguity_points:  # type: ignore
+        for ap in result.output.parameter_ambiguity_points:
             res.append(PredAmbiguityPointInfinite(**ap.model_dump(), id=int_to_letter(len(res))))
         return res
 
@@ -291,6 +291,7 @@ class AmbigStructuredSQLAgent:
             ambiguity_points = [
                 TypeAdapter(PredAmbiguityPoint).validate_python(ap.model_dump()) for ap in task.gold_ambiguity_points
             ]
+            assert task.gold_intended_query_id is not None
             pred_intended_query_id = task.gold_intended_query_id.replace("GQRY", "PQRY")
         else:
             ambiguity_points = await self._disambiguate_async(ctx)

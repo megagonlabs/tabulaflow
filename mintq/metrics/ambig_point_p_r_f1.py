@@ -4,7 +4,6 @@ from pydantic_ai import Agent
 import jinja2
 from mintq.schema import StructuredAmbigNL2QTaskOutput
 from mintq.metrics.base import metric_registry
-from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
 
 
