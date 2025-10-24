@@ -32,6 +32,7 @@ class AskUserTool:
         return response.answer_text
 
     async def _pydantic_ai_prepare(self, ctx: RunContext, tool_def: ToolDefinition) -> ToolDefinition | None:
+        """After the patience limit is reached, this tool will not be provided to the LLM anymore."""
         return None if self.patience is not None and self._metrics.num_calls >= self.patience else tool_def
 
     def as_pydantic_ai_tool(self) -> Tool:
