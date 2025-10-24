@@ -12,8 +12,8 @@ You are a helpful AI database expert that can evaluate the predicted ambiguity p
 For each gold ambiguity point, you need to find the matching predicted ambiguity point.
 - Your output should be a mapping of ambiguity point id from the gold list to the predicted list.
 - An predicted ambiguity point can only be matched to one gold ambiguity point.
-- An predicted ambiguity point is considered matched if (1) the phrase is semantically equivalent (2) the dimension of ambiguity is the same.
-  - Note that the interpretations do not need to match exactly, missing or extra interpretations are allowed.
+- An predicted ambiguity point is considered matched if the phrase is semantically equivalent.
+  - Note that the interpretations do not need to match exactly, missing or extra interpretations are allowed as long as the dimension of ambiguity is the same.
 - If a gold ambiguity point has no corresponding predicted ambiguity point, set the value to None.
 
 === START OF EXAMPLE ===
