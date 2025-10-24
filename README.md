@@ -388,11 +388,11 @@ Contact: yanlin@megagon.ai
 - [x] Fix mypy errors
 - [x] Fix schema compressor
 - [x] Fix Gemini on run_query tool's `parameters` field
-- [ ] Compare implementation of mintq, ambig-text2sql, bird-interact
+- [x] Compare implementation of mintq, ambig-text2sql, bird-interact
 - [x] Read BIRD-INTERACT paper and design experiments
-- [ ] Support Ambrosia
+- [x] Simple QA with user patience limit
 - [ ] ambig_structured agent with partial ground-truth input
-- [ ] Simple QA with user patience limit
+- [ ] Support Ambrosia
 - [ ] Task up sampling
 - [ ] Metrics
 - [ ] Fix Spider table and column names casing
