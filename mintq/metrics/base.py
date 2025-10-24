@@ -11,25 +11,25 @@ from mintq.registry import Registry
 class BaseSimpleNL2QMetric(Protocol):
     name: ClassVar[str]
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float: ...
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float | dict[str, float]: ...
 
 
 class BaseSimpleAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
 
-    async def compute_async(self, task: SimpleAmbigNL2QTaskOutput) -> float: ...
+    async def compute_async(self, task: SimpleAmbigNL2QTaskOutput) -> float | dict[str, float]: ...
 
 
 class BaseFlatAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
 
-    async def compute_async(self, task: FlatAmbigNL2QTaskOutput) -> float: ...
+    async def compute_async(self, task: FlatAmbigNL2QTaskOutput) -> float | dict[str, float]: ...
 
 
 class BaseStructuredAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
 
-    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> float: ...
+    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> float | dict[str, float]: ...
 
 
 NL2QMetric: TypeAlias = Union[

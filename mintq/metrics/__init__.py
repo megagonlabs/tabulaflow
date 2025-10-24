@@ -13,6 +13,7 @@ from mintq.metrics.gold_executable import GoldExecutable
 from mintq.metrics.gold_result_not_empty import GoldResultNotEmpty
 from mintq.metrics.spider2_ex import Spider2Ex
 from mintq.metrics.pred_success import PredSuccess
+from mintq.metrics.ambig_point_p_r_f1 import AmbigPointPRF1
 
 
 __all__ = [
@@ -28,5 +29,6 @@ __all__ = [
     "GoldResultNotEmpty",
     "Spider2Ex",
     "PredSuccess",
+    "AmbigPointPRF1",
     "metric_registry",
 ]

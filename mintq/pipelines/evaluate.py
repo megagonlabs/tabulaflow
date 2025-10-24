@@ -10,7 +10,12 @@ from mintq.metrics import NL2QMetric
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
     results = await asyncio.gather(*[m.compute_async(task) for m in metrics])  # type: ignore
-    task.eval_metrics = {m.name: r for m, r in zip(metrics, results)}
+    task.eval_metrics = {}
+    for m, r in zip(metrics, results):
+        if isinstance(r, dict):
+            task.eval_metrics.update(r)
+        else:
+            task.eval_metrics[m.name] = r
     return task
 
 
@@ -38,6 +43,7 @@ async def main_async() -> None:
             "executable",
             "gold_executable",
             "gold_result_not_empty",
+            "ambig_point_p_r_f1",
             "pred_success",
         ],
     )
@@ -56,8 +62,8 @@ async def main_async() -> None:
 
     print()
     print("Aggregated metrics:")
-    for m in metrics:
-        print(f"- {m.name}: {result.aggregated_eval_metrics[m.name]['avg']:.4f}")
+    for key in result.aggregated_eval_metrics:
+        print(f"- {key}: {result.aggregated_eval_metrics[key]['avg']:.4f}")
 
     if args.debug:
         print()
