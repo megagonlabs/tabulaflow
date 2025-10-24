@@ -30,23 +30,27 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 """.strip()
 
 
+class AmbigSimpleSQLAgentConfig(BasicAgentConfig):
+    user_patience: int | None = None
+
+
 @agent_registry.register
 class AmbigSimpleSQLAgent:
     name: ClassVar = "ambig_simple_sql_agent"
     task_type: ClassVar = "ambig"
     output_type: ClassVar = "ambig-simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = AmbigSimpleSQLAgentConfig
 
     def __init__(
         self,
-        config: BasicAgentConfig,
+        config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
-    async def from_config_async(cls, config: BasicAgentConfig) -> "AmbigSimpleSQLAgent":
+    async def from_config_async(cls, config: AmbigSimpleSQLAgentConfig) -> "AmbigSimpleSQLAgent":
         return cls(config)
 
     @instrument
@@ -58,7 +62,7 @@ class AmbigSimpleSQLAgent:
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
-            "ask_user": AskUserTool(user_simulator),
+            "ask_user": AskUserTool(user_simulator, patience=self.config.user_patience),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
