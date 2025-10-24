@@ -117,9 +117,9 @@ class AmbigPointPRF1:
         prompt = jinja2.Template(_USER_PROMPT).render(question=task.question, gold_aps=gold_aps, pred_aps=pred_aps)
         result = await agent.run(prompt)
         n_overlap = sum(1 for match in result.output.matches if match.pred_id is not None)
-        p = n_overlap / len(pred_aps)
-        r = n_overlap / len(gold_aps)
-        f1 = 2 * p * r / (p + r)
+        p = n_overlap / len(pred_aps) if pred_aps else 0.0
+        r = n_overlap / len(gold_aps) if gold_aps else 0.0
+        f1 = 2 * p * r / (p + r) if p + r > 0 else 0.0
         return {
             "ambig_point_p": p,
             "ambig_point_r": r,
