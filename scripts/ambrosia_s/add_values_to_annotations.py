@@ -1,5 +1,3 @@
-# mypy: ignore-errors
-#!/usr/bin/env python3
 """
 Enrich ambrosia_{few_shot_examples,test}.json with question and gold_queries from ambrosia.csv.
 
@@ -10,51 +8,35 @@ This script adds:
 Validates that the number of gold_queries matches the number of gold_exec_results.
 """
 
-import argparse
-import csv
-import json
 from pathlib import Path
 from typing import Any
+import argparse
+import json
+import re
+
+import pandas as pd
 
 
 def load_csv_data(csv_path: Path) -> dict[str, dict[str, Any]]:
     """Load CSV and create lookup dictionary mapping qid to question and gold_queries."""
     lookup = {}
 
-    with open(csv_path, "r", encoding="utf-8") as f:
-        reader = csv.reader(f)
-        next(reader)  # Skip header
+    df = pd.read_csv(csv_path)
+    for idx, row in df.iterrows():
+        qid = str(idx)
 
-        for row in reader:
-            if not row or not row[0]:
-                continue
+        question = row["question"].strip()
+        gold_queries_raw = row["gold_queries"].strip()
 
-            qid = row[0]
-            question = row[1] if len(row) > 1 else ""
-            gold_queries_raw = row[2] if len(row) > 2 else ""
+        # Split by "\n\nselect" ignoring case
+        parts = re.split(r"\n\nselect", gold_queries_raw, flags=re.IGNORECASE)
 
-            # Split gold_queries by \n\n and filter out empty strings
-            parts = [q.strip() for q in gold_queries_raw.split("\n\n") if q.strip()]
+        # First part already has SELECT, rest need it added back
+        gold_queries = [re.sub(r"\n\n+", "\n", parts[0].strip())]
+        for part in parts[1:]:
+            gold_queries.append("SELECT " + re.sub(r"\n\n+", "\n", part.strip()))
 
-            # Hardcoded fixes for malformed queries:
-            # qid 3488: queries split into SELECT...FROM parts (6 parts -> 3 queries)
-            if qid == "3488" and len(parts) == 6:
-                gold_queries = [
-                    parts[0] + "\n\n" + parts[1],
-                    parts[2] + "\n\n" + parts[3],
-                    parts[4] + "\n\n" + parts[5],
-                ]
-            # qid 4006: third query broken into 7 parts (9 parts total -> 3 queries)
-            elif qid == "4006" and len(parts) == 9:
-                gold_queries = [
-                    parts[0],  # First query
-                    parts[1],  # Second query
-                    "\n\n".join(parts[2:]),  # Third query (parts 3-9 combined)
-                ]
-            else:
-                gold_queries = parts
-
-            lookup[qid] = {"question": question, "gold_queries": gold_queries}
+        lookup[qid] = {"question": question, "gold_queries": gold_queries}
 
     return lookup
 
@@ -80,13 +62,10 @@ def enrich_json_data(
 
         csv_data = csv_lookup[qid]
 
-        # Add question and gold_queries
-        entry["question"] = csv_data["question"]
-        entry["gold_queries"] = csv_data["gold_queries"]
-
         # Validate: number of gold_queries should match gold_exec_results
+        gold_exec_results = entry.pop("gold_exec_results", [])
         num_queries = len(csv_data["gold_queries"])
-        num_results = len(entry.get("gold_exec_results", []))
+        num_results = len(gold_exec_results)
 
         if num_queries != num_results:
             error_msg = (
@@ -94,6 +73,23 @@ def enrich_json_data(
             )
             stats["validation_errors"].append(error_msg)
             raise ValueError(error_msg)
+
+        # Add question and gold_queries
+        entry["question"] = csv_data["question"]
+        entry["gold_queries"] = [
+            {
+                "id": f"GQRY-A.{i}",
+                "query": gold_query,
+                "parameter_names": [],
+                "parameter_values": {},
+                "exec_result": exec_result,
+                "other_exec_results": [],
+                "required_columns": None,
+                "required_sorted": False,
+                "extra_info": {},
+            }
+            for i, (gold_query, exec_result) in enumerate(zip(csv_data["gold_queries"], gold_exec_results))
+        ]
 
         enriched_data.append(entry)
         stats["success"] += 1
