@@ -49,6 +49,7 @@ Given an ambiguous question, you need to output the list of all ambiguity points
 - For phrases with threshold-like ambiguities (e.g. "tall", "young", etc.), put them in the `parameter_ambiguity_points` field.
   - parameter_sample_operators is a list of valid operators that can be used in <expr> <operator> :<parameter_name>.
   - parameter_sample_values is a list of sample values ordered from least strict to most strict
+
 === START OF EXAMPLE ===
 Database Schema:
     CREATE TABLE student (
@@ -59,6 +60,7 @@ Database Schema:
         state: TEXT,
     );
 Question: List all students with high GPA from NY.
+
 Output:
 {
   "finite_ambiguity_points": [
