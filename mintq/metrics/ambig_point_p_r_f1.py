@@ -1,4 +1,5 @@
 from typing import ClassVar, Any
+from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
 from mintq.schema import StructuredAmbigNL2QTaskOutput
@@ -51,8 +52,15 @@ Predicted ambiguity points:
 
 Output:
 {
-    "GOLD-A": "PRED-A",
-    "GOLD-B": null
+  "matches": [
+    {
+      "gold_id": "GOLD-A",
+      "pred_id": "PRED-A"
+    },
+    {
+      "gold_id": "GOLD-B",
+      "pred_id": null
+    }
 }
 === END OF EXAMPLE ===
 """
@@ -95,14 +103,21 @@ class AmbigPointPRF1:
         pred_aps = [self._to_simple_dict(ap, "PRED") for ap in task.pred_ambiguity_points]
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
 
-        agent = Agent[None, dict[str, str | None]](
+        class Match(BaseModel):
+            gold_id: str
+            pred_id: str | None
+
+        class LLMOutput(BaseModel):
+            matches: list[Match]
+
+        agent = Agent[None, LLMOutput](
             model=self.llm,
-            output_type=dict[str, str | None],
+            output_type=LLMOutput,
             instructions=_SYSTEM_PROMPT,
         )
         prompt = jinja2.Template(_USER_PROMPT).render(question=task.question, gold_aps=gold_aps, pred_aps=pred_aps)
         result = await agent.run(prompt)
-        n_overlap = sum(1 for v in result.output.values() if v is not None)
+        n_overlap = sum(1 for match in result.output.matches if match.pred_id is not None)
         p = n_overlap / len(pred_aps)
         r = n_overlap / len(gold_aps)
         f1 = 2 * p * r / (p + r)
