@@ -164,7 +164,10 @@ class AmbigStructuredSQLAgent:
         prompt = f"List all ambiguity points: {ctx.task.question}"
 
         if self.config.use_gold_phrases:
-            prompt += "\nOutput one ambiguity point for each phrase listed below, in the given order:"
+            prompt += (
+                "\nFor each phrase listed below, and in the given order, output a single ambiguity point."
+                " If a phrase appears more than once, each occurrence represents a distinct dimension of ambiguity."
+            )
             for ap in ctx.task.gold_ambiguity_points:
                 if ap.type == "finite":
                     prompt += f'\n- "{ap.phrase}" (finite)'
