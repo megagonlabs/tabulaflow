@@ -447,13 +447,6 @@ class GoldAmbiguityPointInfinite(BaseModel):
 GoldAmbiguityPoint = Annotated[Union[GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite], Field(discriminator="type")]
 
 
-def read_df(directory: str) -> pd.DataFrame:
-    with open(os.path.join(directory, "df_schema.json"), "r") as f:
-        schema = json.load(f)
-    df = pd.read_csv(os.path.join(directory, "df_data.csv"), dtype=schema["dtypes"])
-    return df
-
-
 class AmbigNL2QTask(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
