@@ -27,13 +27,10 @@ def print_table(name: str, headers: list[str], rows: list[list[Any]]):
     print()
 
 
-def print_main_table():
+def print_main_table(results: dict[str, NL2QRunResult]):
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
-    for method, exp_dir in exp_dirs.items():
-        with open(os.path.join(exp_dir, "result.json"), "r") as f:
-            result = NL2QRunResult.model_validate_json(f.read())
-
+    for method, result in results.items():
         ex = result.aggregated_eval_metrics["bird_sql_ex"]["avg"]
         ex_1ap = calc_average(
             [task.eval_metrics["bird_sql_ex"] for task in result.tasks if len(task.gold_ambiguity_points) == 1]
@@ -51,8 +48,45 @@ def print_main_table():
     print_table("Main Table", headers, rows)
 
 
+ambiguity_types = [
+    "semantic_column",
+    "semantic_table",
+    "semantic_value",
+    "semantic_computation",
+    "syntactic_column",
+    "syntactic_table",
+    "syntactic_value",
+    "syntactic_computation",
+]
+
+
+def print_result_by_ambiguity_type(results: dict[str, NL2QRunResult]):
+    headers = ["Method", *ambiguity_types]
+    rows = []
+    for method, result in results.items():
+        row = [method]
+        for ambiguity_type in ambiguity_types:
+            row.append(
+                calc_average(
+                    [
+                        task.eval_metrics["bird_sql_ex"]
+                        for task in result.tasks
+                        if any(ap.ambiguity_type == ambiguity_type for ap in task.gold_ambiguity_points)
+                    ]
+                )
+            )
+        rows.append(row)
+    print_table("Result by Ambiguity Type", headers, rows)
+
+
 def main():
-    print_main_table()
+    exp_results = {}
+    for method, exp_dir in exp_dirs.items():
+        with open(os.path.join(exp_dir, "result.json"), "r") as f:
+            result = NL2QRunResult.model_validate_json(f.read())
+        exp_results[method] = result
+    print_main_table(exp_results)
+    print_result_by_ambiguity_type(exp_results)
 
 
 if __name__ == "__main__":
