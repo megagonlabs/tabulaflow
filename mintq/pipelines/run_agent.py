@@ -61,7 +61,10 @@ async def run_agent_async(
         batch_kwargs = []
         for task in batch:
             if task.task_type == "ambig":
-                batch_kwargs.append({"user_simulator": UserSimulator.from_ambig_nl2q_task(task)})
+                include_history = True if agent_cls.name == "ambig_simple_sql_agent" else False
+                batch_kwargs.append(
+                    {"user_simulator": UserSimulator.from_ambig_nl2q_task(task, include_history=include_history)}
+                )
             else:
                 batch_kwargs.append({})
 
@@ -194,7 +197,8 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid
                 in [
-                    "040", "001",
+                    "040",
+                    "001",
                 ]
             ]
         else:
