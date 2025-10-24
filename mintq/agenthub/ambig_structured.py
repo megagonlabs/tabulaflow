@@ -99,6 +99,7 @@ You are a helpful AI database expert that can translate natural language questio
 
 class AmbigStructuredSQLAgentConfig(BasicAgentConfig):
     query_for_intended_only: bool = True
+    use_gold_phrases: bool = False
 
 
 @agent_registry.register
@@ -159,7 +160,14 @@ class AmbigStructuredSQLAgent:
             output_type=LLMOutput,
             tool_keys=["get_schema"],  # "get_column_description"
         )
-        result = await disamb_agent.run(f"List all ambiguity points: {ctx.task.question}")
+        prompt = f"List all ambiguity points: {ctx.task.question}"
+
+        if self.config.use_gold_phrases:
+            prompt += "\nOutput one ambiguity point for each phrase listed below:"
+            for ap in ctx.task.gold_ambiguity_points:
+                prompt += f'\n- "{ap.phrase}" ({"finite" if ap.type == "finite" else "parameter"})'
+
+        result = await disamb_agent.run(prompt)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
