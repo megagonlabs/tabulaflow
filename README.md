@@ -391,11 +391,11 @@ Contact: yanlin@megagon.ai
 - [x] Compare implementation of mintq, ambig-text2sql, bird-interact
 - [x] Read BIRD-INTERACT paper and design experiments
 - [x] Simple QA with user patience limit
-- [ ] ambig_structured agent with partial ground-truth input
+- [x] ambig_structured agent with partial ground-truth input
+- [ ] Metrics
 - [ ] Support Ambrosia
 - [ ] Task up-sampling
 - [ ] Cost computation using litellm
-- [ ] Metrics
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 - [ ] Raise ModelRetry on too many interpretation combinations
