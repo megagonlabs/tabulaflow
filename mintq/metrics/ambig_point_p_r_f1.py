@@ -102,6 +102,16 @@ class AmbigPointPRF1:
         pred_aps = [self._to_simple_dict(ap, "PRED") for ap in task.pred_ambiguity_points]
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
 
+        # If all phrases match exactly, return perfect score
+        pred_phrases = sorted([(ap["phrase"], ap["type"]) for ap in pred_aps])
+        gold_phrases = sorted([(ap["phrase"], ap["type"]) for ap in gold_aps])
+        if pred_phrases == gold_phrases:
+            return {
+                "ambig_point_p": 1.0,
+                "ambig_point_r": 1.0,
+                "ambig_point_f1": 1.0,
+            }
+
         class Match(BaseModel):
             gold_id: str
             pred_id: str | None
