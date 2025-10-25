@@ -143,8 +143,8 @@ class LLMOutput(BaseModel):
 
 
 @metric_registry.register
-class AmbigPointPRF1:
-    name: ClassVar[str] = "ambig_point_p_r_f1"
+class AmbigPointStats:
+    name: ClassVar[str] = "ambig_point_stats"
 
     def __init__(self, llm: str = "openai:gpt-4.1"):
         self.llm = llm

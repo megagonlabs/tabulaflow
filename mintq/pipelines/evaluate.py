@@ -43,7 +43,7 @@ async def main_async() -> None:
             "executable",
             "gold_executable",
             "gold_result_not_empty",
-            "ambig_point_p_r_f1",
+            "ambig_point_stats",
             "pred_success",
         ],
     )

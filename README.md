@@ -394,8 +394,9 @@ Contact: yanlin@megagon.ai
 - [x] ambig_structured agent with partial ground-truth input
 - [ ] Metrics
   - [ ] EX
-  - [ ] ambiguity point P/R/F1
-  - [ ] interpretation P/R/F1
+  - [x] ambiguity point P/R/F1
+  - [x] interpretation P/R/F1
+  - [ ] Handle tasks without finite ambiguity points for interpretation P/R/F1
 - [ ] Support Ambrosia
 - [ ] Task up-sampling
 - [ ] Cost computation using litellm
