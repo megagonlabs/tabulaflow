@@ -174,14 +174,14 @@ class AmbigPointStats:
         return p, r, f1
 
     async def _match_ambig_points_async(self, task: StructuredAmbigNL2QTaskOutput) -> list[tuple[str, str]]:
+        # If all phrases match exactly, return perfect score
+        pred_phrases = sorted([(ap.phrase, ap.type, ap.id) for ap in task.pred_ambiguity_points])
+        gold_phrases = sorted([(ap.phrase, ap.type, ap.id) for ap in task.gold_ambiguity_points])
+        if [p[:2] for p in pred_phrases] == [g[:2] for g in gold_phrases]:
+            return [(g[2], p[2]) for g, p in zip(gold_phrases, pred_phrases)]
+
         pred_aps = [self._to_simple_dict(ap, "PRED") for ap in task.pred_ambiguity_points]
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
-
-        # If all phrases match exactly, return perfect score
-        pred_phrases = sorted([(ap["phrase"], ap["type"], ap["id"]) for ap in pred_aps])
-        gold_phrases = sorted([(ap["phrase"], ap["type"], ap["id"]) for ap in gold_aps])
-        if [p[:2] for p in pred_phrases] == [p[:2] for p in gold_phrases]:
-            return [(g[2], p[2]) for g, p in zip(gold_phrases, pred_phrases)]
 
         agent = Agent[None, LLMOutput](
             model=self.llm,
@@ -200,6 +200,9 @@ class AmbigPointStats:
 
     async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float]:
         matches = await self._match_ambig_points_async(task)
+        print([(ap.id, ap.type) for ap in task.pred_ambiguity_points])
+        print([(ap.id, ap.type) for ap in task.gold_ambiguity_points])
+        print(matches)
 
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
