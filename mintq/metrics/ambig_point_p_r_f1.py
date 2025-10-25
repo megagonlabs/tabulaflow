@@ -1,5 +1,4 @@
 import json
-from re import I
 from typing import ClassVar, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent
