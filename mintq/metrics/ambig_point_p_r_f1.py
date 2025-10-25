@@ -134,6 +134,15 @@ Predicted interpretations:
 """
 
 
+class Match(BaseModel):
+    gold_id: str
+    pred_id: str | None
+
+
+class LLMOutput(BaseModel):
+    matches: list[Match]
+
+
 @metric_registry.register
 class AmbigPointPRF1:
     name: ClassVar[str] = "ambig_point_p_r_f1"
@@ -165,26 +174,15 @@ class AmbigPointPRF1:
         f1 = 2 * p * r / (p + r) if p + r > 0 else 0.0
         return p, r, f1
 
-    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float]:
+    async def _match_ambig_points_async(self, task: StructuredAmbigNL2QTaskOutput) -> list[tuple[str, str]]:
         pred_aps = [self._to_simple_dict(ap, "PRED") for ap in task.pred_ambiguity_points]
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
 
         # If all phrases match exactly, return perfect score
-        pred_phrases = sorted([(ap["phrase"], ap["type"]) for ap in pred_aps])
-        gold_phrases = sorted([(ap["phrase"], ap["type"]) for ap in gold_aps])
-        if pred_phrases == gold_phrases:
-            return {
-                "ambig_point_p": 1.0,
-                "ambig_point_r": 1.0,
-                "ambig_point_f1": 1.0,
-            }
-
-        class Match(BaseModel):
-            gold_id: str
-            pred_id: str | None
-
-        class LLMOutput(BaseModel):
-            matches: list[Match]
+        pred_phrases = sorted([(ap["phrase"], ap["type"], ap["id"]) for ap in pred_aps])
+        gold_phrases = sorted([(ap["phrase"], ap["type"], ap["id"]) for ap in gold_aps])
+        if [p[:2] for p in pred_phrases] == [p[:2] for p in gold_phrases]:
+            return [(g[2], p[2]) for g, p in zip(gold_phrases, pred_phrases)]
 
         agent = Agent[None, LLMOutput](
             model=self.llm,
@@ -195,25 +193,36 @@ class AmbigPointPRF1:
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
         result = await agent.run(prompt)
-        matches = [match for match in result.output.matches if match.pred_id is not None]
-        ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
+        return [
+            (match.gold_id.replace("GOLD-", ""), match.pred_id.replace("PRED-", ""))
+            for match in result.output.matches
+            if match.pred_id is not None
+        ]
+
+    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float]:
+        matches = await self._match_ambig_points_async(task)
+
+        ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
+            len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
+        )
 
         p_list = []
         r_list = []
         f1_list = []
-        for match in matches:
-            pred_ap = next(ap for ap in pred_aps if ap["id"] == match.pred_id)
-            gold_ap = next(ap for ap in gold_aps if ap["id"] == match.gold_id)
-            if not (pred_ap["type"] == "finite" and gold_ap["type"] == "finite"):
+        for gold_ap_id, pred_ap_id in matches:
+            gold_ap = next(ap for ap in task.gold_ambiguity_points if ap.id == gold_ap_id)
+            pred_ap = next(ap for ap in task.pred_ambiguity_points if ap.id == pred_ap_id)
+
+            if not (pred_ap.type == "finite" and gold_ap.type == "finite"):
                 continue
 
             gold_interpretations = [
                 {"id": f"GOLD-{i}", "interpretation": interpretation}
-                for i, interpretation in enumerate(gold_ap["interpretations"])
+                for i, interpretation in enumerate(gold_ap.interpretations)
             ]
             pred_interpretations = [
                 {"id": f"PRED-{i}", "interpretation": interpretation}
-                for i, interpretation in enumerate(pred_ap["interpretations"])
+                for i, interpretation in enumerate(pred_ap.interpretations)
             ]
 
             agent = Agent[None, LLMOutput](
@@ -223,15 +232,18 @@ class AmbigPointPRF1:
             )
             prompt = jinja2.Template(INTERPRETATION_MATCHING_USER_PROMPT).render(
                 question=task.question,
-                phrase=gold_ap["phrase"],
+                phrase=gold_ap.phrase,
                 gold_interpretations=json.dumps(gold_interpretations, indent=2),
                 pred_interpretations=json.dumps(pred_interpretations, indent=2),
             )
             print(prompt)
             result = await agent.run(prompt)
             print(result.output)
-            matches = [match for match in result.output.matches if match.pred_id is not None]
-            p, r, f1 = self._p_r_f1(len(matches), len(pred_ap["interpretations"]), len(gold_ap["interpretations"]))
+            p, r, f1 = self._p_r_f1(
+                len([match for match in result.output.matches if match.pred_id is not None]),
+                len(pred_ap.interpretations),
+                len(gold_ap.interpretations),
+            )
             p_list.append(p)
             r_list.append(r)
             f1_list.append(f1)
