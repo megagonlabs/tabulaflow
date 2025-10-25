@@ -236,9 +236,7 @@ class AmbigPointPRF1:
                 gold_interpretations=json.dumps(gold_interpretations, indent=2),
                 pred_interpretations=json.dumps(pred_interpretations, indent=2),
             )
-            print(prompt)
             result = await agent.run(prompt)
-            print(result.output)
             p, r, f1 = self._p_r_f1(
                 len([match for match in result.output.matches if match.pred_id is not None]),
                 len(pred_ap.interpretations),
