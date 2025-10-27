@@ -37,6 +37,7 @@ async def main_async() -> None:
         "--metrics",
         nargs="+",
         default=[
+            "simple_ex",
             "spider2_ex",
             "bird_sql_ex",
             "bird_sql_ex_soft",
