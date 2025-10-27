@@ -44,9 +44,9 @@ class SimpleEx:
                 v_float = float(v)
                 return ("numerical", v_float) if not pd.isna(v_float) else ("nan", None)
             except (ValueError, TypeError):
-                return ("non-numerical", str(v))
+                return ("object", str(v))
         else:
-            return ("non-numerical", str(v))
+            return ("object", str(v))
 
     def _compare_column(self, pred_col: list[Any], gold_col: list[Any], required_sorted: bool = False) -> bool:
         pred_col = [self._digest(v) for v in pred_col]
