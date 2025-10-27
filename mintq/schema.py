@@ -292,7 +292,9 @@ class GoldQuery(BaseModel):
     other_exec_results: list[ExecResult] = Field(default_factory=list)
     """Some queries have multiple exec results (usually caused by argmax with ties), which is common in Spider2"""
     required_columns: list[int] | None = None
+    """Columns that must be present in the result, None means all columns must be present"""
     required_sorted: bool = False
+    """True if row order matters"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
     @property
