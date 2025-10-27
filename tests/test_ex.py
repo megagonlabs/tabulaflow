@@ -17,6 +17,12 @@ class ExampleCase(BaseModel):
 def test_tasks() -> list[ExampleCase]:
     test_cases = [
         {
+            "pred_df": pd.DataFrame({"col0": [None, None, None, None]}),
+            "gold_df": pd.DataFrame({"col0": [math.nan, np.nan, "nan", None]}),
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 0.0,
+        },
+        {
             "pred_df": pd.DataFrame({"col0": [1, 2, 2]}),
             "gold_df": pd.DataFrame({"col0": [1, 2]}),
             "simple_ex_expected_score": 0.0,
