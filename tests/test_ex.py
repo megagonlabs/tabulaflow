@@ -1,31 +1,41 @@
 import pytest
 import pandas as pd
+from pydantic import BaseModel
 from mintq.metrics import SimpleEx, Spider2Ex
-from mintq.schema import SimpleNL2QTaskOutput, GoldQuery, PredQuery, ExecResult
+from mintq.schema import SimpleNL2QTaskOutput, GoldQuery, PredQuery, ExecResult, NL2QTaskOutput
+
+
+class ExampleCase(BaseModel):
+    task: NL2QTaskOutput
+    simple_ex_expected_score: float
+    spider2_ex_expected_score: float
 
 
 @pytest.fixture
-def test_tasks() -> list[tuple[SimpleNL2QTaskOutput, float]]:
+def test_tasks() -> list[ExampleCase]:
     test_cases = [
         {
             "pred_df": pd.DataFrame({"col0": [-2, 0]}),
             "gold_df": pd.DataFrame({"col0": [-2, -0.000001]}),
-            "expected_score": 1.0,
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 0.0,
         },
         {
             "pred_df": pd.DataFrame({"col0": [True, False]}),
             "gold_df": pd.DataFrame({"col0": [1, 0]}),
-            "expected_score": 1.0,
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 1.0,
         },
         {
             "pred_df": pd.DataFrame({"col0": [True, False, None]}),
             "gold_df": pd.DataFrame({"col0": [1, 0, None]}),
-            "expected_score": 1.0,
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 1.0,
         },
     ]
     return [
-        (
-            SimpleNL2QTaskOutput(
+        ExampleCase(
+            task=SimpleNL2QTaskOutput(
                 qid="",
                 language="",
                 db="",
@@ -39,7 +49,8 @@ def test_tasks() -> list[tuple[SimpleNL2QTaskOutput, float]]:
                     exec_result=ExecResult(df=test_case["pred_df"]),
                 ),
             ),
-            test_case["expected_score"],
+            simple_ex_expected_score=test_case["simple_ex_expected_score"],
+            spider2_ex_expected_score=test_case["spider2_ex_expected_score"],
         )
         for test_case in test_cases
     ]
@@ -48,14 +59,14 @@ def test_tasks() -> list[tuple[SimpleNL2QTaskOutput, float]]:
 @pytest.mark.asyncio
 async def test_spider2_ex(test_tasks: list[tuple[SimpleNL2QTaskOutput, float]]) -> None:
     spider2_ex = Spider2Ex()
-    for task, expected_score in test_tasks:
-        score = await spider2_ex.compute_async(task)
-        assert score == expected_score
+    for test_case in test_tasks:
+        score = await spider2_ex.compute_async(test_case.task)
+        assert score == test_case.spider2_ex_expected_score
 
 
 @pytest.mark.asyncio
 async def test_simple_ex(test_tasks: list[tuple[SimpleNL2QTaskOutput, float]]) -> None:
     simple_ex = SimpleEx()
-    for task, expected_score in test_tasks:
-        score = await simple_ex.compute_async(task)
-        assert score == expected_score
+    for test_case in test_tasks:
+        score = await simple_ex.compute_async(test_case.task)
+        assert score == test_case.simple_ex_expected_score
