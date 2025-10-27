@@ -12,16 +12,16 @@ class SimpleEx:
     A simple execution accuracy implementation.
 
     Features that are different from Spider2's EX implementation:
-    - We consider True == 1 == "1.0" == 1.0
-    - We consider "3.0" == 3.0 == 3
+    - For boolean values, we consider True == 1 == "1.0" == 1.0
+    - For convertible string values, we consider "3.0" == 3.0 == 3
     - We consider "nan" == None == math.nan == np.nan
     - We fixed the [-2, 0] != [-2, -0.000001] bug
-    - row order does not matter by default
+    - Row order does not matter by default
 
     Features that are the same as Spider2's EX implementation:
-    - repetitions are considered
-    - column order does not matter
-    - additional columns are allowed
+    - Repetitions are considered
+    - Column order does not matter
+    - Additional columns are allowed
     """
 
     name: ClassVar[str] = "simple_ex"
