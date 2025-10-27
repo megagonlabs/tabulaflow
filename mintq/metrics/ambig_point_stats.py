@@ -200,10 +200,6 @@ class AmbigPointStats:
 
     async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float]:
         matches = await self._match_ambig_points_async(task)
-        print([(ap.id, ap.type) for ap in task.pred_ambiguity_points])
-        print([(ap.id, ap.type) for ap in task.gold_ambiguity_points])
-        print(matches)
-
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
         )
