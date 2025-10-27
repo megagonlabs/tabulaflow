@@ -9,13 +9,18 @@ from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 @metric_registry.register
 class SimpleEx:
     """
-    A simple execution accuracy implementation that differes from Spider2's in the following ways:
-    - We consider "1.0" == 1.0 == 1 == True, "3.0" == 3.0 == 3
+    A simple execution accuracy implementation.
+
+    Features that are different from Spider2's EX implementation:
+    - We consider True == 1 == "1.0" == 1.0
+    - We consider "3.0" == 3.0 == 3
+    - We consider "nan" == None == math.nan == np.nan
     - We fixed the [-2, 0] != [-2, -0.000001] bug
-    - nan
-    - inf
-    - repetition
-    - order
+    - row order does not matter by default
+
+    Features that are the same as Spider2's EX implementation:
+    - repetitions are considered
+    - column order does not matter
     """
 
     name: ClassVar[str] = "simple_ex"
@@ -33,11 +38,11 @@ class SimpleEx:
         if pd.isna(v):
             return ("nan", None)
         elif isinstance(v, (int, float, bool)):
-            return ("numerical", v)
+            return ("numerical", float(v))
         elif isinstance(v, str):
             try:
                 v_float = float(v)
-                return ("numerical", v_float)
+                return ("numerical", v_float) if not pd.isna(v_float) else ("nan", None)
             except (ValueError, TypeError):
                 return ("non-numerical", str(v))
         else:
