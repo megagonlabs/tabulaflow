@@ -92,16 +92,17 @@ class Spider2Ex:
         pred_df = pred_query.exec_result.df  # type: ignore
         gold_dfs = [exec_result.df for exec_result in gold_query.all_exec_results if exec_result.df is not None]
 
+        condition_cols = gold_query.required_columns or []
+        ignore_order = not gold_query.required_sorted
+
         if not gold_dfs:
             return 0.0
         elif len(gold_dfs) == 1:
             return compare_pandas_table(
                 pred_df,
                 gold_dfs[0],
-                task.extra_info.get("condition_cols", []),
-                task.extra_info.get("ignore_order", False),
+                condition_cols,
+                ignore_order,
             )
         else:
-            return compare_multi_pandas_table(
-                pred_df, gold_dfs, task.extra_info.get("condition_cols", []), task.extra_info.get("ignore_order", False)
-            )
+            return compare_multi_pandas_table(pred_df, gold_dfs, condition_cols, ignore_order)

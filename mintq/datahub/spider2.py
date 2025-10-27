@@ -101,6 +101,9 @@ class Spider2SnowDatasetLoader:
                     with open(os.path.join(self.directory, "evaluation_suite", "gold", "exec_result", file), "r") as f:
                         gold_exec_results.append(pd.read_csv(f))
 
+                condition_cols = eval_standard[item["instance_id"]].get("condition_cols", [])
+                ignore_order = eval_standard[item["instance_id"]].get("ignore_order", False)
+
                 tasks.append(
                     SimpleNL2QTask(
                         qid=item["instance_id"],
@@ -112,8 +115,9 @@ class Spider2SnowDatasetLoader:
                             query=gold_sql,
                             exec_result=ExecResult(df=gold_exec_results[0]),
                             other_exec_results=[ExecResult(df=df) for df in gold_exec_results[1:]],
-                        ),
-                        extra_info=eval_standard[item["instance_id"]],
+                            required_columns=condition_cols or None,
+                            required_sorted=not ignore_order,
+                        )
                     )
                 )
 
