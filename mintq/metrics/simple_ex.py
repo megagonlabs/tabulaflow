@@ -20,36 +20,44 @@ class SimpleEx:
 
     name: ClassVar[str] = "simple_ex"
 
-    def _is_numerical(self, v: Any) -> bool:
+    def __init__(self, abs_tol: float = 1e-2):
+        self.abs_tol = abs_tol
+
+    def _digest(self, v: Any) -> tuple[Any, ...]:
         """The following values are considered numerical:
         - int
         - float
         - bool
         - str that can be converted to float (e.g. "1.0")
         """
-        if isinstance(v, (int, float, bool)):
-            return True
-        if isinstance(v, str):
+        if pd.isna(v):
+            return ("nan", None)
+        elif isinstance(v, (int, float, bool)):
+            return ("numerical", v)
+        elif isinstance(v, str):
             try:
-                float(v)
-                return True
+                v_float = float(v)
+                return ("numerical", v_float)
             except (ValueError, TypeError):
-                return False
-        return False
-
-    def _digest(self, v: Any) -> tuple[Any, ...]:
-        if self._is_numerical(v):
-            return (v is None, "numerical", v)
+                return ("non-numerical", str(v))
         else:
-            return (v is None, "non-numerical", str(v))
+            return ("non-numerical", str(v))
 
     def _compare_column(self, pred_col: list[Any], gold_col: list[Any], required_sorted: bool = False) -> bool:
         pred_col = [self._digest(v) for v in pred_col]
         gold_col = [self._digest(v) for v in gold_col]
-        if required_sorted:  # required_sorted == True means order matters
-            return pred_col == gold_col
-        else:
-            return sorted(pred_col) == sorted(gold_col)
+        if not required_sorted:  # required_sorted == False means order does not matter
+            pred_col = sorted(pred_col)
+            gold_col = sorted(gold_col)
+        if len(pred_col) != len(gold_col):
+            return False
+        for (pred_type, pred_value), (gold_type, gold_value) in zip(pred_col, gold_col):
+            if pred_type == gold_type == "numerical":
+                if not math.isclose(pred_value, gold_value, abs_tol=self.abs_tol):
+                    return False
+            elif (pred_type, pred_value) != (gold_type, gold_value):
+                return False
+        return True
 
     def _compare_df(
         self,
