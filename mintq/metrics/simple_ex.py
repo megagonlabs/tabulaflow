@@ -21,6 +21,7 @@ class SimpleEx:
     Features that are the same as Spider2's EX implementation:
     - repetitions are considered
     - column order does not matter
+    - additional columns are allowed
     """
 
     name: ClassVar[str] = "simple_ex"
