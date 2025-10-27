@@ -14,6 +14,7 @@ from mintq.metrics.gold_result_not_empty import GoldResultNotEmpty
 from mintq.metrics.spider2_ex import Spider2Ex
 from mintq.metrics.pred_success import PredSuccess
 from mintq.metrics.ambig_point_stats import AmbigPointStats
+from mintq.metrics.simple_ex import SimpleEx
 
 
 __all__ = [
@@ -29,6 +30,7 @@ __all__ = [
     "GoldResultNotEmpty",
     "Spider2Ex",
     "PredSuccess",
-    "AmbigPointPRF1",
+    "AmbigPointStats",
+    "SimpleEx",
     "metric_registry",
 ]
