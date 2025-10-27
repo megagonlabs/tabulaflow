@@ -74,25 +74,17 @@ class SimpleEx:
         """For each required column (None means all columns), find whether there is a column in predicted df that matches.
         If all required columns are found, return True.
         """
-        if required_columns is None:
-            required_columns = list(range(len(gold_df.columns)))
-
+        required_columns = required_columns or list(range(len(gold_df.columns)))
         if len(pred_df.columns) < len(required_columns):
             return 0.0
 
         gold_cols = [gold_df.iloc[:, col_idx].tolist() for col_idx in required_columns]
-
         for gold_col in gold_cols:
-            found_match = False
-            for pred_col_idx in range(len(pred_df.columns)):
-                pred_col = pred_df.iloc[:, pred_col_idx].tolist()
-                if self._compare_column(pred_col, gold_col, required_sorted):
-                    found_match = True
-                    break
-
-            if not found_match:
+            if not any(
+                self._compare_column(pred_df.iloc[:, pred_col_idx].tolist(), gold_col, required_sorted)
+                for pred_col_idx in range(len(pred_df.columns))
+            ):
                 return 0.0
-
         return 1.0
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
