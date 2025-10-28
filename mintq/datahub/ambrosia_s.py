@@ -19,9 +19,11 @@ class AmbrosiaSDatasetLoader:
     def __init__(
         self,
         directory: str = "data/ambrosia_s/",
+        max_concurrency: int = 16,
     ):
         self.directory = directory
-        self._dbms_semaphore = asyncio.Semaphore(4)
+        self.max_concurrency = max_concurrency
+        self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
         # Actual DB (.sqlite) location: data/ambrosia_s/ambrosia/<db_name>.sqlite
         self.db_list: list[str] = []
@@ -74,7 +76,7 @@ class AmbrosiaSDatasetLoader:
                             "df": pd.DataFrame.from_records(exec_result),
                             "df_is_truncated": False,
                             "error": None,
-                            "latency_seconds": None
+                            "latency_seconds": None,
                         }
 
                 data.append(task)
@@ -94,7 +96,7 @@ class AmbrosiaSDatasetLoader:
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'ambrosia', f'{name}.sqlite')}",
-                    max_concurrency_per_db=4,
+                    max_concurrency_per_db=1,  # we will have 1 x 846 = 846 connections, setting to 2 will exceed the os open file limit
                     dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases
