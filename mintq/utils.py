@@ -110,6 +110,7 @@ def dict_to_df(
     column_level: Literal["outer", "inner"] = "outer",
     add_total_column: bool = True,
     add_total_row: bool = True,
+    total_column_only: bool = False,
 ) -> pd.DataFrame:
     """Convert a dictionary of dictionaries to a dataframe.
 
@@ -118,6 +119,7 @@ def dict_to_df(
         column_level: The outer or inner level keys are used as the columns.
         add_total_column: Whether to add a total column on the rightmost column.
         add_total_row: Whether to add a total row on the bottom row.
+        total_column_only: Whether to only include the total column.
 
     Returns:
         A pandas dataframe.
@@ -139,4 +141,7 @@ def dict_to_df(
         df.loc["Total"] = df.sum(axis=0)
     if add_total_column:
         df.loc[:, "Total"] = df.sum(axis=1)
+
+    if total_column_only and add_total_column:
+        df = df.loc[:, ["Total"]]
     return df

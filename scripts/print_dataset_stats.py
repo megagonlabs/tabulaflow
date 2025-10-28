@@ -17,6 +17,8 @@ async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github
     assert all(task.task_type == "ambig" for task in dataset.tasks)
     db_names = list(dataset.db_connectors.keys())
 
+    total_column_only = len(dataset.db_connectors) > MAX_DBS_TO_PRINT
+
     # Print stats for ambiguity types
     ambiguities = [
         "semantic_column",
@@ -37,7 +39,7 @@ async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github
     print("### Ambiguity Type Stats")
     print("note: this is the number of tasks with at least one corresponding ambiguity type")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
+    print(tabulate(dict_to_df(db2counts, total_column_only=total_column_only), headers="keys", tablefmt=tablefmt))
 
     # Print number of ambiguity points per task
     max_ap = max([len(task.gold_ambiguity_points) for task in dataset.tasks])
@@ -47,7 +49,7 @@ async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github
     print()
     print("### Number of Ambiguity Points (AP) Stats")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
+    print(tabulate(dict_to_df(db2counts, total_column_only=total_column_only), headers="keys", tablefmt=tablefmt))
 
     # Print distrubtion of parameter_dtype in infinite ambiguity points
     db2counts = {db: {dtype: 0 for dtype in ["int", "float", "str"]} for db in db_names}
@@ -59,7 +61,7 @@ async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github
     print("### Distribution of parameter_dtype in Infinite Ambiguity Points")
     print("note: this is the number of ambiguity points with the corresponding parameter_dtype")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
+    print(tabulate(dict_to_df(db2counts, total_column_only=total_column_only), headers="keys", tablefmt=tablefmt))
 
     # Print distrubtion of total number of interpretation combinations
     num_intp = sorted(set([len(task.gold_queries) for task in dataset.tasks]))
@@ -70,7 +72,7 @@ async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github
     print("### Distribution of Total Number of Interpretation Combinations")
     print("note: this is the number of tasks with the corresponding number of interpretation combinations")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
+    print(tabulate(dict_to_df(db2counts, total_column_only=total_column_only), headers="keys", tablefmt=tablefmt))
 
 
 async def print_aggregated_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
@@ -187,8 +189,7 @@ async def main() -> None:
     await print_basic_stats(dataset, args.format)
 
     if dataset.tasks[0].task_type == "ambig":
-        if len(dataset.db_connectors) < MAX_DBS_TO_PRINT:
-            await print_per_db_ambig_stats(dataset, args.format)
+        await print_per_db_ambig_stats(dataset, args.format)
         await print_aggregated_ambig_stats(dataset, args.format)
 
 
