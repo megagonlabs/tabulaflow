@@ -10,7 +10,10 @@ from mintq.schema import NL2QDataset
 from mintq.utils import dict_to_df
 
 
-def print_ambig_stats(dataset: NL2QDataset) -> None:
+MAX_DBS_TO_PRINT = 10
+
+
+async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
     assert all(task.task_type == "ambig" for task in dataset.tasks)
     db_names = list(dataset.db_connectors.keys())
 
@@ -34,7 +37,7 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print("### Ambiguity Type Stats")
     print("note: this is the number of tasks with at least one corresponding ambiguity type")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
 
     # Print number of ambiguity points per task
     max_ap = max([len(task.gold_ambiguity_points) for task in dataset.tasks])
@@ -44,7 +47,7 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print()
     print("### Number of Ambiguity Points (AP) Stats")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
 
     # Print distrubtion of parameter_dtype in infinite ambiguity points
     db2counts = {db: {dtype: 0 for dtype in ["int", "float", "str"]} for db in db_names}
@@ -56,7 +59,7 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print("### Distribution of parameter_dtype in Infinite Ambiguity Points")
     print("note: this is the number of ambiguity points with the corresponding parameter_dtype")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
 
     # Print distrubtion of total number of interpretation combinations
     num_intp = sorted(set([len(task.gold_queries) for task in dataset.tasks]))
@@ -67,8 +70,10 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print("### Distribution of Total Number of Interpretation Combinations")
     print("note: this is the number of tasks with the corresponding number of interpretation combinations")
     print()
-    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
+    print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt=tablefmt))
 
+
+async def print_aggregated_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
     finite_ambig_points = [sum(1 for ap in task.gold_ambiguity_points if ap.type == "finite") for task in dataset.tasks]
     infinite_ambig_points = [
         sum(1 for ap in task.gold_ambiguity_points if ap.type == "infinite") for task in dataset.tasks
@@ -94,31 +99,12 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
         tabulate(
             [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
             headers=("key", "value"),
-            tablefmt="github",
+            tablefmt=tablefmt,
         )
     )
 
 
-async def main() -> None:
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="dev")
-    parser.add_argument("--format", default="github")
-    parser.add_argument("--no_cache", action="store_true")
-    args = parser.parse_args()
-    print(args)
-    print()
-
-    if args.no_cache:
-        os.environ["MINTQ_CACHE_ENABLED"] = "0"
-
-    t0 = time.time()
-    dataset_loader = dataset_registry.get_class(args.dataset)()
-    dataset = await dataset_loader.get_split_async(args.split)
-    print(
-        f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
-    )
-
+async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
     per_db_stats = {
         "database": [],
         "tables": [],
@@ -140,14 +126,15 @@ async def main() -> None:
             sum(1 for table in schema.tables for column in table.columns if column.description is not None)
             / per_db_stats["columns"][-1]
         )
-    print()
-    print("### Per-Database Stats")
-    print()
-    print(tabulate(per_db_stats, headers=list(per_db_stats.keys()), tablefmt=args.format, floatfmt=".2f"))
+    if len(dataset.db_connectors) < MAX_DBS_TO_PRINT:
+        print()
+        print("### Per-Database Stats")
+        print()
+        print(tabulate(per_db_stats, headers=list(per_db_stats.keys()), tablefmt=tablefmt, floatfmt=".2f"))
 
     aggregated_stats = {
-        "dataset": args.dataset,
-        "split": args.split,
+        "dataset": dataset.name,
+        "split": dataset.split,
         "total_tasks": len(dataset.tasks),
         "total_databases": len(dataset.db_connectors),
         "max_tables_per_db": max(per_db_stats["tables"]),
@@ -172,11 +159,37 @@ async def main() -> None:
         tabulate(
             [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
             headers=("key", "value"),
-            tablefmt=args.format,
+            tablefmt=tablefmt,
         )
     )
+
+
+async def main() -> None:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", default="spider2-snow")
+    parser.add_argument("--split", default="dev")
+    parser.add_argument("--format", default="github")
+    parser.add_argument("--no_cache", action="store_true")
+    args = parser.parse_args()
+    print(args)
+    print()
+
+    if args.no_cache:
+        os.environ["MINTQ_CACHE_ENABLED"] = "0"
+
+    t0 = time.time()
+    dataset_loader = dataset_registry.get_class(args.dataset)()
+    dataset = await dataset_loader.get_split_async(args.split)
+    print(
+        f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
+    )
+
+    await print_basic_stats(dataset, args.format)
+
     if dataset.tasks[0].task_type == "ambig":
-        print_ambig_stats(dataset)
+        if len(dataset.db_connectors) < MAX_DBS_TO_PRINT:
+            await print_per_db_ambig_stats(dataset, args.format)
+        await print_aggregated_ambig_stats(dataset, args.format)
 
 
 if __name__ == "__main__":
