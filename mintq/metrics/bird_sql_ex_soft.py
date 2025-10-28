@@ -8,6 +8,7 @@ from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 @metric_registry.register
 class BirdSQLExSoft:
     name: ClassVar[str] = "bird_sql_ex_soft"
+    compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     def _compare(self, pred_executed: list[tuple[Any, ...]], gold_executed: list[tuple[Any, ...]]) -> float:
         if not gold_executed and not pred_executed:

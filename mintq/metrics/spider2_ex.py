@@ -78,6 +78,7 @@ def compare_pandas_table(
 @metric_registry.register
 class Spider2Ex:
     name: ClassVar[str] = "spider2_ex"
+    compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)

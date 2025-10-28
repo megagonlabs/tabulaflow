@@ -7,6 +7,7 @@ from mintq.metrics.utils import get_final_pred_query
 @metric_registry.register
 class Executable:
     name: ClassVar[str] = "executable"
+    compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         pred_query = get_final_pred_query(task)

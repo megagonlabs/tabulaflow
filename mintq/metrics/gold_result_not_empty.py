@@ -7,6 +7,7 @@ from mintq.metrics.utils import get_final_gold_query
 @metric_registry.register
 class GoldResultNotEmpty:
     name: ClassVar[str] = "gold_result_not_empty"
+    compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
         gold_query = get_final_gold_query(task)

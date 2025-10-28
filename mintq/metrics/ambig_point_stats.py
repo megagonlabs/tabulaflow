@@ -145,6 +145,7 @@ class LLMOutput(BaseModel):
 @metric_registry.register
 class AmbigPointStats:
     name: ClassVar[str] = "ambig_point_stats"
+    compatible_output_types: ClassVar[list[str]] = ["ambig-structured"]
 
     def __init__(self, llm: str = "openai:gpt-4.1"):
         self.llm = llm

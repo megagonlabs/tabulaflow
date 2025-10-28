@@ -25,6 +25,7 @@ class SimpleEx:
     """
 
     name: ClassVar[str] = "simple_ex"
+    compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
     def __init__(self, abs_tol: float = 1e-2):
         self.abs_tol = abs_tol

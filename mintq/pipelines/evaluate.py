@@ -55,7 +55,14 @@ async def main_async() -> None:
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
-    metrics = [metric_registry.get_class(m)() for m in args.metrics]
+    unique_output_types = list(dict.fromkeys([task.output_type for task in result.tasks]))
+    metrics = []
+    for m in args.metrics:
+        metric_cls = metric_registry.get_class(m)
+        if any(output_type not in metric_cls.compatible_output_types for output_type in unique_output_types):
+            print(f"Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping...")
+            continue
+        metrics.append(metric_cls())
     result = await evaluate_async(result, metrics, args.batch_size)
 
     result.to_directory(args.result_dir, eval_metrics_in_summary=args.metrics)
@@ -70,7 +77,7 @@ async def main_async() -> None:
         print()
         print("=== DEBUG MODE === ")
         for task in result.tasks:
-            print(f"{task.qid}: {task.eval_metrics['bird_sql_ex']:.4f}")
+            print(f"{task.qid}: {task.eval_metrics['simple_ex']:.4f}")
 
 
 if __name__ == "__main__":
