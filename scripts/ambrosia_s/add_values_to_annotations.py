@@ -1,3 +1,4 @@
+# mypy: ignore-errors
 """
 Enrich ambrosia_{few_shot_examples,test}.json with question and gold_queries from ambrosia.csv.
 

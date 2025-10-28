@@ -117,7 +117,7 @@ class Spider2SnowDatasetLoader:
                             other_exec_results=[ExecResult(df=df) for df in gold_exec_results[1:]],
                             required_columns=condition_cols or None,
                             required_sorted=not ignore_order,
-                        )
+                        ),
                     )
                 )
 

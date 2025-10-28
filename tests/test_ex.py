@@ -89,16 +89,16 @@ def test_tasks() -> list[ExampleCase]:
 
 
 @pytest.mark.asyncio
-async def test_spider2_ex(test_tasks: list[tuple[SimpleNL2QTaskOutput, float]]) -> None:
+async def test_spider2_ex(examples: list[ExampleCase]) -> None:
     spider2_ex = Spider2Ex()
-    for test_case in test_tasks:
-        score = await spider2_ex.compute_async(test_case.task)
-        assert score == test_case.spider2_ex_expected_score
+    for example in examples:
+        score = await spider2_ex.compute_async(example.task)
+        assert score == example.spider2_ex_expected_score
 
 
 @pytest.mark.asyncio
-async def test_simple_ex(test_tasks: list[tuple[SimpleNL2QTaskOutput, float]]) -> None:
+async def test_simple_ex(examples: list[ExampleCase]) -> None:
     simple_ex = SimpleEx()
-    for test_case in test_tasks:
-        score = await simple_ex.compute_async(test_case.task)
-        assert score == test_case.simple_ex_expected_score
+    for example in examples:
+        score = await simple_ex.compute_async(example.task)
+        assert score == example.simple_ex_expected_score
