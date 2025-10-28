@@ -33,21 +33,7 @@ async def main_async() -> None:
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--debug", action="store_true")
-    parser.add_argument(
-        "--metrics",
-        nargs="+",
-        default=[
-            "simple_ex",
-            "spider2_ex",
-            "bird_sql_ex",
-            "bird_sql_ex_soft",
-            "executable",
-            "gold_executable",
-            "gold_result_not_empty",
-            "ambig_point_stats",
-            "pred_success",
-        ],
-    )
+    parser.add_argument("--metrics", nargs="+", default=None)
     args = parser.parse_args()
     print(args)
     print()
@@ -56,16 +42,19 @@ async def main_async() -> None:
         result = NL2QRunResult.model_validate_json(f.read())
 
     unique_output_types = list(dict.fromkeys([task.output_type for task in result.tasks]))
+    metric_names = args.metrics or metric_registry.list_names()
     metrics = []
-    for m in args.metrics:
+    for m in metric_names:
         metric_cls = metric_registry.get_class(m)
         if any(output_type not in metric_cls.compatible_output_types for output_type in unique_output_types):
-            print(f"WARNING: Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping...")
+            print(
+                f"WARNING: Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping..."
+            )
             continue
         metrics.append(metric_cls())
     result = await evaluate_async(result, metrics, args.batch_size)
 
-    result.to_directory(args.result_dir, eval_metrics_in_summary=args.metrics)
+    result.to_directory(args.result_dir, eval_metrics_in_summary=metric_names)
     print(f"Saved evaluated result to {args.result_dir}")
 
     print()
