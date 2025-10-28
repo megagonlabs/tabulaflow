@@ -69,6 +69,35 @@ def print_ambig_stats(dataset: NL2QDataset) -> None:
     print()
     print(tabulate(dict_to_df(db2counts), headers="keys", tablefmt="github"))
 
+    finite_ambig_points = [sum(1 for ap in task.gold_ambiguity_points if ap.type == "finite") for task in dataset.tasks]
+    infinite_ambig_points = [
+        sum(1 for ap in task.gold_ambiguity_points if ap.type == "infinite") for task in dataset.tasks
+    ]
+    aggregated_stats = {
+        "max_ambig_points": max([len(task.gold_ambiguity_points) for task in dataset.tasks]),
+        "avg_ambig_points": sum([len(task.gold_ambiguity_points) for task in dataset.tasks]) / len(dataset.tasks),
+        "min_ambig_points": min([len(task.gold_ambiguity_points) for task in dataset.tasks]),
+        "max_finite_ambig_points": max(finite_ambig_points),
+        "avg_finite_ambig_points": sum(finite_ambig_points) / len(dataset.tasks),
+        "min_finite_ambig_points": min(finite_ambig_points),
+        "max_infinite_ambig_points": max(infinite_ambig_points),
+        "avg_infinite_ambig_points": sum(infinite_ambig_points) / len(dataset.tasks),
+        "min_infinite_ambig_points": min(infinite_ambig_points),
+        "max_intp_combinations": max([len(task.gold_queries) for task in dataset.tasks]),
+        "avg_intp_combinations": sum([len(task.gold_queries) for task in dataset.tasks]) / len(dataset.tasks),
+        "min_intp_combinations": min([len(task.gold_queries) for task in dataset.tasks]),
+    }
+    print()
+    print("### Aggregated Ambiguity Stats")
+    print()
+    print(
+        tabulate(
+            [(k, round(v, 2) if isinstance(v, float) else v) for k, v in aggregated_stats.items()],
+            headers=("key", "value"),
+            tablefmt="github",
+        )
+    )
+
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
