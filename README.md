@@ -393,11 +393,11 @@ Contact: yanlin@megagon.ai
 - [x] Simple QA with user patience limit
 - [x] ambig_structured agent with partial ground-truth input
 - [ ] Metrics
-  - [ ] EX
+  - [x] simple_ex
   - [x] ambiguity point P/R/F1
   - [x] interpretation P/R/F1
   - [ ] Handle tasks without finite ambiguity points for interpretation P/R/F1
-- [ ] Support Ambrosia
+- [x] Support Ambrosia
 - [ ] Task up-sampling
 - [ ] Cost computation using litellm
 - [ ] Fix Spider table and column names casing
