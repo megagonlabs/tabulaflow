@@ -258,8 +258,11 @@ class SchemaCompressor:
                 if table.name not in is_merged:
                     digest2tables[self._table_digest(table, schema)].append(table)
 
+            if not digest2tables:  # All tables have been merged once
+                return schema
+
             largest_group = max(digest2tables.values(), key=len)
-            if len(largest_group) == 1:
+            if len(largest_group) == 1:  # No two tables have the same digest
                 return schema
 
             for group_name, group_name_description, original_names in self._describe_name(
