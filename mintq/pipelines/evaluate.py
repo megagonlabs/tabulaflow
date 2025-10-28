@@ -60,7 +60,7 @@ async def main_async() -> None:
     for m in args.metrics:
         metric_cls = metric_registry.get_class(m)
         if any(output_type not in metric_cls.compatible_output_types for output_type in unique_output_types):
-            print(f"Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping...")
+            print(f"WARNING: Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping...")
             continue
         metrics.append(metric_cls())
     result = await evaluate_async(result, metrics, args.batch_size)
