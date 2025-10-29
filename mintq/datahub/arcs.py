@@ -2,6 +2,7 @@ import os
 import asyncio
 import random
 import json
+import copy
 from typing import ClassVar
 from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
@@ -11,7 +12,7 @@ from mintq.datahub.base import dataset_registry
 @dataset_registry.register
 class ARCSDatasetLoader:
     name: ClassVar = "arcs"
-    splits: ClassVar = ["test"]
+    splits: ClassVar = ["test", "test_unsampled"]
 
     def __init__(
         self,
@@ -37,14 +38,33 @@ class ARCSDatasetLoader:
             "student_club",
         ]
 
+    def _upsample_tasks(self, tasks: list[AmbigNL2QTask]) -> list[AmbigNL2QTask]:
+        with open(os.path.join(self.directory, "tasks", "tasks_gold_intended_query_ids.json"), "r") as f:
+            qid_to_gold_query_ids = json.load(f)
+
+        res = []
+        for task in tasks:
+            for gq_id in qid_to_gold_query_ids[task.qid]:
+                new_task = copy.deepcopy(task)
+                new_task.gold_intended_query_id = gq_id
+                ap_id_to_interpretation_idx = dict([part.split(".") for part in gq_id.split("-")[1:]])
+                for ap in new_task.gold_ambiguity_points:
+                    if ap.type == "finite":
+                        ap.intended_interpretation_idx = int(ap_id_to_interpretation_idx[ap.id])
+                res.append(new_task)
+        return res
+
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[AmbigNL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        with open(os.path.join(self.directory, "tasks", "all_tasks.json"), "r") as f:
+        with open(os.path.join(self.directory, "tasks", "tasks_unsampled.json"), "r") as f:
             tasks = [AmbigNL2QTask.model_validate(dic) for dic in json.load(f)]
-        return [task for task in tasks if task.db in databases]
+        tasks = [task for task in tasks if task.db in databases]
+        if split == "test":
+            tasks = self._upsample_tasks(tasks)
+        return tasks
 
     async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
         if split not in self.splits:
