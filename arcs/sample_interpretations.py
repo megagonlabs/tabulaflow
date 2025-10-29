@@ -15,22 +15,23 @@ async def main():
     args = parser.parse_args()
     print(args)
     print()
+    total_tasks = 0
 
     random.seed(args.seed)
 
     dataset_loader = ARCSDatasetLoader()
-    dataset = await dataset_loader.get_split_async("test")
+    dataset = await dataset_loader.get_split_async("test_unsampled")
 
     qid_to_gold_query_ids = {}
     for task in dataset.tasks:
         gold_query_ids = [gq.id for gq in task.gold_queries]
 
         if len(task.gold_ambiguity_points) == 1:
-            num_sample = 2
-        elif len(task.gold_ambiguity_points) == 2:
             num_sample = 3
-        elif len(task.gold_ambiguity_points) >= 3:
+        elif len(task.gold_ambiguity_points) == 2:
             num_sample = 5
+        elif len(task.gold_ambiguity_points) >= 3:
+            num_sample = 7
 
         num_sample = min(num_sample, len(gold_query_ids))
 
@@ -41,12 +42,17 @@ async def main():
         qid_to_gold_query_ids[task.qid] = sampled_gold_query_ids
 
         num_tasks_by_ambiguity_points[len(task.gold_ambiguity_points)] += num_sample
+        total_tasks += len(sampled_gold_query_ids)
 
     print(f"Total number of tasks: {sum(len(gold_query_ids) for gold_query_ids in qid_to_gold_query_ids.values())}")
     print(num_tasks_by_ambiguity_points)
 
+    print(f"Total number of tasks: {total_tasks}")
+
     with open("data/ARCS/tasks/sampled_gold_intended_query_ids.json", "w") as f:
         json.dump(qid_to_gold_query_ids, f, indent=2)
+
+    print(f"Written {len(qid_to_gold_query_ids)} tasks to data/ARCS/tasks/sampled_gold_intended_query_ids.json")
 
 
 if __name__ == "__main__":
