@@ -44,8 +44,9 @@ class ARCSDatasetLoader:
 
         res = []
         for task in tasks:
-            for gq_id in qid_to_gold_query_ids[task.qid]:
+            for i, gq_id in enumerate(qid_to_gold_query_ids[task.qid]):
                 new_task = copy.deepcopy(task)
+                new_task.qid = f"{task.qid}-{i}"
                 new_task.gold_intended_query_id = gq_id
                 ap_id_to_interpretation_idx = dict([part.split(".") for part in gq_id.split("-")[1:]])
                 for ap in new_task.gold_ambiguity_points:
