@@ -775,6 +775,13 @@ class NL2QDataset(BaseModel):
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
+    @model_validator(mode="after")
+    def validate_qid_uniqueness(self) -> "NL2QDataset":
+        qids = [task.qid for task in self.tasks]
+        if len(qids) != len(set(qids)):
+            raise ValueError(f"QIDs are not unique: {qids}")
+        return self
+
 
 class NL2QRunResult(BaseModel):
     start_time: datetime.datetime
