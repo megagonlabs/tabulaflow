@@ -49,10 +49,10 @@ async def main():
 
     print(f"Total number of tasks: {total_tasks}")
 
-    with open("data/ARCS/tasks/sampled_gold_intended_query_ids.json", "w") as f:
+    with open("data/ARCS/tasks/tasks_gold_intended_query_ids.json", "w") as f:
         json.dump(qid_to_gold_query_ids, f, indent=2)
 
-    print(f"Written {len(qid_to_gold_query_ids)} tasks to data/ARCS/tasks/sampled_gold_intended_query_ids.json")
+    print(f"Written {len(qid_to_gold_query_ids)} tasks to data/ARCS/tasks/tasks_gold_intended_query_ids.json")
 
 
 if __name__ == "__main__":
