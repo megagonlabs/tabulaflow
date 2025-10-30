@@ -51,10 +51,10 @@ def print_main_table(exp_names: list[str]):
     rows = []
     for exp_name in exp_names:
         result = EXP_RESULTS[exp_name]
-        ex = result.aggregated_eval_metrics["bird_sql_ex"]["avg"]
-        ex_1ap = calc_average([task.eval_metrics["bird_sql_ex"] for task in result.tasks if num_aps(task) == 1])
-        ex_2ap = calc_average([task.eval_metrics["bird_sql_ex"] for task in result.tasks if num_aps(task) == 2])
-        ex_3plusap = calc_average([task.eval_metrics["bird_sql_ex"] for task in result.tasks if num_aps(task) >= 3])
+        ex = result.aggregated_eval_metrics["simple_ex"]["avg"]
+        ex_1ap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) == 1])
+        ex_2ap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) == 2])
+        ex_3plusap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) >= 3])
         user_effort = result.total_user_simulator_usage.output_tokens / len(result.tasks)
         latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
         cost = result.total_usage.api_cost_usd / len(result.tasks)
@@ -97,7 +97,7 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
             row.append(
                 calc_average(
                     [
-                        task.eval_metrics["bird_sql_ex"]
+                        task.eval_metrics["simple_ex"]
                         for task in result.tasks
                         if any(ap.ambiguity_type == ambiguity_type for ap in task.gold_ambiguity_points)
                     ]
