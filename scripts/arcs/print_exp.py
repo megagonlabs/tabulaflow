@@ -63,14 +63,15 @@ def print_main_table(exp_names: list[str]):
 
 
 def print_user_effort_table(exp_names: list[str]):
-    headers = ["Method", "User Input Tokens", "User Output Tokens", "User Cost"]
+    headers = ["Method", "Num Requests", "User Input Tokens", "User Output Tokens", "User Cost"]
     rows = []
     for exp_name in exp_names:
         result = EXP_RESULTS[exp_name]
+        num_requests = result.total_user_simulator_usage.api_requests / len(result.tasks)
         user_input_tokens = result.total_user_simulator_usage.input_tokens / len(result.tasks)
         user_output_tokens = result.total_user_simulator_usage.output_tokens / len(result.tasks)
         user_cost = result.total_user_simulator_usage.api_cost_usd / len(result.tasks)
-        rows.append([exp_name, user_input_tokens, user_output_tokens, user_cost])
+        rows.append([exp_name, num_requests, user_input_tokens, user_output_tokens, user_cost])
     print_table("User Effort Table", headers, rows)
 
 
