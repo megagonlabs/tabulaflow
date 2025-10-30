@@ -152,8 +152,8 @@ async def main_async() -> None:
     parser.add_argument("--use_gold_ambiguity_points", action="store_true")
     parser.add_argument("--user_patience", default=None, type=int)
 
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev")
+    parser.add_argument("--dataset", default="arcs")
+    parser.add_argument("--split", default="test")
     parser.add_argument("--databases", default=None, nargs="+")
 
     parser.add_argument("--batch_size", default=8, type=int)
@@ -164,9 +164,9 @@ async def main_async() -> None:
     parser.add_argument("--log_level", default="WARNING", type=str)
     args = parser.parse_args()
     if args.debug:
-        parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="dev")
+        parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
         if args.dataset == "bird-sql":
-            parser.set_defaults(databases=["california_schools"])
+            parser.set_defaults(databases=["california_schools"], split="dev")
         elif args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
@@ -200,8 +200,8 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid
                 in [
-                    "040",
-                    "001",
+                    "040-0",
+                    "001-0",
                 ]
             ]
         else:
@@ -217,6 +217,8 @@ async def main_async() -> None:
     t0 = time.time()
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
+    print(f"Total usage: {result.total_usage.model_dump_json()}")
+    print(f"Total user simulator usage: {result.total_user_simulator_usage.model_dump_json()}")
 
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
