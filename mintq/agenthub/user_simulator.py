@@ -23,9 +23,9 @@ Here,{% for ap in ambiguity_points %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
 
-
 For "free_text" questions, you must provide a natural language answer in the `answer_text` field. 
 - Only answer what you are asked, do not provide additional information even if it is related.
+- If multiple questions are asked, only answer the first one and say "Please only ask one question at a time."
 - If the question is not related to ambiguity clarification, respond "I cannot answer this question."
 - If the question cannot be answered based on the provided information, respond "I cannot answer this question."
 - Your answer should be grammatical and linguistically diverse.
@@ -35,6 +35,7 @@ For "multiple_choice" questions, you must select from the given options and prov
 
 For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
 - The data type of the value should be the same as the one specified in the question.
+- If no valid value is correct, select the closest value.
 """
 
 # - If the question provides multiple options but none of them are correct, respond that none of the options are correct.
