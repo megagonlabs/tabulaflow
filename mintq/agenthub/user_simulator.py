@@ -1,7 +1,7 @@
 from contextlib import asynccontextmanager
 from typing import AsyncGenerator
 import pydantic_ai
-from pydantic_ai import Agent, ModelRetry
+from pydantic_ai import Agent, ModelRetry, ToolOutput
 import asyncio
 import jinja2
 from mintq.agenthub.base import (
@@ -109,7 +109,7 @@ class UserSimulator:
         async with self._lock_message_history_async():
             result = await self.user_agent.run(
                 question.question,
-                output_type=UserFreeTextAnswer,
+                output_type=ToolOutput(UserFreeTextAnswer, name="answer"),
                 message_history=self._message_history if self.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
@@ -117,15 +117,15 @@ class UserSimulator:
         return result.output
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
-        def answer(answer_number: int) -> int:
-            if answer_number < 1 or answer_number > len(question.options):
+        def answer(number: int) -> int:
+            if number < 1 or number > len(question.options):
                 raise ModelRetry(f"Answer number should be between 1 and {len(question.options)}")
-            return answer_number - 1
+            return number - 1
 
         async with self._lock_message_history_async():
             result = await self.user_agent.run(
                 question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-                output_type=answer,
+                output_type=ToolOutput(answer, name="answer"),
                 message_history=self._message_history if self.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
@@ -136,7 +136,7 @@ class UserSimulator:
         async with self._lock_message_history_async():
             result = await self.user_agent.run(
                 question.model_dump_json(indent=2),
-                output_type=UserValueAnswer,
+                output_type=ToolOutput(UserValueAnswer, name="answer"),
                 message_history=self._message_history if self.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)

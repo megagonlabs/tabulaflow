@@ -27,9 +27,9 @@ class AskUserTool:
         self._metrics.num_calls += 1
 
         response = await self.user_simulator.ask_async(UserFreeTextQuestion(question=question))
-        if "cannot answer" in response.answer_text.lower():
+        if "cannot answer" in response.answer_free_text.lower():
             self._metrics.user_refused_to_answer += 1
-        return response.answer_text
+        return response.answer_free_text
 
     async def _pydantic_ai_prepare(self, ctx: RunContext, tool_def: ToolDefinition) -> ToolDefinition | None:
         """After the patience limit is reached, this tool will not be provided to the LLM anymore."""

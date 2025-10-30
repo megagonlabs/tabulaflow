@@ -44,7 +44,7 @@ class UserValueQuestion(BaseModel):
 
 
 class UserFreeTextAnswer(BaseModel):
-    answer_text: str
+    answer_free_text: str
 
 
 class UserMultipleChoiceAnswer(BaseModel):
@@ -52,7 +52,6 @@ class UserMultipleChoiceAnswer(BaseModel):
 
 
 class UserValueAnswer(BaseModel):
-    type: Literal["value"] = "value"
     operator: Literal["<", ">", "<=", ">=", "=", "<>"]
     value: int | float | str
 
