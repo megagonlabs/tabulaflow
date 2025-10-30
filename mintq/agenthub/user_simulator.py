@@ -19,16 +19,16 @@ from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 USER_SIMULATOR_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambiguity_points %}
-- "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
+- [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
 
 For "free_text" questions, you must provide a natural language answer in the `answer_text` field. 
-- Only answer what you are asked, do not provide additional information even if it is related.
+- You need to find the ambiguity point in that the question is asking about
+  - If there is a match, answer the question using the given information. Do not leak additional information in other ambiguity points. Your answer should be grammatical and linguistically diverse.
+  - If there is no match, respond "I cannot answer this question."
 - If multiple questions are asked, only answer the first one and say "Please only ask one question at a time."
 - If the question is not related to ambiguity clarification, respond "I cannot answer this question."
-- If the question cannot be answered based on the provided information, respond "I cannot answer this question."
-- Your answer should be grammatical and linguistically diverse.
 
 For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
 - If none of the options are correct, select the closest option.
@@ -84,6 +84,7 @@ class UserSimulator:
             task=task.question,
             ambiguity_points=[
                 {
+                    "id": ap.id,
                     "phrase": ap.phrase,
                     "interpretation": ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                     if ap.type == "finite"
@@ -106,10 +107,18 @@ class UserSimulator:
             yield
 
     async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer:
+        def answer(relevant_ambig_point_id: str | None, answer_free_text: str) -> UserFreeTextAnswer:
+            """
+            Args:
+                relevant_ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about. If there is no match, this is None.
+                answer_free_text: The answer to the question. Do not include the ambiguity point id in answer_free_text.
+            """
+            return UserFreeTextAnswer(answer_free_text=answer_free_text)
+
         async with self._lock_message_history_async():
             result = await self.user_agent.run(
                 question.question,
-                output_type=ToolOutput(UserFreeTextAnswer, name="answer"),
+                output_type=ToolOutput(answer, name="answer"),
                 message_history=self._message_history if self.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
