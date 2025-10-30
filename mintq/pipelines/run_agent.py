@@ -150,7 +150,7 @@ async def main_async() -> None:
     parser.add_argument("--no_query_for_intended_only", action="store_true")
     parser.add_argument("--use_gold_phrases", action="store_true")
     parser.add_argument("--use_gold_ambiguity_points", action="store_true")
-    parser.add_argument("--user_patience", default=None, type=int)
+    parser.add_argument("--user_patience", default=None)
 
     parser.add_argument("--dataset", default="arcs")
     parser.add_argument("--split", default="test")
