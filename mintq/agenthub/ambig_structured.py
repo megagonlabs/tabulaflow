@@ -246,7 +246,7 @@ class AmbigStructuredSQLAgent:
         questions = []
         for ap in ambiguity_points:
             if ap.type == "finite":
-                questions.append(UserMultipleChoiceQuestion(question=ap.phrase, options=ap.interpretations))
+                questions.append(UserMultipleChoiceQuestion(question=f'"{ap.phrase}" means', options=ap.interpretations))
             elif ap.type == "infinite":
                 questions.append(
                     UserValueQuestion(  # type: ignore
