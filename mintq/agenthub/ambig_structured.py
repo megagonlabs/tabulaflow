@@ -40,7 +40,7 @@ from mintq.utils import int_to_letter
 
 DISAMBIGUATION_PROMPT = """
 You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
-Given an ambiguous question, you need to output the list of all ambiguity points in the question.
+The question has one or multiple ambiguity points and you will need to output the list of ALL ambiguity points in the question.
 
 - For phrases where the number of interpretations is finite, put the list of all possible disambiguated interpretations in the `finite_ambiguity_points` field.
   - There should be at least two interpretations for a phrase to be ambiguous.
