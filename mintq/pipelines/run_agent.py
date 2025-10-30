@@ -133,6 +133,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["use_gold_phrases"] = True
     if args.use_gold_ambiguity_points:
         kwargs["use_gold_ambiguity_points"] = True
+    if args.user_patience is not None:
+        kwargs["user_patience"] = args.user_patience
     return agent_cls.config_cls(**kwargs)
 
 
@@ -148,6 +150,7 @@ async def main_async() -> None:
     parser.add_argument("--no_query_for_intended_only", action="store_true")
     parser.add_argument("--use_gold_phrases", action="store_true")
     parser.add_argument("--use_gold_ambiguity_points", action="store_true")
+    parser.add_argument("--user_patience", default=None, type=int)
 
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev")
