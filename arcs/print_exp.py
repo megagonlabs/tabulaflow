@@ -54,7 +54,7 @@ def print_main_table(exp_names: list[str]):
         user_effort = result.total_user_simulator_usage.output_tokens / len(result.tasks)
         latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
         cost = result.total_usage.api_cost_usd / len(result.tasks)
-        rows.append([method, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
+        rows.append([exp_name, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
     print_table("Main Table", headers, rows)
 
 
