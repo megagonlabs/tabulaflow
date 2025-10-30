@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar
+from typing import ClassVar, Literal
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -31,7 +31,7 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 
 
 class AmbigSimpleSQLAgentConfig(BasicAgentConfig):
-    user_patience: int | None = None
+    user_patience: int | Literal["NUM_AMBIG_POINTS"] | None = None
 
 
 @agent_registry.register
@@ -59,10 +59,15 @@ class AmbigSimpleSQLAgent:
     ) -> SimpleAmbigNL2QTaskOutput:
         t0 = time.time()
 
+        if self.config.user_patience == "NUM_AMBIG_POINTS":
+            user_patience = len(task.gold_ambiguity_points)
+        else:
+            user_patience = self.config.user_patience
+
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
-            "ask_user": AskUserTool(user_simulator, patience=self.config.user_patience),
+            "ask_user": AskUserTool(user_simulator, patience=user_patience),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
