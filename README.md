@@ -394,10 +394,10 @@ Contact: yanlin@megagon.ai
 - [x] ambig_structured agent with partial ground-truth input
 - [ ] Metrics
   - [x] simple_ex
-    - [ ] Repetitions?
+    - [x] Repetitions considered by default
   - [x] ambiguity point P/R/F1
   - [x] interpretation P/R/F1
-  - [ ] Handle tasks without finite ambiguity points for interpretation P/R/F1
+  - [x] Handle tasks without finite ambiguity points for interpretation P/R/F1 -> null values
 - [x] Support Ambrosia
 - [x] Task up-sampling
 - [ ] Cost computation using litellm
