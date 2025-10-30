@@ -43,7 +43,7 @@ def aggregate_metrics(
         if isinstance(metrics[0][k], dict):
             res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)
         else:
-            res[k] = {op: round(op2func[op]([m[k] for m in metrics]), decimals) for op in ops}  # type: ignore
+            res[k] = {op: round(op2func[op]([m[k] for m in metrics if m[k] is not None]), decimals) for op in ops}  # type: ignore
     return res
 
 

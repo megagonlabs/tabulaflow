@@ -199,7 +199,7 @@ class AmbigPointStats:
             if match.pred_id is not None
         ]
 
-    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float]:
+    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float | None]:
         matches = await self._match_ambig_points_async(task)
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
@@ -245,9 +245,15 @@ class AmbigPointStats:
             r_list.append(r)
             f1_list.append(f1)
 
-        interpretation_p = sum(p_list) / len(p_list) if p_list else 0.0
-        interpretation_r = sum(r_list) / len(r_list) if r_list else 0.0
-        interpretation_f1 = sum(f1_list) / len(f1_list) if f1_list else 0.0
+        if not p_list:
+            interpretation_p = None
+            interpretation_r = None
+            interpretation_f1 = None
+        else:
+            interpretation_p = sum(p_list) / len(p_list)
+            interpretation_r = sum(r_list) / len(r_list)
+            interpretation_f1 = sum(f1_list) / len(f1_list)
+
         return {
             "ambig_point_p": ambig_point_p,
             "ambig_point_r": ambig_point_r,
