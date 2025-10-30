@@ -19,7 +19,7 @@ class SimpleEx:
     - Row order does not matter by default
 
     Features that are the same as Spider2's EX implementation:
-    - Repetitions are considered
+    - Repetitions are considered by default (unlike bird_sql_ex)
     - Column order does not matter
     - Additional columns are allowed
     """
@@ -27,8 +27,9 @@ class SimpleEx:
     name: ClassVar[str] = "simple_ex"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    def __init__(self, abs_tol: float = 1e-2):
+    def __init__(self, abs_tol: float = 1e-2, ignore_repetitions: bool = False):
         self.abs_tol = abs_tol
+        self.ignore_repetitions = ignore_repetitions
 
     def _digest(self, v: Any) -> tuple[Any, ...]:
         """The following values are considered numerical:
@@ -56,6 +57,9 @@ class SimpleEx:
         if not required_sorted:  # required_sorted == False means order does not matter
             pred_col = sorted(pred_col)
             gold_col = sorted(gold_col)
+        if self.ignore_repetitions:
+            pred_col = list(dict.fromkeys(pred_col))
+            gold_col = list(dict.fromkeys(gold_col))
         if len(pred_col) != len(gold_col):
             return False
         for (pred_type, pred_value), (gold_type, gold_value) in zip(pred_col, gold_col):
