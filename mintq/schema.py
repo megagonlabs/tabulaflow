@@ -3,6 +3,7 @@ from decimal import Decimal
 import json
 import os
 import re
+import litellm
 from genai_prices import calc_price
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
@@ -154,6 +155,50 @@ class Trajectory(BaseModel):
         return f"----- START OF TRAJECTORY `{self.id}` -----\n{res}\n----- END OF TRAJECTORY -----"
 
 
+PROVIDER_MAPPINGS = {
+    "openai-responses": "openai",
+    "fireworks": "fireworks_ai",
+    "google-vertex": "vertex_ai",
+}
+
+
+def pydantic_ai_model_to_litellm_model(llm: str) -> str:
+    provider, model = llm.split(":")
+    provider = PROVIDER_MAPPINGS.get(provider, provider)
+    return f"{provider}/{model}"
+
+
+def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_requests: int = 1) -> Decimal:
+    # Note: We found litellm to be more accurate than genai-prices
+    # try:
+    #     provider, model = llm.split(":")
+    #     price_data = calc_price(
+    #         pydantic_ai.usage.RunUsage(
+    #             requests=api_requests,
+    #             input_tokens=input_tokens,
+    #             output_tokens=output_tokens,
+    #         ),
+    #         model_ref=model,
+    #         provider_id=provider,
+    #     )
+    #     return price_data.total_price
+    # except Exception:
+    #     pass
+
+    try:
+        input_cost, output_cost = litellm.cost_per_token(
+            model=pydantic_ai_model_to_litellm_model(llm),
+            prompt_tokens=input_tokens,
+            completion_tokens=output_tokens,
+        )
+        return input_cost + output_cost
+    except Exception:
+        pass
+
+    logger.info(f"Unable to calculate API cost for {llm}, setting to 0.0")
+    return Decimal(0)
+
+
 class Usage(BaseModel):
     llm: str | Literal["MULTI"]
     api_requests: int
@@ -180,21 +225,8 @@ class Usage(BaseModel):
         api_cost_usd: float | Decimal | None = None,
     ) -> "Usage":
         if api_cost_usd is None:
-            provider, model = llm.split(":")
-            try:
-                price_data = calc_price(
-                    pydantic_ai.usage.RunUsage(
-                        requests=api_requests,
-                        input_tokens=input_tokens,
-                        output_tokens=output_tokens,
-                    ),
-                    model_ref=model,
-                    provider_id=provider,
-                )
-                api_cost_usd = price_data.total_price
-            except Exception as e:
-                logger.debug(f"Error calculating API cost for {llm}, setting to 0.0: {e}")
-                api_cost_usd = Decimal(0)
+            api_cost_usd = compute_api_cost(llm, input_tokens, output_tokens, api_requests)
+
         elif isinstance(api_cost_usd, float):
             api_cost_usd = Decimal(api_cost_usd)
         return cls(
