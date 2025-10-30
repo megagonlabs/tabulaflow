@@ -400,7 +400,7 @@ Contact: yanlin@megagon.ai
   - [x] Handle tasks without finite ambiguity points for interpretation P/R/F1 -> null values
 - [x] Support Ambrosia
 - [x] Task up-sampling
-- [ ] Cost computation using litellm
+- [x] Cost computation using litellm
 - [ ] Taxonomy
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
