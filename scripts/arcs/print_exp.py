@@ -3,18 +3,21 @@ import os
 from typing import Any
 from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
+from tabulate import tabulate
 
 
 EXP_DIRS = {
-    "structured_gpt-oss-120b": "output/87_gpt-oss-120b/",
-    "structured_claude-sonnet-4-5-20250929": "output/85_claude-sonnet-4-5-20250929/",
-    "structured_gemini-2.0-flash": "output/84_gemini-2.0-flash/",
-    "structured_gpt-4.1-mini": "output/82_openai-responses:gpt-4.1-mini/",
-    "structured_gpt-4.1": "output/82_openai-responses:gpt-4.1/",
+    # "structured_gpt-oss-120b": "output/87_gpt-oss-120b/",
+    # "structured_claude-sonnet-4-5-20250929": "output/85_claude-sonnet-4-5-20250929/",
+    # "structured_gemini-2.0-flash": "output/84_gemini-2.0-flash/",
+    # "structured_gpt-4.1-mini": "output/82_openai-responses:gpt-4.1-mini/",
+    # "structured_gpt-4.1": "output/82_openai-responses:gpt-4.1/",
     "90_gpt-4.1_simple": "output/90_gpt-4.1_simple/",
     "90_gpt-4.1_flat": "output/90_gpt-4.1_flat/",
     "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
 }
+
+TALBE_FMT = "github"
 
 
 EXP_RESULTS = {}
@@ -29,9 +32,12 @@ def calc_average(values: list[float]) -> float:
 
 def print_table(name: str, headers: list[str], rows: list[list[Any]]):
     print(f"### {name}")
-    print("\t".join(headers))
-    for row in rows:
-        print("\t".join([f"{v:.4f}" if isinstance(v, (float, Decimal)) else str(v) for v in row]))
+    if TALBE_FMT != "tab":
+        print(tabulate(rows, headers=headers, tablefmt=TALBE_FMT))
+    else:
+        print("\t".join(headers))
+        for row in rows:
+            print("\t".join([f"{v:.4f}" if isinstance(v, (float, Decimal)) else str(v) for v in row]))
     print()
     print()
 
@@ -54,6 +60,18 @@ def print_main_table(exp_names: list[str]):
         cost = result.total_usage.api_cost_usd / len(result.tasks)
         rows.append([exp_name, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
     print_table("Main Table", headers, rows)
+
+
+def print_user_effort_table(exp_names: list[str]):
+    headers = ["Method", "User Input Tokens", "User Output Tokens", "User Cost"]
+    rows = []
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
+        user_input_tokens = result.total_user_simulator_usage.input_tokens / len(result.tasks)
+        user_output_tokens = result.total_user_simulator_usage.output_tokens / len(result.tasks)
+        user_cost = result.total_user_simulator_usage.api_cost_usd / len(result.tasks)
+        rows.append([exp_name, user_input_tokens, user_output_tokens, user_cost])
+    print_table("User Effort Table", headers, rows)
 
 
 ambiguity_types = [
@@ -91,7 +109,7 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
 def main():
     # print_main_table(exp_results)
     print_main_table(["90_gpt-4.1_simple", "90_gpt-4.1_flat", "90_gpt-4.1_structured"])
-
+    print_user_effort_table(["90_gpt-4.1_simple", "90_gpt-4.1_flat", "90_gpt-4.1_structured"])
     # print_result_by_ambiguity_type(exp_results)
 
 
