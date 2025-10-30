@@ -5,13 +5,22 @@ from mintq.schema import NL2QRunResult
 from decimal import Decimal
 
 
-exp_dirs = {
+EXP_DIRS = {
     "structured_gpt-oss-120b": "output/87_gpt-oss-120b/",
     "structured_claude-sonnet-4-5-20250929": "output/85_claude-sonnet-4-5-20250929/",
     "structured_gemini-2.0-flash": "output/84_gemini-2.0-flash/",
     "structured_gpt-4.1-mini": "output/82_openai-responses:gpt-4.1-mini/",
     "structured_gpt-4.1": "output/82_openai-responses:gpt-4.1/",
+    "90_gpt-4.1_simple": "output/90_gpt-4.1_simple/",
+    "90_gpt-4.1_flat": "output/90_gpt-4.1_flat/",
+    "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
 }
+
+
+EXP_RESULTS = {}
+for method, exp_dir in EXP_DIRS.items():
+    with open(os.path.join(exp_dir, "result.json"), "r") as f:
+        EXP_RESULTS[method] = NL2QRunResult.model_validate_json(f.read())
 
 
 def calc_average(values: list[float]) -> float:
@@ -27,10 +36,11 @@ def print_table(name: str, headers: list[str], rows: list[list[Any]]):
     print()
 
 
-def print_main_table(results: dict[str, NL2QRunResult]):
+def print_main_table(exp_names: list[str]):
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
-    for method, result in results.items():
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
         ex = result.aggregated_eval_metrics["bird_sql_ex"]["avg"]
         ex_1ap = calc_average(
             [task.eval_metrics["bird_sql_ex"] for task in result.tasks if len(task.gold_ambiguity_points) == 1]
@@ -60,10 +70,11 @@ ambiguity_types = [
 ]
 
 
-def print_result_by_ambiguity_type(results: dict[str, NL2QRunResult]):
+def print_result_by_ambiguity_type(exp_names: list[str]):
     headers = ["Method", *ambiguity_types]
     rows = []
-    for method, result in results.items():
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
         row = [method]
         for ambiguity_type in ambiguity_types:
             row.append(
@@ -80,13 +91,10 @@ def print_result_by_ambiguity_type(results: dict[str, NL2QRunResult]):
 
 
 def main():
-    exp_results = {}
-    for method, exp_dir in exp_dirs.items():
-        with open(os.path.join(exp_dir, "result.json"), "r") as f:
-            result = NL2QRunResult.model_validate_json(f.read())
-        exp_results[method] = result
-    print_main_table(exp_results)
-    print_result_by_ambiguity_type(exp_results)
+    # print_main_table(exp_results)
+    print_main_table(["90_gpt-4.1_simple", "90_gpt-4.1_flat", "90_gpt-4.1_structured"])
+
+    # print_result_by_ambiguity_type(exp_results)
 
 
 if __name__ == "__main__":
