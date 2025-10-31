@@ -40,7 +40,7 @@ from mintq.utils import int_to_letter
 
 DISAMBIGUATION_PROMPT = """
 You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
-The question has one or multiple ambiguity points and you will need to output the list of ALL ambiguity points in the question.
+The question has one or multiple ambiguity points and you will need to output the list of ALL ambiguity points in the question. Try to be comprehensive.
 
 - For phrases where the number of interpretations is finite, put the list of all possible disambiguated interpretations in the `finite_ambiguity_points` field.
   - There should be at least two interpretations for a phrase to be ambiguous.
@@ -91,7 +91,7 @@ TEXT2SQL_PROMPT = """
 You are a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
-- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
+- Ensure the query accurately reflects the original question without adding or omitting any conditions.
 - Adhere strictly to the given database schema when constructing queries.
 - If you use any of the provided parameters,
   - write a parameterized query with placeholders in the format of `<expr> <operator> :<param_name>`
