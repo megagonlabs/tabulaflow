@@ -392,7 +392,7 @@ Contact: yanlin@megagon.ai
 - [x] Read BIRD-INTERACT paper and design experiments
 - [x] Simple QA with user patience limit
 - [x] ambig_structured agent with partial ground-truth input
-- [ ] Metrics
+- [x] Metrics
   - [x] simple_ex
     - [x] Repetitions considered by default
   - [x] ambiguity point P/R/F1
@@ -403,6 +403,7 @@ Contact: yanlin@megagon.ai
 - [x] Task up-sampling
 - [x] Cost computation using litellm
 - [x] Analyze exp90 simple vs. structured (info leakage in ambig_simple)
+- [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
 - [ ] Fix Spider table and column names casing
