@@ -12,9 +12,13 @@ EXP_DIRS = {
     # "structured_gemini-2.0-flash": "output/84_gemini-2.0-flash/",
     # "structured_gpt-4.1-mini": "output/82_openai-responses:gpt-4.1-mini/",
     # "structured_gpt-4.1": "output/82_openai-responses:gpt-4.1/",
-    "90_gpt-4.1_simple": "output/90_gpt-4.1_simple/",
+    # "90_gpt-4.1_simple": "output/90_gpt-4.1_simple/",
     # "90_gpt-4.1_flat": "output/90_gpt-4.1_flat/",
-    "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
+    # "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
+    "91_gpt-4.1_simple": "output/91_gpt-4.1_simple/",
+    "91_gpt-4.1_simple_patience_ap": "output/91_gpt-4.1_simple_patience_ap/",
+    "92_gpt-4.1_structured": "output/92_gpt-4.1_structured/",
+    "92_gpt-4.1_flat": "output/92_gpt-4.1_flat/",
 }
 
 TALBE_FMT = "github"
@@ -27,8 +31,8 @@ for method, exp_dir in EXP_DIRS.items():
 
 
 def main():
-    exp_a = EXP_RESULTS["90_gpt-4.1_simple"]
-    exp_b = EXP_RESULTS["90_gpt-4.1_structured"]
+    exp_a = EXP_RESULTS["91_gpt-4.1_simple_patience_ap"]
+    exp_b = EXP_RESULTS["92_gpt-4.1_structured"]
 
     for task_a, task_b in zip(exp_a.tasks, exp_b.tasks):
         assert task_a.qid == task_b.qid
