@@ -397,12 +397,12 @@ Contact: yanlin@megagon.ai
     - [x] Repetitions considered by default
   - [x] ambiguity point P/R/F1
   - [x] interpretation P/R/F1
-    - [ ] Fix - zero of no matched ambiguity point
+    - [x] should be P/R/F1 conditioned on the ambiguity point is correct
   - [x] Handle tasks without finite ambiguity points for interpretation P/R/F1 -> null values
 - [x] Support Ambrosia
 - [x] Task up-sampling
 - [x] Cost computation using litellm
-- [ ] Analyze exp90 simple vs. structured
+- [x] Analyze exp90 simple vs. structured (info leakage in ambig_simple)
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
 - [ ] Fix Spider table and column names casing
