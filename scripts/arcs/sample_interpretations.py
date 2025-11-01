@@ -24,7 +24,7 @@ async def main():
 
     qid_to_gold_query_ids = {}
     for task in dataset.tasks:
-        gold_query_ids = [gq.id for gq in task.gold_queries]
+        gold_query_ids = [gq.id for gq in task.gold_queries if not gq.exec_result.df.empty]
 
         if len(task.gold_ambiguity_points) == 1:
             num_sample = 3
@@ -35,9 +35,9 @@ async def main():
 
         num_sample = min(num_sample, len(gold_query_ids))
 
-        gold_query_ids.remove(task.gold_intended_query_id)
-        sampled_gold_query_ids = random.sample(gold_query_ids, num_sample - 1)
-        sampled_gold_query_ids = [task.gold_intended_query_id] + sampled_gold_query_ids
+        # gold_query_ids.remove(task.gold_intended_query_id)
+        sampled_gold_query_ids = random.sample(gold_query_ids, num_sample)
+        # sampled_gold_query_ids = [task.gold_intended_query_id] + sampled_gold_query_ids
 
         qid_to_gold_query_ids[task.qid] = sampled_gold_query_ids
 
