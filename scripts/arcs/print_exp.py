@@ -17,8 +17,8 @@ EXP_DIRS = {
     # "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
     "91_gpt-4.1_simple": "output/91_gpt-4.1_simple/",
     "91_gpt-4.1_simple_patience_ap": "output/91_gpt-4.1_simple_patience_ap/",
-    "92_gpt-4.1_structured": "output/92_gpt-4.1_structured/",
-    "92_gpt-4.1_flat": "output/92_gpt-4.1_flat/",
+    "93_gpt-4.1_structured": "output/93_gpt-4.1_structured/",
+    "93_gpt-4.1_flat": "output/93_gpt-4.1_flat/",
 }
 
 TALBE_FMT = "github"
@@ -113,8 +113,8 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
 
 def main():
     # print_main_table(exp_results)
-    print_main_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "92_gpt-4.1_structured", "92_gpt-4.1_flat"])
-    print_user_effort_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "92_gpt-4.1_structured", "92_gpt-4.1_flat"])
+    print_main_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "93_gpt-4.1_structured", "93_gpt-4.1_flat"])
+    print_user_effort_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "93_gpt-4.1_structured", "93_gpt-4.1_flat"])
     # print_result_by_ambiguity_type(exp_results)
 
 
