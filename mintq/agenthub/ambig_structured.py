@@ -211,7 +211,7 @@ class AmbigStructuredSQLAgent:
                 {
                     "param_operator": ap.parameter_sample_operators[0],
                     "param_name": ap.parameter_name,
-                    "param_value": ap.parameter_sample_values[0],
+                    "param_value": ap.intended_parameter_value or ap.parameter_sample_values[0],
                 }
                 for ap in infinite_aps
             ]
@@ -246,7 +246,9 @@ class AmbigStructuredSQLAgent:
         questions = []
         for ap in ambiguity_points:
             if ap.type == "finite":
-                questions.append(UserMultipleChoiceQuestion(question=f'"{ap.phrase}" means', options=ap.interpretations))
+                questions.append(
+                    UserMultipleChoiceQuestion(question=f'"{ap.phrase}" means', options=ap.interpretations)
+                )
             elif ap.type == "infinite":
                 questions.append(
                     UserValueQuestion(  # type: ignore
