@@ -17,9 +17,9 @@ class SimpleEx:
     - We consider "nan" == None == math.nan == np.nan
     - We fixed the [-2, 0] != [-2, -0.000001] bug
     - Row order does not matter by default
+    - Repetitions are ignored by default (like bird_sql_ex)
 
     Features that are the same as Spider2's EX implementation:
-    - Repetitions are considered by default (unlike bird_sql_ex)
     - Column order does not matter
     - Additional columns are allowed
     """
