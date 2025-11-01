@@ -403,6 +403,9 @@ Contact: yanlin@megagon.ai
 - [x] Task up-sampling
 - [x] Cost computation using litellm
 - [x] Analyze exp90 simple vs. structured (info leakage in ambig_simple)
+- [x] Fix parameter_values for ambig_flat and ambig_structured
+- [x] Default ignore_repetitions = True for simple_ex
+- [ ] Fix sampling - sample from non-empty gold queries only
 - [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
