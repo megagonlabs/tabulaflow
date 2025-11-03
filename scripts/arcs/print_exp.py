@@ -15,10 +15,13 @@ EXP_DIRS = {
     # "90_gpt-4.1_simple": "output/90_gpt-4.1_simple/",
     # "90_gpt-4.1_flat": "output/90_gpt-4.1_flat/",
     # "90_gpt-4.1_structured": "output/90_gpt-4.1_structured/",
-    "91_gpt-4.1_simple": "output/91_gpt-4.1_simple/",
-    "91_gpt-4.1_simple_patience_ap": "output/91_gpt-4.1_simple_patience_ap/",
-    "93_gpt-4.1_structured": "output/93_gpt-4.1_structured/",
-    "93_gpt-4.1_flat": "output/93_gpt-4.1_flat/",
+    # "91_gpt-4.1_simple": "output/91_gpt-4.1_simple/",
+    # "91_gpt-4.1_simple_patience_ap": "output/91_gpt-4.1_simple_patience_ap/",
+    # "93_gpt-4.1_structured": "output/93_gpt-4.1_structured/",
+    # "93_gpt-4.1_flat": "output/93_gpt-4.1_flat/",
+    "94_gpt-4.1_simple": "output/94_gpt-4.1_simple/",
+    "94_gpt-4.1_structured": "output/94_gpt-4.1_structured/",
+    "94_gpt-4.1_flat": "output/94_gpt-4.1_flat/",
 }
 
 TALBE_FMT = "github"
@@ -31,7 +34,7 @@ for method, exp_dir in EXP_DIRS.items():
 
 
 def calc_average(values: list[float]) -> float:
-    return sum(values) / len(values)
+    return round(sum(values) / len(values), 4)
 
 
 def print_table(name: str, headers: list[str], rows: list[list[Any]]):
@@ -59,6 +62,28 @@ def print_main_table(exp_names: list[str]):
         ex_1ap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) == 1])
         ex_2ap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) == 2])
         ex_3plusap = calc_average([task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task) >= 3])
+        user_effort = result.total_user_simulator_usage.output_tokens / len(result.tasks)
+        latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
+        cost = result.total_usage.api_cost_usd / len(result.tasks)
+        rows.append([exp_name, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
+    print_table("Main Table", headers, rows)
+
+
+def print_main_table_finite_ap(exp_names: list[str]):
+    headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
+    rows = []
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
+        ex = result.aggregated_eval_metrics["simple_ex"]["avg"]
+        ex_1ap = calc_average(
+            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) == 1]
+        )
+        ex_2ap = calc_average(
+            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) == 2]
+        )
+        ex_3plusap = calc_average(
+            [task.eval_metrics["simple_ex"] for task in result.tasks if num_aps(task, finite_only=True) >= 3]
+        )
         user_effort = result.total_user_simulator_usage.output_tokens / len(result.tasks)
         latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
         cost = result.total_usage.api_cost_usd / len(result.tasks)
@@ -113,8 +138,9 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
 
 def main():
     # print_main_table(exp_results)
-    print_main_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "93_gpt-4.1_structured", "93_gpt-4.1_flat"])
-    print_user_effort_table(["91_gpt-4.1_simple", "91_gpt-4.1_simple_patience_ap", "93_gpt-4.1_structured", "93_gpt-4.1_flat"])
+    print_main_table(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
+    print_main_table_finite_ap(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
+    print_user_effort_table(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
     # print_result_by_ambiguity_type(exp_results)
 
 
