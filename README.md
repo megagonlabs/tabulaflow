@@ -406,12 +406,15 @@ Contact: yanlin@megagon.ai
 - [x] Fix parameter_values for ambig_flat and ambig_structured
 - [x] Default ignore_repetitions = True for simple_ex
 - [x] Fix sampling - sample from non-empty gold queries only
+- [x] Fix user simulator
+- [ ] Patch LLM output parsing for `<tool_call>` tags
 - [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 - [ ] Raise ModelRetry on too many interpretation combinations
+- [ ] Global instructions
 
 ## Misc
 
