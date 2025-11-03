@@ -221,9 +221,8 @@ class AmbigFlatSQLAgent:
         )
         return user_response.answer_index
 
-    def _fix_pred_query_operators(
-        self, pred_queries: list[PredQuery], params: list[PredAmbiguityPointInfinite]
-    ) -> None:
+    def _fix_pred_queries(self, pred_queries: list[PredQuery], params: list[PredAmbiguityPointInfinite]) -> None:
+        """Replace with the intended parameter operator and value in the pred_queries"""
         for ap in params:
             for pred_query in pred_queries:
                 if ap.parameter_name in pred_query.parameter_names:
@@ -231,6 +230,7 @@ class AmbigFlatSQLAgent:
                     pred_query.query = pred_query.query.replace(
                         original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
                     )
+                    pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
     async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
         return {
@@ -268,7 +268,7 @@ class AmbigFlatSQLAgent:
                 ]
             )
 
-        self._fix_pred_query_operators(pred_queries, parameters)
+        self._fix_pred_queries(pred_queries, parameters)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0

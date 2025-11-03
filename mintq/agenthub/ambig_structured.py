@@ -226,9 +226,8 @@ class AmbigStructuredSQLAgent:
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return pred_query
 
-    def _fix_pred_query_operators(
-        self, pred_queries: list[PredQuery], ambiguity_points: list[PredAmbiguityPoint]
-    ) -> None:
+    def _fix_pred_queries(self, pred_queries: list[PredQuery], ambiguity_points: list[PredAmbiguityPoint]) -> None:
+        """Replace with the intended parameter operator and value in the pred_queries"""
         for ap in ambiguity_points:
             if ap.type == "infinite":
                 for pred_query in pred_queries:
@@ -237,6 +236,7 @@ class AmbigStructuredSQLAgent:
                         pred_query.query = pred_query.query.replace(
                             original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
                         )
+                        pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
     async def _resolve_async(
         self,
@@ -311,7 +311,7 @@ class AmbigStructuredSQLAgent:
                 *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
             )
 
-        self._fix_pred_query_operators(pred_queries, ambiguity_points)
+        self._fix_pred_queries(pred_queries, ambiguity_points)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
