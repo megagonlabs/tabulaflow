@@ -209,7 +209,7 @@ class AmbigStructuredSQLAgent:
         if infinite_aps:
             params = [
                 {
-                    "param_operator": ap.parameter_sample_operators[0],
+                    "param_operator": ap.intended_paramter_operator or ap.parameter_sample_operators[0],
                     "param_name": ap.parameter_name,
                     "param_value": ap.intended_parameter_value or ap.parameter_sample_values[0],
                 }
