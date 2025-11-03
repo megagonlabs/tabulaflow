@@ -39,7 +39,6 @@ async def _patched_request(
     model_settings: ModelSettings | None,
     model_request_parameters: ModelRequestParameters,
 ) -> ModelResponse:
-    print("A" * 100)
     response = await self.__original_request__(messages, model_settings, model_request_parameters)
     try:
         new_parts = []
