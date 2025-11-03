@@ -9,15 +9,66 @@ import asyncio
 from typing import Any
 import os
 from anthropic import AsyncAnthropicVertex
+import json
 from pydantic_ai import Agent
 import pydantic_ai.models
-from pydantic_ai.models import KnownModelName, Model
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models import (
+    KnownModelName,
+    Model,
+    ModelSettings,
+    ModelRequestParameters,
+    ModelResponse,
+    ModelMessage,
+    ToolCallPart,
+)
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from mintq.config import config
 
+
+# =====================================================================================================
+# |     Patch Model.request to support parsing output with <tool_call> tags (e.g. for qwen3-coder)    |
+# |     (temporary fix until https://github.com/pydantic/pydantic-ai/issues/2033 is fixed)            |
+# =====================================================================================================
+
+
+async def _patched_request(
+    self,
+    messages: list[ModelMessage],
+    model_settings: ModelSettings | None,
+    model_request_parameters: ModelRequestParameters,
+) -> ModelResponse:
+    print("A" * 100)
+    response = await self.__original_request__(messages, model_settings, model_request_parameters)
+    try:
+        new_parts = []
+        for part in response.parts:
+            if part.part_kind == "text" and part.content.startswith("<tool_call>"):
+                content = part.content.replace("<tool_call>", "").replace("</tool_call>", "")
+                payload = json.loads(content)
+                new_parts.append(
+                    ToolCallPart(
+                        tool_name=payload["name"],
+                        args=payload["arguments"],
+                    )
+                )
+            else:
+                new_parts.append(part)
+        response.parts = new_parts
+    except json.JSONDecodeError:
+        pass
+    return response
+
+
+if not hasattr(OpenAIChatModel, "__original_request__"):
+    OpenAIChatModel.__original_request__ = OpenAIChatModel.request
+    OpenAIChatModel.request = _patched_request
+
+
 # =============================================================================================
 # |     Patch pydantic_ai.models.infer_model to support Claude models in Google Vertex AI     |
+# |     (temporary fix until https://github.com/pydantic/pydantic-ai/pull/1392 is fixed)      |
 # =============================================================================================
 
 
@@ -44,6 +95,7 @@ def _patched_infer_model(model: Model | KnownModelName | str) -> Model:
 
 
 pydantic_ai.models.infer_model = _patched_infer_model
+
 
 # ===============================================================================
 # |     Patch pydantic_ai.Agent.run() to support max concurrency throttling     |
