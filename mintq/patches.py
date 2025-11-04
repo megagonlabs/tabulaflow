@@ -8,6 +8,7 @@ Import this module to ensure patches are applied.
 import asyncio
 from typing import Any
 import os
+import re
 from anthropic import AsyncAnthropicVertex
 import json
 from pydantic_ai import Agent
@@ -43,17 +44,22 @@ async def _patched_request(
     try:
         new_parts = []
         for part in response.parts:
-            if part.part_kind == "text" and part.content.startswith("<tool_call>"):
-                content = part.content.replace("<tool_call>", "").replace("</tool_call>", "")
-                payload = json.loads(content)
-                new_parts.append(
-                    ToolCallPart(
-                        tool_name=payload["name"],
-                        args=payload["arguments"],
-                    )
-                )
-            else:
-                new_parts.append(part)
+            if part.part_kind == "text":
+                tool_call_pattern = r"<tool_call>(.*?)</tool_call>"
+                matches = list(re.finditer(tool_call_pattern, part.content, re.DOTALL))
+
+                if matches:
+                    for match in matches:
+                        content = match.group(1).strip()
+                        payload = json.loads(content)
+                        new_parts.append(
+                            ToolCallPart(
+                                tool_name=payload["name"],
+                                args=payload["arguments"],
+                            )
+                        )
+                    continue
+            new_parts.append(part)
         response.parts = new_parts
     except json.JSONDecodeError:
         pass
