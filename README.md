@@ -407,7 +407,10 @@ Contact: yanlin@megagon.ai
 - [x] Default ignore_repetitions = True for simple_ex
 - [x] Fix sampling - sample from non-empty gold queries only
 - [x] Fix user simulator
-- [ ] Patch LLM output parsing for `<tool_call>` tags
+- [x] Patch LLM output parsing for `<tool_call>` tags
+- [ ] LLMs
+  - [ ] Fix Qwen3
+  - [ ] Fix Deepseek
 - [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
