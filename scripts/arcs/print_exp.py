@@ -19,9 +19,21 @@ EXP_DIRS = {
     # "91_gpt-4.1_simple_patience_ap": "output/91_gpt-4.1_simple_patience_ap/",
     # "93_gpt-4.1_structured": "output/93_gpt-4.1_structured/",
     # "93_gpt-4.1_flat": "output/93_gpt-4.1_flat/",
-    "94_gpt-4.1_simple": "output/94_gpt-4.1_simple/",
-    "94_gpt-4.1_structured": "output/94_gpt-4.1_structured/",
-    "94_gpt-4.1_flat": "output/94_gpt-4.1_flat/",
+    # "94_gpt-4.1_simple": "output/94_gpt-4.1_simple/",
+    # "94_gpt-4.1_structured": "output/94_gpt-4.1_structured/",
+    # "94_gpt-4.1_flat": "output/94_gpt-4.1_flat/",
+    # "95_gpt-4.1_simple": "output/95_gpt-4.1_simple/",
+    # "95_gpt-4.1_simple_patience_ap": "output/95_gpt-4.1_simple_patience_ap/",
+    # "95_gpt-4.1_structured": "output/95_gpt-4.1_structured/",
+    # "95_gpt-4.1_flat": "output/95_gpt-4.1_flat/",
+    "97_gpt-4.1_simple": "output/97_gpt-4.1_simple/",
+    "97_gpt-4.1_simple_patience_ap": "output/97_gpt-4.1_simple_patience_ap/",
+    "97_gpt-4.1_structured": "output/97_gpt-4.1_structured/",
+    "97_gpt-4.1_flat": "output/97_gpt-4.1_flat/",
+    "98_gemini_2.0_flash_simple": "output/98_gemini_2.0_flash_simple/",
+    "98_gemini_2.0_flash_simple_patience_ap": "output/98_gemini_2.0_flash_simple_patience_ap/",
+    "98_gemini_2.0_flash_structured": "output/98_gemini_2.0_flash_structured/",
+    "98_gemini_2.0_flash_flat": "output/98_gemini_2.0_flash_flat/",
 }
 
 TALBE_FMT = "github"
@@ -138,9 +150,10 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
 
 def main():
     # print_main_table(exp_results)
-    print_main_table(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
-    print_main_table_finite_ap(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
-    print_user_effort_table(["94_gpt-4.1_simple", "94_gpt-4.1_structured", "94_gpt-4.1_flat"])
+    all_exps = list(EXP_DIRS.keys())
+    print_main_table(all_exps)
+    print_main_table_finite_ap(all_exps)
+    print_user_effort_table(all_exps)
     # print_result_by_ambiguity_type(exp_results)
 
 
