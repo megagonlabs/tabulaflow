@@ -1,9 +1,10 @@
+import collections
 import json
 from typing import ClassVar, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
-from mintq.schema import SimpleAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput
+from mintq.schema import ARCSAmbiguityType, SimpleAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput
 from mintq.metrics.base import metric_registry
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
 from mintq.utils import int_to_letter
@@ -150,7 +151,7 @@ class AmbigPointStats:
     name: ClassVar[str] = "ambig_point_stats"
     compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-structured"]
 
-    def __init__(self, llm: str = "openai:gpt-4.1"):
+    def __init__(self, llm: str = "openai:gpt-4.1-2025-04-14"):
         self.llm = llm
 
     def _to_simple_dict(self, ap: PredAmbiguityPoint | GoldAmbiguityPoint, id_prefix: str) -> dict[str, Any]:
@@ -201,6 +202,21 @@ class AmbigPointStats:
             for match in result.output.matches
             if match.pred_id is not None
         ]
+
+    async def _get_ambig_type_metrics_async(
+        self, gold_aps: list[GoldAmbiguityPoint], matches: list[Match]
+    ) -> dict[str, float | None]:
+        res: dict[str, float | None] = {}
+        matched_gold_ap_ids = [match.gold_id for match in matches if match.pred_id is not None]
+        for t in ARCSAmbiguityType:
+            ambig_type = t.value
+            aps = [ap for ap in gold_aps if ap.ambiguity_type == ambig_type]
+            if aps:
+                matched = [ap for ap in aps if ap.id in matched_gold_ap_ids]
+                res[f"{ambig_type}_ambig_point_r"] = len(matched) / len(aps)
+            else:
+                res[f"{ambig_type}_ambig_point_r"] = None
+        return res
 
     async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
         trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")  # type: ignore
