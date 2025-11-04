@@ -206,6 +206,25 @@ class AmbigPointStats:
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
         )
+        gold_finite_ap_ids = [ap.id for ap in task.gold_ambiguity_points if ap.type == "finite"]
+
+        if len(task.gold_finite_ambiguity_points) > 0:
+            finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = self._p_r_f1(
+                len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id in gold_finite_ap_ids]),
+                len(task.pred_finite_ambiguity_points),
+                len(task.gold_finite_ambiguity_points),
+            )
+        else:
+            finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = None, None, None
+
+        if len(task.gold_infinite_ambiguity_points) > 0:
+            infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = self._p_r_f1(
+                len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id not in gold_finite_ap_ids]),
+                len(task.pred_infinite_ambiguity_points),
+                len(task.gold_infinite_ambiguity_points),
+            )
+        else:
+            infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = None, None, None
 
         p_list = []
         r_list = []
@@ -260,6 +279,12 @@ class AmbigPointStats:
             "ambig_point_p": ambig_point_p,
             "ambig_point_r": ambig_point_r,
             "ambig_point_f1": ambig_point_f1,
+            "finite_ambig_point_p": finite_ambig_point_p,
+            "finite_ambig_point_r": finite_ambig_point_r,
+            "finite_ambig_point_f1": finite_ambig_point_f1,
+            "infinite_ambig_point_p": infinite_ambig_point_p,
+            "infinite_ambig_point_r": infinite_ambig_point_r,
+            "infinite_ambig_point_f1": infinite_ambig_point_f1,
             "interpretation_p": interpretation_p,
             "interpretation_r": interpretation_r,
             "interpretation_f1": interpretation_f1,
