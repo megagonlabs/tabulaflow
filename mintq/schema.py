@@ -159,6 +159,7 @@ PROVIDER_MAPPINGS = {
     "openai-responses": "openai",
     "fireworks": "fireworks_ai",
     "google-vertex": "vertex_ai",
+    "together": "together_ai",
 }
 
 
