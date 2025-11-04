@@ -1,5 +1,6 @@
 import datetime
 from decimal import Decimal
+from enum import Enum
 import json
 import os
 import re
@@ -433,16 +434,15 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
         return _task_to_summary(self, eval_metrics)
 
 
-ARCSAmbiguityType = Literal[
-    "semantic_column",
-    "semantic_table",
-    "semantic_value",
-    "semantic_computation",
-    "syntactic_column",
-    "syntactic_table",
-    "syntactic_value",
-    "syntactic_computation",
-]
+class ARCSAmbiguityType(str, Enum):
+    semantic_column = "semantic_column"
+    semantic_table = "semantic_table"
+    semantic_value = "semantic_value"
+    semantic_computation = "semantic_computation"
+    syntactic_column = "syntactic_column"
+    syntactic_table = "syntactic_table"
+    syntactic_value = "syntactic_value"
+    syntactic_computation = "syntactic_computation"
 
 
 class GoldAmbiguityPointFinite(BaseModel):
