@@ -408,9 +408,11 @@ Contact: yanlin@megagon.ai
 - [x] Fix sampling - sample from non-empty gold queries only
 - [x] Fix user simulator
 - [x] Patch LLM output parsing for `<tool_call>` tags
-- [ ] LLMs
-  - [ ] Fix Qwen3
-  - [ ] Fix Deepseek
+- [x] Replace demonstrations with trajectories
+- [x] LLMs
+  - [x] Fix Qwen3
+  - [x] Fix Deepseek
+- [ ] Parameter ambig point P/R/F1
 - [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
