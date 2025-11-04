@@ -121,8 +121,20 @@ test-arcs-structured-claude:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-arcs-structured-qwen-together
+test-arcs-structured-qwen-together:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm together:Qwen/Qwen3-Coder-480B-A35B-Instruct-FP8
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-structured-qwen
 test-arcs-structured-qwen:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-coder-480b-a35b-instruct
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-qwen-235b
+test-arcs-structured-qwen-235b:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
