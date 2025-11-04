@@ -3,9 +3,10 @@ from typing import ClassVar, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
-from mintq.schema import StructuredAmbigNL2QTaskOutput
+from mintq.schema import SimpleAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput
 from mintq.metrics.base import metric_registry
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
+from mintq.utils import int_to_letter
 
 
 AMBIG_POINT_MATCHING_SYSTEM_PROMPT = """
@@ -14,7 +15,7 @@ For each gold ambiguity point, you need to find the matching predicted ambiguity
 - Your output should be a mapping of ambiguity point id from the gold list to the predicted list.
 - An predicted ambiguity point can only be matched to one gold ambiguity point.
 - An predicted ambiguity point is considered matched if
-  - The type is the same (finite or infinite).
+  - The type is the same if present (finite or infinite).
   - The phrase is semantically equivalent.
   - The interpretations do not need to match exactly (missing or extra interpretations are allowed) as long as the dimension of ambiguity is the same.
 - If a gold ambiguity point has no corresponding predicted ambiguity point, set the value to None.
@@ -147,7 +148,7 @@ class LLMOutput(BaseModel):
 @metric_registry.register
 class AmbigPointStats:
     name: ClassVar[str] = "ambig_point_stats"
-    compatible_output_types: ClassVar[list[str]] = ["ambig-structured"]
+    compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-structured"]
 
     def __init__(self, llm: str = "openai:gpt-4.1"):
         self.llm = llm
@@ -201,7 +202,39 @@ class AmbigPointStats:
             if match.pred_id is not None
         ]
 
-    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float | None]:
+    async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
+        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
+        questions = [msg.content for msg in trajectory.messages if msg.role == "user"]
+        pred_aps = [
+            {
+                "id": f"PRED-{int_to_letter(i)}",
+                "description": question,
+            }
+            for i, question in enumerate(questions)
+        ]
+        gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
+        for d in gold_aps:
+            d.pop("type")
+
+        agent = Agent[None, LLMOutput](
+            model=self.llm,
+            output_type=LLMOutput,
+            instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
+        )
+        prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
+            question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
+        )
+        result = await agent.run(prompt)
+        matches = [match for match in result.output.matches if match.pred_id is not None]
+        p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
+        return {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
+
+    async def compute_async(
+        self, task: SimpleAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+    ) -> dict[str, float | None]:
+        if task.output_type == "ambig-simple":
+            return await self._compute_ambig_simple_async(task)
+
         matches = await self._match_ambig_points_async(task)
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
