@@ -14,15 +14,9 @@ import json
 from pydantic_ai import Agent
 import pydantic_ai.models
 from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.models import (
-    KnownModelName,
-    Model,
-    ModelSettings,
-    ModelRequestParameters,
-    ModelResponse,
-    ModelMessage,
-    ToolCallPart,
-)
+from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
+from pydantic_ai.settings import ModelSettings
+from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from mintq.config import config
@@ -35,12 +29,12 @@ from mintq.config import config
 
 
 async def _patched_request(
-    self,
+    self: OpenAIChatModel,
     messages: list[ModelMessage],
     model_settings: ModelSettings | None,
     model_request_parameters: ModelRequestParameters,
 ) -> ModelResponse:
-    response = await self.__original_request__(messages, model_settings, model_request_parameters)
+    response = await self.__original_request__(messages, model_settings, model_request_parameters)  # type: ignore
     try:
         new_parts = []
         for part in response.parts:
@@ -63,12 +57,12 @@ async def _patched_request(
         response.parts = new_parts
     except json.JSONDecodeError:
         pass
-    return response
+    return response  # type: ignore
 
 
 if not hasattr(OpenAIChatModel, "__original_request__"):
-    OpenAIChatModel.__original_request__ = OpenAIChatModel.request
-    OpenAIChatModel.request = _patched_request
+    OpenAIChatModel.__original_request__ = OpenAIChatModel.request  # type: ignore
+    OpenAIChatModel.request = _patched_request  # type: ignore
 
 
 # =============================================================================================

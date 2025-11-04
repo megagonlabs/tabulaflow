@@ -221,8 +221,10 @@ async def main_async() -> None:
     t0 = time.time()
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
-    print(f"Total usage: {result.total_usage.model_dump_json()}")
-    print(f"Total user simulator usage: {result.total_user_simulator_usage.model_dump_json()}")
+    print(f"Total usage: {result.total_usage.model_dump_json() if result.total_usage else None}")
+    print(
+        f"Total user simulator usage: {result.total_user_simulator_usage.model_dump_json() if result.total_user_simulator_usage else None}"
+    )
 
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")

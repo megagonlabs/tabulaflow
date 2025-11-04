@@ -63,7 +63,7 @@ class AmbigSimpleSQLAgent:
         if self.config.user_patience == "NUM_AMBIG_POINTS":
             user_patience = len(task.gold_ambiguity_points)
         else:
-            user_patience = self.config.user_patience
+            user_patience = self.config.user_patience  # type: ignore
 
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
