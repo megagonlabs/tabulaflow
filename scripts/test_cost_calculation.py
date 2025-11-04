@@ -9,7 +9,7 @@ LLMS = [
     "fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507",
     "fireworks:accounts/fireworks/models/gpt-oss-120b",
     "fireworks:accounts/fireworks/models/llama-v3p1-405b-instruct",
-    "fireworks:accounts/fireworks/models/kimi-k2-instruct"
+    "fireworks:accounts/fireworks/models/kimi-k2-instruct",
 ]
 
 

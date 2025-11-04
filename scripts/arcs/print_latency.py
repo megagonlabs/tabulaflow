@@ -2,6 +2,7 @@
 from mintq.schema import AmbigNL2QTask
 import os
 
+
 def main():
     latency_1 = []
     for qid in os.listdir("data/ARCS/tasks_1"):

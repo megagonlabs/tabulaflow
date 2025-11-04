@@ -1,4 +1,3 @@
-import argparse
 import os
 from typing import Any
 from mintq.schema import AmbigNL2QTask, NL2QRunResult

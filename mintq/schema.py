@@ -4,7 +4,6 @@ import json
 import os
 import re
 import litellm
-from genai_prices import calc_price
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 import pydantic_ai

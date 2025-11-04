@@ -1,9 +1,5 @@
-import argparse
 import os
-from typing import Any
-from decimal import Decimal
-from tabulate import tabulate
-from mintq.schema import AmbigNL2QTask, NL2QRunResult
+from mintq.schema import NL2QRunResult
 
 
 EXP_DIRS = {
@@ -39,8 +35,12 @@ def main():
 
     for task_a, task_b in zip(exp_a.tasks, exp_b.tasks):
         assert task_a.qid == task_b.qid
-        if task_a.eval_metrics["simple_ex"] < task_b.eval_metrics["simple_ex"] and len(task_a.gold_ambiguity_points) >= 3:
+        if (
+            task_a.eval_metrics["simple_ex"] < task_b.eval_metrics["simple_ex"]
+            and len(task_a.gold_ambiguity_points) >= 3
+        ):
             print(task_a.qid)
+
 
 if __name__ == "__main__":
     main()

@@ -1,18 +1,14 @@
 import argparse
-from asyncio.tasks import all_tasks
 import os
 import json
 import random
 import re
 import shutil
-from typing import cast
 import itertools
 import time
 import sqlparse
 import asyncio
 from pydantic import TypeAdapter
-from tqdm import tqdm
-import pandas as pd
 from tabulate import tabulate
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
 from mintq.datahub import dataset_registry
@@ -88,7 +84,6 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
             else:
                 raise ValueError(f"Unknown parameter operator: {ap['parameter_operator']}")
 
-
             gold_ambiguity_points.append(
                 GoldAmbiguityPointInfinite(
                     id=AMBIGUITY_POINT_IDS[ap_idx],
@@ -128,8 +123,12 @@ def parse_task(sql_path: str, db: str) -> AmbigNL2QTask:
         parameter_names = re.findall(r":([\w_]+)", sql)
         assert all(param_name in all_parameter_values for param_name in parameter_names)
 
-        ambiguity_resolution = {f"[{ap.id}] {ap.phrase}": ap.interpretations[idx] for ap, idx in zip(finite_aps, indexes)}
-        ambiguity_resolution.update({f"[{ap.id}] {ap.phrase}": f":{ap.parameter_name}" for ap in gold_ambiguity_points if ap.type == "infinite"})
+        ambiguity_resolution = {
+            f"[{ap.id}] {ap.phrase}": ap.interpretations[idx] for ap, idx in zip(finite_aps, indexes)
+        }
+        ambiguity_resolution.update(
+            {f"[{ap.id}] {ap.phrase}": f":{ap.parameter_name}" for ap in gold_ambiguity_points if ap.type == "infinite"}
+        )
         ambiguity_resolution = dict(sorted(ambiguity_resolution.items()))
 
         gold_queries.append(
@@ -364,9 +363,7 @@ async def main():
     res = []
     for i in range(0, len(all_data), args.batch_size):
         batch = all_data[i : i + args.batch_size]
-        tasks = await asyncio.gather(
-            *[populate_gold_exec_results(task, db_connectors[task.db]) for task in batch]
-        )
+        tasks = await asyncio.gather(*[populate_gold_exec_results(task, db_connectors[task.db]) for task in batch])
         res += [task for task in tasks if task is not None]
 
     print("Please fix the errors and run the script again.")
