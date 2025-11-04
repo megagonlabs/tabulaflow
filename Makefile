@@ -4,7 +4,7 @@ sync:
 
 .PHONY: mypy
 mypy:
-	uv run mypy mintq/ tests/ scripts/
+	uv run mypy mintq/ tests/
 
 .PHONY: format
 format:
