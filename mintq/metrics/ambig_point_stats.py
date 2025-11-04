@@ -203,8 +203,8 @@ class AmbigPointStats:
         ]
 
     async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
-        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
-        questions = [msg.content for msg in trajectory.messages if msg.role == "user"]
+        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")  # type: ignore
+        questions = [msg.content for msg in trajectory.messages if msg.role == "user"]  # type: ignore
         pred_aps = [
             {
                 "id": f"PRED-{int_to_letter(i)}",
