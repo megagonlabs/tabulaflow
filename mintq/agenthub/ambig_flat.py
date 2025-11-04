@@ -42,18 +42,30 @@ Do not resolve threshold-like ambiguities where the number of interpretations is
 Do not add number index prefixes to the interpretations.
 
 === START OF EXAMPLE ===
-Database Schema:
-    CREATE TABLE student (
-        id: INT,
-        name: TEXT,
-        gpa: FLOAT,
-        city: TEXT,
-        state: TEXT,
-    );
-Question: List all students with high GPA from NY.
-Interpretations:
+User: List all interpretations: List all students with high GPA from NY.
+
+Assistant:
+<function name="get_schema">
+</function>
+
+Tool:
+```
+=== TABLE: student (50 rows) ===
+- id: INTEGER (e.g. 1) [PK]
+- name: TEXT (e.g. "John Doe")
+- gpa: FLOAT (e.g. 3.5)
+- city: TEXT (e.g. "Los Angeles")
+- state: TEXT (e.g. "CA")
+=== END OF TABLE ===
+```
+
+Assistant:
+<function name="final_result">
+<arg name="interpretations">
 - List all students with high GPA from New York City.
 - List all students with high GPA from New York State.
+</arg>
+</function>
 === END OF EXAMPLE ===
 """.strip()
 

@@ -51,38 +51,49 @@ The question has one or multiple ambiguity points and you will need to output th
   - parameter_sample_values is a list of sample values ordered from least strict to most strict
 
 === START OF EXAMPLE ===
-Database Schema:
-    CREATE TABLE student (
-        id: INT,
-        name: TEXT,
-        gpa: FLOAT,
-        city: TEXT,
-        state: TEXT,
-    );
-Question: List all students with high GPA from NY.
+User: List all ambiguity points: List all students with high GPA from NY.
 
-Output:
-{
-  "finite_ambiguity_points": [
-    {
-      "phrase": "NY",
-      "interpretations": [
-        "New York City",
-        "New York State"
-      ]
-    }
-  ],
-  "parameter_ambiguity_points": [
-    { 
-      "phrase": "high GPA",
-      "parameter_name": "gpa_threshold",
-      "parameter_dtype": "float",
-      "parameter_description": "GPA threshold to be considered high",
-      "parameter_sample_operators": [">", ">="],
-      "parameter_sample_values": [3.5, 4.0]
-    }
-  ]
-}
+Assistant:
+<function name="get_schema">
+</function>
+
+Tool:
+```
+=== TABLE: student (50 rows) ===
+- id: INTEGER (e.g. 1) [PK]
+- name: TEXT (e.g. "John Doe")
+- gpa: FLOAT (e.g. 3.5)
+- city: TEXT (e.g. "Los Angeles")
+- state: TEXT (e.g. "CA")
+=== END OF TABLE ===
+```
+
+Assistant:
+<function name="final_result">
+<arg name="finite_ambiguity_points">
+[
+  {
+    "phrase": "NY",
+    "interpretations": [
+      "New York City",
+      "New York State"
+    ]
+  }
+]
+</arg>
+<arg name="parameter_ambiguity_points">
+[
+  { 
+    "phrase": "high GPA",
+    "parameter_name": "gpa_threshold",
+    "parameter_dtype": "float",
+    "parameter_description": "GPA threshold to be considered high",
+    "parameter_sample_operators": [">", ">="],
+    "parameter_sample_values": [3.5, 4.0]
+  }
+]
+</arg>
+</function>
 === END OF EXAMPLE ===
 """.strip()
 
