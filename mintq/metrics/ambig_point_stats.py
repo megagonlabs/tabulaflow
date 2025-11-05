@@ -18,7 +18,7 @@ For each gold ambiguity point, you need to find the matching predicted ambiguity
 - An predicted ambiguity point is considered matched if
   - The type is the same if present (finite or infinite).
   - The phrase is semantically equivalent.
-  - The interpretations do not need to match exactly (missing or extra interpretations are allowed) as long as the dimension of ambiguity is the same.
+  - At least one interpretation is semantically equivalent (but missing or extra interpretations are allowed as long as the dimension of ambiguity is the same).
 - If a gold ambiguity point has no corresponding predicted ambiguity point, set the value to None.
 
 === START OF EXAMPLE ===
