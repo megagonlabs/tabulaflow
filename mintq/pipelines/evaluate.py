@@ -60,13 +60,14 @@ async def main_async() -> None:
     print()
     print("Aggregated metrics:")
     for key in result.aggregated_eval_metrics:
-        print(f"- {key}: {result.aggregated_eval_metrics[key]['avg']:.4f}")
+        value = result.aggregated_eval_metrics[key]["avg"]
+        print(f"- {key}: {'N/A' if value is None else f'{value:.4f}'}")
 
     if args.debug:
         print()
         print("=== DEBUG MODE === ")
         for task in result.tasks:
-            print(f"{task.qid}: {task.eval_metrics['simple_ex']:.4f}")
+            print(f"{task.qid} simple_ex: {task.eval_metrics['simple_ex']:.4f}")
 
 
 if __name__ == "__main__":
