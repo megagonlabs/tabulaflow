@@ -24,11 +24,13 @@ Here,{% for ap in ambiguity_points %}
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
 
 For "free_text" questions, you must provide a natural language answer in the `answer_text` field. 
-- You need to find the ambiguity point in that the question is asking about
-  - If there is a match, answer the question using the given information. Do not leak additional information in other ambiguity points. Your answer should be grammatical and linguistically diverse.
-  - If there is no match, respond "I cannot answer this question."
+- You need to find the relevant ambiguity point in that the question is asking about
+  - If there is a match, answer the question using the given information.
+    - Only use the identified ambiguity point to provide clarification, NEVER leak information in other ambiguity points.
+    - Your answer should be grammatical and linguistically diverse.
+  - If there is no match, respond "Sorry, I cannot answer this question."
 - If multiple questions are asked, only answer the first one and say "Please only ask one question at a time."
-- If the question is not related to ambiguity clarification, respond "I cannot answer this question."
+- If the question is not related to ambiguity clarification, respond "Sorry, I cannot answer this question."
 
 For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
 - If none of the options are correct, select the closest option.
@@ -73,7 +75,11 @@ class UserSimulator:
 
     @classmethod
     def from_ambig_nl2q_task(
-        cls, task: AmbigNL2QTask, llm: str = "openai:gpt-4.1-2025-04-14", temperature: float = 0.0, include_history: bool = True
+        cls,
+        task: AmbigNL2QTask,
+        llm: str = "openai:gpt-4.1-2025-04-14",
+        temperature: float = 0.0,
+        include_history: bool = True,
     ) -> "UserSimulator":
         if any(ap.intended_interpretation_idx is None for ap in task.gold_ambiguity_points if ap.type == "finite"):
             raise ValueError("All finite ambiguity points must have an intended interpretation")
