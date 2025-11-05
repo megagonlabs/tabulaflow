@@ -152,12 +152,12 @@ class UserSimulator:
             relevant_ambig_point_id = result.output
 
             if relevant_ambig_point_id is None:
+                system_prompt = "Reject the question and respond 'Sorry, I cannot answer this question.'"
+            else:
                 relevant_ambig_point = next(ap for ap in self.ambig_points if ap.id == relevant_ambig_point_id)
                 system_prompt = (
                     jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(ambiguity_points=[relevant_ambig_point]),
                 )
-            else:
-                system_prompt = "Reject the question and respond 'Sorry, I cannot answer this question.'"
 
             answer_agent = Agent(
                 model=self.llm,
