@@ -418,8 +418,12 @@ Contact: yanlin@megagon.ai
   - [x] Ambig type ambig point P/R/F1
 - [x] Baselines
   - [x] No disambiguation
+- [x] Fix annotation - all infinite ambiguity points should be semantic_value
+- [ ] print_exps.py
+- [ ] Run Ambrosia
+- [ ] Reasoning effort experiment
+- [ ] Taxonomy-proof experiment
 - [ ] Experiements for major claims
-- [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
