@@ -8,7 +8,7 @@ import litellm
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 import pydantic_ai
-from typing import Any, Literal, Annotated, TypeAlias, Union
+from typing import Any, Literal, Annotated, TypeAlias, Union, get_args
 import pandas as pd
 import logging
 import math
@@ -744,7 +744,7 @@ NL2QTaskOutput = Annotated[
 def _get_query_fields(task: NL2QTask | NL2QTaskOutput, t: TypeAlias, include_list_of_t: bool = False) -> list[str]:
     res = []
     for key, value in type(task).model_fields.items():
-        if value.annotation == t:
+        if value.annotation == t or t in get_args(value.annotation):
             res.append(key)
         if include_list_of_t and value.annotation == list[t]:
             res.append(key)
