@@ -241,9 +241,13 @@ class AmbigPointStats:
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
         result = await agent.run(prompt)
-        matches = [match for match in result.output.matches if match.pred_id is not None]
+        matches = [
+            (match.gold_id.replace("GOLD-", ""), match.pred_id.replace("PRED-", ""))
+            for match in result.output.matches
+            if match.pred_id is not None
+        ]
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
-        res = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
+        res: dict[str, float | None] = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
         return res
 
