@@ -412,11 +412,12 @@ Contact: yanlin@megagon.ai
 - [x] LLMs
   - [x] Fix Qwen3
   - [x] Fix Deepseek
-- [x] Parameter ambig point P/R/F1
-- [x] Ambig point metrics for ambig_simple
-- [ ] Baselines
-  - [ ] No disambiguation
-  - [ ] Sampling
+- [x] Metrics
+  - [x] Parameter ambig point P/R/F1
+  - [x] Ambig point metrics for ambig_simple
+  - [x] Ambig type ambig point P/R/F1
+- [x] Baselines
+  - [x] No disambiguation
 - [ ] Experiements for major claims
 - [ ] Taxonomy
 - [ ] Categorical values for table with a small number of rows
