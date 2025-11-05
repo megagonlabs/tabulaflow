@@ -203,11 +203,11 @@ class AmbigPointStats:
             if match.pred_id is not None
         ]
 
-    async def _get_ambig_type_metrics_async(
-        self, gold_aps: list[GoldAmbiguityPoint], matches: list[Match]
+    def _get_ambig_type_metrics(
+        self, gold_aps: list[GoldAmbiguityPoint], matches: list[tuple[str, str]]
     ) -> dict[str, float | None]:
         res: dict[str, float | None] = {}
-        matched_gold_ap_ids = [match.gold_id for match in matches if match.pred_id is not None]
+        matched_gold_ap_ids = [gold_id for gold_id, _ in matches]
         for t in ARCSAmbiguityType:
             ambig_type = t.value
             aps = [ap for ap in gold_aps if ap.ambiguity_type == ambig_type]
@@ -243,7 +243,9 @@ class AmbigPointStats:
         result = await agent.run(prompt)
         matches = [match for match in result.output.matches if match.pred_id is not None]
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
-        return {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
+        res = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
+        res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
+        return res
 
     async def compute_async(
         self, task: SimpleAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
@@ -251,10 +253,18 @@ class AmbigPointStats:
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
 
+        res: dict[str, float | None] = {}
+
         matches = await self._match_ambig_points_async(task)
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(
             len(matches), len(task.pred_ambiguity_points), len(task.gold_ambiguity_points)
         )
+        res["ambig_point_p"] = ambig_point_p
+        res["ambig_point_r"] = ambig_point_r
+        res["ambig_point_f1"] = ambig_point_f1
+
+        res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
+
         gold_finite_ap_ids = [ap.id for ap in task.gold_ambiguity_points if ap.type == "finite"]
 
         if len(task.gold_finite_ambiguity_points) > 0:
@@ -265,6 +275,9 @@ class AmbigPointStats:
             )
         else:
             finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = None, None, None
+        res["finite_ambig_point_p"] = finite_ambig_point_p
+        res["finite_ambig_point_r"] = finite_ambig_point_r
+        res["finite_ambig_point_f1"] = finite_ambig_point_f1
 
         if len(task.gold_infinite_ambiguity_points) > 0:
             infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = self._p_r_f1(
@@ -274,6 +287,9 @@ class AmbigPointStats:
             )
         else:
             infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = None, None, None
+        res["infinite_ambig_point_p"] = infinite_ambig_point_p
+        res["infinite_ambig_point_r"] = infinite_ambig_point_r
+        res["infinite_ambig_point_f1"] = infinite_ambig_point_f1
 
         p_list = []
         r_list = []
@@ -324,17 +340,8 @@ class AmbigPointStats:
             interpretation_r = sum(r_list) / len(r_list)
             interpretation_f1 = sum(f1_list) / len(f1_list)
 
-        return {
-            "ambig_point_p": ambig_point_p,
-            "ambig_point_r": ambig_point_r,
-            "ambig_point_f1": ambig_point_f1,
-            "finite_ambig_point_p": finite_ambig_point_p,
-            "finite_ambig_point_r": finite_ambig_point_r,
-            "finite_ambig_point_f1": finite_ambig_point_f1,
-            "infinite_ambig_point_p": infinite_ambig_point_p,
-            "infinite_ambig_point_r": infinite_ambig_point_r,
-            "infinite_ambig_point_f1": infinite_ambig_point_f1,
-            "interpretation_p": interpretation_p,
-            "interpretation_r": interpretation_r,
-            "interpretation_f1": interpretation_f1,
-        }
+        res["interpretation_p"] = interpretation_p
+        res["interpretation_r"] = interpretation_r
+        res["interpretation_f1"] = interpretation_f1
+
+        return res
