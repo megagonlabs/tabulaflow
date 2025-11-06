@@ -171,10 +171,17 @@ class AmbigPointStats:
         else:
             raise ValueError(f"Unknown ambiguity point type: {ap.type}")
 
-    def _p_r_f1(self, n_overlap: int, n_pred: int, n_gold: int) -> tuple[float, float, float]:
-        p = n_overlap / n_pred if n_pred > 0 else 0.0
-        r = n_overlap / n_gold if n_gold > 0 else 0.0
-        f1 = 2 * p * r / (p + r) if p + r > 0 else 0.0
+    def _p_r_f1(self, n_overlap: int, n_pred: int, n_gold: int) -> tuple[float | None, float | None, float | None]:
+        assert n_pred >= n_overlap
+        assert n_gold >= n_overlap
+        p = n_overlap / n_pred if n_pred > 0 else None
+        r = n_overlap / n_gold if n_gold > 0 else None
+        if p is None and r is None:
+            f1 = None
+        elif p is None or r is None:  # In this case, either p or r is 0.0, so f1 is 0.0
+            f1 = 0.0
+        else:
+            f1 = 2 * p * r / (p + r)
         return p, r, f1
 
     def _clean_matches(self, matches: list[Match]) -> list[tuple[str, str]]:
@@ -277,26 +284,20 @@ class AmbigPointStats:
 
         gold_finite_ap_ids = [ap.id for ap in task.gold_ambiguity_points if ap.type == "finite"]
 
-        if len(task.gold_finite_ambiguity_points) > 0:
-            finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = self._p_r_f1(
-                len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id in gold_finite_ap_ids]),
-                len(task.pred_finite_ambiguity_points),
-                len(task.gold_finite_ambiguity_points),
-            )
-        else:
-            finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = None, None, None
+        finite_ambig_point_p, finite_ambig_point_r, finite_ambig_point_f1 = self._p_r_f1(
+            len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id in gold_finite_ap_ids]),
+            len(task.pred_finite_ambiguity_points),
+            len(task.gold_finite_ambiguity_points),
+        )
         res["finite_ambig_point_p"] = finite_ambig_point_p
         res["finite_ambig_point_r"] = finite_ambig_point_r
         res["finite_ambig_point_f1"] = finite_ambig_point_f1
 
-        if len(task.gold_infinite_ambiguity_points) > 0:
-            infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = self._p_r_f1(
-                len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id not in gold_finite_ap_ids]),
-                len(task.pred_infinite_ambiguity_points),
-                len(task.gold_infinite_ambiguity_points),
-            )
-        else:
-            infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = None, None, None
+        infinite_ambig_point_p, infinite_ambig_point_r, infinite_ambig_point_f1 = self._p_r_f1(
+            len([gold_ap_id for gold_ap_id, _ in matches if gold_ap_id not in gold_finite_ap_ids]),
+            len(task.pred_infinite_ambiguity_points),
+            len(task.gold_infinite_ambiguity_points),
+        )
         res["infinite_ambig_point_p"] = infinite_ambig_point_p
         res["infinite_ambig_point_r"] = infinite_ambig_point_r
         res["infinite_ambig_point_f1"] = infinite_ambig_point_f1
@@ -332,6 +333,8 @@ class AmbigPointStats:
                 pred_interpretations=json.dumps(pred_interpretations, indent=2),
             )
             result = await agent.run(prompt)
+            assert len(pred_ap.interpretations) > 0
+            assert len(gold_ap.interpretations) > 0
             p, r, f1 = self._p_r_f1(
                 len([match for match in result.output.matches if match.pred_id is not None]),
                 len(pred_ap.interpretations),
