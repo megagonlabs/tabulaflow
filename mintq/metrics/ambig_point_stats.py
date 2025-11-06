@@ -348,4 +348,6 @@ class AmbigPointStats:
         res["interpretation_r"] = interpretation_r
         res["interpretation_f1"] = interpretation_f1
 
+        res["perfect_disambiguation"] = float(ambig_point_f1 == 1.0 and interpretation_f1 == 1.0)
+
         return res
