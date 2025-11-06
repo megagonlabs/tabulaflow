@@ -231,6 +231,10 @@ class AmbigPointStats:
         return res
 
     async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
+        gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
+        for d in gold_aps:
+            d.pop("type")
+
         if not task.trajectory:
             pred_aps = []
             matches = []
@@ -244,9 +248,6 @@ class AmbigPointStats:
                 }
                 for i, question in enumerate(questions)
             ]
-            gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
-            for d in gold_aps:
-                d.pop("type")
 
             agent = Agent[None, LLMOutput](
                 model=self.llm,
