@@ -1,4 +1,3 @@
-import collections
 import json
 from typing import ClassVar, Any
 from pydantic import BaseModel
