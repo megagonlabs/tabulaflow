@@ -773,7 +773,8 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
             if not isinstance(queries, list):
                 queries = [queries]
             for q in queries:
-                q.to_directory(os.path.join(directory, f"{prefix}_csv"))
+                if q is not None:
+                    q.to_directory(os.path.join(directory, f"{prefix}_csv"))
     with open(os.path.join(directory, "task_readable.sql"), "w") as f:
         f.write(task.to_readable())
     trajectory = getattr(task, "trajectory", None)
