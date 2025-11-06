@@ -38,8 +38,10 @@ from mintq.utils import int_to_letter
 DISAMBIGUATION_PROMPT = """
 You are a helpful AI database expert that can disambiguate questions about a {{language}} database.
 Given an ambiguous question, you need to output the list of ALL possible interpretations of the question. Try to be comprehensive.
-Do not resolve threshold-like ambiguities where the number of interpretations is infinite.
-Do not add number index prefixes to the interpretations.
+- Each interpretation should be unambiguous.
+- Each interpretation should be exclusive - only one can apply at a time.
+- Do not resolve threshold-like ambiguities where the number of interpretations is infinite.
+- Do not add number index prefixes to the interpretations.
 
 === START OF EXAMPLE ===
 User: List all interpretations: List all students with high GPA from NY.

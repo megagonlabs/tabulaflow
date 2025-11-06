@@ -45,6 +45,8 @@ The question has one or multiple ambiguity points and you will need to output th
 - For phrases where the number of interpretations is finite, put the list of all possible disambiguated interpretations in the `finite_ambiguity_points` field.
   - There should be at least two interpretations for a phrase to be ambiguous.
   - Each interpretation should be unambiguous.
+  - Each interpretation should be exclusive - only one can apply at a time.
+  - If there are multiple dimensions of ambiguity for a phrase, split them into multiple ambiguity points. You can have multiple ambiguity points for one phrase.
   - Do not add number index prefixes to the interpretations.
 - For phrases with threshold-like ambiguities (e.g. "tall", "young", etc.), put them in the `parameter_ambiguity_points` field.
   - parameter_sample_operators is a list of valid operators that can be used in <expr> <operator> :<parameter_name>.
