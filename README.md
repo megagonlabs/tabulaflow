@@ -417,6 +417,7 @@ Contact: yanlin@megagon.ai
   - [x] Ambig point metrics for ambig_simple
   - [x] Ambig type ambig point P/R/F1
     - [x] Fix for ambig_simple
+    - [ ] Fix precision
   - [x] perfect_disambiguation
 - [x] Baselines
   - [x] No disambiguation
