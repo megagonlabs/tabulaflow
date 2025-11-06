@@ -23,6 +23,8 @@ Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
+- To answer the question, call the `answer` tool.
+- To reject the question, call the `reject` tool.
 
 For "free_text" questions, you must identify the relevant ambiguity point id in the `relevant_ambiguity_point_id` field.
 - If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
@@ -69,6 +71,7 @@ class UserSimulatorConfig(BaseModel):
 
 
 def reject() -> None:
+    """Reject the question"""
     return None
 
 
@@ -144,18 +147,18 @@ class UserSimulator:
             yield
 
     async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None:
-        def return_relevant_ambig_point(ambig_point_id: str) -> str:
+        def answer(relevant_ambig_point_id: str) -> str:
             """
             Args:
-                ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about.
+                relevant_ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about.
             """
-            return ambig_point_id
+            return relevant_ambig_point_id
 
         async with self._lock_message_history_async():
             result0 = await self.user_agent.run(  # type: ignore
                 question.question,
                 output_type=[
-                    ToolOutput(return_relevant_ambig_point, name="return_relevant_ambig_point"),
+                    ToolOutput(answer, name="answer"),
                     ToolOutput(reject, name="reject"),
                 ],
                 message_history=self._message_history if self.config.include_history else None,
