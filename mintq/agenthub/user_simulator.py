@@ -35,7 +35,7 @@ For "multiple_choice" questions, you must select from the given options and prov
 For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
 - The data type of the value should be the same as the one specified in the question.
 - If no valid value is correct, select the closest value.
-"""
+""".strip()
 
 
 ANSWER_FREE_TEXT_SYSTEM_PROMPT = """
@@ -49,7 +49,7 @@ You will be asked a question regarding the possible ambiguities in the task, and
 - You should not ask questions.
 - If multiple questions are asked, only answer the first one and say "Please only ask one question at a time."
 - Your answer should be grammatical and linguistically diverse.
-"""
+""".strip()
 
 
 class NLAmbigPoint(BaseModel):
@@ -110,7 +110,7 @@ class UserSimulator:
             NLAmbigPoint(
                 id=ap.id,
                 phrase=ap.phrase,
-                interpretation=ap.interpretations[ap.intended_interpretation_idx]
+                interpretation=ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                 if ap.type == "finite"
                 else f"{ap.intended_parameter_operator} {ap.intended_parameter_value} ({ap.parameter_name})",
             )
@@ -141,22 +141,22 @@ class UserSimulator:
             return UserFreeTextAnswer(answer_free_text=answer_free_text)
 
         async with self._lock_message_history_async():
-            result = await self.user_agent.run(
+            result0 = await self.user_agent.run(
                 question.question,
                 output_type=ToolOutput(identify, name="identify"),
                 message_history=self._message_history if self.include_history else None,
             )
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-            self._message_history += result.new_messages()
+            self._usage += Usage.from_pydantic_ai_usage(result0.usage(), self.llm)
+            self._message_history += result0.new_messages()
 
-            relevant_ambig_point_id = result.output
+            relevant_ambig_point_id = result0.output
 
             if relevant_ambig_point_id is None:
                 system_prompt = "The user's question is out of scope, reject the question and respond 'Sorry, I cannot answer this question.'"
             else:
                 relevant_ambig_point = next(ap for ap in self.ambig_points if ap.id == relevant_ambig_point_id)
-                system_prompt = (
-                    jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(ambiguity_points=[relevant_ambig_point]),
+                system_prompt = jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(
+                    ambiguity_points=[relevant_ambig_point]
                 )
 
             answer_agent = Agent(
