@@ -33,6 +33,8 @@ EXP_DIRS = {
     "98_gemini_2.0_flash_simple_patience_ap": "output/98_gemini_2.0_flash_simple_patience_ap/",
     "98_gemini_2.0_flash_structured": "output/98_gemini_2.0_flash_structured/",
     "98_gemini_2.0_flash_flat": "output/98_gemini_2.0_flash_flat/",
+    "99_gpt-4.1_simple_patience_0": "output/99_gpt-4.1_simple_patience_0/",
+    "99_gpt-4.1_simple_patience_1": "output/99_gpt-4.1_simple_patience_1/",
 }
 
 TALBE_FMT = "github"
