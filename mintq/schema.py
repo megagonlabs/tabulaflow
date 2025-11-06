@@ -107,7 +107,10 @@ class Trajectory(BaseModel):
                             ToolCall(tool_call_id=part.tool_call_id, name=part.tool_name, arguments=arguments)
                         )
                     elif part.part_kind == "thinking":  # type: ignore
-                        new_msg.thinking = part.content
+                        if not new_msg.thinking:
+                            new_msg.thinking = part.content
+                        else:
+                            new_msg.thinking += "\n\n" + part.content
                     else:
                         raise ValueError(f"Unknown message part type: {part.part_kind}")
                 trajectory.messages.append(new_msg)

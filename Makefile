@@ -67,6 +67,24 @@ test-arcs-simple:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-arcs-simple-gpt-5-low
+test-arcs-simple-gpt-5-low:
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-simple-gpt-5-medium
+test-arcs-simple-gpt-5-medium:
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-simple-gpt-5-high
+test-arcs-simple-gpt-5-high:
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-simple-qwen
 test-arcs-simple-qwen:
 	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-coder-480b-a35b-instruct
@@ -88,6 +106,24 @@ test-arcs-flat-all-query:
 .PHONY: test-arcs-structured
 test-arcs-structured:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-gpt-5-low
+test-arcs-structured-gpt-5-low:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-gpt-5-medium
+test-arcs-structured-gpt-5-medium:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-gpt-5-high
+test-arcs-structured-gpt-5-high:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
