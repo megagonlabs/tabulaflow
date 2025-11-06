@@ -225,37 +225,33 @@ class AmbigPointStats:
 
     async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
         if not task.trajectory:
-            res: dict[str, float | None] = {
-                "ambig_point_p": None,
-                "ambig_point_r": 0.0,
-                "ambig_point_f1": 0.0,
-            }
-            res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, []))
-            return res
+            pred_aps = []
+            matches = []
+        else:
+            trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
+            questions = [msg.content for msg in trajectory.messages if msg.role == "user"]  # type: ignore
+            pred_aps = [
+                {
+                    "id": f"PRED-{int_to_letter(i)}",
+                    "description": question,
+                }
+                for i, question in enumerate(questions)
+            ]
+            gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
+            for d in gold_aps:
+                d.pop("type")
 
-        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
-        questions = [msg.content for msg in trajectory.messages if msg.role == "user"]  # type: ignore
-        pred_aps = [
-            {
-                "id": f"PRED-{int_to_letter(i)}",
-                "description": question,
-            }
-            for i, question in enumerate(questions)
-        ]
-        gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
-        for d in gold_aps:
-            d.pop("type")
+            agent = Agent[None, LLMOutput](
+                model=self.llm,
+                output_type=LLMOutput,
+                instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
+            )
+            prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
+                question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
+            )
+            result = await agent.run(prompt)
+            matches = self._clean_matches(result.output.matches)
 
-        agent = Agent[None, LLMOutput](
-            model=self.llm,
-            output_type=LLMOutput,
-            instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
-        )
-        prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
-            question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
-        )
-        result = await agent.run(prompt)
-        matches = self._clean_matches(result.output.matches)
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
         res: dict[str, float | None] = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
