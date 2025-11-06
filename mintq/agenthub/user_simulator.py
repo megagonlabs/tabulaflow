@@ -152,29 +152,29 @@ class UserSimulator:
             result0 = await self.user_agent.run(
                 question.question,
                 output_type=ToolOutput(identify, name="identify"),
-                message_history=self._message_history if self.include_history else None,
+                message_history=self._message_history if self.config.include_history else None,
             )
-            self._usage += Usage.from_pydantic_ai_usage(result0.usage(), self.llm)
+            self._usage += Usage.from_pydantic_ai_usage(result0.usage(), self.config.llm)
             self._message_history += result0.new_messages()
 
             relevant_ambig_point_id = result0.output
 
-            if relevant_ambig_point_id is None or not any(ap.id == relevant_ambig_point_id for ap in self.ambig_points):
+            if relevant_ambig_point_id is None or not any(ap.id == relevant_ambig_point_id for ap in self.config.ambig_points):
                 system_prompt = "The user's question is out of scope, reject the question and respond 'Sorry, I cannot answer this question.'"
             else:
-                relevant_ambig_point = next(ap for ap in self.ambig_points if ap.id == relevant_ambig_point_id)
+                relevant_ambig_point = next(ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id)
                 system_prompt = jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(
                     task=self.config.task,
                     ambig_points=[relevant_ambig_point.model_dump()],
                 )
 
             answer_agent = Agent(
-                model=self.llm,
+                model=self.config.llm,
                 instructions=system_prompt,
-                model_settings={"temperature": self.temperature},
+                model_settings={"temperature": self.config.temperature},
             )
             result = await answer_agent.run(question.question, output_type=ToolOutput(answer, name="answer"))
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()[1:]  # The question is already added in the first step
         return result.output
 
@@ -188,9 +188,9 @@ class UserSimulator:
             result = await self.user_agent.run(
                 question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
                 output_type=ToolOutput(answer, name="answer"),
-                message_history=self._message_history if self.include_history else None,
+                message_history=self._message_history if self.config.include_history else None,
             )
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()
         return UserMultipleChoiceAnswer(answer_index=result.output)
 
@@ -199,9 +199,9 @@ class UserSimulator:
             result = await self.user_agent.run(
                 question.model_dump_json(indent=2),
                 output_type=ToolOutput(UserValueAnswer, name="answer"),
-                message_history=self._message_history if self.include_history else None,
+                message_history=self._message_history if self.config.include_history else None,
             )
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()
         return result.output
 
