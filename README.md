@@ -421,9 +421,10 @@ Contact: yanlin@megagon.ai
 - [x] Baselines
   - [x] No disambiguation
 - [x] Fix annotation - all infinite ambiguity points should be semantic_value
-- [x] Fix user simulator info leakage
 - [x] Analyze 99_gpt-4.1_simple_patience_1 -> info leakage for overlapping ambiguity points
-- [ ] Reasoning effort experiment
+- [x] Fix user simulator info leakage - two stage approach
+- [x] Support reasoning effort
+- [ ] User simulator for out-of-scope questions
 - [ ] print_exps.py
 - [ ] Run Ambrosia
 - [ ] Taxonomy-proof experiment
