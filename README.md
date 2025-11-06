@@ -417,15 +417,15 @@ Contact: yanlin@megagon.ai
   - [x] Ambig point metrics for ambig_simple
   - [x] Ambig type ambig point P/R/F1
     - [x] Fix for ambig_simple
-  - [ ] Perfect
+  - [x] perfect_disambiguation
 - [x] Baselines
   - [x] No disambiguation
 - [x] Fix annotation - all infinite ambiguity points should be semantic_value
 - [x] Fix user simulator info leakage
 - [x] Analyze 99_gpt-4.1_simple_patience_1 -> info leakage for overlapping ambiguity points
+- [ ] Reasoning effort experiment
 - [ ] print_exps.py
 - [ ] Run Ambrosia
-- [ ] Reasoning effort experiment
 - [ ] Taxonomy-proof experiment
 - [ ] Experiements for major claims
 - [ ] Categorical values for table with a small number of rows
