@@ -177,6 +177,16 @@ class AmbigPointStats:
         f1 = 2 * p * r / (p + r) if p + r > 0 else 0.0
         return p, r, f1
 
+    def _clean_matches(self, matches: list[Match]) -> list[tuple[str, str]]:
+        res = []
+        for match in matches:
+            if match.pred_id is None:
+                continue
+            if any(match.pred_id == pred_id for _, pred_id in res):
+                continue
+            res.append((match.gold_id, match.pred_id))
+        return [(gold_id.replace("GOLD-", ""), pred_id.replace("PRED-", "")) for gold_id, pred_id in res]
+
     async def _match_ambig_points_async(self, task: StructuredAmbigNL2QTaskOutput) -> list[tuple[str, str]]:
         # If all phrases match exactly, return perfect score
         pred_phrases = sorted([(ap.phrase, ap.type, ap.id) for ap in task.pred_ambiguity_points])
@@ -196,11 +206,7 @@ class AmbigPointStats:
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
         result = await agent.run(prompt)
-        return [
-            (match.gold_id.replace("GOLD-", ""), match.pred_id.replace("PRED-", ""))
-            for match in result.output.matches
-            if match.pred_id is not None
-        ]
+        return self._clean_matches(result.output.matches)
 
     def _get_ambig_type_metrics(
         self, gold_aps: list[GoldAmbiguityPoint], matches: list[tuple[str, str]]
@@ -240,11 +246,7 @@ class AmbigPointStats:
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
         result = await agent.run(prompt)
-        matches = [
-            (match.gold_id.replace("GOLD-", ""), match.pred_id.replace("PRED-", ""))
-            for match in result.output.matches
-            if match.pred_id is not None
-        ]
+        matches = self._clean_matches(result.output.matches)
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
         res: dict[str, float | None] = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
