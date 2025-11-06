@@ -347,6 +347,7 @@ class AmbigPointStats:
         res["interpretation_r"] = interpretation_r
         res["interpretation_f1"] = interpretation_f1
 
-        res["perfect_disambiguation"] = float(ambig_point_f1 == 1.0 and interpretation_f1 == 1.0)
-
+        res["perfect_disambiguation_p"] = float(ambig_point_p == 1.0 and interpretation_p == 1.0)
+        res["perfect_disambiguation_r"] = float(ambig_point_r == 1.0 and interpretation_r == 1.0)
+        res["perfect_disambiguation_f1"] = float(ambig_point_f1 == 1.0 and interpretation_f1 == 1.0)
         return res
