@@ -239,7 +239,7 @@ class AmbigPointStats:
             pred_aps = []
             matches = []
         else:
-            trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
+            trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")  # type: ignore
             questions = [msg.content for msg in trajectory.messages if msg.role == "user"]  # type: ignore
             pred_aps = [
                 {
@@ -345,14 +345,14 @@ class AmbigPointStats:
             r_list.append(r)
             f1_list.append(f1)
 
-        if not p_list:
+        if not matches:
             interpretation_p = None
             interpretation_r = None
             interpretation_f1 = None
         else:
-            interpretation_p = sum(p_list) / len(p_list)
-            interpretation_r = sum(r_list) / len(r_list)
-            interpretation_f1 = sum(f1_list) / len(f1_list)
+            interpretation_p = sum(p_list) / len(p_list)  # type: ignore
+            interpretation_r = sum(r_list) / len(r_list)  # type: ignore
+            interpretation_f1 = sum(f1_list) / len(f1_list)  # type: ignore
 
         res["interpretation_p"] = interpretation_p
         res["interpretation_r"] = interpretation_r
