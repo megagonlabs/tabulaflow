@@ -8,6 +8,15 @@ from mintq.schema import AmbigNL2QTask, NL2QDataset
 from mintq.db_connector import SQLConnector
 from mintq.datahub.base import dataset_registry
 
+ARCS_DATASET_INSTRUCTIONS = """
+- If the question asks for a list of objects, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
+- You may include additional relevant columns that are mentioned in the question, even if they are not explicitly requested in the output.
+- Don't concatenate first and last names unless explicitly requested.
+- For percentage values, don't multiply by 100.
+- Rounding is not needed for numerical values.
+- When asking for the object that achieves the maximum/minimum value, if there is a tie, return all tied objects.
+""".strip()
+
 
 @dataset_registry.register
 class ARCSDatasetLoader:
@@ -61,7 +70,10 @@ class ARCSDatasetLoader:
 
         databases = databases or self.get_databases(split)
         with open(os.path.join(self.directory, "tasks", "tasks_unsampled.json"), "r") as f:
-            tasks = [AmbigNL2QTask.model_validate(dic) for dic in json.load(f)]
+            tasks = [
+                AmbigNL2QTask.model_validate(dict(**dic, dataset_instructions=ARCS_DATASET_INSTRUCTIONS))
+                for dic in json.load(f)
+            ]
         tasks = [task for task in tasks if task.db in databases]
         if split == "test":
             tasks = self._upsample_tasks(tasks)

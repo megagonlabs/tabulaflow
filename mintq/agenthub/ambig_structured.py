@@ -52,6 +52,11 @@ The question has one or multiple ambiguity points and you will need to output th
   - parameter_sample_operators is a list of valid operators that can be used in <expr> <operator> :<parameter_name>.
   - parameter_sample_values is a list of sample values ordered from least strict to most strict
 
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+Do not consider these as ambiguities:
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
+
 === START OF EXAMPLE ===
 User: List all ambiguity points: List all students with high GPA from NY.
 
@@ -109,6 +114,10 @@ You are a helpful AI database expert that can translate natural language questio
 - If you use any of the provided parameters,
   - write a parameterized query with placeholders in the format of `<expr> <operator> :<param_name>`
   - pass in the parameters in the `parameters` field when using the `run_query` tool
+
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
 
 
@@ -172,7 +181,9 @@ class AmbigStructuredSQLAgent:
 
         disamb_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
-            system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
+            system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(
+                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+            ),
             output_type=LLMOutput,
             tool_keys=["get_schema"],  # "get_column_description"
         )
@@ -212,7 +223,9 @@ class AmbigStructuredSQLAgent:
 
         sql_agent: Agent[None, PredQuery] = self._get_agent(
             ctx,
-            system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(language=ctx.task.language),
+            system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(
+                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+            ),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
             tool_keys=["get_schema", "get_column_description", "search_keywords", "run_query"],
         )

@@ -407,6 +407,8 @@ class SimpleNL2QTask(BaseModel):
     db: str
     question: str
     evidence: str | None = None
+    dataset_instructions: str | None = None
+    """Instructions (e.g. for formatting) that apply to all questions in the dataset"""
     gold_query: GoldQuery
     extra_info: dict[str, Any] = {}
 
@@ -493,6 +495,8 @@ class AmbigNL2QTask(BaseModel):
     language: str
     db: str
     question: str
+    dataset_instructions: str | None = None
+    """Instructions (e.g. for formatting) that apply to all questions in the dataset"""
     gold_ambiguity_points: Annotated[list[GoldAmbiguityPoint], AfterValidator(is_id_unique)]
     gold_queries: Annotated[list[GoldQuery], AfterValidator(is_id_unique)]
     gold_intended_query_id: str | None

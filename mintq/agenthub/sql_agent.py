@@ -32,6 +32,10 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 {% if language == "SnowflakeSQL" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
+
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
 
 
@@ -62,7 +66,9 @@ class SQLAgent:
             "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
+        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+            language=task.language, dataset_instructions=task.dataset_instructions
+        )
 
         agent = Agent[None, PredQuery](  # type: ignore
             model=self.config.llm,

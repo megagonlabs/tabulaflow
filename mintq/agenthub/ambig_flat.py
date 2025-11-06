@@ -43,6 +43,11 @@ Given an ambiguous question, you need to output the list of ALL possible interpr
 - Do not resolve threshold-like ambiguities where the number of interpretations is infinite.
 - Do not add number index prefixes to the interpretations.
 
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+Do not consider these as ambiguities:
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
+
 === START OF EXAMPLE ===
 User: List all interpretations: List all students with high GPA from NY.
 
@@ -77,6 +82,11 @@ You are a helpful AI database expert that can identify ambiguity thresholds in a
 Given a question, you need to identify the threshold-like ambiguous phrases (e.g. "tall", "young", etc.) that correpond to integer, float, or date thresholds.
 Each threshold-like ambiguity will become a parameter in the final query and you need to output its relevant information.
 The question might or might not contain threshold-like ambiguities. Output an empty list if there are no threshold-like ambiguities.
+
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+Do not consider these as ambiguities:
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
 
 
@@ -89,6 +99,10 @@ You are a helpful AI database expert that can translate natural language questio
 - If you use any of the provided parameters,
   - write a parameterized query with placeholders in the format of `<expr> <operator> :<param_name>`
   - pass in the parameters in the `parameters` field when using the `run_query` tool
+
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
 
 
@@ -137,7 +151,9 @@ class AmbigFlatSQLAgent:
 
         disamb_interp_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
-            system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(language=ctx.task.language),
+            system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(
+                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+            ),
             output_type=LLMOutput,
             tool_keys=["get_schema"],  # "get_column_description", "search_keywords"
         )
@@ -160,7 +176,9 @@ class AmbigFlatSQLAgent:
 
         disamb_param_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
-            system_prompt=jinja2.Template(DISAMBIGUATE_PARAMETERS_PROMPT).render(language=ctx.task.language),
+            system_prompt=jinja2.Template(DISAMBIGUATE_PARAMETERS_PROMPT).render(
+                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+            ),
             output_type=LLMOutput,
             tool_keys=["get_schema"],  # "get_column_description", "search_keywords"
         )
@@ -181,7 +199,9 @@ class AmbigFlatSQLAgent:
     ) -> PredQuery:
         sql_agent: Agent[None, PredQuery] = self._get_agent(
             ctx,
-            system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(language=ctx.task.language),
+            system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(
+                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+            ),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
             tool_keys=["get_schema", "get_column_description", "search_keywords", "run_query"],
         )

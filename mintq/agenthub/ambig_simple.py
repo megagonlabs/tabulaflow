@@ -28,6 +28,10 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions.
 - Adhere strictly to the given database schema when constructing queries.
+
+{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
 
 
@@ -78,7 +82,9 @@ class AmbigSimpleSQLAgent:
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
-            instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
+            instructions=jinja2.Template(SYSTEM_PROMPT).render(
+                language=task.language, dataset_instructions=task.dataset_instructions
+            ),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
