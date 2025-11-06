@@ -25,16 +25,18 @@ Here,{% for ap in ambig_points %}
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
 
 For "free_text" questions, you must identify the relevant ambiguity point id in the `relevant_ambiguity_point_id` field.
-- If there is no matching ambiguity point, set the `relevant_ambiguity_point_id` to None.
 - If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
-- If the question is not related to ambiguity clarification, set the `relevant_ambiguity_point_id` to None.
+- If there is no matching ambiguity point, reject the question.
+- If the question is not related to ambiguity clarification, reject the question.
 
 For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
 - If none of the options are correct, select the closest option.
+- If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
 
 For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
 - The data type of the value should be the same as the one specified in the question.
 - If no valid value is correct, select the closest value.
+- If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
 """.strip()
 
 
@@ -66,6 +68,10 @@ class UserSimulatorConfig(BaseModel):
     include_history: bool = True
 
 
+def reject() -> None:
+    return None
+
+
 class UserSimulator:
     def __init__(self, config: UserSimulatorConfig):
         self.config = config
@@ -75,7 +81,7 @@ class UserSimulator:
             ambig_points=[ap.model_dump() for ap in self.config.ambig_points],
         )
 
-        self.user_agent = Agent[None, str](
+        self.user_agent = Agent(
             model=self.config.llm,
             tools=[],
             instructions=system_prompt,
@@ -137,21 +143,21 @@ class UserSimulator:
         else:
             yield
 
-    async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer:
-        def identify(relevant_ambig_point_id: str | None) -> str | None:
+    async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None:
+        def return_relevant_ambig_point(ambig_point_id: str) -> str:
             """
             Args:
-                relevant_ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about. If there is no match, set this to null.
+                ambig_point_id: The id (e.g. "A", "B", etc.) of the ambiguity point that the question is asking about.
             """
-            return relevant_ambig_point_id
-
-        def answer(answer_free_text: str) -> UserFreeTextAnswer:
-            return UserFreeTextAnswer(answer_free_text=answer_free_text)
+            return ambig_point_id
 
         async with self._lock_message_history_async():
-            result0 = await self.user_agent.run(
+            result0 = await self.user_agent.run(  # type: ignore
                 question.question,
-                output_type=ToolOutput(identify, name="identify"),
+                output_type=[
+                    ToolOutput(return_relevant_ambig_point, name="return_relevant_ambig_point"),
+                    ToolOutput(reject, name="reject"),
+                ],
                 message_history=self._message_history if self.config.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result0.usage(), self.config.llm)
@@ -162,52 +168,53 @@ class UserSimulator:
             if relevant_ambig_point_id is None or not any(
                 ap.id == relevant_ambig_point_id for ap in self.config.ambig_points
             ):
-                system_prompt = "The user's question is out of scope, reject the question and respond 'Sorry, I cannot answer this question.'"
-            else:
-                relevant_ambig_point = next(ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id)
-                system_prompt = jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(
-                    task=self.config.task,
-                    ambig_points=[relevant_ambig_point.model_dump()],
-                )
+                return None
 
+            relevant_ambig_point = next(ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id)
+            system_prompt = jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(
+                task=self.config.task,
+                ambig_points=[relevant_ambig_point.model_dump()],
+            )
             answer_agent = Agent(
                 model=self.config.llm,
                 instructions=system_prompt,
                 model_settings={"temperature": self.config.temperature},
             )
-            result = await answer_agent.run(question.question, output_type=ToolOutput(answer, name="answer"))
+            result = await answer_agent.run(
+                question.question, output_type=ToolOutput(UserFreeTextAnswer, name="answer")
+            )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()[1:]  # The question is already added in the first step
         return result.output
 
-    async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer:
-        def answer(number: int) -> int:
+    async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer | None:
+        def answer(number: int) -> UserMultipleChoiceAnswer:
             if number < 1 or number > len(question.options):
                 raise ModelRetry(f"Answer number should be between 1 and {len(question.options)}")
-            return number - 1
+            return UserMultipleChoiceAnswer(answer_index=number - 1)
 
         async with self._lock_message_history_async():
-            result = await self.user_agent.run(
+            result = await self.user_agent.run(  # type: ignore
                 question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-                output_type=ToolOutput(answer, name="answer"),
+                output_type=[ToolOutput(answer, name="answer"), ToolOutput(reject, name="reject")],
                 message_history=self._message_history if self.config.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()
-        return UserMultipleChoiceAnswer(answer_index=result.output)
+        return result.output  # type: ignore
 
-    async def ask_value_async(self, question: UserValueQuestion) -> UserValueAnswer:
+    async def ask_value_async(self, question: UserValueQuestion) -> UserValueAnswer | None:
         async with self._lock_message_history_async():
-            result = await self.user_agent.run(
+            result = await self.user_agent.run(  # type: ignore
                 question.model_dump_json(indent=2),
-                output_type=ToolOutput(UserValueAnswer, name="answer"),
+                output_type=[ToolOutput(UserValueAnswer, name="answer"), ToolOutput(reject, name="reject")],
                 message_history=self._message_history if self.config.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()
-        return result.output
+        return result.output  # type: ignore
 
-    async def ask_async(self, question: UserQuestion) -> UserAnswer:
+    async def ask_async(self, question: UserQuestion) -> UserAnswer | None:
         if question.type == "free_text":
             return await self.ask_free_text_async(question)
         elif question.type == "multiple_choice":

@@ -27,8 +27,9 @@ class AskUserTool:
         self._metrics.num_calls += 1
 
         response = await self.user_simulator.ask_async(UserFreeTextQuestion(question=question))
-        if "cannot answer" in response.answer_free_text.lower():
+        if response is None:
             self._metrics.user_refused_to_answer += 1
+            return "I cannot answer this question as it is out of scope."
         return response.answer_free_text
 
     async def _pydantic_ai_prepare(self, ctx: RunContext, tool_def: ToolDefinition) -> ToolDefinition | None:
