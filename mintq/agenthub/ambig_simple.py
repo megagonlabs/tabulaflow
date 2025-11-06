@@ -74,17 +74,13 @@ class AmbigSimpleSQLAgent:
             "finish": FinishTool(),
         }
 
-        model_settings = {"temperature": self.config.temperature}
-        if self.config.openai_reasoning_effort is not None:
-            model_settings["openai_reasoning_effort"] = self.config.openai_reasoning_effort
-
         agent = Agent[None, PredQuery](  # type: ignore
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(language=task.language),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=model_settings,
+            model_settings=self.config.to_model_settings(),
         )
 
         result = await agent.run(task.question)

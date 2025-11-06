@@ -126,7 +126,7 @@ class AmbigFlatSQLAgent:
             output_type=output_type,
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings={"temperature": self.config.temperature},
+            model_settings=self.config.to_model_settings(),
         )
 
     async def _disambiguate_interpretations_async(self, ctx: TaskRunContext) -> list[str]:

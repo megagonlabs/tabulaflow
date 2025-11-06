@@ -77,3 +77,12 @@ class BasicAgentConfig(BaseModel):
     temperature: float = 0.0
     max_steps: int = 10
     openai_reasoning_effort: Literal["low", "medium", "high"] | None = None
+    openai_reasoning_summary: Literal["detailed", "concise"] | None = None
+
+    def to_model_settings(self) -> dict[str, Any]:
+        res = {"temperature": self.temperature}
+        if self.openai_reasoning_effort is not None:
+            res["openai_reasoning_effort"] = self.openai_reasoning_effort
+        if self.openai_reasoning_summary is not None:
+            res["openai_reasoning_summary"] = self.openai_reasoning_summary
+        return res
