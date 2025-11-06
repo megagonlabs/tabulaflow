@@ -19,7 +19,7 @@ from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 
 USER_SIMULATOR_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
-Here,{% for ap in ambiguity_points %}
+Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
@@ -40,7 +40,7 @@ For "value" questions, you must provide a value in the `value` field, and an ope
 
 ANSWER_FREE_TEXT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
-Here,{% for ap in ambiguity_points %}
+Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications using the above information.
@@ -58,34 +58,34 @@ class NLAmbigPoint(BaseModel):
     interpretation: str
 
 
+class UserSimulatorConfig(BaseModel):
+    task: str
+    ambig_points: list[NLAmbigPoint]
+    llm: str = "openai:gpt-4.1-2025-04-14"
+    temperature: float = 0.0
+    include_history: bool = True
+
+
 class UserSimulator:
-    def __init__(
-        self,
-        ambig_points: list[NLAmbigPoint],
-        llm: str = "openai:gpt-4.1-2025-04-14",
-        temperature: float = 0.0,
-        include_history: bool = True,
-    ):
-        self.llm = llm
-        self.ambig_points = ambig_points
-        self.temperature = temperature
-        self.include_history = include_history
+    def __init__(self, config: UserSimulatorConfig):
+        self.config = config
 
         system_prompt = jinja2.Template(USER_SIMULATOR_SYSTEM_PROMPT).render(
-            ambiguity_points=[ap.model_dump() for ap in ambig_points],
+            task=self.config.task,
+            ambig_points=[ap.model_dump() for ap in self.config.ambig_points],
         )
 
         self.user_agent = Agent[None, str](
-            model=self.llm,
+            model=self.config.llm,
             tools=[],
             instructions=system_prompt,
-            model_settings={"temperature": self.temperature},
+            model_settings={"temperature": self.config.temperature},
         )
         self._message_history: list[pydantic_ai.messages.ModelMessage] = [
             pydantic_ai.messages.ModelRequest(parts=[], instructions=system_prompt)
         ]
-        self._usage = Usage.create(llm=self.llm)
-        self._lock = asyncio.Lock() if include_history else None
+        self._usage = Usage.create(llm=self.config.llm)
+        self._lock = asyncio.Lock() if self.config.include_history else None
 
     def usage(self) -> Usage:
         return self._usage
@@ -116,7 +116,15 @@ class UserSimulator:
             )
             for ap in task.gold_ambiguity_points
         ]
-        return cls(ambig_points, llm, temperature, include_history)
+
+        config = UserSimulatorConfig(
+            task=task.question,
+            ambig_points=ambig_points,
+            llm=llm,
+            temperature=temperature,
+            include_history=include_history,
+        )
+        return cls(config)
 
     @asynccontextmanager
     async def _lock_message_history_async(self) -> AsyncGenerator[None, None]:
@@ -156,7 +164,8 @@ class UserSimulator:
             else:
                 relevant_ambig_point = next(ap for ap in self.ambig_points if ap.id == relevant_ambig_point_id)
                 system_prompt = jinja2.Template(ANSWER_FREE_TEXT_SYSTEM_PROMPT).render(
-                    ambiguity_points=[relevant_ambig_point]
+                    task=self.config.task,
+                    ambig_points=[relevant_ambig_point.model_dump()],
                 )
 
             answer_agent = Agent(
