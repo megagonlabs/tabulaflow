@@ -345,7 +345,7 @@ class AmbigPointStats:
             r_list.append(r)
             f1_list.append(f1)
 
-        if not matches:
+        if not p_list:
             interpretation_p = None
             interpretation_r = None
             interpretation_f1 = None
