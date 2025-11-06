@@ -799,7 +799,8 @@ def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
         if not isinstance(queries, list):
             queries = [queries]
         for q in queries:
-            res += f"\n\n\n{q.to_readable()}"
+            if q is not None:
+                res += f"\n\n\n{q.to_readable()}"
     return res
 
 
