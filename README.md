@@ -425,7 +425,7 @@ Contact: yanlin@megagon.ai
 - [x] Fix user simulator info leakage - two stage approach
 - [x] Support reasoning effort
 - [ ] User simulator - allow refusal for out-of-scope questions
-- [ ] Global instructions
+- [x] Dataset instructions
 - [ ] Aggregated metrics registration
 - [ ] print_exps.py
 - [ ] Run Ambrosia
