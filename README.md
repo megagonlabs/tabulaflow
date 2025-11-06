@@ -424,7 +424,9 @@ Contact: yanlin@megagon.ai
 - [x] Analyze 99_gpt-4.1_simple_patience_1 -> info leakage for overlapping ambiguity points
 - [x] Fix user simulator info leakage - two stage approach
 - [x] Support reasoning effort
-- [ ] User simulator for out-of-scope questions
+- [ ] User simulator - allow refusal for out-of-scope questions
+- [ ] Global instructions
+- [ ] Aggregated metrics registration
 - [ ] print_exps.py
 - [ ] Run Ambrosia
 - [ ] Taxonomy-proof experiment
