@@ -1,4 +1,4 @@
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 from functools import partial
 from opentelemetry import trace
 from pydantic_ai import RunContext
@@ -76,3 +76,4 @@ class BasicAgentConfig(BaseModel):
     compress_schema: bool = True
     temperature: float = 0.0
     max_steps: int = 10
+    openai_reasoning_effort: Literal["low", "medium", "high"] | None = None

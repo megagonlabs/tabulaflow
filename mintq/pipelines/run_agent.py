@@ -135,6 +135,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["use_gold_ambiguity_points"] = True
     if args.user_patience is not None:
         kwargs["user_patience"] = args.user_patience
+    if args.openai_reasoning_effort is not None:
+        kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
     return agent_cls.config_cls(**kwargs)
 
 
@@ -144,6 +146,7 @@ async def main_async() -> None:
     parser.add_argument("-s", "--schema_formatter", default="sql_default")
     parser.add_argument("--llm", default="openai-responses:gpt-4.1")
     parser.add_argument("--temperature", default=0.0, type=float)
+    parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
 
     # ambig agents
