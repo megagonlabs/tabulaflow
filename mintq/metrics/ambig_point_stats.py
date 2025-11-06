@@ -181,7 +181,7 @@ class AmbigPointStats:
         elif p is None or r is None:  # In this case, either p or r is 0.0, so f1 is 0.0
             f1 = 0.0
         else:
-            f1 = 2 * p * r / (p + r)
+            f1 = 2 * p * r / (p + r) if p + r > 0 else 0.0
         return p, r, f1
 
     def _clean_matches(self, matches: list[Match]) -> list[tuple[str, str]]:
