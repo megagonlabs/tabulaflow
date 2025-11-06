@@ -416,13 +416,13 @@ Contact: yanlin@megagon.ai
   - [x] Parameter ambig point P/R/F1
   - [x] Ambig point metrics for ambig_simple
   - [x] Ambig type ambig point P/R/F1
-    - [ ] Fix for ambig_simple
+    - [x] Fix for ambig_simple
   - [ ] Perfect
 - [x] Baselines
   - [x] No disambiguation
 - [x] Fix annotation - all infinite ambiguity points should be semantic_value
-- [ ] Fix user simulator info leakage
-- [ ] Analyze 99_gpt-4.1_simple_patience_0
+- [x] Fix user simulator info leakage
+- [x] Analyze 99_gpt-4.1_simple_patience_1 -> info leakage for overlapping ambiguity points
 - [ ] print_exps.py
 - [ ] Run Ambrosia
 - [ ] Reasoning effort experiment
