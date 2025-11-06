@@ -30,12 +30,12 @@ For "free_text" questions, you must identify the relevant ambiguity point id in 
 - If the question is not related to ambiguity clarification, reject the question.
 
 For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
-- If none of the options are correct, select the closest option.
+- If none of the options are correct, reject the question.
 - If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
 
 For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
 - The data type of the value should be the same as the one specified in the question.
-- If no valid value is correct, select the closest value.
+- If no valid value is correct, reject the question.
 - If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
 """.strip()
 
