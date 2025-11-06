@@ -608,6 +608,7 @@ class PredAmbiguityPointFinite(BaseModel):
     type: Literal["finite"] = "finite"
     interpretations: list[str]
     intended_interpretation_idx: int | None = None
+    rejected_by_user: bool = False
 
 
 class PredAmbiguityPointInfinite(BaseModel):
@@ -622,6 +623,7 @@ class PredAmbiguityPointInfinite(BaseModel):
     parameter_sample_values: list[Any] | list[list[Any]]
     intended_paramter_operator: Literal["<", ">", "<=", ">=", "=", "<>"] | None = None
     intended_parameter_value: Any | None = None
+    rejected_by_user: bool = False
 
 
 PredAmbiguityPoint = Annotated[Union[PredAmbiguityPointFinite, PredAmbiguityPointInfinite], Field(discriminator="type")]

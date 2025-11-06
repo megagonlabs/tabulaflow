@@ -285,14 +285,17 @@ class AmbigStructuredSQLAgent:
                 )
         responses = await asyncio.gather(*[user_simulator.ask_async(question) for question in questions])
         for ap, response in zip(ambiguity_points, responses):
-            if ap.type == "finite":
+            if response is None:
+                ap.rejected_by_user = True
+            elif ap.type == "finite":
                 ap.intended_interpretation_idx = response.answer_index
             elif ap.type == "infinite":
                 ap.intended_paramter_operator = response.operator  # type: ignore
                 ap.intended_parameter_value = response.value  # type: ignore
 
+        ambiguity_points_resolved = [ap for ap in ambiguity_points if not ap.rejected_by_user]
         pred_intended_query_id = "PQRY" + "".join(
-            f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points if ap.type == "finite"
+            f"-{ap.id}.{ap.intended_interpretation_idx}" for ap in ambiguity_points_resolved if ap.type == "finite"
         )
         return pred_intended_query_id
 
@@ -325,8 +328,8 @@ class AmbigStructuredSQLAgent:
             ambiguity_points = await self._disambiguate_async(ctx)
             pred_intended_query_id = await self._resolve_async(ambiguity_points, user_simulator)
 
-        finite_aps = [ap for ap in ambiguity_points if ap.type == "finite"]
-        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite"]
+        finite_aps = [ap for ap in ambiguity_points if ap.type == "finite" and not ap.rejected_by_user]
+        infinite_aps = [ap for ap in ambiguity_points if ap.type == "infinite" and not ap.rejected_by_user]
 
         if self.config.query_for_intended_only:
             indexes = [ap.intended_interpretation_idx for ap in finite_aps]
@@ -337,7 +340,7 @@ class AmbigStructuredSQLAgent:
                 *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
             )
 
-        self._fix_pred_queries(pred_queries, ambiguity_points)
+        self._fix_pred_queries(pred_queries, finite_aps + infinite_aps)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0

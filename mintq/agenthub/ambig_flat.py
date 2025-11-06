@@ -247,13 +247,19 @@ class AmbigFlatSQLAgent:
             ]
         )
         for ap, response in zip(params, responses):
-            ap.intended_paramter_operator = response.operator
-            ap.intended_parameter_value = response.value
+            if response is None:
+                ap.rejected_by_user = True
+            else:
+                ap.intended_paramter_operator = response.operator
+                ap.intended_parameter_value = response.value
 
         user_response = await user_simulator.ask_async(
             UserMultipleChoiceQuestion(question=question, options=interpretations)
         )
-        return user_response.answer_index
+        if user_response is None:
+            return 0
+        else:
+            return user_response.answer_index
 
     def _fix_pred_queries(self, pred_queries: list[PredQuery], params: list[PredAmbiguityPointInfinite]) -> None:
         """Replace with the intended parameter operator and value in the pred_queries"""
@@ -289,20 +295,23 @@ class AmbigFlatSQLAgent:
 
         intended_idx = await self._resolve_async(task.question, interpretations, parameters, user_simulator)
         pred_intended_query_id = f"PQRY-{intended_idx}"
+        parameters_resolved = [ap for ap in parameters if not ap.rejected_by_user]
 
         if self.config.query_for_intended_only:
             pred_queries = [
-                await self._generate_sql_async(ctx, interpretations[intended_idx], pred_intended_query_id, parameters)
+                await self._generate_sql_async(
+                    ctx, interpretations[intended_idx], pred_intended_query_id, parameters_resolved
+                )
             ]
         else:
             pred_queries = await asyncio.gather(
                 *[
-                    self._generate_sql_async(ctx, interpretation, f"PQRY-{i}", parameters)
+                    self._generate_sql_async(ctx, interpretation, f"PQRY-{i}", parameters_resolved)
                     for i, interpretation in enumerate(interpretations)
                 ]
             )
 
-        self._fix_pred_queries(pred_queries, parameters)
+        self._fix_pred_queries(pred_queries, parameters_resolved)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
