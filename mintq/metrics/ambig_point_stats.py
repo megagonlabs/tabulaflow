@@ -224,7 +224,16 @@ class AmbigPointStats:
         return res
 
     async def _compute_ambig_simple_async(self, task: SimpleAmbigNL2QTaskOutput) -> dict[str, float | None]:
-        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")  # type: ignore
+        if not task.trajectory:
+            res: dict[str, float | None] = {
+                "ambig_point_p": None,
+                "ambig_point_r": 0.0,
+                "ambig_point_f1": 0.0,
+            }
+            res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, []))
+            return res
+
+        trajectory = next(tr for tr in task.trajectory if tr.id == "TRJY-USER-SIMULATOR")
         questions = [msg.content for msg in trajectory.messages if msg.role == "user"]  # type: ignore
         pred_aps = [
             {
