@@ -152,7 +152,7 @@ class UserSimulator:
             relevant_ambig_point_id = result.output
 
             if relevant_ambig_point_id is None:
-                system_prompt = "Reject the question and respond 'Sorry, I cannot answer this question.'"
+                system_prompt = "The user's question is out of scope, reject the question and respond 'Sorry, I cannot answer this question.'"
             else:
                 relevant_ambig_point = next(ap for ap in self.ambig_points if ap.id == relevant_ambig_point_id)
                 system_prompt = (
