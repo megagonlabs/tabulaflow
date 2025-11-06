@@ -159,7 +159,9 @@ class UserSimulator:
 
             relevant_ambig_point_id = result0.output
 
-            if relevant_ambig_point_id is None or not any(ap.id == relevant_ambig_point_id for ap in self.config.ambig_points):
+            if relevant_ambig_point_id is None or not any(
+                ap.id == relevant_ambig_point_id for ap in self.config.ambig_points
+            ):
                 system_prompt = "The user's question is out of scope, reject the question and respond 'Sorry, I cannot answer this question.'"
             else:
                 relevant_ambig_point = next(ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id)

@@ -80,7 +80,8 @@ class BasicAgentConfig(BaseModel):
     openai_reasoning_summary: Literal["detailed", "concise"] | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
-        res = {"temperature": self.temperature}
+        res: dict[str, Any] = {}
+        res["temperature"] = self.temperature
         if self.openai_reasoning_effort is not None:
             res["openai_reasoning_effort"] = self.openai_reasoning_effort
         if self.openai_reasoning_summary is not None:

@@ -178,7 +178,7 @@ class AmbigPointStats:
         return p, r, f1
 
     def _clean_matches(self, matches: list[Match]) -> list[tuple[str, str]]:
-        res = []
+        res: list[tuple[str, str]] = []
         for match in matches:
             if match.pred_id is None:
                 continue
