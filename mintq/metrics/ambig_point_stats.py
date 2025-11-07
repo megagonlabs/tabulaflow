@@ -66,7 +66,7 @@ Output:
     }
 }
 === END OF EXAMPLE ===
-"""
+""".strip()
 
 AMBIG_POINT_MATCHING_USER_PROMPT = """
 Question: {{question}}
@@ -74,7 +74,7 @@ Gold ambiguity points:
 {{gold_aps}}
 Predicted ambiguity points:
 {{pred_aps}}
-"""
+""".strip()
 
 
 INTERPRETATION_MATCHING_SYSTEM_PROMPT = """
@@ -124,7 +124,7 @@ Output:
     }
 }
 === END OF EXAMPLE ===
-"""
+""".strip()
 
 INTERPRETATION_MATCHING_USER_PROMPT = """
 Question: {{question}}
@@ -133,7 +133,7 @@ Gold interpretations:
 {{gold_interpretations}}
 Predicted interpretations:
 {{pred_interpretations}}
-"""
+""".strip()
 
 
 class Match(BaseModel):
