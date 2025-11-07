@@ -228,8 +228,13 @@ async def main_async() -> None:
     )
     print(f"Total cost USD (agent): {agent_cost}")
     print(f"Total cost USD (user simulator): {user_simulator_cost}")
+    user_output_tokens = (
+        result.total_user_simulator_usage.output_tokens if result.total_user_simulator_usage is not None else "N/A"
+    )
+    print(f"Total user output tokens: {user_output_tokens}")
 
     result.to_directory(args.result_dir)
+    print()
     print(f"Saved result to {args.result_dir}")
 
 
