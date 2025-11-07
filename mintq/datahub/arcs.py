@@ -14,7 +14,7 @@ ARCS_DATASET_INSTRUCTIONS = """
 - Don't concatenate first and last names unless explicitly requested.
 - For percentage values, don't multiply by 100.
 - Rounding is not needed for numerical values.
-- When asking for the object that achieves the maximum/minimum value, if there is a tie, return all tied objects.
+- If the question asks for the object that achieves the maximum/minimum value, if there is a tie, return all tied objects.
 """.strip()
 
 
