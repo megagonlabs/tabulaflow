@@ -22,23 +22,21 @@ You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
-You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications.
+You will be asked a question regarding the possible ambiguities in the task, and you need to provide clarifications or reject the questions based on the rules below:
 - To answer the question, call the `answer` tool.
 - To reject the question, call the `reject` tool.
-
-For "free_text" questions, you must identify the relevant ambiguity point id in the `relevant_ambiguity_point_id` field.
-- If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
-- If there is no matching ambiguity point, reject the question.
+- If the question is not covere by a matching ambiguity point provided above, reject the question.
 - If the question is not related to ambiguity clarification, reject the question.
 
-For "multiple_choice" questions, you must select from the given options and provide the index in the `answer_index` field.
-- If none of the options are correct, reject the question.
-- If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
+For "free_text" questions, you need to identify the relevant ambiguity point:
+- If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
 
-For "value" questions, you must provide a value in the `value` field, and an operator selected from the given options in the `operator` field.
-- The data type of the value should be the same as the one specified in the question.
-- If no valid value is correct, reject the question.
-- If the question is not related to ambiguity clarification, or cannot be answered using the provided information, reject the question.
+For "multiple_choice" questions, you need to select from the given options:
+- If none of the options are correct, reject the question.
+
+For "value" questions, you need to select a value as well as an operator from the given options:
+- The data type of the value should be consistent with the one specified in the question.
+- If no valid value or no valid operator is correct, reject the question.
 """.strip()
 
 
