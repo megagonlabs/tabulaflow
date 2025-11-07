@@ -4,6 +4,7 @@ import pydantic_ai
 from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
+import litellm
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,
@@ -164,6 +165,12 @@ class UserSimulator:
         relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids if ap_id in ambig_points]
         return relevant_ambig_points
 
+    def _compute_user_effort(self, question_str: str, answer: BaseModel) -> int:
+        input_effort = litellm.token_counter(text=question_str)
+        output_effort = sum([litellm.token_counter(text=str(v)) for v in answer.model_dump().values()])
+        print(input_effort, output_effort)
+        return input_effort * 0.2 + output_effort
+
     async def _run_async(self, question_str: str, output_type_or_func: Any) -> UserAnswer | None:
         async with self._lock:
             relevant_ambig_points = await self._get_relevant_ambig_points_async(question_str)
@@ -182,14 +189,15 @@ class UserSimulator:
             )
 
             result = await answer_agent.run(question_str)
-            usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
-            self._usage += usage
-            self._user_effort += usage.output_tokens
+            self._user_effort += self._compute_user_effort(question_str, result.output)
+
+            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._message_history += result.new_messages()[1:]
         return result.output
 
     async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None:
-        return await self._run_async(question.question, UserFreeTextAnswer)  # type: ignore
+        res = await self._run_async(question.question, UserFreeTextAnswer)  # type: ignore
+        return res
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer | None:
         def answer(number: int | None) -> UserMultipleChoiceAnswer | None:
