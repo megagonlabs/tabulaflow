@@ -61,10 +61,12 @@ async def run_agent_async(
         batch_kwargs = []
         for task in batch:
             if task.task_type == "ambig":
-                include_history = True if agent_cls.name == "ambig_simple_sql_agent" else False
-                batch_kwargs.append(
-                    {"user_simulator": UserSimulator.from_ambig_nl2q_task(task, include_history=include_history)}
+                user_simulator = UserSimulator.from_ambig_nl2q_task(
+                    task,
+                    include_history=agent_cls.name == "ambig_simple_sql_agent",
+                    answer_with_multiple_ambig_points=agent_cls.name == "ambig_flat_sql_agent",
                 )
+                batch_kwargs.append({"user_simulator": user_simulator})
             else:
                 batch_kwargs.append({})
 

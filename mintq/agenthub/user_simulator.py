@@ -21,10 +21,10 @@ You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
-You will be asked a question regarding the possible ambiguities in the task, you must identify the relevant ambiguity point id in the `relevant_ambiguity_point_id` field.
-- If there is no matching ambiguity point, set the `relevant_ambiguity_point_id` to None.
+You will be asked a question regarding the possible ambiguities in the task, you need to identify the relevant ambiguity point id:
+- If there is no matching ambiguity point, return null (or an empty list, depending on the output specification).
 - If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
-- If the question is not related to ambiguity clarification, set the `relevant_ambiguity_point_id` to None.
+- If the question is not related to ambiguity clarification, return null (or an empty list).
 """.strip()
 
 
@@ -43,11 +43,11 @@ For "free_text" questions, you need to provide a free-text answer:
 - Your answer should be grammatical and linguistically diverse.
 
 For "multiple_choice" questions, you need to select from the given options:
-- If none of the options are correct, set answer number to null. 
+- If none of the options are correct, or cannot be determined using the provided information, set answer number to null. 
 
 For "value" questions, you need to select a value as well as an operator from the given options:
 - The data type of the value should be consistent with the one specified in the question.
-- If no valid value or no valid operator is correct, set both fields to null.
+- If no valid value or no valid operator is correct, or cannot be determined using the provided information, set both fields to null.
 """.strip()
 
 
@@ -63,6 +63,7 @@ class UserSimulatorConfig(BaseModel):
     llm: str = "openai:gpt-4.1-2025-04-14"
     temperature: float = 0.0
     include_history: bool = True
+    answer_with_multiple_ambig_points: bool = False
 
 
 class UserSimulator:
@@ -101,6 +102,7 @@ class UserSimulator:
         llm: str = "openai:gpt-4.1-2025-04-14",
         temperature: float = 0.0,
         include_history: bool = True,
+        answer_with_multiple_ambig_points: bool = False,
     ) -> "UserSimulator":
         if any(ap.intended_interpretation_idx is None for ap in task.gold_ambiguity_points if ap.type == "finite"):
             raise ValueError("All finite ambiguity points must have an intended interpretation")
@@ -124,10 +126,11 @@ class UserSimulator:
             llm=llm,
             temperature=temperature,
             include_history=include_history,
+            answer_with_multiple_ambig_points=answer_with_multiple_ambig_points,
         )
         return cls(config)
 
-    async def _identify_relevant_ambig_point_id_async(self, question_str: str) -> NLAmbigPoint | None:
+    async def _get_relevant_ambig_points_async(self, question_str: str) -> list[NLAmbigPoint]:
         def identify(relevant_ambig_point_id: str | None) -> str | None:
             """
             Args:
@@ -135,27 +138,41 @@ class UserSimulator:
             """
             return relevant_ambig_point_id
 
+        def identify_multiple(relevant_ambig_point_ids: list[str]) -> list[str]:
+            """
+            Args:
+                relevant_ambig_point_ids: The ids (e.g. "A", "B", etc.) of the ambiguity points that the question is asking about. If there is no match, set this to an empty list.
+            """
+            return relevant_ambig_point_ids
+
         result = await self.control_agent.run(  # type: ignore
             question_str,
-            output_type=[ToolOutput(identify, name="identify")],
+            output_type=[
+                ToolOutput(
+                    identify if not self.config.answer_with_multiple_ambig_points else identify_multiple,
+                    name="identify",
+                )
+            ],
             message_history=self._message_history if self.config.include_history else None,
         )
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         self._message_history += result.new_messages()
-        relevant_ambig_point_id = result.output
-        if relevant_ambig_point_id is None:
-            return None
-        return next((ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id), None)
+        if not result.output:
+            return []
+        relevant_ambig_point_ids = [result.output] if not isinstance(result.output, list) else result.output
+        ambig_points = {ap.id: ap for ap in self.config.ambig_points}
+        relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids if ap_id in ambig_points]
+        return relevant_ambig_points
 
     async def _run_async(self, question_str: str, output_type_or_func: Any) -> UserAnswer | None:
         async with self._lock:
-            relevant_ambig_point = await self._identify_relevant_ambig_point_id_async(question_str)
-            if relevant_ambig_point is None:
+            relevant_ambig_points = await self._get_relevant_ambig_points_async(question_str)
+            if not relevant_ambig_points:
                 return None
 
             answer_agent_system_prompt = jinja2.Template(ANSWER_AGENT_SYSTEM_PROMPT).render(
                 task=self.config.task,
-                ambig_points=[relevant_ambig_point.model_dump()],
+                ambig_points=[ap.model_dump() for ap in relevant_ambig_points],
             )
             answer_agent: Agent[None, UserAnswer | None] = Agent(
                 model=self.config.llm,
