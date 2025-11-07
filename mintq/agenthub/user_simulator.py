@@ -165,16 +165,20 @@ class UserSimulator:
         relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids if ap_id in ambig_points]
         return relevant_ambig_points
 
-    def _compute_user_effort(self, question_str: str, answer: BaseModel) -> int:
+    def _compute_user_effort(self, question_str: str, answer: BaseModel | None) -> int:
         input_effort = litellm.token_counter(text=question_str)
-        output_effort = sum([litellm.token_counter(text=str(v)) for v in answer.model_dump().values()])
-        print(input_effort, output_effort)
+        if answer is not None:
+            output_effort = sum([litellm.token_counter(text=str(v)) for v in answer.model_dump().values()])
+        else:
+            output_effort = 0
+
         return input_effort * 0.2 + output_effort
 
     async def _run_async(self, question_str: str, output_type_or_func: Any) -> UserAnswer | None:
         async with self._lock:
             relevant_ambig_points = await self._get_relevant_ambig_points_async(question_str)
             if not relevant_ambig_points:
+                self._user_effort += self._compute_user_effort(question_str, None)
                 return None
 
             answer_agent_system_prompt = jinja2.Template(ANSWER_AGENT_SYSTEM_PROMPT).render(
