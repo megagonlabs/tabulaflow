@@ -852,6 +852,7 @@ class NL2QRunResult(BaseModel):
     agent: str
     agent_config: dict[str, Any]
     total_usage: Usage | None = None
+    """Total usage of the agent, does not include user simulator usage"""
     total_user_simulator_usage: Usage | None = None
     aggregated_inference_metrics: dict[str, Any] = Field(default_factory=dict)
     aggregated_eval_metrics: dict[str, Any] = Field(default_factory=dict)

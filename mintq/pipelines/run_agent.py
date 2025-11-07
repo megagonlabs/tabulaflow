@@ -206,22 +206,25 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid in ["040-0", "001-0", "001-1", "001-2", "001-3", "001-4", "046-5"]
             ]
+            dataset.tasks = dataset.tasks[:1]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(
-        f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
+        f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
 
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
-    print(f"<config>{config.model_dump_json(indent=2)}</config>")
+    print(f"Running agent {agent_class.name} with config:")
+    print(config.model_dump_json(indent=2))
 
     t0 = time.time()
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
+    print()
     print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
-    print(f"Total usage: {result.total_usage.model_dump_json() if result.total_usage else None}")
+    print(f"Total cost USD (agent): {result.total_usage.api_cost_usd if result.total_usage else 0.0:.2f}")
     print(
-        f"Total user simulator usage: {result.total_user_simulator_usage.model_dump_json() if result.total_user_simulator_usage else None}"
+        f"Total cost USD (user simulator): {result.total_user_simulator_usage.api_cost_usd if result.total_user_simulator_usage else 0.0:.2f}"
     )
 
     result.to_directory(args.result_dir)
