@@ -1,5 +1,5 @@
 from contextlib import asynccontextmanager
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 from pydantic import BaseModel
 import pydantic_ai
 from pydantic_ai import Agent, ModelRetry, ToolOutput
@@ -23,12 +23,14 @@ Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you need to provide clarifications or reject the questions based on the rules below:
-- To answer the question, call the `answer` tool.
-- To reject the question, call the `reject` tool.
-- If the question is not covere by a matching ambiguity point provided above, reject the question.
+- To answer the question, call the `end_with_answer` tool.
+- To reject the question, call the `end_with_reject` tool.
+
+For all questions, first identify whether there is a relevant ambiguity point provided above for the question:
+- If there is no relevant ambiguity point, reject the question.
 - If the question is not related to ambiguity clarification, reject the question.
 
-For "free_text" questions, you need to identify the relevant ambiguity point:
+For "free_text" questions, you need to return the relevant ambiguity point id:
 - If multiple questions are asked, only identify the relevant ambiguity point for the first question and ignore the rest.
 
 For "multiple_choice" questions, you need to select from the given options:
@@ -68,9 +70,17 @@ class UserSimulatorConfig(BaseModel):
     include_history: bool = True
 
 
-def reject() -> None:
-    """Reject the question"""
-    return None
+def get_answer_tool(output_type_or_func: Any) -> ToolOutput:
+    return ToolOutput(output_type_or_func, name="end_with_answer", description="End the conversation with an answer")
+
+
+def get_reject_tool() -> ToolOutput:
+    def end_with_reject() -> None:
+        return None
+
+    return ToolOutput(
+        end_with_reject, name="end_with_reject", description="End the conversation by rejecting the question"
+    )
 
 
 class UserSimulator:
@@ -156,8 +166,8 @@ class UserSimulator:
             result0 = await self.user_agent.run(  # type: ignore
                 question.question,
                 output_type=[
-                    ToolOutput(answer, name="answer"),
-                    ToolOutput(reject, name="reject"),
+                    get_answer_tool(answer),
+                    get_reject_tool(),
                 ],
                 message_history=self._message_history if self.config.include_history else None,
             )
@@ -197,7 +207,7 @@ class UserSimulator:
         async with self._lock_message_history_async():
             result = await self.user_agent.run(  # type: ignore
                 question.question + "".join([f"\n[{i + 1}] {o}" for i, o in enumerate(question.options)]),
-                output_type=[ToolOutput(answer, name="answer"), ToolOutput(reject, name="reject")],
+                output_type=[get_answer_tool(answer), get_reject_tool()],
                 message_history=self._message_history if self.config.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -208,7 +218,7 @@ class UserSimulator:
         async with self._lock_message_history_async():
             result = await self.user_agent.run(  # type: ignore
                 question.model_dump_json(indent=2),
-                output_type=[ToolOutput(UserValueAnswer, name="answer"), ToolOutput(reject, name="reject")],
+                output_type=[get_answer_tool(UserValueAnswer), get_reject_tool()],
                 message_history=self._message_history if self.config.include_history else None,
             )
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
