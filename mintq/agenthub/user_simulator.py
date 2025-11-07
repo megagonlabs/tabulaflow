@@ -16,7 +16,7 @@ from mintq.agenthub.base import (
 )
 from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 
-STAGE_1_SYSTEM_PROMPT = """
+CONTROLL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
@@ -28,7 +28,7 @@ You will be asked a question regarding the possible ambiguities in the task, you
 """.strip()
 
 
-STAGE_2_SYSTEM_PROMPT = """
+ANSWER_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
@@ -69,20 +69,18 @@ class UserSimulator:
     def __init__(self, config: UserSimulatorConfig):
         self.config = config
 
-        stage_1_system_prompt = jinja2.Template(STAGE_1_SYSTEM_PROMPT).render(
+        control_agent_system_prompt = jinja2.Template(CONTROLL_AGENT_SYSTEM_PROMPT).render(
             task=self.config.task,
             ambig_points=[ap.model_dump() for ap in self.config.ambig_points],
         )
 
-        self.stage_1_agent = Agent(
+        self.control_agent = Agent(
             model=self.config.llm,
             tools=[],
-            instructions=stage_1_system_prompt,
+            instructions=control_agent_system_prompt,
             model_settings={"temperature": self.config.temperature},
         )
-        self._message_history: list[pydantic_ai.messages.ModelMessage] = [
-            pydantic_ai.messages.ModelRequest(parts=[], instructions=stage_1_system_prompt)
-        ]
+        self._message_history: list[pydantic_ai.messages.ModelMessage] = []
         self._usage = Usage.create(llm=self.config.llm)
         self._user_effort = 0
         self._lock = asyncio.Lock()
@@ -137,7 +135,7 @@ class UserSimulator:
             """
             return relevant_ambig_point_id
 
-        result = await self.stage_1_agent.run(  # type: ignore
+        result = await self.control_agent.run(  # type: ignore
             question_str,
             output_type=[ToolOutput(identify, name="identify")],
             message_history=self._message_history if self.config.include_history else None,
@@ -155,18 +153,18 @@ class UserSimulator:
             if relevant_ambig_point is None:
                 return None
 
-            stage_2_system_prompt = jinja2.Template(STAGE_2_SYSTEM_PROMPT).render(
+            answer_agent_system_prompt = jinja2.Template(ANSWER_AGENT_SYSTEM_PROMPT).render(
                 task=self.config.task,
                 ambig_points=[relevant_ambig_point.model_dump()],
             )
-            stage_2_agent: Agent[None, UserAnswer | None] = Agent(
+            answer_agent: Agent[None, UserAnswer | None] = Agent(
                 model=self.config.llm,
-                instructions=stage_2_system_prompt,
+                instructions=answer_agent_system_prompt,
                 output_type=ToolOutput(output_type_or_func, name="answer"),
                 model_settings={"temperature": self.config.temperature},
             )
 
-            result = await stage_2_agent.run(question_str)
+            result = await answer_agent.run(question_str)
             usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             self._usage += usage
             self._user_effort += usage.output_tokens
