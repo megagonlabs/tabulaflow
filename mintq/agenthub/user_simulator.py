@@ -1,5 +1,4 @@
-from contextlib import asynccontextmanager
-from typing import Any, AsyncGenerator, Literal
+from typing import Any, Literal
 from pydantic import BaseModel
 import pydantic_ai
 from pydantic_ai import Agent, ToolOutput
@@ -85,7 +84,7 @@ class UserSimulator:
             pydantic_ai.messages.ModelRequest(parts=[], instructions=stage_1_system_prompt)
         ]
         self._usage = Usage.create(llm=self.config.llm)
-        self._lock = asyncio.Lock() if self.config.include_history else None
+        self._lock = asyncio.Lock()
 
     def usage(self) -> Usage:
         return self._usage
@@ -126,17 +125,6 @@ class UserSimulator:
         )
         return cls(config)
 
-    @asynccontextmanager
-    async def _lock_message_history_async(self) -> AsyncGenerator[None, None]:
-        if self._lock:
-            await self._lock.acquire()
-            try:
-                yield
-            finally:
-                self._lock.release()
-        else:
-            yield
-
     async def _identify_relevant_ambig_point_id_async(self, question_str: str) -> NLAmbigPoint | None:
         def identify(relevant_ambig_point_id: str | None) -> str | None:
             """
@@ -158,7 +146,7 @@ class UserSimulator:
         return next((ap for ap in self.config.ambig_points if ap.id == relevant_ambig_point_id), None)
 
     async def _run_async(self, question_str: str, output_type_or_func: Any) -> UserAnswer | None:
-        async with self._lock_message_history_async():
+        async with self._lock:
             relevant_ambig_point = await self._identify_relevant_ambig_point_id_async(question_str)
             if relevant_ambig_point is None:
                 return None
