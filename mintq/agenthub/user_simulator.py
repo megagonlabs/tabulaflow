@@ -4,7 +4,7 @@ import pydantic_ai
 from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
-import litellm
+from litellm import token_counter  # type: ignore
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,
@@ -84,7 +84,7 @@ class UserSimulator:
         )
         self._message_history: list[pydantic_ai.messages.ModelMessage] = []
         self._usage = Usage.create(llm=self.config.llm)
-        self._user_effort = 0
+        self._user_effort = 0.0
         self._lock = asyncio.Lock()
 
     def usage(self) -> Usage:
@@ -93,7 +93,7 @@ class UserSimulator:
     def trajectory(self) -> Trajectory:
         return Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-USER-SIMULATOR")
 
-    def user_effort(self) -> int:
+    def user_effort(self) -> float:
         return self._user_effort
 
     @classmethod
@@ -165,10 +165,10 @@ class UserSimulator:
         relevant_ambig_points = [ambig_points[ap_id] for ap_id in relevant_ambig_point_ids if ap_id in ambig_points]
         return relevant_ambig_points
 
-    def _compute_user_effort(self, question_str: str, answer: BaseModel | None) -> int:
-        input_effort = litellm.token_counter(text=question_str)
+    def _compute_user_effort(self, question_str: str, answer: BaseModel | None) -> float:
+        input_effort = token_counter(text=question_str)
         if answer is not None:
-            output_effort = sum([litellm.token_counter(text=str(v)) for v in answer.model_dump().values()])
+            output_effort = sum([token_counter(text=str(v)) for v in answer.model_dump().values()])
         else:
             output_effort = 1  # output_effort = 1 when the question is rejected
 
@@ -200,8 +200,7 @@ class UserSimulator:
         return result.output
 
     async def ask_free_text_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None:
-        res = await self._run_async(question.question, UserFreeTextAnswer)  # type: ignore
-        return res
+        return await self._run_async(question.question, UserFreeTextAnswer)  # type: ignore
 
     async def ask_multiple_choice_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer | None:
         def answer(number: int | None) -> UserMultipleChoiceAnswer | None:
