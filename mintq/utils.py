@@ -64,7 +64,15 @@ def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:
 
 
 def int_to_letter(idx: int) -> str:
-    return "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx]
+    """Convert an integer index to a letter representation (A, B, ..., Z, AA, AB, ...)."""
+    result = ""
+    while True:
+        result = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"[idx % 26] + result
+        idx = idx // 26
+        if idx == 0:
+            break
+        idx -= 1  # Adjust for 0-indexing (A=0, Z=25, AA=26)
+    return result
 
 
 def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
