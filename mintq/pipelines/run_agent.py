@@ -206,7 +206,6 @@ async def main_async() -> None:
                 for task in dataset.tasks
                 if task.qid in ["040-0", "001-0", "001-1", "001-2", "001-3", "001-4", "046-5"]
             ]
-            dataset.tasks = dataset.tasks[:1]
         else:
             dataset.tasks = dataset.tasks[:5]
     print(

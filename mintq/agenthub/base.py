@@ -76,6 +76,8 @@ class BaseUserSimulator(Protocol):
 
     def trajectory(self) -> Trajectory: ...
 
+    def user_effort(self) -> int: ...
+
 
 class BaseAmbigSQLAgent(Protocol):
     name: ClassVar[str]

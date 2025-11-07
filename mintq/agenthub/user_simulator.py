@@ -84,6 +84,7 @@ class UserSimulator:
             pydantic_ai.messages.ModelRequest(parts=[], instructions=stage_1_system_prompt)
         ]
         self._usage = Usage.create(llm=self.config.llm)
+        self._user_effort = 0
         self._lock = asyncio.Lock()
 
     def usage(self) -> Usage:
@@ -91,6 +92,9 @@ class UserSimulator:
 
     def trajectory(self) -> Trajectory:
         return Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-USER-SIMULATOR")
+
+    def user_effort(self) -> int:
+        return self._user_effort
 
     @classmethod
     def from_ambig_nl2q_task(
@@ -163,7 +167,9 @@ class UserSimulator:
             )
 
             result = await stage_2_agent.run(question_str)
-            self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+            usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+            self._usage += usage
+            self._user_effort += usage.output_tokens
             self._message_history += result.new_messages()[1:]
         return result.output
 

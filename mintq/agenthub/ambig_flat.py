@@ -316,6 +316,7 @@ class AmbigFlatSQLAgent:
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
         metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in ctx.tools.items()}  # type: ignore
+        metrics["user_effort"] = user_simulator.user_effort()
 
         return FlatAmbigNL2QTaskOutput(
             **task.model_dump(),
