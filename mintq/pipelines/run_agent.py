@@ -222,10 +222,12 @@ async def main_async() -> None:
     result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
     print()
     print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
-    print(f"Total cost USD (agent): {result.total_usage.api_cost_usd if result.total_usage else 0.0:.2f}")
-    print(
-        f"Total cost USD (user simulator): {result.total_user_simulator_usage.api_cost_usd if result.total_user_simulator_usage else 0.0:.2f}"
+    agent_cost = "N/A" if result.total_usage is None else f"{result.total_usage.api_cost_usd:.2f}"
+    user_simulator_cost = (
+        "N/A" if result.total_user_simulator_usage is None else f"{result.total_user_simulator_usage.api_cost_usd:.2f}"
     )
+    print(f"Total cost USD (agent): {agent_cost}")
+    print(f"Total cost USD (user simulator): {user_simulator_cost}")
 
     result.to_directory(args.result_dir)
     print(f"Saved result to {args.result_dir}")
