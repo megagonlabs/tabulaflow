@@ -16,7 +16,7 @@ from mintq.agenthub.base import (
 )
 from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 
-CONTROLL_AGENT_SYSTEM_PROMPT = """
+CONTROL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
 Here,{% for ap in ambig_points %}
 - [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
@@ -69,7 +69,7 @@ class UserSimulator:
     def __init__(self, config: UserSimulatorConfig):
         self.config = config
 
-        control_agent_system_prompt = jinja2.Template(CONTROLL_AGENT_SYSTEM_PROMPT).render(
+        control_agent_system_prompt = jinja2.Template(CONTROL_AGENT_SYSTEM_PROMPT).render(
             task=self.config.task,
             ambig_points=[ap.model_dump() for ap in self.config.ambig_points],
         )
