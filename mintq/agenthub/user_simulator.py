@@ -170,7 +170,7 @@ class UserSimulator:
         if answer is not None:
             output_effort = sum([litellm.token_counter(text=str(v)) for v in answer.model_dump().values()])
         else:
-            output_effort = 0
+            output_effort = 1  # output_effort = 1 when the question is rejected
 
         return input_effort * 0.2 + output_effort
 
