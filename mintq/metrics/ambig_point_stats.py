@@ -337,7 +337,7 @@ class AmbigPointStats:
             assert len(pred_ap.interpretations) > 0
             assert len(gold_ap.interpretations) > 0
             p, r, f1 = self._p_r_f1(
-                self._clean_matches(result.output.matches),
+                len(self._clean_matches(result.output.matches)),
                 len(pred_ap.interpretations),
                 len(gold_ap.interpretations),
             )
