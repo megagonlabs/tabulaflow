@@ -428,6 +428,8 @@ Contact: yanlin@megagon.ai
 - [x] User simulator - allow refusal for out-of-scope questions
   - [x] Two-stage user simulator
 - [x] Dataset instructions
+- [x] User effort
+- [ ] Ambig point index out-of-range
 - [ ] Aggregated metrics registration
 - [ ] print_exps.py
 - [ ] Run Ambrosia
