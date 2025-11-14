@@ -47,7 +47,7 @@ class SQLDefaultSchemaFormatter:
         res = f"(SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)}"
         if table.name_description:
             res += f" /* {table.name_description} */"
-        res += f" ({table.num_rows} rows)\n"
+        res += f" ({table.num_rows} rows)"
         res = f"=== {res} ===\n"
 
         composite_fks = []
