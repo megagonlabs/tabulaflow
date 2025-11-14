@@ -429,12 +429,18 @@ Contact: yanlin@megagon.ai
   - [x] Two-stage user simulator
 - [x] Dataset instructions
 - [x] User effort
-- [ ] Ambig point index out-of-range
-- [ ] Aggregated metrics registration
-- [ ] print_exps.py
+- [x] Ambig point index out-of-range
 - [ ] Run Ambrosia
+- [ ] Aggregated metrics registration
 - [ ] Taxonomy-proof experiment
+- [ ] print_exps.py
 - [ ] Experiements for major claims
+  - [ ] Performance variance
+  - [ ] Performance scales w.r.t. reasoning effort
+  - [ ] Taxonomy-proof
+  - [ ] Performance scales w.r.t. user patience.
+  - [ ] Semantic vs. Syntactic
+  - [ ] ARCS vs. Ambrosia
 - [ ] Categorical values for table with a small number of rows
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
