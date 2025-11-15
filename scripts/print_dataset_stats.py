@@ -111,6 +111,8 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         "database": [],
         "tables": [],
         "tables_compressed": [],
+        "total_rows": [],
+        "max_rows_per_table": [],
         "columns": [],
         "columns_compressed": [],
         "ratio_columns_with_desc": [],
@@ -122,6 +124,8 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
         per_db_stats["tables_compressed"].append(len(compressed_schema.tables))
+        per_db_stats["total_rows"].append(sum(table.num_rows for table in schema.tables))
+        per_db_stats["max_rows_per_table"].append(max(table.num_rows for table in schema.tables))
         per_db_stats["columns"].append(sum(len(table.columns) for table in schema.tables))
         per_db_stats["columns_compressed"].append(sum(len(table.columns) for table in compressed_schema.tables))
         per_db_stats["ratio_columns_with_desc"].append(
@@ -145,6 +149,12 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         "max_tables_compressed_per_db": max(per_db_stats["tables_compressed"]),
         "avg_tables_compressed_per_db": sum(per_db_stats["tables_compressed"]) / len(dataset.db_connectors),
         "min_tables_compressed_per_db": min(per_db_stats["tables_compressed"]),
+        "max_rows_per_db": max(per_db_stats["total_rows"]),
+        "avg_rows_per_db": sum(per_db_stats["total_rows"]) / len(dataset.db_connectors),
+        "min_rows_per_db": min(per_db_stats["total_rows"]),
+        "max_max_rows_per_table": max(per_db_stats["max_rows_per_table"]),
+        "avg_max_rows_per_table": sum(per_db_stats["max_rows_per_table"]) / len(dataset.db_connectors),
+        "min_max_rows_per_table": min(per_db_stats["max_rows_per_table"]),
         "max_columns_per_db": max(per_db_stats["columns"]),
         "avg_columns_per_db": sum(per_db_stats["columns"]) / len(dataset.db_connectors),
         "min_columns_per_db": min(per_db_stats["columns"]),
