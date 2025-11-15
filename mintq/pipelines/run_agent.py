@@ -163,6 +163,7 @@ async def main_async() -> None:
     parser.add_argument("--dataset", default="arcs")
     parser.add_argument("--split", default="test")
     parser.add_argument("--databases", default=None, nargs="+")
+    parser.add_argument("--subsample_size", default=None, type=int)
 
     parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--result_dir", default="output/test/")
@@ -199,7 +200,7 @@ async def main_async() -> None:
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
-    dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
+    dataset = await dataset_loader.get_split_async(args.split, databases=args.databases, subsample_size=args.subsample_size)
     if args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
