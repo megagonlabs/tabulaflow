@@ -80,8 +80,7 @@ class SQLDefaultSchemaFormatter:
             column.dtype in ("TEXT", "VARCHAR", "ENUM")
             and column.num_unique
             and column.unique_ratio
-            and 0 < column.num_unique <= 20
-            and column.unique_ratio < 0.01
+            and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
         )
         if is_categorical:  # show all possible values
             valid_values = [self._quote(self._truncate(v)) for v in column.examples]
