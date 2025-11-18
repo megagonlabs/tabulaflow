@@ -200,7 +200,9 @@ async def main_async() -> None:
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
-    dataset = await dataset_loader.get_split_async(args.split, databases=args.databases, subsample_size=args.subsample_size)
+    dataset = await dataset_loader.get_split_async(
+        args.split, databases=args.databases, subsample_size=args.subsample_size
+    )
     if args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]

@@ -5,7 +5,6 @@ import json
 from tqdm import trange
 from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
-from mintq.utils import aggregate_metrics
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import SimpleAverageAggregator, ByDBAggregator, ByAmbigPointNumAggregator
 
