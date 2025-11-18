@@ -155,7 +155,7 @@ class AmbigFlatSQLAgent:
                 language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=LLMOutput,
-            tool_keys=["get_schema", "get_column_description", "search_keywords"],
+            tool_keys=["get_schema", "get_column_description"],
         )
         result = await disamb_interp_agent.run(f"List all interpretations: {ctx.task.question}")
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-INTERP"))
@@ -180,7 +180,7 @@ class AmbigFlatSQLAgent:
                 language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=LLMOutput,
-            tool_keys=["get_schema", "get_column_description", "search_keywords"],
+            tool_keys=["get_schema", "get_column_description"],
         )
         result = await disamb_param_agent.run(f"List all parameter ambiguity points: {ctx.task.question}")
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))

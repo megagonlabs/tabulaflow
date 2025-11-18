@@ -185,7 +185,7 @@ class AmbigStructuredSQLAgent:
                 language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=LLMOutput,
-            tool_keys=["get_schema", "get_column_description", "search_keywords"],
+            tool_keys=["get_schema", "get_column_description"],
         )
         prompt = f"List all ambiguity points: {ctx.task.question}"
 
