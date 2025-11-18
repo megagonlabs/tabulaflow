@@ -1,5 +1,5 @@
 from typing import Any, Literal
-from mintq.schema import AmbigNL2QTask, NL2QRunResult, ARCSAmbiguityType, NL2QTask
+from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from mintq.utils import aggregate_metrics
 
 
