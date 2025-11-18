@@ -29,6 +29,9 @@ def aggregate_metrics(
     ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
     decimals: int = 4,
 ) -> dict[str, Any]:
+    if not metrics:
+        return {}
+
     enforce_same_schema(metrics)
 
     op2func = {
