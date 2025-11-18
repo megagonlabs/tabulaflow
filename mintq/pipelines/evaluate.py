@@ -57,7 +57,7 @@ async def main_async() -> None:
             continue
         metrics.append(metric_cls())
 
-    metric_aggregators = [
+    metric_aggregators: list[BaseMetricAggregator] = [
         SimpleAverageAggregator(),
         ByDBAggregator(),
         ByAmbigPointNumAggregator(),

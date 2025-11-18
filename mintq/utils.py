@@ -36,10 +36,10 @@ def aggregate_metrics(
         return {op: None for op in ops}
 
     if isinstance(metrics[0], dict):
-        enforce_same_schema(metrics)
+        enforce_same_schema(metrics)  # type: ignore
         res = {}
         for k in metrics[0].keys():
-            res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)
+            res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)  # type: ignore
         return res
 
     op2func = {

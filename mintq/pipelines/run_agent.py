@@ -230,8 +230,9 @@ async def main_async() -> None:
     )
     print(f"Total cost USD (agent): {agent_cost}")
     print(f"Total cost USD (user simulator): {user_simulator_cost}")
-    user_effort = result.aggregated_inference_metrics["user_effort"]["avg"]
-    print(f"Avg user effort: {user_effort:.2f}")
+    if "user_effort" in result.aggregated_inference_metrics:
+        user_effort = result.aggregated_inference_metrics["user_effort"]["avg"]
+        print(f"Avg user effort: {user_effort:.2f}")
 
     result.to_directory(args.result_dir)
     print()
