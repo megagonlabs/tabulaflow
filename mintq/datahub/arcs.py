@@ -18,6 +18,93 @@ ARCS_DATASET_INSTRUCTIONS = """
 """.strip()
 
 
+ARCS_TAXONOMY = """
+- In this dataset, there are two dimensions of ambiguity:
+  I. Linguistic Dimension:
+    - Semantic Ambiguity / Vagueness
+      Definition: Words or phrases have multiple meanings or unclear thresholds.
+    - Syntactic Ambiguity
+      Definition: The question has multiple syntactic parses.
+  II. Database Dimension:
+    - Column Ambiguity
+      Definition: A term in the question can map to multiple possible columns in the schema.
+    - Table Ambiguity
+      Definition: A referenced entity can map to more than one table in the database.
+    - Value Ambiguity
+      Definition: Query terms can match multiple values in a column, or describe vague concepts without clear boundaries.
+    - Computation Ambiguity
+      Definition: Required operations or metrics can be computed in multiple legitimate ways, producing distinct results.
+
+- Therefore, the ambiguity point in the question is one of the following eight types:
+
+1. Semantic + Column Ambiguity
+   Example:
+     DB: Product(id, name, retail_price, manufacture_price, tax)
+     Question: “List the prices of all products”
+     Possible interpretations:
+       - Retail price
+       - Manufacture price
+       - Retail price after tax
+
+2. Semantic + Table Ambiguity
+   Example:
+     DB: Singer(name), Dancer(name), Venue(id, name), PerformAt(artist_name, venue_id)
+     Question: “Compute the number of performers who have performed at X venue”
+     Possible interpretations:
+       - Performers only from Singer table
+       - Performers only from Dancer table
+       - Both singers and dancers as performers
+
+3. Semantic + Value Ambiguity
+   Example:
+     DB: Employee(id, name, salary, rating, work_hour)
+     Question: “List all employees with high salary”
+     Possible interpretations:
+       - The threshold for high salary is unclear
+
+4. Semantic + Computation Ambiguity
+   Example:
+     DB: Employee(id, name, base_salary, stock, benefit)
+     Question: “Compute the income for each employee”
+     Possible interpretations:
+       - Total compensation (salary + stock + benefits)
+       - Base salary only
+       - Adjusted after-tax income
+
+5. Syntactic + Column Ambiguity
+   Example:
+     DB: Product(id, name, max_rating, max_price, price)
+     Question: “List the max rating and price among all products”
+     Possible interpretations:
+       - max_rating column + price column
+       - max_rating column + max_price column
+
+6. Syntactic + Table Ambiguity
+   Example:
+     DB: 2025_jan, 2024_jan, ...
+     Question: “List orders in January 2025 or 2024”
+     Possible interpretations:
+       - Only January tables for this and last year (2025_jan, 2024_jan)
+       - This January plus all tables from last year (2025_jan, 2024_dec … 2024_jan)
+
+7. Syntactic + Value Ambiguity
+   Example:
+     DB: Order(id, date, ...)
+     Question: “List orders in January this year or last year”
+     Possible interpretations:
+       - January of both years
+       - January this year or the entire last year
+
+8. Syntactic + Computation Ambiguity
+   Example:
+     DB: Employee(id, name, computer_type, os)
+     Question: “Show IT staff who have desktops or laptops with Linux”
+     Possible interpretations:
+       - Desktops (any OS) OR laptops with Linux
+       - Desktops with Linux OR laptops with Linux
+""".strip()
+
+
 @dataset_registry.register
 class ARCSDatasetLoader:
     name: ClassVar = "arcs"
@@ -28,10 +115,13 @@ class ARCSDatasetLoader:
         directory: str = "data/ARCS/",
         column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
         max_concurrency: int = 16,
+        include_taxonomy: bool = False,
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
         self.max_concurrency = max_concurrency
+        self.include_taxonomy = include_taxonomy
+
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
     def get_databases(self, split: str) -> list[str]:
@@ -68,10 +158,15 @@ class ARCSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
+        if self.include_taxonomy:
+            dataset_instructions = ARCS_DATASET_INSTRUCTIONS + "\n" + ARCS_TAXONOMY
+        else:
+            dataset_instructions = ARCS_DATASET_INSTRUCTIONS
+
         databases = databases or self.get_databases(split)
         with open(os.path.join(self.directory, "tasks", "tasks_unsampled.json"), "r") as f:
             tasks = [
-                AmbigNL2QTask.model_validate(dict(**dic, dataset_instructions=ARCS_DATASET_INSTRUCTIONS))
+                AmbigNL2QTask.model_validate(dict(**dic, dataset_instructions=dataset_instructions))
                 for dic in json.load(f)
             ]
         tasks = [task for task in tasks if task.db in databases]
