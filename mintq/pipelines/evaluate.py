@@ -1,11 +1,13 @@
 import argparse
 import asyncio
 import os
+import json
 from tqdm import trange
 from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
 from mintq.utils import aggregate_metrics
-from mintq.metrics import NL2QMetric
+from mintq.metrics import NL2QMetric, BaseMetricAggregator
+from mintq.metrics.aggregators import SimpleAverageAggregator, ByDBAggregator, ByAmbigPointNumAggregator
 
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
@@ -19,12 +21,14 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
     return task
 
 
-async def evaluate_async(result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int) -> NL2QRunResult:
+async def evaluate_async(
+    result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int, metric_aggregators: list[BaseMetricAggregator]
+) -> NL2QRunResult:
     for i in trange(0, len(result.tasks), batch_size):
         await asyncio.gather(*[compute_metrics_async(task, metrics) for task in result.tasks[i : i + batch_size]])
-    result.aggregated_eval_metrics = aggregate_metrics(
-        [task.eval_metrics for task in result.tasks], ops=["avg"], decimals=4
-    )
+    result.aggregated_eval_metrics = {}
+    for aggregator in metric_aggregators:
+        result.aggregated_eval_metrics.update(aggregator.aggregate(result))
     return result
 
 
@@ -52,16 +56,20 @@ async def main_async() -> None:
             )
             continue
         metrics.append(metric_cls())
-    result = await evaluate_async(result, metrics, args.batch_size)
+
+    metric_aggregators = [
+        SimpleAverageAggregator(),
+        ByDBAggregator(),
+        ByAmbigPointNumAggregator(),
+    ]
+    result = await evaluate_async(result, metrics, args.batch_size, metric_aggregators)
 
     result.to_directory(args.result_dir, eval_metrics_in_summary=metric_names)
     print(f"Saved evaluated result to {args.result_dir}")
 
     print()
     print("Aggregated metrics:")
-    for key in result.aggregated_eval_metrics:
-        value = result.aggregated_eval_metrics[key]["avg"]
-        print(f"- {key}: {'N/A' if value is None else f'{value:.4f}'}")
+    print(json.dumps(result.aggregated_eval_metrics, indent=2))
 
     if args.debug:
         print()

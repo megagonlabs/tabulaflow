@@ -2,7 +2,7 @@ import itertools
 import re
 import copy
 import statistics
-from typing import Literal, Any
+from typing import Literal, Any, Union, TypeAlias
 import numpy as np
 import pandas as pd
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
@@ -24,15 +24,23 @@ def enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
             enforce_same_schema([m[k] for m in metrics])
 
 
+NumericOrNull: TypeAlias = Union[float, int, None]
+
+
 def aggregate_metrics(
-    metrics: list[dict[str, Any]],
+    metrics: list[NumericOrNull] | list[dict[str, Any]],
     ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max", "min"],
     decimals: int = 4,
 ) -> dict[str, Any]:
     if not metrics:
-        return {}
+        return {op: None for op in ops}
 
-    enforce_same_schema(metrics)
+    if isinstance(metrics[0], dict):
+        enforce_same_schema(metrics)
+        res = {}
+        for k in metrics[0].keys():
+            res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)
+        return res
 
     op2func = {
         "avg": statistics.mean,
@@ -41,17 +49,11 @@ def aggregate_metrics(
         "min": min,
     }
 
-    res = {}
-    for k in metrics[0].keys():
-        if isinstance(metrics[0][k], dict):
-            res[k] = aggregate_metrics([m[k] for m in metrics], ops, decimals)
-        else:
-            values = [m[k] for m in metrics if m[k] is not None]
-            if values:
-                res[k] = {op: round(op2func[op](values), decimals) for op in ops}  # type: ignore
-            else:
-                res[k] = {op: None for op in ops}
-    return res
+    values = [m for m in metrics if m is not None]
+    if values:
+        return {op: round(op2func[op](values), decimals) for op in ops}  # type: ignore
+    else:
+        return {op: None for op in ops}
 
 
 def sort_gold_queries(task: AmbigNL2QTask) -> AmbigNL2QTask:

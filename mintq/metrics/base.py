@@ -1,5 +1,6 @@
-from typing import Protocol, ClassVar, TypeAlias, Union
+from typing import Protocol, ClassVar, TypeAlias, Union, Any
 from mintq.schema import (
+    NL2QRunResult,
     SimpleNL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
@@ -34,6 +35,10 @@ class BaseStructuredAmbigNL2QMetric(Protocol):
     compatible_output_types: ClassVar[list[str]]
 
     async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> float | None | dict[str, float | None]: ...
+
+
+class BaseMetricAggregator(Protocol):
+    def aggregate(self, result: NL2QRunResult) -> dict[str, Any]: ...
 
 
 NL2QMetric: TypeAlias = Union[
