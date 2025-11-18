@@ -1,5 +1,5 @@
 from typing import Any, Literal
-from mintq.schema import AmbigNL2QTask, NL2QRunResult
+from mintq.schema import AmbigNL2QTask, NL2QRunResult, ARCSAmbiguityType, NL2QTask
 from mintq.utils import aggregate_metrics
 
 
@@ -65,4 +65,33 @@ class ByAmbigPointNumAggregator:
                 decimals=4,
             )
             res[f"{metric_key}_by_ambig_point_num"] = metrics
+        return res
+
+
+class ByAmbrosiaTaxonomyTypeAggregator:
+    def __init__(
+        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["simple_ex"]
+    ):
+        self.ops = ops
+        self.metric_keys = metric_keys
+
+    def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
+        if result.dataset != "ambrosia_s":
+            return {}
+
+        all_types = ["scope", "attachment", "vague"]
+        res = {}
+        for metric_key in self.metric_keys:
+            metrics = {}
+            for t in all_types:
+                metrics[t] = aggregate_metrics(
+                    [
+                        task.eval_metrics[metric_key]
+                        for task in result.tasks
+                        if task.extra_info["ambrosia"]["ambig_type"] == t
+                    ],
+                    ops=self.ops,
+                    decimals=4,
+                )
+            res[f"{metric_key}_by_taxonomy_type"] = metrics
         return res

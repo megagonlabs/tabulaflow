@@ -6,7 +6,12 @@ from tqdm import trange
 from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
-from mintq.metrics.aggregators import SimpleAverageAggregator, ByDBAggregator, ByAmbigPointNumAggregator
+from mintq.metrics.aggregators import (
+    ByAmbrosiaTaxonomyTypeAggregator,
+    SimpleAverageAggregator,
+    ByDBAggregator,
+    ByAmbigPointNumAggregator,
+)
 
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
@@ -60,6 +65,7 @@ async def main_async() -> None:
         SimpleAverageAggregator(),
         ByDBAggregator(),
         ByAmbigPointNumAggregator(),
+        ByAmbrosiaTaxonomyTypeAggregator(),
     ]
     result = await evaluate_async(result, metrics, args.batch_size, metric_aggregators)
 
