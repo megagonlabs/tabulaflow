@@ -431,8 +431,9 @@ Contact: yanlin@megagon.ai
 - [x] User effort
 - [x] Ambig point index out-of-range
 - [x] Disambiguation tools - get_schema
-- [ ] Run Ambrosia
-- [ ] Aggregated metrics registration
+- [x] Categorical values for table with a small number of rows
+- [x] Aggregated metrics registration
+- [ ] Tune on Ambrosia
 - [ ] Taxonomy-proof experiment
 - [ ] print_exps.py
 - [ ] Experiements for major claims
@@ -442,11 +443,10 @@ Contact: yanlin@megagon.ai
   - [ ] Performance scales w.r.t. user patience.
   - [ ] Semantic vs. Syntactic
   - [ ] ARCS vs. Ambrosia
-- [ ] Categorical values for table with a small number of rows
+
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 - [ ] Raise ModelRetry on too many interpretation combinations
-- [ ] Global instructions
 
 ## Misc
 
