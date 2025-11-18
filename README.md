@@ -430,6 +430,7 @@ Contact: yanlin@megagon.ai
 - [x] Dataset instructions
 - [x] User effort
 - [x] Ambig point index out-of-range
+- [x] Disambiguation tools - get_schema
 - [ ] Run Ambrosia
 - [ ] Aggregated metrics registration
 - [ ] Taxonomy-proof experiment
