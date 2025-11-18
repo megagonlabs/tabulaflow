@@ -11,6 +11,35 @@ from mintq.db_connector import SQLConnector
 from mintq.datahub.base import dataset_registry
 
 
+AMBROSIA_TAXONOMY = """
+- Each question has exactly one ambiguity point with two to three interpretations.
+- There are no parameter ambiguity points.
+- The ambiguity point in the question is one of the following three types:
+
+1. Scope Ambiguity
+   Definition: Uncertainty about how widely a quantifier, such as "each", "every", or "all", applies.
+   Example:
+     Question: “What activities does each gym offer?”
+     Interpretation 1: Show only classes common to all gyms.
+     Interpretation 2: For each gym, show the classes offered at that specific gym.
+
+2. Attachment Ambiguity
+   Definition: Uncertainty about which entity a modifier or phrase attaches to, also known as PP attachment ambiguity.
+   Example:
+     Question: “Show the writers and editors on a work-for-hire.”
+     Interpretation 1: Work-for-hire writers and work-for-hire editors.
+     Interpretation 2: All writers, and work-for-hire editors.
+
+3. Vagueness
+   Definition: The question is underspecified, leading to multiple reasonable query targets in the schema.
+   Example:
+     Question: “Who issued CD Special?”
+     Interpretation 1: Which bank issued CD Special?
+     Interpretation 2: Which branch issued CD Special?
+     Interpretation 3: Find the bank and branch that issued CD Special.
+""".strip()
+
+
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
     name: ClassVar = "ambrosia_s"
@@ -20,9 +49,12 @@ class AmbrosiaSDatasetLoader:
         self,
         directory: str = "data/ambrosia_s/",
         max_concurrency: int = 16,
+        include_taxonomy: bool = False,
     ):
         self.directory = directory
         self.max_concurrency = max_concurrency
+        self.include_taxonomy = include_taxonomy
+
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
         # Actual DB (.sqlite) location: data/ambrosia_s/ambrosia/<db_name>.sqlite
@@ -79,6 +111,8 @@ class AmbrosiaSDatasetLoader:
                             "latency_seconds": None,
                         }
 
+                if self.include_taxonomy:
+                    task["dataset_instructions"] = AMBROSIA_TAXONOMY
                 data.append(task)
 
             tasks = [AmbigNL2QTask.model_validate(dic) for dic in data]

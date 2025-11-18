@@ -164,6 +164,7 @@ async def main_async() -> None:
     parser.add_argument("--split", default="test")
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--subsample_size", default=None, type=int)
+    parser.add_argument("--include_taxonomy", action="store_true")
 
     parser.add_argument("--batch_size", default=8, type=int)
     parser.add_argument("--result_dir", default="output/test/")
@@ -199,7 +200,10 @@ async def main_async() -> None:
         print(f"Warning: API cost for {args.llm} is 0.0. API cost calculation might not be supported for {args.llm}.")
 
     t0 = time.time()
-    dataset_loader = dataset_registry.get_class(args.dataset)()
+    dataset_kwargs = {}
+    if args.include_taxonomy:
+        dataset_kwargs["include_taxonomy"] = True
+    dataset_loader = dataset_registry.get_class(args.dataset)(**dataset_kwargs)
     dataset = await dataset_loader.get_split_async(
         args.split, databases=args.databases, subsample_size=args.subsample_size
     )

@@ -61,6 +61,12 @@ test-ambrosia-structured:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-ambrosia-structured-with-taxonomy
+test-ambrosia-structured-with-taxonomy:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset ambrosia_s --split test --debug --include_taxonomy
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-simple
 test-arcs-simple:
 	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug
