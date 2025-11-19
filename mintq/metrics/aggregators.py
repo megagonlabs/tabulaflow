@@ -13,14 +13,22 @@ class SimpleAverageAggregator:
 
 class ByDBAggregator:
     def __init__(
-        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["simple_ex"]
+        self,
+        ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"],
+        metric_keys: list[str] = ["simple_ex"],
+        max_dbs: int = 200,
     ):
         self.ops = ops
         self.metric_keys = metric_keys
+        self.max_dbs = max_dbs
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
-        res = {}
         databases = result.databases or list(dict.fromkeys([task.db for task in result.tasks]))
+
+        if len(databases) > self.max_dbs:
+            return {}
+
+        res = {}
         for metric_key in self.metric_keys:
             metrics = {}
             for db in databases:
