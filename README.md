@@ -434,8 +434,11 @@ Contact: yanlin@megagon.ai
 - [x] Categorical values for table with a small number of rows
 - [x] Aggregated metrics registration
 - [x] Support taxonomy
+- [x] Fix user simulator - include all interpretations
 - [ ] Tune on Ambrosia
+- [ ] Ambrosia - dataset instructions
 - [ ] print_exps.py
+- [ ] Debug ambrosia cost - simple vs. structured
 - [ ] Experiements for major claims
   - [ ] Performance variance
   - [ ] Performance scales w.r.t. reasoning effort
