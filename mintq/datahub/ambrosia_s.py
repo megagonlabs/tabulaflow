@@ -12,8 +12,7 @@ from mintq.datahub.base import dataset_registry
 
 
 AMBROSIA_TAXONOMY = """
-- There are no parameter ambiguity points.
-- The ambiguity point in the question is one of the following three types:
+- In this dataset, the ambiguity point in the question is one of the following three types:
 
 1. Scope Ambiguity
    Definition: Uncertainty about how widely a quantifier, such as "each", "every", or "all", applies.
@@ -43,6 +42,8 @@ AMBROSIA_TAXONOMY = """
 
 AMBROSIA_DATASET_INSTRUCTIONS = """
 - Do not concatenate columns in the results unless explicitly requested.
+- Each question has exactly one ambiguity point with two to three interpretations.
+- There are no parameter ambiguity points.
 """.strip()
 
 @dataset_registry.register
