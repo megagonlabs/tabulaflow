@@ -31,7 +31,7 @@ AMBROSIA_TAXONOMY = """
        - All writers, and work-for-hire editors.
 
 3. Vagueness
-   Definition: The question is underspecified, leading to multiple reasonable query targets in the schema.
+   Definition: The question can map to multiple reasonable query targets in the schema. The interpretations may include individual targets or combinations of them.
    Example:
      Question: “Who issued CD Special?”
      Possible interpretations:
@@ -42,7 +42,7 @@ AMBROSIA_TAXONOMY = """
 
 AMBROSIA_DATASET_INSTRUCTIONS = """
 - Do not concatenate columns in the results unless explicitly requested.
-- Each question has exactly one ambiguity point with two to three interpretations.
+- Each question has exactly one ambiguity point.
 - There are no parameter ambiguity points.
 """.strip()
 
