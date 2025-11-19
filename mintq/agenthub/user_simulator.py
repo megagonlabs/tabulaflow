@@ -134,7 +134,7 @@ class UserSimulator:
                 id=ap.id,
                 phrase=ap.phrase,
                 all_interpretations=ap.interpretations if ap.type == "finite" else None,
-                intended_interpretation=ap.interpretations[ap.intended_interpretation_idx]
+                intended_interpretation=ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
                 if ap.type == "finite"
                 else f"{ap.intended_parameter_operator} {ap.intended_parameter_value} ({ap.parameter_name})",
             )

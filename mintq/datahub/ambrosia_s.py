@@ -46,6 +46,7 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 - There are no parameter ambiguity points.
 """.strip()
 
+
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
     name: ClassVar = "ambrosia_s"
