@@ -20,23 +20,26 @@ AMBROSIA_TAXONOMY = """
    Definition: Uncertainty about how widely a quantifier, such as "each", "every", or "all", applies.
    Example:
      Question: “What activities does each gym offer?”
-     Interpretation 1: Show only classes common to all gyms.
-     Interpretation 2: For each gym, show the classes offered at that specific gym.
+     Possible interpretations:
+       - Show only classes common to all gyms.
+       - For each gym, show the classes offered at that specific gym.
 
 2. Attachment Ambiguity
    Definition: Uncertainty about which entity a modifier or phrase attaches to, also known as PP attachment ambiguity.
    Example:
      Question: “Show the writers and editors on a work-for-hire.”
-     Interpretation 1: Work-for-hire writers and work-for-hire editors.
-     Interpretation 2: All writers, and work-for-hire editors.
+     Possible interpretations:
+       - Work-for-hire writers and work-for-hire editors.
+       - All writers, and work-for-hire editors.
 
 3. Vagueness
    Definition: The question is underspecified, leading to multiple reasonable query targets in the schema.
    Example:
      Question: “Who issued CD Special?”
-     Interpretation 1: Which bank issued CD Special?
-     Interpretation 2: Which branch issued CD Special?
-     Interpretation 3: Find the bank and branch that issued CD Special.
+     Possible interpretations:
+       - Which bank issued CD Special?
+       - Which branch issued CD Special?
+       - Find the bank and branch that issued CD Special.
 """.strip()
 
 
