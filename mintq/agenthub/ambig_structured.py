@@ -107,6 +107,7 @@ Assistant:
 TEXT2SQL_PROMPT = """
 You are a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
+- Do not attempt to resolve additional ambiguities with the user. Proceed with the provided information.
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions.
 - Adhere strictly to the given database schema when constructing queries.
