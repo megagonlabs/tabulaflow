@@ -60,6 +60,11 @@ async def run_agent_async(
 
         batch_kwargs = []
         for task in batch:
+            if task.task_type != agent_cls.task_type:
+                raise ValueError(
+                    f"Task type {task.task_type} does not match agent requiredtask type {agent_cls.task_type}"
+                )
+
             if task.task_type == "ambig":
                 user_simulator = UserSimulator.from_ambig_nl2q_task(
                     task,
