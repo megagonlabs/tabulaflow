@@ -42,7 +42,6 @@ AMBROSIA_TAXONOMY = """
 
 AMBROSIA_DATASET_INSTRUCTIONS = """
 - Do not concatenate columns in the results unless explicitly requested.
-- Each question has exactly one ambiguity point.
 - There are no parameter ambiguity points.
 """.strip()
 
