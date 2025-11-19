@@ -121,6 +121,12 @@ test-arcs-structured:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-arcs-structured-with-taxonomy
+test-arcs-structured-with-taxonomy:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --include_taxonomy
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-structured-gpt-5-low
 test-arcs-structured-gpt-5-low:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low --openai_reasoning_summary detailed
