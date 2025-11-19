@@ -31,7 +31,7 @@ AMBROSIA_TAXONOMY = """
        - All writers, and work-for-hire editors.
 
 3. Vagueness
-   Definition: The question can map to multiple reasonable query targets in the schema. The interpretations may include individual targets or combinations of them.
+   Definition: The question can plausibly refer to multiple query targets in the schema, where the intended meaning could be either of them individually or both of them together.
    Example:
      Question: “Who issued CD Special?”
      Possible interpretations:
