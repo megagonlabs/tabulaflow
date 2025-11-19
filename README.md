@@ -435,17 +435,17 @@ Contact: yanlin@megagon.ai
 - [x] Aggregated metrics registration
 - [x] Support taxonomy
 - [x] Fix user simulator - include all interpretations
-- [ ] Tune on Ambrosia
-- [ ] Ambrosia - dataset instructions
+- [x] Tune on Ambrosia
+- [x] Ambrosia - dataset instructions
+- [x] Debug ambrosia cost - simple vs. structured
 - [ ] print_exps.py
-- [ ] Debug ambrosia cost - simple vs. structured
 - [ ] Experiements for major claims
-  - [ ] Performance variance
-  - [ ] Performance scales w.r.t. reasoning effort
-  - [ ] Taxonomy-proof
+  - [x] Performance variance
+  - [x] Performance scales w.r.t. reasoning effort
+  - [x] Taxonomy-proof
   - [ ] Performance scales w.r.t. user patience.
   - [ ] Semantic vs. Syntactic
-  - [ ] ARCS vs. Ambrosia
+  - [x] ARCS vs. Ambrosia
 
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
