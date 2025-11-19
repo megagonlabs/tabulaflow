@@ -1,7 +1,6 @@
 import argparse
 import asyncio
 import os
-import json
 from tqdm import trange
 from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
