@@ -12,7 +12,7 @@ ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:
   - If the question asks for a list of objects, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
   - You may include additional relevant columns that are mentioned in the question, even if they are not explicitly requested in the output.
-  - Don't concatenate first and last names unless explicitly requested.
+  - Do not concatenate columns in the results unless explicitly requested.
   - For percentage values, don't multiply by 100.
   - Rounding is not needed for numerical values.
   - If the question asks for the object that achieves the maximum/minimum value, if there is a tie, return all tied objects.

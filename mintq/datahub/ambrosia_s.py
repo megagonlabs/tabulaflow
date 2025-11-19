@@ -12,7 +12,6 @@ from mintq.datahub.base import dataset_registry
 
 
 AMBROSIA_TAXONOMY = """
-- Each question has exactly one ambiguity point with two to three interpretations.
 - There are no parameter ambiguity points.
 - The ambiguity point in the question is one of the following three types:
 
@@ -42,6 +41,9 @@ AMBROSIA_TAXONOMY = """
        - Find the bank and branch that issued CD Special.
 """.strip()
 
+AMBROSIA_DATASET_INSTRUCTIONS = """
+- Do not concatenate columns in the results unless explicitly requested.
+""".strip()
 
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
@@ -85,6 +87,10 @@ class AmbrosiaSDatasetLoader:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
+        dataset_instructions = AMBROSIA_DATASET_INSTRUCTIONS
+        if self.include_taxonomy:
+            dataset_instructions += "\n" + AMBROSIA_TAXONOMY
+
         databases = databases or self.get_databases(split)
         with open(os.path.join(self.directory, f"ambrosia_{split}_processed.json"), "r") as f:
             data = []
@@ -115,7 +121,7 @@ class AmbrosiaSDatasetLoader:
                         }
 
                 if self.include_taxonomy:
-                    task["dataset_instructions"] = AMBROSIA_TAXONOMY
+                    task["dataset_instructions"] = dataset_instructions
                 data.append(task)
 
             tasks = [AmbigNL2QTask.model_validate(dic) for dic in data]
