@@ -10,7 +10,7 @@ import litellm
 import traceback
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
-from mintq.utils import aggregate_metrics
+from mintq.utils import aggregate_metrics, pprint_dict
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import (
@@ -243,6 +243,10 @@ async def main_async() -> None:
     result.to_directory(args.result_dir)
     print()
     print(f"Saved result to {args.result_dir}")
+
+    print()
+    print("Aggregated inference metrics:")
+    print(pprint_dict(result.aggregated_inference_metrics))
 
 
 if __name__ == "__main__":

@@ -12,6 +12,7 @@ from mintq.metrics.aggregators import (
     ByDBAggregator,
     ByAmbigPointNumAggregator,
 )
+from mintq.utils import pprint_dict
 
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
@@ -74,7 +75,7 @@ async def main_async() -> None:
 
     print()
     print("Aggregated metrics:")
-    print(json.dumps(result.aggregated_eval_metrics, indent=2))
+    print(pprint_dict(result.aggregated_eval_metrics))
 
     if args.debug:
         print()

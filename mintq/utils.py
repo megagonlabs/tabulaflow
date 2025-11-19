@@ -162,3 +162,39 @@ def dict_to_df(
     if total_column_only and add_total_column:
         df = df.loc[:, ["Total"]]
     return df
+
+
+def flatten_dict(d: dict[str, Any], sep: str = ".") -> dict[str, Any]:
+    """
+    Example:
+      Input: {"a": {"b": 1, "c": 2}, "d": {"e": 3, "f": 4}}
+      Output: {"a.b": 1, "a.c": 2, "d.e": 3, "d.f": 4}
+    """
+    result = {}
+    for key, value in d.items():
+        if isinstance(value, dict):
+            nested = flatten_dict(value, sep)
+            for nested_key, nested_value in nested.items():
+                result[f"{key}{sep}{nested_key}"] = nested_value
+        else:
+            result[key] = value
+    return result
+
+
+def pprint_dict(d: dict[str, Any]) -> str:
+    """
+    Example:
+      Input: {"a": {"b": 0.1234, "c": 0.0345}, "d": {"e": 3.1234, "f": 4.0000}}
+      Output:
+      ```
+      - a.b: 0.1234
+      - a.c: 0.0345
+      - d.e: 3.1234
+      - d.f: 4.0000
+      ```
+    """
+    flattened = flatten_dict(d)
+    res = []
+    for key, value in flattened.items():
+        res.append(f"- {key}: {'N/A' if value is None else f'{value:.4f}'}")
+    return "\n".join(res)
