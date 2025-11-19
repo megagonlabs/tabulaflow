@@ -53,7 +53,6 @@ The question has one or multiple ambiguity points and you will need to output th
   - parameter_sample_values is a list of sample values ordered from least strict to most strict
 
 {% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
-Do not consider these as ambiguities:
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ==={% endif %}
 

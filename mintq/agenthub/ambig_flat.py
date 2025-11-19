@@ -44,7 +44,6 @@ Given an ambiguous question, you need to output the list of ALL possible interpr
 - Do not add number index prefixes to the interpretations.
 
 {% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
-Do not consider these as ambiguities:
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ==={% endif %}
 
@@ -84,7 +83,6 @@ Each threshold-like ambiguity will become a parameter in the final query and you
 The question might or might not contain threshold-like ambiguities. Output an empty list if there are no threshold-like ambiguities.
 
 {% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
-Do not consider these as ambiguities:
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ==={% endif %}
 """.strip()
