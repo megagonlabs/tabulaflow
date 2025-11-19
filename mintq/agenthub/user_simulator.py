@@ -19,8 +19,17 @@ from mintq.schema import AmbigNL2QTask, Usage, Trajectory
 
 CONTROL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
-Here,{% for ap in ambig_points %}
-- [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
+The task has the following ambiguity points:
+{% for ap in ambig_points %}
+[{{ap.id}}] "{{ap.phrase}}"
+  {% if ap.all_interpretations -%}
+  Possible interpretations:
+  {% for interpretation in ap.all_interpretations -%}
+  - {{interpretation}}
+  {% endfor -%}
+  {% endif -%}
+  The intended interpretation is: "{{ap.intended_interpretation}}".
+{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, you need to identify the relevant ambiguity point id:
 - If there is no matching ambiguity point, return null (or an empty list, depending on the output specification).
@@ -31,8 +40,17 @@ You will be asked a question regarding the possible ambiguities in the task, you
 
 ANSWER_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
-Here,{% for ap in ambig_points %}
-- [{{ap.id}}] "{{ap.phrase}}" should be interpreted as "{{ap.interpretation}}".{% endfor %}
+The task has the following ambiguity points:
+{% for ap in ambig_points %}
+[{{ap.id}}] "{{ap.phrase}}"
+  {% if ap.all_interpretations -%}
+  Possible interpretations:
+  {% for interpretation in ap.all_interpretations -%}
+  - {{interpretation}}
+  {% endfor -%}
+  {% endif -%}
+  The intended interpretation is: "{{ap.intended_interpretation}}".
+{% endfor %}
 
 You will be asked a question regarding the possible ambiguities in the task, and you are responsible for providing clarifications using the above information.
 
@@ -55,7 +73,8 @@ For "value" questions, you need to select a value as well as an operator from th
 class NLAmbigPoint(BaseModel):
     id: str
     phrase: str
-    interpretation: str
+    intended_interpretation: str
+    all_interpretations: list[str] | None  # None for infinite ambiguity points
 
 
 class UserSimulatorConfig(BaseModel):
@@ -114,7 +133,8 @@ class UserSimulator:
             NLAmbigPoint(
                 id=ap.id,
                 phrase=ap.phrase,
-                interpretation=ap.interpretations[ap.intended_interpretation_idx]  # type: ignore
+                all_interpretations=ap.interpretations if ap.type == "finite" else None,
+                intended_interpretation=ap.interpretations[ap.intended_interpretation_idx]
                 if ap.type == "finite"
                 else f"{ap.intended_parameter_operator} {ap.intended_parameter_value} ({ap.parameter_name})",
             )
