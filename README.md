@@ -433,8 +433,8 @@ Contact: yanlin@megagon.ai
 - [x] Disambiguation tools - get_schema
 - [x] Categorical values for table with a small number of rows
 - [x] Aggregated metrics registration
+- [x] Support taxonomy
 - [ ] Tune on Ambrosia
-- [ ] Taxonomy-proof experiment
 - [ ] print_exps.py
 - [ ] Experiements for major claims
   - [ ] Performance variance
