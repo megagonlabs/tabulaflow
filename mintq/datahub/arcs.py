@@ -91,10 +91,10 @@ ARCS_TAXONOMY = """
 7. Syntactic + Value Ambiguity
    Example:
      DB: Order(id, date, ...)
-     Question: “List orders in January this year or last year”
+     Question: “List orders in January 2025 or 2024”
      Possible interpretations:
-       - January of both years
-       - January this year or the entire last year
+       - January 2025 or January 2024
+       - January 2025 or the entire 2024
 
 8. Syntactic + Computation Ambiguity
    Example:
