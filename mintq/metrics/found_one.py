@@ -1,6 +1,4 @@
-import math
-import pandas as pd
-from typing import Any, ClassVar
+from typing import ClassVar
 from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
@@ -8,7 +6,7 @@ from mintq.schema import (
     NumericOrNull,
 )
 from mintq.metrics.base import metric_registry
-from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
+from mintq.metrics.utils import get_final_pred_query
 from mintq.metrics.simple_ex import SimpleEx
 
 
