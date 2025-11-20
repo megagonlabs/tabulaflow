@@ -3,7 +3,12 @@ from typing import ClassVar, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
-from mintq.schema import ARCSAmbiguityType, SimpleAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput
+from mintq.schema import (
+    ARCSAmbiguityType,
+    FlatAmbigNL2QTaskOutput,
+    SimpleAmbigNL2QTaskOutput,
+    StructuredAmbigNL2QTaskOutput,
+)
 from mintq.metrics.base import metric_registry
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
 from mintq.utils import int_to_letter
@@ -148,7 +153,7 @@ class LLMOutput(BaseModel):
 @metric_registry.register
 class AmbigPointStats:
     name: ClassVar[str] = "ambig_point_stats"
-    compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-structured"]
+    compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-flat", "ambig-structured"]
 
     def __init__(self, llm: str = "openai:gpt-4.1-2025-04-14"):
         self.llm = llm
@@ -272,6 +277,12 @@ class AmbigPointStats:
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
         return res
 
+    async def _compute_ambig_flat_async(self, task: FlatAmbigNL2QTaskOutput) -> dict[str, float | None]:
+        return {
+            "gold_num_ambig_points": len(task.gold_ambiguity_points),
+            "gold_num_interpretation_comb": task.gold_num_interpretation_comb,
+        }
+
     async def _compute_ambig_structured_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float | None]:
         res: dict[str, float | None] = {}
 
@@ -371,10 +382,12 @@ class AmbigPointStats:
         return res
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
     ) -> dict[str, float | None]:
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
+        elif task.output_type == "ambig-flat":
+            return await self._compute_ambig_flat_async(task)
         elif task.output_type == "ambig-structured":
             return await self._compute_ambig_structured_async(task)
         else:
