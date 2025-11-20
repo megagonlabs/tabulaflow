@@ -17,13 +17,14 @@ def main():
     with open(os.path.join(args.result_dir_b, "result.json"), "r") as f:
         result_b = NL2QRunResult.model_validate_json(f.read())
 
-
     a_better = []
     b_better = []
 
     for task_a, task_b in zip(result_a.tasks, result_b.tasks):
         if task_a.qid != task_b.qid:
-            raise ValueError(f"Only results with the same set of task qids can be compared: {task_a.qid} != {task_b.qid}")
+            raise ValueError(
+                f"Only results with the same set of task qids can be compared: {task_a.qid} != {task_b.qid}"
+            )
         metric_a = task_a.eval_metrics[args.metric]
         metric_b = task_b.eval_metrics[args.metric]
         if metric_a > metric_b:
@@ -38,6 +39,7 @@ def main():
     print(f"B is better than A ({len(b_better)} tasks):")
     for task in b_better:
         print(f"  - {task.qid}")
+
 
 if __name__ == "__main__":
     main()
