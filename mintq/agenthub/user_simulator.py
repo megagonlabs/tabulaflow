@@ -192,7 +192,7 @@ class UserSimulator:
         else:
             output_effort = 1  # output_effort = 1 when the question is rejected
 
-        return input_effort * 0.2 + output_effort
+        return input_effort * 0.1 + output_effort
 
     async def _run_async(self, question_str: str, output_type_or_func: Any) -> UserAnswer | None:
         async with self._lock:
