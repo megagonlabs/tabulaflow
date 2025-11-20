@@ -6,6 +6,7 @@ import jinja2
 from mintq.schema import (
     ARCSAmbiguityType,
     FlatAmbigNL2QTaskOutput,
+    NumericOrNull,
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
@@ -376,7 +377,7 @@ class AmbigPointStats:
 
     async def compute_async(
         self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
-    ) -> dict[str, float | None]:
+    ) -> dict[str, NumericOrNull]:
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
         elif task.output_type == "ambig-flat":

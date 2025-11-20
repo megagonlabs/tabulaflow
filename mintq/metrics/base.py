@@ -5,6 +5,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    NumericOrNull,
 )
 from mintq.registry import Registry
 
@@ -13,28 +14,28 @@ class BaseSimpleNL2QMetric(Protocol):
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput) -> float | None | dict[str, float | None]: ...
+    async def compute_async(self, task: SimpleNL2QTaskOutput) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
 class BaseSimpleAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
-    async def compute_async(self, task: SimpleAmbigNL2QTaskOutput) -> float | None | dict[str, float | None]: ...
+    async def compute_async(self, task: SimpleAmbigNL2QTaskOutput) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
 class BaseFlatAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
-    async def compute_async(self, task: FlatAmbigNL2QTaskOutput) -> float | None | dict[str, float | None]: ...
+    async def compute_async(self, task: FlatAmbigNL2QTaskOutput) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
 class BaseStructuredAmbigNL2QMetric(Protocol):
     name: ClassVar[str]
     compatible_output_types: ClassVar[list[str]]
 
-    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> float | None | dict[str, float | None]: ...
+    async def compute_async(self, task: StructuredAmbigNL2QTaskOutput) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
 class BaseMetricAggregator(Protocol):

@@ -17,6 +17,8 @@ from mintq.config import config
 
 logger = logging.getLogger(__name__)
 
+NumericOrNull: TypeAlias = Union[float, int, None]
+
 
 class SystemMessage(BaseModel):
     role: Literal["system"] = "system"

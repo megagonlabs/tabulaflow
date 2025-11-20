@@ -5,7 +5,7 @@ import statistics
 from typing import Literal, Any, Union, TypeAlias
 import numpy as np
 import pandas as pd
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
 
 
 def extract_code(response: str) -> str:
@@ -22,9 +22,6 @@ def enforce_same_schema(metrics: list[dict[str, Any]]) -> None:
     for k in metrics[0].keys():
         if isinstance(metrics[0][k], dict):
             enforce_same_schema([m[k] for m in metrics])
-
-
-NumericOrNull: TypeAlias = Union[float, int, None]
 
 
 def aggregate_metrics(
