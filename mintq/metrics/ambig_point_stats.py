@@ -261,7 +261,14 @@ class AmbigPointStats:
             matches = self._clean_matches(result.output.matches)
 
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
-        res: dict[str, float | None] = {"ambig_point_p": p, "ambig_point_r": r, "ambig_point_f1": f1}
+        res: dict[str, float | None] = {
+            "pred_num_ambig_points": len(pred_aps),
+            "gold_num_ambig_points": len(gold_aps),
+            "gold_num_interpretation_comb": task.gold_num_interpretation_comb,
+            "ambig_point_p": p,
+            "ambig_point_r": r,
+            "ambig_point_f1": f1,
+        }
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
         return res
 
