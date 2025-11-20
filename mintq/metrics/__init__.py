@@ -7,7 +7,12 @@ from mintq.metrics.base import (
     metric_registry,
     BaseMetricAggregator,
 )
-from mintq.metrics.aggregators import SimpleAverageAggregator, ByDBAggregator, ByAmbigPointNumAggregator
+from mintq.metrics.aggregators import (
+    SimpleAverageAggregator,
+    ByDBAggregator,
+    ByAmbigPointNumAggregator,
+    SimpleInferenceMetricsAggregator,
+)
 from mintq.metrics.simple_ex import SimpleEx
 from mintq.metrics.spider2_ex import Spider2Ex
 from mintq.metrics.bird_sql_ex import BirdSQLEx
@@ -27,6 +32,7 @@ __all__ = [
     "NL2QMetric",
     "BaseMetricAggregator",
     "SimpleAverageAggregator",
+    "SimpleInferenceMetricsAggregator",
     "ByDBAggregator",
     "ByAmbigPointNumAggregator",
     "BirdSQLEx",

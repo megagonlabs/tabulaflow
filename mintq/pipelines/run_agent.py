@@ -10,7 +10,8 @@ import litellm
 import traceback
 from tqdm import trange
 from mintq import agent_registry, dataset_registry
-from mintq.utils import aggregate_metrics, pprint_dict
+from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
+from mintq.utils import pprint_dict
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import (
@@ -50,6 +51,7 @@ async def run_agent_async(
     agent_config: BaseAgentConfig,
     dataset: NL2QDataset,
     batch_size: int,
+    metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
     verbose: bool = False,
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
@@ -106,7 +108,7 @@ async def run_agent_async(
         t.user_simulator_usage for t in task_outputs if t.task_type == "ambig" and t.user_simulator_usage
     ]
 
-    return NL2QRunResult(
+    res = NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
         dataset=dataset.name,
@@ -117,13 +119,12 @@ async def run_agent_async(
         agent_config=agent_config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
         total_user_simulator_usage=reduce(lambda x, y: x + y, user_simulator_usages) if user_simulator_usages else None,
-        aggregated_inference_metrics=aggregate_metrics(
-            [task.inference_metrics for task in task_outputs if task.inference_metrics],
-            ops=["avg", "sum", "max"],
-            decimals=4,
-        ),
+        aggregated_inference_metrics={},
         tasks=task_outputs,
     )
+    for aggregator in metric_aggregators:
+        res.aggregated_inference_metrics.update(aggregator.aggregate(res))
+    return res
 
 
 def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:

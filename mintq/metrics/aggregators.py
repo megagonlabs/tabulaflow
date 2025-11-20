@@ -3,6 +3,14 @@ from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from mintq.utils import aggregate_metrics
 
 
+class SimpleInferenceMetricsAggregator:
+    def __init__(self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max"]):
+        self.ops = ops
+
+    def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
+        return aggregate_metrics([task.inference_metrics for task in result.tasks], ops=self.ops, decimals=4)
+
+
 class SimpleAverageAggregator:
     def __init__(self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"]):
         self.ops = ops
