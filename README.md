@@ -443,7 +443,8 @@ Contact: yanlin@megagon.ai
   - [x] Performance scales w.r.t. reasoning effort
   - [x] Taxonomy-proof
   - [x] ARCS vs. Ambrosia
-- [ ] Error analysis metrics
+- [x] Error analysis metrics
+  - [x] found_one
 - [ ] print_exps.py
 
 - [ ] Fix Spider table and column names casing
