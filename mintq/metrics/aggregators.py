@@ -8,7 +8,9 @@ class SimpleInferenceMetricsAggregator:
         self.ops = ops
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
-        return aggregate_metrics([task.inference_metrics for task in result.tasks], ops=self.ops, decimals=4)
+        return aggregate_metrics(
+            [task.inference_metrics for task in result.tasks if task.inference_metrics], ops=self.ops, decimals=4
+        )
 
 
 class SimpleAverageAggregator:
