@@ -52,7 +52,7 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
             # Already inside a span, do not start a new span
             return await predict_async_fn(self, task, *args, **kwargs)
 
-        span_name = f"qid={task.qid} | agent={self.name}".strip()
+        span_name = f"qid={task.qid}".strip()
         if config.instrument_prefix:
             span_name = f"{config.instrument_prefix} | {span_name}"
         with tracer.start_as_current_span(span_name):
