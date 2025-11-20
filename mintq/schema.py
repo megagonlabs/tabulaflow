@@ -518,6 +518,10 @@ class AmbigNL2QTask(BaseModel):
     def gold_infinite_ambiguity_points(self) -> list[GoldAmbiguityPointInfinite]:
         return [ap for ap in self.gold_ambiguity_points if ap.type == "infinite"]
 
+    @property
+    def gold_num_interpretation_comb(self) -> int:
+        return math.prod(len(ap.interpretations) for ap in self.gold_finite_ambiguity_points)
+
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
 
@@ -701,6 +705,10 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     @property
     def pred_infinite_ambiguity_points(self) -> list[PredAmbiguityPointInfinite]:
         return [ap for ap in self.pred_ambiguity_points if ap.type == "infinite"]
+
+    @property
+    def pred_num_interpretation_comb(self) -> int:
+        return math.prod(len(ap.interpretations) for ap in self.pred_finite_ambiguity_points)
 
     @model_validator(mode="after")
     def validate_pred_queries(self) -> "StructuredAmbigNL2QTaskOutput":
