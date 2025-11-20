@@ -272,12 +272,7 @@ class AmbigPointStats:
         res.update(self._get_ambig_type_metrics(task.gold_ambiguity_points, matches))
         return res
 
-    async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
-    ) -> dict[str, float | None]:
-        if task.output_type == "ambig-simple":
-            return await self._compute_ambig_simple_async(task)
-
+    async def _compute_ambig_structured_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float | None]:
         res: dict[str, float | None] = {}
 
         res["pred_num_ambig_points"] = len(task.pred_ambiguity_points)
@@ -374,3 +369,13 @@ class AmbigPointStats:
         res["perfect_disambiguation_r"] = float(ambig_point_r == 1.0 and interpretation_r == 1.0)
         res["perfect_disambiguation_f1"] = float(ambig_point_f1 == 1.0 and interpretation_f1 == 1.0)
         return res
+
+    async def compute_async(
+        self, task: SimpleAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+    ) -> dict[str, float | None]:
+        if task.output_type == "ambig-simple":
+            return await self._compute_ambig_simple_async(task)
+        elif task.output_type == "ambig-structured":
+            return await self._compute_ambig_structured_async(task)
+        else:
+            raise ValueError(f"Unsupported output type: {task.output_type}")
