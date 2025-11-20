@@ -438,14 +438,13 @@ Contact: yanlin@megagon.ai
 - [x] Tune on Ambrosia
 - [x] Ambrosia - dataset instructions
 - [x] Debug ambrosia cost - simple vs. structured
-- [ ] print_exps.py
-- [ ] Experiements for major claims
+- [x] Experiements for major claims
   - [x] Performance variance
   - [x] Performance scales w.r.t. reasoning effort
   - [x] Taxonomy-proof
-  - [ ] Performance scales w.r.t. user patience.
-  - [ ] Semantic vs. Syntactic
   - [x] ARCS vs. Ambrosia
+- [ ] Error analysis metrics
+- [ ] print_exps.py
 
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
