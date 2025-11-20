@@ -268,8 +268,6 @@ class AmbigPointStats:
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
         res: dict[str, float | None] = {
             "pred_num_ambig_points": len(pred_aps),
-            "gold_num_ambig_points": len(gold_aps),
-            "gold_num_interpretation_comb": task.gold_num_interpretation_comb,
             "ambig_point_p": p,
             "ambig_point_r": r,
             "ambig_point_f1": f1,
@@ -278,18 +276,13 @@ class AmbigPointStats:
         return res
 
     async def _compute_ambig_flat_async(self, task: FlatAmbigNL2QTaskOutput) -> dict[str, float | None]:
-        return {
-            "gold_num_ambig_points": len(task.gold_ambiguity_points),
-            "gold_num_interpretation_comb": task.gold_num_interpretation_comb,
-        }
+        return {}
 
     async def _compute_ambig_structured_async(self, task: StructuredAmbigNL2QTaskOutput) -> dict[str, float | None]:
         res: dict[str, float | None] = {}
 
         res["pred_num_ambig_points"] = len(task.pred_ambiguity_points)
         res["pred_num_interpretation_comb"] = task.pred_num_interpretation_comb
-        res["gold_num_ambig_points"] = len(task.gold_ambiguity_points)
-        res["gold_num_interpretation_comb"] = task.gold_num_interpretation_comb
 
         matches = await self._match_ambig_points_async(task)
         ambig_point_p, ambig_point_r, ambig_point_f1 = self._p_r_f1(

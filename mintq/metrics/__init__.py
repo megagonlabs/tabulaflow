@@ -22,7 +22,7 @@ from mintq.metrics.gold_executable import GoldExecutable
 from mintq.metrics.gold_result_not_empty import GoldResultNotEmpty
 from mintq.metrics.pred_success import PredSuccess
 from mintq.metrics.ambig_point_stats import AmbigPointStats
-
+from mintq.metrics.gold_ambig_point_stats import GoldAmbigPointStats
 
 __all__ = [
     "BaseSimpleNL2QMetric",
@@ -43,6 +43,7 @@ __all__ = [
     "Spider2Ex",
     "PredSuccess",
     "AmbigPointStats",
+    "GoldAmbigPointStats",
     "SimpleEx",
     "metric_registry",
 ]
