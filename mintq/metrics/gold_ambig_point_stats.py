@@ -1,5 +1,10 @@
 from typing import ClassVar
-from mintq.schema import SimpleAmbigNL2QTaskOutput, FlatAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput, NumericOrNull
+from mintq.schema import (
+    SimpleAmbigNL2QTaskOutput,
+    FlatAmbigNL2QTaskOutput,
+    StructuredAmbigNL2QTaskOutput,
+    NumericOrNull,
+)
 from mintq.metrics.base import metric_registry
 
 

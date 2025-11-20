@@ -2,7 +2,7 @@ import itertools
 import re
 import copy
 import statistics
-from typing import Literal, Any, Union, TypeAlias
+from typing import Literal, Any
 import numpy as np
 import pandas as pd
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
