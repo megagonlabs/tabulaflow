@@ -52,11 +52,15 @@ async def run_agent_async(
     dataset: NL2QDataset,
     batch_size: int,
     metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
+    sleep_between_batches: float = 0.0,
     verbose: bool = False,
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
     for i in trange(0, len(dataset.tasks), batch_size):
+        if sleep_between_batches > 0:
+            time.sleep(sleep_between_batches)
+
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
 
@@ -173,6 +177,7 @@ async def main_async() -> None:
     parser.add_argument("--include_taxonomy", action="store_true")
 
     parser.add_argument("--batch_size", default=8, type=int)
+    parser.add_argument("--sleep_between_batches", default=0.0, type=float)
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
