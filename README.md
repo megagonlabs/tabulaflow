@@ -445,7 +445,7 @@ Contact: yanlin@megagon.ai
   - [x] ARCS vs. Ambrosia
 - [x] Error analysis metrics
   - [x] found_one
-- [ ] print_exps.py
+- [x] print_exps.py
 
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
