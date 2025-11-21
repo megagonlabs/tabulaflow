@@ -117,17 +117,9 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
     rows = []
     for exp_name in exp_names:
         result = EXP_RESULTS[exp_name]
-        row = [method]
+        row = [exp_name]
         for ambiguity_type in ambiguity_types:
-            row.append(
-                calc_average(
-                    [
-                        task.eval_metrics["simple_ex"]
-                        for task in result.tasks
-                        if any(ap.ambiguity_type == ambiguity_type for ap in task.gold_ambiguity_points)
-                    ]
-                )
-            )
+            row.append(result.aggregated_eval_metrics[f"{ambiguity_type}_ambig_point_r"]["avg"])
         rows.append(row)
     print_table("Result by Ambiguity Type", headers, rows)
 
@@ -139,14 +131,10 @@ def main():
             "o4-mini-medium_structured",
         ]
     )
-    print_main_table_finite_ap(
-        [
-            "o4-mini-medium_simple",
-            "o4-mini-medium_structured",
-        ]
-    )
-    # print_user_effort_table(all_exps)
-    # print_result_by_ambiguity_type(exp_results)
+    print_result_by_ambiguity_type([
+        "o4-mini-medium_simple",
+        "o4-mini-medium_structured",
+    ])
 
 
 if __name__ == "__main__":
