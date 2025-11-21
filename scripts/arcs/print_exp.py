@@ -87,6 +87,29 @@ def print_main_table_finite_ap(exp_names: list[str]):
     print_table("Main Table", headers, rows)
 
 
+def print_fine_grained_table(exp_names: list[str]):
+    headers = ["Method", "EX", "Perfect", "Cost", "Latency", "AP_P", "AP_R", "AP_F1", "Intp_P", "Intp_R", "Intp_F1"]
+    rows = []
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
+        rows.append(
+            [
+                exp_name,
+                result.aggregated_eval_metrics["simple_ex"]["avg"],
+                result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
+                result.total_usage.api_cost_usd / len(result.tasks),
+                result.aggregated_inference_metrics["latency_seconds"]["avg"],
+                result.aggregated_eval_metrics["ambig_point_p"]["avg"],
+                result.aggregated_eval_metrics["ambig_point_r"]["avg"],
+                result.aggregated_eval_metrics["ambig_point_f1"]["avg"],
+                result.aggregated_eval_metrics["interpretation_p"]["avg"],
+                result.aggregated_eval_metrics["interpretation_r"]["avg"],
+                result.aggregated_eval_metrics["interpretation_f1"]["avg"],
+            ]
+        )
+    print_table("Fine-grained Table", headers, rows)
+
+
 def print_user_effort_table(exp_names: list[str]):
     headers = ["Method", "Num Requests", "User Input Tokens", "User Output Tokens", "User Cost"]
     rows = []
@@ -162,6 +185,11 @@ def main():
     print_main_table(
         [
             "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
+    print_fine_grained_table(
+        [
             "o4-mini-medium_structured",
         ]
     )
