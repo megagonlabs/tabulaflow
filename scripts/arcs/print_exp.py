@@ -124,6 +124,40 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
     print_table("Result by Ambiguity Type", headers, rows)
 
 
+def print_error_distribution(exp_names: list[str]):
+    headers = ["Method", "Invalid Output", "Not Executable", "Executable but Match None", "Match One", "Correct"]
+    rows = []
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
+        invalid_output = 0
+        not_executable = 0
+        executable_but_match_none = 0
+        match_one = 0
+        correct = 0
+        for task in result.tasks:
+            if task.eval_metrics["pred_success"] == 0.0:
+                invalid_output += 1
+            elif task.eval_metrics["executable"] == 0.0:
+                not_executable += 1
+            elif task.eval_metrics["found_one"] == 0.0:
+                executable_but_match_none += 1
+            elif task.eval_metrics["simple_ex"] == 0.0:
+                match_one += 1
+            else:
+                correct += 1
+        rows.append(
+            [
+                exp_name,
+                invalid_output / len(result.tasks),
+                not_executable / len(result.tasks),
+                executable_but_match_none / len(result.tasks),
+                match_one / len(result.tasks),
+                correct / len(result.tasks),
+            ]
+        )
+    print_table("Error Distribution", headers, rows)
+
+
 def main():
     print_main_table(
         [
@@ -131,10 +165,18 @@ def main():
             "o4-mini-medium_structured",
         ]
     )
-    print_result_by_ambiguity_type([
-        "o4-mini-medium_simple",
-        "o4-mini-medium_structured",
-    ])
+    print_result_by_ambiguity_type(
+        [
+            "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
+    print_error_distribution(
+        [
+            "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
 
 
 if __name__ == "__main__":
