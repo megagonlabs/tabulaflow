@@ -219,7 +219,14 @@ class AmbigPointStats:
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
         result = await agent.run(prompt)
-        return self._clean_matches(result.output.matches)
+        matches = self._clean_matches(result.output.matches)
+        res = []
+        for gold_ap_id, pred_ap_id in matches:
+            gold_ap = next(ap for ap in task.gold_ambiguity_points if ap.id == gold_ap_id)
+            pred_ap = next(ap for ap in task.pred_ambiguity_points if ap.id == pred_ap_id)
+            if gold_ap.type == pred_ap.type:
+                res.append((gold_ap_id, pred_ap_id))
+        return res
 
     def _get_ambig_type_metrics(
         self, gold_aps: list[GoldAmbiguityPoint], matches: list[tuple[str, str]]
