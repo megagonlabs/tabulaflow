@@ -114,6 +114,7 @@ You are a helpful AI database expert that can translate natural language questio
 - If you use any of the provided parameters,
   - write a parameterized query with placeholders in the format of `<expr> <operator> :<param_name>`
   - pass in the parameters in the `parameters` field when using the `run_query` tool
+- If you think the last executed query is correct, call the `finish` tool with no arguments. Do not output text.
 
 {% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
