@@ -177,6 +177,12 @@ def main():
             "o4-mini-medium_structured",
         ]
     )
+    print_user_effort_table(
+        [
+            "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
 
 
 if __name__ == "__main__":
