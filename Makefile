@@ -19,6 +19,10 @@ lint:
 test:
 	uv run pytest -s tests/
 
+.PHONY: exp
+exp:
+	uv run scripts/arcs/print_exp.py
+
 .PHONY: test-simple
 test-simple:
 	set -e; \
