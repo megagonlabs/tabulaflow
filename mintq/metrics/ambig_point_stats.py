@@ -332,34 +332,37 @@ class AmbigPointStats:
             if not (pred_ap.type == "finite" and gold_ap.type == "finite"):
                 continue
 
-            gold_interpretations = [
-                {"id": f"GOLD-{i}", "interpretation": interpretation}
-                for i, interpretation in enumerate(gold_ap.interpretations)
-            ]
-            pred_interpretations = [
-                {"id": f"PRED-{i}", "interpretation": interpretation}
-                for i, interpretation in enumerate(pred_ap.interpretations)
-            ]
+            if sorted(pred_ap.interpretations) == sorted(gold_ap.interpretations):
+                p, r, f1 = 1.0, 1.0, 1.0
+            else:
+                gold_interpretations = [
+                    {"id": f"GOLD-{i}", "interpretation": interpretation}
+                    for i, interpretation in enumerate(gold_ap.interpretations)
+                ]
+                pred_interpretations = [
+                    {"id": f"PRED-{i}", "interpretation": interpretation}
+                    for i, interpretation in enumerate(pred_ap.interpretations)
+                ]
 
-            agent = Agent[None, LLMOutput](
-                model=self.llm,
-                output_type=LLMOutput,
-                instructions=INTERPRETATION_MATCHING_SYSTEM_PROMPT,
-            )
-            prompt = jinja2.Template(INTERPRETATION_MATCHING_USER_PROMPT).render(
-                question=task.question,
-                phrase=gold_ap.phrase,
-                gold_interpretations=json.dumps(gold_interpretations, indent=2),
-                pred_interpretations=json.dumps(pred_interpretations, indent=2),
-            )
-            result = await agent.run(prompt)
-            assert len(pred_ap.interpretations) > 0
-            assert len(gold_ap.interpretations) > 0
-            p, r, f1 = self._p_r_f1(
-                len(self._clean_matches(result.output.matches)),
-                len(pred_ap.interpretations),
-                len(gold_ap.interpretations),
-            )
+                agent = Agent[None, LLMOutput](
+                    model=self.llm,
+                    output_type=LLMOutput,
+                    instructions=INTERPRETATION_MATCHING_SYSTEM_PROMPT,
+                )
+                prompt = jinja2.Template(INTERPRETATION_MATCHING_USER_PROMPT).render(
+                    question=task.question,
+                    phrase=gold_ap.phrase,
+                    gold_interpretations=json.dumps(gold_interpretations, indent=2),
+                    pred_interpretations=json.dumps(pred_interpretations, indent=2),
+                )
+                result = await agent.run(prompt)
+                assert len(pred_ap.interpretations) > 0
+                assert len(gold_ap.interpretations) > 0
+                p, r, f1 = self._p_r_f1(
+                    len(self._clean_matches(result.output.matches)),
+                    len(pred_ap.interpretations),
+                    len(gold_ap.interpretations),
+                )
             p_list.append(p)
             r_list.append(r)
             f1_list.append(f1)
@@ -377,9 +380,10 @@ class AmbigPointStats:
         res["interpretation_r"] = interpretation_r
         res["interpretation_f1"] = interpretation_f1
 
-        res["perfect_disambiguation_p"] = float(ambig_point_p == 1.0 and interpretation_p == 1.0)
-        res["perfect_disambiguation_r"] = float(ambig_point_r == 1.0 and interpretation_r == 1.0)
-        res["perfect_disambiguation_f1"] = float(ambig_point_f1 == 1.0 and interpretation_f1 == 1.0)
+        has_finite_ap = len(task.gold_finite_ambiguity_points) > 0
+        res["perfect_disambiguation_p"] = float(ambig_point_p == 1.0 and (not has_finite_ap or interpretation_p == 1.0))
+        res["perfect_disambiguation_r"] = float(ambig_point_r == 1.0 and (not has_finite_ap or interpretation_r == 1.0))
+        res["perfect_disambiguation_f1"] = float(ambig_point_f1 == 1.0 and (not has_finite_ap or interpretation_f1 == 1.0))
         return res
 
     async def compute_async(
