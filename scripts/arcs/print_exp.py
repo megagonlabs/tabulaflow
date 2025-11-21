@@ -20,7 +20,9 @@ t0 = time.time()
 for method, exp_dir in EXP_DIRS.items():
     with open(os.path.join(exp_dir, "result.json"), "r") as f:
         EXP_RESULTS[method] = NL2QRunResult.model_validate_json(f.read())
+print()
 print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
+print()
 
 
 def calc_average(values: list[float]) -> float:
@@ -43,11 +45,7 @@ def num_aps(task: AmbigNL2QTask, finite_only: bool = False) -> int:
     return len([ap for ap in task.gold_ambiguity_points if not finite_only or ap.type == "finite"])
 
 
-def print_main_table():
-    exp_names = [
-        "o4-mini-medium_simple",
-        "o4-mini-medium_structured",
-    ]
+def print_main_table(exp_names: list[str]):
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
     for exp_name in exp_names:
@@ -135,8 +133,18 @@ def print_result_by_ambiguity_type(exp_names: list[str]):
 
 
 def main():
-    print_main_table()
-    # print_main_table_finite_ap(all_exps)
+    print_main_table(
+        [
+            "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
+    print_main_table_finite_ap(
+        [
+            "o4-mini-medium_simple",
+            "o4-mini-medium_structured",
+        ]
+    )
     # print_user_effort_table(all_exps)
     # print_result_by_ambiguity_type(exp_results)
 
