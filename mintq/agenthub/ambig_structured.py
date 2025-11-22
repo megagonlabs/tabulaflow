@@ -342,7 +342,10 @@ class AmbigStructuredSQLAgent:
             pred_queries = await asyncio.gather(
                 *[self._generate_sql_async(ctx, finite_aps, indexes, infinite_aps) for indexes in all_indexes]
             )
-
+        
+        # Currently this has no effect
+        # When _resolve_async is run before _generate_sql_async, the agent already uses the intended operator and value to generate the query
+        # However, _fix_pred_queries is required if _generate_sql_async is run before _resolve_async, so we keep it here
         self._fix_pred_queries(pred_queries, finite_aps + infinite_aps)
 
         metrics = {}

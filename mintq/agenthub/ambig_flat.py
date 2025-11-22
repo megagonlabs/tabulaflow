@@ -264,6 +264,8 @@ class AmbigFlatSQLAgent:
     def _fix_pred_queries(self, pred_queries: list[PredQuery], params: list[PredAmbiguityPointInfinite]) -> None:
         """Replace with the intended parameter operator and value in the pred_queries"""
         for ap in params:
+            assert ap.intended_parameter_operator is not None
+            assert ap.intended_parameter_value is not None
             for pred_query in pred_queries:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
@@ -311,6 +313,9 @@ class AmbigFlatSQLAgent:
                 ]
             )
 
+        # Currently this has no effect
+        # When _resolve_async is run before _generate_sql_async, the agent already uses the intended operator and value to generate the query
+        # However, _fix_pred_queries is required if _generate_sql_async is run before _resolve_async, so we keep it here
         self._fix_pred_queries(pred_queries, parameters_resolved)
 
         metrics = {}
