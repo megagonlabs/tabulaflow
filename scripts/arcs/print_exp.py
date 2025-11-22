@@ -75,7 +75,7 @@ def print_agent_architecture_table(exp_names: list[str]):
                 result.total_usage.api_cost_usd / len(result.tasks),
             ]
         )
-    print_table("Main Table", headers, rows)
+    print_table("Agent Architecture Table", headers, rows)
 
 
 def print_agent_architecture_table_finite_ap(exp_names: list[str]):
@@ -97,7 +97,7 @@ def print_agent_architecture_table_finite_ap(exp_names: list[str]):
         latency = result.aggregated_inference_metrics["latency_seconds"]["avg"]
         cost = result.total_usage.api_cost_usd / len(result.tasks)
         rows.append([exp_name, ex, ex_1ap, ex_2ap, ex_3plusap, user_effort, latency, cost])
-    print_table("Main Table", headers, rows)
+    print_table("Agent Architecture Table (Finite AP)", headers, rows)
 
 
 def print_fine_grained_table(exp_names: list[str]):
@@ -202,19 +202,19 @@ def print_error_distribution(exp_names: list[str]):
         rows.append(
             [
                 exp_name,
-                invalid_output / len(result.tasks),
-                not_executable / len(result.tasks),
-                executable_but_match_none / len(result.tasks),
-                match_one / len(result.tasks),
-                correct / len(result.tasks),
+                round(invalid_output / len(result.tasks), 4),
+                round(not_executable / len(result.tasks), 4),
+                round(executable_but_match_none / len(result.tasks), 4),
+                round(match_one / len(result.tasks), 4),
+                round(correct / len(result.tasks), 4),
             ]
         )
     print_table("Error Distribution", headers, rows)
 
 
 def main():
-    print_agent_architecture_table(list(EXP_RESULTS.keys()))
     print_fine_grained_table([exp for exp in EXP_RESULTS.keys() if exp.endswith("_structured")])
+    print_agent_architecture_table(list(EXP_RESULTS.keys()))
     print_result_by_ambiguity_type([exp for exp in EXP_RESULTS.keys() if not exp.endswith("_flat")])
     print_error_distribution(list(EXP_RESULTS.keys()))
 
