@@ -208,7 +208,7 @@ class AmbigFlatSQLAgent:
         params_str = json.dumps(
             [
                 {
-                    "param_operator": ap.intended_paramter_operator or ap.parameter_sample_operators[0],
+                    "param_operator": ap.intended_parameter_operator or ap.parameter_sample_operators[0],
                     "param_name": ap.parameter_name,
                     "param_value": ap.intended_parameter_value or ap.parameter_sample_values[0],
                 }
@@ -250,7 +250,7 @@ class AmbigFlatSQLAgent:
             if response is None:
                 ap.rejected_by_user = True
             else:
-                ap.intended_paramter_operator = response.operator
+                ap.intended_parameter_operator = response.operator
                 ap.intended_parameter_value = response.value
 
         user_response = await user_simulator.ask_async(
@@ -268,7 +268,7 @@ class AmbigFlatSQLAgent:
                 if ap.parameter_name in pred_query.parameter_names:
                     original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
                     pred_query.query = pred_query.query.replace(
-                        original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
+                        original_expr, f"{ap.intended_parameter_operator} :{ap.parameter_name}"
                     )
                     pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 

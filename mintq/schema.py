@@ -627,7 +627,7 @@ class PredAmbiguityPointInfinite(BaseModel):
     parameter_description: str | None = None
     parameter_sample_operators: list[Literal["<", ">", "<=", ">=", "=", "<>"]]
     parameter_sample_values: list[Any] | list[list[Any]]
-    intended_paramter_operator: Literal["<", ">", "<=", ">=", "=", "<>"] | None = None
+    intended_parameter_operator: Literal["<", ">", "<=", ">=", "=", "<>"] | None = None
     intended_parameter_value: Any | None = None
     rejected_by_user: bool = False
 

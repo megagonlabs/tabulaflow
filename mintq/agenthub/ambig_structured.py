@@ -236,7 +236,7 @@ class AmbigStructuredSQLAgent:
         if infinite_aps:
             params = [
                 {
-                    "param_operator": ap.intended_paramter_operator or ap.parameter_sample_operators[0],
+                    "param_operator": ap.intended_parameter_operator or ap.parameter_sample_operators[0],
                     "param_name": ap.parameter_name,
                     "param_value": ap.intended_parameter_value or ap.parameter_sample_values[0],
                 }
@@ -257,13 +257,13 @@ class AmbigStructuredSQLAgent:
         """Replace with the intended parameter operator and value in the pred_queries"""
         for ap in ambiguity_points:
             if ap.type == "infinite":
-                assert ap.intended_paramter_operator is not None
+                assert ap.intended_parameter_operator is not None
                 assert ap.intended_parameter_value is not None
                 for pred_query in pred_queries:
                     if ap.parameter_name in pred_query.parameter_names:
                         original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
                         pred_query.query = pred_query.query.replace(
-                            original_expr, f"{ap.intended_paramter_operator} :{ap.parameter_name}"
+                            original_expr, f"{ap.intended_parameter_operator} :{ap.parameter_name}"
                         )
                         pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
@@ -293,7 +293,7 @@ class AmbigStructuredSQLAgent:
             elif ap.type == "finite":
                 ap.intended_interpretation_idx = response.answer_index
             elif ap.type == "infinite":
-                ap.intended_paramter_operator = response.operator  # type: ignore
+                ap.intended_parameter_operator = response.operator  # type: ignore
                 ap.intended_parameter_value = response.value  # type: ignore
 
         ambiguity_points_resolved = [ap for ap in ambiguity_points if not ap.rejected_by_user]
