@@ -57,6 +57,7 @@ async def run_agent_async(
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
+    num_failed = 0
     for i in trange(0, len(dataset.tasks), batch_size):
         if sleep_between_batches > 0:
             time.sleep(sleep_between_batches)
@@ -94,6 +95,7 @@ async def run_agent_async(
                 tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
                 logger.error(f"Error running agent {agent_cls.name} for task {task.qid}: {tb_str}")
                 task_outputs.append(get_empty_output(agent_cls, task))
+                num_failed += 1
             elif isinstance(output, BaseException):
                 raise output
             else:
@@ -104,6 +106,9 @@ async def run_agent_async(
             if trajectory:
                 for tr in trajectory if isinstance(trajectory, list) else [trajectory]:
                     print(tr.to_readable())
+
+        if verbose:
+            print(f"{len(task_outputs)}/{len(dataset.tasks)} tasks completed ({num_failed} failed)")
 
     end_time = datetime.datetime.now()
 
