@@ -920,17 +920,3 @@ class SQLTableSchema(BaseModel):
 class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
-
-
-class ERDiagramRelation(BaseModel):
-    from_schema: str | None = None
-    from_table: str
-    from_column: str
-    to_schema: str | None = None
-    to_table: str
-    to_column: str
-
-
-class ERDiagram(BaseModel):
-    db_schema: SQLSchema
-    relations: list[ERDiagramRelation]
