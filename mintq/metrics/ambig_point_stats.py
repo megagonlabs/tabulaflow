@@ -358,7 +358,7 @@ class AmbigPointStats:
                 result = await agent.run(prompt)
                 assert len(pred_ap.interpretations) > 0
                 assert len(gold_ap.interpretations) > 0
-                p, r, f1 = self._p_r_f1(
+                p, r, f1 = self._p_r_f1(  # type: ignore
                     len(self._clean_matches(result.output.matches)),
                     len(pred_ap.interpretations),
                     len(gold_ap.interpretations),
@@ -372,9 +372,9 @@ class AmbigPointStats:
             interpretation_r = None
             interpretation_f1 = None
         else:
-            interpretation_p = sum(p_list) / len(p_list)  # type: ignore
-            interpretation_r = sum(r_list) / len(r_list)  # type: ignore
-            interpretation_f1 = sum(f1_list) / len(f1_list)  # type: ignore
+            interpretation_p = sum(p_list) / len(p_list)
+            interpretation_r = sum(r_list) / len(r_list)
+            interpretation_f1 = sum(f1_list) / len(f1_list)
 
         res["interpretation_p"] = interpretation_p
         res["interpretation_r"] = interpretation_r
@@ -383,7 +383,9 @@ class AmbigPointStats:
         has_finite_ap = len(task.gold_finite_ambiguity_points) > 0
         res["perfect_disambiguation_p"] = float(ambig_point_p == 1.0 and (not has_finite_ap or interpretation_p == 1.0))
         res["perfect_disambiguation_r"] = float(ambig_point_r == 1.0 and (not has_finite_ap or interpretation_r == 1.0))
-        res["perfect_disambiguation_f1"] = float(ambig_point_f1 == 1.0 and (not has_finite_ap or interpretation_f1 == 1.0))
+        res["perfect_disambiguation_f1"] = float(
+            ambig_point_f1 == 1.0 and (not has_finite_ap or interpretation_f1 == 1.0)
+        )
         return res
 
     async def compute_async(

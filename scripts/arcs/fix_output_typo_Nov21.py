@@ -1,6 +1,3 @@
-from mintq.datahub.arcs import ARCSDatasetLoader
-from mintq.schema import AmbigNL2QTask
-from pydantic import TypeAdapter
 import os
 import asyncio
 from tqdm import tqdm
@@ -18,6 +15,7 @@ async def main():
                 content = content.replace("intended_paramter_operator", "intended_parameter_operator")
                 with open(os.path.join(root, file), "w") as f:
                     f.write(content)
+
 
 if __name__ == "__main__":
     asyncio.run(main())
