@@ -257,6 +257,8 @@ class AmbigStructuredSQLAgent:
         """Replace with the intended parameter operator and value in the pred_queries"""
         for ap in ambiguity_points:
             if ap.type == "infinite":
+                assert ap.intended_paramter_operator is not None
+                assert ap.intended_parameter_value is not None
                 for pred_query in pred_queries:
                     if ap.parameter_name in pred_query.parameter_names:
                         original_expr = f"{ap.parameter_sample_operators[0]} :{ap.parameter_name}"
