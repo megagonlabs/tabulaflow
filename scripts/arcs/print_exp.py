@@ -1,3 +1,4 @@
+import math
 import os
 from typing import Any
 from mintq.schema import AmbigNL2QTask, NL2QRunResult
@@ -8,7 +9,21 @@ import time
 
 EXP_DIRS = {
     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
+    "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
+
+    "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
+    "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
+    "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
+    "gpt-4.1-mini_structured": "output/131_gpt-4.1-mini-structured/",
+    "gpt-4.1_structured": "output/131_gpt-4.1-structured/",
+    "o4-mini-low_structured": "output/131_o4-mini-low_structured/",
     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
+    "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
+    "gpt-5-medium_structured": "output/131_gpt-5-medium-structured/",
+
+    "o4-mini-medium_structured_gold-ap": "output/131_o4-mini-medium_structured-gold_ap/",
+    "claude-sonnet-4-5_structured_gold-ap": "output/132_claude-sonnet-4-5-structured-gold_ap/",
+    "gemini-2.5-pro_structured_gold-ap": "output/132_gemini-2.5-pro-structured-gold_ap/",
 }
 
 TALBE_FMT = "github"
@@ -45,7 +60,7 @@ def num_aps(task: AmbigNL2QTask, finite_only: bool = False) -> int:
     return len([ap for ap in task.gold_ambiguity_points if not finite_only or ap.type == "finite"])
 
 
-def print_main_table(exp_names: list[str]):
+def print_agent_architecture_table(exp_names: list[str]):
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
     for exp_name in exp_names:
@@ -65,7 +80,7 @@ def print_main_table(exp_names: list[str]):
     print_table("Main Table", headers, rows)
 
 
-def print_main_table_finite_ap(exp_names: list[str]):
+def print_agent_architecture_table_finite_ap(exp_names: list[str]):
     headers = ["Method", "EX", "EX_1AP", "EX_2AP", "EX_3+AP", "User Effort", "Latency", "Cost"]
     rows = []
     for exp_name in exp_names:
@@ -88,10 +103,27 @@ def print_main_table_finite_ap(exp_names: list[str]):
 
 
 def print_fine_grained_table(exp_names: list[str]):
-    headers = ["Method", "EX", "Perfect", "Cost", "Latency", "AP_P", "AP_R", "AP_F1", "Intp_P", "Intp_R", "Intp_F1"]
+    headers = [
+        "Method",
+        "EX",
+        "Perfect",
+        "Cost",
+        "Latency",
+        "AP_P",
+        "AP_R",
+        "AP_F1",
+        "Intp_P",
+        "Intp_R",
+        "Intp_F1",
+        "SQL_EX",
+    ]
     rows = []
     for exp_name in exp_names:
         result = EXP_RESULTS[exp_name]
+        if f"{exp_name}_gold-ap" in EXP_RESULTS:
+            sql_ex = EXP_RESULTS[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
+        else:
+            sql_ex = math.nan
         rows.append(
             [
                 exp_name,
@@ -105,6 +137,7 @@ def print_fine_grained_table(exp_names: list[str]):
                 result.aggregated_eval_metrics["interpretation_p"]["avg"],
                 result.aggregated_eval_metrics["interpretation_r"]["avg"],
                 result.aggregated_eval_metrics["interpretation_f1"]["avg"],
+                sql_ex,
             ]
         )
     print_table("Fine-grained Table", headers, rows)
@@ -182,32 +215,44 @@ def print_error_distribution(exp_names: list[str]):
 
 
 def main():
-    print_main_table(
+    print_agent_architecture_table(
         [
             "o4-mini-medium_simple",
+            "o4-mini-medium_flat",
             "o4-mini-medium_structured",
         ]
     )
     print_fine_grained_table(
         [
+            "gpt-oss-120b_structured",
+            "gemini-2.5-pro_structured",
+            "claude-sonnet-4-5_structured",
+            "gpt-4.1-mini_structured",
+            "gpt-4.1_structured",
+            "o4-mini-low_structured",
             "o4-mini-medium_structured",
+            "o4-mini-high_structured",
+            "gpt-5-medium_structured",
         ]
     )
     print_result_by_ambiguity_type(
         [
             "o4-mini-medium_simple",
+            "o4-mini-medium_flat",
             "o4-mini-medium_structured",
         ]
     )
     print_error_distribution(
         [
             "o4-mini-medium_simple",
+            "o4-mini-medium_flat",
             "o4-mini-medium_structured",
         ]
     )
     print_user_effort_table(
         [
             "o4-mini-medium_simple",
+            "o4-mini-medium_flat",
             "o4-mini-medium_structured",
         ]
     )
