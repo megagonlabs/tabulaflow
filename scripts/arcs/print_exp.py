@@ -10,7 +10,6 @@ import time
 EXP_DIRS = {
     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
-
     "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
     "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
     "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
@@ -20,7 +19,6 @@ EXP_DIRS = {
     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
     "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
     "gpt-5-medium_structured": "output/131_gpt-5-medium-structured/",
-
     "o4-mini-medium_structured_gold-ap": "output/131_o4-mini-medium_structured-gold_ap/",
     "claude-sonnet-4-5_structured_gold-ap": "output/132_claude-sonnet-4-5-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/132_gemini-2.5-pro-structured-gold_ap/",
@@ -143,17 +141,17 @@ def print_fine_grained_table(exp_names: list[str]):
     print_table("Fine-grained Table", headers, rows)
 
 
-def print_user_effort_table(exp_names: list[str]):
-    headers = ["Method", "Num Requests", "User Input Tokens", "User Output Tokens", "User Cost"]
-    rows = []
-    for exp_name in exp_names:
-        result = EXP_RESULTS[exp_name]
-        num_requests = result.total_user_simulator_usage.api_requests / len(result.tasks)
-        user_input_tokens = result.total_user_simulator_usage.input_tokens / len(result.tasks)
-        user_output_tokens = result.total_user_simulator_usage.output_tokens / len(result.tasks)
-        user_cost = result.total_user_simulator_usage.api_cost_usd / len(result.tasks)
-        rows.append([exp_name, num_requests, user_input_tokens, user_output_tokens, user_cost])
-    print_table("User Effort Table", headers, rows)
+# def print_user_effort_table(exp_names: list[str]):
+#     headers = ["Method", "Num Requests", "User Input Tokens", "User Output Tokens", "User Cost"]
+#     rows = []
+#     for exp_name in exp_names:
+#         result = EXP_RESULTS[exp_name]
+#         num_requests = result.total_user_simulator_usage.api_requests / len(result.tasks)
+#         user_input_tokens = result.total_user_simulator_usage.input_tokens / len(result.tasks)
+#         user_output_tokens = result.total_user_simulator_usage.output_tokens / len(result.tasks)
+#         user_cost = result.total_user_simulator_usage.api_cost_usd / len(result.tasks)
+#         rows.append([exp_name, num_requests, user_input_tokens, user_output_tokens, user_cost])
+#     print_table("User Effort Table", headers, rows)
 
 
 ambiguity_types = [
@@ -215,47 +213,10 @@ def print_error_distribution(exp_names: list[str]):
 
 
 def main():
-    print_agent_architecture_table(
-        [
-            "o4-mini-medium_simple",
-            "o4-mini-medium_flat",
-            "o4-mini-medium_structured",
-        ]
-    )
-    print_fine_grained_table(
-        [
-            "gpt-oss-120b_structured",
-            "gemini-2.5-pro_structured",
-            "claude-sonnet-4-5_structured",
-            "gpt-4.1-mini_structured",
-            "gpt-4.1_structured",
-            "o4-mini-low_structured",
-            "o4-mini-medium_structured",
-            "o4-mini-high_structured",
-            "gpt-5-medium_structured",
-        ]
-    )
-    print_result_by_ambiguity_type(
-        [
-            "o4-mini-medium_simple",
-            "o4-mini-medium_flat",
-            "o4-mini-medium_structured",
-        ]
-    )
-    print_error_distribution(
-        [
-            "o4-mini-medium_simple",
-            "o4-mini-medium_flat",
-            "o4-mini-medium_structured",
-        ]
-    )
-    print_user_effort_table(
-        [
-            "o4-mini-medium_simple",
-            "o4-mini-medium_flat",
-            "o4-mini-medium_structured",
-        ]
-    )
+    print_agent_architecture_table(list(EXP_RESULTS.keys()))
+    print_fine_grained_table([exp for exp in EXP_RESULTS.keys() if exp.endswith("_structured")])
+    print_result_by_ambiguity_type([exp for exp in EXP_RESULTS.keys() if not exp.endswith("_flat")])
+    print_error_distribution(list(EXP_RESULTS.keys()))
 
 
 if __name__ == "__main__":
