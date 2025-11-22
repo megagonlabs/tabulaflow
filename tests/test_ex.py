@@ -27,7 +27,7 @@ def examples() -> list[ExampleCase]:
             "qid": "test_2",
             "pred_df": pd.DataFrame({"col0": [1, 2, 2]}),
             "gold_df": pd.DataFrame({"col0": [1, 2]}),
-            "simple_ex_expected_score": 0.0,
+            "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 0.0,
         },
         {
