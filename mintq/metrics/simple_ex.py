@@ -9,7 +9,7 @@ from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 @metric_registry.register
 class SimpleEx:
     """
-    A simple execution accuracy implementation.
+    A simple execution accuracy metric. An improved version of Spider2's EX metric.
 
     Features that are different from Spider2's EX implementation:
     - For boolean values, we consider True == 1 == "1.0" == 1.0
