@@ -14,51 +14,59 @@ class ExampleCase(BaseModel):
 
 
 @pytest.fixture
-def test_tasks() -> list[ExampleCase]:
+def examples() -> list[ExampleCase]:
     test_cases = [
         {
+            "qid": "test_1",
             "pred_df": pd.DataFrame({"col0": [None, None, None, None]}),
             "gold_df": pd.DataFrame({"col0": [math.nan, np.nan, "nan", None]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 0.0,
         },
         {
+            "qid": "test_2",
             "pred_df": pd.DataFrame({"col0": [1, 2, 2]}),
             "gold_df": pd.DataFrame({"col0": [1, 2]}),
             "simple_ex_expected_score": 0.0,
             "spider2_ex_expected_score": 0.0,
         },
         {
+            "qid": "test_3",
             "pred_df": pd.DataFrame({"col0": [np.nan, 2]}),
             "gold_df": pd.DataFrame({"col0": [math.nan, 2]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 1.0,
         },
         {
+            "qid": "test_4",
             "pred_df": pd.DataFrame({"col0": [np.nan, 2]}),
             "gold_df": pd.DataFrame({"col0": [math.nan, 2]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 1.0,
         },
         {
+            "qid": "test_5",
             "pred_df": pd.DataFrame({"col0": ["2.0", "1e2"]}),
             "gold_df": pd.DataFrame({"col0": [2, 100]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 0.0,
         },
         {
+            "qid": "test_6",
             "pred_df": pd.DataFrame({"col0": [-2, 0]}),
             "gold_df": pd.DataFrame({"col0": [-2, -0.000001]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 0.0,
         },
         {
+            "qid": "test_7",
             "pred_df": pd.DataFrame({"col0": [True, False]}),
             "gold_df": pd.DataFrame({"col0": [1, 0]}),
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 1.0,
         },
         {
+            "qid": "test_8",
             "pred_df": pd.DataFrame({"col0": [True, False, None]}),
             "gold_df": pd.DataFrame({"col0": [1, 0, None]}),
             "simple_ex_expected_score": 1.0,
@@ -68,7 +76,7 @@ def test_tasks() -> list[ExampleCase]:
     return [
         ExampleCase(
             task=SimpleNL2QTaskOutput(
-                qid="",
+                qid=test_case["qid"],
                 language="",
                 db="",
                 question="",
