@@ -19,9 +19,8 @@ EXP_DIRS = {
     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
     "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
     "gpt-5-medium_structured": "output/131_gpt-5-medium-structured/",
-    "o4-mini-medium_structured_gold-ap": "output/131_o4-mini-medium_structured-gold_ap/",
-    "claude-sonnet-4-5_structured_gold-ap": "output/132_claude-sonnet-4-5-structured-gold_ap/",
-    "gemini-2.5-pro_structured_gold-ap": "output/132_gemini-2.5-pro-structured-gold_ap/",
+    "o4-mini-medium_structured_gold-ap": "output/136_o4-mini-medium_structured-gold_ap/",
+    "claude-sonnet-4-5_structured_gold-ap": "output/137_claude-sonnet-4-5-structured-gold_ap/",
 }
 
 TALBE_FMT = "github"
