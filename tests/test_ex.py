@@ -72,6 +72,27 @@ def examples() -> list[ExampleCase]:
             "simple_ex_expected_score": 1.0,
             "spider2_ex_expected_score": 1.0,
         },
+        {
+            "qid": "test_9",
+            "pred_df": pd.DataFrame({"col0": []}),
+            "gold_df": pd.DataFrame({"col1": []}),
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 1.0,
+        },
+        {
+            "qid": "test_10",
+            "pred_df": pd.DataFrame({"col0": []}),
+            "gold_df": pd.DataFrame({"col0": [], "col1": []}),
+            "simple_ex_expected_score": 0.0,
+            "spider2_ex_expected_score": 1.0,
+        },
+        {
+            "qid": "test_11",
+            "pred_df": pd.DataFrame({"col0": [], "col1": []}),
+            "gold_df": pd.DataFrame({"col0": []}),
+            "simple_ex_expected_score": 1.0,
+            "spider2_ex_expected_score": 1.0,
+        },
     ]
     return [
         ExampleCase(
