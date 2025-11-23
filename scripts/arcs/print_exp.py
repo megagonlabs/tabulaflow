@@ -15,6 +15,7 @@ EXP_DIRS = {
     "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
     "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
     "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
+    "gpt-4.1-nano_structured": "output/131_gpt-4.1-nano-structured/",
     "gpt-4.1-mini_structured": "output/131_gpt-4.1-mini-structured/",
     "gpt-4.1_structured": "output/131_gpt-4.1-structured/",
     "o4-mini-low_structured": "output/131_o4-mini-low_structured/",
@@ -29,6 +30,7 @@ EXP_DIRS = {
     "claude-sonnet-4-5_structured_gold-ap": "output/137_claude-sonnet-4-5-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
 }
+
 
 TALBE_FMT = "github"
 
@@ -222,14 +224,11 @@ def print_error_distribution(exp_names: list[str]):
 
 
 def main():
-    print_fine_grained_table(
-        [exp for exp, result in EXP_RESULTS.items() if result.tasks[0].output_type == "ambig-structured"]
-    )
-    print_agent_architecture_table(list(EXP_RESULTS.keys()))
-    print_result_by_ambiguity_type(
-        [exp for exp, result in EXP_RESULTS.items() if result.tasks[0].output_type != "ambig-flat"]
-    )
-    print_error_distribution(list(EXP_RESULTS.keys()))
+    all_exps = [exp for exp in EXP_RESULTS.keys() if not exp.endswith("gold-ap")]
+    print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
+    print_agent_architecture_table(all_exps)
+    print_result_by_ambiguity_type([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type != "ambig-flat"])
+    print_error_distribution(all_exps)
 
 
 if __name__ == "__main__":
