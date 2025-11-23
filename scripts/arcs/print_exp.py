@@ -8,6 +8,8 @@ import time
 
 
 EXP_DIRS = {
+    "gpt-4.1-simple": "output/136_gpt-4.1-simple/",
+    "gpt-4.1-flat": "output/136_gpt-4.1-flat/",
     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
     "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
@@ -19,14 +21,22 @@ EXP_DIRS = {
     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
     "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
     "gpt-5-medium_structured": "output/131_gpt-5-medium-structured/",
+    "gpt-4.1-mini_structured_gold-ap": "output/136_gpt-4.1-mini_structured-gold_ap/",
+    "gpt-4.1-nano_structured_gold-ap": "output/136_gpt-4.1-nano_structured-gold_ap/",
+    "gpt-4.1_structured_gold-ap": "output/136_gpt-4.1_structured-gold_ap/",
     "o4-mini-medium_structured_gold-ap": "output/136_o4-mini-medium_structured-gold_ap/",
+    "gpt-5-medium_structured_gold-ap": "output/136_gpt-5-medium_structured-gold_ap/",
     "claude-sonnet-4-5_structured_gold-ap": "output/137_claude-sonnet-4-5-structured-gold_ap/",
+    "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
 }
 
 TALBE_FMT = "github"
 
 
 EXP_RESULTS: dict[str, NL2QRunResult] = {}
+
+for method, exp_dir in EXP_DIRS.items():
+    assert os.path.exists(os.path.join(exp_dir, "result.json"))
 
 t0 = time.time()
 for method, exp_dir in EXP_DIRS.items():
@@ -212,9 +222,13 @@ def print_error_distribution(exp_names: list[str]):
 
 
 def main():
-    print_fine_grained_table([exp for exp in EXP_RESULTS.keys() if exp.endswith("_structured")])
+    print_fine_grained_table(
+        [exp for exp, result in EXP_RESULTS.items() if result.tasks[0].output_type == "ambig-structured"]
+    )
     print_agent_architecture_table(list(EXP_RESULTS.keys()))
-    print_result_by_ambiguity_type([exp for exp in EXP_RESULTS.keys() if not exp.endswith("_flat")])
+    print_result_by_ambiguity_type(
+        [exp for exp, result in EXP_RESULTS.items() if result.tasks[0].output_type != "ambig-flat"]
+    )
     print_error_distribution(list(EXP_RESULTS.keys()))
 
 
