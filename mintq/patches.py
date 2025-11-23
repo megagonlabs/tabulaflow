@@ -34,7 +34,7 @@ async def _patched_request(
     model_settings: ModelSettings | None,
     model_request_parameters: ModelRequestParameters,
 ) -> ModelResponse:
-    response = await self.__original_request__(messages, model_settings, model_request_parameters)  # type: ignore
+    response = await self.__original_openai_request__(messages, model_settings, model_request_parameters)  # type: ignore
     try:
         new_parts = []
         for part in response.parts:
@@ -60,8 +60,8 @@ async def _patched_request(
     return response  # type: ignore
 
 
-if not hasattr(OpenAIChatModel, "__original_request__"):
-    OpenAIChatModel.__original_request__ = OpenAIChatModel.request  # type: ignore
+if not hasattr(OpenAIChatModel, "__original_openai_request__"):
+    OpenAIChatModel.__original_openai_request__ = OpenAIChatModel.request  # type: ignore
     OpenAIChatModel.request = _patched_request  # type: ignore
 
 
@@ -96,27 +96,54 @@ def _patched_infer_model(model: Model | KnownModelName | str) -> Model:
 pydantic_ai.models.infer_model = _patched_infer_model
 
 
-# ===============================================================================
-# |     Patch pydantic_ai.Agent.run() to support max concurrency throttling     |
-# ===============================================================================
+# ==========================================================================================
+# |     Patch pydantic_ai.models.Model.request() to support max concurrency throttling     |
+# ==========================================================================================
 
 _llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency) if config.max_llm_concurrency is not None else None
 
 
-async def _throttled_run(self: Agent, *args: Any, **kwargs: Any) -> Any:
+async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     """
-    Wraps Agent.run() with semaphore throttling based on max_llm_concurrency in config.
+    Wraps Model.request() with semaphore throttling based on max_llm_concurrency in config.
     """
-    semaphore = _llm_semaphore
-    orig_run = Agent.__original_run__  # type: ignore
-    if semaphore is not None:
-        async with semaphore:
-            return await orig_run(self, *args, **kwargs)
+    if _llm_semaphore is not None:
+        async with _llm_semaphore:
+            return await self.__original_request__(*args, **kwargs)
     else:
-        return await orig_run(self, *args, **kwargs)
+        return await self.__original_request__(*args, **kwargs)
 
 
-# Apply the patch to Agent.run()
-if not hasattr(Agent, "__original_run__"):
-    Agent.__original_run__ = Agent.run  # type: ignore
-    Agent.run = _throttled_run  # type: ignore
+def patch_model_class(model_class: type[Model]) -> None:
+    if not hasattr(model_class, "__original_request__"):
+        model_class.__original_request__ = model_class.request  # type: ignore
+        model_class.request = _throttled_request  # type: ignore
+
+
+def patch_all_models() -> None:
+    from pydantic_ai.models.cohere import CohereModel
+    from pydantic_ai.models.openai import OpenAIChatModel
+    from pydantic_ai.models.openai import OpenAIResponsesModel
+    from pydantic_ai.models.google import GoogleModel
+    from pydantic_ai.models.groq import GroqModel
+    from pydantic_ai.models.mistral import MistralModel
+    from pydantic_ai.models.anthropic import AnthropicModel
+    from pydantic_ai.models.bedrock import BedrockConverseModel
+    from pydantic_ai.models.huggingface import HuggingFaceModel
+
+    all_model_classes = [
+        CohereModel,
+        OpenAIChatModel,
+        OpenAIResponsesModel,
+        GoogleModel,
+        GroqModel,
+        MistralModel,
+        AnthropicModel,
+        BedrockConverseModel,
+        HuggingFaceModel,
+    ]
+    for model_class in all_model_classes:
+        patch_model_class(model_class)
+
+
+patch_all_models()
