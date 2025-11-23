@@ -11,7 +11,6 @@ import os
 import re
 from anthropic import AsyncAnthropicVertex
 import json
-from pydantic_ai import Agent
 import pydantic_ai.models
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
@@ -109,9 +108,9 @@ async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     """
     if _llm_semaphore is not None:
         async with _llm_semaphore:
-            return await self.__original_request__(*args, **kwargs)
+            return await self.__original_request__(*args, **kwargs)  # type: ignore
     else:
-        return await self.__original_request__(*args, **kwargs)
+        return await self.__original_request__(*args, **kwargs)  # type: ignore
 
 
 def patch_model_class(model_class: type[Model]) -> None:
@@ -131,7 +130,7 @@ def patch_all_models() -> None:
     from pydantic_ai.models.bedrock import BedrockConverseModel
     from pydantic_ai.models.huggingface import HuggingFaceModel
 
-    all_model_classes = [
+    all_model_classes: list[type[Model]] = [
         CohereModel,
         OpenAIChatModel,
         OpenAIResponsesModel,
