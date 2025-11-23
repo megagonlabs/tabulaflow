@@ -29,8 +29,14 @@ class Config:
 
     @property
     def max_llm_concurrency(self) -> int | None:
-        """Maximum number of concurrent LLM calls. Currently this is achieved by limiting the number of concurrent Agent.run() calls."""
+        """Maximum number of concurrent LLM calls."""
         value = int(os.getenv("MINTQ_MAX_LLM_CONCURRENCY", "16"))
+        return value if value > 0 else None
+
+    @property
+    def max_llm_requests_per_minute(self) -> int | None:
+        """Maximum number of LLM requests per minute."""
+        value = int(os.getenv("MINTQ_MAX_LLM_REQUESTS_PER_MINUTE", "600"))
         return value if value > 0 else None
 
     def __repr__(self) -> str:

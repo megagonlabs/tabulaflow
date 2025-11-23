@@ -6,11 +6,13 @@ Import this module to ensure patches are applied.
 """
 
 import asyncio
+from contextlib import AsyncExitStack
 from typing import Any
 import os
 import re
 from anthropic import AsyncAnthropicVertex
 import json
+from aiolimiter import AsyncLimiter
 import pydantic_ai.models
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
@@ -100,16 +102,20 @@ pydantic_ai.models.infer_model = _patched_infer_model
 # ==========================================================================================
 
 _llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency) if config.max_llm_concurrency is not None else None
+_llm_rate_limit = (
+    AsyncLimiter(config.max_llm_requests_per_minute, 60) if config.max_llm_requests_per_minute is not None else None
+)
 
 
 async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     """
     Wraps Model.request() with semaphore throttling based on max_llm_concurrency in config.
     """
-    if _llm_semaphore is not None:
-        async with _llm_semaphore:
-            return await self.__original_request__(*args, **kwargs)  # type: ignore
-    else:
+    async with AsyncExitStack() as stack:
+        if _llm_semaphore is not None:
+            await stack.enter_async_context(_llm_semaphore)
+        if _llm_rate_limit is not None:
+            await stack.enter_async_context(_llm_rate_limit)
         return await self.__original_request__(*args, **kwargs)  # type: ignore
 
 
