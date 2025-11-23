@@ -10,6 +10,7 @@ description = "Minimalist Text to Query Toolkit"
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
+    "aiolimiter>=1.2.1",
     "aiosqlite>=0.21.0",
     "arize-phoenix-otel>=0.10.1",
     "asyncmy>=0.2.10",
