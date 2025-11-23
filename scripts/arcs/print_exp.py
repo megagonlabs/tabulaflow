@@ -32,7 +32,9 @@ EXP_DIRS = {
     "gpt-4.1-mini_structured_gold-ap": "output/136_gpt-4.1-mini_structured-gold_ap/",
     "gpt-4.1-nano_structured_gold-ap": "output/136_gpt-4.1-nano_structured-gold_ap/",
     "gpt-4.1_structured_gold-ap": "output/136_gpt-4.1_structured-gold_ap/",
+    "o4-mini-low_structured_gold-ap": "output/138_o4-mini-low_structured-gold_ap/",
     "o4-mini-medium_structured_gold-ap": "output/136_o4-mini-medium_structured-gold_ap/",
+    "o4-mini-high_structured_gold-ap": "output/138_o4-mini-high_structured-gold_ap/",
     "gpt-5-medium_structured_gold-ap": "output/136_gpt-5-medium_structured-gold_ap/",
     "claude-sonnet-4-5_structured_gold-ap": "output/137_claude-sonnet-4-5-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
@@ -122,7 +124,8 @@ def print_fine_grained_table(exp_names: list[str]):
     headers = [
         "Method",
         "EX",
-        "Perfect",
+        "Perfect_R",
+        "Perfect_F1",
         "Cost",
         "Latency",
         "AP_P",
@@ -144,6 +147,7 @@ def print_fine_grained_table(exp_names: list[str]):
             [
                 exp_name,
                 result.aggregated_eval_metrics["simple_ex"]["avg"],
+                result.aggregated_eval_metrics["perfect_disambiguation_r"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
                 result.total_usage.api_cost_usd / len(result.tasks),
                 result.aggregated_inference_metrics["latency_seconds"]["avg"],
