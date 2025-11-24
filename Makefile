@@ -169,7 +169,7 @@ test-arcs-structured-all-query:
 
 .PHONY: test-arcs-structured-deepseek
 test-arcs-structured-deepseek:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/deepseek-r1-0528
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/deepseek-r1-0528
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
@@ -197,9 +197,15 @@ test-arcs-structured-qwen:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
-.PHONY: test-arcs-structured-qwen-235b
-test-arcs-structured-qwen-235b:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507
+.PHONY: test-arcs-structured-qwen-235b-instruct
+test-arcs-structured-qwen-235b-instruct:
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-235b-a22b-instruct-2507
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-qwen-235b-thinking
+test-arcs-structured-qwen-235b-thinking:
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-235b-a22b-thinking-2507
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
