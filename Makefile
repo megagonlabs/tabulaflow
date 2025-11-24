@@ -215,6 +215,24 @@ test-arcs-structured-kimi-k2-thinking:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-arcs-structured-glm-4p6
+test-arcs-structured-glm-4p6:
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/glm-4p6
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-minimax-m2
+test-arcs-structured-minimax-m2:
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/minimax-m2
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-qwen3-8b
+test-arcs-structured-qwen3-8b:
+	MINTQ_MAX_LLM_CONCURRENCY=1 MINTQ_MAX_LLM_REQUESTS_PER_MINUTE=60 uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/qwen3-8b
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-structured-gptoss
 test-arcs-structured-gptoss:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm fireworks:accounts/fireworks/models/gpt-oss-120b
