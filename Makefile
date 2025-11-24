@@ -21,7 +21,7 @@ test:
 
 .PHONY: exp
 exp:
-	uv run scripts/arcs/print_exp.py
+	uv run scripts/arcs/print_exp.py 2>&1 | tee log/exp.out
 
 .PHONY: test-simple
 test-simple:
