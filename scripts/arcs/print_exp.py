@@ -7,36 +7,67 @@ from tabulate import tabulate
 import time
 
 
-EXP_DIRS = {
-    "gpt-4.1-simple": "output/136_gpt-4.1-simple/",
-    "gpt-4.1-flat": "output/136_gpt-4.1-flat/",
+
+OLD_CORE_EXP_DIRS = {
     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
-    "gptoss-20b_structured": "output/134_gptoss-20b-structured/",
-    "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
-    "qwen3-coder-480b_structured": "output/134_qwen3-coder-480b-structured/",
-    "deepseek-v3.1_structured": "output/134_deepseek-v3.1-structured/",
-    "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
-    "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
-    "gpt-4.1-nano_structured": "output/131_gpt-4.1-nano-structured/",
-    "gpt-4.1-mini_structured": "output/131_gpt-4.1-mini-structured/",
-    "gpt-4.1_structured": "output/131_gpt-4.1-structured/",
     "o4-mini-low_structured": "output/131_o4-mini-low_structured/",
     "o4-mini-medium_structured": "output/130_o4-mini-medium_structured/",
     "o4-mini-high_structured": "output/131_o4-mini-high_structured/",
+}
+
+EXP_DIRS = {
+    "gpt-4.1-simple": "output/136_gpt-4.1-simple/",
+    "gpt-4.1-flat": "output/136_gpt-4.1-flat/",
+    "o4-mini-medium_simple": "output/140_o4-mini-medium-simple/",
+    "o4-mini-medium_flat": "output/140_o4-mini-medium-flat/",
+    "gptoss-20b_structured": "output/134_gptoss-20b-structured/",
+    "gptoss-120b_structured": "output/134_gptoss-120b-structured/",
+    "qwen3-8b_structured": "output/141_qwen3-8b-structured/",
+    "qwen3-235b-a22b-instruct-2507_structured": "output/141_qwen3-235b-a22b-instruct-2507-structured/",
+    "qwen3-coder-480b_structured": "output/134_qwen3-coder-480b-structured/",
+    "deepseek-v3.1_structured": "output/134_deepseek-v3.1-structured/",
+    "deepseek-r1-0528_structured": "output/141_deepseek-r1-0528-structured/",
+    "kimi-k2-thinking_structured": "output/141_kimi-k2-thinking-structured/",
+    "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
+    "claude-haiku-4-5_structured": "output/143_claude-haiku-4-5-structured/",
+    "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
+    "claude-opus-4-5_structured": "output/143_claude-opus-4-5-structured/",
+    "gpt-4.1-nano_structured": "output/131_gpt-4.1-nano-structured/",
+    "gpt-4.1-mini_structured": "output/131_gpt-4.1-mini-structured/",
+    "gpt-4.1_structured": "output/131_gpt-4.1-structured/",
+    "o4-mini-low_structured": "output/140_o4-mini-low_structured/",
+    "o4-mini-medium_structured": "output/140_o4-mini-medium_structured/",
+    "o4-mini-high_structured": "output/140_o4-mini-high_structured/",
+    "gpt-5-nano-medium_structured": "output/142_gpt-5-nano-medium_structured/",
+    "gpt-5-mini-medium_structured": "output/142_gpt-5-mini-medium_structured/",
+    "gpt-5-minimal_structured": "output/142_gpt-5-minimal_structured/",
+    "gpt-5-low_structured": "output/142_gpt-5-low_structured/",
     "gpt-5-medium_structured": "output/131_gpt-5-medium-structured/",
+    "gpt-5-high_structured": "output/142_gpt-5-high_structured/",
     "gptoss-20b_structured_gold-ap": "output/134_gptoss-20b-structured-gold_ap/",
     "gptoss-120b_structured_gold-ap": "output/134_gptoss-120b-structured-gold_ap/",
+    "qwen3-8b_structured_gold-ap": "output/141_qwen3-8b-structured-gold-ap/",
+    "qwen3-235b-a22b-instruct-2507_structured_gold-ap": "output/141_qwen3-235b-a22b-instruct-2507-structured-gold-ap/",
     "qwen3-coder-480b_structured_gold-ap": "output/134_qwen3-coder-480b-structured-gold_ap/",
     "deepseek-v3.1_structured_gold-ap": "output/134_deepseek-v3.1-structured-gold_ap/",
+    "deepseek-r1-0528_structured_gold-ap": "output/141_deepseek-r1-0528-structured-gold-ap/",
+    "kimi-k2-thinking_structured_gold-ap": "output/141_kimi-k2-thinking-structured-gold-ap/",
     "gpt-4.1-mini_structured_gold-ap": "output/136_gpt-4.1-mini_structured-gold_ap/",
     "gpt-4.1-nano_structured_gold-ap": "output/136_gpt-4.1-nano_structured-gold_ap/",
     "gpt-4.1_structured_gold-ap": "output/136_gpt-4.1_structured-gold_ap/",
     "o4-mini-low_structured_gold-ap": "output/138_o4-mini-low_structured-gold_ap/",
     "o4-mini-medium_structured_gold-ap": "output/136_o4-mini-medium_structured-gold_ap/",
     "o4-mini-high_structured_gold-ap": "output/138_o4-mini-high_structured-gold_ap/",
+    "gpt-5-nano-medium_structured_gold-ap": "output/142_gpt-5-nano-medium_structured-gold_ap/",
+    "gpt-5-mini-medium_structured_gold-ap": "output/142_gpt-5-mini-medium_structured-gold_ap/",
+    "gpt-5-minimal_structured_gold-ap": "output/142_gpt-5-minimal_structured-gold_ap/",
+    "gpt-5-low_structured_gold-ap": "output/142_gpt-5-low_structured-gold_ap/",
     "gpt-5-medium_structured_gold-ap": "output/136_gpt-5-medium_structured-gold_ap/",
+    "gpt-5-high_structured_gold-ap": "output/142_gpt-5-high_structured-gold_ap/",
+    "claude-haiku-4-5_structured_gold-ap": "output/143_claude-haiku-4-5-structured-gold_ap/",
     "claude-sonnet-4-5_structured_gold-ap": "output/137_claude-sonnet-4-5-structured-gold_ap/",
+    "claude-opus-4-5_structured_gold-ap": "output/143_claude-opus-4-5-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
 }
 
@@ -47,7 +78,8 @@ TALBE_FMT = "github"
 EXP_RESULTS: dict[str, NL2QRunResult] = {}
 
 for method, exp_dir in EXP_DIRS.items():
-    assert os.path.exists(os.path.join(exp_dir, "result.json"))
+    assert os.path.exists(os.path.join(exp_dir, "result.json")), f"Result file not found for {method} in {exp_dir}"
+print("All result files found")
 
 t0 = time.time()
 for method, exp_dir in EXP_DIRS.items():
