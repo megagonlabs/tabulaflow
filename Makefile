@@ -185,6 +185,18 @@ test-arcs-structured-gemini:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-arcs-structured-gemini-3
+test-arcs-structured-gemini-3:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm google-vertex:gemini-3-pro-preview
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: test-arcs-structured-gemini-2.5-flash
+test-arcs-structured-gemini-2.5-flash:
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm google-vertex:gemini-2.5-flash
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-arcs-structured-claude
 test-arcs-structured-claude:
 	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm anthropic:claude-sonnet-4-5-20250929
