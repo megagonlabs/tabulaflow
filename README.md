@@ -446,6 +446,16 @@ Contact: yanlin@megagon.ai
 - [x] Error analysis metrics
   - [x] found_one
 - [x] print_exps.py
+- [x] Debug sonnet-4.5 vs. opus-4.5
+- [ ] Exps
+  - [ ] Main
+    - [ ] gemini-3
+  - [x] Architecture
+  - [ ] Taxonomy
+  - [ ] Ambrosia
+  - [ ] User patience
+- [ ] Rename exp dirs
+- [ ] Rerun evaluate.py on all results
 
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
