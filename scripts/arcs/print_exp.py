@@ -7,7 +7,6 @@ from tabulate import tabulate
 import time
 
 
-
 OLD_CORE_EXP_DIRS = {
     "o4-mini-medium_simple": "output/130_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/130_o4-mini-medium-flat/",
@@ -269,7 +268,16 @@ def print_error_distribution(exp_names: list[str]):
 def main():
     all_exps = [exp for exp in EXP_RESULTS.keys() if not exp.endswith("gold-ap")]
     print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
-    print_agent_architecture_table(all_exps)
+    print_agent_architecture_table(
+        [
+            "gpt-4.1_simple",
+            "gpt-4.1_flat",
+            "gpt-4.1_structured",
+            "o4-mini-medium_simple",
+            "o4-mini-medium_flat",
+            "o4-mini-medium_structured",
+        ]
+    )
     print_result_by_ambiguity_type([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type != "ambig-flat"])
     print_error_distribution(all_exps)
 
