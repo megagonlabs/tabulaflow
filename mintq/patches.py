@@ -78,8 +78,8 @@ def get_anthropic_vertex_model(model_name: str) -> Model:
         model_name,
         provider=AnthropicProvider(  # type: ignore
             anthropic_client=AsyncAnthropicVertex(
-                project_id=os.environ["VERTEXAI_PROJECT"],
-                region=os.environ["VERTEXAI_LOCATION"],
+                project_id=os.environ["GOOGLE_CLOUD_PROJECT"],
+                region=os.environ["GOOGLE_CLOUD_LOCATION"],
             )
         ),
     )
