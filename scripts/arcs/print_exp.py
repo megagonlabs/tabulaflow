@@ -16,8 +16,8 @@ OLD_CORE_EXP_DIRS = {
 }
 
 EXP_DIRS = {
-    "gpt-4.1-simple": "output/136_gpt-4.1-simple/",
-    "gpt-4.1-flat": "output/136_gpt-4.1-flat/",
+    "gpt-4.1_simple": "output/136_gpt-4.1-simple/",
+    "gpt-4.1_flat": "output/136_gpt-4.1-flat/",
     "o4-mini-medium_simple": "output/140_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/140_o4-mini-medium-flat/",
     "gptoss-20b_structured": "output/134_gptoss-20b-structured/",
