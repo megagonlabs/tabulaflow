@@ -23,16 +23,25 @@ SYSTEM_PROMPT = """
 You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
 - The question has one or multiple ambiguity points and you will need to ask the user to resolve the ambiguity.
-  - You are allowed to ask multiple times but only ask one question about one ambiguity point at a time. Try to be comprehensive of all possible ambiguities.
 - Do not repeat the question if user refused to answer it.
+{% if user_patience -%}
+- You have in total {{user_patience}} attempts to call `ask_user` tool to resolve the ambiguity.
+  - Only ask one question about one ambiguity point at a time. Try to be comprehensive of all possible ambiguities.
+- If the `ask_user` tool is not provided, it means you have used up all your attempts to resolve the ambiguity.
+  - Do not attempt to resolve additional ambiguities with the user. Proceed to write the query with the provided information.
+{% else -%}
+- You are allowed to ask multiple times but only ask one question about one ambiguity point at a time. Try to be comprehensive of all possible ambiguities.
+{% endif -%}
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions.
 - Adhere strictly to the given database schema when constructing queries.
 - If you think the last executed query is correct, call the `finish` tool with no arguments. Do not output text.
 
-{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+{% if dataset_instructions -%}
+=== START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ==={% endif %}
+=== END OF DATASET INSTRUCTIONS ===
+{% endif -%}
 """.strip()
 
 
@@ -84,7 +93,7 @@ class AmbigSimpleSQLAgent:
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(
-                language=task.language, dataset_instructions=task.dataset_instructions
+                language=task.language, dataset_instructions=task.dataset_instructions, user_patience=user_patience
             ),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
