@@ -448,12 +448,13 @@ Contact: yanlin@megagon.ai
 - [x] print_exps.py
 - [x] Debug sonnet-4.5 vs. opus-4.5
 - [ ] Exps
-  - [ ] Main
-    - [ ] gemini-3
+  - [x] Main
+    - [x] gemini-3
   - [x] Architecture
-  - [ ] Taxonomy
-  - [ ] Ambrosia
+  - [x] Taxonomy
+  - [x] Ambrosia
   - [ ] User patience
+- [x] Fix ambig_simple prompt when user patience is provided
 - [ ] Rename exp dirs
 - [ ] Rerun evaluate.py on all results
 
