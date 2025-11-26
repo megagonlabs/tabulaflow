@@ -30,6 +30,7 @@ EXP_DIRS = {
     "kimi-k2-thinking_structured": "output/141_kimi-k2-thinking-structured/",
     "gemini-2.5-flash_structured": "output/143_gemini-2.5-flash-structured/",
     "gemini-2.5-pro_structured": "output/133_gemini-2.5-pro-structured/",
+    "gemini-3-pro-preview_structured": "output/145_gemini-3-pro-preview-structured/",
     "claude-haiku-4-5_structured": "output/143_claude-haiku-4-5-structured/",
     "claude-sonnet-4-5_structured": "output/133_claude-sonnet-4-5-structured/",
     "claude-opus-4-5_structured": "output/143_claude-opus-4-5-structured/",
@@ -70,6 +71,7 @@ EXP_DIRS = {
     "claude-opus-4-5_structured_gold-ap": "output/143_claude-opus-4-5-structured-gold_ap/",
     "gemini-2.5-flash_structured_gold-ap": "output/143_gemini-2.5-flash-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
+    "gemini-3-pro-preview_structured_gold-ap": "output/145_gemini-3-pro-preview-structured-gold_ap/",
 }
 
 
