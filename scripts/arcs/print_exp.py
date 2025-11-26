@@ -16,8 +16,12 @@ OLD_CORE_EXP_DIRS = {
 }
 
 EXP_DIRS = {
+    "gpt-4.1_simple_1patience": "output/147_gpt-4.1_simple_1patience/",
+    "gpt-4.1_simple_3patience": "output/147_gpt-4.1_simple_3patience/",
     "gpt-4.1_simple": "output/136_gpt-4.1-simple/",
     "gpt-4.1_flat": "output/136_gpt-4.1-flat/",
+    "o4-mini-medium_simple_1patience": "output/147_o4-mini-medium_simple_1patience/",
+    "o4-mini-medium_simple_3patience": "output/147_o4-mini-medium_simple_3patience/",
     "o4-mini-medium_simple": "output/140_o4-mini-medium-simple/",
     "o4-mini-medium_flat": "output/140_o4-mini-medium-flat/",
     "gptoss-20b_structured": "output/134_gptoss-20b-structured/",
@@ -308,9 +312,13 @@ def main():
     print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
     print_agent_architecture_table(
         [
+            "gpt-4.1_simple_1patience",
+            "gpt-4.1_simple_3patience",
             "gpt-4.1_simple",
             "gpt-4.1_flat",
             "gpt-4.1_structured",
+            "o4-mini-medium_simple_1patience",
+            "o4-mini-medium_simple_3patience",
             "o4-mini-medium_simple",
             "o4-mini-medium_flat",
             "o4-mini-medium_structured",
