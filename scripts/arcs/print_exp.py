@@ -72,6 +72,15 @@ EXP_DIRS = {
     "gemini-2.5-flash_structured_gold-ap": "output/143_gemini-2.5-flash-structured-gold_ap/",
     "gemini-2.5-pro_structured_gold-ap": "output/137_gemini-2.5-pro-structured-gold_ap/",
     "gemini-3-pro-preview_structured_gold-ap": "output/145_gemini-3-pro-preview-structured-gold_ap/",
+    "gpt-4.1-nano_structured_taxonomy": "output/146_gpt-4.1-nano_structured_taxonomy/",
+    "gpt-4.1_structured_taxonomy": "output/146_gpt-4.1_structured_taxonomy/",
+    "o4-mini-medium_structured_taxonomy": "output/146_o4-mini-medium_structured_taxonomy/",
+    "ambrosia_gpt-4.1-nano_structured": "output/146_ambrosia_gpt-4.1-nano_structured/",
+    "ambrosia_gpt-4.1-nano_structured_taxonomy": "output/146_ambrosia_gpt-4.1-nano_structured_taxonomy/",
+    "ambrosia_gpt-4.1_structured": "output/146_ambrosia_gpt-4.1_structured/",
+    "ambrosia_gpt-4.1_structured_taxonomy": "output/146_ambrosia_gpt-4.1_structured_taxonomy/",
+    "ambrosia_o4-mini-medium_structured": "output/146_ambrosia_o4-mini-medium_structured/",
+    "ambrosia_o4-mini-medium_structured_taxonomy": "output/146_ambrosia_o4-mini-medium_structured_taxonomy/",
 }
 
 
@@ -269,8 +278,33 @@ def print_error_distribution(exp_names: list[str]):
     print_table("Error Distribution", headers, rows)
 
 
+def print_arcs_ambrosia_table(exp_names: list[str]):
+    headers = ["Method", "EX_ARCS", "EX_Ambrosia", "EX_ARCS_with_taxonomy", "EX_Ambrosia_with_taxonomy"]
+    rows = []
+    for exp_name in exp_names:
+        arcs_result = EXP_RESULTS[exp_name]
+        ambrosia_result = EXP_RESULTS[f"ambrosia_{exp_name}"]
+        arcs_with_taxonomy_result = EXP_RESULTS[f"{exp_name}_taxonomy"]
+        ambrosia_with_taxonomy_result = EXP_RESULTS[f"ambrosia_{exp_name}_taxonomy"]
+        rows.append(
+            [
+                exp_name,
+                arcs_result.aggregated_eval_metrics["simple_ex"]["avg"],
+                ambrosia_result.aggregated_eval_metrics["simple_ex"]["avg"],
+                arcs_with_taxonomy_result.aggregated_eval_metrics["simple_ex"]["avg"],
+                ambrosia_with_taxonomy_result.aggregated_eval_metrics["simple_ex"]["avg"],
+            ]
+        )
+    print_table("ARCS vs. Ambrosia Table", headers, rows)
+
+
 def main():
-    all_exps = [exp for exp in EXP_RESULTS.keys() if not exp.endswith("gold-ap")]
+    all_exps = [
+        exp
+        for exp in EXP_RESULTS.keys()
+        if not exp.endswith("gold-ap") and not exp.startswith("ambrosia_") and not exp.endswith("_taxonomy")
+    ]
+    
     print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
     print_agent_architecture_table(
         [
@@ -284,6 +318,11 @@ def main():
     )
     print_result_by_ambiguity_type([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type != "ambig-flat"])
     print_error_distribution(all_exps)
+    print_arcs_ambrosia_table([
+        "gpt-4.1-nano_structured",
+        "gpt-4.1_structured",
+        "o4-mini-medium_structured",
+    ])
 
 
 if __name__ == "__main__":
