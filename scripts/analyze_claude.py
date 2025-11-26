@@ -44,8 +44,7 @@ for task_sonnet, task_opus, task_sonnet_gold_ap, task_opus_gold_ap in zip(
     pseudo_0_ex_1_sonnet += float(pseudo_ex_sonnet_flag == 0.0 and task_sonnet.eval_metrics["simple_ex"] == 1.0)
 
     pseudo_ex_opus_flag = float(
-        task_opus.eval_metrics["perfect_disambiguation_r"] == 1.0
-        and task_opus_gold_ap.eval_metrics["simple_ex"] == 1.0
+        task_opus.eval_metrics["perfect_disambiguation_r"] == 1.0 and task_opus_gold_ap.eval_metrics["simple_ex"] == 1.0
     )
 
     pseudo_ex_opus += pseudo_ex_opus_flag

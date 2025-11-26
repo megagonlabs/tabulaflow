@@ -304,7 +304,7 @@ def main():
         for exp in EXP_RESULTS.keys()
         if not exp.endswith("gold-ap") and not exp.startswith("ambrosia_") and not exp.endswith("_taxonomy")
     ]
-    
+
     print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
     print_agent_architecture_table(
         [
@@ -318,11 +318,13 @@ def main():
     )
     print_result_by_ambiguity_type([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type != "ambig-flat"])
     print_error_distribution(all_exps)
-    print_arcs_ambrosia_table([
-        "gpt-4.1-nano_structured",
-        "gpt-4.1_structured",
-        "o4-mini-medium_structured",
-    ])
+    print_arcs_ambrosia_table(
+        [
+            "gpt-4.1-nano_structured",
+            "gpt-4.1_structured",
+            "o4-mini-medium_structured",
+        ]
+    )
 
 
 if __name__ == "__main__":
