@@ -447,16 +447,16 @@ Contact: yanlin@megagon.ai
   - [x] found_one
 - [x] print_exps.py
 - [x] Debug sonnet-4.5 vs. opus-4.5
-- [ ] Exps
+- [x] Exps
   - [x] Main
     - [x] gemini-3
   - [x] Architecture
   - [x] Taxonomy
   - [x] Ambrosia
-  - [ ] User patience
+  - [x] User patience
 - [x] Fix ambig_simple prompt when user patience is provided
-- [ ] Rename exp dirs
-- [ ] Rerun evaluate.py on all results
+- [x] Rename exp dirs
+- [x] Rerun evaluate.py on all results
 
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
