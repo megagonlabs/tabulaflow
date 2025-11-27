@@ -5,6 +5,7 @@ from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
 from tabulate import tabulate
 import time
+import pickle
 
 
 # OLD_CORE_EXP_DIRS = {
@@ -91,19 +92,24 @@ EXPS = [
 TALBE_FMT = "github"
 
 
-EXP_RESULTS: dict[str, NL2QRunResult] = {}
-
 for exp in EXPS:
     assert os.path.exists(os.path.join("output", "paper", exp, "result.json")), f"Result file not found for {exp}"
 print("All result files found")
 
-t0 = time.time()
-for exp in EXPS:
-    with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
-        EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
-print()
-print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
-print()
+if os.path.exists("cache/exp_results.pickle"):
+    with open("cache/exp_results.pickle", "rb") as f:
+        EXP_RESULTS = pickle.load(f)
+else:
+    EXP_RESULTS: dict[str, NL2QRunResult] = {}
+    t0 = time.time()
+    for exp in EXPS:
+        with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
+            EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
+    print()
+    print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
+    print()
+    with open("cache/exp_results.pickle", "wb") as f:
+        pickle.dump(EXP_RESULTS, f)
 
 
 def calc_average(values: list[float]) -> float:
@@ -140,7 +146,7 @@ def print_agent_architecture_table(exp_names: list[str]):
                 result.aggregated_eval_metrics["simple_ex_by_ambig_point_num"]["3+AP"]["avg"],
                 result.aggregated_inference_metrics["user_effort"]["avg"],
                 result.aggregated_inference_metrics["latency_seconds"]["avg"],
-                result.total_usage.api_cost_usd / len(result.tasks),
+                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
             ]
         )
     print_table("Agent Architecture Table", headers, rows)
@@ -197,7 +203,7 @@ def print_fine_grained_table(exp_names: list[str]):
                 result.aggregated_eval_metrics["simple_ex"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_r"]["avg"],
                 result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
-                result.total_usage.api_cost_usd / len(result.tasks),
+                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
                 result.aggregated_inference_metrics["latency_seconds"]["avg"],
                 result.aggregated_eval_metrics["ambig_point_p"]["avg"],
                 result.aggregated_eval_metrics["ambig_point_r"]["avg"],
@@ -206,6 +212,38 @@ def print_fine_grained_table(exp_names: list[str]):
                 result.aggregated_eval_metrics["interpretation_r"]["avg"],
                 result.aggregated_eval_metrics["interpretation_f1"]["avg"],
                 sql_ex,
+            ]
+        )
+    print_table("Fine-grained Table", headers, rows)
+
+
+def round_cost(cost: float) -> float:
+    if cost < 0.01:
+        return round(cost, 4)
+    elif cost < 0.1:
+        return round(cost, 3)
+    else:
+        return round(cost, 2)
+
+
+def print_main_table(exp_names: list[str]):
+    headers = ["Method", "Cost", "Perfect_R", "Perfect_F1", "SQL_EX", "EX", "Delta_EX"]
+    rows = []
+    for exp_name in exp_names:
+        result = EXP_RESULTS[exp_name]
+        if f"{exp_name}_gold-ap" in EXP_RESULTS:
+            sql_ex = EXP_RESULTS[f"{exp_name}_gold-ap"].aggregated_eval_metrics["simple_ex"]["avg"]
+        else:
+            sql_ex = math.nan
+        rows.append(
+            [
+                exp_name,
+                round_cost(result.total_usage.api_cost_usd / len(result.tasks)),
+                result.aggregated_eval_metrics["perfect_disambiguation_r"]["avg"],
+                result.aggregated_eval_metrics["perfect_disambiguation_f1"]["avg"],
+                sql_ex,
+                result.aggregated_eval_metrics["simple_ex"]["avg"],
+                result.aggregated_eval_metrics["simple_ex"]["avg"] - sql_ex,
             ]
         )
     print_table("Fine-grained Table", headers, rows)
@@ -308,7 +346,7 @@ def main():
         for exp in EXP_RESULTS.keys()
         if not exp.endswith("gold-ap") and not exp.startswith("ambrosia_") and not exp.endswith("_taxonomy")
     ]
-
+    print_main_table(exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured")
     print_fine_grained_table([exp for exp in all_exps if EXP_RESULTS[exp].tasks[0].output_type == "ambig-structured"])
     print_agent_architecture_table(
         [
