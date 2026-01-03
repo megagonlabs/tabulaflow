@@ -454,6 +454,8 @@ Contact: yanlin@megagon.ai
   - [x] Taxonomy
   - [x] Ambrosia
   - [x] User patience
+  - [ ] No disambiguation
+  - [ ] Gemini and Claude reasoning effort
 - [x] Fix ambig_simple prompt when user patience is provided
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
