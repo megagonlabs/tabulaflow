@@ -96,20 +96,24 @@ for exp in EXPS:
     assert os.path.exists(os.path.join("output", "paper", exp, "result.json")), f"Result file not found for {exp}"
 print("All result files found")
 
+t0 = time.time()
+
 if os.path.exists("cache/exp_results.pickle"):
     with open("cache/exp_results.pickle", "rb") as f:
         EXP_RESULTS = pickle.load(f)
 else:
     EXP_RESULTS: dict[str, NL2QRunResult] = {}
-    t0 = time.time()
+
     for exp in EXPS:
         with open(os.path.join("output", "paper", exp, "result.json"), "r") as f:
             EXP_RESULTS[exp] = NL2QRunResult.model_validate_json(f.read())
-    print()
-    print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
-    print()
+
     with open("cache/exp_results.pickle", "wb") as f:
         pickle.dump(EXP_RESULTS, f)
+
+print()
+print(f"Loaded {len(EXP_RESULTS)} results in {time.time() - t0:.2f} seconds")
+print()
 
 
 def calc_average(values: list[float]) -> float:
@@ -218,9 +222,9 @@ def print_fine_grained_table(exp_names: list[str]):
 
 
 def round_cost(cost: float) -> float:
-    if cost < 0.01:
+    if cost < 0.001:
         return round(cost, 4)
-    elif cost < 0.1:
+    elif cost < 0.01:
         return round(cost, 3)
     else:
         return round(cost, 2)
