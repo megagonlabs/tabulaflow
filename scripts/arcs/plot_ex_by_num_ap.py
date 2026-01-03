@@ -21,7 +21,7 @@ COLORS = [
 ]
 
 def plot_ex_by_num_ap():
-    fig = plt.Figure(figsize=(5, 4))
+    fig = plt.Figure(figsize=(3.75, 3))
 
     ax1 = fig.add_subplot(1, 1, 1)
     num_aps = [1, 2, 3]
