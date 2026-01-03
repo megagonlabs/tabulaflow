@@ -14,6 +14,11 @@ COLORS = [
     '#16A085',  # Vibrant teal
 ]
 
+COLORS = [
+    '#16A085',  # Vibrant teal
+    '#9B59B6',  # Vibrant purple
+    '#B84821',  # Red brick
+]
 
 def plot_ex_by_num_ap():
     fig = plt.Figure(figsize=(5, 4))
@@ -26,15 +31,18 @@ def plot_ex_by_num_ap():
 
     ax1.legend()
     ax1.set_xlim(0.8, 3.2)
+    ax1.set_ylim(0.0, 0.7)
     # ax1.set_ylim(min(DATA.values()), max(DATA.values()))
     # ax1.tick_params(axis="y", direction="in", pad=6)
     # ax1.tick_params(axis="x", direction="in", pad=6)
     ax1.set_xticks(num_aps)
+    ax1.set_yticks([0.0, 0.2, 0.4, 0.6, 0.7])
 
     ax1.set_xlabel('Number of Ambiguous Points')
     ax1.set_ylabel('EX')
 
     ax1.set_xticklabels(["1", "2", "3+"])
+    ax1.set_yticklabels(["0.0", "0.2", "0.4", "0.6", "0.7"])
 
     ax1.grid(color='#d6d6d6')
     ax1.spines['bottom'].set_color('#6e6e6e')
