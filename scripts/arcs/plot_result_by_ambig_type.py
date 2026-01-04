@@ -98,17 +98,29 @@ def radar_factory(num_vars, frame="circle"):
     return theta
 
 
-MODELS = ["gpt-4o", "claude3.5-sonnet", "llama3.1-70b", "qwen2.5-72b"]
+MODELS = ["qwen3-coder-480b", "gpt-4.1", "o4-mini (medium)"]
 
+# | Method                                   |   semantic_column |   semantic_table |   semantic_value |   semantic_computation |   syntactic_column |   syntactic_table |   syntactic_value |   syntactic_computation |
+# | qwen3-coder-480b_structured              |            0.3762 |           0.5086 |           0.6875 |                 0.169  |             0      |            0.0588 |            0.4167 |                  0.0893 |
+# | gpt-4.1_structured                       |            0.604  |           0.8534 |           0.8167 |                 0.4014 |             0.3333 |            0.7647 |            0.6667 |                  0.2857 |
+# | o4-mini-medium_structured                |            0.8218 |           0.8879 |           0.9437 |                 0.7007 |             0.8333 |            0.8824 |            0.8333 |                  0.6607 |
 DATA = [
     (
         "EX Across RETURN templates",  # n_name	n_prop_combined	n_order_by	n_argmax	n_where	n_agg
-        ["NAME", "PROPERTY", "SORT", "ARGMAX", "FILTER", "AGGREGATE"],
         [
-            [0.7611, 0.6762, 0.2281, 0.8113, 0.6301, 0.6377],
-            [0.7733, 0.7193, 0.0351, 0.1887, 0.6986, 0.7029],
-            [0.5304, 0.4857, 0.4035, 0.3774, 0.2603, 0.5145],
-            [0.6275, 0.5307, 0.2632, 0.5472, 0.2329, 0.5435],
+            "Semantic Column",
+            "Semantic Table",
+            "Semantic Value",
+            "Semantic Computation",
+            "Syntactic Column",
+            "Syntactic Table",
+            "Syntactic Value",
+            "Syntactic Computation",
+        ],
+        [
+            [0.3762, 0.5086, 0.6875, 0.169, 0, 0.0588, 0.4167, 0.0893],
+            [0.604, 0.8534, 0.8167, 0.4014, 0.3333, 0.7647, 0.6667, 0.2857],
+            [0.8218, 0.8879, 0.9437, 0.7007, 0.8333, 0.8824, 0.8333, 0.6607],
         ],
     )
 ]
