@@ -139,9 +139,9 @@ if __name__ == "__main__":
     # colors = ["#a56cbd", "#53c2a2", "#4892bd", "#fe7f2d", "#fcca46"]
 
     colors = [
-        (145/255, 113/255, 224/255, 1.0),  # Purple
+        (163/255, 194/255, 65/255, 1.0),  # Green      
         (233/255, 158/255, 122/255, 1.0),  # Light Orange
-        (163/255, 194/255, 65/255, 1.0),  # Green        
+        (145/255, 113/255, 224/255, 1.0),  # Purple  
     ]
 
     # Plot the four cases from the example data on separate Axes
