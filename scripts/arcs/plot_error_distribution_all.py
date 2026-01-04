@@ -72,6 +72,13 @@ def main():
         (0.698, 0.875, 0.541, 1.0),  # Sage green - Matches a Non-intended SQL
         (0.302, 0.686, 0.290, 1.0),  # Luxurious emerald green - Correct
     ]
+    category_colors = [
+        (145/255, 113/255, 224/255, 1.0),  # Purple
+        (0.85, 0.85, 0.85, 1.0),  # Dark Grey
+        (233/255, 158/255, 122/255, 1.0),  # Light Orange
+        (193/255, 225/255, 193/255, 1.0),  # Light Green
+        (163/255, 194/255, 65/255, 1.0),  # Green        
+    ]
 
     # Generate LaTeX color definitions
     latex_colors = []
