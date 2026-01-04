@@ -136,7 +136,14 @@ if __name__ == "__main__":
     # fig.subplots_adjust(wspace=0.25, hspace=0.20, top=0.85, bottom=0.05)
 
     # colors = ['b', 'r', 'g', 'm', 'y']
-    colors = ["#a56cbd", "#53c2a2", "#4892bd", "#fe7f2d", "#fcca46"]
+    # colors = ["#a56cbd", "#53c2a2", "#4892bd", "#fe7f2d", "#fcca46"]
+
+    colors = [
+        (145/255, 113/255, 224/255, 1.0),  # Purple
+        (233/255, 158/255, 122/255, 1.0),  # Light Orange
+        (163/255, 194/255, 65/255, 1.0),  # Green        
+    ]
+
     # Plot the four cases from the example data on separate Axes
     axs = []
     for i, (title, variables, case_data) in enumerate(DATA):

@@ -20,6 +20,13 @@ COLORS = [
     '#B84821',  # Red brick
 ]
 
+COLORS = [
+        (163/255, 194/255, 65/255, 1.0),  # Green   
+        (233/255, 158/255, 122/255, 1.0),  # Light Orange    
+        (145/255, 113/255, 224/255, 1.0),  # Purple 
+    ]
+
+
 def plot_ex_by_num_ap():
     fig = plt.Figure(figsize=(3.75, 3))
 
@@ -56,7 +63,7 @@ def plot_ex_by_num_ap():
 
     output_path = 'figures/ex_by_num_ap.png'
 
-    fig.savefig(output_path, bbox_inches='tight')
+    fig.savefig(output_path, dpi=300, bbox_inches='tight')
     fig.savefig(output_path.replace('.png', '.pdf'), bbox_inches='tight')
     print(f"Saved figure to {output_path}")
 
