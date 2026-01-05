@@ -34,7 +34,7 @@ COLOR = COLORS[1]
 
 
 def plot_num_query_distribution():
-    fig = plt.Figure(figsize=(3.75, 3))
+    fig = plt.Figure(figsize=(3.75, 3.25))
 
     ax1 = fig.add_subplot(1, 1, 1)
 
@@ -42,13 +42,16 @@ def plot_num_query_distribution():
     counts = list(DATA.values())
 
     x_positions = range(len(query_ranges))
-    ax1.bar(x_positions, counts, color=COLOR, edgecolor="#6e6e6e", linewidth=0.5)
+    ax1.bar(x_positions, counts, color=COLOR, edgecolor="#6e6e6e", linewidth=0)
 
     ax1.set_xlim(-0.5, len(query_ranges) - 0.5)
     ax1.set_ylim(0, max(counts) * 1.1)
 
     ax1.set_xticks(x_positions)
     ax1.set_xticklabels(query_ranges)
+
+    ax1.set_yticks([0, 50, 100, 150, 200])
+    ax1.set_yticklabels(["0", "50", "100", "150", "200"])
 
     ax1.set_xlabel("Number of Queries")
     ax1.set_ylabel("Number of Questions")

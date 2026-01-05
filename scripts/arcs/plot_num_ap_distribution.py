@@ -31,20 +31,23 @@ COLOR = COLORS[2]
 
 
 def plot_num_ap_distribution():
-    fig = plt.Figure(figsize=(3.75, 3))
+    fig = plt.Figure(figsize=(3.75, 3.25))
 
     ax1 = fig.add_subplot(1, 1, 1)
 
     num_aps = list(DATA.keys())
     counts = list(DATA.values())
 
-    ax1.bar(num_aps, counts, color=COLOR, edgecolor="#6e6e6e", linewidth=0.5)
+    ax1.bar(num_aps, counts, color=COLOR, edgecolor="#6e6e6e", linewidth=0)
 
     ax1.set_xlim(0.5, 5.5)
     ax1.set_ylim(0, max(counts) * 1.1)
 
     ax1.set_xticks(num_aps)
     ax1.set_xticklabels([str(x) for x in num_aps])
+
+    ax1.set_yticks([0, 20, 40, 60, 80, 100, 120])
+    ax1.set_yticklabels(["0", "20", "40", "60", "80", "100", "120"])
 
     ax1.set_xlabel("Number of Ambiguity Points")
     ax1.set_ylabel("Number of Questions")
