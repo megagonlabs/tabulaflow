@@ -460,6 +460,8 @@ Contact: yanlin@megagon.ai
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
 
+- [ ] Remove `extra_info`
+
 - [ ] Fix Spider table and column names casing
 - [ ] Metadata ablation
 - [ ] Raise ModelRetry on too many interpretation combinations
