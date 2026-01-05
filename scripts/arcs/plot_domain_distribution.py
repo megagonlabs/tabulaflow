@@ -32,10 +32,13 @@ def plot_domain_distribution():
     font_properties = FontProperties(family="monospace")
 
     colors = plt.colormaps["Set3"](np.linspace(0, 1, len(counts)))
+    colors[0] = (200 / 255, 220 / 255, 120 / 255, 1.0)
+    colors[1] = (233 / 255, 158 / 255, 122 / 255, 1.0)  # orange
+    colors[2] = (220 / 255, 200 / 255, 255 / 255, 1.0) # light purple
+    colors[3] = (255 / 255, 235 / 255, 150 / 255, 1.0)  # yellow beige
     # set color of codebase_community to purple
-    # colors[4] = (145 / 255, 113 / 255, 224 / 255, 1.0)
-    # set color of basketball to light orange
-    colors[1] = (233 / 255, 158 / 255, 122 / 255, 1.0)
+    colors[4] = (145 / 255, 113 / 255, 224 / 255, 1.0)  # purple
+    colors[5] = (255 / 255, 200 / 255, 180 / 255, 1.0)  # lighter orange
 
     # Increase saturation of the colors
     colors = increase_saturation(colors, factor=1.3)
