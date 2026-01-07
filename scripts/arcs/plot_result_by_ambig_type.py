@@ -236,7 +236,7 @@ if __name__ == "__main__":
     #                        labelspacing=0.2, fontsize='medium', markerscale=1.5, frameon=True)
     # legend = axs[1].legend(MODELS, loc='upper left', bbox_to_anchor=(1.4, 1.1), frameon=True)
     # legend = axs[1].legend(MODELS, loc='bottom right', bbox_to_anchor=(2, 1.5), ncol=len(MODELS), frameon=True)
-    legend = axs[0].legend(MODELS, loc="lower center", bbox_to_anchor=(0.5, -0.35), ncol=len(MODELS), frameon=True)
+    legend = axs[0].legend(MODELS, loc="upper right", bbox_to_anchor=(1.9, 1.0), ncol=1, frameon=True)
 
     for legobj in legend.legend_handles:
         legobj.set_linewidth(3)
