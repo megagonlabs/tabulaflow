@@ -76,7 +76,7 @@ class SQLAgent:
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings={"temperature": self.config.temperature},
+            model_settings=self.config.to_model_settings(),
         )
 
         agent_no_tools = Agent(model=self.config.llm, instructions=system_prompt)
