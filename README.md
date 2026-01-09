@@ -459,12 +459,18 @@ Contact: yanlin@megagon.ai
 - [x] Fix ambig_simple prompt when user patience is provided
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
-
-- [ ] Remove `extra_info`
-
+- [ ] Remove `extra_info` in ARCS
+- [ ] Fix reasoning effort
 - [ ] Fix Spider table and column names casing
-- [ ] Metadata ablation
-- [ ] Raise ModelRetry on too many interpretation combinations
+- [ ] Read CHESS source code
+- [ ] Support in-context examples
+- [ ] Support LSH index
+- [ ] Support other BIRD splits
+- [ ] Spider 2.0 custom data
+- [ ] Update paper
+  - [ ] Section on ease of use in paper and website
+  - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
+
 
 ## Misc
 
