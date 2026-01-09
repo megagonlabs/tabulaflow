@@ -53,6 +53,13 @@ test-bird-agent-gpt-5:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-bird-agent-gpt-5-mini
+test-bird-agent-gpt-5-mini:
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
+
 .PHONY: test-ambrosia-simple
 test-ambrosia-simple:
 	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset ambrosia_s --split test --debug

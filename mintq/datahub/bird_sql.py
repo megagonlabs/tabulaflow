@@ -8,6 +8,15 @@ from mintq.db_connector import SQLConnector
 from mintq.datahub.base import dataset_registry
 
 
+BIRD_DATASET_INSTRUCTIONS = """
+- Do not concatenate columns in the results unless explicitly requested.
+- For percentage values, you need to multiply by 100.
+- The final query should not return additional columns that are not required by the question.
+  - For example, if the question only asks for the highest score but not the name of the student, the final query should not return the name of the student.
+  - Similarly, if the question only asks for the student with the highest score but not the score, the final query should not return the score.
+""".strip()
+
+
 @dataset_registry.register
 class BirdSQLDatasetLoader:
     name: ClassVar = "bird-sql"
@@ -46,6 +55,7 @@ class BirdSQLDatasetLoader:
                             question=item["question"],
                             evidence=item["evidence"],
                             gold_query=GoldQuery(query=item["SQL"]),
+                            dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
                         )
                     )
         return tasks
