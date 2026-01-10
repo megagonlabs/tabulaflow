@@ -459,7 +459,9 @@ Contact: yanlin@megagon.ai
 - [x] Fix ambig_simple prompt when user patience is provided
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
-- [ ] Error analysis pipeline
+- [x] Error analysis pipeline
+- [x] "ambrosia_s" -> "ambrosia-s"
+- [x] Support BIRD dev_20251106 split
 - [ ] Prompt engineering
 - [ ] Remove `extra_info` in ARCS
 - [ ] Fix reasoning effort
@@ -467,7 +469,6 @@ Contact: yanlin@megagon.ai
 - [ ] Read CHESS source code
 - [ ] Support in-context examples
 - [ ] Support LSH index
-- [ ] Support other BIRD splits
 - [ ] Spider 2.0 custom data
 - [ ] Update paper
   - [ ] Section on ease of use in paper and website
