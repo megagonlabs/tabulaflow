@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 import random
 from typing import Any
-from mintq.schema import NL2QTaskOutput, NL2QRunResult
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage
 from mintq.metrics import NL2QMetric
 
 
@@ -28,6 +28,7 @@ class ErrorTaskReport(BaseModel):
     gold: Any
     pred: Any | None
     report: str
+    usage: Usage
     eval_metrics: dict[str, Any]
 
     def to_readable(self) -> str:
@@ -43,6 +44,7 @@ class ErrorTaskReport(BaseModel):
 class ErrorReport(BaseModel):
     aggregated_report: str
     task_reports: list[ErrorTaskReport]
+    usage: Usage
 
     def to_readable(self) -> str:
         res = f"=== START OF SUMMARY ===\n\n{self.aggregated_report}\n\n=== END OF SUMMARY ===\n\n\n"
@@ -77,13 +79,14 @@ QID: {{ task_report.qid }}
 """.strip()
 
 
-async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-4.1") -> ErrorTaskReport:
+async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> ErrorTaskReport:
     if task.output_type == "simple":
         gold_str = task.gold_query.to_readable()
         pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
         propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
         result = await Agent(llm).run(propmt)
         report = result.output
+        usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
         return ErrorTaskReport(
             qid=task.qid,
             question=task.question,
@@ -91,6 +94,7 @@ async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:
             pred=task.pred_query,
             report=report,
             eval_metrics=task.eval_metrics,
+            usage=usage,
         )
     else:
         raise NotImplementedError(f"Error analysis for {task.output_type} tasks is not implemented.")
@@ -98,7 +102,7 @@ async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:
 
 async def analyze_errors_async(
     result: NL2QRunResult,
-    llm: str = "openai-responses:gpt-4.1",
+    llm: str = "openai-responses:gpt-5",
     error_metric_name: str = "simple_ex",
     num_samples: int = 100,
     batch_size: int = 50,
@@ -112,7 +116,11 @@ async def analyze_errors_async(
         task_reports += batch_reports
     prompt = jinja2.Template(SUMMARY_PROMPT).render(task_reports=task_reports)
     aggregated_report = await Agent(llm).run(prompt)
-    return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report.output)
+
+    usage = Usage.from_pydantic_ai_usage(aggregated_report.usage(), llm)
+    for task_report in task_reports:
+        usage += task_report.usage
+    return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report.output, usage=usage)
 
 
 async def main_async() -> None:
@@ -120,7 +128,7 @@ async def main_async() -> None:
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=50)
     parser.add_argument("--num_samples", type=int, default=100)
-    parser.add_argument("--llm", default="openai-responses:gpt-4.1")
+    parser.add_argument("--llm", default="openai-responses:gpt-5")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--error_metric_name", default="simple_ex")
     args = parser.parse_args()
@@ -133,6 +141,7 @@ async def main_async() -> None:
     error_report = await analyze_errors_async(
         result, args.llm, args.error_metric_name, args.num_samples, args.batch_size
     )
+    print(f"Total cost USD: {error_report.usage.api_cost_usd:.6f}")
 
     with open(os.path.join(args.result_dir, "error_report.txt"), "w") as f:
         f.write(error_report.to_readable())
