@@ -11,6 +11,8 @@ __pycache__/
 /data/*
 !/data/BIRD-SQL_column_meaning/
 !/data/BIRD-SQL_column_meaning/*.json
+!/data/ambrosia-s/
+/data/ambrosia-s/*
 !/data/ambrosia-s/db_list.txt
 /output*/
 /cache*/
