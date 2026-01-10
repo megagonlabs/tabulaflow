@@ -25,6 +25,8 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
 class ErrorTaskReport(BaseModel):
     qid: str
     question: str
+    db: str
+    evidence: str | None
     gold: Any
     pred: Any | None
     report: str
@@ -90,6 +92,8 @@ async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:
         return ErrorTaskReport(
             qid=task.qid,
             question=task.question,
+            db=task.db,
+            evidence=getattr(task, "evidence", None),
             gold=task.gold_query,
             pred=task.pred_query,
             report=report,
