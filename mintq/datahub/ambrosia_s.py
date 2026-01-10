@@ -49,12 +49,12 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 
 @dataset_registry.register
 class AmbrosiaSDatasetLoader:
-    name: ClassVar = "ambrosia_s"
+    name: ClassVar = "ambrosia-s"
     splits: ClassVar = ["test", "few_shot_examples"]
 
     def __init__(
         self,
-        directory: str = "data/ambrosia_s/",
+        directory: str = "data/ambrosia-s/",
         max_concurrency: int = 16,
         include_taxonomy: bool = False,
     ):
@@ -64,7 +64,7 @@ class AmbrosiaSDatasetLoader:
 
         self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
-        # Actual DB (.sqlite) location: data/ambrosia_s/ambrosia/<db_name>.sqlite
+        # Actual DB (.sqlite) location: data/ambrosia-s/ambrosia/<db_name>.sqlite
         self.db_list: list[str] = []
         with open(directory + "/db_list.txt", "r") as f:
             self.db_list = [line.strip() for line in f.readlines() if line.strip()]
@@ -137,7 +137,7 @@ class AmbrosiaSDatasetLoader:
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
-                    global_id=f"ambrosia_s+{name.replace('/', '___')}",
+                    global_id=f"ambrosia-s+{name.replace('/', '___')}",
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'ambrosia', f'{name}.sqlite')}",

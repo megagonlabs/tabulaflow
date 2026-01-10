@@ -62,25 +62,25 @@ test-bird-agent-gpt-5-mini:
 
 .PHONY: test-ambrosia-simple
 test-ambrosia-simple:
-	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset ambrosia_s --split test --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset ambrosia-s --split test --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-ambrosia-flat
 test-ambrosia-flat:
-	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset ambrosia_s --split test --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset ambrosia-s --split test --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-ambrosia-structured
 test-ambrosia-structured:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset ambrosia_s --split test --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset ambrosia-s --split test --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-ambrosia-structured-with-taxonomy
 test-ambrosia-structured-with-taxonomy:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset ambrosia_s --split test --debug --include_taxonomy
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset ambrosia-s --split test --debug --include_taxonomy
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 

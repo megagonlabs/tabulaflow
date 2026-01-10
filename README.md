@@ -217,28 +217,28 @@ docker run -d --name beaver-nw -p 3312:3306 -e MYSQL_ROOT_PASSWORD=root -v $(pwd
 
 Download the AMBROSIA dataset (`data.zip`) from [here](https://ambrosia-benchmark.github.io/).
 
-Unzip the archive and move its contents into `data/ambrosia_s/`:
+Unzip the archive and move its contents into `data/ambrosia-s/`:
 
 ```bash
-unzip data.zip && mv data data/ambrosia_s/ambrosia
+unzip data.zip && mv data data/ambrosia-s/ambrosia
 ```
 
 Next, download the structured disambiguation annotations from Google Drive:
 
 ```bash
-uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O data/ambrosia_s/ambrosia_few_shot_examples.json
-uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O data/ambrosia_s/ambrosia_test.json
+uvx gdown "https://drive.google.com/uc?id=1Zqx4sVuQGWZuyuT91OY3tnARC6Tz6EQp" -O data/ambrosia-s/ambrosia_few_shot_examples.json
+uvx gdown "https://drive.google.com/uc?id=1cYftWIdRQfOVaHSVuSjOA4XjfcOvodk2" -O data/ambrosia-s/ambrosia_test.json
 ```
 
 Finally, run the following scripts to add question texts and gold queries to the annotations:
 
 ```bash
-uv run python scripts/ambrosia_s/add_values_to_annotations.py --csv data/ambrosia_s/ambrosia/ambrosia.csv --input data/ambrosia_s/ambrosia_few_shot_examples.json --output data/ambrosia_s/ambrosia_few_shot_examples_processed.json
-uv run python scripts/ambrosia_s/add_values_to_annotations.py --csv data/ambrosia_s/ambrosia/ambrosia.csv --input data/ambrosia_s/ambrosia_test.json --output data/ambrosia_s/ambrosia_test_processed.json
+uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv data/ambrosia-s/ambrosia/ambrosia.csv --input data/ambrosia-s/ambrosia_few_shot_examples.json --output data/ambrosia-s/ambrosia_few_shot_examples_processed.json
+uv run python scripts/ambrosia-s/add_values_to_annotations.py --csv data/ambrosia-s/ambrosia/ambrosia.csv --input data/ambrosia-s/ambrosia_test.json --output data/ambrosia-s/ambrosia_test_processed.json
 ```
 
 ```
-data/ambrosia_s
+data/ambrosia-s
 ├── ambrosia_few_shot_examples_processed.json  # processed annotations from the "few_shot_examples" split
 ├── ambrosia_few_shot_examples.json  # structured disambiguation annotations from the "few_shot_examples" split
 ├── ambrosia_test_processed.json  # processed annotations from the "test" split

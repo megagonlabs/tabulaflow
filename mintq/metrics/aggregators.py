@@ -94,7 +94,7 @@ class ByAmbrosiaTaxonomyTypeAggregator:
         self.metric_keys = metric_keys
 
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
-        if result.dataset != "ambrosia_s":
+        if result.dataset != "ambrosia-s":
             return {}
 
         all_types = ["scope", "attachment", "vague"]
