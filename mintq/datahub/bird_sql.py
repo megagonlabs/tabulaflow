@@ -3,6 +3,7 @@ import json
 import asyncio
 import random
 from typing import ClassVar
+from datasets import load_dataset
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
 from mintq.datahub.base import dataset_registry
@@ -19,7 +20,7 @@ BIRD_DATASET_INSTRUCTIONS = """
 @dataset_registry.register
 class BirdSQLDatasetLoader:
     name: ClassVar = "bird-sql"
-    splits: ClassVar = ["train", "dev"]
+    splits: ClassVar = ["train", "dev_20240627", "dev_20251106"]
 
     def __init__(
         self,
@@ -30,11 +31,17 @@ class BirdSQLDatasetLoader:
         self.column_meaning_directory = column_meaning_directory
         self._dbms_semaphore = asyncio.Semaphore(1)
 
+        self._task_file_paths = {
+            "train": os.path.join(self.directory, "train", "train.json"),
+            "dev_20240627": os.path.join(self.directory, "dev_20240627", "dev.json"),
+            "dev_20251106": os.path.join(self.directory, "dev_20251106", "dev.json"),
+        }
+
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:
+        with open(self._task_file_paths[split], "r") as f:
             return list(dict.fromkeys([item["db_id"] for item in json.load(f)]))
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
@@ -43,7 +50,7 @@ class BirdSQLDatasetLoader:
 
         databases = databases or self.get_databases(split)
         tasks = []
-        with open(os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}.json"), "r") as f:
+        with open(self._task_file_paths[split], "r") as f:
             for i, item in enumerate(json.load(f)):
                 if item["db_id"] in databases:
                     tasks.append(
@@ -64,7 +71,9 @@ class BirdSQLDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        db_dir = os.path.join(self.directory, "dev_20240627" if split == "dev" else split, f"{split}_databases")
+        db_dir = os.path.join(
+            self.directory, "dev_20240627" if split.startswith("dev") else split, f"{split}_databases"
+        )
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
@@ -78,7 +87,8 @@ class BirdSQLDatasetLoader:
                 for name in databases
             ]
         )
-        with open(os.path.join(self.column_meaning_directory, f"{split}_column_meaning.json"), "r") as f:
+        canonical_split = "dev" if split.startswith("dev") else "train"
+        with open(os.path.join(self.column_meaning_directory, f"{canonical_split}_column_meaning.json"), "r") as f:
             column_descriptions = {
                 key: value.strip().strip("#").strip().replace("\n", " ") for key, value in json.load(f).items()
             }
@@ -88,9 +98,20 @@ class BirdSQLDatasetLoader:
                     column.description = column_descriptions.get(f"{conn.schema.name}|{table.name}|{column.name}", None)
         return {name: conn for name, conn in zip(databases, db_connectors)}
 
+    def _ensure_dev_20251106_downloaded(self) -> None:
+        path = os.path.join(self.directory, "dev_20251106")
+        if not os.path.exists(path):
+            os.makedirs(path)
+            dataset = load_dataset("birdsql/bird_sql_dev_20251106")
+            df = dataset["dev_20251106"].to_pandas()
+            df.to_json(os.path.join(path, "dev.json"), orient="records", indent=2)
+
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
+        if split == "dev_20251106":
+            self._ensure_dev_20251106_downloaded()
+
         tasks = await self.get_tasks_async(split, databases)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
