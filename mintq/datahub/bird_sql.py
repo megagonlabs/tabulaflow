@@ -31,17 +31,22 @@ class BirdSQLDatasetLoader:
         self.column_meaning_directory = column_meaning_directory
         self._dbms_semaphore = asyncio.Semaphore(1)
 
-        self._task_file_paths = {
+        self._task_files = {
             "train": os.path.join(self.directory, "train", "train.json"),
             "dev_20240627": os.path.join(self.directory, "dev_20240627", "dev.json"),
             "dev_20251106": os.path.join(self.directory, "dev_20251106", "dev.json"),
+        }
+        self._db_dirs = {
+            "train": os.path.join(self.directory, "train", "train_databases"),
+            "dev_20240627": os.path.join(self.directory, "dev_20240627", "dev_databases"),
+            "dev_20251106": os.path.join(self.directory, "dev_20240627", "dev_databases"),
         }
 
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        with open(self._task_file_paths[split], "r") as f:
+        with open(self._task_files[split], "r") as f:
             return list(dict.fromkeys([item["db_id"] for item in json.load(f)]))
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
@@ -50,7 +55,7 @@ class BirdSQLDatasetLoader:
 
         databases = databases or self.get_databases(split)
         tasks = []
-        with open(self._task_file_paths[split], "r") as f:
+        with open(self._task_files[split], "r") as f:
             for i, item in enumerate(json.load(f)):
                 if item["db_id"] in databases:
                     tasks.append(
@@ -71,9 +76,7 @@ class BirdSQLDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
-        db_dir = os.path.join(
-            self.directory, "dev_20240627" if split.startswith("dev") else split, f"{split}_databases"
-        )
+        db_dir = self._db_dirs[split]
         db_connectors = await asyncio.gather(
             *[
                 SQLConnector.from_url_async(
