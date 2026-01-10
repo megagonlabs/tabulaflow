@@ -1,7 +1,5 @@
 import matplotlib.pyplot as plt
 import numpy as np
-from matplotlib.offsetbox import OffsetImage, AnnotationBbox
-from PIL import Image
 from matplotlib.patches import Circle, RegularPolygon
 from matplotlib.path import Path
 from matplotlib.projections import register_projection
@@ -139,9 +137,9 @@ if __name__ == "__main__":
     # colors = ["#a56cbd", "#53c2a2", "#4892bd", "#fe7f2d", "#fcca46"]
 
     colors = [
-        (163/255, 194/255, 65/255, 1.0),  # Green      
-        (233/255, 158/255, 122/255, 1.0),  # Light Orange
-        (145/255, 113/255, 224/255, 1.0),  # Purple  
+        (163 / 255, 194 / 255, 65 / 255, 1.0),  # Green
+        (233 / 255, 158 / 255, 122 / 255, 1.0),  # Light Orange
+        (145 / 255, 113 / 255, 224 / 255, 1.0),  # Purple
     ]
 
     # Plot the four cases from the example data on separate Axes
@@ -253,6 +251,6 @@ if __name__ == "__main__":
     #          size='large')
 
     fig.savefig("figures/result_by_ambig_type.png", bbox_inches="tight", dpi=300)
-    print(f"Saved plot to figures/result_by_ambig_type.png")
+    print("Saved plot to figures/result_by_ambig_type.png")
     fig.savefig("figures/result_by_ambig_type.pdf", bbox_inches="tight")
-    print(f"Saved plot to figures/result_by_ambig_type.pdf")
+    print("Saved plot to figures/result_by_ambig_type.pdf")

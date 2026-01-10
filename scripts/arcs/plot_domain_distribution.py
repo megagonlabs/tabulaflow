@@ -19,7 +19,7 @@ def plot_domain_distribution():
     fig = plt.Figure(figsize=(3.75, 3))
     ax = fig.add_subplot(1, 1, 1)
 
-    domains = ["retails", "professional_basketball", "github_repos", "financial", "codebase_community", "student_club"]
+    # domains = ["retails", "professional_basketball", "github_repos", "financial", "codebase_community", "student_club"]
     counts = {
         "retails": 84,
         "basketball": 34,
@@ -34,7 +34,7 @@ def plot_domain_distribution():
     colors = plt.colormaps["Set3"](np.linspace(0, 1, len(counts)))
     colors[0] = (200 / 255, 220 / 255, 120 / 255, 1.0)
     colors[1] = (233 / 255, 158 / 255, 122 / 255, 1.0)  # orange
-    colors[2] = (220 / 255, 200 / 255, 255 / 255, 1.0) # light purple
+    colors[2] = (220 / 255, 200 / 255, 255 / 255, 1.0)  # light purple
     colors[3] = (255 / 255, 235 / 255, 150 / 255, 1.0)  # yellow beige
     # set color of codebase_community to purple
     colors[4] = (145 / 255, 113 / 255, 224 / 255, 1.0)  # purple

@@ -1,5 +1,4 @@
 import matplotlib.pyplot as plt
-import numpy as np
 from matplotlib.font_manager import FontProperties
 from matplotlib.patches import Patch
 
@@ -35,7 +34,6 @@ def plot_ambig_type_distribution():
     #     "value": "#8fbd6f",
     #     "computation": "#ffcd33",
     # }
-    
 
     font_properties = FontProperties(family="monospace")
 
@@ -56,7 +54,7 @@ def plot_ambig_type_distribution():
         startangle=0,
         autopct=lambda pct: "Semantic" if pct > 50 else "Syntactic",
     )
-    for i,t in enumerate(autotexts):
+    for i, t in enumerate(autotexts):
         t.set_color("w")
         t.set_fontweight("bold")
         t.set_fontsize(16 if i == 0 else 8)
@@ -67,21 +65,21 @@ def plot_ambig_type_distribution():
 
     # Outer pie chart (detailed breakdown)
     # Define base colors for each category type
-    base_colors = plt.colormaps["Set3"](np.linspace(0.3, 0.7, 4))
-    
+    # base_colors = plt.colormaps["Set3"](np.linspace(0.3, 0.7, 4))
+
     # Create colors for outer ring: semantic uses base colors, syntactic uses same base colors
     colors_outer = [colors["column"], colors["table"], colors["value"], colors["computation"]]
 
-    labels_dict = {
-        "semantic_column": "column",
-        "semantic_table": "table",
-        "semantic_value": "value",
-        "semantic_computation": "computation",
-        "syntactic_column": "column",
-        "syntactic_table": "table",
-        "syntactic_value": "value",
-        "syntactic_computation": "computation",
-    }
+    # labels_dict = {
+    #     "semantic_column": "column",
+    #     "semantic_table": "table",
+    #     "semantic_value": "value",
+    #     "semantic_computation": "computation",
+    #     "syntactic_column": "column",
+    #     "syntactic_table": "table",
+    #     "syntactic_value": "value",
+    #     "syntactic_computation": "computation",
+    # }
 
     wedges, texts = ax.pie(
         counts.values(),
@@ -96,32 +94,32 @@ def plot_ambig_type_distribution():
 
     # Create first legend for semantic vs syntactic
     legend_semantic_syntactic = [
-        Patch(facecolor=colors["semantic"], edgecolor='w', label='semantic'),
-        Patch(facecolor=colors["syntactic"], edgecolor='w', label='syntactic')
+        Patch(facecolor=colors["semantic"], edgecolor="w", label="semantic"),
+        Patch(facecolor=colors["syntactic"], edgecolor="w", label="syntactic"),
     ]
     legend1 = ax.legend(
         handles=legend_semantic_syntactic,
-        loc='upper left',
+        loc="upper left",
         bbox_to_anchor=(1, 0.9),
         prop=font_properties,
         frameon=True,
     )
-    
+
     # Create second legend for category types
-    legend_categories = [
-        Patch(facecolor=colors["column"], edgecolor='w', label='column'),
-        Patch(facecolor=colors["table"], edgecolor='w', label='table'),
-        Patch(facecolor=colors["value"], edgecolor='w', label='value'),
-        Patch(facecolor=colors["computation"], edgecolor='w', label='computation')
-    ]
-    legend2 = ax.legend(
-        handles=legend_categories,
-        loc='upper left',
-        bbox_to_anchor=(1, 0.75),
-        prop=font_properties,
-        frameon=True,
-    )
-    
+    # legend_categories = [
+    #     Patch(facecolor=colors["column"], edgecolor="w", label="column"),
+    #     Patch(facecolor=colors["table"], edgecolor="w", label="table"),
+    #     Patch(facecolor=colors["value"], edgecolor="w", label="value"),
+    #     Patch(facecolor=colors["computation"], edgecolor="w", label="computation"),
+    # ]
+    # legend2 = ax.legend(
+    #     handles=legend_categories,
+    #     loc="upper left",
+    #     bbox_to_anchor=(1, 0.75),
+    #     prop=font_properties,
+    #     frameon=True,
+    # )
+
     # Add the first legend back (matplotlib removes it when creating the second)
     ax.add_artist(legend1)
 

@@ -7,16 +7,8 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 import random
 from typing import Any
-from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
-from mintq.metrics import NL2QMetric, BaseMetricAggregator
-from mintq.metrics.aggregators import (
-    ByAmbrosiaTaxonomyTypeAggregator,
-    SimpleAverageAggregator,
-    ByDBAggregator,
-    ByAmbigPointNumAggregator,
-)
-from mintq.utils import pprint_dict
+from mintq.metrics import NL2QMetric
 
 
 async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:

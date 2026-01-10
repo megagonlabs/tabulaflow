@@ -51,12 +51,12 @@ def main():
     #     (0.302, 0.686, 0.290, 1.0),  # Luxurious emerald green - Correct
     # ]
     category_colors = [
-        (145/255, 113/255, 224/255, 1.0),  # Purple
+        (145 / 255, 113 / 255, 224 / 255, 1.0),  # Purple
         # (216/255, 191/255, 216/255, 1.0),  # Light Purple
         (0.85, 0.85, 0.85, 1.0),  # Dark Grey
-        (233/255, 158/255, 122/255, 1.0),  # Light Orange
-        (193/255, 225/255, 193/255, 1.0),  # Light Green
-        (163/255, 194/255, 65/255, 1.0),  # Green        
+        (233 / 255, 158 / 255, 122 / 255, 1.0),  # Light Orange
+        (193 / 255, 225 / 255, 193 / 255, 1.0),  # Light Green
+        (163 / 255, 194 / 255, 65 / 255, 1.0),  # Green
     ]
 
     # Generate LaTeX color definitions
@@ -94,7 +94,6 @@ def main():
 
             r, g, b, _ = color
             text_color = "white" if r * g * b < 0.5 else "darkgrey"
-
 
             # Format label: 0.23 -> 23%, 0.057 -> 6%
             if width >= 0.01:

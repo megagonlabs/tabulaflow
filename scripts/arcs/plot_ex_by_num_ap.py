@@ -1,6 +1,4 @@
-import numpy as np
 import matplotlib.pyplot as plt
-
 
 
 DATA = {
@@ -9,22 +7,22 @@ DATA = {
     "Structured": [0.5981, 0.3761, 0.2842],
 }
 COLORS = [
-    '#9B59B6',  # Vibrant purple
-    '#D81B60',  # Vibrant pink
-    '#16A085',  # Vibrant teal
+    "#9B59B6",  # Vibrant purple
+    "#D81B60",  # Vibrant pink
+    "#16A085",  # Vibrant teal
 ]
 
 COLORS = [
-    '#16A085',  # Vibrant teal
-    '#9B59B6',  # Vibrant purple
-    '#B84821',  # Red brick
+    "#16A085",  # Vibrant teal
+    "#9B59B6",  # Vibrant purple
+    "#B84821",  # Red brick
 ]
 
 COLORS = [
-        (163/255, 194/255, 65/255, 1.0),  # Green   
-        (233/255, 158/255, 122/255, 1.0),  # Light Orange    
-        (145/255, 113/255, 224/255, 1.0),  # Purple 
-    ]
+    (163 / 255, 194 / 255, 65 / 255, 1.0),  # Green
+    (233 / 255, 158 / 255, 122 / 255, 1.0),  # Light Orange
+    (145 / 255, 113 / 255, 224 / 255, 1.0),  # Purple
+]
 
 
 def plot_ex_by_num_ap():
@@ -45,29 +43,28 @@ def plot_ex_by_num_ap():
     ax1.set_xticks(num_aps)
     ax1.set_yticks([0.0, 0.2, 0.4, 0.6, 0.7])
 
-    ax1.set_xlabel('Number of Ambiguous Points')
-    ax1.set_ylabel('EX')
+    ax1.set_xlabel("Number of Ambiguous Points")
+    ax1.set_ylabel("EX")
 
     ax1.set_xticklabels(["1", "2", "3+"])
     ax1.set_yticklabels(["0.0", "0.2", "0.4", "0.6", "0.7"])
 
-    ax1.grid(color='#d6d6d6')
-    ax1.spines['bottom'].set_color('#6e6e6e')
-    ax1.spines['top'].set_color('#6e6e6e')
-    ax1.spines['right'].set_color('#6e6e6e')
-    ax1.spines['left'].set_color('#6e6e6e')
+    ax1.grid(color="#d6d6d6")
+    ax1.spines["bottom"].set_color("#6e6e6e")
+    ax1.spines["top"].set_color("#6e6e6e")
+    ax1.spines["right"].set_color("#6e6e6e")
+    ax1.spines["left"].set_color("#6e6e6e")
     ax1.tick_params(length=0)
-    
+
     # ax1.legend(loc='lower right', frameon=True, fancybox=False, edgecolor='#6e6e6e')
     ax1.legend()
 
-    output_path = 'figures/ex_by_num_ap.png'
+    output_path = "figures/ex_by_num_ap.png"
 
-    fig.savefig(output_path, dpi=300, bbox_inches='tight')
-    fig.savefig(output_path.replace('.png', '.pdf'), bbox_inches='tight')
+    fig.savefig(output_path, dpi=300, bbox_inches="tight")
+    fig.savefig(output_path.replace(".png", ".pdf"), bbox_inches="tight")
     print(f"Saved figure to {output_path}")
 
 
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     plot_ex_by_num_ap()

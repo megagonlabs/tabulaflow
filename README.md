@@ -459,6 +459,7 @@ Contact: yanlin@megagon.ai
 - [x] Fix ambig_simple prompt when user patience is provided
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
+- [ ] Error analysis pipeline
 - [ ] Prompt engineering
 - [ ] Remove `extra_info` in ARCS
 - [ ] Fix reasoning effort
