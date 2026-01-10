@@ -348,7 +348,7 @@ class GoldQuery(BaseModel):
                 exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
 
     def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
+        header = self.model_dump_json(indent=2, exclude={"query", "exec_result", "other_exec_results"})
         res = f"/*\n{header}\n*/\n{self.query}"
         res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
         return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
