@@ -329,7 +329,7 @@ Contact: yanlin@megagon.ai
 - [ ] Hierarchical documents
 - [ ] Engineer individual components
 
-### Framework
+### ARCS
 
 - [x] [Jun 13] Include views in the schema (some spider2 db has views instead of tables)
 - [x] [Jun 13] Optimize schema fetching - approximate `num_unique` and `null_ratio`
@@ -459,9 +459,14 @@ Contact: yanlin@megagon.ai
 - [x] Fix ambig_simple prompt when user patience is provided
 - [x] Rename exp dirs
 - [x] Rerun evaluate.py on all results
+
+### MINTQ 0.9.0
+
 - [x] Error analysis pipeline
 - [x] "ambrosia_s" -> "ambrosia-s"
 - [x] Support BIRD dev_20251106 split
+- [ ] Fix gold not executable
+- [ ] Metrics for each BIRD difficulty level
 - [ ] Prompt engineering
 - [ ] Remove `extra_info` in ARCS
 - [ ] Fix reasoning effort
@@ -473,6 +478,7 @@ Contact: yanlin@megagon.ai
 - [ ] Update paper
   - [ ] Section on ease of use in paper and website
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
+  - [ ] Data sheet
 
 
 ## Misc
