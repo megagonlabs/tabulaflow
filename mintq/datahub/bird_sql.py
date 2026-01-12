@@ -51,16 +51,18 @@ class BirdSQLDatasetLoader:
 
     @staticmethod
     def _fix_gold_query(query: str) -> str:
-        """In BIRD-SQL, the gold query is sometimes not executable in our library because:
-        (1) It uses syntax that is valid in native SQLite but not valid in sqlalchemy.
-        (2) The query is inefficient and exceeds the execution time limit (default is 90 seconds).
-        We rewrite them to a equivalent form that is valid in sqlalchemy and within the execution time limit."""
+        """
+        In BIRD-SQL, a few gold queries are not executable in our library because:
+          (1) They use syntax that is valid in native SQLite but not valid in sqlalchemy.
+          (2) They are inefficient and exceed the execution time limit (default is 90 seconds).
+        We rewrite them to an equivalent form that is valid in sqlalchemy and within the execution time limit.
+        """
 
         # sqlalchemy treats :__ as a parameter
         if "LIKE '_:%:__.___'" in query:
             query = query.replace("LIKE '_:%:__.___'", "LIKE '_:%' || ':' || '__' || '.___'")
 
-        #  The original query takes 4 minutes to execute, our rewrite takes 0.1 seconds (qid: bird-sql_dev_20251106_1131)
+        #  The original query takes 4 minutes to execute, our rewrite takes 2.59 seconds (qid: bird-sql_dev_20251106_1131)
         if (
             query
             == "SELECT AVG(T1.height) FROM Player AS T1 INNER JOIN Match AS T2 ON T1.player_api_id IN (T2.home_player_1, T2.home_player_2, T2.home_player_3, T2.home_player_4, T2.home_player_5, T2.home_player_6, T2.home_player_7, T2.home_player_8, T2.home_player_9, T2.home_player_10, T2.home_player_11, T2.away_player_1, T2.away_player_2, T2.away_player_3, T2.away_player_4, T2.away_player_5, T2.away_player_6, T2.away_player_7, T2.away_player_8, T2.away_player_9, T2.away_player_10, T2.away_player_11) INNER JOIN Country AS T3 ON T2.country_id = T3.id WHERE T3.name = 'Italy'"
