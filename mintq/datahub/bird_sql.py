@@ -26,10 +26,12 @@ class BirdSQLDatasetLoader:
         self,
         directory: str = "data/BIRD-SQL",
         column_meaning_directory: str = "data/BIRD-SQL_column_meaning",
+        max_concurrency: int = 16,
     ):
         self.directory = directory
         self.column_meaning_directory = column_meaning_directory
-        self._dbms_semaphore = asyncio.Semaphore(1)
+        self.max_concurrency = max_concurrency
+        self._dbms_semaphore = asyncio.Semaphore(max_concurrency)
 
         self._task_files = {
             "train": os.path.join(self.directory, "train", "train.json"),
@@ -139,7 +141,7 @@ WHERE c.name = 'Italy';"""
                     db_name=name,
                     engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
-                    max_concurrency_per_db=1,
+                    max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
                 )
                 for name in databases
