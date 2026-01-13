@@ -471,8 +471,8 @@ Contact: yanlin@megagon.ai
   - [x] BIRD dev_20251106
   - [x] BIRD train - many questions are unanswerable and queries refer to non-existent tables or columns
 - [x] Metrics for each BIRD difficulty level
-- [ ] Prompt engineering
-  - [ ] Tune instructions on return columns
+- [x] Tune instructions on return columns
+- [ ] Postprocessing module
 - [ ] Support in-context examples
 - [ ] Model ensemble
 - [ ] Fix Spider table and column names casing
