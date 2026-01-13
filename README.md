@@ -462,6 +462,7 @@ Contact: yanlin@megagon.ai
 
 ### MINTQ 0.9.0
 
+- [x] Fix reasoning effort
 - [x] Error analysis pipeline
 - [x] "ambrosia_s" -> "ambrosia-s"
 - [x] Support BIRD dev_20251106 split
@@ -471,17 +472,18 @@ Contact: yanlin@megagon.ai
   - [x] BIRD train - many questions are unanswerable and queries refer to non-existent tables or columns
 - [x] Metrics for each BIRD difficulty level
 - [ ] Prompt engineering
-- [ ] Remove `extra_info` in ARCS
-- [ ] Fix reasoning effort
+  - [ ] Tune instructions on return columns
+- [ ] Support in-context examples
+- [ ] Model ensemble
 - [ ] Fix Spider table and column names casing
 - [ ] Read CHESS source code
-- [ ] Support in-context examples
 - [ ] Support LSH index
 - [ ] Spider 2.0 custom data
-- [ ] Update paper
+- [ ] ARCS
   - [ ] Section on ease of use in paper and website
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
   - [ ] Data sheet
+  - [ ] Remove `extra_info` in ARCS data
 
 ### Release test
 
