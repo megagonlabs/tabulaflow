@@ -26,7 +26,11 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
 
 
 async def evaluate_async(
-    result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int, metric_aggregators: list[BaseMetricAggregator], verbose: bool = True
+    result: NL2QRunResult,
+    metrics: list[NL2QMetric],
+    batch_size: int,
+    metric_aggregators: list[BaseMetricAggregator],
+    verbose: bool = True,
 ) -> NL2QRunResult:
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
