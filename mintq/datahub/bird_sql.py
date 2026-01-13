@@ -11,9 +11,13 @@ from mintq.datahub.base import dataset_registry
 
 BIRD_DATASET_INSTRUCTIONS = """
 - Do not concatenate columns in the results unless explicitly requested.
-- The final query should not return additional columns that are not required by the question.
+- If the question asks for a list of objects, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
+- The final query should not return additional columns that are not explicitly requested by the question.
   - For example, if the question only asks for the highest score but not the name of the student, the final query should not return the name of the student.
   - Similarly, if the question only asks for the student with the highest score but not the score, the final query should not return the score.
+  - If the question requests a list of items sorted by a specific column, do not include the sorting column in the output unless it is specifically requested.
+- If the question refers to the object with the maximum or minimum value, assume there is exactly one such object.
+- Ensure that the columns in the output appear in the same order as they are mentioned in the question.
 """.strip()
 
 
