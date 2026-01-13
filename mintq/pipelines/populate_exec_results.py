@@ -27,8 +27,7 @@ async def populate_task_async(
             *[
                 db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
                 for q in queries_to_populate
-            ],
-            return_exceptions=True,
+            ]
         )
         for q, exec_result in zip(queries_to_populate, results):
             q.exec_result = exec_result
