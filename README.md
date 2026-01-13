@@ -468,8 +468,8 @@ Contact: yanlin@megagon.ai
 - [ ] Fix gold not executable
   - [x] BIRD dev_20240627
   - [x] BIRD dev_20251106
-  - [ ] BIRD train
-- [ ] Metrics for each BIRD difficulty level
+  - [x] BIRD train - many questions are unanswerable and queries refer to non-existent tables or columns
+- [x] Metrics for each BIRD difficulty level
 - [ ] Prompt engineering
 - [ ] Remove `extra_info` in ARCS
 - [ ] Fix reasoning effort
