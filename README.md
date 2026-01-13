@@ -466,6 +466,9 @@ Contact: yanlin@megagon.ai
 - [x] "ambrosia_s" -> "ambrosia-s"
 - [x] Support BIRD dev_20251106 split
 - [ ] Fix gold not executable
+  - [x] BIRD dev_20240627
+  - [x] BIRD dev_20251106
+  - [ ] BIRD train
 - [ ] Metrics for each BIRD difficulty level
 - [ ] Prompt engineering
 - [ ] Remove `extra_info` in ARCS
@@ -484,6 +487,7 @@ Contact: yanlin@megagon.ai
 
 - [ ] Remove cache
 - [ ] Schema caching
+- [ ] all gold queries executable
 - [ ] Test ARCS
 - [ ] Test BIRD
 - [ ] Test Spider 2.0
