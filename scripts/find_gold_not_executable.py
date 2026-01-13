@@ -10,6 +10,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_20240627")
+    parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     print(args)
     print()
@@ -20,10 +21,13 @@ async def main() -> None:
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
-
-    await tqdm_asyncio.gather(
-        *[populate_task_async(task, dataset.db_connectors[task.db], force=True) for task in dataset.tasks]
-    )
+    for i in range(0, len(dataset.tasks), args.batch_size):
+        j = min(i + args.batch_size, len(dataset.tasks))
+        batch = dataset.tasks[i:j]
+        await tqdm_asyncio.gather(
+            *[populate_task_async(task, dataset.db_connectors[task.db], force=True) for task in batch]
+        )
+        print(f"{j}/{len(dataset.tasks)} tasks populated.")
 
     num_not_executable = 0
     for task in dataset.tasks:
