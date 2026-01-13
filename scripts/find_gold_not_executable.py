@@ -20,11 +20,20 @@ async def main() -> None:
 
     num_not_executable = 0
     for task in dataset.tasks:
-        if task.gold_query.exec_result.error is not None:
-            num_not_executable += 1
-            print()
-            print(f"===== QID: {task.qid} =====\n")
-            print(task.gold_query.to_readable())
+        if task.task_type == "simple":
+            all_queries = [task.gold_query]
+        elif task.task_type == "ambig":
+            all_queries = task.gold_queries
+        else:
+            raise ValueError(f"Unknown task type: {task.task_type}")
+
+        for query in all_queries:
+            if query.exec_result.error is not None:
+                num_not_executable += 1
+                print()
+                print()
+                print(f"### QID: {task.qid}")
+                print(task.gold_query.to_readable())
 
     print(f"Number of not executable gold queries: {num_not_executable}")
 
