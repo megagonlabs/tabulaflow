@@ -201,6 +201,10 @@ def pprint_dict(d: dict[str, Any]) -> str:
 async def tqdm_gather_with_exceptions(
     *fs: Coroutine[Any, Any, Any], return_exceptions: bool = False, **kwargs: Any
 ) -> list[Any]:
+    """
+    A progress bar wrapper for tqdm_asyncio.gather that supports return_exceptions.
+    See https://github.com/tqdm/tqdm/issues/1286 for more details.
+    """
     if not return_exceptions:
         return await tqdm_asyncio.gather(*fs, **kwargs)  # type: ignore
 
