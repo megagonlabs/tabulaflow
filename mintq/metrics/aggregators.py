@@ -113,3 +113,32 @@ class ByAmbrosiaTaxonomyTypeAggregator:
                 )
             res[f"{metric_key}_by_taxonomy_type"] = metrics
         return res
+
+
+class ByBirdSQLDifficultyAggregator:
+    def __init__(
+        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["bird_sql_ex"]
+    ):
+        self.ops = ops
+        self.metric_keys = metric_keys
+
+    def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
+        if result.dataset != "bird-sql":
+            return {}
+
+        all_levels = ["simple", "moderate", "challenging"]
+        res = {}
+        for metric_key in self.metric_keys:
+            metrics = {}
+            for level in all_levels:
+                metrics[level] = aggregate_metrics(
+                    [
+                        task.eval_metrics[metric_key]
+                        for task in result.tasks
+                        if task.extra_info["bird_sql"]["difficulty"] == level
+                    ],
+                    ops=self.ops,
+                    decimals=4,
+                )
+            res[f"{metric_key}_by_difficulty"] = metrics
+        return res
