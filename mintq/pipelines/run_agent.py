@@ -8,7 +8,6 @@ import asyncio
 import logging
 import litellm
 import traceback
-from tqdm.asyncio import tqdm_asyncio
 from mintq import agent_registry, dataset_registry
 from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
 from mintq.utils import pprint_dict, tqdm_gather_with_exceptions
@@ -89,6 +88,7 @@ async def run_agent_async(
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)
             ],
             return_exceptions=True,
+            disable=not verbose,
         )
         for task, output in zip(batch, batch_outputs):
             if isinstance(output, Exception):

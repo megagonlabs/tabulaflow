@@ -118,7 +118,7 @@ async def analyze_errors_async(
     for i in range(0, len(error_tasks), batch_size):
         j = min(i + batch_size, len(error_tasks))
         batch = error_tasks[i:j]
-        batch_reports = await tqdm_asyncio.gather(*[analyze_task_async(task, llm) for task in batch])
+        batch_reports = await tqdm_asyncio.gather(*[analyze_task_async(task, llm) for task in batch], disable=not verbose)
         task_reports += batch_reports
         if verbose:
             print(f"{j}/{len(error_tasks)} error tasks analyzed.")

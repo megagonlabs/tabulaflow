@@ -40,7 +40,8 @@ async def populate_exec_results_async(
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[populate_task_async(task, dataset.db_connectors[task.db], timeout) for task in batch]
+            *[populate_task_async(task, dataset.db_connectors[task.db], timeout) for task in batch],
+            disable=not verbose,
         )
         if verbose:
             print(f"{j}/{len(result.tasks)} tasks populated.")

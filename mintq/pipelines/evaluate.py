@@ -35,7 +35,7 @@ async def evaluate_async(
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
-        await tqdm_asyncio.gather(*[compute_metrics_async(task, metrics) for task in batch])
+        await tqdm_asyncio.gather(*[compute_metrics_async(task, metrics) for task in batch], disable=not verbose)
         if verbose:
             print(f"{j}/{len(result.tasks)} tasks evaluated.")
     result.aggregated_eval_metrics = {}
