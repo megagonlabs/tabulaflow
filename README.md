@@ -466,7 +466,7 @@ Contact: yanlin@megagon.ai
 - [x] Error analysis pipeline
 - [x] "ambrosia_s" -> "ambrosia-s"
 - [x] Support BIRD dev_20251106 split
-- [ ] Fix gold not executable
+- [x] Fix gold not executable
   - [x] BIRD dev_20240627
   - [x] BIRD dev_20251106
   - [x] BIRD train - many questions are unanswerable and queries refer to non-existent tables or columns
