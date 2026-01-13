@@ -11,7 +11,7 @@ import traceback
 from tqdm.asyncio import tqdm_asyncio
 from mintq import agent_registry, dataset_registry
 from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
-from mintq.utils import pprint_dict
+from mintq.utils import pprint_dict, tqdm_gather_with_exceptions
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import (
@@ -83,7 +83,7 @@ async def run_agent_async(
                 batch_kwargs.append({})
 
         agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])  # type: ignore
-        batch_outputs = await tqdm_asyncio.gather(
+        batch_outputs = await tqdm_gather_with_exceptions(
             *[
                 agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)

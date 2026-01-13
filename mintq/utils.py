@@ -5,6 +5,7 @@ import statistics
 from typing import Literal, Any
 import numpy as np
 import pandas as pd
+from tqdm.asyncio import tqdm_asyncio
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
 
 
@@ -195,3 +196,16 @@ def pprint_dict(d: dict[str, Any]) -> str:
     for key, value in flattened.items():
         res.append(f"- {key}: {'N/A' if value is None else f'{value:.4f}'}")
     return "\n".join(res)
+
+
+async def tqdm_gather_with_exceptions(*fs, return_exceptions=False, **kwargs):
+    if not return_exceptions:
+        return await tqdm_asyncio.gather(*fs, **kwargs)
+
+    async def wrap(f):
+        try:
+            return await f
+        except Exception as e:
+            return e
+
+    return await tqdm_asyncio.gather(*map(wrap, fs), **kwargs)
