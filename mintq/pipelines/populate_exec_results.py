@@ -4,15 +4,16 @@ import asyncio
 import os
 from tqdm import trange
 from mintq import dataset_registry
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
+from mintq.schema import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.db_connector import NL2QDBConnector
 
 
 async def populate_task_async(
-    task: NL2QTaskOutput,
+    task: NL2QTask | NL2QTaskOutput,
     db_connector: NL2QDBConnector,
     timeout: int | None = None,
-) -> NL2QTaskOutput:
+    force: bool = False,
+) -> None:
     for prefix in ["gold", "pred"]:
         all_queries = []
         if getattr(task, f"{prefix}_query", None):
@@ -21,7 +22,7 @@ async def populate_task_async(
             all_queries.append(getattr(task, f"{prefix}_intended_query"))
         if getattr(task, f"{prefix}_queries", None):
             all_queries += getattr(task, f"{prefix}_queries")
-        queries_to_populate = [q for q in all_queries if not q.exec_result]
+        queries_to_populate = [q for q in all_queries if force or not q.exec_result]
         results = await asyncio.gather(
             *[
                 db_connector.run_query_async(q.query, parameters=q.parameter_values, timeout=timeout)
@@ -31,7 +32,6 @@ async def populate_task_async(
         )
         for q, exec_result in zip(queries_to_populate, results):
             q.exec_result = exec_result
-    return task
 
 
 async def populate_exec_results_async(
