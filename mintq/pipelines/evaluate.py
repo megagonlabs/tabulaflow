@@ -10,6 +10,7 @@ from mintq.metrics.aggregators import (
     SimpleAverageAggregator,
     ByDBAggregator,
     ByAmbigPointNumAggregator,
+    ByBirdSQLDifficultyAggregator,
 )
 from mintq.utils import pprint_dict
 
@@ -74,6 +75,7 @@ async def main_async() -> None:
         ByDBAggregator(),
         ByAmbigPointNumAggregator(),
         ByAmbrosiaTaxonomyTypeAggregator(),
+        ByBirdSQLDifficultyAggregator(),
     ]
     result = await evaluate_async(result, metrics, args.batch_size, metric_aggregators)
 
