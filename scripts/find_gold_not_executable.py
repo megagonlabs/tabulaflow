@@ -43,7 +43,7 @@ async def main() -> None:
                 num_not_executable += 1
                 print()
                 print()
-                print(f"### QID: {task.qid}")
+                print(f"### QID: {task.qid}  DB: {task.db}")
                 print(query.to_readable())
 
     print(f"Number of not executable gold queries: {num_not_executable}")
