@@ -2,7 +2,7 @@ import argparse
 import asyncio
 import os
 import jinja2
-from tqdm import trange
+from tqdm.asyncio import tqdm_asyncio
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import random
@@ -110,14 +110,18 @@ async def analyze_errors_async(
     error_metric_name: str = "simple_ex",
     num_samples: int = 100,
     batch_size: int = 50,
+    verbose: bool = True,
 ) -> ErrorReport:
     error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
     error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
     task_reports = []
-    for i in trange(0, len(error_tasks), batch_size):
-        batch = error_tasks[i : i + batch_size]
-        batch_reports = await asyncio.gather(*[analyze_task_async(task, llm) for task in batch])
+    for i in range(0, len(error_tasks), batch_size):
+        j = min(i + batch_size, len(error_tasks))
+        batch = error_tasks[i:j]
+        batch_reports = await tqdm_asyncio.gather(*[analyze_task_async(task, llm) for task in batch])
         task_reports += batch_reports
+        if verbose:
+            print(f"{j}/{len(error_tasks)} error tasks analyzed.")
     prompt = jinja2.Template(SUMMARY_PROMPT).render(task_reports=task_reports)
     aggregated_report = await Agent(llm).run(prompt)
 

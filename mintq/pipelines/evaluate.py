@@ -1,7 +1,7 @@
 import argparse
 import asyncio
 import os
-from tqdm import trange
+from tqdm.asyncio import tqdm_asyncio
 from mintq import metric_registry
 from mintq.schema import NL2QTaskOutput, NL2QRunResult
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
@@ -26,10 +26,14 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
 
 
 async def evaluate_async(
-    result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int, metric_aggregators: list[BaseMetricAggregator]
+    result: NL2QRunResult, metrics: list[NL2QMetric], batch_size: int, metric_aggregators: list[BaseMetricAggregator], verbose: bool = True
 ) -> NL2QRunResult:
-    for i in trange(0, len(result.tasks), batch_size):
-        await asyncio.gather(*[compute_metrics_async(task, metrics) for task in result.tasks[i : i + batch_size]])
+    for i in range(0, len(result.tasks), batch_size):
+        j = min(i + batch_size, len(result.tasks))
+        batch = result.tasks[i:j]
+        await tqdm_asyncio.gather(*[compute_metrics_async(task, metrics) for task in batch])
+        if verbose:
+            print(f"{j}/{len(result.tasks)} tasks evaluated.")
     result.aggregated_eval_metrics = {}
     for aggregator in metric_aggregators:
         result.aggregated_eval_metrics.update(aggregator.aggregate(result))

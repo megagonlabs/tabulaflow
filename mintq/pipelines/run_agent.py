@@ -8,7 +8,7 @@ import asyncio
 import logging
 import litellm
 import traceback
-from tqdm import trange
+from tqdm.asyncio import tqdm_asyncio
 from mintq import agent_registry, dataset_registry
 from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
 from mintq.utils import pprint_dict
@@ -53,12 +53,12 @@ async def run_agent_async(
     batch_size: int,
     metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
     sleep_between_batches: float = 0.0,
-    verbose: bool = False,
+    verbose: bool = True,
 ) -> NL2QRunResult:
     start_time = datetime.datetime.now()
     task_outputs = []
     num_failed = 0
-    for i in trange(0, len(dataset.tasks), batch_size):
+    for i in range(0, len(dataset.tasks), batch_size):
         if sleep_between_batches > 0:
             time.sleep(sleep_between_batches)
 
@@ -83,7 +83,7 @@ async def run_agent_async(
                 batch_kwargs.append({})
 
         agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])  # type: ignore
-        batch_outputs = await asyncio.gather(
+        batch_outputs = await tqdm_asyncio.gather(
             *[
                 agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
                 for agent, task, kwargs in zip(agents, batch, batch_kwargs)
@@ -108,7 +108,7 @@ async def run_agent_async(
                     print(tr.to_readable())
 
         if verbose:
-            print(f"{len(task_outputs)}/{len(dataset.tasks)} tasks completed ({num_failed} failed)")
+            print(f"{j}/{len(dataset.tasks)} tasks completed ({num_failed} failed)")
 
     end_time = datetime.datetime.now()
 

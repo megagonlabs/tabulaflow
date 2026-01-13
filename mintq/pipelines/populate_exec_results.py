@@ -2,7 +2,7 @@ import argparse
 import time
 import asyncio
 import os
-from tqdm import trange
+from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.schema import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.db_connector import NL2QDBConnector
@@ -35,15 +35,16 @@ async def populate_task_async(
 
 
 async def populate_exec_results_async(
-    result: NL2QRunResult, dataset: NL2QDataset, batch_size: int, timeout: int | None = None
+    result: NL2QRunResult, dataset: NL2QDataset, batch_size: int, timeout: int | None = None, verbose: bool = True
 ) -> NL2QRunResult:
-    for i in trange(0, len(result.tasks), batch_size):
-        await asyncio.gather(
-            *[
-                populate_task_async(task, dataset.db_connectors[task.db], timeout)
-                for task in result.tasks[i : i + batch_size]
-            ]
+    for i in range(0, len(result.tasks), batch_size):
+        j = min(i + batch_size, len(result.tasks))
+        batch = result.tasks[i:j]
+        await tqdm_asyncio.gather(
+            *[populate_task_async(task, dataset.db_connectors[task.db], timeout) for task in batch]
         )
+        if verbose:
+            print(f"{j}/{len(result.tasks)} tasks populated.")
     return result
 
 
