@@ -480,6 +480,13 @@ Contact: yanlin@megagon.ai
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
   - [ ] Data sheet
 
+### Release test
+
+- [ ] Remove cache
+- [ ] Schema caching
+- [ ] Test ARCS
+- [ ] Test BIRD
+- [ ] Test Spider 2.0
 
 ## Misc
 
