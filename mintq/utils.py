@@ -2,7 +2,7 @@ import itertools
 import re
 import copy
 import statistics
-from typing import Literal, Any
+from typing import Literal, Any, Coroutine
 import numpy as np
 import pandas as pd
 from tqdm.asyncio import tqdm_asyncio
@@ -198,14 +198,16 @@ def pprint_dict(d: dict[str, Any]) -> str:
     return "\n".join(res)
 
 
-async def tqdm_gather_with_exceptions(*fs, return_exceptions=False, **kwargs):
+async def tqdm_gather_with_exceptions(
+    *fs: Coroutine[Any, Any, Any], return_exceptions: bool = False, **kwargs: Any
+) -> list[Any]:
     if not return_exceptions:
-        return await tqdm_asyncio.gather(*fs, **kwargs)
+        return await tqdm_asyncio.gather(*fs, **kwargs)  # type: ignore
 
-    async def wrap(f):
+    async def wrap(f: Coroutine[Any, Any, Any]) -> Any:
         try:
             return await f
         except Exception as e:
             return e
 
-    return await tqdm_asyncio.gather(*map(wrap, fs), **kwargs)
+    return await tqdm_asyncio.gather(*map(wrap, fs), **kwargs)  # type: ignore
