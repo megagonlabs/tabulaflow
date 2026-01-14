@@ -474,6 +474,8 @@ Contact: yanlin@megagon.ai
 - [x] Tune instructions on return columns
 - [ ] Postprocessing module
   - [ ] Include exec results in pred query
+  - [ ] Include db schema?
+- [ ] run_query tool with no parameters
 - [ ] Support in-context examples
 - [ ] Model ensemble
 - [ ] Fix Spider table and column names casing
