@@ -11,7 +11,7 @@ from mintq.utils import extract_code
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
-    RunQueryTool,
+    RunQueryNoParamsTool,
     SearchKeywordsTool,
     FinishTool,
     GetSchemaTool,
@@ -159,7 +159,7 @@ class SQLAgent:
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryTool(db_connector),
+            "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(

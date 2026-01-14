@@ -17,7 +17,7 @@ from mintq.schema import (
 )
 from mintq.toolhub import (
     BaseTool,
-    RunQueryTool,
+    RunQueryWithParamsTool,
     SearchKeywordsTool,
     FinishTool,
     GetSchemaTool,
@@ -279,7 +279,7 @@ class AmbigFlatSQLAgent:
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryTool(db_connector),
+            "run_query": RunQueryWithParamsTool(db_connector),
             "finish": FinishTool(),
         }
 

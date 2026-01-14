@@ -7,7 +7,7 @@ from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.toolhub import (
     BaseTool,
-    RunQueryTool,
+    RunQueryWithParamsTool,
     SearchKeywordsTool,
     FinishTool,
     AskUserTool,
@@ -84,7 +84,7 @@ class AmbigSimpleSQLAgent:
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "ask_user": AskUserTool(user_simulator, patience=user_patience),
             "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryTool(db_connector),
+            "run_query": RunQueryWithParamsTool(db_connector),
             "finish": FinishTool(),
         }
 
