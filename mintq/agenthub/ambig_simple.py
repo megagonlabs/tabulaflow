@@ -100,7 +100,7 @@ class AmbigSimpleSQLAgent:
         )
 
         result = await agent.run(task.question)
-        pred_query: PredQuery = tools["run_query"].last_pred_query()
+        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
         metrics = {}

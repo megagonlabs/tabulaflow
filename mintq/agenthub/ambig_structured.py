@@ -245,7 +245,7 @@ class AmbigStructuredSQLAgent:
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
         result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
-        pred_query = ctx.tools["run_query"].last_pred_query()
+        pred_query: PredQuery = ctx.tools["run_query"].last_pred_query()  # type: ignore
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")

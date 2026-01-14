@@ -81,7 +81,9 @@ class RunQueryWithParamsTool:
     def metrics(self) -> RunQueryToolMetrics:
         return self._metrics
 
-    def last_pred_query(self) -> PredQuery | None:
+    def last_pred_query(self) -> PredQuery:
+        if self._last_pred_query is None:
+            raise ValueError("No query has been executed")
         return self._last_pred_query
 
 
@@ -135,5 +137,7 @@ class RunQueryNoParamsTool:
     def metrics(self) -> RunQueryToolMetrics:
         return self._metrics
 
-    def last_pred_query(self) -> PredQuery | None:
+    def last_pred_query(self) -> PredQuery:
+        if self._last_pred_query is None:
+            raise ValueError("No query has been executed")
         return self._last_pred_query

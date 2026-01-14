@@ -1,13 +1,10 @@
-import copy
 import jinja2
 import time
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import UsageLimitExceeded, UnexpectedModelBehavior
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
-from mintq.utils import extract_code
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
@@ -89,7 +86,7 @@ class Postprocessor:
     def __init__(self, config: BasicAgentConfig):
         self.config = config
 
-    async def parse_question_async(self, ctx: TaskRunContext) -> list[str]:
+    async def parse_question_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> list[str]:
         class LLMOutput(BaseModel):
             information_pieces: list[str]
 
@@ -99,26 +96,26 @@ class Postprocessor:
             model_settings=self.config.to_model_settings(),
         )
         prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
-            dataset_instructions=ctx.task.dataset_instructions, question=ctx.task.question
+            dataset_instructions=task.dataset_instructions, question=task.question
         )
         result = await agent.run(prompt)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-PARSE-QUESTION"))
-        return result.output.information_pieces
+        return result.output.information_pieces  # type: ignore
 
-    async def postprocess_async(self, ctx: TaskRunContext, pred_query: PredQuery) -> PredQuery:
-        if not ctx.task.dataset_instructions:
+    async def postprocess_async(self, ctx: TaskRunContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
+        if not task.dataset_instructions:
             return pred_query
 
-        information_pieces = await self.parse_question_async(ctx)
+        information_pieces = await self.parse_question_async(ctx, task)
         agent = Agent[None, str](  # type: ignore
             model=self.config.llm,
             model_settings=self.config.to_model_settings(),
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
-            language=ctx.task.language,
-            question=f"{ctx.task.question} {ctx.task.evidence}",
-            dataset_instructions=ctx.task.dataset_instructions,
+            language=task.language,
+            question=f"{task.question} {task.evidence}",
+            dataset_instructions=task.dataset_instructions,
             information_pieces=information_pieces,
             query_readable_with_exec_results=pred_query.to_readable(),
         )
@@ -179,12 +176,12 @@ class SQLAgent:
         )
         prompt = f"{task.question} {task.evidence}"
         result = await agent.run(prompt)
-        pred_query: PredQuery = tools["run_query"].last_pred_query()
+        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
 
-        pred_query = await self.postprocessor.postprocess_async(ctx, pred_query)
+        pred_query = await self.postprocessor.postprocess_async(ctx, task, pred_query)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0

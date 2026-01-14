@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import RunContext, ModelRetry, ToolOutput
 from pydantic import BaseModel
-from mintq.schema import Trajectory, PredQuery
+from mintq.schema import Trajectory
 
 
 class FinishToolMetrics(BaseModel):
