@@ -388,7 +388,7 @@ class CSVSummaryRow(BaseModel):
     qid: str
     db: str
     question: str
-    evidence: str | None = None
+    question_instructions: str | None = None
     gold_query: str | None = None
     pred_query: str | None = None
     gold_exec_result: str | None = None
@@ -408,9 +408,11 @@ class SimpleNL2QTask(BaseModel):
     language: str
     db: str
     question: str
-    evidence: str | None = None
+    question_instructions: str | None = None
+    """Instructions that apply to this question only."""
     dataset_instructions: str | None = None
-    """Instructions (e.g. for formatting) that apply to all questions in the dataset"""
+    """Instructions (e.g. for formatting) that apply to all questions in the dataset."""
+    evidence: str | None = None
     gold_query: GoldQuery
     extra_info: dict[str, Any] = {}
 
@@ -823,7 +825,7 @@ def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = 
         qid=task.qid,
         db=task.db,
         question=task.question,
-        evidence=getattr(task, "evidence", None),
+        question_instructions=getattr(task, "question_instructions", None),
         gold_query=gold_query.query if gold_query else None,
         pred_query=pred_query.query if pred_query else None,
         gold_exec_result="\n".join([exec_result.to_readable() for exec_result in gold_query.all_exec_results])

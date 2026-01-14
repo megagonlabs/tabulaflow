@@ -125,7 +125,7 @@ WHERE c.name = 'Italy';"""
                             language="SQLite",
                             db=item["db_id"],
                             question=item["question"],
-                            evidence=item["evidence"],
+                            question_instructions=item["evidence"],
                             gold_query=GoldQuery(query=self._fix_gold_query(item["SQL"])),
                             dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
                             extra_info={"bird_sql": {"difficulty": item["difficulty"]}},
