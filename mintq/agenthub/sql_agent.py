@@ -64,24 +64,24 @@ POSTPROCESS_PROMPT = """
 You are a helpful AI database expert who can refine a given {{language}} query to ensure it strictly follows the question and provided dataset instructions.
 - The revised query must return exactly the required columns and comply with the question and all dataset constraints.
 - You may only apply the following modifications to the query:
-  (1) remove, reorder, concatenate, or de-concatenate the final output columns  
-  (2) add or remove the DISTINCT keyword  
-  (3) multiply or divide a column by a constant
+  (1) remove, reorder, alias, concatenate, de-concatenate the final output columns  
+  (2) add or remove the DISTINCT keyword
+- All other modifications are forbidden.
 - If no changes are needed, return the original query unchanged.
 
 === START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
 
-Text-to-SQL Question: {{question}}
+Text-to-SQL question: {{question}}
 
-Exact Columns Required:
+Descriptions of the exact columns required:
 {{information_pieces}}
 
-Current {{language}} Query:
+Current {{language}} query:
 {{query_readable_with_exec_results}}
 
-Your revised {{language}} Query:
+Your revised {{language}} query:
 """.strip()
 
 
