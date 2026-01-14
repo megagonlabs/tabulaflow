@@ -112,7 +112,8 @@ async def analyze_errors_async(
     batch_size: int = 50,
     verbose: bool = True,
 ) -> ErrorReport:
-    error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
+    # error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
+    error_tasks = [task for task in result.tasks if task.eval_metrics["bird_sql_ex"] == 0.0 and task.eval_metrics["simple_ex"] == 1.0]
     error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
     task_reports = []
     for i in range(0, len(error_tasks), batch_size):

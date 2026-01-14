@@ -66,7 +66,7 @@ class TaskRunContext:
     task: NL2QTask
     db_connector: NL2QDBConnector
     usage: Usage
-    tools: dict[str, BaseTool]
+    tools: dict[str, BaseTool] = field(default_factory=dict)
     trajectories: list[Trajectory] = field(default_factory=list)
 
 
