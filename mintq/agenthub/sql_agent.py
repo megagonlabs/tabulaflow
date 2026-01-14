@@ -189,12 +189,12 @@ class SQLAgent:
         )
         prompt = f"{task.question} {task.evidence}"
         result = await agent.run(prompt)
-        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
 
-        pred_query = await self.postprocessor.postprocess_async(ctx, task, pred_query)
+        pred_query = await self.postprocessor.postprocess_async(ctx, task, raw_pred_query)
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
@@ -202,10 +202,12 @@ class SQLAgent:
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in tools.items()}  # type: ignore
 
-        return SimpleNL2QTaskOutput(
+        task_output = SimpleNL2QTaskOutput(
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=ctx.trajectories,
             usage=ctx.usage,
             inference_metrics=metrics,
         )
+        task_output.extra_info["sql_agent"]["raw_pred_query"] = raw_pred_query
+        return task_output
