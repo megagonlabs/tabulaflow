@@ -473,9 +473,11 @@ Contact: yanlin@megagon.ai
 - [x] Metrics for each BIRD difficulty level
 - [x] Tune instructions on return columns
 - [ ] Postprocessing module
-  - [ ] Include exec results in pred query
+  - [x] Parse question submodule
+  - [x] Postprocess submodule
+  - [x] Include exec results in pred query
   - [ ] Include db schema?
-- [ ] run_query tool with no parameters
+- [x] run_query tool with no parameters
 - [ ] Support in-context examples
 - [ ] Model ensemble
 - [ ] Fix Spider table and column names casing
