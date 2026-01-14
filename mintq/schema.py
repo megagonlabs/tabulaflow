@@ -267,7 +267,7 @@ class ExecResult(BaseModel):
     error: ErrorInfo | None = None
     latency_seconds: float | None = None
 
-    @field_serializer("df", when_used="json")
+    @field_serializer("df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
         if df is None:
             return None

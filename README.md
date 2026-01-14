@@ -476,8 +476,12 @@ Contact: yanlin@megagon.ai
   - [x] Parse question submodule
   - [x] Postprocess submodule
   - [x] Include exec results in pred query
+  - [ ] Exp 156: Performance goes from 0.58 to 0.48
+    - postprocessor adds columns
   - [ ] Include db schema?
 - [x] run_query tool with no parameters
+- [x] Replace evidence field with question_instructions
+- [x] Metric raw_pred_bird_sql_ex
 - [ ] Support in-context examples
 - [ ] Model ensemble
 - [ ] Fix Spider table and column names casing

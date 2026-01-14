@@ -209,5 +209,5 @@ class SQLAgent:
             usage=ctx.usage,
             inference_metrics=metrics,
         )
-        task_output.extra_info["sql_agent"]["raw_pred_query"] = raw_pred_query
+        task_output.extra_info["raw_pred_query"] = raw_pred_query.model_dump()
         return task_output
