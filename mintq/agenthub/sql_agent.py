@@ -63,9 +63,10 @@ Your output:
 POSTPROCESS_PROMPT = """
 You are a helpful AI database expert who can refine a given {{language}} query to ensure it strictly follows the question and provided dataset instructions.
 - The revised query must return exactly the required columns and comply with the question and all dataset constraints.
-- You can remove, add, modify, or reorder columns in the query to comply with the dataset instructions.
-- Do not modify the parameters in the query, if parameters are present.
-- Do not modify the core logic of the query unless it conflicts with the question or dataset instructions.
+- You may only apply the following modifications to the query:
+  (1) remove, reorder, concatenate, or de-concatenate the final output columns  
+  (2) add or remove the DISTINCT keyword  
+  (3) multiply or divide a column by a constant
 - If no changes are needed, return the original query unchanged.
 
 === START OF DATASET INSTRUCTIONS ===
