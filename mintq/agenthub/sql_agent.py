@@ -41,7 +41,7 @@ You are a helpful AI database expert who can analyze a given text-to-SQL questio
 - The output should be an ordered list of information piece descriptions.
 - The information pieces must correspond exactly to the columns that should appear in the final table.
 - If an information piece is ambiguous and could map to multiple columns, explicitly mention this in its description.
-- To decide which information pieces are required, strictly follow the dataset instructions.
+- To decide which information pieces are required, strictly follow the dataset and question instructions.
 
 === START OF EXAMPLES ===
 Input: Which 3 students with a GPA below 2.5 are performing the worst in the Math course? Include the age.
@@ -52,28 +52,38 @@ Output: ["student name or id", "student age"]
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
 
+=== START OF QUESTION INSTRUCTIONS ===
+{{question_instructions}}
+=== END OF QUESTION INSTRUCTIONS ===
+
 Text-to-SQL question: {{question}}
 Your output:
 """.strip()
 
 
 POSTPROCESS_PROMPT = """
-You are a helpful AI database expert who can refine a given {{language}} query to ensure it strictly follows the question and provided dataset instructions.
-- The revised query must return exactly the required columns and comply with the question and all dataset constraints.
+You are a helpful AI database expert who can refine a given {{language}} query to ensure it strictly follows the dataset and question instructions.
+- The revised query must return only the columns allowed and comply with all question and dataset constraints.
 - You may only apply the following modifications to the query:
-  (1) remove, reorder, concatenate, de-concatenate the final output columns  
-  (2) add or remove the DISTINCT keyword
-- All other modifications are forbidden.
+  (1) Remove columns that are not in the allowed list
+  (2) Reorder the columns to match the order in the allowed list
+  (3) Concatenate or de-concatenate columns if there are instructions for the question or dataset
+  (4) Add or remove the DISTINCT keyword
+- All other modifications are forbidden. You are NOT allowed to add additional returned columns to the query.
 - If no changes are needed, return the original query unchanged.
 
 === START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
 
+=== START OF QUESTION INSTRUCTIONS ===
+{{question_instructions}}
+=== END OF QUESTION INSTRUCTIONS ===
+
 Text-to-SQL question: {{question}}
 
-Descriptions of the exact columns required:
-{{information_pieces}}
+Descriptions of the columns allowed (in order):
+{{allowed_columns}}
 
 Current {{language}} query:
 {{query_readable_with_exec_results}}
@@ -96,7 +106,9 @@ class Postprocessor:
             model_settings=self.config.to_model_settings(),
         )
         prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
-            dataset_instructions=task.dataset_instructions, question=task.question
+            dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
+            question_instructions=task.question_instructions or "(no question instructions)",
+            question=task.question,
         )
         result = await agent.run(prompt)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -104,7 +116,7 @@ class Postprocessor:
         return result.output.information_pieces  # type: ignore
 
     async def postprocess_async(self, ctx: TaskRunContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
-        if not task.dataset_instructions:
+        if not task.dataset_instructions and not task.question_instructions:
             return pred_query
 
         information_pieces = await self.parse_question_async(ctx, task)
@@ -115,8 +127,9 @@ class Postprocessor:
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
             language=task.language,
             question=f"{task.question} {task.evidence}",
-            dataset_instructions=task.dataset_instructions,
-            information_pieces=information_pieces,
+            dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
+            question_instructions=task.question_instructions or "(no question instructions)",
+            allowed_columns=information_pieces,
             query_readable_with_exec_results=pred_query.to_readable(),
         )
         result = await agent.run(prompt)
