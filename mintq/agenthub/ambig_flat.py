@@ -197,7 +197,7 @@ class AmbigFlatSQLAgent:
         query_id: str,
         params: list[PredAmbiguityPointInfinite],
     ) -> PredQuery:
-        sql_agent: Agent[None, PredQuery] = self._get_agent(
+        sql_agent: Agent[None, None] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(
                 language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
@@ -219,7 +219,7 @@ class AmbigFlatSQLAgent:
         )
         params_str = f"You can use any of the following parameters as placeholders in the query:\n{params_str}"
         result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params_str}")
-        pred_query = result.output
+        pred_query = ctx.tools["run_query"].last_pred_query()
         pred_query.id = query_id
         ctx.trajectories.append(
             Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-GEN-SQL-{query_id}")

@@ -127,9 +127,12 @@ class Postprocessor:
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
 
-        pred_query = copy.deepcopy(pred_query)
-        pred_query.query = result.output
-        return pred_query
+        return PredQuery(
+            id=pred_query.id,
+            query=result.output,
+            parameter_names=pred_query.parameter_names,
+            parameter_values=pred_query.parameter_values,
+        )
 
 
 @agent_registry.register
@@ -166,7 +169,7 @@ class SQLAgent:
             language=task.language, dataset_instructions=task.dataset_instructions
         )
 
-        agent = Agent[None, PredQuery](  # type: ignore
+        agent = Agent[None, None](  # type: ignore
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
@@ -176,7 +179,7 @@ class SQLAgent:
         )
         prompt = f"{task.question} {task.evidence}"
         result = await agent.run(prompt)
-        pred_query: PredQuery = result.output
+        pred_query: PredQuery = tools["run_query"].last_pred_query()
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)

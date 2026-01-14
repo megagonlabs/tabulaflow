@@ -88,7 +88,7 @@ class AmbigSimpleSQLAgent:
             "finish": FinishTool(),
         }
 
-        agent = Agent[None, PredQuery](  # type: ignore
+        agent = Agent[None, None](  # type: ignore
             model=self.config.llm,
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
@@ -100,7 +100,7 @@ class AmbigSimpleSQLAgent:
         )
 
         result = await agent.run(task.question)
-        pred_query: PredQuery = result.output
+        pred_query: PredQuery = tools["run_query"].last_pred_query()
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 
         metrics = {}
