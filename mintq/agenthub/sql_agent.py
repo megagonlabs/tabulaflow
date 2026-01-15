@@ -38,17 +38,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 """.strip()
 
 
-QUESTION_PROMPT = """
-{% if question_instructions -%}
-=== START OF QUESTION INSTRUCTIONS ===
-{{question_instructions}}
-=== END OF QUESTION INSTRUCTIONS ===
-
-{% endif -%}
-Question: {{question}}
-""".strip()
-
-
 PARSE_QUESTION_PROMPT = """
 You are a helpful AI database expert who can analyze a given text-to-SQL question and identify the specific information pieces that must appear in the final result table.
 
@@ -65,10 +54,6 @@ Output: ["student name or id", "student age"]
 === START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
-
-=== START OF QUESTION INSTRUCTIONS ===
-{{question_instructions}}
-=== END OF QUESTION INSTRUCTIONS ===
 
 Text-to-SQL question: {{question}}
 Your output:
@@ -89,10 +74,6 @@ You are a helpful AI database expert who can refine the final SELECT clause of a
 === START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
-
-=== START OF QUESTION INSTRUCTIONS ===
-{{question_instructions}}
-=== END OF QUESTION INSTRUCTIONS ===
 
 Text-to-SQL question: {{question}}
 
@@ -121,8 +102,7 @@ class Postprocessor:
         )
         prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
-            question_instructions=task.question_instructions or "(no question instructions)",
-            question=task.question,
+            question=task.question + (f"\n{task.question_instructions}" if task.question_instructions else ""),
         )
         result = await agent.run(prompt)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -130,7 +110,7 @@ class Postprocessor:
         return result.output.information_pieces  # type: ignore
 
     async def postprocess_async(self, ctx: TaskRunContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
-        if not task.dataset_instructions and not task.question_instructions:
+        if not task.dataset_instructions:
             return pred_query
 
         information_pieces = await self.parse_question_async(ctx, task)
@@ -140,9 +120,8 @@ class Postprocessor:
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
             language=task.language,
-            question=task.question,
+            question=task.question + (f"\n{task.question_instructions}" if task.question_instructions else ""),
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
-            question_instructions=task.question_instructions or "(no question instructions)",
             allowed_columns=information_pieces,
             raw_pred_query_with_exec_results=pred_query.to_readable(),
         )
@@ -191,9 +170,7 @@ class SQLAgent:
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
-            language=task.language,
-            dataset_instructions=task.dataset_instructions,
-            question_instructions=task.question_instructions,
+            language=task.language, dataset_instructions=task.dataset_instructions
         )
 
         agent = Agent[None, None](  # type: ignore
@@ -204,10 +181,9 @@ class SQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        question_prompt = jinja2.Template(QUESTION_PROMPT).render(
-            question=task.question, question_instructions=task.question_instructions
+        result = await agent.run(
+            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
         )
-        result = await agent.run(question_prompt)
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
