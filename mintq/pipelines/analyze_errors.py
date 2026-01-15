@@ -33,13 +33,13 @@ class ErrorTaskReport(BaseModel):
     usage: Usage
     eval_metrics: dict[str, Any]
 
-    def to_readable(self) -> str:
-        res = f"===== START OF ERROR TASK `{self.qid}` =====\n\n"
-        res += f"Question: {self.question}\n\n"
-        res += f"Gold:\n{self.gold.to_readable()}\n\n"
-        res += f"Pred:\n{self.pred.to_readable() if self.pred else '(prediction failed, no prediction available)'}\n\n"
-        res += f"Report:\n{self.report}\n\n"
-        res += f"===== END OF ERROR TASK `{self.qid}` ====="
+    def to_markdown(self) -> str:
+        res = f"### `{self.qid}`\n\n"
+        res += f"**Question:** {self.question}\n\n"
+        res += f"**Gold:**\n```sql\n{self.gold.query}\n```\n\n"
+        pred_query = self.pred.query if self.pred else "(prediction failed, no prediction available)"
+        res += f"**Pred:**\n```sql\n{pred_query}\n```\n\n"
+        res += f"**Report:** {self.report}\n"
         return res
 
 
@@ -48,9 +48,10 @@ class ErrorReport(BaseModel):
     task_reports: list[ErrorTaskReport]
     usage: Usage
 
-    def to_readable(self) -> str:
-        res = f"=== START OF SUMMARY ===\n\n{self.aggregated_report}\n\n=== END OF SUMMARY ===\n\n\n"
-        res += "\n\n\n".join([task.to_readable() for task in self.task_reports])
+    def to_markdown(self) -> str:
+        res = f"# Error Analysis Summary\n\n{self.aggregated_report}\n\n"
+        res += f"## Error Tasks ({len(self.task_reports)})\n\n"
+        res += "\n".join([task.to_markdown() for task in self.task_reports])
         return res
 
 
@@ -294,10 +295,10 @@ async def main_async() -> None:
     error_report = await analyze_errors_async(
         result, args.llm, args.error_metric_name, args.num_samples, args.batch_size
     )
-    with open(os.path.join(args.result_dir, "error_report.txt"), "w") as f:
-        f.write(error_report.to_readable())
+    with open(os.path.join(args.result_dir, "error_report.md"), "w") as f:
+        f.write(error_report.to_markdown())
     print(f"Total cost USD: {error_report.usage.api_cost_usd:.6f}")
-    print(f"Saved error report to {os.path.join(args.result_dir, 'error_report.txt')}")
+    print(f"Saved error report to {os.path.join(args.result_dir, 'error_report.md')}")
 
 
 if __name__ == "__main__":
