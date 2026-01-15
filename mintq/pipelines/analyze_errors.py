@@ -26,7 +26,7 @@ class ErrorTaskReport(BaseModel):
     qid: str
     question: str
     db: str
-    evidence: str | None
+    question_instructions: str | None
     gold: Any
     pred: Any | None
     report: str
@@ -93,7 +93,7 @@ async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:
             qid=task.qid,
             question=task.question,
             db=task.db,
-            evidence=getattr(task, "evidence", None),
+            question_instructions=getattr(task, "question_instructions", None),
             gold=task.gold_query,
             pred=task.pred_query,
             report=report,
