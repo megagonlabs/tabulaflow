@@ -127,15 +127,23 @@ class Postprocessor:
         )
         result = await agent.run(prompt)
         revised_pred_query = extract_code(result.output)
-
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
+
+        exec_result = await ctx.db_connector.run_query_async(revised_pred_query)
+        if exec_result.df is None:
+            return pred_query
+        elif pred_query.exec_result.df is not None and len(exec_result.df.columns) > len(
+            pred_query.exec_result.df.columns
+        ):
+            return pred_query
 
         return PredQuery(
             id=pred_query.id,
             query=revised_pred_query,
             parameter_names=pred_query.parameter_names,
             parameter_values=pred_query.parameter_values,
+            exec_result=exec_result,
         )
 
 
