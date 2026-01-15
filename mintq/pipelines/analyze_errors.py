@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 import random
 from typing import Any
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, PredQuery, Usage, SimpleNL2QTaskOutput
 from mintq.metrics import NL2QMetric
 
 
@@ -112,12 +112,8 @@ async def analyze_errors_async(
     batch_size: int = 50,
     verbose: bool = True,
 ) -> ErrorReport:
-    # error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
-    error_tasks = [
-        task
-        for task in result.tasks
-        if task.eval_metrics["bird_sql_ex"] == 0.0 and task.eval_metrics["simple_ex"] == 1.0
-    ]
+    error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
+
     if not error_tasks:
         if verbose:
             print("No error tasks found.")
@@ -142,6 +138,131 @@ async def analyze_errors_async(
     return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report.output, usage=usage)
 
 
+class PostprocessingTaskDetail(BaseModel):
+    qid: str
+    before_query: str
+    after_query: str
+
+
+class PostprocessingImpactReport(BaseModel):
+    """Report on how postprocessing affected execution correctness (EX) scores."""
+
+    total_tasks: int
+    improved: list[PostprocessingTaskDetail]  # EX: 0 → 1 (postprocessing fixed a failing task)
+    regressed_not_executable: list[PostprocessingTaskDetail]  # postprocessing made query non-executable
+    regressed_columns_added: list[PostprocessingTaskDetail]  # postprocessing added extra columns
+    regressed_other: list[PostprocessingTaskDetail]  # other regression causes
+
+    def to_markdown(self) -> str:
+        n_improved = len(self.improved)
+        n_regressed = len(self.regressed_not_executable) + len(self.regressed_columns_added) + len(self.regressed_other)
+        total = self.total_tasks
+
+        def pct(count: int) -> str:
+            return f"{count / total * 100:.1f}%" if total > 0 else "0.0%"
+
+        res = "# Postprocessing Impact Summary\n\n"
+        res += f"- Total tasks: {self.total_tasks}\n"
+        res += f"- Improved (0→1): {n_improved} ({pct(n_improved)})\n"
+        res += f"- Regressed (1→0): {n_regressed} ({pct(n_regressed)})\n"
+        res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
+        res += "\n"
+        res += "## Regression Breakdown\n\n"
+        res += f"- Became not executable: {len(self.regressed_not_executable)} ({pct(len(self.regressed_not_executable))})\n"
+        res += (
+            f"- Extra columns added: {len(self.regressed_columns_added)} ({pct(len(self.regressed_columns_added))})\n"
+        )
+        res += f"- Other causes: {len(self.regressed_other)} ({pct(len(self.regressed_other))})\n"
+
+        def render_task_list(title: str, tasks: list[PostprocessingTaskDetail]) -> str:
+            if not tasks:
+                return ""
+            section = f"\n## {title}\n\n"
+            for task in tasks:
+                section += f"### `{task.qid}`\n\n"
+                section += "**Before:**\n```sql\n" + task.before_query + "\n```\n\n"
+                section += "**After:**\n```sql\n" + task.after_query + "\n```\n\n"
+            return section
+
+        res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
+        res += render_task_list(
+            f"Regressed: Not Executable ({len(self.regressed_not_executable)})", self.regressed_not_executable
+        )
+        res += render_task_list(
+            f"Regressed: Extra Columns Added ({len(self.regressed_columns_added)})", self.regressed_columns_added
+        )
+        res += render_task_list(f"Regressed: Other ({len(self.regressed_other)})", self.regressed_other)
+
+        return res
+
+
+async def analyze_postprocess_impact_async(
+    result: NL2QRunResult,
+    pre_metric: str = "raw_pred_bird_sql_ex",
+    post_metric: str = "bird_sql_ex",
+) -> PostprocessingImpactReport:
+    """
+    Analyze how postprocessing affected execution correctness (EX) scores.
+
+    Args:
+        result: The run result containing task outputs with eval metrics.
+        pre_metric: Metric name for EX before postprocessing.
+        post_metric: Metric name for EX after postprocessing.
+
+    Returns:
+        A structured report of postprocessing impact.
+    """
+    tasks_by_qid = {task.qid: task for task in result.tasks}
+
+    def make_detail(task: SimpleNL2QTaskOutput) -> PostprocessingTaskDetail:
+        raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
+        return PostprocessingTaskDetail(
+            qid=task.qid, before_query=raw_pred_query.query, after_query=task.pred_query.query
+        )
+
+    improved: list[PostprocessingTaskDetail] = [
+        make_detail(task)
+        for task in result.tasks
+        if task.eval_metrics[pre_metric] == 0.0 and task.eval_metrics[post_metric] == 1.0
+    ]
+
+    regressed_qids = [
+        task.qid
+        for task in result.tasks
+        if task.eval_metrics[pre_metric] == 1.0 and task.eval_metrics[post_metric] == 0.0
+    ]
+
+    # Analyze regression causes
+    became_not_executable: list[PostprocessingTaskDetail] = []
+    columns_added: list[PostprocessingTaskDetail] = []
+    other: list[PostprocessingTaskDetail] = []
+
+    for qid in regressed_qids:
+        task = tasks_by_qid[qid]
+        raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
+        detail = make_detail(task)
+
+        if task.pred_query.exec_result.df is None:
+            became_not_executable.append(detail)
+            continue
+
+        num_columns_before = len(raw_pred_query.exec_result.df.columns)
+        num_columns_after = len(task.pred_query.exec_result.df.columns)
+        if num_columns_after > num_columns_before:
+            columns_added.append(detail)
+            continue
+
+        other.append(detail)
+
+    return PostprocessingImpactReport(
+        total_tasks=len(result.tasks),
+        improved=improved,
+        regressed_not_executable=became_not_executable,
+        regressed_columns_added=columns_added,
+        regressed_other=other,
+    )
+
+
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
@@ -157,13 +278,25 @@ async def main_async() -> None:
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
+    if not all(task.output_type == "simple" for task in result.tasks):
+        raise ValueError("Only simple tasks are supported for now.")
+
+    if any("raw_pred_query" in task.extra_info for task in result.tasks):
+        print()
+        print("Analyzing postprocess impact...")
+        postprocess_impact_report = await analyze_postprocess_impact_async(result)
+        with open(os.path.join(args.result_dir, "postprocess_impact_report.md"), "w") as f:
+            f.write(postprocess_impact_report.to_markdown())
+        print(f"Saved postprocess impact report to {os.path.join(args.result_dir, 'postprocess_impact_report.md')}")
+
+    print()
+    print("Analyzing errors...")
     error_report = await analyze_errors_async(
         result, args.llm, args.error_metric_name, args.num_samples, args.batch_size
     )
-    print(f"Total cost USD: {error_report.usage.api_cost_usd:.6f}")
-
     with open(os.path.join(args.result_dir, "error_report.txt"), "w") as f:
         f.write(error_report.to_readable())
+    print(f"Total cost USD: {error_report.usage.api_cost_usd:.6f}")
     print(f"Saved error report to {os.path.join(args.result_dir, 'error_report.txt')}")
 
 
