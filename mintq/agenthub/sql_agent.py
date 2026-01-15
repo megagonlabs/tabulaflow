@@ -75,14 +75,14 @@ Your output:
 
 
 POSTPROCESS_PROMPT = """
-You are a helpful AI database expert who can refine a given {{language}} query to ensure it strictly follows the dataset and question instructions.
+You are a helpful AI database expert who can refine the final SELECT clause of a given {{language}} query to ensure it strictly follows the dataset and question instructions.
 - The revised query must return only the columns allowed and comply with all question and dataset constraints.
-- You may only apply the following modifications to the query:
+- You may ONLY apply the following modifications to the final SELECT clause:
   (1) Remove columns that are not in the allowed list
   (2) Reorder the columns to match the order in the allowed list
   (3) Concatenate or de-concatenate columns if there are instructions for the question or dataset
   (4) Add or remove the DISTINCT keyword
-- All other modifications are forbidden. You are NOT allowed to add additional returned columns to the query.
+- All other modifications are forbidden. You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
 - If no changes are needed, return the original query unchanged.
 
 === START OF DATASET INSTRUCTIONS ===
