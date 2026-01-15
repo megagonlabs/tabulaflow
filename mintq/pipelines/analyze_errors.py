@@ -153,6 +153,7 @@ class PostprocessingImpactReport(BaseModel):
     regressed_not_executable: list[PostprocessingTaskDetail]  # postprocessing made query non-executable
     regressed_columns_added: list[PostprocessingTaskDetail]  # postprocessing added extra columns
     regressed_other: list[PostprocessingTaskDetail]  # other regression causes
+    potential_improvable: list[PostprocessingTaskDetail]  # tasks that could be improved by postprocessing
 
     def to_markdown(self) -> str:
         n_improved = len(self.improved)
@@ -164,9 +165,10 @@ class PostprocessingImpactReport(BaseModel):
 
         res = "# Postprocessing Impact Summary\n\n"
         res += f"- Total tasks: {self.total_tasks}\n"
+        res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
         res += f"- Improved (0→1): {n_improved} ({pct(n_improved)})\n"
         res += f"- Regressed (1→0): {n_regressed} ({pct(n_regressed)})\n"
-        res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
+        res += f"- Potential improvable: {len(self.potential_improvable)} ({pct(len(self.potential_improvable))})\n"
         res += "\n"
         res += "## Regression Breakdown\n\n"
         res += f"- Became not executable: {len(self.regressed_not_executable)} ({pct(len(self.regressed_not_executable))})\n"
@@ -193,6 +195,7 @@ class PostprocessingImpactReport(BaseModel):
             f"Regressed: Extra Columns Added ({len(self.regressed_columns_added)})", self.regressed_columns_added
         )
         res += render_task_list(f"Regressed: Other ({len(self.regressed_other)})", self.regressed_other)
+        res += render_task_list(f"Potential Improvable ({len(self.potential_improvable)})", self.potential_improvable)
 
         return res
 
@@ -201,6 +204,7 @@ async def analyze_postprocess_impact_async(
     result: NL2QRunResult,
     pre_metric: str = "raw_pred_bird_sql_ex",
     post_metric: str = "bird_sql_ex",
+    target_metric: str = "simple_ex",
 ) -> PostprocessingImpactReport:
     """
     Analyze how postprocessing affected execution correctness (EX) scores.
@@ -232,6 +236,12 @@ async def analyze_postprocess_impact_async(
         for task in result.tasks
         if task.eval_metrics[pre_metric] == 1.0 and task.eval_metrics[post_metric] == 0.0
     ]
+    potential_improvable = [
+        make_detail(task)
+        for task in result.tasks
+        if task.eval_metrics[pre_metric] == task.eval_metrics[post_metric] == 0.0
+        and task.eval_metrics[target_metric] == 1.0
+    ]
 
     # Analyze regression causes
     became_not_executable: list[PostprocessingTaskDetail] = []
@@ -261,6 +271,7 @@ async def analyze_postprocess_impact_async(
         regressed_not_executable=became_not_executable,
         regressed_columns_added=columns_added,
         regressed_other=other,
+        potential_improvable=potential_improvable,
     )
 
 
