@@ -188,7 +188,6 @@ class SQLAgent:
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
-        task.dataset_instructions = None
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
             language=task.language,
             dataset_instructions=task.dataset_instructions,
