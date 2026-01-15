@@ -17,6 +17,7 @@ from mintq.toolhub import (
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig, TaskRunContext
+from mintq.utils import extract_code
 
 
 SYSTEM_PROMPT = """
@@ -99,7 +100,7 @@ Descriptions of the columns allowed (in order):
 {{allowed_columns}}
 
 Current {{language}} query:
-{{query_readable_with_exec_results}}
+{{raw_pred_query_with_exec_results}}
 
 Your revised {{language}} query:
 """.strip()
@@ -143,16 +144,17 @@ class Postprocessor:
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             question_instructions=task.question_instructions or "(no question instructions)",
             allowed_columns=information_pieces,
-            query_readable_with_exec_results=pred_query.to_readable(),
+            raw_pred_query_with_exec_results=pred_query.to_readable(),
         )
         result = await agent.run(prompt)
+        revised_pred_query = extract_code(result.output)
 
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
 
         return PredQuery(
             id=pred_query.id,
-            query=result.output,
+            query=revised_pred_query,
             parameter_names=pred_query.parameter_names,
             parameter_values=pred_query.parameter_values,
         )
