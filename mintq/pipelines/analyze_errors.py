@@ -118,6 +118,10 @@ async def analyze_errors_async(
         for task in result.tasks
         if task.eval_metrics["bird_sql_ex"] == 0.0 and task.eval_metrics["simple_ex"] == 1.0
     ]
+    if not error_tasks:
+        if verbose:
+            print("No error tasks found.")
+        return ErrorReport(task_reports=[], aggregated_report="No error tasks found.", usage=Usage.create(llm))
     error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
     task_reports = []
     for i in range(0, len(error_tasks), batch_size):
