@@ -141,8 +141,12 @@ async def analyze_errors_async(
 
 class PostprocessingTaskDetail(BaseModel):
     qid: str
+    db: str
+    question: str
+    question_instructions: str | None
     before_query: str
     after_query: str
+    gold_query: str
 
 
 class PostprocessingImpactReport(BaseModel):
@@ -183,8 +187,12 @@ class PostprocessingImpactReport(BaseModel):
             section = f"\n## {title}\n\n"
             for task in tasks:
                 section += f"### `{task.qid}`\n\n"
-                section += "**Before:**\n```sql\n" + task.before_query + "\n```\n\n"
-                section += "**After:**\n```sql\n" + task.after_query + "\n```\n\n"
+                section += f"**Question:** {task.question}\n\n"
+                section += f"**Question Instructions:** {task.question_instructions}\n\n"
+                section += f"**DB:** {task.db}\n\n"
+                section += "**Gold Query:**\n```sql\n" + task.gold_query + "\n```\n\n"
+                section += "**Before Postprocessing:**\n```sql\n" + task.before_query + "\n```\n\n"
+                section += "**After Postprocessing:**\n```sql\n" + task.after_query + "\n```\n\n"
             return section
 
         res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
@@ -222,7 +230,13 @@ async def analyze_postprocess_impact_async(
     def make_detail(task: SimpleNL2QTaskOutput) -> PostprocessingTaskDetail:
         raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
         return PostprocessingTaskDetail(
-            qid=task.qid, before_query=raw_pred_query.query, after_query=task.pred_query.query
+            qid=task.qid,
+            db=task.db,
+            question=task.question,
+            question_instructions=task.question_instructions,
+            before_query=raw_pred_query.query,
+            after_query=task.pred_query.query,
+            gold_query=task.gold_query.query,
         )
 
     improved: list[PostprocessingTaskDetail] = [
