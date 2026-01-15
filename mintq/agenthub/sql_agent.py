@@ -24,14 +24,27 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
 - Adhere strictly to the given database schema when constructing queries.
-- When there is a conflict between instructions, prioritize the question and hints provided by the user.
-{% if language == "SnowflakeSQL" %}
+- Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
+{%- if language == "SnowflakeSQL" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
-{% endif %}
+{%- endif %}
+{%- if dataset_instructions %}
 
-{% if dataset_instructions %}=== START OF DATASET INSTRUCTIONS ===
+=== START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ==={% endif %}
+=== END OF DATASET INSTRUCTIONS ===
+{%- endif %}
+""".strip()
+
+
+QUESTION_PROMPT = """
+{% if question_instructions -%}
+=== START OF QUESTION INSTRUCTIONS ===
+{{question_instructions}}
+=== END OF QUESTION INSTRUCTIONS ===
+
+{% endif -%}
+Question: {{question}}
 """.strip()
 
 
@@ -126,7 +139,7 @@ class Postprocessor:
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
             language=task.language,
-            question=f"{task.question} {task.evidence}",
+            question=task.question,
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             question_instructions=task.question_instructions or "(no question instructions)",
             allowed_columns=information_pieces,
@@ -175,8 +188,11 @@ class SQLAgent:
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
+        task.dataset_instructions = None
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
-            language=task.language, dataset_instructions=task.dataset_instructions
+            language=task.language,
+            dataset_instructions=task.dataset_instructions,
+            question_instructions=task.question_instructions,
         )
 
         agent = Agent[None, None](  # type: ignore
@@ -187,8 +203,10 @@ class SQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        prompt = f"{task.question} {task.evidence}"
-        result = await agent.run(prompt)
+        question_prompt = jinja2.Template(QUESTION_PROMPT).render(
+            question=task.question, question_instructions=task.question_instructions
+        )
+        result = await agent.run(question_prompt)
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
