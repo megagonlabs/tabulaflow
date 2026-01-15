@@ -462,31 +462,46 @@ Contact: yanlin@megagon.ai
 
 ### MINTQ 0.9.0
 
+Jan 9
 - [x] Fix reasoning effort
 - [x] Error analysis pipeline
 - [x] "ambrosia_s" -> "ambrosia-s"
 - [x] Support BIRD dev_20251106 split
+
+Jan 12
 - [x] Fix gold not executable
   - [x] BIRD dev_20240627
   - [x] BIRD dev_20251106
   - [x] BIRD train - many questions are unanswerable and queries refer to non-existent tables or columns
 - [x] Metrics for each BIRD difficulty level
 - [x] Tune instructions on return columns
-- [ ] Postprocessing module
+
+Jan 13
+- [x] Postprocessing module
   - [x] Parse question submodule
   - [x] Postprocess submodule
-  - [x] Include exec results in pred query
-  - [ ] Exp 156: Performance goes from 0.58 to 0.48
-    - postprocessor adds columns
-  - [ ] Include db schema?
 - [x] run_query tool with no parameters
+- [x] Include exec results in pred query
+
+Jan 14
+- [x] Test postprocessor
+  - [x] Exp 156: Performance goes from 0.58 to 0.48
+    - Reason: postprocessor adds columns
 - [x] Replace evidence field with question_instructions
 - [x] Metric raw_pred_bird_sql_ex
-- [ ] Support in-context examples
+- [x] analyze_postprocess_impact_async in analyze_errors.py
+  - [x] improved and regressed tasks
+  - [x] fixable regressed tasks
+  - [x] potential improvable tasks
+- [x] Reject postprocessed queries that is non-executable or adds columns
+
+Jan 15
 - [ ] Model ensemble
+- [ ] Support in-context examples
 - [ ] Fix Spider table and column names casing
 - [ ] Read CHESS source code
 - [ ] Support LSH index
+- [ ] Include db schema in postprocessing?
 - [ ] Spider 2.0 custom data
 - [ ] ARCS
   - [ ] Section on ease of use in paper and website
