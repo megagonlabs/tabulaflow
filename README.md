@@ -486,7 +486,7 @@ Jan 13
 Jan 14
 - [x] Test postprocessor
   - [x] Exp 156: Performance goes from 0.58 to 0.48
-    - Reason: postprocessor adds columns
+    - Reason: gpt-5-mini-minimal outputs extra columns when parsing the question
 - [x] Replace evidence field with question_instructions
 - [x] Metric raw_pred_bird_sql_ex
 - [x] analyze_postprocess_impact_async in analyze_errors.py
