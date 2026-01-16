@@ -65,7 +65,7 @@ class BirdSQLDatasetLoader:
     def _fix_gold_query(query: str) -> str:
         """
         In BIRD-SQL, a few gold queries are not executable in our library because:
-          (1) They use syntax that is valid in native SQLite but not valid in sqlalchemy.
+          (1) They use syntax that is valid in native sqlite but not valid in sqlalchemy.
           (2) They are inefficient and exceed the execution time limit (default is 90 seconds).
         We rewrite them to an equivalent form that is valid in sqlalchemy and within the execution time limit.
         """
@@ -128,7 +128,7 @@ WHERE c.name = 'Italy';"""
                     tasks.append(
                         SimpleNL2QTask(
                             qid=f"{self.name}_{split}_{i}",
-                            language="SQLite",
+                            language="sqlite",
                             db=item["db_id"],
                             question=item["question"],
                             question_instructions=item["evidence"],

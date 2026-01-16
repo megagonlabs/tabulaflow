@@ -32,7 +32,7 @@ You are a database expert responsible for translating natural language questions
   - If the question asks for the list of objects (e.g. students), fetch the IDs of the objects.
 - The final output should only include the SQL query, without explanation or any other text.
 - Before returning the final output, always execute the query and check if the results match the question.
-{% if language == "SnowflakeSQL" %}
+{% if language == "snowflake" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {% endif %}
 """.strip()
