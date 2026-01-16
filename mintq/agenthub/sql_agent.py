@@ -1,10 +1,11 @@
+import copy
 import jinja2
 import time
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
+from mintq.schema import SQLSchema, SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
@@ -16,7 +17,13 @@ from mintq.toolhub import (
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
-from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig, TaskRunContext
+from mintq.agenthub.utils import (
+    get_max_steps_processor,
+    instrument,
+    BasicAgentConfig,
+    TaskRunContext,
+    extract_all_source_columns,
+)
 from mintq.utils import extract_code
 
 
@@ -26,7 +33,7 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
 - Adhere strictly to the given database schema when constructing queries.
 - Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
-{%- if language == "SnowflakeSQL" %}
+{%- if language == "snowflake" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {%- endif %}
 {%- if dataset_instructions %}
@@ -85,6 +92,64 @@ Current {{language}} query:
 
 Your revised {{language}} query:
 """.strip()
+
+
+class SchemaLinker:
+    def __init__(self, config: BasicAgentConfig):
+        self.config = config
+
+    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
+        db_connector = ctx.db_connector
+
+        tools: dict[str, BaseTool] = {
+            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_column_description": GetColumnDescriptionTool(db_connector),
+            "search_keywords": SearchKeywordsTool(db_connector),
+            "run_query": RunQueryNoParamsTool(db_connector),
+            "finish": FinishTool(),
+        }
+        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+            language=task.language, dataset_instructions=task.dataset_instructions
+        )
+
+        agent = Agent[None, None](  # type: ignore
+            model=self.config.llm,
+            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
+            output_type=tools["finish"].as_pydantic_ai_tool(),
+            instructions=system_prompt,
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
+        result = await agent.run(
+            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
+        )
+        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
+        ctx.trajectories.append(trajectory)
+        return pred_query
+
+    async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
+        gold_query = ctx.task.gold_query
+
+        source_columns = extract_all_source_columns(gold_query.query, ctx.db_connector.schema)
+
+        print(f"<query>\n{gold_query.query}\n</query>")
+        print(f"<source_columns>\n{source_columns}\n</source_columns>")
+
+        formatter = formatter_registry.get_class("sql_default")()
+        print(f"<schema>\n{formatter.format(ctx.db_connector.schema)}\n</schema>")
+
+        schema = copy.deepcopy(ctx.db_connector.schema)
+        for table in schema.tables:
+            table.columns = [col for col in table.columns if (table.name, col.name) in source_columns]
+        schema.tables = [table for table in schema.tables if table.columns]
+
+        print(f"<linked schema>\n{formatter.format(schema)}\n</linked schema>")
+        if not schema.tables:
+            exit(9)
+
+        return schema
 
 
 class Postprocessor:
@@ -158,6 +223,7 @@ class SQLAgent:
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
         self.compressor = SchemaCompressor() if config.compress_schema else None
+        self.schema_linker = SchemaLinker(config)
         self.postprocessor = Postprocessor(config)
 
     @classmethod
@@ -170,8 +236,10 @@ class SQLAgent:
 
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm))
 
+        linked_schema = await self.schema_linker.link_schema_async(ctx)
+
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(linked_schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
