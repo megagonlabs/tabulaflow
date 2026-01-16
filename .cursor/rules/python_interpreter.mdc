@@ -1,0 +1,5 @@
+---
+alwaysApply: true
+---
+
+The python interpreter at `.venv/bin/python` is used to run the code.
