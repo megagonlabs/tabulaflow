@@ -147,7 +147,7 @@ class SchemaLinker:
 
         print(f"<linked schema>\n{formatter.format(schema)}\n</linked schema>")
         if not schema.tables:
-            exit(9)
+            raise ValueError("No tables found in the linked schema")
 
         return schema
 
