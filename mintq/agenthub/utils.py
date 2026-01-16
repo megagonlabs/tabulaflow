@@ -93,7 +93,9 @@ class BasicAgentConfig(BaseModel):
         return res
 
 
-def extract_all_source_columns(query: str, schema: SQLSchema | None = None) -> list[tuple[str, str]]:
+def extract_all_source_columns(
+    query: str, schema: SQLSchema | None = None, language: str = "sqlite"
+) -> list[tuple[str, str]]:
     """
     Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
 
@@ -103,6 +105,7 @@ def extract_all_source_columns(query: str, schema: SQLSchema | None = None) -> l
     Args:
         query: SQL query string to analyze
         schema: Optional SQL schema to use for resolving SELECT *
+        dialect: SQL dialect for parsing (e.g., "sqlite", "postgres", "mysql", "snowflake")
 
     Returns:
         List of (table_name, column_name) tuples for all source columns referenced
@@ -130,8 +133,8 @@ def extract_all_source_columns(query: str, schema: SQLSchema | None = None) -> l
             sqlglot_schema[table_name] = {col.name: col.dtype for col in table.columns}
 
     try:
-        parsed = sqlglot.parse_one(query)
-        qualified = qualify(parsed, schema=sqlglot_schema, validate_qualify_columns=False)
+        parsed = sqlglot.parse_one(query, dialect=language)
+        qualified = qualify(parsed, schema=sqlglot_schema, dialect=language, validate_qualify_columns=False)
         root = build_scope(qualified)
     except Exception:
         return []
