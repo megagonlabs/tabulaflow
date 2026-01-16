@@ -2300,6 +2300,7 @@ dependencies = [
     { name = "snowflake-connector-python" },
     { name = "snowflake-sqlalchemy" },
     { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "sqlglot" },
     { name = "sqlparse" },
     { name = "tabulate" },
     { name = "tqdm" },
@@ -2351,6 +2352,7 @@ requires-dist = [
     { name = "snowflake-connector-python", specifier = ">=3.14.1" },
     { name = "snowflake-sqlalchemy", specifier = ">=1.7.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.40" },
+    { name = "sqlglot", specifier = ">=28.6.0" },
     { name = "sqlparse", specifier = ">=0.5.3" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
@@ -4404,6 +4406,15 @@ wheels = [
 [package.optional-dependencies]
 asyncio = [
     { name = "greenlet" },
+]
+
+[[package]]
+name = "sqlglot"
+version = "28.6.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/46/b6/f188b9616bef49943353f3622d726af30fdb08acbd081deef28ba43ceb48/sqlglot-28.6.0.tar.gz", hash = "sha256:8c0a432a6745c6c7965bbe99a17667c5a3ca1d524a54b31997cf5422b1727f6a", size = 5676522, upload_time = "2026-01-13T17:39:24.389Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/8f/a6/21b1e19994296ba4a34bc7abaf4fcb40d7e7787477bdfde58cd843594459/sqlglot-28.6.0-py3-none-any.whl", hash = "sha256:8af76e825dc8456a49f8ce049d69bbfcd116655dda3e53051754789e2edf8eba", size = 575186, upload_time = "2026-01-13T17:39:22.327Z" },
 ]
 
 [[package]]
