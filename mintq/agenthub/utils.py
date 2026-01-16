@@ -10,7 +10,7 @@ from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
-from mintq.schema import NL2QTask
+from mintq.schema import NL2QTask, SQLSchema
 from mintq.config import config
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import Usage, Trajectory
@@ -93,7 +93,7 @@ class BasicAgentConfig(BaseModel):
         return res
 
 
-def extract_all_source_columns(query: str) -> list[tuple[str, str]]:
+def extract_all_source_columns(query: str, schema: SQLSchema | None = None) -> list[tuple[str, str]]:
     """
     Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
 
@@ -102,6 +102,7 @@ def extract_all_source_columns(query: str) -> list[tuple[str, str]]:
 
     Args:
         query: SQL query string to analyze
+        schema: Optional SQL schema to use for resolving SELECT *
 
     Returns:
         List of (table_name, column_name) tuples for all source columns referenced
@@ -117,12 +118,20 @@ def extract_all_source_columns(query: str) -> list[tuple[str, str]]:
         ... FROM users u
         ... JOIN recent_orders ro ON u.id = ro.user_id
         ... '''
-        >>> extract_all_source_columns(query)
+        >>> extract_all_source_columns(query, schema)
         [('orders', 'user_id'), ('orders', 'total'), ('orders', 'order_dates'), ('users', 'id')]
     """
+    # Convert SQLSchema to sqlglot's schema format for qualify (if provided)
+    sqlglot_schema: dict[str, dict[str, str]] | None = None
+    if schema is not None:
+        sqlglot_schema = {}
+        for table in schema.tables:
+            table_name = table.name
+            sqlglot_schema[table_name] = {col.name: col.dtype for col in table.columns}
+
     try:
         parsed = sqlglot.parse_one(query)
-        qualified = qualify(parsed, validate_qualify_columns=False)
+        qualified = qualify(parsed, schema=sqlglot_schema, validate_qualify_columns=False)
         root = build_scope(qualified)
     except Exception:
         return []
