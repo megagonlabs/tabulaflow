@@ -1,10 +1,14 @@
 from typing import Any, Callable, Literal
-from functools import partial
+from functools import partial, wraps
+from dataclasses import dataclass, field
+
+import sqlglot
+from sqlglot import exp
+from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.scope import build_scope, Scope
 from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
-from dataclasses import dataclass, field
-from functools import wraps
 from pydantic import BaseModel
 from mintq.schema import NL2QTask
 from mintq.config import config
@@ -87,3 +91,69 @@ class BasicAgentConfig(BaseModel):
         if self.openai_reasoning_summary is not None:
             res["openai_reasoning_summary"] = self.openai_reasoning_summary
         return res
+
+
+def extract_all_source_columns(query: str) -> list[tuple[str, str]]:
+    """
+    Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
+
+    Resolves table aliases and traces columns through CTEs and subqueries back to their
+    original source tables.
+
+    Args:
+        query: SQL query string to analyze
+
+    Returns:
+        List of (table_name, column_name) tuples for all source columns referenced
+        in the query. Returns an empty list if the query cannot be parsed.
+
+    Example:
+        >>> query = '''
+        ... WITH recent_orders AS (
+        ...   SELECT o.user_id, o.total, o.order_dates
+        ...   FROM orders o
+        ... )
+        ... SELECT u.id, ro.total
+        ... FROM users u
+        ... JOIN recent_orders ro ON u.id = ro.user_id
+        ... '''
+        >>> extract_all_source_columns(query)
+        [('orders', 'user_id'), ('orders', 'total'), ('orders', 'order_dates'), ('users', 'id')]
+    """
+    try:
+        parsed = sqlglot.parse_one(query)
+        qualified = qualify(parsed, validate_qualify_columns=False)
+        root = build_scope(qualified)
+    except Exception:
+        return []
+
+    if root is None:
+        return []
+
+    def collect_columns(scope: Scope, result: list[tuple[str, str]], seen: set[tuple[str, str]]) -> None:
+        """Recursively collect source columns from a scope and all nested scopes."""
+        for col in scope.columns:
+            table_alias = col.table
+            col_name = col.name
+
+            source = scope.sources.get(table_alias)
+            if isinstance(source, exp.Table):
+                # Direct table reference - resolve alias to actual table name
+                table_name = source.name
+                if (table_name, col_name) not in seen:
+                    result.append((table_name, col_name))
+                    seen.add((table_name, col_name))
+
+        # Process CTE scopes (WITH clause definitions)
+        for cte_scope in scope.cte_scopes:
+            collect_columns(cte_scope, result, seen)
+
+        # Process derived table scopes (subqueries in FROM/JOIN)
+        for source in scope.sources.values():
+            if isinstance(source, Scope):
+                collect_columns(source, result, seen)
+
+    result: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    collect_columns(root, result, seen)
+    return result
