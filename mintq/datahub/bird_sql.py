@@ -10,6 +10,7 @@ from mintq.datahub.base import dataset_registry
 
 
 BIRD_DATASET_INSTRUCTIONS = """
+- When the question explicitly states that a term or concept refers to a particular column name, use that column in your query.
 - Do not concatenate columns in the results unless explicitly requested.
 - Do not round percentage values unless explicitly requested.
 - If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
