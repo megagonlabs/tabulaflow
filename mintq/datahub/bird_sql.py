@@ -11,13 +11,19 @@ from mintq.datahub.base import dataset_registry
 
 BIRD_DATASET_INSTRUCTIONS = """
 - Do not concatenate columns in the results unless explicitly requested.
-- If the question asks for a list of objects, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
-- The final query should not return additional columns that are not explicitly requested by the question.
-  - For example, if the question only asks for the highest score but not the name of the student, the final query should not return the name of the student.
-  - Similarly, if the question only asks for the student with the highest score but not the score, the final query should not return the score.
-  - If the question requests a list of items sorted by a specific column, do not include the sorting column in the output unless it is specifically requested.
-- If the question refers to the object with the maximum or minimum value, assume there is exactly one such object.
-- Ensure that the columns in the output appear in the same order as they are mentioned in the question.
+- Do not round percentage values unless explicitly requested.
+- If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
+- The final SELECT clause must not return any columns that are not explicitly requested.
+  - If the question asks for a maximum value, do not include the entity that attains it.
+    Question: "What is the highest score?" Return columns: ["highest score"] (exclude the student).
+  - If the question asks for the entity that attains a maximum value, do not include the value itself.
+    Question: "Which student has the highest score?" Return columns: ["student name or id"] (exclude the score).
+  - If the question asks for attributes of a set of entities, do not include the entities themselves.
+    Question: "What are the birthdates of students?" Return columns: ["birthdate"] (exclude the student).
+  - If the question asks for a list of items ordered by a specific attribute, do not include the ordering attribute.
+    Question: "Who are the top 3 students by score?" Return columns: ["student name or id"] (exclude the score).
+- Ensure that the columns in the SELECT clause appear in the same order as they are mentioned in the question.
+- If the question refers to the entity with the maximum or minimum value, assume there is exactly one such entity (i.e., use "ORDER BY … LIMIT 1").
 """.strip()
 
 
