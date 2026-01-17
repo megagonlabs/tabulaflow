@@ -5,6 +5,7 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
     NumericOrNull,
 )
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 
 
@@ -14,7 +15,7 @@ class GoldAmbigPointStats:
     compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
     ) -> dict[str, NumericOrNull]:
         return {
             "gold_num_ambig_points": len(task.gold_ambiguity_points),

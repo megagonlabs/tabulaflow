@@ -1,5 +1,6 @@
 from typing import ClassVar
 from mintq.schema import NL2QTaskOutput
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_gold_query
 
@@ -9,6 +10,6 @@ class GoldResultNotEmpty:
     name: ClassVar[str] = "gold_result_not_empty"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(self, task: NL2QTaskOutput) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> float:
         gold_query = get_final_gold_query(task)
         return float(gold_query.exec_result.df is not None and len(gold_query.exec_result.df) > 0)  # type: ignore

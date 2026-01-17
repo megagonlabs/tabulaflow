@@ -2,6 +2,7 @@ import math
 import pandas as pd
 from typing import Any, ClassVar
 from mintq.schema import NL2QTaskOutput
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
@@ -93,7 +94,7 @@ class SimpleEx:
                 return 0.0
         return 1.0
 
-    async def compute_async(self, task: NL2QTaskOutput) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> float:
         pred_query = get_final_pred_query(task)
         gold_query = get_final_gold_query(task)
 

@@ -1,9 +1,11 @@
 import argparse
 import asyncio
 import os
+import time
 from tqdm.asyncio import tqdm_asyncio
-from mintq import metric_registry
-from mintq.schema import NL2QTaskOutput, NL2QRunResult
+from mintq import metric_registry, dataset_registry
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -15,8 +17,10 @@ from mintq.metrics.aggregators import (
 from mintq.utils import pprint_dict
 
 
-async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric]) -> NL2QTaskOutput:
-    results = await asyncio.gather(*[m.compute_async(task) for m in metrics])  # type: ignore
+async def compute_metrics_async(
+    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector
+) -> NL2QTaskOutput:
+    results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])  # type: ignore
     task.eval_metrics = {}
     for m, r in zip(metrics, results):
         if isinstance(r, dict):
@@ -28,6 +32,7 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
 
 async def evaluate_async(
     result: NL2QRunResult,
+    dataset: NL2QDataset,
     metrics: list[NL2QMetric],
     batch_size: int,
     metric_aggregators: list[BaseMetricAggregator],
@@ -36,7 +41,10 @@ async def evaluate_async(
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
-        await tqdm_asyncio.gather(*[compute_metrics_async(task, metrics) for task in batch], disable=not verbose)
+        await tqdm_asyncio.gather(
+            *[compute_metrics_async(task, metrics, dataset.db_connectors[task.db]) for task in batch],
+            disable=not verbose,
+        )
         if verbose:
             print(f"{j}/{len(result.tasks)} tasks evaluated.")
     result.aggregated_eval_metrics = {}
@@ -58,6 +66,15 @@ async def main_async() -> None:
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
+    t0 = time.time()
+    dataset_loader = dataset_registry.get_class(result.dataset)()
+    dataset = await dataset_loader.get_split_async(
+        result.split, databases=result.databases, subsample_size=result.subsample_size
+    )
+    print(
+        f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
+    )
+
     unique_output_types = list(dict.fromkeys([task.output_type for task in result.tasks]))
     metric_names = args.metrics or metric_registry.list_names()
     metrics = []
@@ -77,7 +94,7 @@ async def main_async() -> None:
         ByAmbrosiaTaxonomyTypeAggregator(),
         ByBirdSQLDifficultyAggregator(),
     ]
-    result = await evaluate_async(result, metrics, args.batch_size, metric_aggregators)
+    result = await evaluate_async(result, dataset, metrics, args.batch_size, metric_aggregators)
 
     result.to_directory(args.result_dir, eval_metrics_in_summary=metric_names)
     print(f"Saved evaluated result to {args.result_dir}")

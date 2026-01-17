@@ -5,6 +5,7 @@ from mintq.schema import (
     StructuredAmbigNL2QTaskOutput,
     NumericOrNull,
 )
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query
 from mintq.metrics.simple_ex import SimpleEx
@@ -25,7 +26,7 @@ class FoundOne:
         self.simple_ex = SimpleEx(self.abs_tol, self.ignore_repetitions)
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
     ) -> NumericOrNull:
         pred_query = get_final_pred_query(task)
 

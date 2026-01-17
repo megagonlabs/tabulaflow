@@ -10,6 +10,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
 from mintq.utils import int_to_letter
@@ -389,7 +390,7 @@ class AmbigPointStats:
         return res
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
     ) -> dict[str, NumericOrNull]:
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
