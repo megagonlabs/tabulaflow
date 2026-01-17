@@ -500,6 +500,7 @@ class SimpleNL2QTask(BaseModel):
 class ExtraPredInfo(BaseModel):
     linked_schema: list[ColumnRef] | None = None
     raw_pred_query: PredQuery | None = None
+    """If your method includes a postprocessing step, this field can store the raw predicted query before postprocessing to analyze its impact. The raw_pred_*_ex metrics evaluate these raw predictions."""
     other: dict[str, Any] = Field(default_factory=dict)
 
 
