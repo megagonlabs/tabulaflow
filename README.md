@@ -495,7 +495,17 @@ Jan 14
   - [x] potential improvable tasks
 - [x] Reject postprocessed queries that is non-executable or adds columns
 
-Jan 15
+Jan 15 - Jan 16
+- [ ] Schema linking module
+  - [x] SQL parsing utils
+  - [x] Schema linking with gold query
+  - [ ] Schema linking with expanded gold query
+  - [ ] Schema linking with expanded pred query
+  - [ ] Add FKs when expanded to a different table
+  - [ ] Remove FKs that linked to non-existent columns
+
+- [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
+- [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
 - [ ] Model ensemble
 - [ ] Support in-context examples
 - [ ] Fix Spider table and column names casing
@@ -508,6 +518,7 @@ Jan 15
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
   - [ ] Data sheet
   - [ ] Remove `extra_info` in ARCS data
+  - [ ] Update website layout with top bar
 
 ### Release test
 
