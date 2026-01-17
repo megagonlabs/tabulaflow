@@ -195,6 +195,7 @@ class SchemaLinker:
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
             table.columns = [col for col in table.columns if (table.name.lower(), col.name.lower()) in linked]
+        linked_schema.tables = [table for table in linked_schema.tables if table.columns]
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
