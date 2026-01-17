@@ -1,4 +1,6 @@
+import asyncio
 import copy
+import json
 import jinja2
 import time
 from typing import ClassVar
@@ -27,22 +29,165 @@ from mintq.agenthub.utils import (
 from mintq.utils import extract_code
 
 
-SYSTEM_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+EXPAND_COLUMNS_PROMPT = """
+You are a helpful AI database expert.
+Given a list of columns that can be used to answer a question, identify potential alternative columns for each of the given columns.
 
-- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
-- Adhere strictly to the given database schema when constructing queries.
-- Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
-{%- if language == "snowflake" %}
-- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
-{%- endif %}
+- All table and column names must exactly match those in the database schema.
+- The alternative columns can be from the same table or different tables.
+- The alternative columns can be an empty list if there are no alternatives.
+
+=== START OF EXAMPLE ===
+Question: "What is the date of order 1005?"
+Columns: [{table: "order", column: "order_date"}]
+Output:
+[
+  {
+    "original_column": {
+      "table": "order",
+      "column": "order_date"
+    },
+    "alternatives": [
+      {
+        "table": "order",
+        "column": "shipping_date"
+      }
+    ]
+  }
+]
+=== END OF EXAMPLE ===
+
+=== START OF DATABASE SCHEMA ===
+{{schema}}
+=== END OF DATABASE SCHEMA ===
+
+=== START OF QUESTION ===
+{{question}}
 {%- if dataset_instructions %}
 
-=== START OF DATASET INSTRUCTIONS ===
+Additional instructions:
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ===
 {%- endif %}
+=== END OF QUESTION ===
+
+=== START OF COLUMNS ===
+{{columns}}
+=== END OF COLUMNS ===
+
+Your output:
 """.strip()
+
+
+class SchemaLinker:
+    def __init__(self, config: BasicAgentConfig):
+        self.config = config
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        self.compressor = SchemaCompressor() if config.compress_schema else None
+
+    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
+        db_connector = ctx.db_connector
+
+        tools: dict[str, BaseTool] = {
+            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_column_description": GetColumnDescriptionTool(db_connector),
+            "search_keywords": SearchKeywordsTool(db_connector),
+            "run_query": RunQueryNoParamsTool(db_connector),
+            "finish": FinishTool(),
+        }
+        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+            language=task.language, dataset_instructions=task.dataset_instructions
+        )
+
+        agent = Agent[None, None](  # type: ignore
+            model=self.config.llm,
+            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
+            output_type=tools["finish"].as_pydantic_ai_tool(),
+            instructions=system_prompt,
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
+        result = await agent.run(
+            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
+        )
+        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
+        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
+        ctx.trajectories.append(trajectory)
+        return pred_query
+
+    async def expand_schema_async(self, ctx: TaskRunContext, schema: SQLSchema, batch_size: int = 5) -> SQLSchema:
+        class SimpleColumn(BaseModel):
+            table: str
+            column: str
+
+        class ColumnWithAlternatives(SimpleColumn):
+            original_column: SimpleColumn
+            alternatives: list[SimpleColumn]
+
+        class LLMOutput(BaseModel):
+            results: list[ColumnWithAlternatives]
+
+        current_columns = [
+            SimpleColumn(table=table.name, column=column.name) for table in schema.tables for column in table.columns
+        ]
+
+        async def process_batch_async(batch_idx: int, batch: list[SimpleColumn]) -> list[ColumnWithAlternatives]:
+            agent = Agent[None, LLMOutput](  # type: ignore
+                model=self.config.llm,
+                output_type=LLMOutput,
+                model_settings=self.config.to_model_settings(),
+            )
+            prompt = jinja2.Template(EXPAND_COLUMNS_PROMPT).render(
+                schema=self.formatter.format(
+                    (await self.compressor.run_async(ctx.db_connector.schema))
+                    if self.compressor
+                    else ctx.db_connector.schema
+                ),
+                question=ctx.task.question
+                + (f"\n{ctx.task.question_instructions}" if ctx.task.question_instructions else ""),
+                dataset_instructions=ctx.task.dataset_instructions,
+                columns=json.dumps([{"table": c.table, "column": c.column} for c in batch], indent=2),
+            )
+            result = await agent.run(prompt)
+            ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
+            ctx.trajectories.append(
+                Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-EXPAND-SCHEMA-{batch_idx}")
+            )
+            return result.output.results
+
+        batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
+        all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
+        linked = set((c.table, c.column) for c in current_columns)
+        for results in all_results:
+            for item in results:
+                for alternative in item.alternatives:
+                    linked.add((alternative.table, alternative.column))
+        linked_schema = copy.deepcopy(schema)
+        for table in linked_schema.tables:
+            table.columns = [col for col in table.columns if (table.name, col.name) in linked]
+        return linked_schema
+
+    async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
+        gold_query = ctx.task.gold_query
+
+        source_columns = extract_all_source_columns(gold_query.query, ctx.db_connector.schema)
+        source_columns = set(source_columns)
+
+        linked_schema = copy.deepcopy(ctx.db_connector.schema)
+        for table in linked_schema.tables:
+            table.columns = [col for col in table.columns if (table.name, col.name) in source_columns]
+        linked_schema.tables = [table for table in linked_schema.tables if table.columns]
+
+        if not linked_schema.tables:
+            raise ValueError("No tables found in the linked schema")
+
+        expanded_linked_schema = await self.expand_schema_async(ctx, linked_schema)
+
+        # print(f"<query>\n{gold_query.query}\n</query>")
+        # print(f"<source_columns>\n{source_columns}\n</source_columns>")
+        # print(f"<schema>\n{formatter.format(ctx.db_connector.schema)}\n</schema>")
+        # print(f"<linked schema>\n{formatter.format(schema)}\n</linked schema>")
+        return expanded_linked_schema
 
 
 PARSE_QUESTION_PROMPT = """
@@ -92,64 +237,6 @@ Current {{language}} query:
 
 Your revised {{language}} query:
 """.strip()
-
-
-class SchemaLinker:
-    def __init__(self, config: BasicAgentConfig):
-        self.config = config
-
-    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
-        db_connector = ctx.db_connector
-
-        tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
-            "get_column_description": GetColumnDescriptionTool(db_connector),
-            "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryNoParamsTool(db_connector),
-            "finish": FinishTool(),
-        }
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
-            language=task.language, dataset_instructions=task.dataset_instructions
-        )
-
-        agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
-            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
-            output_type=tools["finish"].as_pydantic_ai_tool(),
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(
-            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
-        )
-        pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
-        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
-        ctx.trajectories.append(trajectory)
-        return pred_query
-
-    async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
-        gold_query = ctx.task.gold_query
-
-        source_columns = extract_all_source_columns(gold_query.query, ctx.db_connector.schema)
-
-        print(f"<query>\n{gold_query.query}\n</query>")
-        print(f"<source_columns>\n{source_columns}\n</source_columns>")
-
-        formatter = formatter_registry.get_class("sql_default")()
-        print(f"<schema>\n{formatter.format(ctx.db_connector.schema)}\n</schema>")
-
-        schema = copy.deepcopy(ctx.db_connector.schema)
-        for table in schema.tables:
-            table.columns = [col for col in table.columns if (table.name, col.name) in source_columns]
-        schema.tables = [table for table in schema.tables if table.columns]
-
-        print(f"<linked schema>\n{formatter.format(schema)}\n</linked schema>")
-        if not schema.tables:
-            raise ValueError("No tables found in the linked schema")
-
-        return schema
 
 
 class Postprocessor:
@@ -210,6 +297,24 @@ class Postprocessor:
             parameter_values=pred_query.parameter_values,
             exec_result=exec_result,
         )
+
+
+SYSTEM_PROMPT = """
+You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+
+- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
+- Adhere strictly to the given database schema when constructing queries.
+- Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
+{%- if language == "snowflake" %}
+- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
+{%- endif %}
+{%- if dataset_instructions %}
+
+=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ===
+{%- endif %}
+""".strip()
 
 
 @agent_registry.register
