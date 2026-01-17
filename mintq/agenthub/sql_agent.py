@@ -190,14 +190,15 @@ class SchemaLinker:
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
-        pred_query = await self._generate_sql_async(ctx)
+        # pred_query = await self._generate_sql_async(ctx)
+        pred_query = ctx.task.gold_query
 
         source_columns = extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
         source_columns = set(source_columns)
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
-            table.columns = [col for col in table.columns if (table.name, col.name) in source_columns]
+            table.columns = [col for col in table.columns if (table.name.lower(), col.name.lower()) in source_columns]
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
 
         if not linked_schema.tables:
