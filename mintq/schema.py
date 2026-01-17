@@ -71,6 +71,28 @@ class SQLSchema(BaseModel):
             for column in table.columns
         ]
 
+    def get_fk_column_refs(self) -> list[ColumnRef]:
+        """Get columns involved in foreign key relationships (both outgoing and incoming)."""
+        result: list[ColumnRef] = []
+        seen: set[tuple[str, str]] = set()
+
+        for table in self.tables:
+            for fk in table.foreign_keys:
+                # Outgoing FK columns
+                for col in fk.columns:
+                    key = (table.name, col)
+                    if key not in seen:
+                        seen.add(key)
+                        result.append(ColumnRef(table_name=table.name, column_name=col))
+                # Incoming FK columns
+                for col in fk.foreign_columns:
+                    key = (fk.foreign_table, col)
+                    if key not in seen:
+                        seen.add(key)
+                        result.append(ColumnRef(table_name=fk.foreign_table, column_name=col))
+
+        return result
+
 
 class SystemMessage(BaseModel):
     role: Literal["system"] = "system"
