@@ -196,8 +196,8 @@ class SchemaLinker:
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
-        # pred_query = await self._generate_sql_async(ctx)
-        pred_query = ctx.task.gold_query
+        pred_query = await self._generate_sql_async(ctx)
+        # pred_query = ctx.task.gold_query
 
         source_columns = extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
         source_columns = set((c[0].lower(), c[1].lower()) for c in source_columns)
