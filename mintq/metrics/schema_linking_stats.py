@@ -11,13 +11,12 @@ class SchemaLinkingStats:
     name: ClassVar[str] = "schema_linking_stats"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: NL2QDBConnector
-    ) -> dict[str, NumericOrNull]:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> dict[str, NumericOrNull]:
         gold_query = get_final_gold_query(task, check_exec_result=False)
 
         res = {
-            "linked_percentage": len(task.extra_pred_info.linked_schema) / len(db_connector.schema.to_column_refs()),
+            "linked_percentage": len(task.extra_pred_info.linked_schema or [])
+            / len(db_connector.schema.to_column_refs()),
         }
 
         # We rely on the gold query to extract the ground-truth linked schema.
