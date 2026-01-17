@@ -208,3 +208,208 @@ async def test_group_by_having_with_schema(schema: SQLSchema) -> None:
     result = extract_all_source_columns(query, schema)
 
     assert set(result) == {("orders", "user_id"), ("orders", "amount")}
+
+
+def test_union_all_query() -> None:
+    """Test extracting columns from a UNION ALL query."""
+    query = """
+    SELECT name FROM users WHERE id = 1
+    UNION ALL
+    SELECT name FROM users WHERE id = 2
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "name"), ("users", "id")}
+
+
+def test_union_all_different_tables() -> None:
+    """Test extracting columns from UNION ALL with different tables."""
+    query = """
+    SELECT user_id, amount FROM orders WHERE amount > 100
+    UNION ALL
+    SELECT id, age FROM users WHERE age > 20
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("orders", "user_id"),
+        ("orders", "amount"),
+        ("users", "id"),
+        ("users", "age"),
+    }
+
+
+def test_intersect_query() -> None:
+    """Test extracting columns from an INTERSECT query."""
+    query = """
+    SELECT name FROM users WHERE age > 20
+    INTERSECT
+    SELECT name FROM users WHERE id < 10
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "name"), ("users", "age"), ("users", "id")}
+
+
+def test_except_query() -> None:
+    """Test extracting columns from an EXCEPT query."""
+    query = """
+    SELECT id FROM users
+    EXCEPT
+    SELECT user_id FROM orders
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "id"), ("orders", "user_id")}
+
+
+def test_subquery_in_where() -> None:
+    """Test extracting columns from subquery in WHERE clause."""
+    query = """
+    SELECT name FROM users
+    WHERE id = (SELECT user_id FROM orders WHERE amount = (SELECT MAX(amount) FROM orders))
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("orders", "user_id"),
+        ("orders", "amount"),
+    }
+
+
+def test_subquery_in_select() -> None:
+    """Test extracting columns from subquery in SELECT clause."""
+    query = """
+    SELECT u.name, (SELECT MAX(o.amount) FROM orders o WHERE o.user_id = u.id) as max_order
+    FROM users u
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("orders", "amount"),
+        ("orders", "user_id"),
+    }
+
+
+def test_exists_subquery() -> None:
+    """Test extracting columns from EXISTS subquery."""
+    query = """
+    SELECT name FROM users u
+    WHERE EXISTS (SELECT 1 FROM orders o WHERE o.user_id = u.id AND o.amount > 100)
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("orders", "user_id"),
+        ("orders", "amount"),
+    }
+
+
+def test_in_subquery() -> None:
+    """Test extracting columns from IN subquery."""
+    query = """
+    SELECT name FROM users
+    WHERE id IN (SELECT user_id FROM orders WHERE amount > 50)
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("orders", "user_id"),
+        ("orders", "amount"),
+    }
+
+
+def test_case_when_expression() -> None:
+    """Test extracting columns from CASE WHEN expression."""
+    query = """
+    SELECT
+        name,
+        CASE
+            WHEN age > 30 THEN 'senior'
+            WHEN age > 20 THEN 'adult'
+            ELSE 'young'
+        END as category
+    FROM users
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "name"), ("users", "age")}
+
+
+def test_window_function() -> None:
+    """Test extracting columns from window functions."""
+    query = """
+    SELECT
+        user_id,
+        amount,
+        SUM(amount) OVER (PARTITION BY user_id ORDER BY id) as running_total
+    FROM orders
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("orders", "user_id"), ("orders", "amount"), ("orders", "id")}
+
+
+def test_nested_subqueries() -> None:
+    """Test extracting columns from deeply nested subqueries."""
+    query = """
+    SELECT name FROM users
+    WHERE id = (
+        SELECT user_id FROM orders
+        WHERE amount = (
+            SELECT MAX(amount) FROM orders
+            WHERE user_id IN (SELECT id FROM users WHERE age > 25)
+        )
+    )
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("users", "age"),
+        ("orders", "user_id"),
+        ("orders", "amount"),
+    }
+
+
+def test_complex_union_with_subqueries() -> None:
+    """Test extracting columns from UNION ALL with subqueries (like the original bug case)."""
+    query = """
+    SELECT name FROM users
+    WHERE id = (SELECT user_id FROM orders ORDER BY amount DESC LIMIT 1)
+    UNION ALL
+    SELECT name FROM users
+    WHERE age = (SELECT MAX(age) FROM users)
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {
+        ("users", "name"),
+        ("users", "id"),
+        ("users", "age"),
+        ("orders", "user_id"),
+        ("orders", "amount"),
+    }
+
+
+def test_multiple_unions() -> None:
+    """Test extracting columns from multiple UNION ALL clauses."""
+    query = """
+    SELECT id, name FROM users WHERE age > 30
+    UNION ALL
+    SELECT id, name FROM users WHERE age > 20
+    UNION ALL
+    SELECT id, name FROM users WHERE age > 10
+    """
+    result = extract_all_source_columns(query)
+
+    assert set(result) == {("users", "id"), ("users", "name"), ("users", "age")}

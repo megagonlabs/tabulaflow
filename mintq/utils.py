@@ -288,9 +288,17 @@ def extract_all_source_columns(
                     result.append(key)
                     seen.add(key)
 
+        # Process UNION scopes (each SELECT in a UNION/UNION ALL)
+        for union_scope in scope.union_scopes:
+            collect_columns(union_scope, result, seen)
+
         # Process CTE scopes (WITH clause definitions)
         for cte_scope in scope.cte_scopes:
             collect_columns(cte_scope, result, seen)
+
+        # Process subquery scopes (subqueries in WHERE, HAVING, etc.)
+        for subquery_scope in scope.subquery_scopes:
+            collect_columns(subquery_scope, result, seen)
 
         # Process derived table scopes (subqueries in FROM/JOIN)
         for source in scope.sources.values():
