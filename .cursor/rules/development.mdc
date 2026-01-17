@@ -1,0 +1,6 @@
+---
+alwaysApply: true
+---
+
+- The python interpreter at `.venv/bin/python` is used to run a python script.
+- If you worked on sql_agent, run `make test-bird-agent` to test the changes.
