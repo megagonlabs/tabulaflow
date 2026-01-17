@@ -487,6 +487,7 @@ Jan 14
 - [x] Test postprocessor
   - [x] Exp 156: Performance goes from 0.58 to 0.48
     - Reason: gpt-5-mini-minimal outputs extra columns when parsing the question
+    - Observation: gpt-5-mini with minimal reasoning does not work well but medium reasoning works well
 - [x] Replace evidence field with question_instructions
 - [x] Metric raw_pred_bird_sql_ex
 - [x] analyze_postprocess_impact_async in analyze_errors.py
@@ -496,18 +497,19 @@ Jan 14
 - [x] Reject postprocessed queries that is non-executable or adds columns
 
 Jan 15 - Jan 16
-- [ ] Schema linking module
+- [x] Schema linking module
   - [x] SQL parsing utils
   - [x] Schema linking with gold query
   - [x] Schema linking with expanded gold query
   - [x] Schema linking with expanded pred query
-  - [ ] Add FKs when expanded to a different table
-  - [ ] Remove FKs that linked to non-existent columns
+  - [x] Improve SQL parsing coverage
+  - [x] Add FKs when expanded to a different table -> keep all FKs for now
 - [x] Schema linking metrics
 - [x] Add field `extra_pred_info` to NL2QTaskOutput
 - [x] Add param `db_connector` to metrics
 
-
+- [ ] Remove unuseful FKs in linked schema
+- [ ] FK inference for database without FKs
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
 - [ ] Model ensemble
