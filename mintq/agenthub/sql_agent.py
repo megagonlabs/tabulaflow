@@ -24,9 +24,8 @@ from mintq.agenthub.utils import (
     instrument,
     BasicAgentConfig,
     TaskRunContext,
-    extract_all_source_columns,
 )
-from mintq.utils import extract_code
+from mintq.utils import extract_code, extract_all_source_columns
 
 SQL_AGENT_SYSTEM_PROMPT = """
 You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
@@ -382,4 +381,5 @@ class SQLAgent:
             inference_metrics=metrics,
         )
         task_output.extra_info["raw_pred_query"] = raw_pred_query.model_dump()
+        task_output.extra_info["linked_schema"] = [col.model_dump() for col in linked_schema.to_column_refs()]
         return task_output

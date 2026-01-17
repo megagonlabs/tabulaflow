@@ -3,10 +3,16 @@ import re
 import copy
 import statistics
 from typing import Literal, Any, Coroutine
+
 import numpy as np
 import pandas as pd
+import sqlglot
+from sqlglot import exp
+from sqlglot.optimizer.qualify import qualify
+from sqlglot.optimizer.scope import build_scope, Scope
 from tqdm.asyncio import tqdm_asyncio
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
+
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull, SQLSchema
 
 
 def extract_code(response: str) -> str:
@@ -215,3 +221,100 @@ async def tqdm_gather_with_exceptions(
             return e
 
     return await tqdm_asyncio.gather(*map(wrap, fs), **kwargs)  # type: ignore
+
+
+def extract_all_source_columns(
+    query: str, schema: SQLSchema | None = None, language: str = "sqlite"
+) -> list[tuple[str, str]]:
+    """
+    Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
+
+    Resolves table aliases and traces columns through CTEs and subqueries back to their
+    original source tables. Preserves the original case of table and column names as they
+    appear in the query.
+
+    Args:
+        query: SQL query string to analyze
+        schema: Optional SQL schema to use for resolving SELECT *
+        dialect: SQL dialect for parsing (e.g., "sqlite", "postgres", "mysql", "snowflake")
+
+    Returns:
+        List of (table_name, column_name) tuples for all source columns referenced
+        in the query. Returns an empty list if the query cannot be parsed.
+
+    Example:
+        >>> query = '''
+        ... WITH recent_orders AS (
+        ...   SELECT o.user_id, o.total, o.order_dates
+        ...   FROM orders o
+        ... )
+        ... SELECT u.id, ro.total
+        ... FROM users u
+        ... JOIN recent_orders ro ON u.id = ro.user_id
+        ... '''
+        >>> extract_all_source_columns(query, schema)
+        [('orders', 'user_id'), ('orders', 'total'), ('orders', 'order_dates'), ('users', 'id')]
+    """
+    # Convert SQLSchema to sqlglot's schema format for qualify (if provided)
+    sqlglot_schema: dict[str, dict[str, str]] | None = None
+    if schema is not None:
+        sqlglot_schema = {}
+        for table in schema.tables:
+            table_name = table.name
+            sqlglot_schema[table_name] = {col.name: col.dtype for col in table.columns}
+
+    try:
+        parsed = sqlglot.parse_one(query, dialect=language)
+
+        # Build case mapping before normalization: lowercase -> original case
+        # This captures the original case of identifiers before qualify() normalizes them
+        col_case_map: dict[str, str] = {}  # lowercase col name -> original col name
+        table_case_map: dict[str, str] = {}  # lowercase table name -> original table name
+
+        for col in parsed.find_all(exp.Column):
+            original_col_name = col.name
+            col_case_map[original_col_name.lower()] = original_col_name
+
+        for table in parsed.find_all(exp.Table):
+            original_table_name = table.name
+            table_case_map[original_table_name.lower()] = original_table_name
+
+        qualified = qualify(parsed, schema=sqlglot_schema, dialect=language, validate_qualify_columns=False)
+        root = build_scope(qualified)
+    except Exception:
+        return []
+
+    if root is None:
+        return []
+
+    def collect_columns(scope: Scope, result: list[tuple[str, str]], seen: set[tuple[str, str]]) -> None:
+        """Recursively collect source columns from a scope and all nested scopes."""
+        for col in scope.columns:
+            table_alias = col.table
+            col_name = col.name
+
+            source = scope.sources.get(table_alias)
+            if isinstance(source, exp.Table):
+                # Direct table reference - resolve alias to actual table name
+                table_name = source.name
+                # Restore original case using the mapping
+                original_table = table_case_map.get(table_name, table_name)
+                original_col = col_case_map.get(col_name, col_name)
+                key = (original_table, original_col)
+                if key not in seen:
+                    result.append(key)
+                    seen.add(key)
+
+        # Process CTE scopes (WITH clause definitions)
+        for cte_scope in scope.cte_scopes:
+            collect_columns(cte_scope, result, seen)
+
+        # Process derived table scopes (subqueries in FROM/JOIN)
+        for source in scope.sources.values():
+            if isinstance(source, Scope):
+                collect_columns(source, result, seen)
+
+    result: list[tuple[str, str]] = []
+    seen: set[tuple[str, str]] = set()
+    collect_columns(root, result, seen)
+    return result

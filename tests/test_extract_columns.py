@@ -3,7 +3,7 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
-from mintq.agenthub.utils import extract_all_source_columns
+from mintq.utils import extract_all_source_columns
 from mintq.db_connector.sql_conn import SQLConnector
 from mintq.schema import SQLSchema
 from sqlalchemy.ext.asyncio import create_async_engine
