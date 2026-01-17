@@ -16,7 +16,7 @@ class SchemaLinkingStats:
 
         res = {
             "linked_percentage": len(task.extra_pred_info.linked_schema or [])
-            / len(db_connector.schema.to_column_refs()),
+            / len(db_connector.schema.get_all_column_refs()),
         }
 
         # We rely on the gold query to extract the ground-truth linked schema.

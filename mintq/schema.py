@@ -64,7 +64,7 @@ class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
 
-    def to_column_refs(self) -> list[ColumnRef]:
+    def get_all_column_refs(self) -> list[ColumnRef]:
         return [
             ColumnRef(table_name=table.name, column_name=column.name)
             for table in self.tables
