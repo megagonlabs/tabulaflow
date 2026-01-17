@@ -179,14 +179,20 @@ class SchemaLinker:
 
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
-        linked = set((c.table_name, c.column_name) for c in current_columns)
+
+        linked = set((c.table_name.lower(), c.column_name.lower()) for c in current_columns)
         for results in all_results:
             for item in results:
                 for alternative in item.alternatives:
-                    linked.add((alternative.table_name, alternative.column_name))
+                    linked.add((alternative.table_name.lower(), alternative.column_name.lower()))
+
+        # We keep all foreign key columns so that tables in the linked schema can be joined.
+        for col in ctx.db_connector.schema.get_fk_column_refs():
+            linked.add((col.table_name.lower(), col.column_name.lower()))
+
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
-            table.columns = [col for col in table.columns if (table.name, col.name) in linked]
+            table.columns = [col for col in table.columns if (table.name.lower(), col.name.lower()) in linked]
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
@@ -194,7 +200,7 @@ class SchemaLinker:
         pred_query = ctx.task.gold_query
 
         source_columns = extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
-        source_columns = set(source_columns)
+        source_columns = set((c[0].lower(), c[1].lower()) for c in source_columns)
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
