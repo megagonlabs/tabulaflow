@@ -36,7 +36,7 @@ class SchemaLinkingStats:
             return res
 
         pred_linked_schema = set((col.table_name.lower(), col.column_name.lower()) for col in task.extra_pred_info.linked_schema)
-        gold_linked_schema = set(extract_all_source_columns(task.gold_query.query))
+        gold_linked_schema = set(extract_all_source_columns(task.gold_query.query, db_connector.schema))
 
         n_overlap = len(pred_linked_schema & gold_linked_schema)
         n_pred = len(pred_linked_schema)
