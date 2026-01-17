@@ -15,7 +15,9 @@ class GoldAmbigPointStats:
     compatible_output_types: ClassVar[list[str]] = ["ambig-simple", "ambig-flat", "ambig-structured"]
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
+        self,
+        task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput,
+        db_connector: NL2QDBConnector,
     ) -> dict[str, NumericOrNull]:
         return {
             "gold_num_ambig_points": len(task.gold_ambiguity_points),

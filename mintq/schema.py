@@ -657,6 +657,7 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
+    extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
 
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
@@ -714,6 +715,7 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
+    extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
 
     # @model_validator(mode="after")
     # def validate_interpretations(self) -> "FlatAmbigNL2QTaskOutput":
@@ -753,6 +755,7 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
+    extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
 
     @property
     def pred_intended_query(self) -> PredQuery | None:

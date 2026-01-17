@@ -26,7 +26,9 @@ class FoundOne:
         self.simple_ex = SimpleEx(self.abs_tol, self.ignore_repetitions)
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
+        self,
+        task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput,
+        db_connector: NL2QDBConnector,
     ) -> NumericOrNull:
         pred_query = get_final_pred_query(task)
 

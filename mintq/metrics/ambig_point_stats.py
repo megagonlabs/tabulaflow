@@ -390,7 +390,9 @@ class AmbigPointStats:
         return res
 
     async def compute_async(
-        self, task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput, db_connector: NL2QDBConnector
+        self,
+        task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput,
+        db_connector: NL2QDBConnector,
     ) -> dict[str, NumericOrNull]:
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
