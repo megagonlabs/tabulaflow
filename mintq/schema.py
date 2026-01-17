@@ -919,6 +919,18 @@ class SQLTableSchema(BaseModel):
     foreign_keys: list[ForeignKeySchema]
 
 
+class ColumnRef(BaseModel):
+    table_name: str
+    column_name: str
+
+
 class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
+
+    def to_column_refs(self) -> list[ColumnRef]:
+        return [
+            ColumnRef(table_name=table.name, column_name=column.name)
+            for table in self.tables
+            for column in table.columns
+        ]

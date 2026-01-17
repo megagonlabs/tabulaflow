@@ -7,7 +7,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.schema import SQLSchema, SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
+from mintq.schema import SQLSchema, SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory, ColumnRef
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
@@ -39,18 +39,18 @@ Given a list of columns that can be used to answer a question, identify potentia
 
 === START OF EXAMPLE ===
 Question: "What is the date of order 1005?"
-Columns: [{table: "order", column: "order_date"}]
+Columns: [{table_name: "order", column_name: "order_date"}]
 Output:
 [
   {
     "original_column": {
-      "table": "order",
-      "column": "order_date"
+      "table_name": "order",
+      "column_name": "order_date"
     },
     "alternatives": [
       {
-        "table": "order",
-        "column": "shipping_date"
+        "table_name": "order",
+        "column_name": "shipping_date"
       }
     ]
   }
@@ -116,22 +116,16 @@ class SchemaLinker:
         return pred_query
 
     async def expand_schema_async(self, ctx: TaskRunContext, schema: SQLSchema, batch_size: int = 5) -> SQLSchema:
-        class SimpleColumn(BaseModel):
-            table: str
-            column: str
-
-        class ColumnWithAlternatives(SimpleColumn):
-            original_column: SimpleColumn
-            alternatives: list[SimpleColumn]
+        class ColumnWithAlternatives(BaseModel):
+            original_column: ColumnRef
+            alternatives: list[ColumnRef]
 
         class LLMOutput(BaseModel):
             results: list[ColumnWithAlternatives]
 
-        current_columns = [
-            SimpleColumn(table=table.name, column=column.name) for table in schema.tables for column in table.columns
-        ]
+        current_columns = schema.to_column_refs()
 
-        async def process_batch_async(batch_idx: int, batch: list[SimpleColumn]) -> list[ColumnWithAlternatives]:
+        async def process_batch_async(batch_idx: int, batch: list[ColumnRef]) -> list[ColumnWithAlternatives]:
             agent = Agent[None, LLMOutput](  # type: ignore
                 model=self.config.llm,
                 output_type=LLMOutput,
@@ -146,7 +140,7 @@ class SchemaLinker:
                 question=ctx.task.question
                 + (f"\n{ctx.task.question_instructions}" if ctx.task.question_instructions else ""),
                 dataset_instructions=ctx.task.dataset_instructions,
-                columns=json.dumps([{"table": c.table, "column": c.column} for c in batch], indent=2),
+                columns=json.dumps([{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2),
             )
             result = await agent.run(prompt)
             ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -157,11 +151,11 @@ class SchemaLinker:
 
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
-        linked = set((c.table, c.column) for c in current_columns)
+        linked = set((c.table_name, c.column_name) for c in current_columns)
         for results in all_results:
             for item in results:
                 for alternative in item.alternatives:
-                    linked.add((alternative.table, alternative.column))
+                    linked.add((alternative.table_name, alternative.column_name))
         linked_schema = copy.deepcopy(schema)
         for table in linked_schema.tables:
             table.columns = [col for col in table.columns if (table.name, col.name) in linked]
