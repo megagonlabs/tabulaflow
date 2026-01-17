@@ -28,6 +28,23 @@ from mintq.agenthub.utils import (
 )
 from mintq.utils import extract_code
 
+SQL_AGENT_SYSTEM_PROMPT = """
+You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
+
+- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
+- Adhere strictly to the given database schema when constructing queries.
+- Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
+{%- if language == "snowflake" %}
+- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
+{%- endif %}
+{%- if dataset_instructions %}
+
+=== START OF DATASET INSTRUCTIONS ===
+{{dataset_instructions}}
+=== END OF DATASET INSTRUCTIONS ===
+{%- endif %}
+""".strip()
+
 
 EXPAND_COLUMNS_PROMPT = """
 You are a helpful AI database expert.
@@ -84,8 +101,9 @@ class SchemaLinker:
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
+    async def _generate_sql_async(self, ctx: TaskRunContext) -> PredQuery:
         db_connector = ctx.db_connector
+        task = ctx.task
 
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
@@ -94,7 +112,7 @@ class SchemaLinker:
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+        system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=task.language, dataset_instructions=task.dataset_instructions
         )
 
@@ -107,7 +125,7 @@ class SchemaLinker:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(
-            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
+            f"{task.question}\n{task.question_instructions}" if task.question_instructions else task.question
         )
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -140,7 +158,9 @@ class SchemaLinker:
                 question=ctx.task.question
                 + (f"\n{ctx.task.question_instructions}" if ctx.task.question_instructions else ""),
                 dataset_instructions=ctx.task.dataset_instructions,
-                columns=json.dumps([{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2),
+                columns=json.dumps(
+                    [{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
+                ),
             )
             result = await agent.run(prompt)
             ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -162,9 +182,9 @@ class SchemaLinker:
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
-        gold_query = ctx.task.gold_query
+        pred_query = await self._generate_sql_async(ctx)
 
-        source_columns = extract_all_source_columns(gold_query.query, ctx.db_connector.schema)
+        source_columns = extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
         source_columns = set(source_columns)
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
@@ -293,24 +313,6 @@ class Postprocessor:
         )
 
 
-SYSTEM_PROMPT = """
-You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
-
-- Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
-- Adhere strictly to the given database schema when constructing queries.
-- Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
-{%- if language == "snowflake" %}
-- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
-{%- endif %}
-{%- if dataset_instructions %}
-
-=== START OF DATASET INSTRUCTIONS ===
-{{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ===
-{%- endif %}
-""".strip()
-
-
 @agent_registry.register
 class SQLAgent:
     name: ClassVar = "sql_agent"
@@ -344,7 +346,7 @@ class SQLAgent:
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+        system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=task.language, dataset_instructions=task.dataset_instructions
         )
 
@@ -357,7 +359,7 @@ class SQLAgent:
             model_settings=self.config.to_model_settings(),
         )
         result = await agent.run(
-            task.question + (f"\n{task.question_instructions}" if task.question_instructions else "")
+            f"{task.question}\n{task.question_instructions}" if task.question_instructions else task.question
         )
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
