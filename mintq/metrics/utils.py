@@ -10,7 +10,7 @@ def get_final_gold_query(task: NL2QTaskOutput, check_exec_result: bool = True) -
         raise ValueError(f"Task type is not supported: {task.task_type}")
 
     if res is not None and check_exec_result and res.exec_result is None:
-        raise ValueError("Gold query has no exec result")
+        raise ValueError("Gold query has no exec result. If you are running evaluate.py, consider running populate_exec_results.py first.")
 
     if res is None:
         raise ValueError("Gold query is None")
@@ -27,6 +27,6 @@ def get_final_pred_query(task: NL2QTaskOutput, check_exec_result: bool = True) -
         raise ValueError(f"Task type is not supported: {task.task_type}")
 
     if res is not None and check_exec_result and res.exec_result is None:
-        raise ValueError("Pred query has no exec result")
+        raise ValueError("Pred query has no exec result. If you are running evaluate.py, consider running populate_exec_results.py first.")
 
     return res
