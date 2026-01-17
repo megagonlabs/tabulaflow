@@ -175,7 +175,7 @@ class SchemaLinker:
             for item in results:
                 for alternative in item.alternatives:
                     linked.add((alternative.table_name, alternative.column_name))
-        linked_schema = copy.deepcopy(schema)
+        linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
             table.columns = [col for col in table.columns if (table.name, col.name) in linked]
         return linked_schema
