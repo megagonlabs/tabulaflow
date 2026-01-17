@@ -12,10 +12,10 @@ class RawPredBirdSQLEx:
 
     async def compute_async(self, task: NL2QTaskOutput) -> NumericOrNull:
         # The agent failed to generate a query, or the agent does not record the raw predicted query in extra_info
-        if "raw_pred_query" not in task.extra_info:
+        if task.extra_pred_info.raw_pred_query is None:
             return 0.0
 
-        raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
+        raw_pred_query = task.extra_pred_info.raw_pred_query
         gold_query = get_final_gold_query(task)
 
         # The generated query is not executable

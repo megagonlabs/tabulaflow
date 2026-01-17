@@ -10,15 +10,15 @@ class SchemaLinkingStats:
     compatible_output_types: ClassVar[list[str]] = ["simple"]
 
     async def compute_async(self, task: NL2QTaskOutput) -> float:
-        if "linked_schema" not in task.extra_info:
+        if task.extra_pred_info.linked_schema is None:
             return {
                 "linked_schema_p": 0.0,
                 "linked_schema_r": 0.0,
                 "linked_schema_f1": 0.0,
             }
 
-        pred_linked_schema = task.extra_info["linked_schema"]
-        pred_linked_schema = set((col["table_name"], col["column_name"]) for col in pred_linked_schema)
+        pred_linked_schema = task.extra_pred_info.linked_schema
+        pred_linked_schema = set((col.table_name, col.column_name) for col in pred_linked_schema)
         gold_linked_schema = extract_all_source_columns(task.gold_query.query)
         gold_linked_schema = set(gold_linked_schema)
 

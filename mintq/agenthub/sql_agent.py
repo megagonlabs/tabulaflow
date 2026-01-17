@@ -7,7 +7,16 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.schema import SQLSchema, SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory, ColumnRef
+from mintq.schema import (
+    ExtraPredInfo,
+    SQLSchema,
+    SimpleNL2QTask,
+    SimpleNL2QTaskOutput,
+    PredQuery,
+    Usage,
+    Trajectory,
+    ColumnRef,
+)
 from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
@@ -373,13 +382,14 @@ class SQLAgent:
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {key: tool.metrics().model_dump() for key, tool in tools.items()}  # type: ignore
 
-        task_output = SimpleNL2QTaskOutput(
+        return SimpleNL2QTaskOutput(
             **task.model_dump(),
             pred_query=pred_query,
             trajectory=ctx.trajectories,
             usage=ctx.usage,
             inference_metrics=metrics,
+            extra_pred_info=ExtraPredInfo(
+                raw_pred_query=raw_pred_query,
+                linked_schema=linked_schema.to_column_refs(),
+            ),
         )
-        task_output.extra_info["raw_pred_query"] = raw_pred_query.model_dump()
-        task_output.extra_info["linked_schema"] = [col.model_dump() for col in linked_schema.to_column_refs()]
-        return task_output

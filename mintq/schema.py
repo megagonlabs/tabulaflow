@@ -20,6 +20,58 @@ logger = logging.getLogger(__name__)
 NumericOrNull: TypeAlias = Union[float, int, None]
 
 
+class ForeignKeySchema(BaseModel):
+    columns: list[str]
+    foreign_schema_name: str | None = None
+    foreign_table: str
+    foreign_columns: list[str]
+
+
+class SQLColumnSchema(BaseModel):
+    name: str
+    dtype: str
+    description: str | None = None
+    nullable: bool
+    null_ratio: float
+    num_unique: int | None  # Only for text or integer columns
+    unique_ratio: float | None  # Only for text or integer columns
+    examples: list[Any]
+    primary_key_type: Literal["single", "composite"] | None = None
+    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
+
+
+class SQLTableSchema(BaseModel):
+    name: str
+    name_description: str | None = None
+    """Used for describing the merged table name in the compressed schema (e.g. "YYYYMMDD from 20200101 to 20200102")"""
+    original_names: list[str] | None = None
+    """Used for recording the original table names in the compressed schema (e.g. "20200101, 20200102")"""
+    schema_name: str | None = None
+    description: str | None = None
+    is_view: bool
+    columns: list[SQLColumnSchema]
+    primary_key: list[str]
+    num_rows: int
+    foreign_keys: list[ForeignKeySchema]
+
+
+class ColumnRef(BaseModel):
+    table_name: str
+    column_name: str
+
+
+class SQLSchema(BaseModel):
+    name: str
+    tables: list[SQLTableSchema]
+
+    def to_column_refs(self) -> list[ColumnRef]:
+        return [
+            ColumnRef(table_name=table.name, column_name=column.name)
+            for table in self.tables
+            for column in table.columns
+        ]
+
+
 class SystemMessage(BaseModel):
     role: Literal["system"] = "system"
     content: str
@@ -423,6 +475,12 @@ class SimpleNL2QTask(BaseModel):
         return _task_to_readable(self)
 
 
+class ExtraPredInfo(BaseModel):
+    linked_schema: list[ColumnRef] | None = None
+    raw_pred_query: PredQuery | None = None
+    other: dict[str, Any] = Field(default_factory=dict)
+
+
 class SimpleNL2QTaskOutput(SimpleNL2QTask):
     output_type: Literal["simple"] = "simple"
     pred_query: PredQuery | None
@@ -432,6 +490,7 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
     eval_metrics: dict[str, Any] = Field(default_factory=dict)
     """Metrics produced during evaluation, e.g. accuracy, etc."""
+    extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
 
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
@@ -801,7 +860,7 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
 def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
     query_fields = _get_query_fields(task, GoldQuery)
     query_fields += _get_query_fields(task, PredQuery)
-    header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory"] + query_fields))
+    header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory", "extra_pred_info"] + query_fields))
     res = f"/*\n{header}\n*/"
     evidence = getattr(task, "evidence", None)
     if evidence is not None:
@@ -882,55 +941,3 @@ class NL2QRunResult(BaseModel):
         summaries = [task.to_summary(eval_metrics) for task in self.tasks]
         df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
         df.to_csv(path, index=False)
-
-
-class ForeignKeySchema(BaseModel):
-    columns: list[str]
-    foreign_schema_name: str | None = None
-    foreign_table: str
-    foreign_columns: list[str]
-
-
-class SQLColumnSchema(BaseModel):
-    name: str
-    dtype: str
-    description: str | None = None
-    nullable: bool
-    null_ratio: float
-    num_unique: int | None  # Only for text or integer columns
-    unique_ratio: float | None  # Only for text or integer columns
-    examples: list[Any]
-    primary_key_type: Literal["single", "composite"] | None = None
-    foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
-
-
-class SQLTableSchema(BaseModel):
-    name: str
-    name_description: str | None = None
-    """Used for describing the merged table name in the compressed schema (e.g. "YYYYMMDD from 20200101 to 20200102")"""
-    original_names: list[str] | None = None
-    """Used for recording the original table names in the compressed schema (e.g. "20200101, 20200102")"""
-    schema_name: str | None = None
-    description: str | None = None
-    is_view: bool
-    columns: list[SQLColumnSchema]
-    primary_key: list[str]
-    num_rows: int
-    foreign_keys: list[ForeignKeySchema]
-
-
-class ColumnRef(BaseModel):
-    table_name: str
-    column_name: str
-
-
-class SQLSchema(BaseModel):
-    name: str
-    tables: list[SQLTableSchema]
-
-    def to_column_refs(self) -> list[ColumnRef]:
-        return [
-            ColumnRef(table_name=table.name, column_name=column.name)
-            for table in self.tables
-            for column in table.columns
-        ]
