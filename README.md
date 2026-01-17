@@ -499,10 +499,14 @@ Jan 15 - Jan 16
 - [ ] Schema linking module
   - [x] SQL parsing utils
   - [x] Schema linking with gold query
-  - [ ] Schema linking with expanded gold query
-  - [ ] Schema linking with expanded pred query
+  - [x] Schema linking with expanded gold query
+  - [x] Schema linking with expanded pred query
   - [ ] Add FKs when expanded to a different table
   - [ ] Remove FKs that linked to non-existent columns
+- [x] Schema linking metrics
+- [x] Add field `extra_pred_info` to NL2QTaskOutput
+- [x] Add param `db_connector` to metrics
+
 
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
