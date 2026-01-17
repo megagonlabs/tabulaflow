@@ -228,10 +228,10 @@ def extract_all_source_columns(
 ) -> list[tuple[str, str]]:
     """
     Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
+    NOTE: All table names and column names are normalized to lowercase.
 
     Resolves table aliases and traces columns through CTEs and subqueries back to their
-    original source tables. Preserves the original case of table and column names as they
-    appear in the query.
+    original source tables.
 
     Args:
         query: SQL query string to analyze
@@ -239,7 +239,7 @@ def extract_all_source_columns(
         dialect: SQL dialect for parsing (e.g., "sqlite", "postgres", "mysql", "snowflake")
 
     Returns:
-        List of (table_name, column_name) tuples for all source columns referenced
+        List of lowercase (table_name, column_name) tuples for all source columns referenced
         in the query. Returns an empty list if the query cannot be parsed.
 
     Example:
@@ -265,20 +265,6 @@ def extract_all_source_columns(
 
     try:
         parsed = sqlglot.parse_one(query, dialect=language)
-
-        # Build case mapping before normalization: lowercase -> original case
-        # This captures the original case of identifiers before qualify() normalizes them
-        col_case_map: dict[str, str] = {}  # lowercase col name -> original col name
-        table_case_map: dict[str, str] = {}  # lowercase table name -> original table name
-
-        for col in parsed.find_all(exp.Column):
-            original_col_name = col.name
-            col_case_map[original_col_name.lower()] = original_col_name
-
-        for table in parsed.find_all(exp.Table):
-            original_table_name = table.name
-            table_case_map[original_table_name.lower()] = original_table_name
-
         qualified = qualify(parsed, schema=sqlglot_schema, dialect=language, validate_qualify_columns=False)
         root = build_scope(qualified)
     except Exception:
@@ -297,10 +283,7 @@ def extract_all_source_columns(
             if isinstance(source, exp.Table):
                 # Direct table reference - resolve alias to actual table name
                 table_name = source.name
-                # Restore original case using the mapping
-                original_table = table_case_map.get(table_name, table_name)
-                original_col = col_case_map.get(col_name, col_name)
-                key = (original_table, original_col)
+                key = (table_name, col_name)
                 if key not in seen:
                     result.append(key)
                     seen.add(key)
