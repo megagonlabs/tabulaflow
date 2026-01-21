@@ -509,7 +509,8 @@ Jan 15 - Jan 16
 - [x] Add param `db_connector` to metrics
 
 Jan 20
-- [ ] Tune prompt for challenging set
+- [ ] Support running on challenging subset
+- [ ] Tune prompt for challenging subset
 
 - [ ] Remove unuseful FKs in linked schema
 - [ ] FK inference for database without FKs
