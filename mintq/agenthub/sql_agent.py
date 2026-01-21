@@ -318,10 +318,13 @@ class Postprocessor:
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
 
-        exec_result = await ctx.db_connector.run_query_async(revised_pred_query)
-        if exec_result.df is None:
+        if pred_query.exec_result is None:
+            pred_query.exec_result = await ctx.db_connector.run_query_async(pred_query.query)
+
+        revised_exec_result = await ctx.db_connector.run_query_async(revised_pred_query)
+        if revised_exec_result.df is None:
             return pred_query
-        elif pred_query.exec_result.df is not None and len(exec_result.df.columns) > len(
+        elif pred_query.exec_result.df is not None and len(revised_exec_result.df.columns) > len(
             pred_query.exec_result.df.columns
         ):
             return pred_query
@@ -331,7 +334,7 @@ class Postprocessor:
             query=revised_pred_query,
             parameter_names=pred_query.parameter_names,
             parameter_values=pred_query.parameter_values,
-            exec_result=exec_result,
+            exec_result=revised_exec_result,
         )
 
 
@@ -359,7 +362,7 @@ class SQLAgent:
 
         ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm))
 
-        linked_schema = await self.schema_linker.link_schema_async(ctx)
+        linked_schema = await self.schema_linker.link_schema_async(ctx, task)
 
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(linked_schema, self.formatter, self.compressor),
