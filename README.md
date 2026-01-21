@@ -508,6 +508,9 @@ Jan 15 - Jan 16
 - [x] Add field `extra_pred_info` to NL2QTaskOutput
 - [x] Add param `db_connector` to metrics
 
+Jan 20
+- [ ] Tune prompt for challenging set
+
 - [ ] Remove unuseful FKs in linked schema
 - [ ] FK inference for database without FKs
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
