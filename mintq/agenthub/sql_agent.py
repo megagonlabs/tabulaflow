@@ -36,6 +36,11 @@ from mintq.agenthub.utils import (
 )
 from mintq.utils import extract_code, extract_all_source_columns
 
+
+def format_question(task: SimpleNL2QTask) -> str:
+    return f"{task.question}\n{task.question_instructions}" if task.question_instructions else task.question
+
+
 SQL_AGENT_SYSTEM_PROMPT = """
 You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
@@ -114,6 +119,8 @@ class SchemaLinker:
     async def _generate_sql_async(self, ctx: TaskRunContext) -> PredQuery:
         db_connector = ctx.db_connector
         task = ctx.task
+        if task.task_type != "simple":
+            raise ValueError(f"Currently, only simple tasks are supported for schema linking. Got {task.task_type}.")
 
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
@@ -134,9 +141,7 @@ class SchemaLinker:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(
-            f"{task.question}\n{task.question_instructions}" if task.question_instructions else task.question
-        )
+        result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
@@ -165,8 +170,7 @@ class SchemaLinker:
                     if self.compressor
                     else ctx.db_connector.schema
                 ),
-                question=ctx.task.question
-                + (f"\n{ctx.task.question_instructions}" if ctx.task.question_instructions else ""),
+                question=format_question(ctx.task),
                 dataset_instructions=ctx.task.dataset_instructions,
                 columns=json.dumps(
                     [{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
@@ -286,7 +290,7 @@ class Postprocessor:
         )
         prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
-            question=task.question + (f"\n{task.question_instructions}" if task.question_instructions else ""),
+            question=format_question(task),
         )
         result = await agent.run(prompt)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -304,7 +308,7 @@ class Postprocessor:
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
             language=task.language,
-            question=task.question + (f"\n{task.question_instructions}" if task.question_instructions else ""),
+            question=format_question(task),
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             allowed_columns=information_pieces,
             raw_pred_query_with_exec_results=pred_query.to_readable(),
@@ -376,9 +380,7 @@ class SQLAgent:
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(
-            f"{task.question}\n{task.question_instructions}" if task.question_instructions else task.question
-        )
+        result = await agent.run(format_question(task))
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
