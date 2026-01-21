@@ -116,11 +116,8 @@ class SchemaLinker:
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-    async def _generate_sql_async(self, ctx: TaskRunContext) -> PredQuery:
+    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
         db_connector = ctx.db_connector
-        task = ctx.task
-        if task.task_type != "simple":
-            raise ValueError(f"Currently, only simple tasks are supported for schema linking. Got {task.task_type}.")
 
         tools: dict[str, BaseTool] = {
             "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
@@ -148,7 +145,9 @@ class SchemaLinker:
         ctx.trajectories.append(trajectory)
         return pred_query
 
-    async def expand_schema_async(self, ctx: TaskRunContext, schema: SQLSchema, batch_size: int = 5) -> SQLSchema:
+    async def expand_schema_async(
+        self, ctx: TaskRunContext, schema: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
+    ) -> SQLSchema:
         class ColumnWithAlternatives(BaseModel):
             original_column: ColumnRef
             alternatives: list[ColumnRef]
@@ -170,8 +169,8 @@ class SchemaLinker:
                     if self.compressor
                     else ctx.db_connector.schema
                 ),
-                question=format_question(ctx.task),
-                dataset_instructions=ctx.task.dataset_instructions,
+                question=format_question(task),
+                dataset_instructions=task.dataset_instructions,
                 columns=json.dumps(
                     [{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
                 ),
@@ -181,7 +180,7 @@ class SchemaLinker:
             ctx.trajectories.append(
                 Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-EXPAND-SCHEMA-{batch_idx}")
             )
-            return result.output.results
+            return result.output.results  # type: ignore
 
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
@@ -202,12 +201,13 @@ class SchemaLinker:
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
         return linked_schema
 
-    async def link_schema_async(self, ctx: TaskRunContext) -> SQLSchema:
-        pred_query = await self._generate_sql_async(ctx)
+    async def link_schema_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> SQLSchema:
+        pred_query = await self._generate_sql_async(ctx, task)
         # pred_query = ctx.task.gold_query
 
-        source_columns = extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
-        source_columns = set((c[0].lower(), c[1].lower()) for c in source_columns)
+        source_columns = set(
+            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
+        )
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
@@ -217,7 +217,7 @@ class SchemaLinker:
         if not linked_schema.tables:
             raise ValueError("No tables found in the linked schema")
 
-        expanded_linked_schema = await self.expand_schema_async(ctx, linked_schema)
+        expanded_linked_schema = await self.expand_schema_async(ctx, linked_schema, task)
 
         # print(f"<query>\n{gold_query.query}\n</query>")
         # print(f"<source_columns>\n{source_columns}\n</source_columns>")
