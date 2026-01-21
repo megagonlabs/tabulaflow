@@ -508,9 +508,17 @@ Jan 15 - Jan 16
 - [x] Add field `extra_pred_info` to NL2QTaskOutput
 - [x] Add param `db_connector` to metrics
 
-Jan 20
-- [ ] Support running on challenging subset
+Jan 20 - 21
+- [x] Fix mypy errors
+- [x] Support running on challenging subset
+- [ ] Add column description
+  - [ ] Concise description embedded in schema
+  - [ ] Detailed description using get_column_description tool
 - [ ] Tune prompt for challenging subset
+  - [ ] Do not concat to full name
+  - [ ] Do not transpose columns? 
+- [ ] Show intermediate tables for CTE in run_query tool
+
 
 - [ ] Remove unuseful FKs in linked schema
 - [ ] FK inference for database without FKs
