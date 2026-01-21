@@ -144,9 +144,9 @@ class PostprocessingTaskDetail(BaseModel):
     db: str
     question: str
     question_instructions: str | None
-    before_query: str
-    after_query: str
-    gold_query: str
+    before_query: str | None
+    after_query: str | None
+    gold_query: str | None
 
 
 class PostprocessingImpactReport(BaseModel):
@@ -190,9 +190,9 @@ class PostprocessingImpactReport(BaseModel):
                 section += f"**Question:** {task.question}\n\n"
                 section += f"**Question Instructions:** {task.question_instructions}\n\n"
                 section += f"**DB:** {task.db}\n\n"
-                section += "**Gold Query:**\n```sql\n" + task.gold_query + "\n```\n\n"
-                section += "**Before Postprocessing:**\n```sql\n" + task.before_query + "\n```\n\n"
-                section += "**After Postprocessing:**\n```sql\n" + task.after_query + "\n```\n\n"
+                section += "**Gold Query:**\n```sql\n" + (task.gold_query or "N/A") + "\n```\n\n"
+                section += "**Before Postprocessing:**\n```sql\n" + (task.before_query or "N/A") + "\n```\n\n"
+                section += "**After Postprocessing:**\n```sql\n" + (task.after_query or "N/A") + "\n```\n\n"
             return section
 
         res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
@@ -225,9 +225,15 @@ async def analyze_postprocess_impact_async(
     Returns:
         A structured report of postprocessing impact.
     """
+    if not all(task.output_type == "simple" for task in result.tasks):
+        raise ValueError("Only simple tasks are supported for now.")
+
     tasks_by_qid = {task.qid: task for task in result.tasks}
 
-    def make_detail(task: SimpleNL2QTaskOutput) -> PostprocessingTaskDetail:
+    def make_detail(task: NL2QTaskOutput) -> PostprocessingTaskDetail:
+        if task.output_type != "simple":
+            raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
+
         raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
         return PostprocessingTaskDetail(
             qid=task.qid,
@@ -235,8 +241,8 @@ async def analyze_postprocess_impact_async(
             question=task.question,
             question_instructions=task.question_instructions,
             before_query=raw_pred_query.query,
-            after_query=task.pred_query.query,
-            gold_query=task.gold_query.query,
+            after_query=task.pred_query.query if task.pred_query else None,
+            gold_query=task.gold_query.query if task.gold_query else None,
         )
 
     improved: list[PostprocessingTaskDetail] = [
@@ -263,16 +269,16 @@ async def analyze_postprocess_impact_async(
     other: list[PostprocessingTaskDetail] = []
 
     for qid in regressed_qids:
-        task = tasks_by_qid[qid]
+        task: SimpleNL2QTaskOutput = tasks_by_qid[qid]  # type: ignore
         raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
         detail = make_detail(task)
 
-        if task.pred_query.exec_result.df is None:
+        if task.pred_query is None or task.pred_query.exec_result.df is None:  # type: ignore
             became_not_executable.append(detail)
             continue
 
-        num_columns_before = len(raw_pred_query.exec_result.df.columns)
-        num_columns_after = len(task.pred_query.exec_result.df.columns)
+        num_columns_before = len(raw_pred_query.exec_result.df.columns)  # type: ignore
+        num_columns_after = len(task.pred_query.exec_result.df.columns)  # type: ignore
         if num_columns_after > num_columns_before:
             columns_added.append(detail)
             continue
