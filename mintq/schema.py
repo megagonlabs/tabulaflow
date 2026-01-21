@@ -926,6 +926,7 @@ class NL2QDataset(BaseModel):
     split: str
     databases: list[str] | None = None  # None means all databases
     subsample_size: int | None = None
+    dataset_extra_kwargs: dict[str, Any] = Field(default_factory=dict)
     tasks: list[NL2QTask]
     db_connectors: dict[str, Any]
 
@@ -944,6 +945,7 @@ class NL2QRunResult(BaseModel):
     split: str
     databases: list[str] | None  # None means all databases
     subsample_size: int | None
+    dataset_extra_kwargs: dict[str, Any] = Field(default_factory=dict)
     agent: str
     agent_config: dict[str, Any]
     total_usage: Usage | None = None

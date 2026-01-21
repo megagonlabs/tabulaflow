@@ -2,7 +2,7 @@ import os
 import json
 import asyncio
 import random
-from typing import ClassVar
+from typing import ClassVar, Literal
 from datasets import load_dataset
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
 from mintq.db_connector import SQLConnector
@@ -117,7 +117,12 @@ WHERE c.name = 'Italy';"""
             )
         return query
 
-    async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
+    async def get_tasks_async(
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        difficulty: str | Literal["simple", "moderate", "challenging"] | None = None,
+    ) -> list[SimpleNL2QTask]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
@@ -125,19 +130,22 @@ WHERE c.name = 'Italy';"""
         tasks = []
         with open(self._task_files[split], "r") as f:
             for i, item in enumerate(json.load(f)):
-                if item["db_id"] in databases:
-                    tasks.append(
-                        SimpleNL2QTask(
-                            qid=f"{self.name}_{split}_{i}",
-                            language="sqlite",
-                            db=item["db_id"],
-                            question=item["question"],
-                            question_instructions=item["evidence"],
-                            gold_query=GoldQuery(query=self._fix_gold_query(item["SQL"])),
-                            dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
-                            extra_info={} if split == "train" else {"bird_sql": {"difficulty": item["difficulty"]}},
-                        )
+                if item["db_id"] not in databases:
+                    continue
+                if difficulty is not None and item["difficulty"] != difficulty:
+                    continue
+                tasks.append(
+                    SimpleNL2QTask(
+                        qid=f"{self.name}_{split}_{i}",
+                        language="sqlite",
+                        db=item["db_id"],
+                        question=item["question"],
+                        question_instructions=item["evidence"],
+                        gold_query=GoldQuery(query=self._fix_gold_query(item["SQL"])),
+                        dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
+                        extra_info={} if split == "train" else {"bird_sql": {"difficulty": item["difficulty"]}},
                     )
+                )
         return tasks
 
     async def get_db_connectors_async(self, split: str, databases: list[str] | None = None) -> dict[str, SQLConnector]:
@@ -179,12 +187,16 @@ WHERE c.name = 'Italy';"""
             df.to_json(os.path.join(path, "dev.json"), orient="records", indent=2)
 
     async def get_split_async(
-        self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
+        self,
+        split: str,
+        databases: list[str] | None = None,
+        subsample_size: int | None = None,
+        difficulty: str | Literal["simple", "moderate", "challenging"] | None = None,
     ) -> NL2QDataset:
         if split == "dev_20251106":
             self._ensure_dev_20251106_downloaded()
 
-        tasks = await self.get_tasks_async(split, databases)
+        tasks = await self.get_tasks_async(split, databases, difficulty=difficulty)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
         db_connectors = await self.get_db_connectors_async(split, databases)
@@ -193,6 +205,7 @@ WHERE c.name = 'Italy';"""
             split=split,
             databases=databases,
             subsample_size=subsample_size,
+            dataset_extra_kwargs={"difficulty": difficulty} if difficulty else {},
             tasks=tasks,  # type: ignore
             db_connectors=db_connectors,
         )

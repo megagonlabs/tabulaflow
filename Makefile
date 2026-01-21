@@ -48,6 +48,13 @@ test-bird-agent:
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
+.PHONY: test-bird-agent-challenging
+test-bird-agent-challenging:
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty challenging --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
+
 .PHONY: test-bird-agent-gpt-5
 test-bird-agent-gpt-5:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium --openai_reasoning_summary detailed
