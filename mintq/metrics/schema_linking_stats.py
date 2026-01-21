@@ -14,7 +14,7 @@ class SchemaLinkingStats:
     async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> dict[str, NumericOrNull]:
         gold_query = get_final_gold_query(task, check_exec_result=False)
 
-        res = {
+        res: dict[str, NumericOrNull] = {
             "linked_percentage": len(task.extra_pred_info.linked_schema or [])
             / len(db_connector.schema.get_all_column_refs()),
         }
@@ -39,7 +39,7 @@ class SchemaLinkingStats:
             (col.table_name.lower(), col.column_name.lower()) for col in task.extra_pred_info.linked_schema
         )
         gold_linked_schema = set(
-            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(task.gold_query.query, db_connector.schema)
+            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(gold_query.query, db_connector.schema)
         )
 
         n_overlap = len(pred_linked_schema & gold_linked_schema)
