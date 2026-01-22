@@ -17,7 +17,7 @@ from mintq.schema import (
     Trajectory,
     ColumnRef,
 )
-from mintq.metadata_synthesizers import SchemaCompressor, SchemaPreprocessor
+from mintq.metadata_synthesizers import SchemaPreprocessor
 from mintq.toolhub import (
     BaseTool,
     RunQueryNoParamsTool,
