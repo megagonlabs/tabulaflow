@@ -17,7 +17,7 @@ from mintq.schema import (
     Trajectory,
     ColumnRef,
 )
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.metadata_synthesizers import SchemaCompressor, SchemaPreprocessor
 from mintq.toolhub import (
     BaseTool,
     RunQueryNoParamsTool,
@@ -114,14 +114,12 @@ Your output:
 class SchemaLinker:
     def __init__(self, config: BasicAgentConfig):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-        self.compressor = SchemaCompressor() if config.compress_schema else None
 
     async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
         db_connector = ctx.db_connector
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
@@ -165,15 +163,15 @@ class SchemaLinker:
                 model_settings=self.config.to_model_settings(),
             )
             prompt = jinja2.Template(EXPAND_COLUMNS_PROMPT).render(
-                schema=self.formatter.format(
-                    (await self.compressor.run_async(ctx.db_connector.schema))
-                    if self.compressor
-                    else ctx.db_connector.schema
-                ),
+                schema=ctx.schema_formatter.format(ctx.preprocessed_schema),
                 question=format_question(task),
                 dataset_instructions=task.dataset_instructions,
                 columns=json.dumps(
-                    [{"schema_name": c.schema_name, "table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
+                    [
+                        {"schema_name": c.schema_name, "table_name": c.table_name, "column_name": c.column_name}
+                        for c in batch
+                    ],
+                    indent=2,
                 ),
             )
             result = await agent.run(prompt)
@@ -186,19 +184,35 @@ class SchemaLinker:
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
 
-        linked = set((c.schema_name.lower() if c.schema_name else None, c.table_name.lower(), c.column_name.lower()) for c in current_columns)
+        linked = set(
+            (c.schema_name.lower() if c.schema_name else None, c.table_name.lower(), c.column_name.lower())
+            for c in current_columns
+        )
         for results in all_results:
             for item in results:
                 for alternative in item.alternatives:
-                    linked.add((alternative.schema_name.lower() if alternative.schema_name else None, alternative.table_name.lower(), alternative.column_name.lower()))
+                    linked.add(
+                        (
+                            alternative.schema_name.lower() if alternative.schema_name else None,
+                            alternative.table_name.lower(),
+                            alternative.column_name.lower(),
+                        )
+                    )
 
         # We keep all foreign key columns so that tables in the linked schema can be joined.
         for col in ctx.db_connector.schema.get_fk_column_refs():
-            linked.add((col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower()))
+            linked.add(
+                (col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower())
+            )
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
-            table.columns = [col for col in table.columns if (table.schema_name.lower() if table.schema_name else None, table.name.lower(), col.name.lower()) in linked]
+            table.columns = [
+                col
+                for col in table.columns
+                if (table.schema_name.lower() if table.schema_name else None, table.name.lower(), col.name.lower())
+                in linked
+            ]
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
         return linked_schema
 
@@ -210,7 +224,7 @@ class SchemaLinker:
             (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(pred_query.query, ctx.db_connector.schema)
         )
 
-        linked_schema = copy.deepcopy(ctx.db_connector.schema)
+        linked_schema = copy.deepcopy(ctx.preprocessed_schema)
         for table in linked_schema.tables:
             table.columns = [col for col in table.columns if (table.name.lower(), col.name.lower()) in source_columns]
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
@@ -349,7 +363,6 @@ class SQLAgent:
     def __init__(self, config: BasicAgentConfig):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-        self.compressor = SchemaCompressor() if config.compress_schema else None
         self.schema_linker = SchemaLinker(config)
         self.postprocessor = Postprocessor(config)
 
@@ -361,12 +374,21 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm))
+        schema_preprocessor = SchemaPreprocessor(compress_schema=self.config.compress_schema)
+        preprocessed_schema = await schema_preprocessor.run_async(db_connector)
+        ctx = TaskRunContext(
+            task=task,
+            db_connector=db_connector,
+            preprocessed_schema=preprocessed_schema,
+            schema_formatter=self.formatter,
+            usage=Usage.create(llm=self.config.llm),
+        )
+        ctx.usage += schema_preprocessor.usage()
 
         linked_schema = await self.schema_linker.link_schema_async(ctx, task)
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(linked_schema, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(linked_schema, self.formatter),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),

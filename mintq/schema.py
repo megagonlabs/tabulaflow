@@ -31,6 +31,9 @@ class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
     description: str | None = None
+    """Concise description of the column"""
+    detailed_description_markdown: str | None = None
+    """Markdown-formatted detailed description of the column"""
     nullable: bool
     null_ratio: float
     num_unique: int | None  # Only for text or integer columns
@@ -65,6 +68,16 @@ class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
 
+    def get_column_by_ref(self, column_ref: ColumnRef) -> SQLColumnSchema:
+        for table in self.tables:
+            if table.schema_name == column_ref.schema_name and table.name == column_ref.table_name:
+                for column in table.columns:
+                    if column.name == column_ref.column_name:
+                        return column
+        raise ValueError(
+            f"Column {column_ref.column_name} not found in table {column_ref.table_name} in schema {column_ref.schema_name}"
+        )
+
     def get_all_column_refs(self) -> list[ColumnRef]:
         return [
             ColumnRef(schema_name=table.schema_name, table_name=table.name, column_name=column.name)
@@ -90,7 +103,9 @@ class SQLSchema(BaseModel):
                     key = (fk.foreign_schema_name, fk.foreign_table, col)
                     if key not in seen:
                         seen.add(key)
-                        result.append(ColumnRef(schema_name=fk.foreign_schema_name, table_name=fk.foreign_table, column_name=col))
+                        result.append(
+                            ColumnRef(schema_name=fk.foreign_schema_name, table_name=fk.foreign_table, column_name=col)
+                        )
 
         return result
 

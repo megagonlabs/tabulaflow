@@ -6,10 +6,11 @@ from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
-from mintq.schema import NL2QTask, Usage, Trajectory
+from mintq.schema import NL2QTask, Usage, Trajectory, SQLSchema
 from mintq.config import config
 from mintq.db_connector import NL2QDBConnector
 from mintq.toolhub import BaseTool
+from mintq.formatters.base import BaseSQLSchemaFormatter
 
 
 def max_steps_processor(
@@ -64,6 +65,8 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
 class TaskRunContext:
     task: NL2QTask
     db_connector: NL2QDBConnector
+    preprocessed_schema: SQLSchema
+    schema_formatter: BaseSQLSchemaFormatter
     usage: Usage
     tools: dict[str, BaseTool] = field(default_factory=dict)
     trajectories: list[Trajectory] = field(default_factory=list)

@@ -514,11 +514,13 @@ Jan 20 - 21
 - [x] Update bird-sql instructions
   - [x] Do not concat to full name
   - [x] Do not transpose columns? 
+- [ ] Add schema_name to ColumnRef
 - [ ] Add column description
   - [ ] Concise description embedded in schema
   - [ ] Detailed description using get_column_description tool
 - [ ] Tune sql agent prompt
 - [ ] Show intermediate tables for CTE in run_query tool
+
 
 - [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
   - [ ] line 515 - keep going until resolved
@@ -534,6 +536,7 @@ Jan 20 - 21
 - [ ] Support LSH index
 - [ ] Include db schema in postprocessing?
 - [ ] Spider 2.0 custom data
+- [ ] Incorporate changes from blue-delibird (e.g. lock per event loop)
 - [ ] ARCS
   - [ ] Section on ease of use in paper and website
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
