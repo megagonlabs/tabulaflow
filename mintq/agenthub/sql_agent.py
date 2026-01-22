@@ -57,6 +57,10 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 === START OF DATASET INSTRUCTIONS ===
 {{dataset_instructions}}
 === END OF DATASET INSTRUCTIONS ===
+
+=== START OF DATABASE SCHEMA ===
+{{schema}}
+=== END OF DATABASE SCHEMA ===
 {%- endif %}
 """.strip()
 
@@ -119,14 +123,16 @@ class SchemaLinker:
         db_connector = ctx.db_connector
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
-            "get_column_description": GetColumnDescriptionTool(db_connector),
+            # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
+            # "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
-            language=task.language, dataset_instructions=task.dataset_instructions
+            language=task.language,
+            dataset_instructions=task.dataset_instructions,
+            schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
         )
 
         agent = Agent[None, None](  # type: ignore
@@ -388,14 +394,16 @@ class SQLAgent:
         linked_schema = await self.schema_linker.link_schema_async(ctx, task)
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(linked_schema, self.formatter),
-            "get_column_description": GetColumnDescriptionTool(db_connector),
+            # "get_schema": GetSchemaTool(linked_schema, self.formatter),
+            # "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
-            language=task.language, dataset_instructions=task.dataset_instructions
+            language=task.language,
+            dataset_instructions=task.dataset_instructions,
+            schema=self.formatter.format(linked_schema, add_description=True),
         )
 
         agent = Agent[None, None](  # type: ignore
