@@ -25,6 +25,7 @@ from mintq.metrics.ambig_point_stats import AmbigPointStats
 from mintq.metrics.gold_ambig_point_stats import GoldAmbigPointStats
 from mintq.metrics.found_one import FoundOne
 from mintq.metrics.raw_pred_bird_sql_ex import RawPredBirdSQLEx
+from mintq.metrics.raw_pred_simple_ex import RawPredSimpleEx
 from mintq.metrics.schema_linking_stats import SchemaLinkingStats
 
 __all__ = [
@@ -50,6 +51,7 @@ __all__ = [
     "SimpleEx",
     "FoundOne",
     "RawPredBirdSQLEx",
+    "RawPredSimpleEx",
     "SchemaLinkingStats",
     "metric_registry",
 ]
