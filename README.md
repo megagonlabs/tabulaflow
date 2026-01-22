@@ -511,12 +511,13 @@ Jan 15 - Jan 16
 Jan 20 - 21
 - [x] Fix mypy errors
 - [x] Support running on challenging subset
+- [x] Update bird-sql instructions
+  - [x] Do not concat to full name
+  - [x] Do not transpose columns? 
 - [ ] Add column description
   - [ ] Concise description embedded in schema
   - [ ] Detailed description using get_column_description tool
-- [ ] Tune prompt for challenging subset
-  - [ ] Do not concat to full name
-  - [ ] Do not transpose columns? 
+- [ ] Tune sql agent prompt
 - [ ] Show intermediate tables for CTE in run_query tool
 
 - [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
