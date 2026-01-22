@@ -519,7 +519,9 @@ Jan 20 - 21
   - [ ] Do not transpose columns? 
 - [ ] Show intermediate tables for CTE in run_query tool
 
-
+- [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
+  - [ ] line 515 - keep going until resolved
+  - [ ] line 540 - maximize context understanding
 - [ ] Remove unuseful FKs in linked schema
 - [ ] FK inference for database without FKs
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
