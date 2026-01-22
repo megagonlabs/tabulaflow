@@ -107,7 +107,9 @@ async def main_async() -> None:
         print()
         print("=== DEBUG MODE === ")
         for task in result.tasks:
-            print(f"{task.qid}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}")
+            print(
+                f"{task.qid}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}"
+            )
 
 
 if __name__ == "__main__":

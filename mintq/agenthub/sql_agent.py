@@ -23,8 +23,6 @@ from mintq.toolhub import (
     RunQueryNoParamsTool,
     SearchKeywordsTool,
     FinishTool,
-    GetSchemaTool,
-    GetColumnDescriptionTool,
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
