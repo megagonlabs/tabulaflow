@@ -152,7 +152,7 @@ class SchemaLinker:
         return pred_query
 
     async def expand_schema_async(
-        self, ctx: TaskRunContext, schema: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
+        self, ctx: TaskRunContext, schema_to_expand: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
     ) -> SQLSchema:
         class ColumnWithAlternatives(BaseModel):
             original_column: ColumnRef
@@ -161,7 +161,7 @@ class SchemaLinker:
         class LLMOutput(BaseModel):
             results: list[ColumnWithAlternatives]
 
-        current_columns = schema.get_all_column_refs()
+        current_columns = schema_to_expand.get_all_column_refs()
 
         async def process_batch_async(batch_idx: int, batch: list[ColumnRef]) -> list[ColumnWithAlternatives]:
             agent = Agent[None, LLMOutput](  # type: ignore
@@ -207,12 +207,12 @@ class SchemaLinker:
                     )
 
         # We keep all foreign key columns so that tables in the linked schema can be joined.
-        for col in ctx.db_connector.schema.get_fk_column_refs():
+        for col in ctx.preprocessed_schema.get_fk_column_refs():
             linked.add(
                 (col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower())
             )
 
-        linked_schema = copy.deepcopy(ctx.db_connector.schema)
+        linked_schema = copy.deepcopy(ctx.preprocessed_schema)
         for table in linked_schema.tables:
             table.columns = [
                 col
