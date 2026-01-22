@@ -60,7 +60,6 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 {%- endif %}
 """.strip()
 
-
 EXPAND_COLUMNS_PROMPT = """
 You are a helpful AI database expert.
 Given a list of columns that can be used to answer a question, identify potential alternative columns for each of the given columns.
@@ -71,16 +70,18 @@ Given a list of columns that can be used to answer a question, identify potentia
 
 === START OF EXAMPLE ===
 Question: "What is the date of order 1005?"
-Columns: [{table_name: "order", column_name: "order_date"}]
+Columns: [{schema_name: null, table_name: "order", column_name: "order_date"}]
 Output:
 [
   {
     "original_column": {
+      "schema_name": null,
       "table_name": "order",
       "column_name": "order_date"
     },
     "alternatives": [
       {
+        "schema_name": null,
         "table_name": "order",
         "column_name": "shipping_date"
       }
@@ -172,7 +173,7 @@ class SchemaLinker:
                 question=format_question(task),
                 dataset_instructions=task.dataset_instructions,
                 columns=json.dumps(
-                    [{"table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
+                    [{"schema_name": c.schema_name, "table_name": c.table_name, "column_name": c.column_name} for c in batch], indent=2
                 ),
             )
             result = await agent.run(prompt)
@@ -185,19 +186,19 @@ class SchemaLinker:
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
 
-        linked = set((c.table_name.lower(), c.column_name.lower()) for c in current_columns)
+        linked = set((c.schema_name.lower() if c.schema_name else None, c.table_name.lower(), c.column_name.lower()) for c in current_columns)
         for results in all_results:
             for item in results:
                 for alternative in item.alternatives:
-                    linked.add((alternative.table_name.lower(), alternative.column_name.lower()))
+                    linked.add((alternative.schema_name.lower() if alternative.schema_name else None, alternative.table_name.lower(), alternative.column_name.lower()))
 
         # We keep all foreign key columns so that tables in the linked schema can be joined.
         for col in ctx.db_connector.schema.get_fk_column_refs():
-            linked.add((col.table_name.lower(), col.column_name.lower()))
+            linked.add((col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower()))
 
         linked_schema = copy.deepcopy(ctx.db_connector.schema)
         for table in linked_schema.tables:
-            table.columns = [col for col in table.columns if (table.name.lower(), col.name.lower()) in linked]
+            table.columns = [col for col in table.columns if (table.schema_name.lower() if table.schema_name else None, table.name.lower(), col.name.lower()) in linked]
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
         return linked_schema
 
