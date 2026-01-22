@@ -515,10 +515,13 @@ Jan 20 - 21
   - [x] Do not concat to full name
   - [x] Do not transpose columns? 
 - [x] Add schema_name to ColumnRef
-- [x] Add column description
+- [x] Column description (column profiler)
   - [x] Concise description embedded in schema
   - [x] Detailed description using get_column_description tool
 
+- [ ] Table description (table profiler)
+- [ ] min-max range for numeric columns
+- [ ] Update extract_all_source_columns to support schema_name
 - [ ] Tune sql agent prompt
 - [ ] Show intermediate tables for CTE in run_query tool
 - [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
