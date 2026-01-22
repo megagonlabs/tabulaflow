@@ -290,7 +290,14 @@ class AmbigFlatSQLAgent:
         t0 = time.time()
 
         tools = await self._get_tools(db_connector)
-        ctx = TaskRunContext(task, db_connector, Usage.create(llm=self.config.llm), tools)
+        ctx = TaskRunContext(
+            task=task,
+            db_connector=db_connector,
+            preprocessed_schema=db_connector.schema,
+            schema_formatter=self.formatter,
+            usage=Usage.create(llm=self.config.llm),
+            tools=tools,
+        )
 
         interpretations = await self._disambiguate_interpretations_async(ctx)
         parameters = await self._disambiguate_parameters_async(ctx)
