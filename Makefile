@@ -64,7 +64,14 @@ test-bird-agent-gpt-5:
 
 .PHONY: test-bird-agent-gpt-5-mini
 test-bird-agent-gpt-5-mini:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort minimal --openai_reasoning_summary detailed
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
+
+.PHONY: test-bird-thrombosis-agent-gpt-5-mini
+test-bird-thrombosis-agent-gpt-5-mini:
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --databases thrombosis_prediction --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
