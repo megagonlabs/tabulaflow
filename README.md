@@ -514,14 +514,13 @@ Jan 20 - 21
 - [x] Update bird-sql instructions
   - [x] Do not concat to full name
   - [x] Do not transpose columns? 
-- [ ] Add schema_name to ColumnRef
-- [ ] Add column description
-  - [ ] Concise description embedded in schema
-  - [ ] Detailed description using get_column_description tool
+- [x] Add schema_name to ColumnRef
+- [x] Add column description
+  - [x] Concise description embedded in schema
+  - [x] Detailed description using get_column_description tool
+
 - [ ] Tune sql agent prompt
 - [ ] Show intermediate tables for CTE in run_query tool
-
-
 - [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
   - [ ] line 515 - keep going until resolved
   - [ ] line 540 - maximize context understanding
