@@ -42,6 +42,7 @@ class SchemaPreprocessor:
             if self.compressor is not None:
                 schema = await self.compressor.run_async(schema)
             schema = await self.column_profiler.run_async(db_connector, schema)
+            self._usage += self.column_profiler.usage()
 
             if config.cache_enabled:
                 with open(cache_path, "w", encoding="utf-8") as f:
