@@ -264,26 +264,41 @@ class Trajectory(BaseModel):
         lines = [f"### Trajectory `{self.id}`"]
         for i, msg in enumerate(self.messages, 1):
             if msg.role == "system":
-                lines.append(f"\n**[{i}] System:**")
-                lines.append(f"> {msg.content[:200]}..." if len(msg.content) > 200 else f"> {msg.content}")
+                lines.append(f"\n**[{i}] System:**\n")
+                lines.append(f"```\n{msg.content}\n```")
             elif msg.role == "user":
-                lines.append(f"\n**[{i}] User:**")
-                lines.append(msg.content)
+                lines.append(f"\n**[{i}] User:**\n")
+                lines.append(f"```\n{msg.content}\n```")
             elif msg.role == "assistant":
-                lines.append(f"\n**[{i}] Assistant:**")
+                lines.append(f"\n**[{i}] Assistant:**\n")
+                s = ""
                 if msg.thinking:
-                    thinking_preview = msg.thinking[:300] + "..." if len(msg.thinking) > 300 else msg.thinking
-                    lines.append(f"\n<details><summary>Thinking</summary>\n\n{thinking_preview}\n</details>")
+                    s += f"<thinking>\n{msg.thinking}\n</thinking>\n"
                 if msg.content:
-                    lines.append(f"\n{msg.content}")
+                    try:
+                        content = json.loads(msg.content)
+                        content = json.dumps(content, indent=2)
+                    except Exception:
+                        content = msg.content
+                    s += f"{content}\n"
                 for tool_call in msg.tool_calls:
-                    args_str = json.dumps(tool_call.arguments, indent=2) if tool_call.arguments else "Invalid JSON"
-                    lines.append(f"\n📞 `{tool_call.name}`:")
-                    lines.append(f"```json\n{args_str}\n```")
+                    s += f'<function name="{tool_call.name}">\n'
+                    if tool_call.arguments is None:
+                        s += "ARGUMENTS IS NOT A VALID JSON STRING\n"
+                    else:
+                        for key, value in tool_call.arguments.items():
+                            if isinstance(value, (list, dict)):
+                                value = json.dumps(value, indent=2)
+                            else:
+                                value = str(value)
+                            s += f'<arg name="{key}">'
+                            s += f"\n{value}\n" if "\n" in value else value
+                            s += "</arg>\n"
+                    s += "</function>\n"
+                lines.append(f"```\n{s.strip()}\n```")
             elif msg.role == "tool":
-                lines.append(f"\n**[{i}] Tool Response:**")
-                response_preview = msg.response[:500] + "..." if len(msg.response) > 500 else msg.response
-                lines.append(f"```\n{response_preview}\n```")
+                lines.append(f"\n**[{i}] Tool:**\n")
+                lines.append(f"```\n{msg.response}\n```")
         return "\n".join(lines)
 
 
@@ -1028,7 +1043,7 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
     # Question instructions
     question_instructions = getattr(task, "question_instructions", None)
     if question_instructions:
-        lines.append(f"\n**Instructions:** {question_instructions}")
+        lines.append(f"\n**Question Instructions:** {question_instructions}")
 
     # Evidence
     evidence = getattr(task, "evidence", None)
