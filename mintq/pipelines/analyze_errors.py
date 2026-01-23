@@ -3,8 +3,7 @@ import asyncio
 import os
 from tqdm.asyncio import tqdm_asyncio
 from pydantic import BaseModel
-from typing import Any
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput, GoldQuery, PredQuery
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput
 from mintq.metrics import NL2QMetric
 
 
@@ -19,100 +18,29 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
     return task
 
 
-# =============================================================================
-# Base Task Detail
-# =============================================================================
-
-
-class BaseTaskDetail(BaseModel):
-    """Base class for task details used in analysis reports."""
-
-    qid: str
-    db: str
-    question: str
-    question_instructions: str | None
-    gold_query: GoldQuery | None
-
-    def _render_header(self) -> str:
-        """Render common header fields."""
-        res = f"### `{self.qid}`\n\n"
-        res += f"**DB:** {self.db}\n\n"
-        res += f"**Question:** {self.question}\n\n"
-        if self.question_instructions:
-            res += f"**Instructions:** {self.question_instructions}\n\n"
-        return res
-
-    def _render_gold(self) -> str:
-        """Render gold query and execution result using to_markdown."""
-        if self.gold_query is None:
-            return "**Gold Query:** N/A\n\n"
-        return self.gold_query.to_markdown() + "\n\n"
-
-    @classmethod
-    def _from_task_base(cls, task: NL2QTaskOutput) -> dict[str, Any]:
-        """Extract base fields from a task output."""
-        gold_query_field = "gold_intended_query" if task.task_type == "ambig" else "gold_query"
-        gold_query = getattr(task, gold_query_field, None)
-        return dict(
-            qid=task.qid,
-            db=task.db,
-            question=task.question,
-            question_instructions=getattr(task, "question_instructions", None),
-            gold_query=gold_query,
-        )
-
-
-# =============================================================================
-# Error Analysis
-# =============================================================================
-
-
-class ErrorTaskReport(BaseTaskDetail):
-    """Detail for a single error task."""
-
-    pred_query: PredQuery | None
-    report: str
-    usage: Usage
-    eval_metrics: dict[str, Any]
+class TaskErrorAnalysis(BaseModel):
+    task_output: NL2QTaskOutput
+    llm_analysis: str
+    analysis_usage: Usage
 
     def to_markdown(self) -> str:
-        res = self._render_header()
-        res += self._render_gold()
-        if self.pred_query is None:
-            res += "**Pred Query:** (prediction failed, no prediction available)\n\n"
-        else:
-            res += self.pred_query.to_markdown() + "\n\n"
-        if self.report:
-            res += f"**Report:** {self.report}\n"
+        res = self.task_output.to_markdown()
+        if self.llm_analysis:
+            res += f"\n\n## LLM Analysis\n\n{self.llm_analysis}"
         return res
 
-    @classmethod
-    def from_task(cls, task: NL2QTaskOutput, report: str, usage: Usage) -> "ErrorTaskReport":
-        """Create an ErrorTaskReport from a task output."""
-        if task.output_type != "simple":
-            raise NotImplementedError(f"Error analysis for {task.output_type} tasks is not implemented.")
 
-        base = cls._from_task_base(task)
-        return cls(
-            **base,
-            pred_query=task.pred_query,
-            report=report,
-            usage=usage,
-            eval_metrics=task.eval_metrics,
-        )
-
-
-class ErrorReport(BaseModel):
+class ErrorAnalysis(BaseModel):
     """Aggregated error analysis report."""
 
-    aggregated_report: str
-    task_reports: list[ErrorTaskReport]
-    usage: Usage
+    task_analyses: list[TaskErrorAnalysis]
+    analysis_summary: str
+    total_analysis_usage: Usage
 
     def to_markdown(self) -> str:
-        res = f"# Error Analysis Summary\n\n{self.aggregated_report}\n\n"
-        res += f"## Error Tasks ({len(self.task_reports)})\n\n"
-        res += "\n".join([task.to_markdown() for task in self.task_reports])
+        res = f"# Error Analysis Summary\n\n{self.analysis_summary}\n\n"
+        res += f"## All Task Analyses ({len(self.task_analyses)})\n\n"
+        res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
 
@@ -143,7 +71,7 @@ QID: {{ task_report.qid }}
 """.strip()
 
 
-async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> ErrorTaskReport:
+async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> TaskErrorAnalysis:
     """Analyze a single error task and generate a report."""
     # gold_str = task.gold_query.to_markdown()
     # pred_str = task.pred_query.to_markdown() if task.pred_query else "(prediction failed)"
@@ -154,7 +82,7 @@ async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:
     report = ""
     usage = Usage.create(llm)
 
-    return ErrorTaskReport.from_task(task, report=report, usage=usage)
+    return TaskErrorAnalysis(task_output=task, llm_analysis=report, analysis_usage=usage)
 
 
 async def analyze_errors_async(
@@ -164,35 +92,35 @@ async def analyze_errors_async(
     num_samples: int = 100,
     batch_size: int = 50,
     verbose: bool = True,
-) -> ErrorReport:
+) -> ErrorAnalysis:
     error_tasks = [task for task in result.tasks if task.eval_metrics[error_metric_name] == 0.0]
 
     if not error_tasks:
         if verbose:
             print("No error tasks found.")
-        return ErrorReport(task_reports=[], aggregated_report="No error tasks found.", usage=Usage.create(llm))
+        return ErrorAnalysis(task_analyses=[], analysis_summary="No error tasks found.", total_analysis_usage=Usage.create(llm))
     # error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
-    task_reports = []
+    task_analyses: list[TaskErrorAnalysis] = []
     for i in range(0, len(error_tasks), batch_size):
         j = min(i + batch_size, len(error_tasks))
         batch = error_tasks[i:j]
-        batch_reports = await tqdm_asyncio.gather(
+        batch_analyses = await tqdm_asyncio.gather(
             *[analyze_task_async(task, llm) for task in batch], disable=not verbose
         )
-        task_reports += batch_reports
+        task_analyses += batch_analyses
         if verbose:
             print(f"{j}/{len(error_tasks)} error tasks analyzed.")
-    # prompt = jinja2.Template(SUMMARY_PROMPT).render(task_reports=task_reports)
+    # prompt = jinja2.Template(SUMMARY_PROMPT).render(task_analyses=task_analyses)
     # result = await Agent(llm).run(prompt)
-    # aggregated_report = result.output
+    # analysis_summary = result.output
 
-    # usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
-    # for task_report in task_reports:
-    #     usage += task_report.usage
-    usage = Usage.create(llm)
-    aggregated_report = ""
+    # total_usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
+    # for task_analysis in task_analyses:
+    #     total_usage += task_analysis.analysis_usage
+    total_usage = Usage.create(llm)
+    analysis_summary = ""
 
-    return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report, usage=usage)
+    return ErrorAnalysis(task_analyses=task_analyses, analysis_summary=analysis_summary, total_analysis_usage=total_usage)
 
 
 # =============================================================================
@@ -200,97 +128,59 @@ async def analyze_errors_async(
 # =============================================================================
 
 
-class PostprocessingTaskDetail(BaseTaskDetail):
-    """Detail for a single task in postprocessing impact analysis."""
-
-    before_query: PredQuery | None
-    after_query: PredQuery | None
+class TaskPostprocessingAnalysis(BaseModel):
+    task_output: NL2QTaskOutput
 
     def to_markdown(self) -> str:
-        res = self._render_header()
-        res += self._render_gold()
+        res = self.task_output.to_markdown()
+        raw_pred_query = self.task_output.extra_pred_info.raw_pred_query
 
-        res += "**Before Postprocessing:**\n\n"
-        if self.before_query is None:
-            res += "N/A\n\n"
+        res = res.split("\n## Evaluation Metrics")[0]
+        res += "\n\n## Raw Predicted Query (Before Postprocessing)\n\n"
+        if raw_pred_query is not None:
+            res += raw_pred_query.to_markdown()
         else:
-            res += f"```sql\n{self.before_query.query}\n```\n\n"
-            if self.before_query.exec_result:
-                res += self.before_query.exec_result.to_markdown() + "\n\n"
-
-        res += "**After Postprocessing:**\n\n"
-        if self.after_query is None:
-            res += "N/A\n\n"
-        else:
-            res += f"```sql\n{self.after_query.query}\n```\n\n"
-            if self.after_query.exec_result:
-                res += self.after_query.exec_result.to_markdown() + "\n\n"
-
+            res += "N/A"
         return res
 
-    @classmethod
-    def from_task(cls, task: NL2QTaskOutput) -> "PostprocessingTaskDetail":
-        """Create a PostprocessingTaskDetail from a task output."""
-        if task.output_type != "simple":
-            raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
 
-        base = cls._from_task_base(task)
-        return cls(
-            **base,
-            before_query=task.extra_pred_info.raw_pred_query,
-            after_query=task.pred_query,
-        )
+class PostprocessingAnalysis(BaseModel):
+    """Analysis on how postprocessing affected execution correctness (EX) scores."""
 
-
-class PostprocessingImpactReport(BaseModel):
-    """Report on how postprocessing affected execution correctness (EX) scores."""
-
-    total_tasks: int
-    improved: list[PostprocessingTaskDetail]  # EX: 0 → 1 (postprocessing fixed a failing task)
-    regressed_not_executable: list[PostprocessingTaskDetail]  # postprocessing made query non-executable
-    regressed_columns_added: list[PostprocessingTaskDetail]  # postprocessing added extra columns
-    regressed_other: list[PostprocessingTaskDetail]  # other regression causes
-    potential_improvable: list[PostprocessingTaskDetail]  # tasks that could be improved by postprocessing
+    task_analyses: list[TaskPostprocessingAnalysis]
+    improved_qids: list[str]
+    regressed_qids: list[str]
+    regressed_not_executable_qids: list[str]
+    regressed_columns_added_qids: list[str]
+    regressed_other_qids: list[str]
+    potential_improvable_qids: list[str]
 
     def to_markdown(self) -> str:
-        n_improved = len(self.improved)
-        n_regressed = len(self.regressed_not_executable) + len(self.regressed_columns_added) + len(self.regressed_other)
-        total = self.total_tasks
+        n_improved = len(self.improved_qids)
+        n_regressed = (
+            len(self.regressed_not_executable_qids)
+            + len(self.regressed_columns_added_qids)
+            + len(self.regressed_other_qids)
+        )
+        total = len(self.task_analyses)
 
         def pct(count: int) -> str:
             return f"{count / total * 100:.1f}%" if total > 0 else "0.0%"
 
-        def render_task_list(title: str, tasks: list[PostprocessingTaskDetail]) -> str:
-            if not tasks:
-                return ""
-            section = f"\n## {title}\n\n"
-            section += "\n".join([task.to_markdown() for task in tasks])
-            return section
-
         res = "# Postprocessing Impact Summary\n\n"
-        res += f"- Total tasks: {self.total_tasks}\n"
+        res += f"- Total tasks: {total}\n"
         res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
         res += f"- Improved (0→1): {n_improved} ({pct(n_improved)})\n"
         res += f"- Regressed (1→0): {n_regressed} ({pct(n_regressed)})\n"
-        res += f"- Potential improvable: {len(self.potential_improvable)} ({pct(len(self.potential_improvable))})\n"
+        res += f"- Potential improvable: {len(self.potential_improvable_qids)} ({pct(len(self.potential_improvable_qids))})\n"
         res += "\n"
         res += "## Regression Breakdown\n\n"
-        res += f"- Became not executable: {len(self.regressed_not_executable)} ({pct(len(self.regressed_not_executable))})\n"
-        res += (
-            f"- Extra columns added: {len(self.regressed_columns_added)} ({pct(len(self.regressed_columns_added))})\n"
-        )
-        res += f"- Other causes: {len(self.regressed_other)} ({pct(len(self.regressed_other))})\n"
+        res += f"- Became not executable: {len(self.regressed_not_executable_qids)} ({pct(len(self.regressed_not_executable_qids))})\n"
+        res += f"- Extra columns added: {len(self.regressed_columns_added_qids)} ({pct(len(self.regressed_columns_added_qids))})\n"
+        res += f"- Other causes: {len(self.regressed_other_qids)} ({pct(len(self.regressed_other_qids))})\n"
 
-        res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
-        res += render_task_list(
-            f"Regressed: Not Executable ({len(self.regressed_not_executable)})", self.regressed_not_executable
-        )
-        res += render_task_list(
-            f"Regressed: Extra Columns Added ({len(self.regressed_columns_added)})", self.regressed_columns_added
-        )
-        res += render_task_list(f"Regressed: Other ({len(self.regressed_other)})", self.regressed_other)
-        res += render_task_list(f"Potential Improvable ({len(self.potential_improvable)})", self.potential_improvable)
-
+        res += f"\n\n## All Task Analyses ({len(self.task_analyses)})\n\n"
+        res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
 
@@ -299,7 +189,7 @@ async def analyze_postprocess_impact_async(
     pre_metric: str = "raw_pred_bird_sql_ex",
     post_metric: str = "bird_sql_ex",
     target_metric: str = "simple_ex",
-) -> PostprocessingImpactReport:
+) -> PostprocessingAnalysis:
     """
     Analyze how postprocessing affected execution correctness (EX) scores.
 
@@ -317,8 +207,11 @@ async def analyze_postprocess_impact_async(
 
     tasks_by_qid = {task.qid: task for task in result.tasks}
 
-    improved: list[PostprocessingTaskDetail] = [
-        PostprocessingTaskDetail.from_task(task)
+    # Build task analyses for all tasks
+    task_analyses = [TaskPostprocessingAnalysis(task_output=task) for task in result.tasks]
+
+    improved_qids = [
+        task.qid
         for task in result.tasks
         if task.eval_metrics[pre_metric] == 0.0 and task.eval_metrics[post_metric] == 1.0
     ]
@@ -328,42 +221,43 @@ async def analyze_postprocess_impact_async(
         for task in result.tasks
         if task.eval_metrics[pre_metric] == 1.0 and task.eval_metrics[post_metric] == 0.0
     ]
-    potential_improvable = [
-        PostprocessingTaskDetail.from_task(task)
+
+    potential_improvable_qids = [
+        task.qid
         for task in result.tasks
         if task.eval_metrics[pre_metric] == task.eval_metrics[post_metric] == 0.0
         and task.eval_metrics[target_metric] == 1.0
     ]
 
     # Analyze regression causes
-    became_not_executable: list[PostprocessingTaskDetail] = []
-    columns_added: list[PostprocessingTaskDetail] = []
-    other: list[PostprocessingTaskDetail] = []
+    regressed_not_executable_qids: list[str] = []
+    regressed_columns_added_qids: list[str] = []
+    regressed_other_qids: list[str] = []
 
     for qid in regressed_qids:
         task: SimpleNL2QTaskOutput = tasks_by_qid[qid]  # type: ignore
         raw_pred_query = task.extra_pred_info.raw_pred_query
-        detail = PostprocessingTaskDetail.from_task(task)
 
         if task.pred_query is None or task.pred_query.exec_result.df is None:  # type: ignore
-            became_not_executable.append(detail)
+            regressed_not_executable_qids.append(qid)
             continue
 
         num_columns_before = len(raw_pred_query.exec_result.df.columns)  # type: ignore
         num_columns_after = len(task.pred_query.exec_result.df.columns)  # type: ignore
         if num_columns_after > num_columns_before:
-            columns_added.append(detail)
+            regressed_columns_added_qids.append(qid)
             continue
 
-        other.append(detail)
+        regressed_other_qids.append(qid)
 
-    return PostprocessingImpactReport(
-        total_tasks=len(result.tasks),
-        improved=improved,
-        regressed_not_executable=became_not_executable,
-        regressed_columns_added=columns_added,
-        regressed_other=other,
-        potential_improvable=potential_improvable,
+    return PostprocessingAnalysis(
+        task_analyses=task_analyses,
+        improved_qids=improved_qids,
+        regressed_qids=regressed_qids,
+        regressed_not_executable_qids=regressed_not_executable_qids,
+        regressed_columns_added_qids=regressed_columns_added_qids,
+        regressed_other_qids=regressed_other_qids,
+        potential_improvable_qids=potential_improvable_qids,
     )
 
 
@@ -388,19 +282,19 @@ async def main_async() -> None:
     if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
         print()
         print("Analyzing postprocess impact...")
-        postprocess_impact_report = await analyze_postprocess_impact_async(result)
+        postprocess_analysis = await analyze_postprocess_impact_async(result)
         with open(os.path.join(args.result_dir, "postprocess_impact_report.md"), "w") as f:
-            f.write(postprocess_impact_report.to_markdown())
+            f.write(postprocess_analysis.to_markdown())
         print(f"Saved postprocess impact report to {os.path.join(args.result_dir, 'postprocess_impact_report.md')}")
 
     print()
     print("Analyzing errors...")
-    error_report = await analyze_errors_async(
+    error_analysis = await analyze_errors_async(
         result, args.llm, args.error_metric_name, args.num_samples, args.batch_size
     )
     with open(os.path.join(args.result_dir, "error_report.md"), "w") as f:
-        f.write(error_report.to_markdown())
-    print(f"Total cost USD: {error_report.usage.api_cost_usd:.6f}")
+        f.write(error_analysis.to_markdown())
+    print(f"Total cost USD: {error_analysis.total_analysis_usage.api_cost_usd:.6f}")
     print(f"Saved error report to {os.path.join(args.result_dir, 'error_report.md')}")
 
 
