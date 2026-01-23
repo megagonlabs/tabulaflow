@@ -36,11 +36,10 @@ from mintq.utils import extract_code, extract_all_source_columns
 
 
 def format_question(task: SimpleNL2QTask) -> str:
-    return (
-        f"{task.question}\n\nRequirements (you must follow these requirements even if it conflicts with the question):\n{task.question_instructions}"
-        if task.question_instructions
-        else task.question
-    )
+    res = task.question
+    if task.question_instructions:
+        res += "\n" + task.question_instructions
+    return res
 
 
 SQL_AGENT_SYSTEM_PROMPT = """
