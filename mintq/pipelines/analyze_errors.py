@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 import random
 from typing import Any
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, PredQuery, Usage, SimpleNL2QTaskOutput
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput
 from mintq.metrics import NL2QMetric
 
 
@@ -247,14 +247,14 @@ async def analyze_postprocess_impact_async(
         if task.output_type != "simple":
             raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
 
-        raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
+        raw_pred_query = task.extra_pred_info.raw_pred_query
         return PostprocessingTaskDetail(
             qid=task.qid,
             db=task.db,
             question=task.question,
             question_instructions=task.question_instructions,
-            before_query=raw_pred_query.query,
-            before_exec_result=raw_pred_query.exec_result.to_readable() if raw_pred_query.exec_result else None,
+            before_query=raw_pred_query.query if raw_pred_query else None,
+            before_exec_result=raw_pred_query.exec_result.to_readable() if raw_pred_query and raw_pred_query.exec_result else None,
             after_query=task.pred_query.query if task.pred_query else None,
             after_exec_result=task.pred_query.exec_result.to_readable() if task.pred_query and task.pred_query.exec_result else None,
             gold_query=task.gold_query.query if task.gold_query else None,
@@ -286,7 +286,7 @@ async def analyze_postprocess_impact_async(
 
     for qid in regressed_qids:
         task: SimpleNL2QTaskOutput = tasks_by_qid[qid]  # type: ignore
-        raw_pred_query = PredQuery.model_validate(task.extra_info["raw_pred_query"])
+        raw_pred_query = task.extra_pred_info.raw_pred_query
         detail = make_detail(task)
 
         if task.pred_query is None or task.pred_query.exec_result.df is None:  # type: ignore
@@ -329,7 +329,7 @@ async def main_async() -> None:
     if not all(task.output_type == "simple" for task in result.tasks):
         raise ValueError("Only simple tasks are supported for now.")
 
-    if any("raw_pred_query" in task.extra_info for task in result.tasks):
+    if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
         print()
         print("Analyzing postprocess impact...")
         postprocess_impact_report = await analyze_postprocess_impact_async(result)
