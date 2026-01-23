@@ -262,15 +262,40 @@ class Trajectory(BaseModel):
 
     def to_markdown(self) -> str:
         lines = [f"### Trajectory `{self.id}`"]
+
+        index_lines = ["\n**Preview:**"]
         for i, msg in enumerate(self.messages, 1):
+            anchor = f"msg-{self.id}-{i}"
             if msg.role == "system":
-                lines.append(f"\n**[{i}] System:**\n")
+                preview = msg.content[:50].replace("\n", " ") + ("..." if len(msg.content) > 50 else "")
+                index_lines.append(f"- [{i}. System](#{anchor}): {preview}")
+            elif msg.role == "user":
+                preview = msg.content[:50].replace("\n", " ") + ("..." if len(msg.content) > 50 else "")
+                index_lines.append(f"- [{i}. User](#{anchor}): {preview}")
+            elif msg.role == "assistant":
+                if msg.tool_calls:
+                    tool_names = ", ".join(f"`{tc.name}`" for tc in msg.tool_calls)
+                    index_lines.append(f"- [{i}. Assistant](#{anchor}): {tool_names}")
+                else:
+                    preview = msg.content[:50].replace("\n", " ") + ("..." if len(msg.content) > 50 else "")
+                    index_lines.append(f"- [{i}. Assistant](#{anchor}): {preview}")
+            elif msg.role == "tool":
+                preview = msg.response[:50].replace("\n", " ") + ("..." if len(msg.response) > 50 else "")
+                index_lines.append(f"- [{i}. Tool](#{anchor}): {preview}")
+        lines.extend(index_lines)
+        lines.append("")
+
+        # Build message sections with anchors
+        for i, msg in enumerate(self.messages, 1):
+            anchor = f"msg-{self.id}-{i}"
+            if msg.role == "system":
+                lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] System:**\n')
                 lines.append(f"```\n{msg.content}\n```")
             elif msg.role == "user":
-                lines.append(f"\n**[{i}] User:**\n")
+                lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] User:**\n')
                 lines.append(f"```\n{msg.content}\n```")
             elif msg.role == "assistant":
-                lines.append(f"\n**[{i}] Assistant:**\n")
+                lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] Assistant:**\n')
                 s = ""
                 if msg.thinking:
                     s += f"<thinking>\n{msg.thinking}\n</thinking>\n"
@@ -297,7 +322,7 @@ class Trajectory(BaseModel):
                     s += "</function>\n"
                 lines.append(f"```\n{s.strip()}\n```")
             elif msg.role == "tool":
-                lines.append(f"\n**[{i}] Tool:**\n")
+                lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] Tool:**\n')
                 lines.append(f"```\n{msg.response}\n```")
         return "\n".join(lines)
 
