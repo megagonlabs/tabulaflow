@@ -4,7 +4,7 @@ import os
 from tqdm.asyncio import tqdm_asyncio
 from pydantic import BaseModel
 from typing import Any
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput, GoldQuery, PredQuery
 from mintq.metrics import NL2QMetric
 
 
@@ -31,23 +31,22 @@ class BaseTaskDetail(BaseModel):
     db: str
     question: str
     question_instructions: str | None
-    gold_query: str | None
-    gold_exec_result: str | None
+    gold_query: GoldQuery | None
 
     def _render_header(self) -> str:
         """Render common header fields."""
         res = f"### `{self.qid}`\n\n"
         res += f"**DB:** {self.db}\n\n"
         res += f"**Question:** {self.question}\n\n"
-        res += f"**Question Instructions:** {self.question_instructions}\n\n"
+        if self.question_instructions:
+            res += f"**Instructions:** {self.question_instructions}\n\n"
         return res
 
     def _render_gold(self) -> str:
-        """Render gold query and execution result."""
-        res = "**Gold Query:**\n```sql\n" + (self.gold_query or "N/A") + "\n```\n\n"
-        if self.gold_exec_result:
-            res += "```\n" + self.gold_exec_result + "\n```\n\n"
-        return res
+        """Render gold query and execution result using to_markdown."""
+        if self.gold_query is None:
+            return "**Gold Query:** N/A\n\n"
+        return self.gold_query.to_markdown() + "\n\n"
 
     @classmethod
     def _from_task_base(cls, task: NL2QTaskOutput) -> dict[str, Any]:
@@ -59,8 +58,7 @@ class BaseTaskDetail(BaseModel):
             db=task.db,
             question=task.question,
             question_instructions=getattr(task, "question_instructions", None),
-            gold_query=gold_query.query if gold_query else None,
-            gold_exec_result=gold_query.exec_result.to_readable() if gold_query and gold_query.exec_result else None,
+            gold_query=gold_query,
         )
 
 
@@ -72,8 +70,7 @@ class BaseTaskDetail(BaseModel):
 class ErrorTaskReport(BaseTaskDetail):
     """Detail for a single error task."""
 
-    pred_query: str | None
-    pred_exec_result: str | None
+    pred_query: PredQuery | None
     report: str
     usage: Usage
     eval_metrics: dict[str, Any]
@@ -81,11 +78,12 @@ class ErrorTaskReport(BaseTaskDetail):
     def to_markdown(self) -> str:
         res = self._render_header()
         res += self._render_gold()
-        pred_query = self.pred_query or "(prediction failed, no prediction available)"
-        res += f"**Pred Query:**\n```sql\n{pred_query}\n```\n\n"
-        if self.pred_exec_result:
-            res += f"```\n{self.pred_exec_result}\n```\n\n"
-        res += f"**Report:** {self.report or 'N/A'}\n"
+        if self.pred_query is None:
+            res += "**Pred Query:** (prediction failed, no prediction available)\n\n"
+        else:
+            res += self.pred_query.to_markdown() + "\n\n"
+        if self.report:
+            res += f"**Report:** {self.report}\n"
         return res
 
     @classmethod
@@ -97,10 +95,7 @@ class ErrorTaskReport(BaseTaskDetail):
         base = cls._from_task_base(task)
         return cls(
             **base,
-            pred_query=task.pred_query.query if task.pred_query else None,
-            pred_exec_result=task.pred_query.exec_result.to_readable()
-            if task.pred_query and task.pred_query.exec_result
-            else None,
+            pred_query=task.pred_query,
             report=report,
             usage=usage,
             eval_metrics=task.eval_metrics,
@@ -150,8 +145,8 @@ QID: {{ task_report.qid }}
 
 async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> ErrorTaskReport:
     """Analyze a single error task and generate a report."""
-    # gold_str = task.gold_query.to_readable()
-    # pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
+    # gold_str = task.gold_query.to_markdown()
+    # pred_str = task.pred_query.to_markdown() if task.pred_query else "(prediction failed)"
     # propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
     # result = await Agent(llm).run(propmt)
     # report = result.output
@@ -208,20 +203,29 @@ async def analyze_errors_async(
 class PostprocessingTaskDetail(BaseTaskDetail):
     """Detail for a single task in postprocessing impact analysis."""
 
-    before_query: str | None
-    before_exec_result: str | None
-    after_query: str | None
-    after_exec_result: str | None
+    before_query: PredQuery | None
+    after_query: PredQuery | None
 
     def to_markdown(self) -> str:
         res = self._render_header()
         res += self._render_gold()
-        res += "**Before Postprocessing:**\n```sql\n" + (self.before_query or "N/A") + "\n```\n\n"
-        if self.before_exec_result:
-            res += "```\n" + self.before_exec_result + "\n```\n\n"
-        res += "**After Postprocessing:**\n```sql\n" + (self.after_query or "N/A") + "\n```\n\n"
-        if self.after_exec_result:
-            res += "```\n" + self.after_exec_result + "\n```\n\n"
+
+        res += "**Before Postprocessing:**\n\n"
+        if self.before_query is None:
+            res += "N/A\n\n"
+        else:
+            res += f"```sql\n{self.before_query.query}\n```\n\n"
+            if self.before_query.exec_result:
+                res += self.before_query.exec_result.to_markdown() + "\n\n"
+
+        res += "**After Postprocessing:**\n\n"
+        if self.after_query is None:
+            res += "N/A\n\n"
+        else:
+            res += f"```sql\n{self.after_query.query}\n```\n\n"
+            if self.after_query.exec_result:
+                res += self.after_query.exec_result.to_markdown() + "\n\n"
+
         return res
 
     @classmethod
@@ -231,17 +235,10 @@ class PostprocessingTaskDetail(BaseTaskDetail):
             raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
 
         base = cls._from_task_base(task)
-        raw_pred_query = task.extra_pred_info.raw_pred_query
         return cls(
             **base,
-            before_query=raw_pred_query.query if raw_pred_query else None,
-            before_exec_result=raw_pred_query.exec_result.to_readable()
-            if raw_pred_query and raw_pred_query.exec_result
-            else None,
-            after_query=task.pred_query.query if task.pred_query else None,
-            after_exec_result=task.pred_query.exec_result.to_readable()
-            if task.pred_query and task.pred_query.exec_result
-            else None,
+            before_query=task.extra_pred_info.raw_pred_query,
+            after_query=task.pred_query,
         )
 
 
