@@ -533,7 +533,7 @@ class GoldQuery(BaseModel):
         res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
         return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
 
-    def to_markdown(self, heading_level: int = 3) -> str:
+    def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
         lines = [f"{h} Gold Query `{self.id}`"]
         if self.query:
@@ -541,7 +541,7 @@ class GoldQuery(BaseModel):
             lines.append(self.query)
             lines.append("```")
         for i, exec_result in enumerate(self.all_exec_results):
-            label = "Result" if i == 0 else f"Alt Result {i}"
+            label = "Execution Result" if i == 0 else f"Alt Execution Result {i}"
             lines.append(f"\n**{label}:**\n")
             lines.append(exec_result.to_markdown())
         return "\n".join(lines)
@@ -569,14 +569,14 @@ class PredQuery(BaseModel):
             res += f"\n{self.exec_result.to_readable()}"
         return f"----- START OF PRED QUERY `{self.id}` -----\n{res}\n----- END OF PRED QUERY -----"
 
-    def to_markdown(self, heading_level: int = 3) -> str:
+    def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
         lines = [f"{h} Pred Query `{self.id}`"]
         lines.append("\n```sql")
         lines.append(self.query)
         lines.append("```")
         if self.exec_result is not None:
-            lines.append("\n**Result:**\n")
+            lines.append("\n**Execution Result:**\n")
             lines.append(self.exec_result.to_markdown())
         return "\n".join(lines)
 
@@ -1085,38 +1085,18 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
         lines.append(evidence)
 
     # Gold queries
-    gold_query_fields = _get_query_fields(task, GoldQuery)
-    gold_queries_added = False
-    for field in gold_query_fields:
-        queries = getattr(task, field)
-        if queries is None:
-            continue
-        if not isinstance(queries, list):
-            queries = [queries]
-        for q in queries:
-            if q is not None:
-                if not gold_queries_added:
-                    lines.append(f"\n{h2} Gold Queries")
-                    gold_queries_added = True
-                lines.append("")
-                lines.append(q.to_markdown(heading_level=heading_level + 2))
+    gold_query = task.gold_intended_query if task.task_type == "ambig" else task.gold_query
+    if gold_query is not None:
+        lines.append("\n\n" + gold_query.to_markdown(heading_level=heading_level + 1))
+    else:
+        lines.append(f"\n\n{h2} Gold Query\n\nN/A")
 
     # Pred queries
-    pred_query_fields = _get_query_fields(task, PredQuery)
-    pred_queries_added = False
-    for field in pred_query_fields:
-        queries = getattr(task, field)
-        if queries is None:
-            continue
-        if not isinstance(queries, list):
-            queries = [queries]
-        for q in queries:
-            if q is not None:
-                if not pred_queries_added:
-                    lines.append(f"\n{h2} Predicted Queries")
-                    pred_queries_added = True
-                lines.append("")
-                lines.append(q.to_markdown(heading_level=heading_level + 2))
+    pred_query = task.pred_intended_query if task.task_type == "ambig" else task.pred_query
+    if pred_query is not None:
+        lines.append("\n\n" + pred_query.to_markdown(heading_level=heading_level + 1))
+    else:
+        lines.append(f"\n\n{h2} Pred Query\n\nN/A")
 
     # Metrics
     eval_metrics = getattr(task, "eval_metrics", None)
