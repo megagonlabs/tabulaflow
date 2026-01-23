@@ -52,15 +52,15 @@ class BaseTaskDetail(BaseModel):
     @classmethod
     def _from_task_base(cls, task: NL2QTaskOutput) -> dict[str, Any]:
         """Extract base fields from a task output."""
+        gold_query_field = "gold_intended_query" if task.task_type == "ambig" else "gold_query"
+        gold_query = getattr(task, gold_query_field, None)
         return dict(
             qid=task.qid,
             db=task.db,
             question=task.question,
-            question_instructions=task.question_instructions,
-            gold_query=task.gold_query.query if task.gold_query else None,
-            gold_exec_result=task.gold_query.exec_result.to_readable()
-            if task.gold_query and task.gold_query.exec_result
-            else None,
+            question_instructions=getattr(task, "question_instructions", None),
+            gold_query=gold_query.query if gold_query else None,
+            gold_exec_result=gold_query.exec_result.to_readable() if gold_query and gold_query.exec_result else None,
         )
 
 
