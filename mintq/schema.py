@@ -533,8 +533,9 @@ class GoldQuery(BaseModel):
         res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
         return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
 
-    def to_markdown(self) -> str:
-        lines = [f"### Gold Query `{self.id}`"]
+    def to_markdown(self, heading_level: int = 3) -> str:
+        h = "#" * heading_level
+        lines = [f"{h} Gold Query `{self.id}`"]
         if self.query:
             lines.append("\n```sql")
             lines.append(self.query)
@@ -568,8 +569,9 @@ class PredQuery(BaseModel):
             res += f"\n{self.exec_result.to_readable()}"
         return f"----- START OF PRED QUERY `{self.id}` -----\n{res}\n----- END OF PRED QUERY -----"
 
-    def to_markdown(self) -> str:
-        lines = [f"### Pred Query `{self.id}`"]
+    def to_markdown(self, heading_level: int = 3) -> str:
+        h = "#" * heading_level
+        lines = [f"{h} Pred Query `{self.id}`"]
         lines.append("\n```sql")
         lines.append(self.query)
         lines.append("```")
@@ -624,8 +626,8 @@ class SimpleNL2QTask(BaseModel):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
 
 class ExtraPredInfo(BaseModel):
@@ -652,8 +654,8 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -748,8 +750,8 @@ class AmbigNL2QTask(BaseModel):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
     @model_validator(mode="after")
     def validate_gold_queries(self) -> "AmbigNL2QTask":
@@ -825,8 +827,8 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -898,8 +900,8 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -979,8 +981,8 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
-    def to_markdown(self) -> str:
-        return _task_to_markdown(self)
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -1051,9 +1053,16 @@ def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
     return res
 
 
-def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
-    """Convert task to a concise, human-readable markdown format."""
-    lines = [f"# Task: {task.qid}", ""]
+def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -> str:
+    """Convert task to a concise, human-readable markdown format.
+
+    Args:
+        task: The task to convert.
+        heading_level: The base heading level (1 for #, 2 for ##, 3 for ###, etc.)
+    """
+    h1 = "#" * heading_level
+    h2 = "#" * (heading_level + 1)
+    lines = [f"{h1} Task: {task.qid}", ""]
 
     # Basic info
     lines.append(f"**Database:** {task.db}  ")
@@ -1061,7 +1070,7 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
     lines.append("")
 
     # Question
-    lines.append("## Question")
+    lines.append(f"{h2} Question")
     lines.append(task.question)
 
     # Question instructions
@@ -1072,7 +1081,7 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
     # Evidence
     evidence = getattr(task, "evidence", None)
     if evidence:
-        lines.append("\n## Evidence")
+        lines.append(f"\n{h2} Evidence")
         lines.append(evidence)
 
     # Gold queries
@@ -1087,10 +1096,10 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
         for q in queries:
             if q is not None:
                 if not gold_queries_added:
-                    lines.append("\n## Gold Queries")
+                    lines.append(f"\n{h2} Gold Queries")
                     gold_queries_added = True
                 lines.append("")
-                lines.append(q.to_markdown())
+                lines.append(q.to_markdown(heading_level=heading_level + 2))
 
     # Pred queries
     pred_query_fields = _get_query_fields(task, PredQuery)
@@ -1104,28 +1113,28 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
         for q in queries:
             if q is not None:
                 if not pred_queries_added:
-                    lines.append("\n## Predicted Queries")
+                    lines.append(f"\n{h2} Predicted Queries")
                     pred_queries_added = True
                 lines.append("")
-                lines.append(q.to_markdown())
+                lines.append(q.to_markdown(heading_level=heading_level + 2))
 
     # Metrics
     eval_metrics = getattr(task, "eval_metrics", None)
     if eval_metrics:
-        lines.append("\n## Evaluation Metrics")
+        lines.append(f"\n{h2} Evaluation Metrics")
         for key, value in eval_metrics.items():
             lines.append(f"- **{key}:** {value}")
 
     inference_metrics = getattr(task, "inference_metrics", None)
     if inference_metrics:
-        lines.append("\n## Inference Metrics")
+        lines.append(f"\n{h2} Inference Metrics")
         for key, value in inference_metrics.items():
             lines.append(f"- **{key}:** {value}")
 
     # Usage
     usage = getattr(task, "usage", None)
     if usage:
-        lines.append("\n## Usage")
+        lines.append(f"\n{h2} Usage")
         lines.append(f"- **API Requests:** {usage.api_requests}")
         lines.append(f"- **Input Tokens:** {usage.input_tokens}")
         lines.append(f"- **Output Tokens:** {usage.output_tokens}")

@@ -24,9 +24,9 @@ class TaskErrorAnalysis(BaseModel):
     analysis_usage: Usage
 
     def to_markdown(self) -> str:
-        res = self.task_output.to_markdown()
+        res = self.task_output.to_markdown(heading_level=3)
         if self.llm_analysis:
-            res += f"\n\n## LLM Analysis\n\n{self.llm_analysis}"
+            res += f"\n\n#### LLM Analysis\n\n{self.llm_analysis}"
         return res
 
 
@@ -39,7 +39,7 @@ class ErrorAnalysis(BaseModel):
 
     def to_markdown(self) -> str:
         res = f"# Error Analysis Summary\n\n{self.analysis_summary}"
-        res += f"\n\n<br>\n<br>\n\n# All Task Analyses ({len(self.task_analyses)})\n\n"
+        res += f"\n\n<br>\n<br>\n\n## All Task Analyses ({len(self.task_analyses)})\n\n"
         res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
@@ -136,11 +136,11 @@ class TaskPostprocessingAnalysis(BaseModel):
     task_output: NL2QTaskOutput
 
     def to_markdown(self) -> str:
-        res = self.task_output.to_markdown()
+        res = self.task_output.to_markdown(heading_level=3)
         raw_pred_query = self.task_output.extra_pred_info.raw_pred_query
 
-        res = res.split("\n## Evaluation Metrics")[0]
-        res += "\n\n## Raw Predicted Query (Before Postprocessing)\n\n"
+        res = res.split("\n#### Evaluation Metrics")[0]
+        res += "\n\n#### Raw Predicted Query (Before Postprocessing)\n\n"
         if raw_pred_query is not None:
             res += raw_pred_query.to_markdown()
         else:
@@ -181,7 +181,7 @@ class PostprocessingAnalysis(BaseModel):
         res += f"  - Other causes: {len(self.regressed_other_qids)} ({pct(len(self.regressed_other_qids))})\n"
         res += f"- Potential improvable: {len(self.potential_improvable_qids)} ({pct(len(self.potential_improvable_qids))})"
 
-        res += f"\n\n<br>\n<br>\n\n# All Task Analyses ({len(self.task_analyses)})\n\n"
+        res += f"\n\n<br>\n<br>\n\n## All Task Analyses ({len(self.task_analyses)})\n\n"
         res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
