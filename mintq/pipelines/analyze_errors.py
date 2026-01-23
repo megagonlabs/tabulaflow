@@ -37,8 +37,12 @@ class ErrorTaskReport(BaseModel):
         res = f"### `{self.qid}`\n\n"
         res += f"**Question:** {self.question}\n\n"
         res += f"**Gold:**\n```sql\n{self.gold.query}\n```\n\n"
+        if self.gold.exec_result:
+            res += f"**Gold Exec Result:**\n```\n{self.gold.exec_result.to_readable()}\n```\n\n"
         pred_query = self.pred.query if self.pred else "(prediction failed, no prediction available)"
         res += f"**Pred:**\n```sql\n{pred_query}\n```\n\n"
+        if self.pred and self.pred.exec_result:
+            res += f"**Pred Exec Result:**\n```\n{self.pred.exec_result.to_readable()}\n```\n\n"
         res += f"**Report:** {self.report}\n"
         return res
 
@@ -145,8 +149,11 @@ class PostprocessingTaskDetail(BaseModel):
     question: str
     question_instructions: str | None
     before_query: str | None
+    before_exec_result: str | None
     after_query: str | None
+    after_exec_result: str | None
     gold_query: str | None
+    gold_exec_result: str | None
 
 
 class PostprocessingImpactReport(BaseModel):
@@ -191,8 +198,14 @@ class PostprocessingImpactReport(BaseModel):
                 section += f"**Question Instructions:** {task.question_instructions}\n\n"
                 section += f"**DB:** {task.db}\n\n"
                 section += "**Gold Query:**\n```sql\n" + (task.gold_query or "N/A") + "\n```\n\n"
+                if task.gold_exec_result:
+                    section += "**Gold Exec Result:**\n```\n" + task.gold_exec_result + "\n```\n\n"
                 section += "**Before Postprocessing:**\n```sql\n" + (task.before_query or "N/A") + "\n```\n\n"
+                if task.before_exec_result:
+                    section += "**Before Exec Result:**\n```\n" + task.before_exec_result + "\n```\n\n"
                 section += "**After Postprocessing:**\n```sql\n" + (task.after_query or "N/A") + "\n```\n\n"
+                if task.after_exec_result:
+                    section += "**After Exec Result:**\n```\n" + task.after_exec_result + "\n```\n\n"
             return section
 
         res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
@@ -241,8 +254,11 @@ async def analyze_postprocess_impact_async(
             question=task.question,
             question_instructions=task.question_instructions,
             before_query=raw_pred_query.query,
+            before_exec_result=raw_pred_query.exec_result.to_readable() if raw_pred_query.exec_result else None,
             after_query=task.pred_query.query if task.pred_query else None,
+            after_exec_result=task.pred_query.exec_result.to_readable() if task.pred_query and task.pred_query.exec_result else None,
             gold_query=task.gold_query.query if task.gold_query else None,
+            gold_exec_result=task.gold_query.exec_result.to_readable() if task.gold_query and task.gold_query.exec_result else None,
         )
 
     improved: list[PostprocessingTaskDetail] = [
