@@ -88,6 +88,14 @@ class SQLSchema(BaseModel):
             for column in table.columns
         ]
 
+    def get_pk_column_refs(self) -> list[ColumnRef]:
+        return [
+            ColumnRef(schema_name=table.schema_name, table_name=table.name, column_name=column.name)
+            for table in self.tables
+            for column in table.columns
+            if column.primary_key_type is not None
+        ]
+
     def get_fk_column_refs(self) -> list[ColumnRef]:
         """Get columns involved in foreign key relationships (both outgoing and incoming)."""
         result: list[ColumnRef] = []

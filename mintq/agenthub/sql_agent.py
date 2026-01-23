@@ -211,6 +211,12 @@ class SchemaLinker:
                         )
                     )
 
+        # We keep all primary key columns
+        for col in ctx.preprocessed_schema.get_pk_column_refs():
+            linked.add(
+                (col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower())
+            )
+
         # We keep all foreign key columns so that tables in the linked schema can be joined.
         for col in ctx.preprocessed_schema.get_fk_column_refs():
             linked.add(
