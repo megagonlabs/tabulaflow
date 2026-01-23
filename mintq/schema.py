@@ -260,6 +260,32 @@ class Trajectory(BaseModel):
         res = "<trajectory>\n" + "\n\n\n".join(formatted) + "\n</trajectory>"
         return f"----- START OF TRAJECTORY `{self.id}` -----\n{res}\n----- END OF TRAJECTORY -----"
 
+    def to_markdown(self) -> str:
+        lines = [f"### Trajectory `{self.id}`"]
+        for i, msg in enumerate(self.messages, 1):
+            if msg.role == "system":
+                lines.append(f"\n**[{i}] System:**")
+                lines.append(f"> {msg.content[:200]}..." if len(msg.content) > 200 else f"> {msg.content}")
+            elif msg.role == "user":
+                lines.append(f"\n**[{i}] User:**")
+                lines.append(msg.content)
+            elif msg.role == "assistant":
+                lines.append(f"\n**[{i}] Assistant:**")
+                if msg.thinking:
+                    thinking_preview = msg.thinking[:300] + "..." if len(msg.thinking) > 300 else msg.thinking
+                    lines.append(f"\n<details><summary>Thinking</summary>\n\n{thinking_preview}\n</details>")
+                if msg.content:
+                    lines.append(f"\n{msg.content}")
+                for tool_call in msg.tool_calls:
+                    args_str = json.dumps(tool_call.arguments, indent=2) if tool_call.arguments else "Invalid JSON"
+                    lines.append(f"\n📞 `{tool_call.name}`:")
+                    lines.append(f"```json\n{args_str}\n```")
+            elif msg.role == "tool":
+                lines.append(f"\n**[{i}] Tool Response:**")
+                response_preview = msg.response[:500] + "..." if len(msg.response) > 500 else msg.response
+                lines.append(f"```\n{response_preview}\n```")
+        return "\n".join(lines)
+
 
 PROVIDER_MAPPINGS = {
     "openai-responses": "openai",
@@ -417,6 +443,19 @@ class ExecResult(BaseModel):
                 res = df.to_string(index=False)
         return f"/* EXEC RESULT\n{res}\n*/"
 
+    def to_markdown(self) -> str:
+        if self.df is None:
+            return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
+        df = self.df
+        truncated = False
+        if len(df) > 10:
+            df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
+            truncated = True
+        result = df.to_markdown(index=False)
+        if truncated:
+            result += f"\n\n*... truncated ({len(self.df)} rows total)*"
+        return result
+
 
 class GoldQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -454,6 +493,18 @@ class GoldQuery(BaseModel):
         res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
         return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
 
+    def to_markdown(self) -> str:
+        lines = [f"### Gold Query `{self.id}`"]
+        if self.query:
+            lines.append("\n```sql")
+            lines.append(self.query)
+            lines.append("```")
+        for i, exec_result in enumerate(self.all_exec_results):
+            label = "Result" if i == 0 else f"Alt Result {i}"
+            lines.append(f"\n**{label}:**\n")
+            lines.append(exec_result.to_markdown())
+        return "\n".join(lines)
+
 
 class PredQuery(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
@@ -476,6 +527,16 @@ class PredQuery(BaseModel):
         if self.exec_result is not None:
             res += f"\n{self.exec_result.to_readable()}"
         return f"----- START OF PRED QUERY `{self.id}` -----\n{res}\n----- END OF PRED QUERY -----"
+
+    def to_markdown(self) -> str:
+        lines = [f"### Pred Query `{self.id}`"]
+        lines.append("\n```sql")
+        lines.append(self.query)
+        lines.append("```")
+        if self.exec_result is not None:
+            lines.append("\n**Result:**\n")
+            lines.append(self.exec_result.to_markdown())
+        return "\n".join(lines)
 
 
 def is_id_unique(objs: list[Any]) -> list[Any]:
@@ -523,6 +584,9 @@ class SimpleNL2QTask(BaseModel):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
+
 
 class ExtraPredInfo(BaseModel):
     linked_schema: list[ColumnRef] | None = None
@@ -547,6 +611,9 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
 
     def to_readable(self) -> str:
         return _task_to_readable(self)
+
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -641,6 +708,9 @@ class AmbigNL2QTask(BaseModel):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
+
     @model_validator(mode="after")
     def validate_gold_queries(self) -> "AmbigNL2QTask":
         # Gold query ID must match the pattern "GQRY(-[A-Z]+\.[0-9]+)*" (e.g. "GQRY-A.2-B.0")
@@ -715,6 +785,9 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
+
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
 
@@ -784,6 +857,9 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     def to_readable(self) -> str:
         return _task_to_readable(self)
+
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
 
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
@@ -863,6 +939,9 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_readable(self) -> str:
         return _task_to_readable(self)
 
+    def to_markdown(self) -> str:
+        return _task_to_markdown(self)
+
     def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
         return _task_to_summary(self, eval_metrics)
 
@@ -891,6 +970,8 @@ def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str
     for tr in trajectories:
         with open(os.path.join(directory, f"{tr.id}.xml"), "w") as f:
             f.write(tr.to_readable())
+        with open(os.path.join(directory, f"{tr.id}.md"), "w") as f:
+            f.write(tr.to_markdown())
 
 
 def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
@@ -905,6 +986,8 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
                     q.to_directory(os.path.join(directory, f"{prefix}_csv"))
     with open(os.path.join(directory, "task_readable.sql"), "w") as f:
         f.write(task.to_readable())
+    with open(os.path.join(directory, "task_readable.md"), "w") as f:
+        f.write(task.to_markdown())
     trajectory = getattr(task, "trajectory", None)
     if trajectory is not None:
         _save_trajectories(trajectory, os.path.join(directory, "trajectory"))
@@ -926,6 +1009,90 @@ def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
             if q is not None:
                 res += f"\n\n\n{q.to_readable()}"
     return res
+
+
+def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
+    """Convert task to a concise, human-readable markdown format."""
+    lines = [f"# Task: {task.qid}", ""]
+
+    # Basic info
+    lines.append(f"**Database:** {task.db}  ")
+    lines.append(f"**Language:** {task.language}  ")
+    lines.append(f"**Type:** {task.task_type}")
+    lines.append("")
+
+    # Question
+    lines.append("## Question")
+    lines.append(task.question)
+
+    # Question instructions
+    question_instructions = getattr(task, "question_instructions", None)
+    if question_instructions:
+        lines.append(f"\n**Instructions:** {question_instructions}")
+
+    # Evidence
+    evidence = getattr(task, "evidence", None)
+    if evidence:
+        lines.append("\n## Evidence")
+        lines.append(evidence)
+
+    # Gold queries
+    gold_query_fields = _get_query_fields(task, GoldQuery)
+    gold_queries_added = False
+    for field in gold_query_fields:
+        queries = getattr(task, field)
+        if queries is None:
+            continue
+        if not isinstance(queries, list):
+            queries = [queries]
+        for q in queries:
+            if q is not None:
+                if not gold_queries_added:
+                    lines.append("\n## Gold Queries")
+                    gold_queries_added = True
+                lines.append("")
+                lines.append(q.to_markdown())
+
+    # Pred queries
+    pred_query_fields = _get_query_fields(task, PredQuery)
+    pred_queries_added = False
+    for field in pred_query_fields:
+        queries = getattr(task, field)
+        if queries is None:
+            continue
+        if not isinstance(queries, list):
+            queries = [queries]
+        for q in queries:
+            if q is not None:
+                if not pred_queries_added:
+                    lines.append("\n## Predicted Queries")
+                    pred_queries_added = True
+                lines.append("")
+                lines.append(q.to_markdown())
+
+    # Metrics
+    eval_metrics = getattr(task, "eval_metrics", None)
+    if eval_metrics:
+        lines.append("\n## Evaluation Metrics")
+        for key, value in eval_metrics.items():
+            lines.append(f"- **{key}:** {value}")
+
+    inference_metrics = getattr(task, "inference_metrics", None)
+    if inference_metrics:
+        lines.append("\n## Inference Metrics")
+        for key, value in inference_metrics.items():
+            lines.append(f"- **{key}:** {value}")
+
+    # Usage
+    usage = getattr(task, "usage", None)
+    if usage:
+        lines.append("\n## Usage")
+        lines.append(f"- **API Requests:** {usage.api_requests}")
+        lines.append(f"- **Input Tokens:** {usage.input_tokens}")
+        lines.append(f"- **Output Tokens:** {usage.output_tokens}")
+        lines.append(f"- **Cost:** ${usage.api_cost_usd}")
+
+    return "\n".join(lines)
 
 
 def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
