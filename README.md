@@ -520,10 +520,13 @@ Jan 20 - 21
   - [x] Detailed description using get_column_description tool
 
 Jan 22
-- [ ] Update prompt - follow hints on conflict
-- [ ] Tune on thrombosis_prediction
-- [ ] Tune schema linking
-- [ ] Tune postprocessing
+- [x] Update prompt - follow hints on conflict
+- [x] sql_ddl schema formatter
+- [x] Tune on thrombosis_prediction
+- [x] Tune schema linking
+  - [x] min_columns_for_schema_linking
+  - [x] keep PK columns in schema linking
+
 
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
@@ -550,6 +553,7 @@ Jan 22
   - [ ] Data sheet
   - [ ] Remove `extra_info` in ARCS data
   - [ ] Update website layout with top bar
+  - [ ] Set schema formatter to sql_basic in scripts
 
 ### Release test
 

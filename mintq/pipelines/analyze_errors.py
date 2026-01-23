@@ -1,11 +1,8 @@
 import argparse
 import asyncio
 import os
-import jinja2
 from tqdm.asyncio import tqdm_asyncio
 from pydantic import BaseModel
-from pydantic_ai import Agent
-import random
 from typing import Any
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput
 from mintq.metrics import NL2QMetric

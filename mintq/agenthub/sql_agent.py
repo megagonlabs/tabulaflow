@@ -25,7 +25,7 @@ from mintq.toolhub import (
     FinishTool,
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
-from mintq.agenthub.base import agent_registry, BaseAgentConfig
+from mintq.agenthub.base import agent_registry
 from mintq.agenthub.utils import (
     get_max_steps_processor,
     instrument,
