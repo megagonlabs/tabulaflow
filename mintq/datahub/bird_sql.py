@@ -10,10 +10,11 @@ from mintq.datahub.base import dataset_registry
 
 
 BIRD_DATASET_INSTRUCTIONS = """
-- When the question explicitly states that a term or concept refers to a particular column name, use that column in your query.
-- Do not concatenate columns in the results unless explicitly requested. Specifically, do not concat first and last name into a single column.
-- When a question asks to list records (e.g., dates), do not aggregate results into a single field. Preserve one row per record unless aggregation is explicitly requested.
-- When returning two columns that represent similar concepts, keep them separate and do not merge or union them.
+- If the user specifies a particular computation formula or requires using a specific column, follow those instructions even if they conflict with the initial question.
+- Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
+- Do not alter the data shape:
+  - When returning a list of records (e.g., dates) from multiple rows, maintain one row per record.
+  - When returning columns that represent similar concepts, keep them as separate columns and do not merge or union them into a single column.
 - Do not round percentage values unless explicitly requested.
 - If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
 - The final SELECT clause must not return any columns that are not explicitly requested.
