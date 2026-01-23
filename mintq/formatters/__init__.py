@@ -1,5 +1,6 @@
 from mintq.formatters.base import BaseSQLSchemaFormatter, NL2QFormatter, formatter_registry
-from mintq.formatters.sql import SQLDefaultSchemaFormatter, SQLDDLSchemaFormatter
+from mintq.formatters.sql_default import SQLDefaultSchemaFormatter
+from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 __all__ = [
     "BaseSQLSchemaFormatter",

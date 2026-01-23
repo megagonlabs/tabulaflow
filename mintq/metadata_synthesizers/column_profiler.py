@@ -8,7 +8,7 @@ from pydantic_ai import Agent
 from mintq.schema import SQLSchema, ColumnRef, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.run_query import RunQueryNoParamsTool
-from mintq.formatters.sql import SQLDefaultSchemaFormatter
+from mintq.formatters.sql_default import SQLDefaultSchemaFormatter
 
 COLUMN_PROFILER_SYSTEM_PROMPT = """
 You are a helpful AI database expert responsible for generating column descriptions for database schema fields.
