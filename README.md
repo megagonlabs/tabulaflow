@@ -527,6 +527,9 @@ Jan 22
   - [x] min_columns_for_schema_linking
   - [x] keep PK columns in schema linking
 
+Jan 23
+- [ ] Refactor analyze_errors.py
+- [ ] Tune schema linking
 
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
