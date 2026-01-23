@@ -78,11 +78,7 @@ class SQLDDLSchemaFormatter:
         create_stmt = f"CREATE TABLE {table_name} ("
 
         # Filter columns if pk_fk_column_only
-        columns = [
-            col
-            for col in table.columns
-            if not pk_fk_column_only or col.primary_key_type or col.foreign_keys
-        ]
+        columns = [col for col in table.columns if not pk_fk_column_only or col.primary_key_type or col.foreign_keys]
 
         # Format columns
         column_defs = []
