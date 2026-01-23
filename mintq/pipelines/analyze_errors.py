@@ -140,9 +140,9 @@ class TaskPostprocessingAnalysis(BaseModel):
         raw_pred_query = self.task_output.extra_pred_info.raw_pred_query
 
         res = res.split("\n#### Evaluation Metrics")[0]
-        res += "\n\n#### Raw Predicted Query (Before Postprocessing)\n\n"
+        res += "\n\n#### Raw Pred Query\n\n"
         if raw_pred_query is not None:
-            res += raw_pred_query.to_markdown()
+            res += raw_pred_query.to_markdown(heading_level=4)
         else:
             res += "N/A"
         return res
