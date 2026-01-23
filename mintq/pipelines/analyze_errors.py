@@ -38,8 +38,8 @@ class ErrorAnalysis(BaseModel):
     total_analysis_usage: Usage
 
     def to_markdown(self) -> str:
-        res = f"# Error Analysis Summary\n\n{self.analysis_summary}\n\n"
-        res += f"## All Task Analyses ({len(self.task_analyses)})\n\n"
+        res = f"# Error Analysis Summary\n\n{self.analysis_summary}"
+        res += f"\n\n<br>\n<br>\n\n# All Task Analyses ({len(self.task_analyses)})\n\n"
         res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
@@ -98,7 +98,9 @@ async def analyze_errors_async(
     if not error_tasks:
         if verbose:
             print("No error tasks found.")
-        return ErrorAnalysis(task_analyses=[], analysis_summary="No error tasks found.", total_analysis_usage=Usage.create(llm))
+        return ErrorAnalysis(
+            task_analyses=[], analysis_summary="No error tasks found.", total_analysis_usage=Usage.create(llm)
+        )
     # error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
     task_analyses: list[TaskErrorAnalysis] = []
     for i in range(0, len(error_tasks), batch_size):
@@ -120,7 +122,9 @@ async def analyze_errors_async(
     total_usage = Usage.create(llm)
     analysis_summary = ""
 
-    return ErrorAnalysis(task_analyses=task_analyses, analysis_summary=analysis_summary, total_analysis_usage=total_usage)
+    return ErrorAnalysis(
+        task_analyses=task_analyses, analysis_summary=analysis_summary, total_analysis_usage=total_usage
+    )
 
 
 # =============================================================================
@@ -172,14 +176,12 @@ class PostprocessingAnalysis(BaseModel):
         res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
         res += f"- Improved (0→1): {n_improved} ({pct(n_improved)})\n"
         res += f"- Regressed (1→0): {n_regressed} ({pct(n_regressed)})\n"
-        res += f"- Potential improvable: {len(self.potential_improvable_qids)} ({pct(len(self.potential_improvable_qids))})\n"
-        res += "\n"
-        res += "## Regression Breakdown\n\n"
-        res += f"- Became not executable: {len(self.regressed_not_executable_qids)} ({pct(len(self.regressed_not_executable_qids))})\n"
-        res += f"- Extra columns added: {len(self.regressed_columns_added_qids)} ({pct(len(self.regressed_columns_added_qids))})\n"
-        res += f"- Other causes: {len(self.regressed_other_qids)} ({pct(len(self.regressed_other_qids))})\n"
+        res += f"  - Became not executable: {len(self.regressed_not_executable_qids)} ({pct(len(self.regressed_not_executable_qids))})\n"
+        res += f"  - Extra columns added: {len(self.regressed_columns_added_qids)} ({pct(len(self.regressed_columns_added_qids))})\n"
+        res += f"  - Other causes: {len(self.regressed_other_qids)} ({pct(len(self.regressed_other_qids))})\n"
+        res += f"- Potential improvable: {len(self.potential_improvable_qids)} ({pct(len(self.potential_improvable_qids))})"
 
-        res += f"\n\n## All Task Analyses ({len(self.task_analyses)})\n\n"
+        res += f"\n\n<br>\n<br>\n\n# All Task Analyses ({len(self.task_analyses)})\n\n"
         res += "\n\n".join([task.to_markdown() for task in self.task_analyses])
         return res
 
