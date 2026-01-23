@@ -10,7 +10,7 @@ from mintq.datahub.base import dataset_registry
 
 
 BIRD_DATASET_INSTRUCTIONS = """
-- If the user specifies a particular computation formula or requires using a specific column, follow those instructions.
+- If the user specifies a particular computation formula or requires using a specific column, you must follow those instructions.
 - Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
 - Do not alter the data shape:
   - When returning a list of records (e.g., dates) from multiple rows, maintain one row per record.
