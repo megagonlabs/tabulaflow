@@ -163,7 +163,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
-    parser.add_argument("-s", "--schema_formatter", default="sql_basic")
+    parser.add_argument("-s", "--schema_formatter", default="sql_ddl")
     parser.add_argument("--llm", default="openai-responses:gpt-4.1")
     parser.add_argument("--temperature", default=0.0, type=float)
     parser.add_argument("--openai_reasoning_effort", default=None)
