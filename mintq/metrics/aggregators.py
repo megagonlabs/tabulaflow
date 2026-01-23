@@ -25,7 +25,7 @@ class ByDBAggregator:
     def __init__(
         self,
         ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"],
-        metric_keys: list[str] = ["simple_ex"],
+        metric_keys: list[str] = ["simple_ex", "perfect_linked_schema_r"],
         max_dbs: int = 200,
     ):
         self.ops = ops
@@ -40,6 +40,9 @@ class ByDBAggregator:
 
         res = {}
         for metric_key in self.metric_keys:
+            if metric_key not in result.tasks[0].eval_metrics:
+                continue
+
             metrics = {}
             for db in databases:
                 metrics[db] = aggregate_metrics(
