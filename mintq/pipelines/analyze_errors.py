@@ -19,34 +19,97 @@ async def compute_metrics_async(task: NL2QTaskOutput, metrics: list[NL2QMetric])
     return task
 
 
-class ErrorTaskReport(BaseModel):
+# =============================================================================
+# Base Task Detail
+# =============================================================================
+
+
+class BaseTaskDetail(BaseModel):
+    """Base class for task details used in analysis reports."""
+
     qid: str
-    question: str
     db: str
+    question: str
     question_instructions: str | None
-    gold: Any
-    pred: Any | None
+    gold_query: str | None
+    gold_exec_result: str | None
+
+    def _render_header(self) -> str:
+        """Render common header fields."""
+        res = f"### `{self.qid}`\n\n"
+        res += f"**DB:** {self.db}\n\n"
+        res += f"**Question:** {self.question}\n\n"
+        res += f"**Question Instructions:** {self.question_instructions}\n\n"
+        return res
+
+    def _render_gold(self) -> str:
+        """Render gold query and execution result."""
+        res = "**Gold Query:**\n```sql\n" + (self.gold_query or "N/A") + "\n```\n\n"
+        if self.gold_exec_result:
+            res += "```\n" + self.gold_exec_result + "\n```\n\n"
+        return res
+
+    @classmethod
+    def _from_task_base(cls, task: NL2QTaskOutput) -> dict[str, Any]:
+        """Extract base fields from a task output."""
+        return dict(
+            qid=task.qid,
+            db=task.db,
+            question=task.question,
+            question_instructions=task.question_instructions,
+            gold_query=task.gold_query.query if task.gold_query else None,
+            gold_exec_result=task.gold_query.exec_result.to_readable()
+            if task.gold_query and task.gold_query.exec_result
+            else None,
+        )
+
+
+# =============================================================================
+# Error Analysis
+# =============================================================================
+
+
+class ErrorTaskReport(BaseTaskDetail):
+    """Detail for a single error task."""
+
+    pred_query: str | None
+    pred_exec_result: str | None
     report: str
     usage: Usage
     eval_metrics: dict[str, Any]
 
     def to_markdown(self) -> str:
-        res = f"### `{self.qid}`\n\n"
-        res += f"**DB:** {self.db}\n\n"
-        res += f"**Question:** {self.question}\n\n"
-        res += f"**Question Instructions:** {self.question_instructions}\n\n"
-        res += f"**Gold:**\n```sql\n{self.gold.query}\n```\n\n"
-        if self.gold.exec_result:
-            res += f"```\n{self.gold.exec_result.to_readable()}\n```\n\n"
-        pred_query = self.pred.query if self.pred else "(prediction failed, no prediction available)"
-        res += f"**Pred:**\n```sql\n{pred_query}\n```\n\n"
-        if self.pred and self.pred.exec_result:
-            res += f"```\n{self.pred.exec_result.to_readable()}\n```\n\n"
-        res += f"**Report:** {self.report}\n"
+        res = self._render_header()
+        res += self._render_gold()
+        pred_query = self.pred_query or "(prediction failed, no prediction available)"
+        res += f"**Pred Query:**\n```sql\n{pred_query}\n```\n\n"
+        if self.pred_exec_result:
+            res += f"```\n{self.pred_exec_result}\n```\n\n"
+        res += f"**Report:** {self.report or 'N/A'}\n"
         return res
+
+    @classmethod
+    def from_task(cls, task: NL2QTaskOutput, report: str, usage: Usage) -> "ErrorTaskReport":
+        """Create an ErrorTaskReport from a task output."""
+        if task.output_type != "simple":
+            raise NotImplementedError(f"Error analysis for {task.output_type} tasks is not implemented.")
+
+        base = cls._from_task_base(task)
+        return cls(
+            **base,
+            pred_query=task.pred_query.query if task.pred_query else None,
+            pred_exec_result=task.pred_query.exec_result.to_readable()
+            if task.pred_query and task.pred_query.exec_result
+            else None,
+            report=report,
+            usage=usage,
+            eval_metrics=task.eval_metrics,
+        )
 
 
 class ErrorReport(BaseModel):
+    """Aggregated error analysis report."""
+
     aggregated_report: str
     task_reports: list[ErrorTaskReport]
     usage: Usage
@@ -86,29 +149,17 @@ QID: {{ task_report.qid }}
 
 
 async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> ErrorTaskReport:
-    if task.output_type == "simple":
-        # gold_str = task.gold_query.to_readable()
-        # pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
-        # propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
-        # result = await Agent(llm).run(propmt)
-        # report = result.output
-        # usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
-        report = ""
-        usage = Usage.create(llm)
+    """Analyze a single error task and generate a report."""
+    # gold_str = task.gold_query.to_readable()
+    # pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
+    # propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
+    # result = await Agent(llm).run(propmt)
+    # report = result.output
+    # usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
+    report = ""
+    usage = Usage.create(llm)
 
-        return ErrorTaskReport(
-            qid=task.qid,
-            question=task.question,
-            db=task.db,
-            question_instructions=getattr(task, "question_instructions", None),
-            gold=task.gold_query,
-            pred=task.pred_query,
-            report=report,
-            eval_metrics=task.eval_metrics,
-            usage=usage,
-        )
-    else:
-        raise NotImplementedError(f"Error analysis for {task.output_type} tasks is not implemented.")
+    return ErrorTaskReport.from_task(task, report=report, usage=usage)
 
 
 async def analyze_errors_async(
@@ -149,17 +200,49 @@ async def analyze_errors_async(
     return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report, usage=usage)
 
 
-class PostprocessingTaskDetail(BaseModel):
-    qid: str
-    db: str
-    question: str
-    question_instructions: str | None
+# =============================================================================
+# Postprocessing Impact Analysis
+# =============================================================================
+
+
+class PostprocessingTaskDetail(BaseTaskDetail):
+    """Detail for a single task in postprocessing impact analysis."""
+
     before_query: str | None
     before_exec_result: str | None
     after_query: str | None
     after_exec_result: str | None
-    gold_query: str | None
-    gold_exec_result: str | None
+
+    def to_markdown(self) -> str:
+        res = self._render_header()
+        res += self._render_gold()
+        res += "**Before Postprocessing:**\n```sql\n" + (self.before_query or "N/A") + "\n```\n\n"
+        if self.before_exec_result:
+            res += "```\n" + self.before_exec_result + "\n```\n\n"
+        res += "**After Postprocessing:**\n```sql\n" + (self.after_query or "N/A") + "\n```\n\n"
+        if self.after_exec_result:
+            res += "```\n" + self.after_exec_result + "\n```\n\n"
+        return res
+
+    @classmethod
+    def from_task(cls, task: NL2QTaskOutput) -> "PostprocessingTaskDetail":
+        """Create a PostprocessingTaskDetail from a task output."""
+        if task.output_type != "simple":
+            raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
+
+        base = cls._from_task_base(task)
+        raw_pred_query = task.extra_pred_info.raw_pred_query
+        return cls(
+            **base,
+            before_query=raw_pred_query.query if raw_pred_query else None,
+            before_exec_result=raw_pred_query.exec_result.to_readable()
+            if raw_pred_query and raw_pred_query.exec_result
+            else None,
+            after_query=task.pred_query.query if task.pred_query else None,
+            after_exec_result=task.pred_query.exec_result.to_readable()
+            if task.pred_query and task.pred_query.exec_result
+            else None,
+        )
 
 
 class PostprocessingImpactReport(BaseModel):
@@ -180,6 +263,13 @@ class PostprocessingImpactReport(BaseModel):
         def pct(count: int) -> str:
             return f"{count / total * 100:.1f}%" if total > 0 else "0.0%"
 
+        def render_task_list(title: str, tasks: list[PostprocessingTaskDetail]) -> str:
+            if not tasks:
+                return ""
+            section = f"\n## {title}\n\n"
+            section += "\n".join([task.to_markdown() for task in tasks])
+            return section
+
         res = "# Postprocessing Impact Summary\n\n"
         res += f"- Total tasks: {self.total_tasks}\n"
         res += f"- Net impact: {n_improved - n_regressed:+d} ({pct(n_improved - n_regressed)})\n"
@@ -193,26 +283,6 @@ class PostprocessingImpactReport(BaseModel):
             f"- Extra columns added: {len(self.regressed_columns_added)} ({pct(len(self.regressed_columns_added))})\n"
         )
         res += f"- Other causes: {len(self.regressed_other)} ({pct(len(self.regressed_other))})\n"
-
-        def render_task_list(title: str, tasks: list[PostprocessingTaskDetail]) -> str:
-            if not tasks:
-                return ""
-            section = f"\n## {title}\n\n"
-            for task in tasks:
-                section += f"### `{task.qid}`\n\n"
-                section += f"**Question:** {task.question}\n\n"
-                section += f"**Question Instructions:** {task.question_instructions}\n\n"
-                section += f"**DB:** {task.db}\n\n"
-                section += "**Gold Query:**\n```sql\n" + (task.gold_query or "N/A") + "\n```\n\n"
-                if task.gold_exec_result:
-                    section += "**Gold Exec Result:**\n```\n" + task.gold_exec_result + "\n```\n\n"
-                section += "**Before Postprocessing:**\n```sql\n" + (task.before_query or "N/A") + "\n```\n\n"
-                if task.before_exec_result:
-                    section += "**Before Exec Result:**\n```\n" + task.before_exec_result + "\n```\n\n"
-                section += "**After Postprocessing:**\n```sql\n" + (task.after_query or "N/A") + "\n```\n\n"
-                if task.after_exec_result:
-                    section += "**After Exec Result:**\n```\n" + task.after_exec_result + "\n```\n\n"
-            return section
 
         res += render_task_list(f"Improved Tasks ({n_improved})", self.improved)
         res += render_task_list(
@@ -240,6 +310,7 @@ async def analyze_postprocess_impact_async(
         result: The run result containing task outputs with eval metrics.
         pre_metric: Metric name for EX before postprocessing.
         post_metric: Metric name for EX after postprocessing.
+        target_metric: Metric name for target correctness (used for potential improvable).
 
     Returns:
         A structured report of postprocessing impact.
@@ -249,32 +320,8 @@ async def analyze_postprocess_impact_async(
 
     tasks_by_qid = {task.qid: task for task in result.tasks}
 
-    def make_detail(task: NL2QTaskOutput) -> PostprocessingTaskDetail:
-        if task.output_type != "simple":
-            raise ValueError(f"Only simple tasks are supported for now. Got {task.output_type}.")
-
-        raw_pred_query = task.extra_pred_info.raw_pred_query
-        return PostprocessingTaskDetail(
-            qid=task.qid,
-            db=task.db,
-            question=task.question,
-            question_instructions=task.question_instructions,
-            before_query=raw_pred_query.query if raw_pred_query else None,
-            before_exec_result=raw_pred_query.exec_result.to_readable()
-            if raw_pred_query and raw_pred_query.exec_result
-            else None,
-            after_query=task.pred_query.query if task.pred_query else None,
-            after_exec_result=task.pred_query.exec_result.to_readable()
-            if task.pred_query and task.pred_query.exec_result
-            else None,
-            gold_query=task.gold_query.query if task.gold_query else None,
-            gold_exec_result=task.gold_query.exec_result.to_readable()
-            if task.gold_query and task.gold_query.exec_result
-            else None,
-        )
-
     improved: list[PostprocessingTaskDetail] = [
-        make_detail(task)
+        PostprocessingTaskDetail.from_task(task)
         for task in result.tasks
         if task.eval_metrics[pre_metric] == 0.0 and task.eval_metrics[post_metric] == 1.0
     ]
@@ -285,7 +332,7 @@ async def analyze_postprocess_impact_async(
         if task.eval_metrics[pre_metric] == 1.0 and task.eval_metrics[post_metric] == 0.0
     ]
     potential_improvable = [
-        make_detail(task)
+        PostprocessingTaskDetail.from_task(task)
         for task in result.tasks
         if task.eval_metrics[pre_metric] == task.eval_metrics[post_metric] == 0.0
         and task.eval_metrics[target_metric] == 1.0
@@ -299,7 +346,7 @@ async def analyze_postprocess_impact_async(
     for qid in regressed_qids:
         task: SimpleNL2QTaskOutput = tasks_by_qid[qid]  # type: ignore
         raw_pred_query = task.extra_pred_info.raw_pred_query
-        detail = make_detail(task)
+        detail = PostprocessingTaskDetail.from_task(task)
 
         if task.pred_query is None or task.pred_query.exec_result.df is None:  # type: ignore
             became_not_executable.append(detail)
