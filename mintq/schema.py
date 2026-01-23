@@ -68,6 +68,9 @@ class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
 
+    def num_total_columns(self) -> int:
+        return sum(len(table.columns) for table in self.tables)
+
     def get_column_by_ref(self, column_ref: ColumnRef) -> SQLColumnSchema:
         for table in self.tables:
             if table.schema_name == column_ref.schema_name and table.name == column_ref.table_name:

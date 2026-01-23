@@ -35,6 +35,10 @@ from mintq.agenthub.utils import (
 from mintq.utils import extract_code, extract_all_source_columns
 
 
+class SQLAgentConfig(BasicAgentConfig):
+    min_columns_for_schema_linking: int = 20
+
+
 def format_question(task: SimpleNL2QTask) -> str:
     res = task.question
     if task.question_instructions:
@@ -118,7 +122,7 @@ Your output:
 
 
 class SchemaLinker:
-    def __init__(self, config: BasicAgentConfig):
+    def __init__(self, config: SQLAgentConfig):
         self.config = config
 
     async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
@@ -225,6 +229,9 @@ class SchemaLinker:
         return linked_schema
 
     async def link_schema_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> SQLSchema:
+        if ctx.preprocessed_schema.num_total_columns() < self.config.min_columns_for_schema_linking:
+            return ctx.preprocessed_schema
+
         pred_query = await self._generate_sql_async(ctx, task)
         # pred_query = ctx.task.gold_query
 
@@ -299,7 +306,7 @@ Your revised {{language}} query:
 
 
 class Postprocessor:
-    def __init__(self, config: BasicAgentConfig):
+    def __init__(self, config: SQLAgentConfig):
         self.config = config
 
     async def parse_question_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> list[str]:
@@ -366,16 +373,16 @@ class SQLAgent:
     name: ClassVar = "sql_agent"
     task_type: ClassVar = "simple"
     output_type: ClassVar = "simple"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[SQLAgentConfig]] = SQLAgentConfig
 
-    def __init__(self, config: BasicAgentConfig):
+    def __init__(self, config: SQLAgentConfig):
         self.config = config
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
         self.schema_linker = SchemaLinker(config)
         self.postprocessor = Postprocessor(config)
 
     @classmethod
-    async def from_config_async(cls, config: BasicAgentConfig) -> "SQLAgent":
+    async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
         return cls(config)
 
     @instrument
