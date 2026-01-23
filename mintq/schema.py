@@ -535,7 +535,7 @@ class GoldQuery(BaseModel):
 
     def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
-        lines = [f"{h} Gold Query `{self.id}`"]
+        lines = [f"{h} Gold Query"]
         if self.query:
             lines.append("\n```sql")
             lines.append(self.query)
@@ -571,7 +571,7 @@ class PredQuery(BaseModel):
 
     def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
-        lines = [f"{h} Pred Query `{self.id}`"]
+        lines = [f"{h} Pred Query"]
         lines.append("\n```sql")
         lines.append(self.query)
         lines.append("```")
