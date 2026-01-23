@@ -1058,7 +1058,6 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput) -> str:
     # Basic info
     lines.append(f"**Database:** {task.db}  ")
     lines.append(f"**Language:** {task.language}  ")
-    lines.append(f"**Type:** {task.task_type}")
     lines.append("")
 
     # Question
