@@ -35,14 +35,16 @@ class ErrorTaskReport(BaseModel):
 
     def to_markdown(self) -> str:
         res = f"### `{self.qid}`\n\n"
+        res += f"**DB:** {self.db}\n\n"
         res += f"**Question:** {self.question}\n\n"
+        res += f"**Question Instructions:** {self.question_instructions}\n\n"
         res += f"**Gold:**\n```sql\n{self.gold.query}\n```\n\n"
         if self.gold.exec_result:
-            res += f"**Gold Exec Result:**\n```\n{self.gold.exec_result.to_readable()}\n```\n\n"
+            res += f"```\n{self.gold.exec_result.to_readable()}\n```\n\n"
         pred_query = self.pred.query if self.pred else "(prediction failed, no prediction available)"
         res += f"**Pred:**\n```sql\n{pred_query}\n```\n\n"
         if self.pred and self.pred.exec_result:
-            res += f"**Pred Exec Result:**\n```\n{self.pred.exec_result.to_readable()}\n```\n\n"
+            res += f"```\n{self.pred.exec_result.to_readable()}\n```\n\n"
         res += f"**Report:** {self.report}\n"
         return res
 
@@ -88,12 +90,15 @@ QID: {{ task_report.qid }}
 
 async def analyze_task_async(task: NL2QTaskOutput, llm: str = "openai-responses:gpt-5") -> ErrorTaskReport:
     if task.output_type == "simple":
-        gold_str = task.gold_query.to_readable()
-        pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
-        propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
-        result = await Agent(llm).run(propmt)
-        report = result.output
-        usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
+        # gold_str = task.gold_query.to_readable()
+        # pred_str = task.pred_query.to_readable() if task.pred_query else "(prediction failed, no prediction available)"
+        # propmt = jinja2.Template(ANALYZE_TASK_PROMPT).render(gold_str=gold_str, pred_str=pred_str)
+        # result = await Agent(llm).run(propmt)
+        # report = result.output
+        # usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
+        report = ""
+        usage = Usage.create(llm)
+
         return ErrorTaskReport(
             qid=task.qid,
             question=task.question,
@@ -123,7 +128,7 @@ async def analyze_errors_async(
         if verbose:
             print("No error tasks found.")
         return ErrorReport(task_reports=[], aggregated_report="No error tasks found.", usage=Usage.create(llm))
-    error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
+    # error_tasks = random.Random(42).sample(error_tasks, min(num_samples, len(error_tasks)))
     task_reports = []
     for i in range(0, len(error_tasks), batch_size):
         j = min(i + batch_size, len(error_tasks))
@@ -134,13 +139,17 @@ async def analyze_errors_async(
         task_reports += batch_reports
         if verbose:
             print(f"{j}/{len(error_tasks)} error tasks analyzed.")
-    prompt = jinja2.Template(SUMMARY_PROMPT).render(task_reports=task_reports)
-    aggregated_report = await Agent(llm).run(prompt)
+    # prompt = jinja2.Template(SUMMARY_PROMPT).render(task_reports=task_reports)
+    # result = await Agent(llm).run(prompt)
+    # aggregated_report = result.output
 
-    usage = Usage.from_pydantic_ai_usage(aggregated_report.usage(), llm)
-    for task_report in task_reports:
-        usage += task_report.usage
-    return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report.output, usage=usage)
+    # usage = Usage.from_pydantic_ai_usage(result.usage(), llm)
+    # for task_report in task_reports:
+    #     usage += task_report.usage
+    usage = Usage.create(llm)
+    aggregated_report = ""
+
+    return ErrorReport(task_reports=task_reports, aggregated_report=aggregated_report, usage=usage)
 
 
 class PostprocessingTaskDetail(BaseModel):
@@ -254,11 +263,17 @@ async def analyze_postprocess_impact_async(
             question=task.question,
             question_instructions=task.question_instructions,
             before_query=raw_pred_query.query if raw_pred_query else None,
-            before_exec_result=raw_pred_query.exec_result.to_readable() if raw_pred_query and raw_pred_query.exec_result else None,
+            before_exec_result=raw_pred_query.exec_result.to_readable()
+            if raw_pred_query and raw_pred_query.exec_result
+            else None,
             after_query=task.pred_query.query if task.pred_query else None,
-            after_exec_result=task.pred_query.exec_result.to_readable() if task.pred_query and task.pred_query.exec_result else None,
+            after_exec_result=task.pred_query.exec_result.to_readable()
+            if task.pred_query and task.pred_query.exec_result
+            else None,
             gold_query=task.gold_query.query if task.gold_query else None,
-            gold_exec_result=task.gold_query.exec_result.to_readable() if task.gold_query and task.gold_query.exec_result else None,
+            gold_exec_result=task.gold_query.exec_result.to_readable()
+            if task.gold_query and task.gold_query.exec_result
+            else None,
         )
 
     improved: list[PostprocessingTaskDetail] = [
