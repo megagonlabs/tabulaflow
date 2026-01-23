@@ -8,7 +8,7 @@ import os
 import logging
 from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
 from mintq.db_connector import SQLConnector
-from mintq.formatters import SQLDefaultSchemaFormatter
+from mintq.formatters import SQLBasicSchemaFormatter
 from mintq.utils import extract_code
 
 # os.environ["MINTQ_CACHE_ENABLED"] = "0"
@@ -423,7 +423,7 @@ async def main():
     with col1:
         st.title("📊 NL2SQL Metadata Demo")
     dataset = await get_demo_dataset()
-    metadata = get_metadata(SQLDefaultSchemaFormatter().format(dataset.db_connectors["NOAA_DATA"].schema))
+    metadata = get_metadata(SQLBasicSchemaFormatter().format(dataset.db_connectors["NOAA_DATA"].schema))
     with col1:
         task, db_connector, llm, temperature = await database_browser(dataset, metadata)
     with col2:

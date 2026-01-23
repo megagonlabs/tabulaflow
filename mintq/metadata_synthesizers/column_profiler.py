@@ -8,7 +8,7 @@ from pydantic_ai import Agent
 from mintq.schema import SQLSchema, ColumnRef, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.run_query import RunQueryNoParamsTool
-from mintq.formatters.sql_default import SQLDefaultSchemaFormatter
+from mintq.formatters.sql_basic import SQLBasicSchemaFormatter
 
 COLUMN_PROFILER_SYSTEM_PROMPT = """
 You are a helpful AI database expert responsible for generating column descriptions for database schema fields.
@@ -42,7 +42,7 @@ class ColumnProfiler:
 
     def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
         self.llm = llm
-        self.formatter = SQLDefaultSchemaFormatter()
+        self.formatter = SQLBasicSchemaFormatter()
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:

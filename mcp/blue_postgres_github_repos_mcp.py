@@ -5,7 +5,7 @@ import asyncio
 import os
 import json
 from mintq.toolhub import RunQueryTool, SearchKeywordsTool
-from mintq.formatters import SQLDefaultSchemaFormatter, HSchemaFormatter
+from mintq.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
 from mintq.db_connector import SQLConnector
 from mintq.metadata_synthesizer import HSchemaSynthesizer
 from mintq.schema import SQLSchema, HSQLSchema
@@ -22,7 +22,7 @@ mcp = FastMCP("postgres_github_repos", host="0.0.0.0", port=8127)
 class GetSchemaTool:
     name: ClassVar[str] = "get_schema"
     schema: SQLSchema
-    formatter: SQLDefaultSchemaFormatter
+    formatter: SQLBasicSchemaFormatter
 
     async def __call__(self):
         """Get the schema of the database."""

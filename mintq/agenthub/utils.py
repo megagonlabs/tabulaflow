@@ -74,7 +74,7 @@ class TaskRunContext:
 
 class BasicAgentConfig(BaseModel):
     llm: str
-    schema_formatter: str = "sql_default"
+    schema_formatter: str = "sql_basic"
     compress_schema: bool = True
     temperature: float = 0.0
     max_steps: int = 10

@@ -1,5 +1,5 @@
 # import graphviz
-# from mintq.formatters import SQLDefaultSchemaFormatter
+# from mintq.formatters import SQLBasicSchemaFormatter
 # from mintq.schema import ERDiagram
 
 
@@ -8,7 +8,7 @@
 #     g.attr("node", shape="none", fontname="Courier")  # Remove outer box
 #     g.attr("graph", rankdir="LR", nodesep="0.25", ranksep="0.5", splines="true")
 
-#     formatter = SQLDefaultSchemaFormatter()
+#     formatter = SQLBasicSchemaFormatter()
 
 #     for table in erd.db_schema.tables:
 #         # Create a table node with columns as rows

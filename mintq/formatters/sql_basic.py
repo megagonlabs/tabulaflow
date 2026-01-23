@@ -6,8 +6,8 @@ from mintq.formatters.base import formatter_registry
 
 @formatter_registry.register
 @dataclass
-class SQLDefaultSchemaFormatter:
-    name: ClassVar[str] = "sql_default"
+class SQLBasicSchemaFormatter:
+    name: ClassVar[str] = "sql_basic"
     quote_char: str = '"'
     example_max_chars: int = 100
 

@@ -3,7 +3,7 @@ import argparse
 import os
 import time
 from mintq.datahub import dataset_registry
-from mintq.formatters import SQLDefaultSchemaFormatter
+from mintq.formatters import SQLBasicSchemaFormatter
 
 
 os.environ["MINTQ_CACHE_ENABLED"] = "0"
@@ -26,7 +26,7 @@ async def main() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     schema = dataset.db_connectors[args.database].schema
-    schema_str = SQLDefaultSchemaFormatter().format(schema)
+    schema_str = SQLBasicSchemaFormatter().format(schema)
     print(schema_str)
     print()
     print(f"(schema length: {len(schema_str)} characters)")

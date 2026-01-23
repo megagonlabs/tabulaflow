@@ -66,7 +66,7 @@ async def main() -> None:
     model = await SimpleZeroShotNL2Q.from_config_async(
         SimpleZeroShotNL2QConfig(
             llm="openai/gpt-4.1-mini",
-            schema_formatter="sql_default",
+            schema_formatter="sql_basic",
         )
     )
     task = SimpleNL2QTask(

@@ -13,7 +13,7 @@ async def main() -> None:
 
     # define the model arguments
     # the `run_model` function below uses this to construct a separate model instance for each sample to avoid race condition
-    config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_default")
+    config = BasicAgentConfig(llm="openai:gpt-4.1-mini", schema_formatter="sql_basic")
     # run the model on the dataset using async coroutines
     result = await run_agent_async(SQLAgent, config, dataset, batch_size=2)
     print(result.tasks[0].pred_query.query)

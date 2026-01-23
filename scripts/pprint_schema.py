@@ -10,7 +10,7 @@ async def main() -> None:
     parser.add_argument("--input_path", default="cache/schemas/spider2-snow+GITHUB_REPOS_DATE.json")
     parser.add_argument("--compress", action="store_true")
     parser.add_argument("--no_description", action="store_true")
-    parser.add_argument("--formatter", default="sql_default")
+    parser.add_argument("--formatter", default="sql_basic")
     args = parser.parse_args()
     print(args)
     print()
