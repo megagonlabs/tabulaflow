@@ -112,10 +112,10 @@ async def main_async() -> None:
 
     analyzer = Analyzer(args.llm)
     error_analysis = await analyzer.analyze_async(result)
-    with open(os.path.join(args.result_dir, "error_report.md"), "w") as f:
+    with open(os.path.join(args.result_dir, "analysis.md"), "w") as f:
         f.write(error_analysis)
     print(f"Total cost USD: {analyzer.usage().api_cost_usd:.6f}")
-    print(f"Saved error report to {os.path.join(args.result_dir, 'error_report.md')}")
+    print(f"Saved error report to {os.path.join(args.result_dir, 'analysis.md')}")
 
 
 if __name__ == "__main__":
