@@ -528,8 +528,15 @@ Jan 22
   - [x] keep PK columns in schema linking
 
 Jan 23
-- [ ] Refactor analyze_errors.py
-- [ ] Tune schema linking
+- [x] Refactor analyze_errors.py
+- [x] Markdown format for readable output
+  - [x] Markdown format for NL2QTaskOutput and NL2QTask
+  - [x] Markdown format for Trajectory
+  - [x] Markdown error analysis output with hyperlinks to task_readable.md
+- [x] Refactor config.py
+- [ ] preprocessors subpackage
+- [ ] preprocess.py
+- [ ] Analyze schema linking
 
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
