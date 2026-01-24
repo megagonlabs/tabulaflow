@@ -534,6 +534,8 @@ Jan 23
   - [x] Markdown format for Trajectory
   - [x] Markdown error analysis output with hyperlinks to task_readable.md
 - [x] Refactor config.py
+
+- [ ] FK inference for database without FKs
 - [ ] preprocessors subpackage
 - [ ] preprocess.py
 - [ ] Analyze schema linking
@@ -546,7 +548,6 @@ Jan 23
   - [ ] line 515 - keep going until resolved
   - [ ] line 540 - maximize context understanding
 - [ ] Remove unuseful FKs in linked schema
-- [ ] FK inference for database without FKs
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
 - [ ] Model ensemble
