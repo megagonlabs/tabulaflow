@@ -1,9 +1,7 @@
 import argparse
 import asyncio
 import os
-from tqdm.asyncio import tqdm_asyncio
-from pydantic import BaseModel
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, Usage, SimpleNL2QTaskOutput
+from mintq.schema import NL2QRunResult, Usage
 
 
 class Analyzer:
@@ -28,7 +26,7 @@ class Analyzer:
         return res
 
     def _postprocess_impact_section(self, result: NL2QRunResult) -> str:
-        qids = {"Improved": [], "Regressed": [], "Potential Improvable": []}
+        qids: dict[str, list[str]] = {"Improved": [], "Regressed": [], "Potential Improvable": []}
         for task in result.tasks:
             if task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0 and task.eval_metrics["bird_sql_ex"] == 1.0:
                 qids["Improved"].append(task.qid)
@@ -46,10 +44,10 @@ class Analyzer:
         }
 
         res = "## Postprocessing Impact"
-        for key, qids in qids.items():
+        for key, qs in qids.items():
             res += f"\n\n### {key}\n\n"
             res += f"{descriptions[key]}:"
-            res += "\n\n" + "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in qids)
+            res += "\n\n" + "\n".join(f" [[{q}]](./readable/{q}/task_readable.md)" for q in qs)
         return res
 
     async def analyze_async(self, result: NL2QRunResult) -> str:
