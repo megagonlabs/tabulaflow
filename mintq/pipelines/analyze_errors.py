@@ -15,8 +15,15 @@ class Analyzer:
 
     def _error_section(self, result: NL2QRunResult) -> str:
         res = "## Error Tasks"
-        res += "\n\n### simple_ex = 0.0"
+        res += "\n\nTasks where simple_ex = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
+        res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        return res
+
+    def _schema_linking_section(self, result: NL2QRunResult) -> str:
+        res = "## Schema Linking"
+        res += "\n\nTasks where perfect_linked_schema_r = 0.0:"
+        error_tasks = [task for task in result.tasks if task.eval_metrics["perfect_linked_schema_r"] == 0.0]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
@@ -50,6 +57,8 @@ class Analyzer:
         sections = [
             self._error_section(result),
         ]
+        if any(task.extra_pred_info.linked_schema is not None for task in result.tasks):
+            sections.append(self._schema_linking_section(result))
         if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
             sections.append(self._postprocess_impact_section(result))
         res = "\n\n".join(sections)
