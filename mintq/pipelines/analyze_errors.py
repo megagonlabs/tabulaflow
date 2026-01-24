@@ -17,8 +17,7 @@ class Analyzer:
         res = "## Error Tasks"
         res += "\n\n### simple_ex = 0.0"
         error_tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
-        for task in error_tasks:
-            res += f"\n- [{task.qid}](./readable/{task.qid}/task_readable.md)"
+        res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
     def _postprocess_impact_section(self, result: NL2QRunResult) -> str:
@@ -42,9 +41,8 @@ class Analyzer:
         res = "## Postprocessing Impact"
         for key, qids in qids.items():
             res += f"\n\n### {key}\n\n"
-            res += f"{descriptions[key]}:\n"
-            for qid in qids:
-                res += f"\n- [{qid}](./readable/{qid}/task_readable.md)"
+            res += f"{descriptions[key]}:"
+            res += "\n\n" + "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in qids)
         return res
 
     async def analyze_async(self, result: NL2QRunResult) -> str:
