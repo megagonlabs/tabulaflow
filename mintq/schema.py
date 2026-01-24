@@ -1084,12 +1084,28 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
         lines.append(f"\n{h2} Evidence")
         lines.append(evidence)
 
-    # Gold queries
-    gold_query = task.gold_intended_query if task.task_type == "ambig" else task.gold_query
-    if gold_query is not None:
-        lines.append("\n\n" + gold_query.to_markdown(heading_level=heading_level + 1))
-    else:
-        lines.append(f"\n\n{h2} Gold Query\n\nN/A")
+    def _quote(s: str) -> str:
+        return f'"{s}"' if " " in s else s
+
+    def _format_column_name(col: ColumnRef) -> str:
+        res = f"{_quote(col.table_name)}.{_quote(col.column_name)}"
+        if col.schema_name:
+            res = f"{_quote(col.schema_name)}.{res}"
+        return res
+
+    # Linked schema
+    linked_schema = task.extra_pred_info.linked_schema
+    if linked_schema:
+        lines.append(f"\n{h2} Linked Schema")
+        lines.append(f"\n```\n{', '.join([_format_column_name(col) for col in linked_schema])}\n```")
+
+    # Raw pred query
+    raw_pred_query = task.extra_pred_info.raw_pred_query
+    if raw_pred_query:
+        lines.append(
+            "\n\n"
+            + raw_pred_query.to_markdown(heading_level=heading_level + 1).replace("# Pred Query", "# Raw Pred Query")
+        )
 
     # Pred queries
     pred_query = task.pred_intended_query if task.task_type == "ambig" else task.pred_query
@@ -1097,6 +1113,13 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
         lines.append("\n\n" + pred_query.to_markdown(heading_level=heading_level + 1))
     else:
         lines.append(f"\n\n{h2} Pred Query\n\nN/A")
+
+    # Gold queries
+    gold_query = task.gold_intended_query if task.task_type == "ambig" else task.gold_query
+    if gold_query is not None:
+        lines.append("\n\n" + gold_query.to_markdown(heading_level=heading_level + 1))
+    else:
+        lines.append(f"\n\n{h2} Gold Query\n\nN/A")
 
     # Metrics
     eval_metrics = getattr(task, "eval_metrics", None)
@@ -1118,7 +1141,7 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
         lines.append(f"- **API Requests:** {usage.api_requests}")
         lines.append(f"- **Input Tokens:** {usage.input_tokens}")
         lines.append(f"- **Output Tokens:** {usage.output_tokens}")
-        lines.append(f"- **Cost:** ${usage.api_cost_usd}")
+        lines.append(f"- **Cost:** ${round(float(usage.api_cost_usd), 4)}")
 
     return "\n".join(lines)
 
