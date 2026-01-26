@@ -5,7 +5,7 @@ import asyncio
 import os
 from tabulate import tabulate
 from mintq.datahub import dataset_registry
-from mintq.preprocessors import SchemaCompressor
+from mintq.metadata_synthesizers import SchemaCompressor
 from mintq.schema import NL2QDataset
 from mintq.utils import dict_to_df
 
@@ -119,9 +119,8 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
     }  # type: ignore
     db_names = sorted(dataset.db_connectors.keys())
     for db_name in db_names:
-        db_connector = dataset.db_connectors[db_name]
-        schema = db_connector.schema
-        compressed_schema = await SchemaCompressor().preprocess_async(db_connector)
+        schema = dataset.db_connectors[db_name].schema
+        compressed_schema = await SchemaCompressor().run_async(schema)
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
         per_db_stats["tables_compressed"].append(len(compressed_schema.tables))

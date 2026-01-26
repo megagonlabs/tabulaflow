@@ -276,7 +276,7 @@ class AmbigFlatSQLAgent:
 
     async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
         return {
-            "get_schema": GetSchemaTool(db_connector, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryWithParamsTool(db_connector),

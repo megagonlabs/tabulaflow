@@ -1,16 +1,8 @@
 import asyncio
 import argparse
-from dataclasses import dataclass
 from mintq.formatters import formatter_registry
 from mintq.schema import SQLSchema
-from mintq.preprocessors import SchemaCompressor
-
-
-@dataclass
-class SchemaWrapper:
-    """Minimal wrapper to satisfy BaseSQLDBConnector protocol for schema-only usage."""
-    global_id: str
-    schema: SQLSchema
+from mintq.metadata_synthesizers import SchemaCompressor
 
 
 async def main() -> None:
@@ -27,8 +19,7 @@ async def main() -> None:
         schema = SQLSchema.model_validate_json(f.read())
 
     if args.compress:
-        wrapper = SchemaWrapper(global_id=args.input_path, schema=schema)
-        schema = await SchemaCompressor().preprocess_async(wrapper)  # type: ignore[arg-type]
+        schema = await SchemaCompressor().run_async(schema)
 
     formatter = formatter_registry.get_class(args.formatter)()
     schema_str = formatter.format(schema, add_description=not args.no_description)

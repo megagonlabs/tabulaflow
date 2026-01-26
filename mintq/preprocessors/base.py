@@ -1,13 +1,8 @@
 from typing import Any, Protocol, ClassVar
-from mintq.db_connector import BaseSQLDBConnector
-from mintq.schema import SQLSchema
+from mintq.db_connector import NL2QDBConnector
 
 
 class BaseDBPreprocessor(Protocol):
     name: ClassVar[str]
 
-    async def preprocess_async(self, db_connector: BaseSQLDBConnector) -> Any: ...
-
-
-class BaseSchemaCompressor(Protocol):
-    async def preprocess_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema: ...
+    async def preprocess_async(self, db_connector: NL2QDBConnector) -> Any: ...
