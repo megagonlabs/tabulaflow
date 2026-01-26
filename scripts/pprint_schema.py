@@ -7,7 +7,7 @@ from mintq.preprocessors.components import SchemaCompressor
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--input_path", default="cache/schemas/spider2-snow+GITHUB_REPOS_DATE.json")
+    parser.add_argument("--file", default="cache/schemas/spider2-snow+GITHUB_REPOS_DATE.json")
     parser.add_argument("--compress", action="store_true")
     parser.add_argument("--no_description", action="store_true")
     parser.add_argument("--formatter", default="sql_basic")
@@ -15,7 +15,7 @@ async def main() -> None:
     print(args)
     print()
 
-    with open(args.input_path, "r") as f:
+    with open(args.file, "r") as f:
         schema = SQLSchema.model_validate_json(f.read())
 
     if args.compress:
