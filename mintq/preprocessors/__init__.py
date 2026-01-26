@@ -1,12 +1,11 @@
-from mintq.preprocessors.base import BaseAsyncMetadataSynthesizer
-from mintq.preprocessors.base import BaseSchemaCompressor
-from mintq.preprocessors.schema_compressor import SchemaCompressor
-from mintq.preprocessors.column_profiler import ColumnProfiler
+from mintq.preprocessors.base import BaseCachedDBPreprocessor, preprocessor_registry
 from mintq.preprocessors.schema_preprocessor import SchemaPreprocessor
+from mintq.preprocessors.components.schema_compressor import SchemaCompressor
+from mintq.preprocessors.components.column_profiler import ColumnProfiler
 
 __all__ = [
-    "BaseAsyncMetadataSynthesizer",
-    "BaseSchemaCompressor",
+    "BaseCachedDBPreprocessor",
+    "preprocessor_registry",
     "SchemaCompressor",
     "ColumnProfiler",
     "SchemaPreprocessor",

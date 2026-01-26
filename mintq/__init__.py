@@ -9,6 +9,7 @@ from mintq.agenthub.base import agent_registry
 from mintq.datahub.base import dataset_registry
 from mintq.metrics.base import metric_registry
 from mintq.formatters.base import formatter_registry
+from mintq.preprocessors.base import preprocessor_registry
 from mintq.config import config
 import logging
 
@@ -44,6 +45,7 @@ __all__ = [
     "dataset_registry",
     "metric_registry",
     "formatter_registry",
+    "preprocessor_registry",
 ]
 
 

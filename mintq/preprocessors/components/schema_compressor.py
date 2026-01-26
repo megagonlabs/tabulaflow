@@ -4,7 +4,6 @@ from typing import Any, Hashable, Protocol, Sequence, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
-from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
     SQLSchema,
     SQLTableSchema,
@@ -247,8 +246,8 @@ class SchemaCompressor:
             res.append(("{" + ",".join(remaining) + "}", None, remaining))  # type: ignore
         return res
 
-    async def preprocess_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:
-        schema = copy.deepcopy(db_connector.schema)
+    def compress(self, schema: SQLSchema) -> SQLSchema:
+        schema = copy.deepcopy(schema)
 
         # We don't allow merging already merged tables
         is_merged = set()
