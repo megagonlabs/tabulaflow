@@ -541,6 +541,7 @@ Jan 26
 - [ ] FK inference for database without FKs
 - [ ] Analyze schema linking
 
+- [ ] Disable columns not useful
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
