@@ -396,7 +396,7 @@ class SQLAgent:
         t0 = time.time()
 
         schema_preprocessor = SchemaPreprocessor(compress_schema=self.config.compress_schema)
-        preprocessed_schema = await schema_preprocessor.run_async(db_connector)
+        preprocessed_schema = await schema_preprocessor.preprocess_async(db_connector)
         ctx = TaskRunContext(
             task=task,
             db_connector=db_connector,
