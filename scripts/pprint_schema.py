@@ -2,7 +2,7 @@ import asyncio
 import argparse
 from mintq.formatters import formatter_registry
 from mintq.schema import SQLSchema
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.preprocessors.components import SchemaCompressor
 
 
 async def main() -> None:
