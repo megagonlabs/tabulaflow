@@ -535,9 +535,10 @@ Jan 23
   - [x] Markdown error analysis output with hyperlinks to task_readable.md
 - [x] Refactor config.py
 
-- [ ] FK inference for database without FKs
+Jan 26
 - [ ] preprocessors subpackage
 - [ ] preprocess.py
+- [ ] FK inference for database without FKs
 - [ ] Analyze schema linking
 
 - [ ] Table description (table profiler)

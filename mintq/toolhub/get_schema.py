@@ -2,8 +2,8 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SQLSchema
-from mintq.metadata_synthesizers import BaseSchemaCompressor
+from mintq.db_connector import BaseSQLDBConnector
+from mintq.preprocessors import BaseSchemaCompressor
 
 
 class GetSchemaToolMetrics(BaseModel):
@@ -14,9 +14,9 @@ class GetSchemaTool:
     name: ClassVar = "get_schema"
 
     def __init__(
-        self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, compressor: BaseSchemaCompressor | None = None
+        self, db_connector: BaseSQLDBConnector, formatter: BaseSQLSchemaFormatter, compressor: BaseSchemaCompressor | None = None
     ):
-        self.schema = schema
+        self.db_connector = db_connector
         self.formatter = formatter
         self.compressor = compressor
         self._metrics = GetSchemaToolMetrics()
@@ -31,7 +31,7 @@ class GetSchemaTool:
         ```
         """
         self._metrics.num_calls += 1
-        schema = self.schema if self.compressor is None else await self.compressor.run_async(self.schema)
+        schema = self.db_connector.schema if self.compressor is None else await self.compressor.preprocess_async(self.db_connector)
         return self.formatter.format(schema)
 
     def as_pydantic_ai_tool(self) -> Tool:

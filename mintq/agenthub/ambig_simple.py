@@ -16,7 +16,7 @@ from mintq.toolhub import (
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from mintq.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.preprocessors import SchemaCompressor
 
 
 SYSTEM_PROMPT = """
@@ -80,7 +80,7 @@ class AmbigSimpleSQLAgent:
             user_patience = self.config.user_patience  # type: ignore
 
         tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(db_connector, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "ask_user": AskUserTool(user_simulator, patience=user_patience),
             "search_keywords": SearchKeywordsTool(db_connector),

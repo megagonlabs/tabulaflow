@@ -34,7 +34,7 @@ from mintq.agenthub.base import (
     BaseAgentConfig,
 )
 from mintq.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.preprocessors import SchemaCompressor
 from mintq.utils import int_to_letter
 
 
@@ -304,7 +304,7 @@ class AmbigStructuredSQLAgent:
 
     async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
         return {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
+            "get_schema": GetSchemaTool(db_connector, self.formatter, self.compressor),
             "get_column_description": GetColumnDescriptionTool(db_connector),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryWithParamsTool(db_connector),

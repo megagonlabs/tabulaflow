@@ -53,7 +53,7 @@ async def get_db_connector() -> SQLConnector:
 async def main():
     db_connector = await get_db_connector()
     formatter = SQLBasicSchemaFormatter()
-    get_schema_tool = GetSchemaTool(schema=db_connector.schema, formatter=formatter)
+    get_schema_tool = GetSchemaTool(db_connector=db_connector, formatter=formatter)
     run_query_tool = RunQueryTool(db_connector=db_connector)
     search_keywords_tool = SearchKeywordsTool(db_connector=db_connector)
 

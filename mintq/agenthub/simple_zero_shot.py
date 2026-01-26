@@ -6,7 +6,7 @@ import logging
 import asyncio
 from typing import Any, ClassVar
 from mintq.utils import extract_code
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.preprocessors import SchemaCompressor
 from mintq.formatters import formatter_registry
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
@@ -85,7 +85,7 @@ class SimpleZeroShotNL2Q:
 
         schema = db_connector.schema
         if self.config.compress_schema:
-            schema = await SchemaCompressor().run_async(schema)
+            schema = await SchemaCompressor().preprocess_async(db_connector)
 
         schema_str = self.formatter.format(schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:

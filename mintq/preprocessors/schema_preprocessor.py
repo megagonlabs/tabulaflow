@@ -3,8 +3,8 @@ import os
 import asyncio
 import collections
 from mintq.config import config
-from mintq.metadata_synthesizers.column_profiler import ColumnProfiler
-from mintq.metadata_synthesizers.schema_compressor import SchemaCompressor
+from mintq.preprocessors.column_profiler import ColumnProfiler
+from mintq.preprocessors.schema_compressor import SchemaCompressor
 from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 
@@ -40,7 +40,7 @@ class SchemaPreprocessor:
 
             schema = db_connector.schema
             if self.compressor is not None:
-                schema = await self.compressor.run_async(schema)
+                schema = await self.compressor.preprocess_async(db_connector)
             schema = await self.column_profiler.run_async(db_connector, schema)
             self._usage += self.column_profiler.usage()
 
