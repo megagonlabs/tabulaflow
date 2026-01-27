@@ -538,9 +538,10 @@ Jan 23
 Jan 26
 - [x] preprocessors subpackage
 - [x] preprocess_and_cache.py
-- [ ] FK inference for database without FKs
-- [ ] Analyze schema linking
+- [x] FK inference for database without FKs
 
+- [ ] Improve FK inference
+- [ ] Join path inference
 - [ ] Disable columns not useful
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
