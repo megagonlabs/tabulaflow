@@ -540,9 +540,11 @@ Jan 26
 - [x] preprocess_and_cache.py
 - [x] FK inference for database without FKs
 
-- [ ] Improve FK inference
-- [ ] Join path inference
+Jan 27
 - [ ] Disable columns not useful
+- [ ] Improve FK inference
+- [ ] Join ER-diagram inference
+
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
