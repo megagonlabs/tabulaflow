@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import json
-from typing import ClassVar
 import jinja2
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -11,20 +10,32 @@ from mintq.toolhub.run_query import RunQueryNoParamsTool
 from mintq.formatters.sql_basic import SQLBasicSchemaFormatter
 
 COLUMN_PROFILER_SYSTEM_PROMPT = """
-You are a helpful AI database expert responsible for generating column descriptions for database schema fields.
+<goal>
+You are a helpful AI database expert responsible for profiling columns in the database schema.
+You will be given the full database schema and a column to profile.
+Your goal is to generate descriptions and identify if the column is not used.
+</goal>
 
-- If a column already has a description, revise it to be more concise and informative.
-- Do not repeat information already covered by column metadata (such as data type or categorical values).
-- Retain any non-redundant information from the original description, including notes indicating that a column is not useful.
-- For columns with complex or nested structures, you may use the `run_query` tool multiple times to inspect the data.
-- The concise description should begin with a noun phrase, adding brief clarifying details only if needed.
-- The detailed description should be:
+<tool_calling>
+You may call the `run_query` tool multiple times to inspect the data. This is particularly useful for columns with complex or nested structures.
+</tool_calling>
+
+<output>
+Your output should include:
+- `revised_concise_description`: a concise description that begins with a simple noun phrase, adding clarifying details only when necessary.
+  - If a column already has a description, revise it to be more concise and informative.
+  - Do not repeat information already covered by column metadata (such as data type or categorical values).
+  - Retain any non-redundant information from the original description, including notes indicating that a column is not useful.
+- optionally `detailed_description_markdown`:
   - null for simple columns where the concise description is sufficient
   - a markdown-formatted explanation for complex columns
+- optionally `not_used`
+  - True for columns that contain no valid data or have been explicitly marked as "not useful" in the original description.
+</output>
 
-=== START OF DATABASE SCHEMA ===
+<database_schema>
 {{schema}}
-=== END OF DATABASE SCHEMA ===
+</database_schema>
 """.strip()
 
 
@@ -34,7 +45,8 @@ def format_user_prompt(column_ref: ColumnRef) -> str:
 
 class LLMOutput(BaseModel):
     revised_concise_description: str
-    detailed_description_markdown: str | None
+    detailed_description_markdown: str | None = None
+    not_used: bool = False
 
 
 class ColumnProfiler:
@@ -74,4 +86,5 @@ class ColumnProfiler:
             column = new_schema.get_column_by_ref(column_ref)
             column.description = result.revised_concise_description
             column.detailed_description_markdown = result.detailed_description_markdown
+            column.not_used = result.not_used
         return new_schema

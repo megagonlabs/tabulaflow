@@ -34,6 +34,8 @@ class SQLColumnSchema(BaseModel):
     """Concise description of the column"""
     detailed_description_markdown: str | None = None
     """Markdown-formatted detailed description of the column"""
+    not_used: bool = False
+    """Indicates that the column contains no valid data or has been explicitly marked as not useful"""
     nullable: bool
     null_ratio: float
     num_unique: int | None  # Only for text or integer columns
