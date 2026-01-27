@@ -536,8 +536,8 @@ Jan 23
 - [x] Refactor config.py
 
 Jan 26
-- [ ] preprocessors subpackage
-- [ ] preprocess.py
+- [x] preprocessors subpackage
+- [x] preprocess_and_cache.py
 - [ ] FK inference for database without FKs
 - [ ] Analyze schema linking
 
