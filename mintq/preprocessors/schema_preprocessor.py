@@ -1,4 +1,5 @@
 from typing import ClassVar
+from pydantic import BaseModel
 from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.components.column_profiler import ColumnProfiler
@@ -9,7 +10,7 @@ from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_regis
 @preprocessor_registry.register
 class SchemaPreprocessor(CachedPreprocessorMixin):
     name: ClassVar[str] = "schema_preprocessor"
-    output_type: ClassVar = SQLSchema
+    output_type: ClassVar[type[BaseModel]] = SQLSchema
 
     def __init__(self, llm: str = "openai-responses:gpt-5-mini", compress_schema: bool = True):
         self.llm = llm
