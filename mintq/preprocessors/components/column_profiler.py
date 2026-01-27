@@ -38,8 +38,6 @@ class LLMOutput(BaseModel):
 
 
 class ColumnProfiler:
-    name: ClassVar[str] = "column_profiler"
-
     def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
         self.llm = llm
         self.formatter = SQLBasicSchemaFormatter()

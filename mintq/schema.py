@@ -76,18 +76,14 @@ class SQLSchema(BaseModel):
     def num_total_columns(self) -> int:
         return sum(len(table.columns) for table in self.tables)
 
-    def get_column_by_ref(self, column_ref: ColumnRef) -> SQLColumnSchema:
-        for table in self.tables:
-            if table.schema_name == column_ref.schema_name and table.name == column_ref.table_name:
-                for column in table.columns:
-                    if column.name == column_ref.column_name:
-                        return column
-        raise ValueError(
-            f"Column {column_ref.column_name} not found in table {column_ref.table_name} in schema {column_ref.schema_name}"
-        )
-
     def get_all_table_refs(self) -> list[TableRef]:
         return [TableRef(schema_name=table.schema_name, table_name=table.name) for table in self.tables]
+
+    def get_table_by_ref(self, table_ref: TableRef) -> SQLTableSchema:
+        for table in self.tables:
+            if table.schema_name == table_ref.schema_name and table.name == table_ref.table_name:
+                return table
+        raise ValueError(f"Table {table_ref.table_name} not found.")
 
     def get_all_column_refs(self) -> list[ColumnRef]:
         return [
@@ -95,6 +91,14 @@ class SQLSchema(BaseModel):
             for table in self.tables
             for column in table.columns
         ]
+
+    def get_column_by_ref(self, column_ref: ColumnRef) -> SQLColumnSchema:
+        for table in self.tables:
+            if table.schema_name == column_ref.schema_name and table.name == column_ref.table_name:
+                for column in table.columns:
+                    if column.name == column_ref.column_name:
+                        return column
+        raise ValueError(f"Column {column_ref.column_name} not found in table {column_ref.table_name}.")
 
     def get_pk_column_refs(self) -> list[ColumnRef]:
         return [

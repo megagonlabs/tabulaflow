@@ -4,6 +4,7 @@ from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.components.column_profiler import ColumnProfiler
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
+from mintq.preprocessors.components.fk_predictor import ForeignKeyPredictor
 from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry
 
 
@@ -16,6 +17,7 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
         self.column_profiler = ColumnProfiler(llm)
+        self.foreign_key_predictor = ForeignKeyPredictor(llm)
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -27,4 +29,6 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
             schema = self.compressor.compress(schema)
         schema = await self.column_profiler.run_async(db_connector, schema)
         self._usage += self.column_profiler.usage()
+        schema = await self.foreign_key_predictor.run_async(db_connector, schema)
+        self._usage += self.foreign_key_predictor.usage()
         return schema
