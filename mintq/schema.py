@@ -64,6 +64,11 @@ class ColumnRef(BaseModel):
     column_name: str
 
 
+class TableRef(BaseModel):
+    schema_name: str | None = None
+    table_name: str
+
+
 class SQLSchema(BaseModel):
     name: str
     tables: list[SQLTableSchema]
@@ -80,6 +85,9 @@ class SQLSchema(BaseModel):
         raise ValueError(
             f"Column {column_ref.column_name} not found in table {column_ref.table_name} in schema {column_ref.schema_name}"
         )
+
+    def get_all_table_refs(self) -> list[TableRef]:
+        return [TableRef(schema_name=table.schema_name, table_name=table.name) for table in self.tables]
 
     def get_all_column_refs(self) -> list[ColumnRef]:
         return [
