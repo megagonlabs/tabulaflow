@@ -20,6 +20,12 @@ _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
 class CachedPreprocessorMixin:
+    name: ClassVar[str]
+    output_type: ClassVar[type[BaseModel]]
+
+    async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> BaseModel:
+        raise NotImplementedError()
+
     async def preprocess_async(self, db_connector: NL2QDBConnector) -> Any:
         schema_cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
         os.makedirs(schema_cache_dir, exist_ok=True)
@@ -47,4 +53,4 @@ class CachedPreprocessorMixin:
             return result
 
 
-preprocessor_registry = Registry[CachedPreprocessorMixin]("preprocessor")
+preprocessor_registry = Registry[BaseCachedDBPreprocessor]("preprocessor")
