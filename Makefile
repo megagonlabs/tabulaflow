@@ -320,3 +320,7 @@ test-spider2-agent:
 test-beaver-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset beaver --debug
 	uv run mintq/pipelines/evaluate.py --debug
+
+.PHONY: diff-schema
+diff-schema:
+	@bash -c 'diff -u <(uv run scripts/pprint_schema.py --no_description --file $(FILE1)) <(uv run scripts/pprint_schema.py --no_description --file $(FILE2)) || true'
