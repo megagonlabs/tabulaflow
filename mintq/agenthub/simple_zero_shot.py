@@ -85,7 +85,7 @@ class SimpleZeroShotNL2Q:
 
         schema = db_connector.schema
         if self.config.compress_schema:
-            schema = await SchemaCompressor().run_async(schema)
+            schema = SchemaCompressor().compress(schema)
 
         schema_str = self.formatter.format(schema)
         if len(schema_str) > SCHEMA_MAX_CHARS:

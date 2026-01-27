@@ -31,7 +31,7 @@ class GetSchemaTool:
         ```
         """
         self._metrics.num_calls += 1
-        schema = self.schema if self.compressor is None else await self.compressor.run_async(self.schema)
+        schema = self.schema if self.compressor is None else self.compressor.compress(self.schema)
         return self.formatter.format(schema)
 
     def as_pydantic_ai_tool(self) -> Tool:
