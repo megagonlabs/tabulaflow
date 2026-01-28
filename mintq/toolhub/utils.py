@@ -9,10 +9,12 @@ def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "s
     if n > max_visible_rows:
         first_n = (max_visible_rows + 1) // 2
         last_n = max_visible_rows - first_n
-        head = df.head(first_n)
-        tail = df.tail(last_n)
-        ellipsis_row = {col: "..." for col in df.columns}
-        display_df = pd.concat([head, pd.DataFrame([ellipsis_row]), tail], ignore_index=True)
+        # Use numpy arrays to avoid pd.concat issues with duplicate column names
+        head_values = df.head(first_n).values
+        tail_values = df.tail(last_n).values
+        ellipsis_row = np.array([["..."] * len(df.columns)])
+        combined = np.vstack([head_values, ellipsis_row, tail_values])
+        display_df = pd.DataFrame(combined, columns=df.columns)
     else:
         display_df = df
 
