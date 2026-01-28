@@ -81,5 +81,9 @@ class Config:
         values = ", ".join(f"{k}={v!r}" for k, v in props.items())
         return f"Config({values})"
 
+    def reload_from_env(self) -> None:
+        """Re-validate the config from environment variables."""
+        self.__init__()
+
 
 config = Config()

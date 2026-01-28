@@ -48,6 +48,7 @@ async def main_async() -> None:
         raise ValueError("Cache is not enabled. Set MINTQ_CACHE_ENABLED=1 to enable cache.")
 
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
+    config.reload_from_env()
 
     preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
     preprocessors = [preprocessor_registry.get_class(name)() for name in preprocessor_names]
