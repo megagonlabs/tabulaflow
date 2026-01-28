@@ -19,7 +19,7 @@ async def main() -> None:
         schema = SQLSchema.model_validate_json(f.read())
 
     if args.compress:
-        schema = await SchemaCompressor().run_async(schema)
+        schema = SchemaCompressor().compress(schema)
 
     formatter = formatter_registry.get_class(args.formatter)()
     schema_str = formatter.format(schema, add_description=not args.no_description)
