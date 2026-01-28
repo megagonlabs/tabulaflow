@@ -1,10 +1,12 @@
 import argparse
 import time
 import asyncio
+import os
 import logging
 from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.preprocessors.base import BaseCachedDBPreprocessor, preprocessor_registry
+from mintq.config import config
 from mintq.schema import NL2QDataset
 
 logger = logging.getLogger(__name__)
@@ -41,6 +43,11 @@ async def main_async() -> None:
     args = parser.parse_args()
     print(args)
     print()
+
+    if not config.cache_enabled:
+        raise ValueError("Cache is not enabled. Set MINTQ_CACHE_ENABLED=1 to enable cache.")
+
+    os.environ["MINTQ_CACHE_REQUIRED"] = "0"
 
     preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
     preprocessors = [preprocessor_registry.get_class(name)() for name in preprocessor_names]
