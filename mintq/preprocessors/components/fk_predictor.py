@@ -83,18 +83,14 @@ class ForeignKeyPredictor:
 
         new_schema = copy.deepcopy(schema)
 
-        def hash_fk(fk: ForeignKeySchema) -> str:
-            return (
-                tuple(sorted(fk.columns)),
-                fk.foreign_schema_name,
-                fk.foreign_table,
-                tuple(sorted(fk.foreign_columns)),
-            )
+        def _fk_target_table(fk: ForeignKeySchema) -> str:
+            return (fk.foreign_schema_name, fk.foreign_table)
 
         for table_ref, fks in zip(table_refs, all_results):
             table = new_schema.get_table_by_ref(table_ref)
             for fk in fks:
-                if any(hash_fk(fk) == hash_fk(existing_fk) for existing_fk in table.foreign_keys):
+                # Skip if there is already a foreign key to the same target table.
+                if any(_fk_target_table(fk) == _fk_target_table(existing_fk) for existing_fk in table.foreign_keys):
                     continue
                 table.foreign_keys.append(fk)
                 for col in table.columns:
