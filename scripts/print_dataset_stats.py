@@ -5,12 +5,13 @@ import asyncio
 import os
 from tabulate import tabulate
 from mintq.datahub import dataset_registry
-from mintq.metadata_synthesizers import SchemaCompressor
+from mintq.preprocessors.components import SchemaCompressor
+from mintq.preprocessors.schema_preprocessor import SchemaPreprocessor
 from mintq.schema import NL2QDataset
 from mintq.utils import dict_to_df
 
 
-MAX_DBS_TO_PRINT = 10
+MAX_DBS_TO_PRINT = 12
 
 
 async def print_per_db_ambig_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
@@ -120,7 +121,7 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
     db_names = sorted(dataset.db_connectors.keys())
     for db_name in db_names:
         schema = dataset.db_connectors[db_name].schema
-        compressed_schema = await SchemaCompressor().run_async(schema)
+        compressed_schema = SchemaCompressor().compress(schema)
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
         per_db_stats["tables_compressed"].append(len(compressed_schema.tables))
@@ -176,10 +177,51 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
     )
 
 
+async def print_preprocessed_schema_stats(dataset: NL2QDataset, tablefmt: str = "github") -> None:
+    per_db_stats = {
+        "database": [],
+        "columns": [],
+        "columns_preprocessed": [],
+        "FKs": [],
+        "FKs_preprocessed": [],
+        "concise_desc": [],
+        "detailed_desc": [],
+    }  # type: ignore
+
+    preprocessor = SchemaPreprocessor()
+
+    db_names = sorted(dataset.db_connectors.keys())
+    for db_name in db_names:
+        schema = dataset.db_connectors[db_name].schema
+        preprocessed_schema = await preprocessor.preprocess_async(dataset.db_connectors[db_name])
+        per_db_stats["database"].append(db_name)
+        per_db_stats["columns"].append(sum(len(table.columns) for table in schema.tables))
+        per_db_stats["columns_preprocessed"].append(sum(len(table.columns) for table in preprocessed_schema.tables))
+        per_db_stats["FKs"].append(sum(len(table.foreign_keys) for table in schema.tables))
+        per_db_stats["FKs_preprocessed"].append(sum(len(table.foreign_keys) for table in preprocessed_schema.tables))
+        per_db_stats["concise_desc"].append(
+            sum(1 for table in preprocessed_schema.tables for column in table.columns if column.description is not None)
+        )
+        per_db_stats["detailed_desc"].append(
+            sum(
+                1
+                for table in preprocessed_schema.tables
+                for column in table.columns
+                if column.detailed_description_markdown is not None
+            )
+        )
+    if len(dataset.db_connectors) < MAX_DBS_TO_PRINT:
+        print()
+        print("### Preprocessed Schema Stats")
+        print()
+        print(tabulate(per_db_stats, headers=list(per_db_stats.keys()), tablefmt=tablefmt, floatfmt=".2f"))
+
+
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="dev")
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev_20240627")
+    parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
     parser.add_argument("--no_cache", action="store_true")
     args = parser.parse_args()
@@ -191,12 +233,13 @@ async def main() -> None:
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
-    dataset = await dataset_loader.get_split_async(args.split)
+    dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     print(
         f"Loaded {len(dataset.tasks)} samples and {len(dataset.db_connectors)} databases from {args.dataset} {args.split} set in {time.time() - t0:.2f} seconds."
     )
 
     await print_basic_stats(dataset, args.format)
+    await print_preprocessed_schema_stats(dataset, args.format)
 
     if dataset.tasks[0].task_type == "ambig":
         await print_per_db_ambig_stats(dataset, args.format)
