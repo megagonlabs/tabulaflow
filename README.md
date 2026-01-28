@@ -541,10 +541,12 @@ Jan 26
 - [x] FK inference for database without FKs
 
 Jan 27
-- [ ] Disable columns not useful
-- [ ] Improve FK inference
-- [ ] Join ER-diagram inference
+- [x] Disable columns not useful
+- [x] Improve FK inference and column profiler
+  - [x] Rewrite prompt using xml tag syntax
 
+- [ ] ER-diagram inference
+- [ ] enforce_cache
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
