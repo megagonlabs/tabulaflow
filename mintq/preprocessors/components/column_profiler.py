@@ -27,7 +27,7 @@ Your output should include:
   - Do not repeat information already covered by column metadata (such as data type or categorical values).
   - Retain any non-redundant information from the original description, including notes indicating that a column is not useful.
 - optionally `detailed_description_markdown`: only needed for complex columns with nested structures like JSON.
-  - a markdown-formatted explanation for complex structured columns.
+  - a markdown-formatted explanation for complex JSON columns.
   - null for most columns.
 - optionally `not_used`:
   - True for columns that contain no valid data or have been explicitly marked as "not useful" in the original description.
