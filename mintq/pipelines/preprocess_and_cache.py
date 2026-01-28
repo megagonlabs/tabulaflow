@@ -56,6 +56,11 @@ async def main_async() -> None:
     await preprocess_and_cache_async(dataset, preprocessors)
     print(f"Finished preprocess and cache in {time.time() - t0:.2f} seconds.")
 
+    print()
+    print("Preprocessor usage:")
+    for preprocessor in preprocessors:
+        print(f"- {preprocessor.name}: {preprocessor.usage().api_cost_usd:.6f} USD")
+
 
 if __name__ == "__main__":
     asyncio.run(main_async())
