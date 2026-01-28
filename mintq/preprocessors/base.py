@@ -45,7 +45,7 @@ class CachedPreprocessorMixin:
                         raise NotImplementedError(f"Output type {self.output_type} is not supported for caching")
 
             if config.cache_required:
-                raise FileNotFoundError(f"Cache required but not found: {cache_path}")
+                raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
 
             result = await self._preprocess_impl_async(db_connector)
             if issubclass(self.output_type, BaseModel):

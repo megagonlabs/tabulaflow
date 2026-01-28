@@ -190,9 +190,9 @@ async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: Thro
             else:
                 with open(cache_path, "r", encoding="utf-8") as f:
                     return SQLSchema.model_validate_json(f.read())
-
+    
         if config.cache_required:
-            raise FileNotFoundError(f"Cache required but not found: {cache_path}")
+            raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
 
         dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
