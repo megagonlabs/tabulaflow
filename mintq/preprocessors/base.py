@@ -34,7 +34,7 @@ class CachedPreprocessorMixin:
         lock = _db_locks[db_connector.global_id]
         async with lock:
             if config.cache_enabled and os.path.exists(cache_path):
-                if config.cache_refresh:
+                if config.cache_overwrite:
                     os.remove(cache_path)
                 else:
                     # if output type is pydantic
@@ -43,6 +43,9 @@ class CachedPreprocessorMixin:
                             return self.output_type.model_validate_json(f.read())
                     else:
                         raise NotImplementedError(f"Output type {self.output_type} is not supported for caching")
+
+            if config.cache_required:
+                raise FileNotFoundError(f"Cache required but not found: {cache_path}")
 
             result = await self._preprocess_impl_async(db_connector)
             if issubclass(self.output_type, BaseModel):

@@ -4,12 +4,17 @@ import os
 class Config:
     DEFAULT_CACHE_DIR = "cache"
     DEFAULT_CACHE_ENABLED = True
-    DEFAULT_CACHE_REFRESH = False
+    DEFAULT_CACHE_OVERWRITE = False
+    DEFAULT_CACHE_REQUIRED = False
     DEFAULT_INSTRUMENT_ENABLED = True
     DEFAULT_INSTRUMENT_PREFIX = "exp"
     DEFAULT_DF_MAX_ROWS = None
     DEFAULT_MAX_LLM_CONCURRENCY = 16
     DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
+
+    def __init__(self):
+        if self.cache_required and self.cache_overwrite:
+            raise ValueError("cache_required and cache_overwrite cannot be True at the same time")
 
     @property
     def cache_dir(self) -> str:
@@ -24,10 +29,18 @@ class Config:
         return self.DEFAULT_CACHE_ENABLED
 
     @property
-    def cache_refresh(self) -> bool:
-        if (value := os.getenv("MINTQ_CACHE_REFRESH")) is not None:
+    def cache_overwrite(self) -> bool:
+        """Overwrite existing cache files."""
+        if (value := os.getenv("MINTQ_CACHE_OVERWRITE")) is not None:
             return value == "1"
-        return self.DEFAULT_CACHE_REFRESH
+        return self.DEFAULT_CACHE_OVERWRITE
+
+    @property
+    def cache_required(self) -> bool:
+        """Raise an error if cache is not found."""
+        if (value := os.getenv("MINTQ_CACHE_REQUIRED")) is not None:
+            return value == "1"
+        return self.DEFAULT_CACHE_REQUIRED
 
     @property
     def instrument_enabled(self) -> bool:
