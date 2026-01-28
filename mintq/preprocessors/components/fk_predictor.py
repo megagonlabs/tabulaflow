@@ -11,18 +11,20 @@ from mintq.toolhub.run_query import RunQueryNoParamsTool
 from mintq.formatters.sql_basic import SQLBasicSchemaFormatter
 
 FK_PREDICTOR_SYSTEM_PROMPT = """
-
+<goal>
 You are an AI database expert tasked with discovering and documenting missing foreign key constraints for a specific database table.
 
 - Identify all missing outgoing foreign key relationships defined from this table to other tables.
-- For each foreign key, populate the `columns` field as follows:
-  - Use a list containing a single column name for single-column foreign keys.
-  - Use a list containing all participating column names for composite foreign keys.
-- You may use the `run_query` tool to inspect data and verify potential foreign key relationships.
+  - For each foreign key, populate the `columns` field as follows:
+    - Use a list containing a single column name for single-column foreign keys.
+    - Use a list containing all participating column names for composite foreign keys.
+  - You may use the `run_query` tool to inspect data and verify potential foreign key relationships.
+  - Only include meaningful foreign key relationships that create new connections between tables.
+</goal>
 
-=== START OF DATABASE SCHEMA ===
+<database_schema>
 {{schema}}
-=== END OF DATABASE SCHEMA ===
+</database_schema>
 """.strip()
 
 
