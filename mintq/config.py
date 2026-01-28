@@ -14,7 +14,10 @@ class Config:
 
     def __init__(self):
         if self.cache_required and self.cache_overwrite:
-            raise ValueError("cache_required and cache_overwrite cannot be True at the same time")
+            raise ValueError("MINTQ_CACHE_REQUIRED and MINTQ_CACHE_OVERWRITE cannot be 1 at the same time")
+
+        if self.cache_required and not self.cache_enabled:
+            raise ValueError("MINTQ_CACHE_REQUIRED cannot be 1 when MINTQ_CACHE_ENABLED is 0")
 
     @property
     def cache_dir(self) -> str:
