@@ -544,6 +544,7 @@ Jan 27
 - [x] Disable columns not useful
 - [x] Improve FK inference and column profiler
   - [x] Rewrite prompt using xml tag syntax
+  - [x] Skip FKs to the same target table
 
 - [ ] ER-diagram inference
 - [ ] enforce_cache
