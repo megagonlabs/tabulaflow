@@ -546,8 +546,10 @@ Jan 27
   - [x] Rewrite prompt using xml tag syntax
   - [x] Skip FKs to the same target table
 
+Jan 28
+- [ ] MINTQ_CACHE_REQUIRED=1
 - [ ] ER-diagram inference
-- [ ] enforce_cache
+
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
