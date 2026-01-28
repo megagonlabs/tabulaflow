@@ -8,7 +8,7 @@ from pydantic_ai import Agent
 from mintq.schema import SQLSchema, Usage, ForeignKeySchema, TableRef
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.toolhub.run_query import RunQueryNoParamsTool
-from mintq.formatters.sql_basic import SQLBasicSchemaFormatter
+from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 FK_PREDICTOR_SYSTEM_PROMPT = """
 <goal>
@@ -51,7 +51,7 @@ class LLMOutput(BaseModel):
 class ForeignKeyPredictor:
     def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
         self.llm = llm
-        self.formatter = SQLBasicSchemaFormatter()
+        self.formatter = SQLDDLSchemaFormatter()
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
