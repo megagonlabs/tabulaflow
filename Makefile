@@ -323,4 +323,4 @@ test-beaver-agent:
 
 .PHONY: diff-schema
 diff-schema:
-	@bash -c 'diff -u <(uv run scripts/pprint_schema.py --no_description --file $(FILE1)) <(uv run scripts/pprint_schema.py --no_description --file $(FILE2)) || true'
+	@bash -c 'diff -u --color=always <(uv run scripts/pprint_schema.py --no_description --file cache/schemas/bird-sql+$(DB).json) <(uv run scripts/pprint_schema.py --no_description --file cache/preprocessors/schema_preprocessor/bird-sql+$(DB).json) || true'
