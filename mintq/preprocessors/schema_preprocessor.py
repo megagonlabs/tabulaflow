@@ -27,8 +27,11 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
-        schema = await self.column_profiler.run_async(db_connector, schema)
-        self._usage += self.column_profiler.usage()
         schema = await self.foreign_key_predictor.run_async(db_connector, schema)
         self._usage += self.foreign_key_predictor.usage()
+        schema = await self.column_profiler.run_async(db_connector, schema)
+        self._usage += self.column_profiler.usage()
+        for table in schema.tables:
+            table.columns = [col for col in table.columns if not col.not_used]
+        schema.tables = [table for table in schema.tables if table.columns]
         return schema
