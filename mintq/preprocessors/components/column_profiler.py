@@ -31,6 +31,7 @@ Your output should include:
   - a markdown-formatted explanation for complex columns
 - optionally `not_used`
   - True for columns that contain no valid data or have been explicitly marked as "not useful" in the original description.
+  - Do not set this to true if the column is a primary key or is involved in a foreign key.
 </output>
 
 <database_schema>
