@@ -20,7 +20,17 @@ You are an AI database expert tasked with discovering and documenting missing fo
     - Use a list containing all participating column names for composite foreign keys.
   - You may use the `run_query` tool to inspect data and verify potential foreign key relationships.
   - Only include meaningful foreign key relationships that create new connections between tables.
+  - The foreign key should reference a column that is unique in the target table.
 </goal>
+
+<good_example>
+student.school_id -> school.school_id
+</good_example>
+
+<bad_example>
+This is not a foreign key because the referenced column is not unique in the target table:
+student.school_id -> teacher.school_id
+</bad_example>
 
 <database_schema>
 {{schema}}
