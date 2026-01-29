@@ -17,10 +17,11 @@ You are an AI database expert tasked with generating an ER diagram for a databas
 - Model logical entities (conceptual/business nouns), each mapped to one or more physical tables or views.
 - Common mapping cases when choosing logical_entities and source_tables:
   1) One logical entity <-> one table
+     - Note that if the entity has other attributes stored in a separate table (vertical partitioning), you should follow case 2) and consider them as one entity.
   2) One logical entity <-> multiple tables (vertical partitioning / extension tables / inheritance / history split):
      - Include multiple EntitySourceTable entries under the same logical entity.
      - mapping_description must explain the partitioning (e.g., “core columns”, “extended profile fields”, “SCD history records”).
-     - Example: A "User" entity mapped to both `users` (core info) and `user_profiles` (extended attributes).
+     - Example: A "User" entity mapped to both `users` (core info) and `profiles` (extended attributes).
 </entities_requirements>
 
 <relationships_requirements>
@@ -98,7 +99,7 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin):
     name: ClassVar[str] = "er_diagram_synthesizer"
     output_type: ClassVar[type[BaseModel]] = ERDiagram
 
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini", compress_schema: bool = True):
+    def __init__(self, llm: str = "openai-responses:gpt-5", compress_schema: bool = True):
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
         self.formatter = SQLDDLSchemaFormatter()
