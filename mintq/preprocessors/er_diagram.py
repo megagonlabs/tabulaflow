@@ -11,21 +11,21 @@ from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.toolhub.run_query import RunQueryNoParamsTool
 
 ER_DIAGRAM_SYNTHESIS_PROMPT = """
-You are an AI database expert tasked with generating an ER diagram for a database.
+You are an AI database expert tasked with generating an ER diagram given a physical database schema.
 
 <entities_requirements>
-- Model logical entities (conceptual/business nouns), each mapped to one or more physical tables or views.
-- Common mapping cases when choosing logical_entities and source_tables:
-  1) One logical entity <-> one table
+- Model conceptual entities (business nouns), each mapped to one or more physical tables.
+- Common mapping cases when choosing conceptual_entities and source_tables:
+  1) One conceptual entity <-> one table
      - Note that if the entity has other attributes stored in a separate table (vertical partitioning), you should follow case 2) and consider them as one entity.
-  2) One logical entity <-> multiple tables (vertical partitioning / extension tables / inheritance / history split):
-     - Include multiple EntitySourceTable entries under the same logical entity.
+  2) One conceptual entity <-> multiple tables (vertical partitioning / extension tables / inheritance / history split):
+     - Include multiple EntitySourceTable entries under the same conceptual entity.
      - mapping_description must explain the partitioning (e.g., “core columns”, “extended profile fields”, “SCD history records”).
      - Example: A "User" entity mapped to both `users` (core info) and `profiles` (extended attributes).
 </entities_requirements>
 
 <relationships_requirements>
-- Model relationships as conceptual associations between logical entities with clear meaning, cardinality, and optionality.
+- Model relationships as associations between conceptual entities with clear meaning, cardinality, and optionality.
 - Common mapping cases:
   1) 1-to-1 or 1-to-many implemented by FK or non-enforced columns:
      - For self-relationships, entity participates twice with distinct roles, e.g., manager vs report).
@@ -35,12 +35,12 @@ You are an AI database expert tasked with generating an ER diagram for a databas
 </relationships_requirements>
 
 <granularity_level>
-- Produce an ER diagram at the LOGICAL-ENTITY level, where each logical entity maps to at least one PHYSICAL TABLE or VIEW via source_tables.
-- Avoid creating overly abstract entities that do not correspond to any table/view.
+- Produce an ER diagram at the CONCEPTUAL-ENTITY level, where each conceptual entity maps to at least one PHYSICAL TABLE via source_tables.
+- Avoid creating overly abstract entities that do not correspond to any table.
 </granularity_level>
 
 <entity_order>
-- Output logical_entities in a readable, stable order using this algorithm:
+- Output conceptual_entities in a readable, stable order using this algorithm:
   1) If the ER graph has multiple disconnected components, output components separately (largest component first), without mixing.
   2) Within each component, group entities by domain/module if clearly implied by naming/schema (e.g., auth.*, billing.*, catalog.*).
      If not clear, skip module grouping.
@@ -61,9 +61,9 @@ class EntitySourceTable(BaseModel):
     )
 
 
-class ERDLogicalEntity(BaseModel):
-    name: str = Field(description="The name of the logical entity, in PascalCase.")
-    description: str = Field(description="A 1-2 sentence description of the logical entity.")
+class ERDConceptualEntity(BaseModel):
+    name: str = Field(description="The name of the conceptual entity, in PascalCase.")
+    description: str = Field(description="A 1-2 sentence description of the conceptual entity.")
     source_tables: list[EntitySourceTable]
 
 
@@ -86,12 +86,14 @@ class ERDRelationship(BaseModel):
 
 
 class ERDiagram(BaseModel):
-    logical_entities: list[ERDLogicalEntity]
+    conceptual_entities: list[ERDConceptualEntity]
     relationships: list[ERDRelationship]
 
 
 def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> str:
-    return "Generate an ER diagram for the following schema:\n" + formatter.format(schema, add_description=False)
+    return "Generate the conceptual ER diagram for the following physical database schema:\n" + formatter.format(
+        schema, add_description=False
+    )
 
 
 @preprocessor_registry.register
