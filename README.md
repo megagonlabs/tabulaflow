@@ -547,9 +547,14 @@ Jan 27
   - [x] Skip FKs to the same target table
 
 Jan 28
-- [ ] MINTQ_CACHE_REQUIRED=1
-- [ ] ER-diagram inference
+- [x] MINTQ_CACHE_REQUIRED=1
+- [x] ERDiagramSynthesizer
 
+Jan 29
+- [ ] ER diagram formatter
+- [ ] get_table_schema for non-linked tables
+- [ ] Reduce schema linking size with ER diagram
+- [ ] NULLABLE columns
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
@@ -644,7 +649,7 @@ pg_dump -h localhost -p 5441 -U postgres -d github_repos > github_repos.sql
 
 #### Start a new postgres database from the .sql file
 
-```
+```bash
 docker run -d --name postgres_financial \
   -e POSTGRES_USER=postgres \
   -e POSTGRES_PASSWORD=postgres \
