@@ -16,10 +16,11 @@ You are an AI database expert tasked with generating an ER diagram for a databas
 <entities_requirements>
 - Model logical entities (conceptual/business nouns), each mapped to one or more physical tables or views.
 - Common mapping cases when choosing logical_entities and source_tables:
-  1) One logical entity <-> one table (common): create 1 EntitySourceTable entry.
+  1) One logical entity <-> one table
   2) One logical entity <-> multiple tables (vertical partitioning / extension tables / inheritance / history split):
      - Include multiple EntitySourceTable entries under the same logical entity.
      - mapping_description must explain the partitioning (e.g., “core columns”, “extended profile fields”, “SCD history records”).
+     - Example: A "User" entity mapped to both `users` (core info) and `user_profiles` (extended attributes).
 </entities_requirements>
 
 <relationships_requirements>
