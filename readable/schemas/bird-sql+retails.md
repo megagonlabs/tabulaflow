@@ -1,0 +1,106 @@
+```sql
+-- Database: retails
+
+-- Table: customer (150000 rows)
+CREATE TABLE customer (
+    c_custkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    c_mktsegment TEXT,  -- values: {'AUTOMOBILE', 'BUILDING', 'FURNITURE', 'HOUSEHOLD', 'MACHINERY'}
+    c_nationkey INTEGER,  -- e.g. 8; FK -> nation.n_nationkey
+    c_name TEXT,  -- e.g. 'Customer#000000001'
+    c_address TEXT,  -- e.g. 'KwX3hMHjZ6'
+    c_phone TEXT,  -- e.g. '937-241-3198'
+    c_acctbal REAL,  -- e.g. 3560.030
+    c_comment TEXT,  -- e.g. 'ironic excuses detect slyly silent requests. requests according to the exc'
+    FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey)
+);
+
+-- Table: lineitem (4423659 rows)
+CREATE TABLE lineitem (
+    l_shipdate DATE,  -- e.g. '1995-08-16'
+    l_orderkey INTEGER NOT NULL,  -- e.g. 1; FK -> orders.o_orderkey
+    l_discount REAL NOT NULL,  -- e.g. 0.100
+    l_extendedprice REAL NOT NULL,  -- e.g. 58303.080
+    l_suppkey INTEGER NOT NULL,  -- e.g. 6296; FK (composite)
+    l_quantity INTEGER NOT NULL,  -- e.g. 33
+    l_returnflag TEXT,  -- values: {'A', 'N', 'R'}
+    l_partkey INTEGER NOT NULL,  -- e.g. 98768; FK (composite)
+    l_linestatus TEXT,  -- values: {'F', 'O'}
+    l_tax REAL NOT NULL,  -- e.g. 0.060
+    l_commitdate DATE,  -- e.g. '1995-07-12'
+    l_receiptdate DATE,  -- e.g. '1995-09-14'
+    l_shipmode TEXT,  -- values: {'AIR', 'FOB', 'MAIL', 'RAIL', 'REG AIR', 'SHIP', 'TRUCK'}
+    l_linenumber INTEGER NOT NULL,  -- e.g. 1
+    l_shipinstruct TEXT,  -- values: {'COLLECT COD', 'DELIVER IN PERSON', 'NONE', 'TAKE BACK RETURN'}
+    l_comment TEXT,  -- e.g. 'carefully bo'
+    PRIMARY KEY (l_orderkey, l_linenumber),
+    FOREIGN KEY (l_orderkey) REFERENCES orders(o_orderkey),
+    FOREIGN KEY (l_partkey, l_suppkey) REFERENCES partsupp(ps_partkey, ps_suppkey)
+);
+
+-- Table: nation (25 rows)
+CREATE TABLE nation (
+    n_nationkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 0
+    n_name TEXT,  -- e.g. 'ALGERIA'
+    n_regionkey INTEGER,  -- e.g. 0; FK -> region.r_regionkey
+    n_comment TEXT,  -- e.g. 'slyly express pinto beans cajole idly. deposits us...hely unusual packages? fluffily final accounts x-r'
+    FOREIGN KEY (n_regionkey) REFERENCES region(r_regionkey)
+);
+
+-- Table: orders (1500000 rows)
+CREATE TABLE orders (
+    o_orderdate DATE,  -- e.g. '1995-04-19'
+    o_orderkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    o_custkey INTEGER NOT NULL,  -- e.g. 73100; FK -> customer.c_custkey
+    o_orderpriority TEXT,  -- values: {'1-URGENT', '2-HIGH', '3-MEDIUM', '4-NOT SPECIFIED', '5-LOW'}
+    o_shippriority INTEGER,  -- e.g. 0
+    o_clerk TEXT,  -- e.g. 'Clerk#000000916'
+    o_orderstatus TEXT,  -- values: {'F', 'O', 'P'}
+    o_totalprice REAL,  -- e.g. 203198.560
+    o_comment TEXT,  -- e.g. 'final packages sleep blithely packa'
+    FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey)
+);
+
+-- Table: part (200000 rows)
+CREATE TABLE part (
+    p_partkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    p_type TEXT,  -- e.g. 'LARGE PLATED TIN'
+    p_size INTEGER,  -- e.g. 31
+    p_brand TEXT,  -- e.g. 'Brand#43'
+    p_name TEXT,  -- e.g. 'burlywood plum powder puff mint'
+    p_container TEXT,  -- e.g. 'LG BAG'
+    p_mfgr TEXT,  -- values: {'Manufacturer#1', 'Manufacturer#2', 'Manufacturer#3', 'Manufacturer#4', 'Manufacturer#5'}
+    p_retailprice REAL,  -- e.g. 901.000
+    p_comment TEXT  -- e.g. 'blithely busy reque'
+);
+
+-- Table: partsupp (800000 rows)
+CREATE TABLE partsupp (
+    ps_partkey INTEGER NOT NULL,  -- e.g. 1; FK -> part.p_partkey
+    ps_suppkey INTEGER NOT NULL,  -- e.g. 2; FK -> supplier.s_suppkey
+    ps_supplycost REAL NOT NULL,  -- e.g. 400.750
+    ps_availqty INTEGER,  -- e.g. 1111
+    ps_comment TEXT,  -- e.g. 'carefully ironic deposits use against the carefull... accounts. slyly silent platelets nag quickly even'
+    PRIMARY KEY (ps_partkey, ps_suppkey),
+    FOREIGN KEY (ps_partkey) REFERENCES part(p_partkey),
+    FOREIGN KEY (ps_suppkey) REFERENCES supplier(s_suppkey)
+);
+
+-- Table: region (5 rows)
+CREATE TABLE region (
+    r_regionkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 0
+    r_name TEXT,  -- values: {'AFRICA', 'AMERICA', 'ASIA', 'EUROPE', 'MIDDLE EAST'}
+    r_comment TEXT  -- values: {'accounts cajole carefully according to the carefully exp', 'asymptotes sublate after the r', 'furiously express accounts wake sly', 'requests affix quickly final tithes. blithely even packages above the a', 'slyly even theodolites are carefully ironic pinto beans. platelets above the unusual accounts aff'}
+);
+
+-- Table: supplier (10000 rows)
+CREATE TABLE supplier (
+    s_suppkey INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    s_nationkey INTEGER,  -- e.g. 13; FK -> nation.n_nationkey
+    s_comment TEXT,  -- e.g. 'blithely final pearls are. instructions thra'
+    s_name TEXT,  -- e.g. 'Supplier#000000001'
+    s_address TEXT,  -- e.g. ',wWs4pnykQOFl8mgVCU8EZMXqZs1w'
+    s_phone TEXT,  -- e.g. '800-807-9579'
+    s_acctbal REAL,  -- e.g. 3082.860
+    FOREIGN KEY (s_nationkey) REFERENCES nation(n_nationkey)
+);
+```

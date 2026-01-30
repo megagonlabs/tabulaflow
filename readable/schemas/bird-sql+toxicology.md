@@ -1,0 +1,36 @@
+```sql
+-- Database: toxicology
+
+-- Table: atom (12333 rows)
+CREATE TABLE atom (
+    atom_id TEXT NOT NULL PRIMARY KEY,  -- e.g. 'TR000_1'
+    molecule_id TEXT,  -- e.g. 'TR000'; FK -> molecule.molecule_id
+    element TEXT,  -- e.g. 'cl'
+    FOREIGN KEY (molecule_id) REFERENCES molecule(molecule_id)
+);
+
+-- Table: bond (12379 rows)
+CREATE TABLE bond (
+    bond_id TEXT NOT NULL PRIMARY KEY,  -- e.g. 'TR000_1_2'
+    molecule_id TEXT,  -- e.g. 'TR000'; FK -> molecule.molecule_id
+    bond_type TEXT,  -- values: {'#', '-', '='}
+    FOREIGN KEY (molecule_id) REFERENCES molecule(molecule_id)
+);
+
+-- Table: connected (24758 rows)
+CREATE TABLE connected (
+    atom_id TEXT NOT NULL,  -- e.g. 'TR000_1'; FK -> atom.atom_id
+    atom_id2 TEXT NOT NULL,  -- e.g. 'TR000_2'; FK -> atom.atom_id
+    bond_id TEXT,  -- e.g. 'TR000_1_2'; FK -> bond.bond_id
+    PRIMARY KEY (atom_id, atom_id2),
+    FOREIGN KEY (bond_id) REFERENCES bond(bond_id),
+    FOREIGN KEY (atom_id2) REFERENCES atom(atom_id),
+    FOREIGN KEY (atom_id) REFERENCES atom(atom_id)
+);
+
+-- Table: molecule (343 rows)
+CREATE TABLE molecule (
+    molecule_id TEXT NOT NULL PRIMARY KEY,  -- e.g. 'TR000'
+    label TEXT  -- values: {'+', '-'}
+);
+```

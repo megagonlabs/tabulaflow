@@ -1,0 +1,31 @@
+```mermaid
+erDiagram
+    Member {
+        table member "Core member profile, contact info, officer position, shirt size, and references to major and ZIP code."
+    }
+    Event {
+        table event "Event master record including name, schedule, type, location, notes, and lifecycle status."
+    }
+    Budget {
+        table budget "Per-event budget categories with amounts, spend, remaining, and event linkage."
+    }
+    Expense {
+        table expense "Expense details including description, date, cost, approval flag, and links to submitting member and funded budget."
+    }
+    Income {
+        table income "Income entries with date received, amount, source, notes, and recording member."
+    }
+    Major {
+        table major "Lookup of academic majors and their affiliated department and college."
+    }
+    ZipCode {
+        table zip_code "ZIP code directory with type, city, county, state, and abbreviation."
+    }
+    Event }o--o{ Member : "EventAttendance"
+    Event |o--|{ Budget : "EventBudgeting"
+    Budget |o--|{ Expense : "BudgetExpenses"
+    Member |o--|{ Expense : "MemberExpenseSubmission"
+    Member |o--|{ Income : "MemberIncomeCollection"
+    Major |o--o{ Member : "MemberMajor"
+    ZipCode |o--o{ Member : "MemberLocation"
+```

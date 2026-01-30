@@ -1,9 +1,0 @@
-Entities:
-  Patient - An individual receiving care whose demographics and admission/diagnosis snaps...
-  Examination - A clinical examination/visit for a patient including examination date, autoim...
-  LabResult - A dated laboratory results panel for a patient capturing many biochemical and...
-
-Relationships:
-  Patient *--PatientHasExaminations--0..1 Examination
-  Patient *--PatientHasLabResults--1 LabResult
-  Examination 0..1--SameDayAssessment--* LabResult

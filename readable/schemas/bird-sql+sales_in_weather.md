@@ -1,0 +1,45 @@
+```sql
+-- Database: sales_in_weather
+
+-- Table: relation (45 rows)
+CREATE TABLE relation (
+    store_nbr INTEGER PRIMARY KEY,  -- e.g. 1; FK -> sales_in_weather.store_nbr
+    station_nbr INTEGER,  -- e.g. 1; FK -> weather.station_nbr
+    FOREIGN KEY (store_nbr) REFERENCES sales_in_weather(store_nbr),
+    FOREIGN KEY (station_nbr) REFERENCES weather(station_nbr)
+);
+
+-- Table: sales_in_weather (4617600 rows)
+CREATE TABLE sales_in_weather (
+    date DATE,  -- e.g. '2012-01-01'
+    store_nbr INTEGER,  -- e.g. 1
+    item_nbr INTEGER,  -- e.g. 1
+    units INTEGER,  -- e.g. 0
+    PRIMARY KEY (date, store_nbr, item_nbr)
+);
+
+-- Table: weather (20517 rows)
+CREATE TABLE weather (
+    station_nbr INTEGER,  -- e.g. 1
+    date DATE,  -- e.g. '2012-01-01'
+    tmax INTEGER,  -- e.g. 52
+    tmin INTEGER,  -- e.g. 31
+    tavg INTEGER,  -- e.g. 42
+    depart INTEGER,  -- e.g. 16
+    dewpoint INTEGER,  -- e.g. 36
+    wetbulb INTEGER,  -- e.g. 40
+    heat INTEGER,  -- e.g. 23
+    cool INTEGER,  -- e.g. 0
+    sunrise TEXT,  -- e.g. '07:16:00'
+    sunset TEXT,  -- e.g. '16:26:00'
+    codesum TEXT,  -- e.g. 'RA FZFG BR'
+    snowfall REAL,  -- e.g. 0.000
+    preciptotal REAL,  -- e.g. 0.050
+    stnpressure REAL,  -- e.g. 29.780
+    sealevel REAL,  -- e.g. 29.920
+    resultspeed REAL,  -- e.g. 3.600
+    resultdir INTEGER,  -- e.g. 20
+    avgspeed REAL,  -- e.g. 4.600
+    PRIMARY KEY (station_nbr, date)
+);
+```

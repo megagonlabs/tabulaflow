@@ -1,0 +1,51 @@
+```sql
+-- Database: disney
+
+-- Table: characters (56 rows)
+CREATE TABLE characters (
+    movie_title TEXT PRIMARY KEY,  -- e.g. 'Aladdin'
+    release_date TEXT,  -- e.g. '21-Dec-37'
+    hero TEXT,  -- e.g. 'Snow White'; FK -> "voice-actors".character
+    villian TEXT,  -- e.g. 'Evil Queen'
+    song TEXT,  -- e.g. 'Some Day My Prince Will Come'
+    FOREIGN KEY (hero) REFERENCES "voice-actors"(character)
+);
+
+-- Table: director (56 rows)
+CREATE TABLE director (
+    name TEXT PRIMARY KEY,  -- e.g. '101 Dalmatians'; FK -> characters.movie_title
+    director TEXT,  -- e.g. 'David Hand'
+    FOREIGN KEY (name) REFERENCES characters(movie_title)
+);
+
+-- Table: movies_total_gross (579 rows)
+CREATE TABLE movies_total_gross (
+    movie_title TEXT,  -- e.g. '101 Dalmatians'; FK -> characters.movie_title
+    release_date TEXT,  -- e.g. 'Jan 25, 1961'
+    genre TEXT,  -- e.g. 'Musical'
+    MPAA_rating TEXT,  -- values: {'', 'G', 'Not Rated', 'PG', 'PG-13', 'R'}
+    total_gross TEXT,  -- e.g. '$184,925,485'
+    inflation_adjusted_gross TEXT,  -- e.g. '$5,228,953,251'
+    PRIMARY KEY (movie_title, release_date),
+    FOREIGN KEY (movie_title) REFERENCES characters(movie_title)
+);
+
+-- Table: revenue (26 rows)
+CREATE TABLE revenue (
+    Year INTEGER PRIMARY KEY,  -- e.g. 1991
+    "Studio Entertainment[NI 1]" REAL,  -- e.g. 2593.000
+    "Disney Consumer Products[NI 2]" REAL,  -- e.g. 724.000
+    "Disney Interactive[NI 3][Rev 1]" INTEGER,  -- e.g. 174
+    "Walt Disney Parks and Resorts" REAL,  -- e.g. 2794.000
+    "Disney Media Networks" TEXT,  -- e.g. '359'
+    Total INTEGER  -- e.g. 6111
+);
+
+-- Table: "voice-actors" (922 rows)
+CREATE TABLE "voice-actors" (
+    character TEXT PRIMARY KEY,  -- e.g. 'Abby Mallard'
+    "voice-actor" TEXT,  -- e.g. 'Joan Cusack'
+    movie TEXT,  -- e.g. 'Chicken Little'; FK -> characters.movie_title
+    FOREIGN KEY (movie) REFERENCES characters(movie_title)
+);
+```

@@ -1,0 +1,16 @@
+```mermaid
+erDiagram
+    Molecule {
+        table molecule "Core molecule records (identifier and label)."
+    }
+    Atom {
+        table atom "Atom records scoped to a parent molecule (element type and molecule reference)."
+    }
+    Bond {
+        table bond "Bond records scoped to a parent molecule (bond type and molecule reference)."
+    }
+    Molecule |o--o{ Atom : "MoleculeHasAtoms"
+    Molecule |o--o{ Bond : "MoleculeHasBonds"
+    Bond ||--o{ Atom : "BondConnectsAtoms_endpoint1"
+    Bond ||--o{ Atom : "BondConnectsAtoms_endpoint2"
+```

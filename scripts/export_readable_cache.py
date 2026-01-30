@@ -18,7 +18,7 @@ def main() -> None:
     for f in os.listdir(input_dir):
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
         schema_str = SQLDDLSchemaFormatter().format(schema)
-        with open(os.path.join(output_dir, f.replace(".json", ".txt")), "w") as f:
+        with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 
@@ -28,7 +28,7 @@ def main() -> None:
     for f in os.listdir(input_dir):
         er_diagram = ERDiagram.model_validate_json(open(os.path.join(input_dir, f)).read())
         er_diagram_str = ERDiagramMermaidFormatter().format(er_diagram)
-        with open(os.path.join(output_dir, f.replace(".json", ".mmd")), "w") as f:
+        with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
             f.write(er_diagram_str)
     print(f"Exported {len(os.listdir(input_dir))} ER diagrams to {output_dir}")
 
@@ -38,7 +38,7 @@ def main() -> None:
     for f in os.listdir(input_dir):
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
         schema_str = SQLDDLSchemaFormatter().format(schema)
-        with open(os.path.join(output_dir, f.replace(".json", ".txt")), "w") as f:
+        with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 

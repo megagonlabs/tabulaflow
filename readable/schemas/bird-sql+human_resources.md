@@ -1,0 +1,37 @@
+```sql
+-- Database: human_resources
+
+-- Table: employee (25 rows)
+CREATE TABLE employee (
+    ssn TEXT PRIMARY KEY,  -- e.g. '000-01-0000'
+    lastname TEXT,  -- e.g. 'Milgrom'
+    firstname TEXT,  -- e.g. 'Patricia'
+    hiredate TEXT,  -- e.g. '10/1/04'
+    salary TEXT,  -- e.g. 'US$57,500.00'
+    gender TEXT,  -- values: {'F', 'M'}
+    performance TEXT,  -- values: {'Average', 'Good', 'Poor'}
+    positionID INTEGER,  -- e.g. 2; FK -> position.positionID
+    locationID INTEGER,  -- e.g. 2; FK -> location.locationID
+    FOREIGN KEY (locationID) REFERENCES location(locationID),
+    FOREIGN KEY (positionID) REFERENCES position(positionID)
+);
+
+-- Table: location (8 rows)
+CREATE TABLE location (
+    locationID INTEGER PRIMARY KEY,  -- e.g. 1
+    locationcity TEXT,  -- values: {'Atlanta', 'Boston', 'Chicago', 'Denver', 'Los Angeles', 'Miami', 'New York City', 'Salt Lake City'}
+    address TEXT,  -- values: {'1400 Main St', '1650 Washington Blvd', '210 Biscayne Blvd', '3 Commons Blvd', '312 Mount View Dr', '316 S. State St', '450 Peachtree Rd', '500 Loop Highway'}
+    state TEXT,  -- values: {'CA', 'CO', 'FL', 'GA', 'IL', 'MA', 'NY', 'UT'}
+    zipcode INTEGER,  -- e.g. 30316
+    officephone TEXT  -- values: {'(205)607-5289', '(305)787-9999', '(312)444-6666', '(404)333-5555', '(518)256-3100', '(617)123-4444', '(705)639-0227', '(801)459-6652'}
+);
+
+-- Table: position (4 rows)
+CREATE TABLE position (
+    positionID INTEGER PRIMARY KEY,  -- e.g. 1
+    positiontitle TEXT,  -- values: {'Account Representative', 'Manager', 'Regional Manager', 'Trainee'}
+    educationrequired TEXT,  -- values: {'2 year degree', '4 year degree', '6 year degree'}
+    minsalary TEXT,  -- values: {'US$100,000.00', 'US$18,000.00', 'US$25,000.00', 'US$50,000.00'}
+    maxsalary TEXT  -- values: {'US$150,000.00', 'US$25,000.00', 'US$250,000.00', 'US$75,000.00'}
+);
+```

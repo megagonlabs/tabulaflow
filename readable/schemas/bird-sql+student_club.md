@@ -1,0 +1,92 @@
+```sql
+-- Database: student_club
+
+-- Table: attendance (326 rows)
+CREATE TABLE attendance (
+    link_to_event TEXT,  -- e.g. 'rec2N69DMcrqN9PJC'; FK -> event.event_id
+    link_to_member TEXT,  -- e.g. 'recD078PnS3x2doBe'; FK -> member.member_id
+    PRIMARY KEY (link_to_event, link_to_member),
+    FOREIGN KEY (link_to_event) REFERENCES event(event_id),
+    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+);
+
+-- Table: budget (52 rows)
+CREATE TABLE budget (
+    budget_id TEXT PRIMARY KEY,  -- e.g. 'rec0QmEc3cSQFQ6V2'
+    category TEXT,  -- values: {'Advertisement', 'Club T-Shirts', 'Food', 'Parking', 'Speaker Gifts'}
+    spent REAL,  -- e.g. 67.810
+    remaining REAL,  -- e.g. 7.190
+    amount INTEGER,  -- e.g. 75
+    event_status TEXT,  -- values: {'Closed', 'Open', 'Planning'}
+    link_to_event TEXT,  -- e.g. 'recI43CzsZ0Q625ma'; FK -> event.event_id
+    FOREIGN KEY (link_to_event) REFERENCES event(event_id)
+);
+
+-- Table: event (42 rows)
+CREATE TABLE event (
+    event_id TEXT PRIMARY KEY,  -- e.g. 'rec0Si5cQ4rJRVzd6'
+    event_name TEXT,  -- e.g. 'March Meeting'
+    event_date TEXT,  -- e.g. '2020-03-10T12:00:00'
+    type TEXT,  -- values: {'Budget', 'Community Service', 'Election', 'Game', 'Guest Speaker', 'Meeting', 'Registration', 'Social'}
+    notes TEXT,  -- e.g. 'All active members can vote for new officers between 4pm-8pm.'
+    location TEXT,  -- e.g. 'MU 215'
+    status TEXT  -- values: {'Closed', 'Open', 'Planning'}
+);
+
+-- Table: expense (32 rows)
+CREATE TABLE expense (
+    expense_id TEXT PRIMARY KEY,  -- e.g. 'rec017x6R3hQqkLAo'
+    expense_description TEXT,  -- e.g. 'Post Cards, Posters'
+    expense_date TEXT,  -- e.g. '2019-08-20'
+    cost REAL,  -- e.g. 122.060
+    approved TEXT,  -- values: {'true'}
+    link_to_member TEXT,  -- values: {'rec4BLdZHS2Blfp4v', 'recD078PnS3x2doBe', 'recro8T1MPMwRadVH'}; FK -> member.member_id
+    link_to_budget TEXT,  -- e.g. 'recvKTAWAFKkVNnXQ'; FK -> budget.budget_id
+    FOREIGN KEY (link_to_budget) REFERENCES budget(budget_id),
+    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+);
+
+-- Table: income (36 rows)
+CREATE TABLE income (
+    income_id TEXT PRIMARY KEY,  -- e.g. 'rec0s9ZrO15zhzUeE'
+    date_received TEXT,  -- e.g. '2019-10-17'
+    amount INTEGER,  -- e.g. 50
+    source TEXT,  -- values: {'Dues', 'Fundraising', 'School Appropration', 'Sponsorship'}
+    notes TEXT,  -- values: {'Ad revenue for use on flyers used to advertise upcoming events.', 'Annual funding from Student Government.', 'Secured donations to help pay for speaker gifts.'}
+    link_to_member TEXT,  -- e.g. 'reccW7q1KkhSKZsea'; FK -> member.member_id
+    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+);
+
+-- Table: major (113 rows)
+CREATE TABLE major (
+    major_id TEXT PRIMARY KEY,  -- e.g. 'rec06DF6vZ1CyPKpc'
+    major_name TEXT,  -- e.g. 'Outdoor Product Design and Development'
+    department TEXT,  -- e.g. 'School of Applied Sciences, Technology and Education'
+    college TEXT  -- values: {'College of Agriculture and Applied Sciences', 'College of Education & Human Services', 'College of Engineering', 'College of Humanities and Social Sciences', 'College of Natural Resources', 'College of Science', 'College of the Arts', 'School of Business'}
+);
+
+-- Table: member (33 rows)
+CREATE TABLE member (
+    member_id TEXT PRIMARY KEY,  -- e.g. 'rec1x5zBFIqoOuPW8'
+    first_name TEXT,  -- e.g. 'Angela'
+    last_name TEXT,  -- e.g. 'Sanders'
+    email TEXT,  -- e.g. 'angela.sanders@lpu.edu'
+    position TEXT,  -- values: {'Inactive', 'Member', 'President', 'Secretary', 'Treasurer', 'Vice President'}
+    t_shirt_size TEXT,  -- values: {'Large', 'Medium', 'Small', 'X-Large'}
+    phone TEXT,  -- e.g. '(651) 928-4507'
+    zip INTEGER,  -- e.g. 55108; FK -> zip_code.zip_code
+    link_to_major TEXT,  -- e.g. 'recxK3MHQFbR9J5uO'; FK -> major.major_id
+    FOREIGN KEY (link_to_major) REFERENCES major(major_id),
+    FOREIGN KEY (zip) REFERENCES zip_code(zip_code)
+);
+
+-- Table: zip_code (41877 rows)
+CREATE TABLE zip_code (
+    zip_code INTEGER PRIMARY KEY,  -- e.g. 501
+    type TEXT,  -- values: {'PO Box', 'Standard', 'Unique'}
+    city TEXT,  -- e.g. 'Holtsville'
+    county TEXT,  -- e.g. 'Suffolk County'
+    state TEXT,  -- e.g. 'New York'
+    short_state TEXT  -- e.g. 'NY'
+);
+```

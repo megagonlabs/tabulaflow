@@ -29,7 +29,7 @@ class ERDiagramMermaidFormatter:
             if rel_line:
                 lines.append(rel_line)
 
-        return "\n".join(lines)
+        return "```mermaid\n" + "\n".join(lines) + "\n```"
 
     def _format_entity(self, entity: ERDConceptualEntity) -> str:
         """Format a single entity with its source tables as attributes."""

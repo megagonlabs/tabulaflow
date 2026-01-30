@@ -54,7 +54,7 @@ class SQLDDLSchemaFormatter:
             lines.append("")  # Blank line between tables
             lines.append(self.format_table(table, pk_fk_column_only, add_description))
 
-        return "\n".join(lines)
+        return "```sql\n" + "\n".join(lines) + "\n```"
 
     def format_table(
         self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False

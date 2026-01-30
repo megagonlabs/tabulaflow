@@ -1,0 +1,97 @@
+```sql
+-- Database: financial
+
+-- Table: account (4500 rows)
+CREATE TABLE account (
+    account_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    district_id INTEGER NOT NULL,  -- e.g. 18; FK -> district.district_id
+    frequency TEXT NOT NULL,  -- values: {'POPLATEK MESICNE', 'POPLATEK PO OBRATU', 'POPLATEK TYDNE'}
+    date DATE NOT NULL,  -- e.g. '1995-03-24'
+    FOREIGN KEY (district_id) REFERENCES district(district_id)
+);
+
+-- Table: card (892 rows)
+CREATE TABLE card (
+    card_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    disp_id INTEGER NOT NULL,  -- e.g. 9; FK -> disp.disp_id
+    type TEXT NOT NULL,  -- values: {'classic', 'gold', 'junior'}
+    issued DATE NOT NULL,  -- e.g. '1998-10-16'
+    FOREIGN KEY (disp_id) REFERENCES disp(disp_id)
+);
+
+-- Table: client (5369 rows)
+CREATE TABLE client (
+    client_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    gender TEXT NOT NULL,  -- values: {'F', 'M'}
+    birth_date DATE NOT NULL,  -- e.g. '1970-12-13'
+    district_id INTEGER NOT NULL,  -- e.g. 18; FK -> district.district_id
+    FOREIGN KEY (district_id) REFERENCES district(district_id)
+);
+
+-- Table: disp (5369 rows)
+CREATE TABLE disp (
+    disp_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    client_id INTEGER NOT NULL,  -- e.g. 1; FK -> client.client_id
+    account_id INTEGER NOT NULL,  -- e.g. 1; FK -> account.account_id
+    type TEXT NOT NULL,  -- values: {'DISPONENT', 'OWNER'}
+    FOREIGN KEY (account_id) REFERENCES account(account_id),
+    FOREIGN KEY (client_id) REFERENCES client(client_id)
+);
+
+-- Table: district (77 rows)
+CREATE TABLE district (
+    district_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    A2 TEXT NOT NULL,  -- e.g. 'Hl.m. Praha'
+    A3 TEXT NOT NULL,  -- values: {'Prague', 'central Bohemia', 'east Bohemia', 'north Bohemia', 'north Moravia', 'south Bohemia', 'south Moravia', 'west Bohemia'}
+    A4 TEXT NOT NULL,  -- e.g. '1204953'
+    A5 TEXT NOT NULL,  -- e.g. '0'
+    A6 TEXT NOT NULL,  -- e.g. '0'
+    A7 TEXT NOT NULL,  -- e.g. '0'
+    A8 INTEGER NOT NULL,  -- e.g. 1
+    A10 REAL NOT NULL,  -- e.g. 100.000
+    A11 INTEGER NOT NULL,  -- e.g. 12541
+    A12 REAL,  -- e.g. 0.200
+    A13 REAL NOT NULL,  -- e.g. 0.430
+    A14 INTEGER NOT NULL,  -- e.g. 167
+    A15 INTEGER,  -- e.g. 85677
+    A16 INTEGER NOT NULL  -- e.g. 99107
+);
+
+-- Table: loan (682 rows)
+CREATE TABLE loan (
+    loan_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 4959
+    account_id INTEGER NOT NULL,  -- e.g. 2; FK -> account.account_id
+    date DATE NOT NULL,  -- e.g. '1994-01-05'
+    amount INTEGER NOT NULL,  -- e.g. 80952
+    duration INTEGER NOT NULL,  -- e.g. 24
+    payments REAL NOT NULL,  -- e.g. 3373.000
+    status TEXT NOT NULL,  -- values: {'A', 'B', 'C', 'D'}
+    FOREIGN KEY (account_id) REFERENCES account(account_id)
+);
+
+-- Table: order (6471 rows)
+CREATE TABLE order (
+    order_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 29401
+    account_id INTEGER NOT NULL,  -- e.g. 1; FK -> account.account_id
+    bank_to TEXT NOT NULL,  -- values: {'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}
+    account_to INTEGER NOT NULL,  -- e.g. 87144583
+    amount REAL NOT NULL,  -- e.g. 2452.000
+    k_symbol TEXT NOT NULL,  -- values: {'', 'LEASING', 'POJISTNE', 'SIPO', 'UVER'}
+    FOREIGN KEY (account_id) REFERENCES account(account_id)
+);
+
+-- Table: trans (1056320 rows)
+CREATE TABLE trans (
+    trans_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    account_id INTEGER NOT NULL,  -- e.g. 1; FK -> account.account_id
+    date DATE NOT NULL,  -- e.g. '1995-03-24'
+    type TEXT NOT NULL,  -- values: {'PRIJEM', 'VYBER', 'VYDAJ'}
+    operation TEXT,  -- values: {'PREVOD NA UCET', 'PREVOD Z UCTU', 'VKLAD', 'VYBER KARTOU', 'VYBER'}
+    amount INTEGER NOT NULL,  -- e.g. 1000
+    balance INTEGER NOT NULL,  -- e.g. 1000
+    k_symbol TEXT,  -- values: {' ', 'DUCHOD', 'POJISTNE', 'SANKC. UROK', 'SIPO', 'SLUZBY', 'UROK', 'UVER'}
+    bank TEXT,  -- values: {'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}
+    account INTEGER,  -- e.g. 41403269
+    FOREIGN KEY (account_id) REFERENCES account(account_id)
+);
+```

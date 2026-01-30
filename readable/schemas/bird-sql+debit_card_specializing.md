@@ -1,0 +1,46 @@
+```sql
+-- Database: debit_card_specializing
+
+-- Table: customers (32461 rows)
+CREATE TABLE customers (
+    CustomerID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 3
+    Segment TEXT,  -- values: {'KAM', 'LAM', 'SME'}
+    Currency TEXT  -- values: {'CZK', 'EUR'}
+);
+
+-- Table: gasstations (5716 rows)
+CREATE TABLE gasstations (
+    GasStationID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 44
+    ChainID INTEGER,  -- e.g. 13
+    Country TEXT,  -- values: {'CZE', 'SVK'}
+    Segment TEXT  -- values: {'Discount', 'Noname', 'Other', 'Premium', 'Value for money'}
+);
+
+-- Table: products (591 rows)
+CREATE TABLE products (
+    ProductID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    Description TEXT  -- e.g. 'Rucní zadání'
+);
+
+-- Table: transactions_1k (1000 rows)
+CREATE TABLE transactions_1k (
+    TransactionID INTEGER PRIMARY KEY,  -- e.g. 1
+    Date DATE,  -- e.g. '2012-08-24'
+    Time TEXT,  -- e.g. '09:41:00'
+    CustomerID INTEGER,  -- e.g. 31543
+    CardID INTEGER,  -- e.g. 486621
+    GasStationID INTEGER,  -- e.g. 3704
+    ProductID INTEGER,  -- e.g. 2
+    Amount INTEGER,  -- e.g. 28
+    Price REAL  -- e.g. 672.640
+);
+
+-- Table: yearmonth (383282 rows)
+CREATE TABLE yearmonth (
+    CustomerID INTEGER NOT NULL,  -- e.g. 39; FK -> customers.CustomerID
+    Date TEXT NOT NULL,  -- e.g. '201112'
+    Consumption REAL,  -- e.g. 528.300
+    PRIMARY KEY (CustomerID, Date),
+    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID)
+);
+```
