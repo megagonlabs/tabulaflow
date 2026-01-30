@@ -1,3 +1,4 @@
+import copy
 import datetime
 from decimal import Decimal
 from enum import Enum
@@ -133,6 +134,33 @@ class SQLSchema(BaseModel):
                         )
 
         return result
+
+    def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
+        schema = copy.deepcopy(self)
+
+        def normalize(s: str | None) -> str | None:
+            return s.lower() if s is not None and case_insensitive else s
+
+        column_ref_set = {
+            (normalize(c.schema_name), normalize(c.table_name), normalize(c.column_name)) for c in column_refs
+        }
+        table_ref_set = {(normalize(t.schema_name), normalize(t.table_name)) for t in column_refs}
+
+        for table in schema.tables:
+            new_columns = []
+            for column in table.columns:
+                if (normalize(table.schema_name), normalize(table.name), normalize(column.name)) in column_ref_set:
+                    new_columns.append(column)
+                elif (
+                    keep_pk
+                    and column.primary_key_type
+                    and (normalize(table.schema_name), normalize(table.name)) in table_ref_set
+                ):
+                    new_columns.append(column)
+            table.columns = new_columns
+
+        schema.tables = [table for table in schema.tables if table.columns]
+        return schema
 
 
 class SystemMessage(BaseModel):
