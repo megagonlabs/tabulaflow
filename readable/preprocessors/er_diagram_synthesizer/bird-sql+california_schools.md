@@ -11,9 +11,8 @@ erDiagram
     }
 
     %% FROM schools s JOIN frpm f ON f.CDSCode = s.CDSCode
-
     Institution |o--|| FRPMSnapshot2014_2015 : "InstitutionHasFRPMSnapshot2014_2015"
-    %% FROM schools s JOIN satscores sat ON sat.cds = s.CDSCode
 
+    %% FROM schools s JOIN satscores sat ON sat.cds = s.CDSCode
     Institution |o--|| SATResult : "InstitutionHasSATResult"
 ```

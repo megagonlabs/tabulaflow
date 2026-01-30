@@ -25,11 +25,10 @@ class ERDiagramMermaidFormatter:
             lines.append(self._format_entity(entity))
 
         # Format relationships (with optional join comments)
-        lines.append("")
         for rel in er_diagram.relationships:
             rel_lines = self._format_relationship(rel)
             if rel_lines:
-                lines.append(rel_lines)
+                lines.append("\n" + rel_lines)
 
         return "```mermaid\n" + "\n".join(lines) + "\n```"
 
@@ -87,7 +86,7 @@ class ERDiagramMermaidFormatter:
                 label = self._sanitize_string(f"{rel.name}_{other.role}")
                 lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
 
-        return "\n\n".join(lines)
+        return "\n".join(lines)
 
     def _mermaid_cardinality_left(self, max_cardinality: str, participation: str) -> str:
         """
