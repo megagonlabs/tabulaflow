@@ -14,6 +14,7 @@ class ERDiagramMermaidFormatter:
     name: ClassVar[str] = "er_diagram_mermaid"
     include_source_tables: bool = True
     include_descriptions: bool = True
+    include_join_snippets: bool = True
 
     def format(self, er_diagram: ERDiagram) -> str:
         """Format the complete ER diagram in Mermaid syntax."""
@@ -23,11 +24,11 @@ class ERDiagramMermaidFormatter:
         for entity in er_diagram.conceptual_entities:
             lines.append(self._format_entity(entity))
 
-        # Format relationships
+        # Format relationships (with optional join comments)
         for rel in er_diagram.relationships:
-            rel_line = self._format_relationship(rel)
-            if rel_line:
-                lines.append(rel_line)
+            rel_lines = self._format_relationship(rel)
+            if rel_lines:
+                lines.append(rel_lines)
 
         return "```mermaid\n" + "\n".join(lines) + "\n```"
 
@@ -54,9 +55,16 @@ class ERDiagramMermaidFormatter:
         return self._sanitize_name(table_name)
 
     def _format_relationship(self, rel: ERDRelationship) -> str:
-        """Format a relationship line in Mermaid syntax."""
+        """Format a relationship line in Mermaid syntax with optional join comment."""
         if len(rel.participants) < 2:
             return ""
+
+        lines = []
+
+        # Add join SQL as a Mermaid comment if requested
+        if self.include_join_snippets and rel.join_sql_snippet:
+            join_sql = self._sanitize_comment(rel.join_sql_snippet)
+            lines.append(f"    %% {join_sql}")
 
         # For binary relationships, use standard Mermaid ER notation
         if len(rel.participants) == 2:
@@ -66,10 +74,9 @@ class ERDiagramMermaidFormatter:
             e1 = self._sanitize_name(p1.entity)
             e2 = self._sanitize_name(p2.entity)
             label = self._sanitize_string(rel.name)
-            return f'    {e1} {left_card}--{right_card} {e2} : "{label}"'
+            lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
         else:
             # N-ary relationships: create lines for each pair from first entity
-            lines = []
             first = rel.participants[0]
             for other in rel.participants[1:]:
                 left_card = self._mermaid_cardinality_left(first.max_cardinality, first.participation)
@@ -78,7 +85,8 @@ class ERDiagramMermaidFormatter:
                 e2 = self._sanitize_name(other.entity)
                 label = self._sanitize_string(f"{rel.name}_{other.role}")
                 lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
-            return "\n".join(lines)
+
+        return "\n".join(lines)
 
     def _mermaid_cardinality_left(self, max_cardinality: str, participation: str) -> str:
         """
@@ -111,3 +119,7 @@ class ERDiagramMermaidFormatter:
     def _sanitize_string(self, s: str) -> str:
         """Sanitize a string for use in Mermaid labels (escape quotes)."""
         return s.replace('"', "'").replace("\n", " ")
+
+    def _sanitize_comment(self, s: str) -> str:
+        """Sanitize a string for use in Mermaid comments (single line)."""
+        return s.replace("\n", " ").strip()
