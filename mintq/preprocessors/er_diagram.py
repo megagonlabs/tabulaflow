@@ -89,17 +89,21 @@ class ERDiagram(BaseModel):
     conceptual_entities: list[ERDConceptualEntity]
     relationships: list[ERDRelationship]
 
-    def trim(self, table_refs: list[TableRef]) -> "ERDiagram":
+    def trim(self, table_refs: list[TableRef], case_insensitive: bool = True) -> "ERDiagram":
         """Trim the ER diagram to only include entities and relationships relevant to the given tables."""
+
+        def normalize(s: str | None) -> str | None:
+            return s.lower() if s is not None and case_insensitive else s
+
         # Convert table_refs to a set of (schema_name, table_name) tuples for fast lookup
-        table_ref_set = {(ref.schema_name, ref.table_name) for ref in table_refs}
+        table_ref_set = {(normalize(ref.schema_name), normalize(ref.table_name)) for ref in table_refs}
 
         # Keep entities that have at least one source table in the given table_refs
         kept_entities: list[ERDConceptualEntity] = []
         kept_entity_names: set[str] = set()
         for entity in self.conceptual_entities:
             for source_table in entity.source_tables:
-                if (source_table.schema_name, source_table.table_name) in table_ref_set:
+                if (normalize(source_table.schema_name), normalize(source_table.table_name)) in table_ref_set:
                     kept_entities.append(entity)
                     kept_entity_names.add(entity.name)
                     break
