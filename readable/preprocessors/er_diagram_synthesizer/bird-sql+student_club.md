@@ -21,18 +21,11 @@ erDiagram
     ZipCode {
         table zip_code "ZIP code directory with type, city, county, state, and abbreviation."
     }
-    %% FROM event JOIN attendance ON attendance.link_to_event = event.event_id JOIN member ON member.member_id = attendance.link_to_member
-    Event }o--o{ Member : "EventAttendance"
-    %% FROM event JOIN budget ON budget.link_to_event = event.event_id
-    Event |o--|{ Budget : "EventBudgeting"
-    %% FROM budget JOIN expense ON expense.link_to_budget = budget.budget_id
-    Budget |o--|{ Expense : "BudgetExpenses"
-    %% FROM member JOIN expense ON expense.link_to_member = member.member_id
-    Member |o--|{ Expense : "MemberExpenseSubmission"
-    %% FROM member JOIN income ON income.link_to_member = member.member_id
-    Member |o--|{ Income : "MemberIncomeCollection"
-    %% FROM member JOIN major ON major.major_id = member.link_to_major
-    Major |o--o{ Member : "MemberMajor"
-    %% FROM member JOIN zip_code ON zip_code.zip_code = member.zip
-    ZipCode |o--o{ Member : "MemberLocation"
+    Event }o--o{ Member : "EventAttendance" %% FROM event JOIN attendance ON attendance.link_to_event = event.event_id JOIN member ON member.member_id = attendance.link_to_member
+    Event |o--|{ Budget : "EventBudgeting" %% FROM event JOIN budget ON budget.link_to_event = event.event_id
+    Budget |o--|{ Expense : "BudgetExpenses" %% FROM budget JOIN expense ON expense.link_to_budget = budget.budget_id
+    Member |o--|{ Expense : "MemberExpenseSubmission" %% FROM member JOIN expense ON expense.link_to_member = member.member_id
+    Member |o--|{ Income : "MemberIncomeCollection" %% FROM member JOIN income ON income.link_to_member = member.member_id
+    Major |o--o{ Member : "MemberMajor" %% FROM member JOIN major ON major.major_id = member.link_to_major
+    ZipCode |o--o{ Member : "MemberLocation" %% FROM member JOIN zip_code ON zip_code.zip_code = member.zip
 ```

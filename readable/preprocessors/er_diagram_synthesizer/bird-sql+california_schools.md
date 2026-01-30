@@ -9,8 +9,6 @@ erDiagram
     SATResult {
         table satscores "SAT participation counts and average section scores; rtype indicates school ('S') vs district ('D') level; one row per CDSCode."
     }
-    %% FROM schools s JOIN frpm f ON f.CDSCode = s.CDSCode
-    Institution |o--|| FRPMSnapshot2014_2015 : "InstitutionHasFRPMSnapshot2014_2015"
-    %% FROM schools s JOIN satscores sat ON sat.cds = s.CDSCode
-    Institution |o--|| SATResult : "InstitutionHasSATResult"
+    Institution |o--|| FRPMSnapshot2014_2015 : "InstitutionHasFRPMSnapshot2014_2015" %% FROM schools s JOIN frpm f ON f.CDSCode = s.CDSCode
+    Institution |o--|| SATResult : "InstitutionHasSATResult" %% FROM schools s JOIN satscores sat ON sat.cds = s.CDSCode
 ```
