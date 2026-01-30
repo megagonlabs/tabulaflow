@@ -551,9 +551,14 @@ Jan 28
 - [x] ERDiagramSynthesizer
 
 Jan 29
-- [ ] ER diagram formatter
+- [x] ER diagram Mermaid formatter
+- [x] export_readable_cache.py
+
+Jan 30
+- [ ] Experiment 191:Direct ER diagram embedded
+- [ ] ER diagram linking, reduce schema linking size with ER diagram
+
 - [ ] get_table_schema for non-linked tables
-- [ ] Reduce schema linking size with ER diagram
 - [ ] NULLABLE columns
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
