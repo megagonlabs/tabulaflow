@@ -39,23 +39,62 @@ erDiagram
     ConstructorResult {
         table constructorResults "Fact table by (raceId, constructorId) with points and textual status; FKs to races and constructors."
     }
-    Season }o--|| Race : "SeasonHasRaces" %% FROM seasons s JOIN races r ON r.year = s.year
-    Circuit }o--|| Race : "CircuitHostsRaces" %% FROM circuits c JOIN races r ON r.circuitId = c.circuitId
-    Race }o--|| RaceResult : "RaceHasResults" %% FROM races r JOIN results res ON res.raceId = r.raceId
-    Driver }o--|| RaceResult : "ResultInvolvesDriver" %% FROM drivers d JOIN results res ON res.driverId = d.driverId
-    Constructor }o--|| RaceResult : "ResultInvolvesConstructor" %% FROM constructors c JOIN results res ON res.constructorId = c.constructorId
-    RaceResult ||--o{ Status : "ResultHasStatus" %% FROM results res JOIN status st ON st.statusId = res.statusId
-    Race }o--|| QualifyingAttempt : "RaceHasQualifyingAttempts" %% FROM races r JOIN qualifying q ON q.raceId = r.raceId
-    Driver }o--|| QualifyingAttempt : "QualifyingInvolvesDriver" %% FROM drivers d JOIN qualifying q ON q.driverId = d.driverId
-    Constructor }o--|| QualifyingAttempt : "QualifyingInvolvesConstructor" %% FROM constructors c JOIN qualifying q ON q.constructorId = c.constructorId
-    Race }o--|| LapTime : "RaceHasLapTimes" %% FROM races r JOIN lapTimes lt ON lt.raceId = r.raceId
-    Driver }o--|| LapTime : "LapTimeForDriver" %% FROM drivers d JOIN lapTimes lt ON lt.driverId = d.driverId
-    Race }o--|| PitStop : "RaceHasPitStops" %% FROM races r JOIN pitStops ps ON ps.raceId = r.raceId
-    Driver }o--|| PitStop : "PitStopForDriver" %% FROM drivers d JOIN pitStops ps ON ps.driverId = d.driverId
-    Race }o--|| DriverStanding : "RaceHasDriverStandings" %% FROM races r JOIN driverStandings ds ON ds.raceId = r.raceId
-    Driver }o--|| DriverStanding : "DriverHasStandings" %% FROM drivers d JOIN driverStandings ds ON ds.driverId = d.driverId
-    Race }o--|| ConstructorStanding : "RaceHasConstructorStandings" %% FROM races r JOIN constructorStandings cs ON cs.raceId = r.raceId
-    Constructor }o--|| ConstructorStanding : "ConstructorHasStandings" %% FROM constructors c JOIN constructorStandings cs ON cs.constructorId = c.constructorId
-    Race }o--|| ConstructorResult : "RaceHasConstructorResults" %% FROM races r JOIN constructorResults cr ON cr.raceId = r.raceId
-    Constructor }o--|| ConstructorResult : "ConstructorHasConstructorResults" %% FROM constructors c JOIN constructorResults cr ON cr.constructorId = c.constructorId
+
+    %% FROM seasons s JOIN races r ON r.year = s.year
+
+    Season }o--|| Race : "SeasonHasRaces"
+    %% FROM circuits c JOIN races r ON r.circuitId = c.circuitId
+
+    Circuit }o--|| Race : "CircuitHostsRaces"
+    %% FROM races r JOIN results res ON res.raceId = r.raceId
+
+    Race }o--|| RaceResult : "RaceHasResults"
+    %% FROM drivers d JOIN results res ON res.driverId = d.driverId
+
+    Driver }o--|| RaceResult : "ResultInvolvesDriver"
+    %% FROM constructors c JOIN results res ON res.constructorId = c.constructorId
+
+    Constructor }o--|| RaceResult : "ResultInvolvesConstructor"
+    %% FROM results res JOIN status st ON st.statusId = res.statusId
+
+    RaceResult ||--o{ Status : "ResultHasStatus"
+    %% FROM races r JOIN qualifying q ON q.raceId = r.raceId
+
+    Race }o--|| QualifyingAttempt : "RaceHasQualifyingAttempts"
+    %% FROM drivers d JOIN qualifying q ON q.driverId = d.driverId
+
+    Driver }o--|| QualifyingAttempt : "QualifyingInvolvesDriver"
+    %% FROM constructors c JOIN qualifying q ON q.constructorId = c.constructorId
+
+    Constructor }o--|| QualifyingAttempt : "QualifyingInvolvesConstructor"
+    %% FROM races r JOIN lapTimes lt ON lt.raceId = r.raceId
+
+    Race }o--|| LapTime : "RaceHasLapTimes"
+    %% FROM drivers d JOIN lapTimes lt ON lt.driverId = d.driverId
+
+    Driver }o--|| LapTime : "LapTimeForDriver"
+    %% FROM races r JOIN pitStops ps ON ps.raceId = r.raceId
+
+    Race }o--|| PitStop : "RaceHasPitStops"
+    %% FROM drivers d JOIN pitStops ps ON ps.driverId = d.driverId
+
+    Driver }o--|| PitStop : "PitStopForDriver"
+    %% FROM races r JOIN driverStandings ds ON ds.raceId = r.raceId
+
+    Race }o--|| DriverStanding : "RaceHasDriverStandings"
+    %% FROM drivers d JOIN driverStandings ds ON ds.driverId = d.driverId
+
+    Driver }o--|| DriverStanding : "DriverHasStandings"
+    %% FROM races r JOIN constructorStandings cs ON cs.raceId = r.raceId
+
+    Race }o--|| ConstructorStanding : "RaceHasConstructorStandings"
+    %% FROM constructors c JOIN constructorStandings cs ON cs.constructorId = c.constructorId
+
+    Constructor }o--|| ConstructorStanding : "ConstructorHasStandings"
+    %% FROM races r JOIN constructorResults cr ON cr.raceId = r.raceId
+
+    Race }o--|| ConstructorResult : "RaceHasConstructorResults"
+    %% FROM constructors c JOIN constructorResults cr ON cr.constructorId = c.constructorId
+
+    Constructor }o--|| ConstructorResult : "ConstructorHasConstructorResults"
 ```

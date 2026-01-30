@@ -25,6 +25,7 @@ class ERDiagramMermaidFormatter:
             lines.append(self._format_entity(entity))
 
         # Format relationships (with optional join comments)
+        lines.append("")
         for rel in er_diagram.relationships:
             rel_lines = self._format_relationship(rel)
             if rel_lines:
@@ -55,15 +56,16 @@ class ERDiagramMermaidFormatter:
         return self._sanitize_name(table_name)
 
     def _format_relationship(self, rel: ERDRelationship) -> str:
-        """Format a relationship line in Mermaid syntax with optional inline join comment."""
+        """Format a relationship line in Mermaid syntax with optional join comment above."""
         if len(rel.participants) < 2:
             return ""
 
-        # Build join comment suffix
-        join_comment = ""
+        lines = []
+
+        # Add join SQL as a Mermaid comment on its own line (inline comments break GitHub renderer)
         if self.include_join_snippets and rel.join_sql_snippet:
             join_sql = self._sanitize_comment(rel.join_sql_snippet)
-            join_comment = f" %% {join_sql}"
+            lines.append(f"    %% {join_sql}")
 
         # For binary relationships, use standard Mermaid ER notation
         if len(rel.participants) == 2:
@@ -73,21 +75,19 @@ class ERDiagramMermaidFormatter:
             e1 = self._sanitize_name(p1.entity)
             e2 = self._sanitize_name(p2.entity)
             label = self._sanitize_string(rel.name)
-            return f'    {e1} {left_card}--{right_card} {e2} : "{label}"{join_comment}'
+            lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
         else:
             # N-ary relationships: create lines for each pair from first entity
-            lines = []
             first = rel.participants[0]
-            for i, other in enumerate(rel.participants[1:]):
+            for other in rel.participants[1:]:
                 left_card = self._mermaid_cardinality_left(first.max_cardinality, first.participation)
                 right_card = self._mermaid_cardinality_right(other.max_cardinality, other.participation)
                 e1 = self._sanitize_name(first.entity)
                 e2 = self._sanitize_name(other.entity)
                 label = self._sanitize_string(f"{rel.name}_{other.role}")
-                # Only add join comment to the first line for n-ary relationships
-                comment = join_comment if i == 0 else ""
-                lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"{comment}')
-            return "\n".join(lines)
+                lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
+
+        return "\n\n".join(lines)
 
     def _mermaid_cardinality_left(self, max_cardinality: str, participation: str) -> str:
         """

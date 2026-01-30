@@ -24,11 +24,26 @@ erDiagram
     AccountTransaction {
         table financial_trans "Atomic transaction entries for accounts; includes type, operation, amount, balance, and optional k_symbol/bank/account."
     }
-    Account }|--o| District : "AccountInDistrict" %% FROM account JOIN district ON account.district_id = district.district_id
-    Client }|--o| District : "ClientInDistrict" %% FROM client JOIN district ON client.district_id = district.district_id
-    Client }o--o{ Account : "ClientAccessesAccount" %% FROM client JOIN disp ON disp.client_id = client.client_id JOIN account ON account.account_id = disp.account_id
-    Card ||--o{ AccountAccess : "CardAssignedToAccountAccess" %% FROM card JOIN disp ON card.disp_id = disp.disp_id
-    Loan ||--o{ Account : "LoanBelongsToAccount" %% FROM loan JOIN account ON loan.account_id = account.account_id
-    PaymentOrder ||--o{ Account : "PaymentOrderFromAccount" %% FROM "order" JOIN account ON "order".account_id = account.account_id
-    AccountTransaction ||--o{ Account : "TransactionOnAccount" %% FROM trans JOIN account ON trans.account_id = account.account_id
+
+    %% FROM account JOIN district ON account.district_id = district.district_id
+
+    Account }|--o| District : "AccountInDistrict"
+    %% FROM client JOIN district ON client.district_id = district.district_id
+
+    Client }|--o| District : "ClientInDistrict"
+    %% FROM client JOIN disp ON disp.client_id = client.client_id JOIN account ON account.account_id = disp.account_id
+
+    Client }o--o{ Account : "ClientAccessesAccount"
+    %% FROM card JOIN disp ON card.disp_id = disp.disp_id
+
+    Card ||--o{ AccountAccess : "CardAssignedToAccountAccess"
+    %% FROM loan JOIN account ON loan.account_id = account.account_id
+
+    Loan ||--o{ Account : "LoanBelongsToAccount"
+    %% FROM "order" JOIN account ON "order".account_id = account.account_id
+
+    PaymentOrder ||--o{ Account : "PaymentOrderFromAccount"
+    %% FROM trans JOIN account ON trans.account_id = account.account_id
+
+    AccountTransaction ||--o{ Account : "TransactionOnAccount"
 ```
