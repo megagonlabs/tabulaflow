@@ -7,6 +7,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
 from mintq.schema import NL2QTask, Usage, Trajectory, SQLSchema
+from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.config import config
 from mintq.db_connector import NL2QDBConnector
 from mintq.toolhub import BaseTool
@@ -68,8 +69,8 @@ class TaskRunContext:
     preprocessed_schema: SQLSchema
     schema_formatter: BaseSQLSchemaFormatter
     usage: Usage
-    tools: dict[str, BaseTool] = field(default_factory=dict)
-    trajectories: list[Trajectory] = field(default_factory=list)
+    tools: dict[str, BaseTool]
+    trajectories: list[Trajectory]
 
 
 class BasicAgentConfig(BaseModel):

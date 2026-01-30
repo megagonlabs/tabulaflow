@@ -326,6 +326,7 @@ class AmbigStructuredSQLAgent:
             schema_formatter=self.formatter,
             usage=Usage.create(llm=self.config.llm),
             tools=tools,
+            trajectories=[],
         )
 
         if self.config.use_gold_ambiguity_points:

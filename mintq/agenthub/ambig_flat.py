@@ -297,6 +297,7 @@ class AmbigFlatSQLAgent:
             schema_formatter=self.formatter,
             usage=Usage.create(llm=self.config.llm),
             tools=tools,
+            trajectories=[],
         )
 
         interpretations = await self._disambiguate_interpretations_async(ctx)

@@ -3,6 +3,7 @@ import copy
 import json
 import jinja2
 import time
+from dataclasses import dataclass
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Agent
@@ -17,7 +18,7 @@ from mintq.schema import (
     Trajectory,
     ColumnRef,
 )
-from mintq.preprocessors import SchemaPreprocessor
+from mintq.preprocessors import ERDiagramSynthesizer, SchemaPreprocessor
 from mintq.toolhub import (
     BaseTool,
     RunQueryNoParamsTool,
@@ -33,6 +34,8 @@ from mintq.agenthub.utils import (
     TaskRunContext,
 )
 from mintq.utils import extract_code, extract_all_source_columns
+from mintq.preprocessors.er_diagram import ERDiagram
+from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 
 
 class SQLAgentConfig(BasicAgentConfig):
@@ -46,9 +49,16 @@ def format_question(task: SimpleNL2QTask) -> str:
     return res
 
 
+@dataclass
+class SQLAgentContext(TaskRunContext):
+    er_diagram: ERDiagram
+    er_diagram_formatter: ERDiagramMermaidFormatter
+
+
 SQL_AGENT_SYSTEM_PROMPT = """
 You are MintQ agent, a helpful AI database expert that can translate natural language questions into {{language}} queries by leveraging the given tools.
 
+<goal>
 - Do not attempt to resolve additional ambiguities with the user. Proceed with the provided information.
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions. Do not infer any conditions that are not explicitly stated in the question.
@@ -58,16 +68,22 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 {%- if language == "snowflake" %}
 - For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
 {%- endif %}
+</goal>
 {%- if dataset_instructions %}
 
-=== START OF DATASET INSTRUCTIONS ===
+<dataset_instructions>
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ===
-
-=== START OF DATABASE SCHEMA ===
-{{schema}}
-=== END OF DATABASE SCHEMA ===
+</dataset_instructions>
 {%- endif %}
+
+<er_diagram>
+{{er_diagram}}
+</er_diagram>
+
+<database_schema>
+{{schema}}
+</database_schema>
+
 """.strip()
 
 EXPAND_COLUMNS_PROMPT = """
@@ -125,7 +141,7 @@ class SchemaLinker:
     def __init__(self, config: SQLAgentConfig):
         self.config = config
 
-    async def _generate_sql_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> PredQuery:
+    async def _generate_sql_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> PredQuery:
         db_connector = ctx.db_connector
 
         tools: dict[str, BaseTool] = {
@@ -139,6 +155,7 @@ class SchemaLinker:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
+            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram),
         )
 
         agent = Agent[None, None](  # type: ignore
@@ -157,7 +174,7 @@ class SchemaLinker:
         return pred_query
 
     async def expand_schema_async(
-        self, ctx: TaskRunContext, schema_to_expand: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
+        self, ctx: SQLAgentContext, schema_to_expand: SQLSchema, task: SimpleNL2QTask, batch_size: int = 5
     ) -> SQLSchema:
         class ColumnWithAlternatives(BaseModel):
             original_column: ColumnRef
@@ -234,7 +251,7 @@ class SchemaLinker:
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
         return linked_schema
 
-    async def link_schema_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> SQLSchema:
+    async def link_schema_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> SQLSchema:
         if ctx.preprocessed_schema.num_total_columns() < self.config.min_columns_for_schema_linking:
             return ctx.preprocessed_schema
 
@@ -315,7 +332,7 @@ class Postprocessor:
     def __init__(self, config: SQLAgentConfig):
         self.config = config
 
-    async def parse_question_async(self, ctx: TaskRunContext, task: SimpleNL2QTask) -> list[str]:
+    async def parse_question_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> list[str]:
         class LLMOutput(BaseModel):
             information_pieces: list[str]
 
@@ -333,7 +350,7 @@ class Postprocessor:
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-PARSE-QUESTION"))
         return result.output.information_pieces  # type: ignore
 
-    async def postprocess_async(self, ctx: TaskRunContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
+    async def postprocess_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
         if not task.dataset_instructions:
             return pred_query
 
@@ -395,14 +412,21 @@ class SQLAgent:
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema_preprocessor = SchemaPreprocessor(compress_schema=self.config.compress_schema)
+        schema_preprocessor = SchemaPreprocessor()
         preprocessed_schema = await schema_preprocessor.preprocess_async(db_connector)
-        ctx = TaskRunContext(
+        er_diagram_synthesizer = ERDiagramSynthesizer()
+        er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
+        er_diagram_formatter = ERDiagramMermaidFormatter()
+        ctx = SQLAgentContext(
             task=task,
             db_connector=db_connector,
             preprocessed_schema=preprocessed_schema,
             schema_formatter=self.formatter,
             usage=Usage.create(llm=self.config.llm),
+            tools={},
+            trajectories=[],
+            er_diagram=er_diagram,
+            er_diagram_formatter=er_diagram_formatter,
         )
         ctx.usage += schema_preprocessor.usage()
 
@@ -419,6 +443,7 @@ class SQLAgent:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=True),
+            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram),
         )
 
         agent = Agent[None, None](  # type: ignore
