@@ -213,42 +213,24 @@ class SchemaLinker:
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
 
+        def normalize(s: str | None) -> str | None:
+            return s.lower() if s is not None else None
+
         linked = set(
-            (c.schema_name.lower() if c.schema_name else None, c.table_name.lower(), c.column_name.lower())
-            for c in current_columns
+            (normalize(c.schema_name), normalize(c.table_name), normalize(c.column_name)) for c in current_columns
         )
         for results in all_results:
             for item in results:
                 for alternative in item.alternatives:
                     linked.add(
                         (
-                            alternative.schema_name.lower() if alternative.schema_name else None,
-                            alternative.table_name.lower(),
-                            alternative.column_name.lower(),
+                            normalize(alternative.schema_name),
+                            normalize(alternative.table_name),
+                            normalize(alternative.column_name),
                         )
                     )
-
-        # We keep all primary key columns
-        for col in ctx.preprocessed_schema.get_pk_column_refs():
-            linked.add(
-                (col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower())
-            )
-
-        # We keep all foreign key columns so that tables in the linked schema can be joined.
-        for col in ctx.preprocessed_schema.get_fk_column_refs():
-            linked.add(
-                (col.schema_name.lower() if col.schema_name else None, col.table_name.lower(), col.column_name.lower())
-            )
-
-        linked_schema = copy.deepcopy(ctx.preprocessed_schema)
-        for table in linked_schema.tables:
-            table.columns = [
-                col
-                for col in table.columns
-                if (table.schema_name.lower() if table.schema_name else None, table.name.lower(), col.name.lower())
-                in linked
-            ]
-        linked_schema.tables = [table for table in linked_schema.tables if table.columns]
+        linked_column_refs = [ColumnRef(schema_name=s, table_name=t, column_name=c) for s, t, c in linked]
+        linked_schema = ctx.preprocessed_schema.trim(linked_column_refs, case_insensitive=True, keep_pk=True)
         return linked_schema
 
     async def link_schema_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> SQLSchema:
