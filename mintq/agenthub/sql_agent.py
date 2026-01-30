@@ -76,13 +76,13 @@ You are MintQ agent, a helpful AI database expert that can translate natural lan
 </dataset_instructions>
 {%- endif %}
 
-<er_diagram>
+<conceptual_er_diagram>
 {{er_diagram}}
-</er_diagram>
+</conceptual_er_diagram>
 
-<database_schema>
+<physical_database_schema>
 {{schema}}
-</database_schema>
+</physical_database_schema>
 
 """.strip()
 
