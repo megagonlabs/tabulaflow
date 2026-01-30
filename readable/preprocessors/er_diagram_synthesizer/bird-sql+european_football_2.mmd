@@ -1,0 +1,24 @@
+erDiagram
+    Match {
+        table Match "Core match row including identifiers, season/stage/date, home/away teams, 22 lineup player FKs, positional X/Y values, event XML blobs (goal, shoton, etc.), and bookmaker odds."
+    }
+    Country {
+        table Country "Country master data (id, name)."
+    }
+    League {
+        table League "League master data with FK to Country."
+    }
+    Team {
+        table Team "Core team identity (API/FIFA ids, long/short names)."
+        table Team_Attributes "SCD-like history of team tactical attributes by date, linked via team_api_id/team_fifa_api_id."
+    }
+    Player {
+        table Player "Core player identity and demographics (API/FIFA ids, name, birthday, height, weight)."
+        table Player_Attributes "SCD-like history of player attributes by date, linked via player_api_id/player_fifa_api_id."
+    }
+    Country |o--o{ League : "CountryHasLeagues"
+    League |o--o{ Match : "LeagueHasMatches"
+    Country |o--o{ Match : "CountryHasMatches"
+    Match |o--o{ Team : "MatchHasTeams_home"
+    Match |o--o{ Team : "MatchHasTeams_away"
+    Match |o--o{ Player : "MatchFieldsPlayers"

@@ -1,0 +1,34 @@
+erDiagram
+    Superhero {
+        table superhero "Core superhero profile including names, demographic FKs (gender, race, alignment, publisher), physical attributes (height, weight), and color references (eye, hair, skin)."
+    }
+    Alignment {
+        table alignment "Lookup of possible alignment values (e.g., Good, Bad, Neutral, N/A)."
+    }
+    Publisher {
+        table publisher "Lookup of publisher names."
+    }
+    Race {
+        table race "Lookup of race/species values."
+    }
+    Gender {
+        table gender "Lookup of gender values."
+    }
+    Colour {
+        table colour "Lookup of color names used by multiple superhero attributes."
+    }
+    Superpower {
+        table superpower "Lookup of superpower names."
+    }
+    Attribute {
+        table attribute "Lookup of attribute types that receive a numeric score per hero."
+    }
+    Superhero |o--o{ Alignment : "SuperheroHasAlignment"
+    Superhero |o--o{ Publisher : "SuperheroPublishedByPublisher"
+    Superhero |o--o{ Race : "SuperheroHasRace"
+    Superhero |o--o{ Gender : "SuperheroHasGender"
+    Superhero |o--o{ Colour : "SuperheroEyeColour"
+    Superhero |o--o{ Colour : "SuperheroHairColour"
+    Superhero |o--o{ Colour : "SuperheroSkinColour"
+    Superhero }o--o{ Superpower : "SuperheroHasSuperpower"
+    Superhero }o--o{ Attribute : "SuperheroAttributeScore"

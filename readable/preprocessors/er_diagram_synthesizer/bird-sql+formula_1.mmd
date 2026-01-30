@@ -1,0 +1,59 @@
+erDiagram
+    Race {
+        table races "Core race metadata and foreign keys to season (year) and circuit."
+    }
+    Driver {
+        table drivers "Core driver attributes (reference, name, number/code, DOB, nationality, URL)."
+    }
+    Constructor {
+        table constructors "Core constructor/team attributes (reference, name, nationality, URL)."
+    }
+    Season {
+        table seasons "One row per championship year with reference URL."
+    }
+    Circuit {
+        table circuits "Track identity, location, geo-coordinates, altitude, and URL."
+    }
+    Status {
+        table status "Status ID and textual description of result outcome."
+    }
+    RaceResult {
+        table results "Fact table keyed by resultId with FKs to race, driver, constructor, and status; includes timing, position, and points."
+    }
+    QualifyingAttempt {
+        table qualifying "One row per driver–constructor entry in qualifying for a race; includes Q1–Q3 times and final position/number."
+    }
+    LapTime {
+        table lapTimes "Composite PK (raceId, driverId, lap); lap order, positions, and timing in text/milliseconds."
+    }
+    PitStop {
+        table pitStops "Composite PK (raceId, driverId, stop); lap, timestamp, and duration in text/milliseconds."
+    }
+    DriverStanding {
+        table driverStandings "Fact table by (raceId, driverId) with points, position, wins; FK to races and drivers."
+    }
+    ConstructorStanding {
+        table constructorStandings "Fact table by (raceId, constructorId) with points, position, wins; FK to races and constructors."
+    }
+    ConstructorResult {
+        table constructorResults "Fact table by (raceId, constructorId) with points and textual status; FKs to races and constructors."
+    }
+    Season }o--|| Race : "SeasonHasRaces"
+    Circuit }o--|| Race : "CircuitHostsRaces"
+    Race }o--|| RaceResult : "RaceHasResults"
+    Driver }o--|| RaceResult : "ResultInvolvesDriver"
+    Constructor }o--|| RaceResult : "ResultInvolvesConstructor"
+    RaceResult ||--o{ Status : "ResultHasStatus"
+    Race }o--|| QualifyingAttempt : "RaceHasQualifyingAttempts"
+    Driver }o--|| QualifyingAttempt : "QualifyingInvolvesDriver"
+    Constructor }o--|| QualifyingAttempt : "QualifyingInvolvesConstructor"
+    Race }o--|| LapTime : "RaceHasLapTimes"
+    Driver }o--|| LapTime : "LapTimeForDriver"
+    Race }o--|| PitStop : "RaceHasPitStops"
+    Driver }o--|| PitStop : "PitStopForDriver"
+    Race }o--|| DriverStanding : "RaceHasDriverStandings"
+    Driver }o--|| DriverStanding : "DriverHasStandings"
+    Race }o--|| ConstructorStanding : "RaceHasConstructorStandings"
+    Constructor }o--|| ConstructorStanding : "ConstructorHasStandings"
+    Race }o--|| ConstructorResult : "RaceHasConstructorResults"
+    Constructor }o--|| ConstructorResult : "ConstructorHasConstructorResults"

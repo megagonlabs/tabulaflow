@@ -4,7 +4,7 @@ from mintq.config import config
 from mintq.schema import SQLSchema
 from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-from mintq.formatters.er_diagram import ERDiagramCompactFormatter
+from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 
 
 def main() -> None:
@@ -27,8 +27,8 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         er_diagram = ERDiagram.model_validate_json(open(os.path.join(input_dir, f)).read())
-        er_diagram_str = ERDiagramCompactFormatter().format(er_diagram)
-        with open(os.path.join(output_dir, f.replace(".json", ".txt")), "w") as f:
+        er_diagram_str = ERDiagramMermaidFormatter().format(er_diagram)
+        with open(os.path.join(output_dir, f.replace(".json", ".mmd")), "w") as f:
             f.write(er_diagram_str)
     print(f"Exported {len(os.listdir(input_dir))} ER diagrams to {output_dir}")
 
