@@ -1,0 +1,8 @@
+Entities:
+  Institution - A California educational institution (school or district/COE) with identity, ...
+  FRPMSnapshot2014_2015 - Free/Reduced-Price Meal eligibility snapshot metrics for the 2014–2015 academ...
+  SATResult - SAT participation and average score metrics per institution.
+
+Relationships:
+  Institution 0..1--InstitutionHasFRPMSnapshot2014_2015--1 FRPMSnapshot2014_2015
+  Institution 0..1--InstitutionHasSATResult--1 SATResult

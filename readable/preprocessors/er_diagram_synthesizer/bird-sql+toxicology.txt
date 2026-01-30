@@ -1,0 +1,9 @@
+Entities:
+  Molecule - A chemical molecule identified by an ID and a polarity label.
+  Atom - An atom that belongs to a molecule, characterized by its element symbol.
+  Bond - A chemical bond within a molecule, characterized by its bond type (single, do...
+
+Relationships:
+  Molecule 0..1--MoleculeHasAtoms--* Atom
+  Molecule 0..1--MoleculeHasBonds--* Bond
+  BondConnectsAtoms: Bond(1), Atom(*), Atom(*)

@@ -1,0 +1,74 @@
+-- Database: law_episode
+
+-- Table: Award (22 rows)
+CREATE TABLE Award (
+    award_id INTEGER PRIMARY KEY,  -- e.g. 258
+    organization TEXT,  -- values: {'American Bar Association Silver Gavel Awards for Media and the Arts', 'Edgar Allan Poe Awards', 'International Monitor Awards', 'Primetime Emmy Awards'}
+    year INTEGER,  -- e.g. 1999
+    award_category TEXT,  -- values: {'Edgar', 'Monitor', 'Primetime Emmy', 'Silver Gavel Award'}
+    award TEXT,  -- values: {'Best Television Episode', 'Film Originated Television Series - Best Achievement', 'Outstanding Costume Design for a Series', 'Outstanding Directing for a Drama Series', 'Outstanding Guest Actress in a Drama Series', 'Outstanding Sound Mixing for a Drama Series', 'Television'}
+    series TEXT,  -- values: {'Law and Order'}
+    episode_id TEXT,  -- values: {'tt0629149', 'tt0629228', 'tt0629248', 'tt0629291', 'tt0629397', 'tt0629398', 'tt0629422'}; FK -> Episode.episode_id
+    person_id TEXT,  -- e.g. 'nm0937725'; FK -> Person.person_id
+    role TEXT,  -- values: {'Katrina Ludlow', 'director', 'production mixer', 're-recording mixer', 'story', 'teleplay', 'teleplay, story', 'writer'}
+    result TEXT,  -- values: {'Nominee', 'Winner'}
+    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id),
+    FOREIGN KEY (person_id) REFERENCES Person(person_id)
+);
+
+-- Table: Credit (2231 rows)
+CREATE TABLE Credit (
+    episode_id TEXT,  -- e.g. 'tt0629146'; FK -> Episode.episode_id
+    person_id TEXT,  -- e.g. 'nm0000973'; FK -> Person.person_id
+    category TEXT,  -- values: {'Additional Crew', 'Art Department', 'Camera and Electrical Department', 'Cast', 'Casting Department', 'Costume and Wardrobe Department', 'Directed by', 'Editorial Department', 'Film Editing by', 'General', 'Location Management', 'Makeup Department', 'Music Department', 'Produced by', 'Production Management', 'Script and Continuity Department', 'Sound Department', 'Stunts', 'Transportation Department', 'Writing Credits'}
+    role TEXT,  -- e.g. 'technical advisor'
+    credited TEXT,  -- values: {'false', 'true'}
+    PRIMARY KEY (episode_id, person_id),
+    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id),
+    FOREIGN KEY (person_id) REFERENCES Person(person_id)
+);
+
+-- Table: Episode (24 rows)
+CREATE TABLE Episode (
+    episode_id TEXT PRIMARY KEY,  -- e.g. 'tt0629146'
+    series TEXT,  -- values: {'Law and Order'}
+    season INTEGER,  -- e.g. 9
+    episode INTEGER,  -- e.g. 1
+    number_in_series INTEGER,  -- e.g. 182
+    title TEXT,  -- e.g. 'Cherished'
+    summary TEXT,  -- e.g. 'New assistant DA Abbie Carmichael aggressively inv...cy, gravely ill children, and an unethical doctor.'
+    air_date DATE,  -- e.g. '1998-09-23'
+    episode_image TEXT,  -- e.g. 'https://m.media-amazon.com/images/M/MV5BODFmZmI2YT...deQXVyMjMzNzMxMTA@._V1_UY126_CR7,0,224,126_AL_.jpg'
+    rating REAL,  -- e.g. 7.900
+    votes INTEGER  -- e.g. 203
+);
+
+-- Table: Keyword (33 rows)
+CREATE TABLE Keyword (
+    episode_id TEXT,  -- values: {'tt0629239', 'tt0629397', 'tt0629420'}; FK -> Episode.episode_id
+    keyword TEXT,  -- e.g. 'nun'
+    PRIMARY KEY (episode_id, keyword),
+    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+);
+
+-- Table: Person (800 rows)
+CREATE TABLE Person (
+    person_id TEXT PRIMARY KEY,  -- e.g. 'nm0000210'
+    name TEXT,  -- e.g. 'Julia Roberts'
+    birthdate DATE,  -- e.g. '1967-10-28'
+    birth_name TEXT,  -- e.g. 'Julia Fiona Roberts'
+    birth_place TEXT,  -- e.g. 'Smyrna'
+    birth_region TEXT,  -- e.g. 'Georgia'
+    birth_country TEXT,  -- e.g. 'USA'
+    height_meters REAL,  -- e.g. 1.730
+    nickname TEXT  -- e.g. 'Jules'
+);
+
+-- Table: Vote (240 rows)
+CREATE TABLE Vote (
+    episode_id TEXT,  -- e.g. 'tt0629204'; FK -> Episode.episode_id
+    stars INTEGER,  -- e.g. 10
+    votes INTEGER,  -- e.g. 36
+    percent REAL,  -- e.g. 17.700
+    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+);

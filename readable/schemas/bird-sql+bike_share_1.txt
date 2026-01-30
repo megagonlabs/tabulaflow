@@ -1,0 +1,63 @@
+-- Database: bike_share_1
+
+-- Table: station (70 rows)
+CREATE TABLE station (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 2
+    name TEXT,  -- e.g. 'San Jose Diridon Caltrain Station'
+    lat REAL,  -- e.g. 37.330
+    long REAL,  -- e.g. -121.902
+    dock_count INTEGER,  -- e.g. 27
+    city TEXT,  -- values: {'Mountain View', 'Palo Alto', 'Redwood City', 'San Francisco', 'San Jose'}
+    installation_date TEXT  -- e.g. '8/6/2013'
+);
+
+-- Table: status (71984434 rows)
+CREATE TABLE status (
+    station_id INTEGER,  -- e.g. 2
+    bikes_available INTEGER,  -- e.g. 2
+    docks_available INTEGER,  -- e.g. 25
+    time TEXT  -- e.g. '2013/08/29 12:06:01'
+);
+
+-- Table: trip (658901 rows)
+CREATE TABLE trip (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 4069
+    duration INTEGER,  -- e.g. 174
+    start_date TEXT,  -- e.g. '8/29/2013 9:08'
+    start_station_name TEXT,  -- e.g. '2nd at South Park'
+    start_station_id INTEGER,  -- e.g. 64
+    end_date TEXT,  -- e.g. '8/29/2013 9:11'
+    end_station_name TEXT,  -- e.g. '2nd at South Park'
+    end_station_id INTEGER,  -- e.g. 64
+    bike_id INTEGER,  -- e.g. 288
+    subscription_type TEXT,  -- values: {'Customer', 'Subscriber'}
+    zip_code INTEGER  -- e.g. 94114
+);
+
+-- Table: weather (3665 rows)
+CREATE TABLE weather (
+    date TEXT,  -- e.g. '8/29/2013'
+    max_temperature_f INTEGER,  -- e.g. 74
+    mean_temperature_f INTEGER,  -- e.g. 68
+    min_temperature_f INTEGER,  -- e.g. 61
+    max_dew_point_f INTEGER,  -- e.g. 61
+    mean_dew_point_f INTEGER,  -- e.g. 58
+    min_dew_point_f INTEGER,  -- e.g. 56
+    max_humidity INTEGER,  -- e.g. 93
+    mean_humidity INTEGER,  -- e.g. 75
+    min_humidity INTEGER,  -- e.g. 57
+    max_sea_level_pressure_inches REAL,  -- e.g. 30.070
+    mean_sea_level_pressure_inches REAL,  -- e.g. 30.020
+    min_sea_level_pressure_inches REAL,  -- e.g. 29.970
+    max_visibility_miles INTEGER,  -- e.g. 10
+    mean_visibility_miles INTEGER,  -- e.g. 10
+    min_visibility_miles INTEGER,  -- e.g. 10
+    max_wind_Speed_mph INTEGER,  -- e.g. 23
+    mean_wind_speed_mph INTEGER,  -- e.g. 11
+    max_gust_speed_mph INTEGER,  -- e.g. 28
+    precipitation_inches TEXT,  -- e.g. '0'
+    cloud_cover INTEGER,  -- e.g. 4
+    events TEXT,  -- values: {'', 'Fog', 'Fog-Rain', 'Rain', 'Rain-Thunderstorm', 'rain'}
+    wind_dir_degrees INTEGER,  -- e.g. 286
+    zip_code TEXT  -- values: {'94041', '94063', '94107', '94301', '95113'}
+);

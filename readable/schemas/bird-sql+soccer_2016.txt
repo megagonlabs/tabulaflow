@@ -1,0 +1,202 @@
+-- Database: soccer_2016
+
+-- Table: Ball_by_Ball (136590 rows)
+CREATE TABLE Ball_by_Ball (
+    Match_Id INTEGER,  -- e.g. 335987; FK -> Match.Match_Id
+    Over_Id INTEGER,  -- e.g. 1
+    Ball_Id INTEGER,  -- e.g. 1
+    Innings_No INTEGER,  -- e.g. 1
+    Team_Batting INTEGER,  -- e.g. 1
+    Team_Bowling INTEGER,  -- e.g. 2
+    Striker_Batting_Position INTEGER,  -- e.g. 1
+    Striker INTEGER,  -- e.g. 1
+    Non_Striker INTEGER,  -- e.g. 2
+    Bowler INTEGER,  -- e.g. 14
+    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
+    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id)
+);
+
+-- Table: Batsman_Scored (133097 rows)
+CREATE TABLE Batsman_Scored (
+    Match_Id INTEGER,  -- e.g. 335987; FK -> Match.Match_Id
+    Over_Id INTEGER,  -- e.g. 1
+    Ball_Id INTEGER,  -- e.g. 1
+    Runs_Scored INTEGER,  -- e.g. 0
+    Innings_No INTEGER,  -- e.g. 1
+    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
+    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id)
+);
+
+-- Table: Batting_Style (2 rows)
+CREATE TABLE Batting_Style (
+    Batting_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Batting_hand TEXT  -- values: {'Left-hand bat', 'Right-hand bat'}
+);
+
+-- Table: Bowling_Style (14 rows)
+CREATE TABLE Bowling_Style (
+    Bowling_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Bowling_skill TEXT  -- e.g. 'Right-arm medium'
+);
+
+-- Table: City (29 rows)
+CREATE TABLE City (
+    City_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    City_Name TEXT,  -- e.g. 'Bangalore'
+    Country_id INTEGER  -- e.g. 1
+);
+
+-- Table: Country (12 rows)
+CREATE TABLE Country (
+    Country_Id INTEGER PRIMARY KEY,  -- e.g. 1; FK -> Country.Country_Id
+    Country_Name TEXT,  -- e.g. 'India'
+    FOREIGN KEY (Country_Id) REFERENCES Country(Country_Id)
+);
+
+-- Table: Extra_Runs (7469 rows)
+CREATE TABLE Extra_Runs (
+    Match_Id INTEGER,  -- e.g. 335987
+    Over_Id INTEGER,  -- e.g. 1
+    Ball_Id INTEGER,  -- e.g. 1
+    Extra_Type_Id INTEGER,  -- e.g. 1; FK -> Extra_Type.Extra_Id
+    Extra_Runs INTEGER,  -- e.g. 1
+    Innings_No INTEGER,  -- e.g. 1
+    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
+    FOREIGN KEY (Extra_Type_Id) REFERENCES Extra_Type(Extra_Id)
+);
+
+-- Table: Extra_Type (5 rows)
+CREATE TABLE Extra_Type (
+    Extra_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Extra_Name TEXT  -- values: {'byes', 'legbyes', 'noballs', 'penalty', 'wides'}
+);
+
+-- Table: Match (577 rows)
+CREATE TABLE Match (
+    Match_Id INTEGER PRIMARY KEY,  -- e.g. 335987
+    Team_1 INTEGER,  -- e.g. 2; FK -> Team.Team_Id
+    Team_2 INTEGER,  -- e.g. 1; FK -> Team.Team_Id
+    Match_Date DATE,  -- e.g. '2008-04-18'
+    Season_Id INTEGER,  -- e.g. 1; FK -> Season.Season_Id
+    Venue_Id INTEGER,  -- e.g. 1; FK -> Venue.Venue_Id
+    Toss_Winner INTEGER,  -- e.g. 2; FK -> Team.Team_Id
+    Toss_Decide INTEGER,  -- e.g. 1; FK -> Toss_Decision.Toss_Id
+    Win_Type INTEGER,  -- e.g. 1; FK -> Win_By.Win_Id
+    Win_Margin INTEGER,  -- e.g. 140
+    Outcome_type INTEGER,  -- e.g. 1; FK -> Out_Type.Out_Id
+    Match_Winner INTEGER,  -- e.g. 1; FK -> Team.Team_Id
+    Man_of_the_Match INTEGER,  -- e.g. 2; FK -> Player.Player_Id
+    FOREIGN KEY (Team_1) REFERENCES Team(Team_Id),
+    FOREIGN KEY (Team_2) REFERENCES Team(Team_Id),
+    FOREIGN KEY (Season_Id) REFERENCES Season(Season_Id),
+    FOREIGN KEY (Venue_Id) REFERENCES Venue(Venue_Id),
+    FOREIGN KEY (Toss_Winner) REFERENCES Team(Team_Id),
+    FOREIGN KEY (Toss_Decide) REFERENCES Toss_Decision(Toss_Id),
+    FOREIGN KEY (Win_Type) REFERENCES Win_By(Win_Id),
+    FOREIGN KEY (Outcome_type) REFERENCES Out_Type(Out_Id),
+    FOREIGN KEY (Match_Winner) REFERENCES Team(Team_Id),
+    FOREIGN KEY (Man_of_the_Match) REFERENCES Player(Player_Id)
+);
+
+-- Table: Out_Type (9 rows)
+CREATE TABLE Out_Type (
+    Out_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Out_Name TEXT  -- values: {'bowled', 'caught and bowled', 'caught', 'hit wicket', 'lbw', 'obstructing the field', 'retired hurt', 'run out', 'stumped'}
+);
+
+-- Table: Outcome (3 rows)
+CREATE TABLE Outcome (
+    Outcome_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Outcome_Type TEXT  -- values: {'No Result', 'Result', 'Superover'}
+);
+
+-- Table: Player (469 rows)
+CREATE TABLE Player (
+    Player_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Player_Name TEXT,  -- e.g. 'SC Ganguly'
+    DOB DATE,  -- e.g. '1972-07-08'
+    Batting_hand INTEGER,  -- e.g. 1; FK -> Batting_Style.Batting_Id
+    Bowling_skill INTEGER,  -- e.g. 1; FK -> Bowling_Style.Bowling_Id
+    Country_Name INTEGER,  -- e.g. 1; FK -> Country.Country_Id
+    FOREIGN KEY (Batting_hand) REFERENCES Batting_Style(Batting_Id),
+    FOREIGN KEY (Bowling_skill) REFERENCES Bowling_Style(Bowling_Id),
+    FOREIGN KEY (Country_Name) REFERENCES Country(Country_Id)
+);
+
+-- Table: Player_Match (12694 rows)
+CREATE TABLE Player_Match (
+    Match_Id INTEGER,  -- e.g. 335987; FK -> Match.Match_Id
+    Player_Id INTEGER,  -- e.g. 1; FK -> Player.Player_Id
+    Role_Id INTEGER,  -- e.g. 1; FK -> Rolee.Role_Id
+    Team_Id INTEGER,  -- e.g. 1; FK -> Team.Team_Id
+    PRIMARY KEY (Match_Id, Player_Id, Role_Id),
+    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id),
+    FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id),
+    FOREIGN KEY (Team_Id) REFERENCES Team(Team_Id),
+    FOREIGN KEY (Role_Id) REFERENCES Rolee(Role_Id)
+);
+
+-- Table: Rolee (4 rows)
+CREATE TABLE Rolee (
+    Role_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Role_Desc TEXT  -- values: {'Captain', 'CaptainKeeper', 'Keeper', 'Player'}
+);
+
+-- Table: Season (9 rows)
+CREATE TABLE Season (
+    Season_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Man_of_the_Series INTEGER,  -- e.g. 32
+    Orange_Cap INTEGER,  -- e.g. 100
+    Purple_Cap INTEGER,  -- e.g. 102
+    Season_Year INTEGER  -- e.g. 2008
+);
+
+-- Table: Team (13 rows)
+CREATE TABLE Team (
+    Team_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Team_Name TEXT  -- e.g. 'Kolkata Knight Riders'
+);
+
+-- Table: Toss_Decision (2 rows)
+CREATE TABLE Toss_Decision (
+    Toss_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Toss_Name TEXT  -- values: {'bat', 'field'}
+);
+
+-- Table: Umpire (52 rows)
+CREATE TABLE Umpire (
+    Umpire_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Umpire_Name TEXT,  -- e.g. 'Asad Rauf'
+    Umpire_Country INTEGER,  -- e.g. 6; FK -> Country.Country_Id
+    FOREIGN KEY (Umpire_Country) REFERENCES Country(Country_Id)
+);
+
+-- Table: Venue (35 rows)
+CREATE TABLE Venue (
+    Venue_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Venue_Name TEXT,  -- e.g. 'M Chinnaswamy Stadium'
+    City_Id INTEGER,  -- e.g. 1; FK -> City.City_Id
+    FOREIGN KEY (City_Id) REFERENCES City(City_Id)
+);
+
+-- Table: Wicket_Taken (6727 rows)
+CREATE TABLE Wicket_Taken (
+    Match_Id INTEGER,  -- e.g. 335987; FK -> Match.Match_Id
+    Over_Id INTEGER,  -- e.g. 2
+    Ball_Id INTEGER,  -- e.g. 1
+    Player_Out INTEGER,  -- e.g. 6; FK -> Player.Player_Id
+    Kind_Out INTEGER,  -- e.g. 2; FK -> Out_Type.Out_Id
+    Fielders INTEGER,  -- e.g. 83; FK -> Player.Player_Id
+    Innings_No INTEGER,  -- e.g. 2
+    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
+    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id),
+    FOREIGN KEY (Player_Out) REFERENCES Player(Player_Id),
+    FOREIGN KEY (Kind_Out) REFERENCES Out_Type(Out_Id),
+    FOREIGN KEY (Fielders) REFERENCES Player(Player_Id)
+);
+
+-- Table: Win_By (4 rows)
+CREATE TABLE Win_By (
+    Win_Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Win_Type TEXT  -- values: {'NO Result', 'Tie', 'runs', 'wickets'}
+);

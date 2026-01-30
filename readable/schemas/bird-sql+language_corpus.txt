@@ -1,0 +1,60 @@
+-- Database: language_corpus
+
+-- Table: biwords (21587486 rows)
+CREATE TABLE biwords (
+    lid INTEGER NOT NULL,  -- e.g. 1; FK -> langs.lid
+    w1st INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
+    w2nd INTEGER NOT NULL,  -- e.g. 2; FK -> words.wid
+    occurrences INTEGER,  -- e.g. 4
+    PRIMARY KEY (lid, w1st, w2nd),
+    FOREIGN KEY (w2nd) REFERENCES words(wid),
+    FOREIGN KEY (w1st) REFERENCES words(wid),
+    FOREIGN KEY (lid) REFERENCES langs(lid)
+);
+
+-- Table: langs (1 rows)
+CREATE TABLE langs (
+    lid INTEGER PRIMARY KEY,  -- e.g. 1
+    lang TEXT,  -- values: {'ca'}
+    locale TEXT,  -- values: {'ca_ES'}
+    pages INTEGER,  -- e.g. 1129144
+    words INTEGER  -- e.g. 2764996
+);
+
+-- Table: langs_words (2764996 rows)
+CREATE TABLE langs_words (
+    lid INTEGER NOT NULL,  -- e.g. 1; FK -> langs.lid
+    wid INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
+    occurrences INTEGER,  -- e.g. 242
+    PRIMARY KEY (lid, wid),
+    FOREIGN KEY (wid) REFERENCES words(wid),
+    FOREIGN KEY (lid) REFERENCES langs(lid)
+);
+
+-- Table: pages (1129144 rows)
+CREATE TABLE pages (
+    pid INTEGER PRIMARY KEY,  -- e.g. 1
+    lid INTEGER,  -- e.g. 1; FK -> langs.lid
+    page INTEGER,  -- e.g. 1
+    revision INTEGER,  -- e.g. 28236978
+    title TEXT,  -- e.g. 'Àbac'
+    words INTEGER,  -- e.g. 1081
+    FOREIGN KEY (lid) REFERENCES langs(lid)
+);
+
+-- Table: pages_words (129131916 rows)
+CREATE TABLE pages_words (
+    pid INTEGER NOT NULL,  -- e.g. 1; FK -> pages.pid
+    wid INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
+    occurrences INTEGER,  -- e.g. 30
+    PRIMARY KEY (pid, wid),
+    FOREIGN KEY (wid) REFERENCES words(wid),
+    FOREIGN KEY (pid) REFERENCES pages(pid)
+);
+
+-- Table: words (2764996 rows)
+CREATE TABLE words (
+    wid INTEGER PRIMARY KEY,  -- e.g. 2148990
+    word TEXT,  -- e.g. '+,2'
+    occurrences INTEGER  -- e.g. 242
+);

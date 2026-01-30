@@ -1,0 +1,35 @@
+Entities:
+  Race - A Grand Prix event held at a circuit within a specific season (year, round, d...
+  Driver - A Formula 1 driver/person with identity and biographical details.
+  Constructor - A Formula 1 team/manufacturer that enters cars.
+  Season - A Formula 1 season identified by year.
+  Circuit - A racing circuit/track where Grands Prix are held.
+  Status - Categorizes the outcome of a race result (e.g., Finished, Retired).
+  RaceResult - A driver's official race outcome for a given race and constructor (position, ...
+  QualifyingAttempt - A driver's qualifying performance for a race and constructor (session times a...
+  LapTime - Per-lap timing record for a driver during a race.
+  PitStop - A pit stop event made by a driver in a race.
+  DriverStanding - A driver’s cumulative championship standing after a race (points, position, w...
+  ConstructorStanding - A constructor’s cumulative championship standing after a race.
+  ConstructorResult - A constructor’s result for a specific race (points and status).
+
+Relationships:
+  Season *--SeasonHasRaces--1 Race
+  Circuit *--CircuitHostsRaces--1 Race
+  Race *--RaceHasResults--1 RaceResult
+  Driver *--ResultInvolvesDriver--1 RaceResult
+  Constructor *--ResultInvolvesConstructor--1 RaceResult
+  RaceResult 1--ResultHasStatus--* Status
+  Race *--RaceHasQualifyingAttempts--1 QualifyingAttempt
+  Driver *--QualifyingInvolvesDriver--1 QualifyingAttempt
+  Constructor *--QualifyingInvolvesConstructor--1 QualifyingAttempt
+  Race *--RaceHasLapTimes--1 LapTime
+  Driver *--LapTimeForDriver--1 LapTime
+  Race *--RaceHasPitStops--1 PitStop
+  Driver *--PitStopForDriver--1 PitStop
+  Race *--RaceHasDriverStandings--1 DriverStanding
+  Driver *--DriverHasStandings--1 DriverStanding
+  Race *--RaceHasConstructorStandings--1 ConstructorStanding
+  Constructor *--ConstructorHasStandings--1 ConstructorStanding
+  Race *--RaceHasConstructorResults--1 ConstructorResult
+  Constructor *--ConstructorHasConstructorResults--1 ConstructorResult

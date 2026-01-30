@@ -1,0 +1,13 @@
+Entities:
+  Transaction - A purchase made with a debit card at a gas station, capturing date/time, amou...
+  Customer - A business customer segment who holds cards and makes transactions; includes ...
+  GasStation - A retail fuel station where transactions occur; includes chain identifier, co...
+  Product - A product or product category recorded on transactions.
+  CustomerMonthlyConsumption - Monthly consumption summary per customer identified by YYYYMM period.
+
+Relationships:
+  Customer 0..1--CustomerMakesTransactions--1..* Transaction
+  GasStation 0..1--TransactionOccursAtGasStation--1..* Transaction
+  Product 0..1--TransactionInvolvesProduct--1..* Transaction
+  Customer 0..1--CustomerHasMonthlyConsumption--1..* CustomerMonthlyConsumption
+  CustomerMonthlyConsumption 0..1--TransactionRollsUpIntoMonthlyConsumption--* Transaction

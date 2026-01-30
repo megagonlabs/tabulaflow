@@ -1,0 +1,13 @@
+Entities:
+  Match - A scheduled football game with teams, players, scores, odds, and event data.
+  Country - A nation in which leagues and matches are organized.
+  League - A competition organized within a country (e.g., national top division).
+  Team - A football club/team participating in matches, with time-varying tactical att...
+  Player - An individual footballer with biographical data and time-varying skill attrib...
+
+Relationships:
+  Country 0..1--CountryHasLeagues--* League
+  League 0..1--LeagueHasMatches--* Match
+  Country 0..1--CountryHasMatches--* Match
+  MatchHasTeams: Match(0..1), Team(*), Team(*)
+  Match 0..1--MatchFieldsPlayers--* Player

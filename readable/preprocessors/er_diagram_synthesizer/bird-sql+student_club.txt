@@ -1,0 +1,17 @@
+Entities:
+  Member - A person who belongs to the student club (officers and general members).
+  Event - A club event/meeting with date, type, location, notes, and status.
+  Budget - A budget line/category for an event, tracking planned, spent, and remaining a...
+  Expense - An individual expense item submitted for reimbursement or tracking, tied to a...
+  Income - A revenue entry collected by the club (e.g., dues, fundraising, appropriation...
+  Major - An academic major with associated department and college.
+  ZipCode - Reference data for US ZIP codes including city, county, and state.
+
+Relationships:
+  Event *--EventAttendance--* Member
+  Event 0..1--EventBudgeting--1..* Budget
+  Budget 0..1--BudgetExpenses--1..* Expense
+  Member 0..1--MemberExpenseSubmission--1..* Expense
+  Member 0..1--MemberIncomeCollection--1..* Income
+  Major 0..1--MemberMajor--* Member
+  ZipCode 0..1--MemberLocation--* Member

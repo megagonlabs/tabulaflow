@@ -1,0 +1,25 @@
+Entities:
+  Post - A piece of content in the community (question or answer) with body, title, sc...
+  User - A registered community member with profile, reputation, and activity counts.
+  Comment - A user-authored remark attached to a post, with text and score.
+  Vote - A voting action applied to a post (upvote, downvote, bounty, etc.).
+  PostRevision - A historical revision or event for a post capturing text and metadata changes.
+  BadgeAward - An instance of a badge being awarded to a user at a point in time.
+  Tag - A topic label with usage count and optional wiki/excerpt posts.
+
+Relationships:
+  User 0..1--UserAuthorsPost--* Post
+  User 0..1--UserLastEditsPost--* Post
+  Post 0..1--PostHasAcceptedAnswer--0..1 Post
+  Post *--PostAnswerOfQuestion--0..1 Post
+  User 0..1--UserAuthorsComment--* Comment
+  Post 0..1--CommentOnPost--* Comment
+  User 0..1--UserCastsVote--* Vote
+  Post 0..1--VoteOnPost--* Vote
+  User 0..1--UserAwardedBadge--* BadgeAward
+  Post 0..1--PostHasRevisions--* PostRevision
+  User 0..1--RevisionAuthoredByUser--* PostRevision
+  Tag 0..1--TagHasExcerptPost--* Post
+  Tag 0..1--TagHasWikiPost--* Post
+  Post *--PostTaggedWithTag--* Tag
+  Post *--PostRelatesToPost--* Post

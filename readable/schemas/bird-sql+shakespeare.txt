@@ -1,0 +1,39 @@
+-- Database: shakespeare
+
+-- Table: chapters (945 rows)
+CREATE TABLE chapters (
+    id INTEGER PRIMARY KEY,  -- e.g. 18704
+    Act INTEGER NOT NULL,  -- e.g. 1
+    Scene INTEGER NOT NULL,  -- e.g. 1
+    Description TEXT NOT NULL,  -- e.g. 'DUKE ORSINO’s palace.'
+    work_id INTEGER NOT NULL,  -- e.g. 1; FK -> works.id
+    FOREIGN KEY (work_id) REFERENCES works(id)
+);
+
+-- Table: characters (1266 rows)
+CREATE TABLE characters (
+    id INTEGER PRIMARY KEY,  -- e.g. 1
+    CharName TEXT NOT NULL,  -- e.g. 'First Apparition'
+    Abbrev TEXT NOT NULL,  -- e.g. 'First Apparition'
+    Description TEXT NOT NULL  -- e.g. ''
+);
+
+-- Table: paragraphs (35126 rows)
+CREATE TABLE paragraphs (
+    id INTEGER PRIMARY KEY,  -- e.g. 630863
+    ParagraphNum INTEGER NOT NULL,  -- e.g. 3
+    PlainText TEXT NOT NULL,  -- e.g. '[Enter DUKE ORSINO, CURIO, and other Lords; Musicians attending]'
+    character_id INTEGER NOT NULL,  -- e.g. 1261; FK -> characters.id
+    chapter_id INTEGER NOT NULL,  -- e.g. 18704; FK -> chapters.id
+    FOREIGN KEY (chapter_id) REFERENCES chapters(id),
+    FOREIGN KEY (character_id) REFERENCES characters(id)
+);
+
+-- Table: works (43 rows)
+CREATE TABLE works (
+    id INTEGER PRIMARY KEY,  -- e.g. 1
+    Title TEXT NOT NULL,  -- e.g. 'Twelfth Night'
+    LongTitle TEXT NOT NULL,  -- e.g. 'Twelfth Night, Or What You Will'
+    Date INTEGER NOT NULL,  -- e.g. 1599
+    GenreType TEXT NOT NULL  -- values: {'Comedy', 'History', 'Poem', 'Sonnet', 'Tragedy'}
+);

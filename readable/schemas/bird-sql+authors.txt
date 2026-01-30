@@ -1,0 +1,46 @@
+-- Database: authors
+
+-- Table: Author (247030 rows)
+CREATE TABLE Author (
+    Id INTEGER PRIMARY KEY,  -- e.g. 9
+    Name TEXT,  -- e.g. 'Ernest Jordan'
+    Affiliation TEXT  -- e.g. 'Cavendish Laboratory|Cambridge University'
+);
+
+-- Table: Conference (4545 rows)
+CREATE TABLE Conference (
+    Id INTEGER PRIMARY KEY,  -- e.g. 1
+    ShortName TEXT,  -- e.g. 'IADIS'
+    FullName TEXT,  -- e.g. 'International Association for Development of the Information Society'
+    HomePage TEXT  -- e.g. ''
+);
+
+-- Table: Journal (15151 rows)
+CREATE TABLE Journal (
+    Id INTEGER PRIMARY KEY,  -- e.g. 1
+    ShortName TEXT,  -- e.g. 'ICOM'
+    FullName TEXT,  -- e.g. 'Zeitschrift Für Interaktive Und Kooperative Medien'
+    HomePage TEXT  -- e.g. 'http://www.i-com-media.de'
+);
+
+-- Table: Paper (2254920 rows)
+CREATE TABLE Paper (
+    Id INTEGER PRIMARY KEY,  -- e.g. 1
+    Title TEXT,  -- e.g. 'Stitching videos streamed by mobile phones in real-time'
+    Year INTEGER,  -- e.g. 2009
+    ConferenceId INTEGER,  -- e.g. 167; FK -> Conference.Id
+    JournalId INTEGER,  -- e.g. 0; FK -> Journal.Id
+    Keyword TEXT,  -- e.g. 'mobile video capturing|real-time|video stitching'
+    FOREIGN KEY (ConferenceId) REFERENCES Conference(Id),
+    FOREIGN KEY (JournalId) REFERENCES Journal(Id)
+);
+
+-- Table: PaperAuthor (2315574 rows)
+CREATE TABLE PaperAuthor (
+    PaperId INTEGER,  -- e.g. 4; FK -> Paper.Id
+    AuthorId INTEGER,  -- e.g. 1456512; FK -> Author.Id
+    Name TEXT,  -- e.g. 'ADAM G. JONES'
+    Affiliation TEXT,  -- e.g. 'Kyushu University 812 Fukuoka Japan 812 Fukuoka Japan'
+    FOREIGN KEY (PaperId) REFERENCES Paper(Id),
+    FOREIGN KEY (AuthorId) REFERENCES Author(Id)
+);

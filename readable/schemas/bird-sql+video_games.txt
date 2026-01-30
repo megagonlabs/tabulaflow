@@ -1,0 +1,61 @@
+-- Database: video_games
+
+-- Table: game (11317 rows)
+CREATE TABLE game (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 44
+    genre_id INTEGER,  -- e.g. 4; FK -> genre.id
+    game_name TEXT,  -- e.g. '2 Games in 1: Sonic Advance & ChuChu Rocket!'
+    FOREIGN KEY (genre_id) REFERENCES genre(id)
+);
+
+-- Table: game_platform (16326 rows)
+CREATE TABLE game_platform (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    game_publisher_id INTEGER,  -- e.g. 8564; FK -> game_publisher.id
+    platform_id INTEGER,  -- e.g. 4; FK -> platform.id
+    release_year INTEGER,  -- e.g. 2007
+    FOREIGN KEY (game_publisher_id) REFERENCES game_publisher(id),
+    FOREIGN KEY (platform_id) REFERENCES platform(id)
+);
+
+-- Table: game_publisher (11732 rows)
+CREATE TABLE game_publisher (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    game_id INTEGER,  -- e.g. 10866; FK -> game.id
+    publisher_id INTEGER,  -- e.g. 369; FK -> publisher.id
+    FOREIGN KEY (game_id) REFERENCES game(id),
+    FOREIGN KEY (publisher_id) REFERENCES publisher(id)
+);
+
+-- Table: genre (12 rows)
+CREATE TABLE genre (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    genre_name TEXT  -- e.g. 'Action'
+);
+
+-- Table: platform (31 rows)
+CREATE TABLE platform (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    platform_name TEXT  -- e.g. 'Wii'
+);
+
+-- Table: publisher (577 rows)
+CREATE TABLE publisher (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    publisher_name TEXT  -- e.g. '10TACLE Studios'
+);
+
+-- Table: region (4 rows)
+CREATE TABLE region (
+    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
+    region_name TEXT  -- values: {'Europe', 'Japan', 'North America', 'Other'}
+);
+
+-- Table: region_sales (65320 rows)
+CREATE TABLE region_sales (
+    region_id INTEGER,  -- e.g. 1; FK -> region.id
+    game_platform_id INTEGER,  -- e.g. 50; FK -> game_platform.id
+    num_sales REAL,  -- e.g. 3.500
+    FOREIGN KEY (game_platform_id) REFERENCES game_platform(id),
+    FOREIGN KEY (region_id) REFERENCES region(id)
+);

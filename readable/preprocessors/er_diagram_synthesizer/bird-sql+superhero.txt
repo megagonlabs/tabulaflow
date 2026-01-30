@@ -1,0 +1,20 @@
+Entities:
+  Superhero - A superhero character with core identity, demographics, physical traits, and ...
+  Alignment - Reference list of moral alignments for superheroes.
+  Publisher - Comic book publishers associated with superheroes.
+  Race - Species or race classifications of superheroes.
+  Gender - Gender classifications for superheroes.
+  Colour - Colour reference values used for eye, hair, and skin attributes.
+  Superpower - Catalog of available superpowers.
+  Attribute - Scorable hero attributes such as Combat, Speed, Strength, etc.
+
+Relationships:
+  Superhero 0..1--SuperheroHasAlignment--* Alignment
+  Superhero 0..1--SuperheroPublishedByPublisher--* Publisher
+  Superhero 0..1--SuperheroHasRace--* Race
+  Superhero 0..1--SuperheroHasGender--* Gender
+  Superhero 0..1--SuperheroEyeColour--* Colour
+  Superhero 0..1--SuperheroHairColour--* Colour
+  Superhero 0..1--SuperheroSkinColour--* Colour
+  Superhero *--SuperheroHasSuperpower--* Superpower
+  Superhero *--SuperheroAttributeScore--* Attribute
