@@ -128,4 +128,10 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin):
         user_prompt = format_user_prompt(schema, self.formatter)
         result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return result.output
+        erd = result.output
+        # Sometimes LLM put database name as the schema name, remove it if the database does not have any schema names
+        if all(table.schema_name is None for table in schema.tables):
+            for entity in erd.conceptual_entities:
+                for source_table in entity.source_tables:
+                    source_table.schema_name = None
+        return erd
