@@ -4,7 +4,7 @@ import jinja2
 from pydantic_ai import Agent
 from mintq.formatters.base import BaseSQLSchemaFormatter
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.schema import SQLSchema, Usage
+from mintq.schema import SQLSchema, TableRef, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -88,6 +88,29 @@ class ERDRelationship(BaseModel):
 class ERDiagram(BaseModel):
     conceptual_entities: list[ERDConceptualEntity]
     relationships: list[ERDRelationship]
+
+    def trim(self, table_refs: list[TableRef]) -> "ERDiagram":
+        """Trim the ER diagram to only include entities and relationships relevant to the given tables."""
+        # Convert table_refs to a set of (schema_name, table_name) tuples for fast lookup
+        table_ref_set = {(ref.schema_name, ref.table_name) for ref in table_refs}
+
+        # Keep entities that have at least one source table in the given table_refs
+        kept_entities: list[ERDConceptualEntity] = []
+        kept_entity_names: set[str] = set()
+        for entity in self.conceptual_entities:
+            for source_table in entity.source_tables:
+                if (source_table.schema_name, source_table.table_name) in table_ref_set:
+                    kept_entities.append(entity)
+                    kept_entity_names.add(entity.name)
+                    break
+
+        # Keep relationships where all participants are in the kept entities
+        kept_relationships: list[ERDRelationship] = []
+        for relationship in self.relationships:
+            if all(p.entity in kept_entity_names for p in relationship.participants):
+                kept_relationships.append(relationship)
+
+        return ERDiagram(conceptual_entities=kept_entities, relationships=kept_relationships)
 
 
 def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> str:
