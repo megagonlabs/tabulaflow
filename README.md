@@ -561,17 +561,17 @@ Jan 30
 - [x] Experiment 192: Improved schema linking with ER diagram: no improvement to 191, linked_percentage 0.42->0.28, perfect_linked_schema_r 0.96 -> 0.93
 - [x] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
   - [x] Exp 193: run_query.num_calls.avg 1.09 -> 1.38, cost $24.9 -> $26.9
-- [ ] Fix schema linking evaluation / include FK columns
 - [x] run_query tool: display number of rows
+- [x] Analyze moderate and challenging first 5 tasks: most errors are due to ambiguity
 
+- [ ] Fix schema linking evaluation / include FK columns
+- [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
 - [ ] Show intermediate tables for CTE in run_query tool
-
 - [ ] Remove unuseful FKs in linked schema
-- [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
 - [ ] Model ensemble
 - [ ] Support in-context examples
@@ -588,6 +588,8 @@ Jan 30
   - [ ] Remove `extra_info` in ARCS data
   - [ ] Update website layout with top bar
   - [ ] Set schema formatter to sql_basic in scripts
+  - [ ] Include example ambiguity in BIRD-SQL to showcase importance
+    - bird-sql_dev_20240627_87
 
 ### Release test
 
