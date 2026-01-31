@@ -560,8 +560,9 @@ Jan 30
 - [x] Explicit "NULL" for NULLABLE columns
 - [x] Experiment 192: Improved schema linking with ER diagram: no improvement to 191, linked_percentage 0.42->0.28, perfect_linked_schema_r 0.96 -> 0.93
 - [x] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
-  - [x] Exp 193: run_query.num_calls.avg 1.09 -> 1.38
+  - [x] Exp 193: run_query.num_calls.avg 1.09 -> 1.38, cost $24.9 -> $26.9
 - [ ] Fix schema linking evaluation / include FK columns
+- [x] run_query tool: display number of rows
 
 - [ ] get_table_schema for non-linked tables
 - [ ] Table description (table profiler)

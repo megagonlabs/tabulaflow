@@ -55,16 +55,16 @@ test-bird-challenging-agent:
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
-.PHONY: test-bird25-agent
-test-bird25-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --split dev_20251106
+.PHONY: test-bird-moderate-agent
+test-bird-moderate-agent:
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty moderate --debug
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
-.PHONY: test-bird-agent-challenging
-test-bird-agent-challenging:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty challenging --debug
+.PHONY: test-bird25-agent
+test-bird25-agent:
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --split dev_20251106
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
