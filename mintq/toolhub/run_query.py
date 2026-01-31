@@ -70,6 +70,7 @@ class RunQueryWithParamsTool:
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=5)
+        res += f"\n({len(df)} rows)"
 
         if df.isnull().all().any():  # type: ignore
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
@@ -126,6 +127,7 @@ class RunQueryNoParamsTool:
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=5)
+        res += f"\n({len(df)} rows)"
 
         if df.isnull().all().any():  # type: ignore
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
