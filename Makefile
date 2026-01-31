@@ -50,21 +50,21 @@ test-bird-agent:
 
 .PHONY: test-bird-challenging-agent
 test-bird-challenging-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty challenging --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty challenging --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird-moderate-agent
 test-bird-moderate-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty moderate --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --difficulty moderate --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird25-agent
 test-bird25-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --split dev_20251106
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --split dev_20251106 --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
