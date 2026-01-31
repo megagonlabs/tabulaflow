@@ -555,10 +555,11 @@ Jan 29
 - [x] export_readable_cache.py
 
 Jan 30
-- [ ] Experiment 191:Direct ER diagram embedded
+- [x] Experiment 191: Direct ER diagram embedded: improve on moderate/challenging but hurts on simple
 - [x] ER diagram linking, reduce schema linking size with ER diagram
 - [x] Explicit "NULL" for NULLABLE columns
 - [ ] Fix schema linking evaluation / include FK columns
+- [x] Experiment 192: Improved schema linking with ER diagram: no improvement to 191, linked_percentage 0.42->0.28, perfect_linked_schema_r 0.96 -> 0.93
 
 - [ ] get_table_schema for non-linked tables
 - [ ] Table description (table profiler)
