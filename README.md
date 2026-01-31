@@ -558,17 +558,17 @@ Jan 30
 - [x] Experiment 191: Direct ER diagram embedded: improve on moderate/challenging but hurts on simple
 - [x] ER diagram linking, reduce schema linking size with ER diagram
 - [x] Explicit "NULL" for NULLABLE columns
-- [ ] Fix schema linking evaluation / include FK columns
 - [x] Experiment 192: Improved schema linking with ER diagram: no improvement to 191, linked_percentage 0.42->0.28, perfect_linked_schema_r 0.96 -> 0.93
+- [x] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
+  - [x] Exp 193: run_query.num_calls.avg 1.09 -> 1.38
+- [ ] Fix schema linking evaluation / include FK columns
 
 - [ ] get_table_schema for non-linked tables
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
 - [ ] Show intermediate tables for CTE in run_query tool
-- [ ] Update system prompt borrowed from https://github.com/x1xhlol/system-prompts-and-models-of-ai-tools/blob/main/Cursor%20Prompts/Agent%20Prompt%202.0.txt
-  - [ ] line 515 - keep going until resolved
-  - [ ] line 540 - maximize context understanding
+
 - [ ] Remove unuseful FKs in linked schema
 - [ ] Exp 161: /zfs1/users/yanlin/projects/nl2q-rl/mintq/schema.py:278: UserWarning: DataFrame columns are not unique, some columns will be omitted.
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
