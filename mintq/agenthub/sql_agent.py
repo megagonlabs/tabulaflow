@@ -213,22 +213,12 @@ class SchemaLinker:
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
 
-        def normalize(s: str | None) -> str | None:
-            return s.lower() if s is not None else None
-
-        linked = set(
-            (normalize(c.schema_name), normalize(c.table_name), normalize(c.column_name)) for c in current_columns
-        )
-        for results in all_results:
-            for item in results:
-                for alternative in item.alternatives:
-                    linked.add(
-                        (
-                            normalize(alternative.schema_name),
-                            normalize(alternative.table_name),
-                            normalize(alternative.column_name),
-                        )
-                    )
+        linked = set((c.schema_name, c.table_name, c.column_name) for c in current_columns) | {
+            (alt.schema_name, alt.table_name, alt.column_name)
+            for results in all_results
+            for item in results
+            for alt in item.alternatives
+        }
         linked_column_refs = [ColumnRef(schema_name=s, table_name=t, column_name=c) for s, t, c in linked]
         linked_schema = ctx.preprocessed_schema.trim(linked_column_refs, case_insensitive=True, keep_pk=True)
         return linked_schema
@@ -413,6 +403,7 @@ class SQLAgent:
         ctx.usage += schema_preprocessor.usage()
 
         linked_schema = await self.schema_linker.link_schema_async(ctx, task)
+        linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)
 
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
@@ -425,7 +416,7 @@ class SQLAgent:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=True),
-            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram),
+            er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),
         )
 
         agent = Agent[None, None](  # type: ignore
