@@ -120,7 +120,9 @@ class ByAmbrosiaTaxonomyTypeAggregator:
 
 class ByBirdSQLDifficultyAggregator:
     def __init__(
-        self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"], metric_keys: list[str] = ["bird_sql_ex"]
+        self,
+        ops: list[Literal["avg", "sum", "max", "min"]] = ["avg"],
+        metric_keys: list[str] = ["bird_sql_ex", "simple_ex", "perfect_linked_schema_r"],
     ):
         self.ops = ops
         self.metric_keys = metric_keys
