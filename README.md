@@ -556,10 +556,11 @@ Jan 29
 
 Jan 30
 - [ ] Experiment 191:Direct ER diagram embedded
-- [ ] ER diagram linking, reduce schema linking size with ER diagram
+- [x] ER diagram linking, reduce schema linking size with ER diagram
+- [x] Explicit "NULL" for NULLABLE columns
+- [ ] Fix schema linking evaluation / include FK columns
 
 - [ ] get_table_schema for non-linked tables
-- [ ] NULLABLE columns
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
