@@ -123,9 +123,11 @@ class SQLDDLSchemaFormatter:
         col_type = self._map_dtype_to_sql(column.dtype)
         parts.append(f"    {col_name} {col_type}")
 
-        # NOT NULL constraint (if not nullable and not all nulls)
+        # NULL / NOT NULL constraint
         if not column.nullable and column.null_ratio < 1.0:
             parts.append("NOT NULL")
+        elif column.nullable:
+            parts.append("NULL")
 
         # Single primary key constraint (inline)
         if column.primary_key_type == "single":
