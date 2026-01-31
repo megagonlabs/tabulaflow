@@ -50,15 +50,29 @@ class Analyzer:
             res += "\n\n" + "\n".join(f" [[{q}]](./readable/{q}/task_readable.md)" for q in qs)
         return res
 
+    def _num_tool_calls_section(self, result: NL2QRunResult) -> str:
+        res = "## Tool Calls"
+        res += "\n\n### Top 10 tasks with most run_query calls"
+        num_calls = []
+        for task in result.tasks:
+            if "tools" in task.inference_metrics:
+                num_calls.append((task.qid, task.inference_metrics["tools"]["run_query"]["num_calls"]))
+        num_calls.sort(key=lambda x: x[1], reverse=True)
+        for q, n in num_calls[:10]:
+            res += f"\n\n[[{q}]](./readable/{q}/task_readable.md) - {n} run_query calls"
+        return res
+
     async def analyze_async(self, result: NL2QRunResult) -> str:
         """Analyze the run result and return a markdown string containing the error analysis report."""
         sections = [
             self._error_section(result),
+            self._num_tool_calls_section(result),
         ]
         if any(task.extra_pred_info.linked_schema is not None for task in result.tasks):
             sections.append(self._schema_linking_section(result))
         if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
             sections.append(self._postprocess_impact_section(result))
+
         res = "\n\n".join(sections)
         return res
 
