@@ -332,10 +332,10 @@ class Trajectory(BaseModel):
             anchor = f"msg-{self.id}-{i}"
             if msg.role == "system":
                 lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] System:**\n')
-                lines.append(f"```\n{msg.content}\n```")
+                lines.append(f"````\n{msg.content}\n````")
             elif msg.role == "user":
                 lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] User:**\n')
-                lines.append(f"```\n{msg.content}\n```")
+                lines.append(f"````\n{msg.content}\n````")
             elif msg.role == "assistant":
                 lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] Assistant:**\n')
                 s = ""
@@ -362,10 +362,10 @@ class Trajectory(BaseModel):
                             s += f"\n{value}\n" if "\n" in value else value
                             s += "</arg>\n"
                     s += "</function>\n"
-                lines.append(f"```\n{s.strip()}\n```")
+                lines.append(f"````\n{s.strip()}\n````")
             elif msg.role == "tool":
                 lines.append(f'\n<a id="{anchor}"></a>\n\n**[{i}] Tool:**\n')
-                lines.append(f"```\n{msg.response}\n```")
+                lines.append(f"````\n{msg.response}\n````")
         return "\n".join(lines)
 
 
