@@ -100,13 +100,14 @@ class SQLDDLSchemaFormatter:
 
         lines.append(create_stmt)
 
-        # Join column definitions with commas placed before comments (not after)
+        # Join column definitions with commas at the end of the definition line
         formatted_defs = []
         for i, col_def in enumerate(column_defs):
             if i < len(column_defs) - 1:  # Not the last definition
-                if "  -- " in col_def:
-                    # Insert comma before the comment
-                    col_def = col_def.replace("  -- ", ",  -- ", 1)
+                # Comments are now on separate lines, so add comma at end of first line
+                if "\n" in col_def:
+                    first_line, rest = col_def.split("\n", 1)
+                    col_def = first_line + ",\n" + rest
                 else:
                     col_def += ","
             formatted_defs.append(col_def)
@@ -136,11 +137,11 @@ class SQLDDLSchemaFormatter:
         # Build the column definition
         col_def = " ".join(parts)
 
-        # Add inline comment with description and examples
-        comments = []
+        # Build comment lines with tags, each on a separate line
+        comment_lines = []
 
         if add_description and column.description:
-            comments.append(column.description)
+            comment_lines.append(f"        -- <description>{column.description}</description>")
 
         # Add example values as comment
         if self.include_examples and column.examples:
@@ -153,7 +154,7 @@ class SQLDDLSchemaFormatter:
             if is_categorical:
                 valid_values = [f"'{self._truncate(v)}'" for v in column.examples]
                 valid_values = sorted(valid_values)
-                comments.append(f"values: {{{', '.join(valid_values)}}}")
+                comment_lines.append(f"        -- <values>{{{', '.join(valid_values)}}}</values>")
             else:
                 example = column.examples[0]
                 if isinstance(example, str):
@@ -162,18 +163,18 @@ class SQLDDLSchemaFormatter:
                     example = f"{example:.3f}"
                 else:
                     example = str(example)
-                comments.append(f"e.g. {example}")
+                comment_lines.append(f"        -- <example>{example}</example>")
 
         # Add FK reference info as comment
         for fk in column.foreign_keys:
             if len(fk.columns) == 1:  # Single column FK
                 ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
                 ref_col = self._quote_if_needed(fk.foreign_columns[0])
-                comments.append(f"FK -> {ref_table}.{ref_col}")
+                comment_lines.append(f"        -- <fk> -> {ref_table}.{ref_col}</fk>")
             else:
-                comments.append("FK (composite)")
+                comment_lines.append("        -- <fk>composite</fk>")
 
-        if comments:
-            col_def += "  -- " + "; ".join(comments)
+        if comment_lines:
+            col_def += "\n" + "\n".join(comment_lines)
 
         return col_def
