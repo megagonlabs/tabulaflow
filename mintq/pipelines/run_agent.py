@@ -180,6 +180,7 @@ async def main_async() -> None:
     parser.add_argument("--dataset", default="arcs")
     parser.add_argument("--split", default="test")
     parser.add_argument("--databases", default=None, nargs="+")
+    parser.add_argument("--qids", default=None, nargs="+")
     parser.add_argument("--subsample_size", default=None, type=int)
     parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
     parser.add_argument("--include_taxonomy", action="store_true")
@@ -195,7 +196,9 @@ async def main_async() -> None:
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
         if args.dataset == "bird-sql":
-            parser.set_defaults(databases=["california_schools"], split="dev_20240627")
+            parser.set_defaults(split="dev_20240627")
+            if not args.qids:
+                parser.set_defaults(databases=["california_schools"])
         elif args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
@@ -230,7 +233,9 @@ async def main_async() -> None:
     dataset = await dataset_loader.get_split_async(
         args.split, databases=args.databases, subsample_size=args.subsample_size, **kwargs
     )
-    if args.debug:
+    if args.qids is not None:
+        dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
+    elif args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
             dataset.tasks = [
