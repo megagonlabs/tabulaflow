@@ -564,6 +564,11 @@ Jan 30
 - [x] run_query tool: display number of rows
 - [x] Analyze moderate and challenging first 5 tasks: most errors are due to ambiguity
 
+Feb 2
+- [x] Update BIRD instructions - rewrite format and add "No Ties in Highest or Lowest Entity" section
+- [x] Update sql_ddl formatter
+- [ ] Exp 195: Improved bird instructions and sql_ddl formatter
+
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
