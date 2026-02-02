@@ -39,7 +39,9 @@ BIRD_DATASET_INSTRUCTIONS = """
   - Carefully analyze column descriptions and hints to choose the correct column when similar columns exist across tables.
 - **JOIN Preference:**
   - Prioritize `INNER JOIN` over nested `SELECT` statements.
-  - If the question refers to the entity with the maximum or minimum value, assume there is exactly one such entity (i.e., use `ORDER BY ... LIMIT 1` instead of nested `= MAX(SELECT ...)`).
+- **Highest or Lowest Entity:**
+  - When a query asks for the entity with the highest or lowest value and ties are possible, assume no ties exist
+  - Use `[JOIN ...] ORDER BY ... LIMIT 1` instead of a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
 - **SQLite Functions Only:**
   - Use only functions available in SQLite.
 - **Date Processing:**
