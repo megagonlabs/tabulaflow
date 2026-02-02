@@ -22,9 +22,10 @@ class LLMParameter(BaseModel):
 class RunQueryWithParamsTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20):
         self.db_connector = db_connector
         self.timeout = timeout
+        self.max_visible_rows = max_visible_rows
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
@@ -69,7 +70,7 @@ class RunQueryWithParamsTool:
         if df.empty:  # type: ignore
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
-        res = format_df(df, max_visible_rows=5)
+        res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
 
         if df.isnull().all().any():  # type: ignore
@@ -91,9 +92,10 @@ class RunQueryWithParamsTool:
 class RunQueryNoParamsTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20):
         self.db_connector = db_connector
         self.timeout = timeout
+        self.max_visible_rows = max_visible_rows
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
@@ -126,7 +128,7 @@ class RunQueryNoParamsTool:
         if df.empty:  # type: ignore
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
-        res = format_df(df, max_visible_rows=5)
+        res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
 
         if df.isnull().all().any():  # type: ignore
