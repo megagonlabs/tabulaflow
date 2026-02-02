@@ -3,9 +3,14 @@
 
 -- Table: borders (320 rows)
 CREATE TABLE borders (
-    Country1 TEXT NOT NULL,  -- e.g. 'A'; FK -> country.Code
-    Country2 TEXT NOT NULL,  -- e.g. 'CH'; FK -> country.Code
-    Length REAL,  -- e.g. 164.000
+    Country1 TEXT NOT NULL,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Country2 TEXT NOT NULL,
+        -- <example>'CH'</example>
+        -- <fk> -> country.Code</fk>
+    Length REAL NULL,
+        -- <example>164.000</example>
     PRIMARY KEY (Country1, Country2),
     FOREIGN KEY (Country2) REFERENCES country(Code),
     FOREIGN KEY (Country1) REFERENCES country(Code)
@@ -13,12 +18,21 @@ CREATE TABLE borders (
 
 -- Table: city (3111 rows)
 CREATE TABLE city (
-    Name TEXT NOT NULL,  -- e.g. 'Aachen'
-    Country TEXT NOT NULL,  -- e.g. 'D'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Nordrhein Westfalen'; FK (composite)
-    Population INTEGER,  -- e.g. 247113
-    Longitude REAL,  -- e.g. 10.000
-    Latitude REAL,  -- e.g. 57.000
+    Name TEXT NOT NULL,
+        -- <example>'Aachen'</example>
+    Country TEXT NOT NULL,
+        -- <example>'D'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Nordrhein Westfalen'</example>
+        -- <fk>composite</fk>
+    Population INTEGER NULL,
+        -- <example>247113</example>
+    Longitude REAL NULL,
+        -- <example>10.000</example>
+    Latitude REAL NULL,
+        -- <example>57.000</example>
     PRIMARY KEY (Name, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code)
@@ -26,44 +40,68 @@ CREATE TABLE city (
 
 -- Table: continent (5 rows)
 CREATE TABLE continent (
-    Name TEXT NOT NULL PRIMARY KEY,  -- values: {'Africa', 'America', 'Asia', 'Australia/Oceania', 'Europe'}
-    Area REAL  -- e.g. 30254700.000
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <values>{'Africa', 'America', 'Asia', 'Australia/Oceania', 'Europe'}</values>
+    Area REAL NULL
+        -- <example>30254700.000</example>
 );
 
 -- Table: country (238 rows)
 CREATE TABLE country (
-    Name TEXT NOT NULL,  -- e.g. 'Afghanistan'
-    Code TEXT NOT NULL PRIMARY KEY,  -- e.g. 'A'
-    Capital TEXT,  -- e.g. 'Vienna'
-    Province TEXT,  -- e.g. 'Vienna'
-    Area REAL,  -- e.g. 83850.000
-    Population INTEGER  -- e.g. 8023244
+    Name TEXT NOT NULL,
+        -- <example>'Afghanistan'</example>
+    Code TEXT NOT NULL PRIMARY KEY,
+        -- <example>'A'</example>
+    Capital TEXT NULL,
+        -- <example>'Vienna'</example>
+    Province TEXT NULL,
+        -- <example>'Vienna'</example>
+    Area REAL NULL,
+        -- <example>83850.000</example>
+    Population INTEGER NULL
+        -- <example>8023244</example>
 );
 
 -- Table: desert (63 rows)
 CREATE TABLE desert (
-    Name TEXT NOT NULL PRIMARY KEY,  -- e.g. 'Arabian Desert'
-    Area REAL,  -- e.g. 50000.000
-    Longitude REAL,  -- e.g. 26.000
-    Latitude REAL  -- e.g. 33.000
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <example>'Arabian Desert'</example>
+    Area REAL NULL,
+        -- <example>50000.000</example>
+    Longitude REAL NULL,
+        -- <example>26.000</example>
+    Latitude REAL NULL
+        -- <example>33.000</example>
 );
 
 -- Table: economy (238 rows)
 CREATE TABLE economy (
-    Country TEXT NOT NULL PRIMARY KEY,  -- e.g. 'A'; FK -> country.Code
-    GDP REAL,  -- e.g. 152000.000
-    Agriculture REAL,  -- e.g. 2.000
-    Service REAL,  -- e.g. 34.000
-    Industry REAL,  -- e.g. 64.000
-    Inflation REAL,  -- e.g. 2.300
+    Country TEXT NOT NULL PRIMARY KEY,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    GDP REAL NULL,
+        -- <example>152000.000</example>
+    Agriculture REAL NULL,
+        -- <example>2.000</example>
+    Service REAL NULL,
+        -- <example>34.000</example>
+    Industry REAL NULL,
+        -- <example>64.000</example>
+    Inflation REAL NULL,
+        -- <example>2.300</example>
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: encompasses (242 rows)
 CREATE TABLE encompasses (
-    Country TEXT NOT NULL,  -- e.g. 'A'; FK -> country.Code
-    Continent TEXT NOT NULL,  -- values: {'Africa', 'America', 'Asia', 'Australia/Oceania', 'Europe'}; FK -> continent.Name
-    Percentage REAL,  -- e.g. 100.000
+    Country TEXT NOT NULL,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Continent TEXT NOT NULL,
+        -- <values>{'Africa', 'America', 'Asia', 'Australia/Oceania', 'Europe'}</values>
+        -- <fk> -> continent.Name</fk>
+    Percentage REAL NULL,
+        -- <example>100.000</example>
     PRIMARY KEY (Country, Continent),
     FOREIGN KEY (Continent) REFERENCES continent(Name),
     FOREIGN KEY (Country) REFERENCES country(Code)
@@ -71,18 +109,29 @@ CREATE TABLE encompasses (
 
 -- Table: ethnicGroup (540 rows)
 CREATE TABLE ethnicGroup (
-    Country TEXT NOT NULL,  -- e.g. 'GE'; FK -> country.Code
-    Name TEXT NOT NULL,  -- e.g. 'Abkhaz'
-    Percentage REAL,  -- e.g. 1.800
+    Country TEXT NOT NULL,
+        -- <example>'GE'</example>
+        -- <fk> -> country.Code</fk>
+    Name TEXT NOT NULL,
+        -- <example>'Abkhaz'</example>
+    Percentage REAL NULL,
+        -- <example>1.800</example>
     PRIMARY KEY (Country, Name),
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: geo_desert (155 rows)
 CREATE TABLE geo_desert (
-    Desert TEXT NOT NULL,  -- e.g. 'Desert'; FK -> desert.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Abu Dhabi'; FK (composite)
+    Desert TEXT NOT NULL,
+        -- <example>'Desert'</example>
+        -- <fk> -> desert.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Abu Dhabi'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (Desert, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -91,9 +140,16 @@ CREATE TABLE geo_desert (
 
 -- Table: geo_estuary (266 rows)
 CREATE TABLE geo_estuary (
-    River TEXT NOT NULL,  -- e.g. 'River'; FK -> river.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'AG'; FK (composite)
+    River TEXT NOT NULL,
+        -- <example>'River'</example>
+        -- <fk> -> river.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'AG'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (River, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -102,9 +158,16 @@ CREATE TABLE geo_estuary (
 
 -- Table: geo_island (202 rows)
 CREATE TABLE geo_island (
-    Island TEXT NOT NULL,  -- e.g. 'Aland'; FK -> island.Name
-    Country TEXT NOT NULL,  -- e.g. 'Alan'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. '101'; FK (composite)
+    Island TEXT NOT NULL,
+        -- <example>'Aland'</example>
+        -- <fk> -> island.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Alan'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'101'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (Island, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -113,9 +176,16 @@ CREATE TABLE geo_island (
 
 -- Table: geo_lake (254 rows)
 CREATE TABLE geo_lake (
-    Lake TEXT NOT NULL,  -- e.g. 'Lake'; FK -> lake.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Adamaoua'; FK (composite)
+    Lake TEXT NOT NULL,
+        -- <example>'Lake'</example>
+        -- <fk> -> lake.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Adamaoua'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (Lake, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -124,9 +194,16 @@ CREATE TABLE geo_lake (
 
 -- Table: geo_mountain (296 rows)
 CREATE TABLE geo_mountain (
-    Mountain TEXT NOT NULL,  -- e.g. 'Mountain'; FK -> mountain.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Abruzzo'; FK (composite)
+    Mountain TEXT NOT NULL,
+        -- <example>'Mountain'</example>
+        -- <fk> -> mountain.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Abruzzo'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (Mountain, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -135,9 +212,16 @@ CREATE TABLE geo_mountain (
 
 -- Table: geo_river (852 rows)
 CREATE TABLE geo_river (
-    River TEXT NOT NULL,  -- e.g. 'River'; FK -> river.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'AG'; FK (composite)
+    River TEXT NOT NULL,
+        -- <example>'River'</example>
+        -- <fk> -> river.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'AG'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (River, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -146,9 +230,16 @@ CREATE TABLE geo_river (
 
 -- Table: geo_sea (736 rows)
 CREATE TABLE geo_sea (
-    Sea TEXT NOT NULL,  -- e.g. 'Sea'; FK -> sea.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Abruzzo'; FK (composite)
+    Sea TEXT NOT NULL,
+        -- <example>'Sea'</example>
+        -- <fk> -> sea.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Abruzzo'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (Sea, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -157,9 +248,16 @@ CREATE TABLE geo_sea (
 
 -- Table: geo_source (220 rows)
 CREATE TABLE geo_source (
-    River TEXT NOT NULL,  -- e.g. 'River'; FK -> river.Name
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT NOT NULL,  -- e.g. 'Aali an Nil'; FK (composite)
+    River TEXT NOT NULL,
+        -- <example>'River'</example>
+        -- <fk> -> river.Name</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Aali an Nil'</example>
+        -- <fk>composite</fk>
     PRIMARY KEY (River, Country, Province),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code),
@@ -168,9 +266,14 @@ CREATE TABLE geo_source (
 
 -- Table: isMember (8009 rows)
 CREATE TABLE isMember (
-    Country TEXT NOT NULL,  -- e.g. 'A'; FK -> country.Code
-    Organization TEXT NOT NULL,  -- e.g. 'AG'; FK -> organization.Abbreviation
-    Type TEXT,  -- e.g. 'Type'
+    Country TEXT NOT NULL,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Organization TEXT NOT NULL,
+        -- <example>'AG'</example>
+        -- <fk> -> organization.Abbreviation</fk>
+    Type TEXT NULL,
+        -- <example>'Type'</example>
     PRIMARY KEY (Country, Organization),
     FOREIGN KEY (Organization) REFERENCES organization(Abbreviation),
     FOREIGN KEY (Country) REFERENCES country(Code)
@@ -178,21 +281,36 @@ CREATE TABLE isMember (
 
 -- Table: island (276 rows)
 CREATE TABLE island (
-    Name TEXT NOT NULL PRIMARY KEY,  -- e.g. 'Aland'
-    Islands TEXT,  -- e.g. 'Aland Islands'
-    Area REAL,  -- e.g. 650.000
-    Height REAL,  -- e.g. 675.000
-    Type TEXT,  -- values: {'atoll', 'coral', 'lime', 'volcanic'}
-    Longitude REAL,  -- e.g. 20.000
-    Latitude REAL  -- e.g. 60.100
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <example>'Aland'</example>
+    Islands TEXT NULL,
+        -- <example>'Aland Islands'</example>
+    Area REAL NULL,
+        -- <example>650.000</example>
+    Height REAL NULL,
+        -- <example>675.000</example>
+    Type TEXT NULL,
+        -- <values>{'atoll', 'coral', 'lime', 'volcanic'}</values>
+    Longitude REAL NULL,
+        -- <example>20.000</example>
+    Latitude REAL NULL
+        -- <example>60.100</example>
 );
 
 -- Table: islandIn (350 rows)
 CREATE TABLE islandIn (
-    Island TEXT,  -- e.g. 'Island'; FK -> island.Name
-    Sea TEXT,  -- e.g. 'Sea'; FK -> sea.Name
-    Lake TEXT,  -- values: {'Lake Huron', 'Lake Manicouagan', 'Lake Nicaragua', 'Lake Toba', 'Lake', 'Ozero Baikal'}; FK -> lake.Name
-    River TEXT,  -- values: {'River'}; FK -> river.Name
+    Island TEXT NULL,
+        -- <example>'Island'</example>
+        -- <fk> -> island.Name</fk>
+    Sea TEXT NULL,
+        -- <example>'Sea'</example>
+        -- <fk> -> sea.Name</fk>
+    Lake TEXT NULL,
+        -- <values>{'Lake Huron', 'Lake Manicouagan', 'Lake Nicaragua', 'Lake Toba', 'Lake', 'Ozero Baikal'}</values>
+        -- <fk> -> lake.Name</fk>
+    River TEXT NULL,
+        -- <values>{'River'}</values>
+        -- <fk> -> river.Name</fk>
     FOREIGN KEY (River) REFERENCES river(Name),
     FOREIGN KEY (Lake) REFERENCES lake(Name),
     FOREIGN KEY (Sea) REFERENCES sea(Name),
@@ -201,33 +319,59 @@ CREATE TABLE islandIn (
 
 -- Table: lake (130 rows)
 CREATE TABLE lake (
-    Name TEXT NOT NULL PRIMARY KEY,  -- e.g. 'Ammersee'
-    Area REAL,  -- e.g. 46.600
-    Depth REAL,  -- e.g. 81.100
-    Altitude REAL,  -- e.g. 533.000
-    Type TEXT,  -- values: {'acid', 'artificial', 'caldera', 'crater', 'impact', 'salt'}
-    River TEXT,  -- e.g. 'Ammer'
-    Longitude REAL,  -- e.g. 11.600
-    Latitude REAL  -- e.g. 48.000
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <example>'Ammersee'</example>
+    Area REAL NULL,
+        -- <example>46.600</example>
+    Depth REAL NULL,
+        -- <example>81.100</example>
+    Altitude REAL NULL,
+        -- <example>533.000</example>
+    Type TEXT NULL,
+        -- <values>{'acid', 'artificial', 'caldera', 'crater', 'impact', 'salt'}</values>
+    River TEXT NULL,
+        -- <example>'Ammer'</example>
+    Longitude REAL NULL,
+        -- <example>11.600</example>
+    Latitude REAL NULL
+        -- <example>48.000</example>
 );
 
 -- Table: language (144 rows)
 CREATE TABLE language (
-    Country TEXT NOT NULL,  -- e.g. 'AFG'; FK -> country.Code
-    Name TEXT NOT NULL,  -- e.g. 'Afghan Persian'
-    Percentage REAL,  -- e.g. 50.000
+    Country TEXT NOT NULL,
+        -- <example>'AFG'</example>
+        -- <fk> -> country.Code</fk>
+    Name TEXT NOT NULL,
+        -- <example>'Afghan Persian'</example>
+    Percentage REAL NULL,
+        -- <example>50.000</example>
     PRIMARY KEY (Country, Name),
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: located (858 rows)
 CREATE TABLE located (
-    City TEXT,  -- e.g. 'City'; FK (composite)
-    Province TEXT,  -- e.g. 'Province'; FK (composite); FK (composite)
-    Country TEXT,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    River TEXT,  -- e.g. 'River'; FK -> river.Name
-    Lake TEXT,  -- e.g. 'Lake'; FK -> lake.Name
-    Sea TEXT,  -- e.g. 'Sea'; FK -> sea.Name
+    City TEXT NULL,
+        -- <example>'City'</example>
+        -- <fk>composite</fk>
+    Province TEXT NULL,
+        -- <example>'Province'</example>
+        -- <fk>composite</fk>
+        -- <fk>composite</fk>
+    Country TEXT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    River TEXT NULL,
+        -- <example>'River'</example>
+        -- <fk> -> river.Name</fk>
+    Lake TEXT NULL,
+        -- <example>'Lake'</example>
+        -- <fk> -> lake.Name</fk>
+    Sea TEXT NULL,
+        -- <example>'Sea'</example>
+        -- <fk> -> sea.Name</fk>
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (City, Province) REFERENCES city(Name, Province),
     FOREIGN KEY (Sea) REFERENCES sea(Name),
@@ -238,10 +382,20 @@ CREATE TABLE located (
 
 -- Table: locatedOn (435 rows)
 CREATE TABLE locatedOn (
-    City TEXT NOT NULL,  -- e.g. 'Aberdeen'; FK (composite)
-    Province TEXT NOT NULL,  -- e.g. 'Province'; FK (composite); FK (composite)
-    Country TEXT NOT NULL,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Island TEXT NOT NULL,  -- e.g. 'Island'; FK -> island.Name
+    City TEXT NOT NULL,
+        -- <example>'Aberdeen'</example>
+        -- <fk>composite</fk>
+    Province TEXT NOT NULL,
+        -- <example>'Province'</example>
+        -- <fk>composite</fk>
+        -- <fk>composite</fk>
+    Country TEXT NOT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Island TEXT NOT NULL,
+        -- <example>'Island'</example>
+        -- <fk> -> island.Name</fk>
     PRIMARY KEY (City, Province, Country, Island),
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (City, Province) REFERENCES city(Name, Province),
@@ -251,8 +405,12 @@ CREATE TABLE locatedOn (
 
 -- Table: mergesWith (55 rows)
 CREATE TABLE mergesWith (
-    Sea1 TEXT NOT NULL,  -- e.g. 'Andaman Sea'; FK -> sea.Name
-    Sea2 TEXT NOT NULL,  -- e.g. 'Sea2'; FK -> sea.Name
+    Sea1 TEXT NOT NULL,
+        -- <example>'Andaman Sea'</example>
+        -- <fk> -> sea.Name</fk>
+    Sea2 TEXT NOT NULL,
+        -- <example>'Sea2'</example>
+        -- <fk> -> sea.Name</fk>
     PRIMARY KEY (Sea1, Sea2),
     FOREIGN KEY (Sea2) REFERENCES sea(Name),
     FOREIGN KEY (Sea1) REFERENCES sea(Name)
@@ -261,17 +419,21 @@ CREATE TABLE mergesWith (
 -- Table: mountain (0 rows)
 CREATE TABLE mountain (
     Name TEXT NOT NULL PRIMARY KEY,
-    Mountains TEXT,
-    Height REAL,
-    Type TEXT,
-    Longitude REAL,
-    Latitude REAL
+    Mountains TEXT NULL,
+    Height REAL NULL,
+    Type TEXT NULL,
+    Longitude REAL NULL,
+    Latitude REAL NULL
 );
 
 -- Table: mountainOnIsland (68 rows)
 CREATE TABLE mountainOnIsland (
-    Mountain TEXT NOT NULL,  -- e.g. 'Andringitra'; FK -> mountain.Name
-    Island TEXT NOT NULL,  -- e.g. 'Island'; FK -> island.Name
+    Mountain TEXT NOT NULL,
+        -- <example>'Andringitra'</example>
+        -- <fk> -> mountain.Name</fk>
+    Island TEXT NOT NULL,
+        -- <example>'Island'</example>
+        -- <fk> -> island.Name</fk>
     PRIMARY KEY (Mountain, Island),
     FOREIGN KEY (Island) REFERENCES island(Name),
     FOREIGN KEY (Mountain) REFERENCES mountain(Name)
@@ -279,12 +441,23 @@ CREATE TABLE mountainOnIsland (
 
 -- Table: organization (154 rows)
 CREATE TABLE organization (
-    Abbreviation TEXT NOT NULL PRIMARY KEY,  -- e.g. 'ABEDA'
-    Name TEXT NOT NULL,  -- e.g. 'ASEAN-Mekong Basin Development Group'
-    City TEXT,  -- e.g. 'City'; FK (composite)
-    Country TEXT,  -- e.g. 'Coun'; FK (composite); FK -> country.Code
-    Province TEXT,  -- e.g. 'Province'; FK (composite); FK (composite)
-    Established DATE,  -- e.g. 'Established'
+    Abbreviation TEXT NOT NULL PRIMARY KEY,
+        -- <example>'ABEDA'</example>
+    Name TEXT NOT NULL,
+        -- <example>'ASEAN-Mekong Basin Development Group'</example>
+    City TEXT NULL,
+        -- <example>'City'</example>
+        -- <fk>composite</fk>
+    Country TEXT NULL,
+        -- <example>'Coun'</example>
+        -- <fk>composite</fk>
+        -- <fk> -> country.Code</fk>
+    Province TEXT NULL,
+        -- <example>'Province'</example>
+        -- <fk>composite</fk>
+        -- <fk>composite</fk>
+    Established DATE NULL,
+        -- <example>'Established'</example>
     FOREIGN KEY (Province, Country) REFERENCES province(Name, Country),
     FOREIGN KEY (City, Province) REFERENCES city(Name, Province),
     FOREIGN KEY (Country) REFERENCES country(Code)
@@ -292,69 +465,107 @@ CREATE TABLE organization (
 
 -- Table: politics (239 rows)
 CREATE TABLE politics (
-    Country TEXT NOT NULL PRIMARY KEY,  -- e.g. 'A'; FK -> country.Code
-    Independence DATE,  -- e.g. 'Independence'
-    Dependent TEXT,  -- values: {'AUS', 'DK', 'Depe', 'F', 'GB', 'N', 'NL', 'NZ', 'TJ', 'USA'}; FK -> country.Code
-    Government TEXT,  -- e.g. 'Government'
+    Country TEXT NOT NULL PRIMARY KEY,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Independence DATE NULL,
+        -- <example>'Independence'</example>
+    Dependent TEXT NULL,
+        -- <values>{'AUS', 'DK', 'Depe', 'F', 'GB', 'N', 'NL', 'NZ', 'TJ', 'USA'}</values>
+        -- <fk> -> country.Code</fk>
+    Government TEXT NULL,
+        -- <example>'Government'</example>
     FOREIGN KEY (Dependent) REFERENCES country(Code),
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: population (238 rows)
 CREATE TABLE population (
-    Country TEXT NOT NULL PRIMARY KEY,  -- e.g. 'A'; FK -> country.Code
-    Population_Growth REAL,  -- e.g. 0.410
-    Infant_Mortality REAL,  -- e.g. 6.200
+    Country TEXT NOT NULL PRIMARY KEY,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Population_Growth REAL NULL,
+        -- <example>0.410</example>
+    Infant_Mortality REAL NULL,
+        -- <example>6.200</example>
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: province (1450 rows)
 CREATE TABLE province (
-    Name TEXT NOT NULL,  -- e.g. 'AG'
-    Country TEXT NOT NULL,  -- e.g. 'CH'; FK -> country.Code
-    Population INTEGER,  -- e.g. 1599605
-    Area REAL,  -- e.g. 238792.000
-    Capital TEXT,  -- e.g. 'Malakal'
-    CapProv TEXT,  -- e.g. 'Aali an Nil'
+    Name TEXT NOT NULL,
+        -- <example>'AG'</example>
+    Country TEXT NOT NULL,
+        -- <example>'CH'</example>
+        -- <fk> -> country.Code</fk>
+    Population INTEGER NULL,
+        -- <example>1599605</example>
+    Area REAL NULL,
+        -- <example>238792.000</example>
+    Capital TEXT NULL,
+        -- <example>'Malakal'</example>
+    CapProv TEXT NULL,
+        -- <example>'Aali an Nil'</example>
     PRIMARY KEY (Name, Country),
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: religion (454 rows)
 CREATE TABLE religion (
-    Country TEXT NOT NULL,  -- e.g. 'BERM'; FK -> country.Code
-    Name TEXT NOT NULL,  -- e.g. 'African Methodist Episcopal'
-    Percentage REAL,  -- e.g. 11.000
+    Country TEXT NOT NULL,
+        -- <example>'BERM'</example>
+        -- <fk> -> country.Code</fk>
+    Name TEXT NOT NULL,
+        -- <example>'African Methodist Episcopal'</example>
+    Percentage REAL NULL,
+        -- <example>11.000</example>
     PRIMARY KEY (Country, Name),
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 
 -- Table: river (218 rows)
 CREATE TABLE river (
-    Name TEXT NOT NULL PRIMARY KEY,  -- e.g. 'Aare'
-    River TEXT,  -- e.g. 'Rhein'
-    Lake TEXT,  -- e.g. 'Brienzersee'; FK -> lake.Name
-    Sea TEXT,  -- e.g. 'Atlantic Ocean'
-    Length REAL,  -- e.g. 288.000
-    SourceLongitude REAL,  -- e.g. 8.200
-    SourceLatitude REAL,  -- e.g. 46.550
-    Mountains TEXT,  -- e.g. 'Alps'
-    SourceAltitude REAL,  -- e.g. 2310.000
-    EstuaryLongitude REAL,  -- e.g. 8.220
-    EstuaryLatitude REAL,  -- e.g. 47.610
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <example>'Aare'</example>
+    River TEXT NULL,
+        -- <example>'Rhein'</example>
+    Lake TEXT NULL,
+        -- <example>'Brienzersee'</example>
+        -- <fk> -> lake.Name</fk>
+    Sea TEXT NULL,
+        -- <example>'Atlantic Ocean'</example>
+    Length REAL NULL,
+        -- <example>288.000</example>
+    SourceLongitude REAL NULL,
+        -- <example>8.200</example>
+    SourceLatitude REAL NULL,
+        -- <example>46.550</example>
+    Mountains TEXT NULL,
+        -- <example>'Alps'</example>
+    SourceAltitude REAL NULL,
+        -- <example>2310.000</example>
+    EstuaryLongitude REAL NULL,
+        -- <example>8.220</example>
+    EstuaryLatitude REAL NULL,
+        -- <example>47.610</example>
     FOREIGN KEY (Lake) REFERENCES lake(Name)
 );
 
 -- Table: sea (35 rows)
 CREATE TABLE sea (
-    Name TEXT NOT NULL PRIMARY KEY,  -- e.g. 'Andaman Sea'
-    Depth REAL  -- e.g. 3113.000
+    Name TEXT NOT NULL PRIMARY KEY,
+        -- <example>'Andaman Sea'</example>
+    Depth REAL NULL
+        -- <example>3113.000</example>
 );
 
 -- Table: target (205 rows)
 CREATE TABLE target (
-    Country TEXT NOT NULL PRIMARY KEY,  -- e.g. 'A'; FK -> country.Code
-    Target TEXT,  -- values: {'Christian', 'Target', 'non-Christian'}
+    Country TEXT NOT NULL PRIMARY KEY,
+        -- <example>'A'</example>
+        -- <fk> -> country.Code</fk>
+    Target TEXT NULL,
+        -- <values>{'Christian', 'Target', 'non-Christian'}</values>
     FOREIGN KEY (Country) REFERENCES country(Code)
 );
 ```

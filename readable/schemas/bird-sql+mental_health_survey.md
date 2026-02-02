@@ -3,10 +3,16 @@
 
 -- Table: Answer (234640 rows)
 CREATE TABLE Answer (
-    AnswerText TEXT,  -- e.g. '37'
-    SurveyID INTEGER,  -- e.g. 2014; FK -> Survey.SurveyID
-    UserID INTEGER,  -- e.g. 1
-    QuestionID INTEGER,  -- e.g. 1; FK -> Question.questionid
+    AnswerText TEXT NULL,
+        -- <example>'37'</example>
+    SurveyID INTEGER NULL,
+        -- <example>2014</example>
+        -- <fk> -> Survey.SurveyID</fk>
+    UserID INTEGER NULL,
+        -- <example>1</example>
+    QuestionID INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> Question.questionid</fk>
     PRIMARY KEY (UserID, QuestionID),
     FOREIGN KEY (QuestionID) REFERENCES Question(questionid),
     FOREIGN KEY (SurveyID) REFERENCES Survey(SurveyID)
@@ -14,13 +20,17 @@ CREATE TABLE Answer (
 
 -- Table: Question (105 rows)
 CREATE TABLE Question (
-    questiontext TEXT,  -- e.g. 'What is your age?'
-    questionid INTEGER PRIMARY KEY  -- e.g. 1
+    questiontext TEXT NULL,
+        -- <example>'What is your age?'</example>
+    questionid INTEGER NULL PRIMARY KEY
+        -- <example>1</example>
 );
 
 -- Table: Survey (5 rows)
 CREATE TABLE Survey (
-    SurveyID INTEGER PRIMARY KEY,  -- e.g. 2014
-    Description TEXT  -- values: {'mental health survey for 2014', 'mental health survey for 2016', 'mental health survey for 2017', 'mental health survey for 2018', 'mental health survey for 2019'}
+    SurveyID INTEGER NULL PRIMARY KEY,
+        -- <example>2014</example>
+    Description TEXT NULL
+        -- <values>{'mental health survey for 2014', 'mental health survey for 2016', 'mental health survey for 2017', 'mental health survey for 2018', 'mental health survey for 2019'}</values>
 );
 ```

@@ -3,39 +3,61 @@
 
 -- Table: chapters (945 rows)
 CREATE TABLE chapters (
-    id INTEGER PRIMARY KEY,  -- e.g. 18704
-    Act INTEGER NOT NULL,  -- e.g. 1
-    Scene INTEGER NOT NULL,  -- e.g. 1
-    Description TEXT NOT NULL,  -- e.g. 'DUKE ORSINO’s palace.'
-    work_id INTEGER NOT NULL,  -- e.g. 1; FK -> works.id
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>18704</example>
+    Act INTEGER NOT NULL,
+        -- <example>1</example>
+    Scene INTEGER NOT NULL,
+        -- <example>1</example>
+    Description TEXT NOT NULL,
+        -- <example>'DUKE ORSINO’s palace.'</example>
+    work_id INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> works.id</fk>
     FOREIGN KEY (work_id) REFERENCES works(id)
 );
 
 -- Table: characters (1266 rows)
 CREATE TABLE characters (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    CharName TEXT NOT NULL,  -- e.g. 'First Apparition'
-    Abbrev TEXT NOT NULL,  -- e.g. 'First Apparition'
-    Description TEXT NOT NULL  -- e.g. ''
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    CharName TEXT NOT NULL,
+        -- <example>'First Apparition'</example>
+    Abbrev TEXT NOT NULL,
+        -- <example>'First Apparition'</example>
+    Description TEXT NOT NULL
+        -- <example>''</example>
 );
 
 -- Table: paragraphs (35126 rows)
 CREATE TABLE paragraphs (
-    id INTEGER PRIMARY KEY,  -- e.g. 630863
-    ParagraphNum INTEGER NOT NULL,  -- e.g. 3
-    PlainText TEXT NOT NULL,  -- e.g. '[Enter DUKE ORSINO, CURIO, and other Lords; Musicians attending]'
-    character_id INTEGER NOT NULL,  -- e.g. 1261; FK -> characters.id
-    chapter_id INTEGER NOT NULL,  -- e.g. 18704; FK -> chapters.id
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>630863</example>
+    ParagraphNum INTEGER NOT NULL,
+        -- <example>3</example>
+    PlainText TEXT NOT NULL,
+        -- <example>'[Enter DUKE ORSINO, CURIO, and other Lords; Musicians attending]'</example>
+    character_id INTEGER NOT NULL,
+        -- <example>1261</example>
+        -- <fk> -> characters.id</fk>
+    chapter_id INTEGER NOT NULL,
+        -- <example>18704</example>
+        -- <fk> -> chapters.id</fk>
     FOREIGN KEY (chapter_id) REFERENCES chapters(id),
     FOREIGN KEY (character_id) REFERENCES characters(id)
 );
 
 -- Table: works (43 rows)
 CREATE TABLE works (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    Title TEXT NOT NULL,  -- e.g. 'Twelfth Night'
-    LongTitle TEXT NOT NULL,  -- e.g. 'Twelfth Night, Or What You Will'
-    Date INTEGER NOT NULL,  -- e.g. 1599
-    GenreType TEXT NOT NULL  -- values: {'Comedy', 'History', 'Poem', 'Sonnet', 'Tragedy'}
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    Title TEXT NOT NULL,
+        -- <example>'Twelfth Night'</example>
+    LongTitle TEXT NOT NULL,
+        -- <example>'Twelfth Night, Or What You Will'</example>
+    Date INTEGER NOT NULL,
+        -- <example>1599</example>
+    GenreType TEXT NOT NULL
+        -- <values>{'Comedy', 'History', 'Poem', 'Sonnet', 'Tragedy'}</values>
 );
 ```

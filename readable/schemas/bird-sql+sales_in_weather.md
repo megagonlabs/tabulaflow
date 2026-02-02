@@ -3,43 +3,71 @@
 
 -- Table: relation (45 rows)
 CREATE TABLE relation (
-    store_nbr INTEGER PRIMARY KEY,  -- e.g. 1; FK -> sales_in_weather.store_nbr
-    station_nbr INTEGER,  -- e.g. 1; FK -> weather.station_nbr
+    store_nbr INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+        -- <fk> -> sales_in_weather.store_nbr</fk>
+    station_nbr INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> weather.station_nbr</fk>
     FOREIGN KEY (store_nbr) REFERENCES sales_in_weather(store_nbr),
     FOREIGN KEY (station_nbr) REFERENCES weather(station_nbr)
 );
 
 -- Table: sales_in_weather (4617600 rows)
 CREATE TABLE sales_in_weather (
-    date DATE,  -- e.g. '2012-01-01'
-    store_nbr INTEGER,  -- e.g. 1
-    item_nbr INTEGER,  -- e.g. 1
-    units INTEGER,  -- e.g. 0
+    date DATE NULL,
+        -- <example>'2012-01-01'</example>
+    store_nbr INTEGER NULL,
+        -- <example>1</example>
+    item_nbr INTEGER NULL,
+        -- <example>1</example>
+    units INTEGER NULL,
+        -- <example>0</example>
     PRIMARY KEY (date, store_nbr, item_nbr)
 );
 
 -- Table: weather (20517 rows)
 CREATE TABLE weather (
-    station_nbr INTEGER,  -- e.g. 1
-    date DATE,  -- e.g. '2012-01-01'
-    tmax INTEGER,  -- e.g. 52
-    tmin INTEGER,  -- e.g. 31
-    tavg INTEGER,  -- e.g. 42
-    depart INTEGER,  -- e.g. 16
-    dewpoint INTEGER,  -- e.g. 36
-    wetbulb INTEGER,  -- e.g. 40
-    heat INTEGER,  -- e.g. 23
-    cool INTEGER,  -- e.g. 0
-    sunrise TEXT,  -- e.g. '07:16:00'
-    sunset TEXT,  -- e.g. '16:26:00'
-    codesum TEXT,  -- e.g. 'RA FZFG BR'
-    snowfall REAL,  -- e.g. 0.000
-    preciptotal REAL,  -- e.g. 0.050
-    stnpressure REAL,  -- e.g. 29.780
-    sealevel REAL,  -- e.g. 29.920
-    resultspeed REAL,  -- e.g. 3.600
-    resultdir INTEGER,  -- e.g. 20
-    avgspeed REAL,  -- e.g. 4.600
+    station_nbr INTEGER NULL,
+        -- <example>1</example>
+    date DATE NULL,
+        -- <example>'2012-01-01'</example>
+    tmax INTEGER NULL,
+        -- <example>52</example>
+    tmin INTEGER NULL,
+        -- <example>31</example>
+    tavg INTEGER NULL,
+        -- <example>42</example>
+    depart INTEGER NULL,
+        -- <example>16</example>
+    dewpoint INTEGER NULL,
+        -- <example>36</example>
+    wetbulb INTEGER NULL,
+        -- <example>40</example>
+    heat INTEGER NULL,
+        -- <example>23</example>
+    cool INTEGER NULL,
+        -- <example>0</example>
+    sunrise TEXT NULL,
+        -- <example>'07:16:00'</example>
+    sunset TEXT NULL,
+        -- <example>'16:26:00'</example>
+    codesum TEXT NULL,
+        -- <example>'RA FZFG BR'</example>
+    snowfall REAL NULL,
+        -- <example>0.000</example>
+    preciptotal REAL NULL,
+        -- <example>0.050</example>
+    stnpressure REAL NULL,
+        -- <example>29.780</example>
+    sealevel REAL NULL,
+        -- <example>29.920</example>
+    resultspeed REAL NULL,
+        -- <example>3.600</example>
+    resultdir INTEGER NULL,
+        -- <example>20</example>
+    avgspeed REAL NULL,
+        -- <example>4.600</example>
     PRIMARY KEY (station_nbr, date)
 );
 ```

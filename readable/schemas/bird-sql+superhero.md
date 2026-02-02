@@ -3,71 +3,111 @@
 
 -- Table: alignment (4 rows)
 CREATE TABLE alignment (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    alignment TEXT  -- values: {'Bad', 'Good', 'N/A', 'Neutral'}
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    alignment TEXT NULL
+        -- <values>{'Bad', 'Good', 'N/A', 'Neutral'}</values>
 );
 
 -- Table: attribute (6 rows)
 CREATE TABLE attribute (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    attribute_name TEXT  -- values: {'Combat', 'Durability', 'Intelligence', 'Power', 'Speed', 'Strength'}
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    attribute_name TEXT NULL
+        -- <values>{'Combat', 'Durability', 'Intelligence', 'Power', 'Speed', 'Strength'}</values>
 );
 
 -- Table: colour (35 rows)
 CREATE TABLE colour (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    colour TEXT  -- e.g. 'No Colour'
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    colour TEXT NULL
+        -- <example>'No Colour'</example>
 );
 
 -- Table: gender (3 rows)
 CREATE TABLE gender (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    gender TEXT  -- values: {'Female', 'Male', 'N/A'}
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    gender TEXT NULL
+        -- <values>{'Female', 'Male', 'N/A'}</values>
 );
 
 -- Table: hero_attribute (3738 rows)
 CREATE TABLE hero_attribute (
-    hero_id INTEGER,  -- e.g. 1; FK -> superhero.id
-    attribute_id INTEGER,  -- e.g. 1; FK -> attribute.id
-    attribute_value INTEGER,  -- e.g. 80
+    hero_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> superhero.id</fk>
+    attribute_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> attribute.id</fk>
+    attribute_value INTEGER NULL,
+        -- <example>80</example>
     FOREIGN KEY (attribute_id) REFERENCES attribute(id),
     FOREIGN KEY (hero_id) REFERENCES superhero(id)
 );
 
 -- Table: hero_power (5825 rows)
 CREATE TABLE hero_power (
-    hero_id INTEGER,  -- e.g. 1; FK -> superhero.id
-    power_id INTEGER,  -- e.g. 1; FK -> superpower.id
+    hero_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> superhero.id</fk>
+    power_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> superpower.id</fk>
     FOREIGN KEY (hero_id) REFERENCES superhero(id),
     FOREIGN KEY (power_id) REFERENCES superpower(id)
 );
 
 -- Table: publisher (25 rows)
 CREATE TABLE publisher (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    publisher_name TEXT  -- e.g. ''
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    publisher_name TEXT NULL
+        -- <example>''</example>
 );
 
 -- Table: race (61 rows)
 CREATE TABLE race (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    race TEXT  -- e.g. '-'
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    race TEXT NULL
+        -- <example>'-'</example>
 );
 
 -- Table: superhero (750 rows)
 CREATE TABLE superhero (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    superhero_name TEXT,  -- e.g. '3-D Man'
-    full_name TEXT,  -- e.g. 'Charles Chandler'
-    gender_id INTEGER,  -- e.g. 1; FK -> gender.id
-    eye_colour_id INTEGER,  -- e.g. 9; FK -> colour.id
-    hair_colour_id INTEGER,  -- e.g. 13; FK -> colour.id
-    skin_colour_id INTEGER,  -- e.g. 1; FK -> colour.id
-    race_id INTEGER,  -- e.g. 1; FK -> race.id
-    publisher_id INTEGER,  -- e.g. 13; FK -> publisher.id
-    alignment_id INTEGER,  -- e.g. 1; FK -> alignment.id
-    height_cm INTEGER,  -- e.g. 188
-    weight_kg INTEGER,  -- e.g. 90
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    superhero_name TEXT NULL,
+        -- <example>'3-D Man'</example>
+    full_name TEXT NULL,
+        -- <example>'Charles Chandler'</example>
+    gender_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> gender.id</fk>
+    eye_colour_id INTEGER NULL,
+        -- <example>9</example>
+        -- <fk> -> colour.id</fk>
+    hair_colour_id INTEGER NULL,
+        -- <example>13</example>
+        -- <fk> -> colour.id</fk>
+    skin_colour_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> colour.id</fk>
+    race_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> race.id</fk>
+    publisher_id INTEGER NULL,
+        -- <example>13</example>
+        -- <fk> -> publisher.id</fk>
+    alignment_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> alignment.id</fk>
+    height_cm INTEGER NULL,
+        -- <example>188</example>
+    weight_kg INTEGER NULL,
+        -- <example>90</example>
     FOREIGN KEY (alignment_id) REFERENCES alignment(id),
     FOREIGN KEY (eye_colour_id) REFERENCES colour(id),
     FOREIGN KEY (gender_id) REFERENCES gender(id),
@@ -79,7 +119,9 @@ CREATE TABLE superhero (
 
 -- Table: superpower (167 rows)
 CREATE TABLE superpower (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    power_name TEXT  -- e.g. 'Agility'
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    power_name TEXT NULL
+        -- <example>'Agility'</example>
 );
 ```

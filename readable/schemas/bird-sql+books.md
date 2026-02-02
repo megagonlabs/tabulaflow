@@ -3,43 +3,66 @@
 
 -- Table: address (1000 rows)
 CREATE TABLE address (
-    address_id INTEGER PRIMARY KEY,  -- e.g. 1
-    street_number TEXT,  -- e.g. '57'
-    street_name TEXT,  -- e.g. 'Glacier Hill Avenue'
-    city TEXT,  -- e.g. 'Torbat-e Jām'
-    country_id INTEGER,  -- e.g. 95; FK -> country.country_id
+    address_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    street_number TEXT NULL,
+        -- <example>'57'</example>
+    street_name TEXT NULL,
+        -- <example>'Glacier Hill Avenue'</example>
+    city TEXT NULL,
+        -- <example>'Torbat-e Jām'</example>
+    country_id INTEGER NULL,
+        -- <example>95</example>
+        -- <fk> -> country.country_id</fk>
     FOREIGN KEY (country_id) REFERENCES country(country_id)
 );
 
 -- Table: address_status (2 rows)
 CREATE TABLE address_status (
-    status_id INTEGER PRIMARY KEY,  -- e.g. 1
-    address_status TEXT  -- values: {'Active', 'Inactive'}
+    status_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    address_status TEXT NULL
+        -- <values>{'Active', 'Inactive'}</values>
 );
 
 -- Table: author (9235 rows)
 CREATE TABLE author (
-    author_id INTEGER PRIMARY KEY,  -- e.g. 1
-    author_name TEXT  -- e.g. 'A. Bartlett Giamatti'
+    author_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    author_name TEXT NULL
+        -- <example>'A. Bartlett Giamatti'</example>
 );
 
 -- Table: book (11127 rows)
 CREATE TABLE book (
-    book_id INTEGER PRIMARY KEY,  -- e.g. 1
-    title TEXT,  -- e.g. 'The World's First Love: Mary  Mother of God'
-    isbn13 TEXT,  -- e.g. '8987059752'
-    language_id INTEGER,  -- e.g. 2; FK -> book_language.language_id
-    num_pages INTEGER,  -- e.g. 276
-    publication_date DATE,  -- e.g. '1996-09-01'
-    publisher_id INTEGER,  -- e.g. 1010; FK -> publisher.publisher_id
+    book_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    title TEXT NULL,
+        -- <example>'The World's First Love: Mary  Mother of God'</example>
+    isbn13 TEXT NULL,
+        -- <example>'8987059752'</example>
+    language_id INTEGER NULL,
+        -- <example>2</example>
+        -- <fk> -> book_language.language_id</fk>
+    num_pages INTEGER NULL,
+        -- <example>276</example>
+    publication_date DATE NULL,
+        -- <example>'1996-09-01'</example>
+    publisher_id INTEGER NULL,
+        -- <example>1010</example>
+        -- <fk> -> publisher.publisher_id</fk>
     FOREIGN KEY (language_id) REFERENCES book_language(language_id),
     FOREIGN KEY (publisher_id) REFERENCES publisher(publisher_id)
 );
 
 -- Table: book_author (17642 rows)
 CREATE TABLE book_author (
-    book_id INTEGER,  -- e.g. 1; FK -> book.book_id
-    author_id INTEGER,  -- e.g. 1; FK -> author.author_id
+    book_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> book.book_id</fk>
+    author_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> author.author_id</fk>
     PRIMARY KEY (book_id, author_id),
     FOREIGN KEY (author_id) REFERENCES author(author_id),
     FOREIGN KEY (book_id) REFERENCES book(book_id)
@@ -47,24 +70,37 @@ CREATE TABLE book_author (
 
 -- Table: book_language (27 rows)
 CREATE TABLE book_language (
-    language_id INTEGER PRIMARY KEY,  -- e.g. 1
-    language_code TEXT,  -- e.g. 'eng'
-    language_name TEXT  -- e.g. 'English'
+    language_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    language_code TEXT NULL,
+        -- <example>'eng'</example>
+    language_name TEXT NULL
+        -- <example>'English'</example>
 );
 
 -- Table: country (232 rows)
 CREATE TABLE country (
-    country_id INTEGER PRIMARY KEY,  -- e.g. 1
-    country_name TEXT  -- e.g. 'Afghanistan'
+    country_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    country_name TEXT NULL
+        -- <example>'Afghanistan'</example>
 );
 
 -- Table: cust_order (7550 rows)
 CREATE TABLE cust_order (
-    order_id INTEGER PRIMARY KEY,  -- e.g. 1
-    order_date DATETIME,  -- e.g. '2021-07-14 10:47:19'
-    customer_id INTEGER,  -- e.g. 387; FK -> customer.customer_id
-    shipping_method_id INTEGER,  -- e.g. 4; FK -> shipping_method.method_id
-    dest_address_id INTEGER,  -- e.g. 1; FK -> address.address_id
+    order_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    order_date DATETIME NULL,
+        -- <example>'2021-07-14 10:47:19'</example>
+    customer_id INTEGER NULL,
+        -- <example>387</example>
+        -- <fk> -> customer.customer_id</fk>
+    shipping_method_id INTEGER NULL,
+        -- <example>4</example>
+        -- <fk> -> shipping_method.method_id</fk>
+    dest_address_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> address.address_id</fk>
     FOREIGN KEY (dest_address_id) REFERENCES address(address_id),
     FOREIGN KEY (shipping_method_id) REFERENCES shipping_method(method_id),
     FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
@@ -72,17 +108,26 @@ CREATE TABLE cust_order (
 
 -- Table: customer (2000 rows)
 CREATE TABLE customer (
-    customer_id INTEGER PRIMARY KEY,  -- e.g. 1
-    first_name TEXT,  -- e.g. 'Ursola'
-    last_name TEXT,  -- e.g. 'Purdy'
-    email TEXT  -- e.g. 'upurdy0@cdbaby.com'
+    customer_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    first_name TEXT NULL,
+        -- <example>'Ursola'</example>
+    last_name TEXT NULL,
+        -- <example>'Purdy'</example>
+    email TEXT NULL
+        -- <example>'upurdy0@cdbaby.com'</example>
 );
 
 -- Table: customer_address (3350 rows)
 CREATE TABLE customer_address (
-    customer_id INTEGER,  -- e.g. 1; FK -> customer.customer_id
-    address_id INTEGER,  -- e.g. 606; FK -> address.address_id
-    status_id INTEGER,  -- e.g. 1
+    customer_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> customer.customer_id</fk>
+    address_id INTEGER NULL,
+        -- <example>606</example>
+        -- <fk> -> address.address_id</fk>
+    status_id INTEGER NULL,
+        -- <example>1</example>
     PRIMARY KEY (customer_id, address_id),
     FOREIGN KEY (address_id) REFERENCES address(address_id),
     FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
@@ -90,40 +135,59 @@ CREATE TABLE customer_address (
 
 -- Table: order_history (22348 rows)
 CREATE TABLE order_history (
-    history_id INTEGER PRIMARY KEY,  -- e.g. 1
-    order_id INTEGER,  -- e.g. 1; FK -> cust_order.order_id
-    status_id INTEGER,  -- e.g. 1; FK -> order_status.status_id
-    status_date DATETIME,  -- e.g. '2021-07-14 17:04:28'
+    history_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    order_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> cust_order.order_id</fk>
+    status_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> order_status.status_id</fk>
+    status_date DATETIME NULL,
+        -- <example>'2021-07-14 17:04:28'</example>
     FOREIGN KEY (status_id) REFERENCES order_status(status_id),
     FOREIGN KEY (order_id) REFERENCES cust_order(order_id)
 );
 
 -- Table: order_line (7550 rows)
 CREATE TABLE order_line (
-    line_id INTEGER PRIMARY KEY,  -- e.g. 1024
-    order_id INTEGER,  -- e.g. 2051; FK -> cust_order.order_id
-    book_id INTEGER,  -- e.g. 10720; FK -> book.book_id
-    price REAL,  -- e.g. 3.190
+    line_id INTEGER NULL PRIMARY KEY,
+        -- <example>1024</example>
+    order_id INTEGER NULL,
+        -- <example>2051</example>
+        -- <fk> -> cust_order.order_id</fk>
+    book_id INTEGER NULL,
+        -- <example>10720</example>
+        -- <fk> -> book.book_id</fk>
+    price REAL NULL,
+        -- <example>3.190</example>
     FOREIGN KEY (book_id) REFERENCES book(book_id),
     FOREIGN KEY (order_id) REFERENCES cust_order(order_id)
 );
 
 -- Table: order_status (6 rows)
 CREATE TABLE order_status (
-    status_id INTEGER PRIMARY KEY,  -- e.g. 1
-    status_value TEXT  -- values: {'Cancelled', 'Delivered', 'Delivery In Progress', 'Order Received', 'Pending Delivery', 'Returned'}
+    status_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    status_value TEXT NULL
+        -- <values>{'Cancelled', 'Delivered', 'Delivery In Progress', 'Order Received', 'Pending Delivery', 'Returned'}</values>
 );
 
 -- Table: publisher (2264 rows)
 CREATE TABLE publisher (
-    publisher_id INTEGER PRIMARY KEY,  -- e.g. 1
-    publisher_name TEXT  -- e.g. '10/18'
+    publisher_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    publisher_name TEXT NULL
+        -- <example>'10/18'</example>
 );
 
 -- Table: shipping_method (4 rows)
 CREATE TABLE shipping_method (
-    method_id INTEGER PRIMARY KEY,  -- e.g. 1
-    method_name TEXT,  -- values: {'Express', 'International', 'Priority', 'Standard'}
-    cost REAL  -- e.g. 5.900
+    method_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    method_name TEXT NULL,
+        -- <values>{'Express', 'International', 'Priority', 'Standard'}</values>
+    cost REAL NULL
+        -- <example>5.900</example>
 );
 ```

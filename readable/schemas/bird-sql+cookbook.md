@@ -3,43 +3,75 @@
 
 -- Table: Ingredient (3346 rows)
 CREATE TABLE Ingredient (
-    ingredient_id INTEGER PRIMARY KEY,  -- e.g. 1
-    category TEXT,  -- e.g. 'dairy'
-    name TEXT,  -- e.g. '1% lowfat cottage cheese'
-    plural TEXT  -- values: {'#NAME?', 'es', 's'}
+    ingredient_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    category TEXT NULL,
+        -- <example>'dairy'</example>
+    name TEXT NULL,
+        -- <example>'1% lowfat cottage cheese'</example>
+    plural TEXT NULL
+        -- <values>{'#NAME?', 'es', 's'}</values>
 );
 
 -- Table: Nutrition (878 rows)
 CREATE TABLE Nutrition (
-    recipe_id INTEGER PRIMARY KEY,  -- e.g. 214; FK -> Recipe.recipe_id
-    protein REAL,  -- e.g. 5.470
-    carbo REAL,  -- e.g. 41.290
-    alcohol REAL,  -- e.g. 0.000
-    total_fat REAL,  -- e.g. 11.530
-    sat_fat REAL,  -- e.g. 2.210
-    cholestrl REAL,  -- e.g. 1.390
-    sodium REAL,  -- e.g. 260.780
-    iron REAL,  -- e.g. 0.810
-    vitamin_c REAL,  -- e.g. 8.890
-    vitamin_a REAL,  -- e.g. 586.200
-    fiber REAL,  -- e.g. 0.870
-    pcnt_cal_carb REAL,  -- e.g. 56.800
-    pcnt_cal_fat REAL,  -- e.g. 35.680
-    pcnt_cal_prot REAL,  -- e.g. 7.530
-    calories REAL,  -- e.g. 290.790
+    recipe_id INTEGER NULL PRIMARY KEY,
+        -- <example>214</example>
+        -- <fk> -> Recipe.recipe_id</fk>
+    protein REAL NULL,
+        -- <example>5.470</example>
+    carbo REAL NULL,
+        -- <example>41.290</example>
+    alcohol REAL NULL,
+        -- <example>0.000</example>
+    total_fat REAL NULL,
+        -- <example>11.530</example>
+    sat_fat REAL NULL,
+        -- <example>2.210</example>
+    cholestrl REAL NULL,
+        -- <example>1.390</example>
+    sodium REAL NULL,
+        -- <example>260.780</example>
+    iron REAL NULL,
+        -- <example>0.810</example>
+    vitamin_c REAL NULL,
+        -- <example>8.890</example>
+    vitamin_a REAL NULL,
+        -- <example>586.200</example>
+    fiber REAL NULL,
+        -- <example>0.870</example>
+    pcnt_cal_carb REAL NULL,
+        -- <example>56.800</example>
+    pcnt_cal_fat REAL NULL,
+        -- <example>35.680</example>
+    pcnt_cal_prot REAL NULL,
+        -- <example>7.530</example>
+    calories REAL NULL,
+        -- <example>290.790</example>
     FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id)
 );
 
 -- Table: Quantity (5116 rows)
 CREATE TABLE Quantity (
-    quantity_id INTEGER PRIMARY KEY,  -- e.g. 1
-    recipe_id INTEGER,  -- e.g. 214; FK -> Recipe.recipe_id; FK -> Nutrition.recipe_id
-    ingredient_id INTEGER,  -- e.g. 1613; FK -> Ingredient.ingredient_id
-    max_qty REAL,  -- e.g. 2.000
-    min_qty REAL,  -- e.g. 2.000
-    unit TEXT,  -- e.g. 'cup(s)'
-    preparation TEXT,  -- e.g. 'melted'
-    optional TEXT,  -- values: {'FALSE', 'TRUE'}
+    quantity_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    recipe_id INTEGER NULL,
+        -- <example>214</example>
+        -- <fk> -> Recipe.recipe_id</fk>
+        -- <fk> -> Nutrition.recipe_id</fk>
+    ingredient_id INTEGER NULL,
+        -- <example>1613</example>
+        -- <fk> -> Ingredient.ingredient_id</fk>
+    max_qty REAL NULL,
+        -- <example>2.000</example>
+    min_qty REAL NULL,
+        -- <example>2.000</example>
+    unit TEXT NULL,
+        -- <example>'cup(s)'</example>
+    preparation TEXT NULL,
+        -- <example>'melted'</example>
+    optional TEXT NULL,
+        -- <values>{'FALSE', 'TRUE'}</values>
     FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id),
     FOREIGN KEY (ingredient_id) REFERENCES Ingredient(ingredient_id),
     FOREIGN KEY (recipe_id) REFERENCES Nutrition(recipe_id)
@@ -47,17 +79,28 @@ CREATE TABLE Quantity (
 
 -- Table: Recipe (1031 rows)
 CREATE TABLE Recipe (
-    recipe_id INTEGER PRIMARY KEY,  -- e.g. 214
-    title TEXT,  -- e.g. 'Raspberry Chiffon Pie'
-    subtitle TEXT,  -- e.g. 'with Banana Cream Whip'
-    servings INTEGER,  -- e.g. 10
-    yield_unit TEXT,  -- e.g. '1 pie'
-    prep_min INTEGER,  -- e.g. 20
-    cook_min INTEGER,  -- e.g. 8
-    stnd_min INTEGER,  -- e.g. 305
-    source TEXT,  -- e.g. 'The California Tree Fruit Agreement'
-    intro TEXT,  -- e.g. 'Serve in stemmed glasses and top with sliced apricots for elegant endings.'
-    directions TEXT  -- e.g. 'For crust, preheat oven to 375 degrees F.
-In light...ly slice remaining 2 plums and garnish top of pie.'
+    recipe_id INTEGER NULL PRIMARY KEY,
+        -- <example>214</example>
+    title TEXT NULL,
+        -- <example>'Raspberry Chiffon Pie'</example>
+    subtitle TEXT NULL,
+        -- <example>'with Banana Cream Whip'</example>
+    servings INTEGER NULL,
+        -- <example>10</example>
+    yield_unit TEXT NULL,
+        -- <example>'1 pie'</example>
+    prep_min INTEGER NULL,
+        -- <example>20</example>
+    cook_min INTEGER NULL,
+        -- <example>8</example>
+    stnd_min INTEGER NULL,
+        -- <example>305</example>
+    source TEXT NULL,
+        -- <example>'The California Tree Fruit Agreement'</example>
+    intro TEXT NULL,
+        -- <example>'Serve in stemmed glasses and top with sliced apricots for elegant endings.'</example>
+    directions TEXT NULL
+        -- <example>'For crust, preheat oven to 375 degrees F.
+In light...ly slice remaining 2 plums and garnish top of pie.'</example>
 );
 ```

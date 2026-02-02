@@ -3,41 +3,68 @@
 
 -- Table: Customers (50 rows)
 CREATE TABLE Customers (
-    CustomerID INTEGER PRIMARY KEY,  -- e.g. 1
-    "Customer Names" TEXT  -- e.g. 'Avon Corp'
+    CustomerID INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    "Customer Names" TEXT NULL
+        -- <example>'Avon Corp'</example>
 );
 
 -- Table: Products (47 rows)
 CREATE TABLE Products (
-    ProductID INTEGER PRIMARY KEY,  -- e.g. 1
-    "Product Name" TEXT  -- e.g. 'Cookware'
+    ProductID INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    "Product Name" TEXT NULL
+        -- <example>'Cookware'</example>
 );
 
 -- Table: Regions (48 rows)
 CREATE TABLE Regions (
-    StateCode TEXT PRIMARY KEY,  -- e.g. 'AL'
-    State TEXT,  -- e.g. 'Alabama'
-    Region TEXT  -- values: {'Midwest', 'Northeast', 'South', 'West'}
+    StateCode TEXT NULL PRIMARY KEY,
+        -- <example>'AL'</example>
+    State TEXT NULL,
+        -- <example>'Alabama'</example>
+    Region TEXT NULL
+        -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
 );
 
 -- Table: "Sales Orders" (7991 rows)
 CREATE TABLE "Sales Orders" (
-    OrderNumber TEXT PRIMARY KEY,  -- e.g. 'SO - 0001000'
-    "Sales Channel" TEXT,  -- values: {'Distributor', 'In-Store', 'Online', 'Wholesale'}
-    WarehouseCode TEXT,  -- values: {'WARE-MKL1006', 'WARE-NBV1002', 'WARE-NMK1003', 'WARE-PUJ1005', 'WARE-UHY1004', 'WARE-XYS1001'}
-    ProcuredDate TEXT,  -- values: {'10/27/18', '12/1/19', '12/31/17', '2/4/19', '3/10/20', '4/10/18', '5/15/19', '6/18/20', '7/19/18', '8/23/19', '9/26/20'}
-    OrderDate TEXT,  -- e.g. '5/31/18'
-    ShipDate TEXT,  -- e.g. '6/14/18'
-    DeliveryDate TEXT,  -- e.g. '6/19/18'
-    CurrencyCode TEXT,  -- values: {'USD'}
-    _SalesTeamID INTEGER,  -- e.g. 6; FK -> "Sales Team".SalesTeamID
-    _CustomerID INTEGER,  -- e.g. 15; FK -> Customers.CustomerID
-    _StoreID INTEGER,  -- e.g. 259; FK -> "Store Locations".StoreID
-    _ProductID INTEGER,  -- e.g. 12; FK -> Products.ProductID
-    "Order Quantity" INTEGER,  -- e.g. 5
-    "Discount Applied" REAL,  -- e.g. 0.075
-    "Unit Price" TEXT,  -- e.g. '1,963.10'
-    "Unit Cost" TEXT,  -- e.g. '1,001.18'
+    OrderNumber TEXT NULL PRIMARY KEY,
+        -- <example>'SO - 0001000'</example>
+    "Sales Channel" TEXT NULL,
+        -- <values>{'Distributor', 'In-Store', 'Online', 'Wholesale'}</values>
+    WarehouseCode TEXT NULL,
+        -- <values>{'WARE-MKL1006', 'WARE-NBV1002', 'WARE-NMK1003', 'WARE-PUJ1005', 'WARE-UHY1004', 'WARE-XYS1001'}</values>
+    ProcuredDate TEXT NULL,
+        -- <values>{'10/27/18', '12/1/19', '12/31/17', '2/4/19', '3/10/20', '4/10/18', '5/15/19', '6/18/20', '7/19/18', '8/23/19', '9/26/20'}</values>
+    OrderDate TEXT NULL,
+        -- <example>'5/31/18'</example>
+    ShipDate TEXT NULL,
+        -- <example>'6/14/18'</example>
+    DeliveryDate TEXT NULL,
+        -- <example>'6/19/18'</example>
+    CurrencyCode TEXT NULL,
+        -- <values>{'USD'}</values>
+    _SalesTeamID INTEGER NULL,
+        -- <example>6</example>
+        -- <fk> -> "Sales Team".SalesTeamID</fk>
+    _CustomerID INTEGER NULL,
+        -- <example>15</example>
+        -- <fk> -> Customers.CustomerID</fk>
+    _StoreID INTEGER NULL,
+        -- <example>259</example>
+        -- <fk> -> "Store Locations".StoreID</fk>
+    _ProductID INTEGER NULL,
+        -- <example>12</example>
+        -- <fk> -> Products.ProductID</fk>
+    "Order Quantity" INTEGER NULL,
+        -- <example>5</example>
+    "Discount Applied" REAL NULL,
+        -- <example>0.075</example>
+    "Unit Price" TEXT NULL,
+        -- <example>'1,963.10'</example>
+    "Unit Cost" TEXT NULL,
+        -- <example>'1,001.18'</example>
     FOREIGN KEY (_ProductID) REFERENCES Products(ProductID),
     FOREIGN KEY (_StoreID) REFERENCES "Store Locations"(StoreID),
     FOREIGN KEY (_CustomerID) REFERENCES Customers(CustomerID),
@@ -46,28 +73,47 @@ CREATE TABLE "Sales Orders" (
 
 -- Table: "Sales Team" (28 rows)
 CREATE TABLE "Sales Team" (
-    SalesTeamID INTEGER PRIMARY KEY,  -- e.g. 1
-    "Sales Team" TEXT,  -- e.g. 'Adam Hernandez'
-    Region TEXT  -- values: {'Midwest', 'Northeast', 'South', 'West'}
+    SalesTeamID INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    "Sales Team" TEXT NULL,
+        -- <example>'Adam Hernandez'</example>
+    Region TEXT NULL
+        -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
 );
 
 -- Table: "Store Locations" (367 rows)
 CREATE TABLE "Store Locations" (
-    StoreID INTEGER PRIMARY KEY,  -- e.g. 1
-    "City Name" TEXT,  -- e.g. 'Birmingham'
-    County TEXT,  -- e.g. 'Shelby County/Jefferson County'
-    StateCode TEXT,  -- e.g. 'AL'; FK -> Regions.StateCode
-    State TEXT,  -- e.g. 'Alabama'
-    Type TEXT,  -- values: {'Borough', 'CDP', 'City', 'Consolidated Government', 'Metropolitan Government', 'Other', 'Town', 'Township', 'Unified Government', 'Urban County '}
-    Latitude REAL,  -- e.g. 33.527
-    Longitude REAL,  -- e.g. -86.799
-    AreaCode INTEGER,  -- e.g. 205
-    Population INTEGER,  -- e.g. 212461
-    "Household Income" INTEGER,  -- e.g. 89972
-    "Median Income" INTEGER,  -- e.g. 31061
-    "Land Area" INTEGER,  -- e.g. 378353942
-    "Water Area" INTEGER,  -- e.g. 6591013
-    "Time Zone" TEXT,  -- values: {'America/Boise', 'America/Chicago', 'America/Denver', 'America/Detroit', 'America/Indiana/Indianapolis', 'America/Los Angeles', 'America/New York', 'America/Phoenix', 'Pacific/Honolulu'}
+    StoreID INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    "City Name" TEXT NULL,
+        -- <example>'Birmingham'</example>
+    County TEXT NULL,
+        -- <example>'Shelby County/Jefferson County'</example>
+    StateCode TEXT NULL,
+        -- <example>'AL'</example>
+        -- <fk> -> Regions.StateCode</fk>
+    State TEXT NULL,
+        -- <example>'Alabama'</example>
+    Type TEXT NULL,
+        -- <values>{'Borough', 'CDP', 'City', 'Consolidated Government', 'Metropolitan Government', 'Other', 'Town', 'Township', 'Unified Government', 'Urban County '}</values>
+    Latitude REAL NULL,
+        -- <example>33.527</example>
+    Longitude REAL NULL,
+        -- <example>-86.799</example>
+    AreaCode INTEGER NULL,
+        -- <example>205</example>
+    Population INTEGER NULL,
+        -- <example>212461</example>
+    "Household Income" INTEGER NULL,
+        -- <example>89972</example>
+    "Median Income" INTEGER NULL,
+        -- <example>31061</example>
+    "Land Area" INTEGER NULL,
+        -- <example>378353942</example>
+    "Water Area" INTEGER NULL,
+        -- <example>6591013</example>
+    "Time Zone" TEXT NULL,
+        -- <values>{'America/Boise', 'America/Chicago', 'America/Denver', 'America/Detroit', 'America/Indiana/Indianapolis', 'America/Los Angeles', 'America/New York', 'America/Phoenix', 'Pacific/Honolulu'}</values>
     FOREIGN KEY (StateCode) REFERENCES Regions(StateCode)
 );
 ```

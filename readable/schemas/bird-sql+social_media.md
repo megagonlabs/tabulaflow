@@ -3,36 +3,59 @@
 
 -- Table: location (6211 rows)
 CREATE TABLE location (
-    LocationID INTEGER PRIMARY KEY,  -- e.g. 1
-    Country TEXT,  -- e.g. 'Albania'
-    State TEXT,  -- e.g. 'Elbasan'
-    StateCode TEXT,  -- e.g. 'AL'
-    City TEXT  -- e.g. 'Elbasan'
+    LocationID INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    Country TEXT NULL,
+        -- <example>'Albania'</example>
+    State TEXT NULL,
+        -- <example>'Elbasan'</example>
+    StateCode TEXT NULL,
+        -- <example>'AL'</example>
+    City TEXT NULL
+        -- <example>'Elbasan'</example>
 );
 
 -- Table: twitter (99901 rows)
 CREATE TABLE twitter (
-    TweetID TEXT PRIMARY KEY,  -- e.g. 'tw-682712873332805633'
-    Weekday TEXT,  -- values: {'Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday'}
-    Hour INTEGER,  -- e.g. 17
-    Day INTEGER,  -- e.g. 31
-    Lang TEXT,  -- e.g. 'en'
-    IsReshare TEXT,  -- values: {'FALSE', 'TRUE'}
-    Reach INTEGER,  -- e.g. 44
-    RetweetCount INTEGER,  -- e.g. 0
-    Likes INTEGER,  -- e.g. 0
-    Klout INTEGER,  -- e.g. 35
-    Sentiment REAL,  -- e.g. 0.000
-    text TEXT,  -- e.g. 'We are hiring: Senior Software Engineer - Proto ht...ud #job #protocol #networking #aws #mediastreaming'
-    LocationID INTEGER,  -- e.g. 3751; FK -> location.LocationID
-    UserID TEXT,  -- e.g. 'tw-40932430'; FK -> user.UserID
+    TweetID TEXT NULL PRIMARY KEY,
+        -- <example>'tw-682712873332805633'</example>
+    Weekday TEXT NULL,
+        -- <values>{'Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday'}</values>
+    Hour INTEGER NULL,
+        -- <example>17</example>
+    Day INTEGER NULL,
+        -- <example>31</example>
+    Lang TEXT NULL,
+        -- <example>'en'</example>
+    IsReshare TEXT NULL,
+        -- <values>{'FALSE', 'TRUE'}</values>
+    Reach INTEGER NULL,
+        -- <example>44</example>
+    RetweetCount INTEGER NULL,
+        -- <example>0</example>
+    Likes INTEGER NULL,
+        -- <example>0</example>
+    Klout INTEGER NULL,
+        -- <example>35</example>
+    Sentiment REAL NULL,
+        -- <example>0.000</example>
+    text TEXT NULL,
+        -- <example>'We are hiring: Senior Software Engineer - Proto ht...ud #job #protocol #networking #aws #mediastreaming'</example>
+    LocationID INTEGER NULL,
+        -- <example>3751</example>
+        -- <fk> -> location.LocationID</fk>
+    UserID TEXT NULL,
+        -- <example>'tw-40932430'</example>
+        -- <fk> -> user.UserID</fk>
     FOREIGN KEY (LocationID) REFERENCES location(LocationID),
     FOREIGN KEY (UserID) REFERENCES user(UserID)
 );
 
 -- Table: user (99260 rows)
 CREATE TABLE user (
-    UserID TEXT PRIMARY KEY,  -- e.g. 'nknow531394'
-    Gender TEXT  -- values: {'Female', 'Male', 'Unisex', 'Unknown'}
+    UserID TEXT NULL PRIMARY KEY,
+        -- <example>'nknow531394'</example>
+    Gender TEXT NULL
+        -- <values>{'Female', 'Male', 'Unisex', 'Unknown'}</values>
 );
 ```

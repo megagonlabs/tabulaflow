@@ -3,133 +3,240 @@
 
 -- Table: current (541 rows)
 CREATE TABLE current (
-    ballotpedia_id TEXT,  -- e.g. 'Sherrod Brown'
-    bioguide_id TEXT,  -- e.g. 'A000055'
-    birthday_bio DATE,  -- e.g. '1952-11-09'
-    cspan_id REAL,  -- e.g. 45516.000
-    fec_id TEXT,  -- e.g. '['H2OH13033', 'S6OH00163']'
-    first_name TEXT,  -- e.g. 'Sherrod'
-    gender_bio TEXT,  -- values: {'F', 'M'}
-    google_entity_id_id TEXT,  -- e.g. 'kg:/m/034s80'
-    govtrack_id INTEGER,  -- e.g. 400050
-    house_history_id REAL,  -- e.g. 9996.000
-    icpsr_id REAL,  -- e.g. 29389.000
-    last_name TEXT,  -- e.g. 'Brown'
-    lis_id TEXT,  -- e.g. 'S307'
-    maplight_id REAL,  -- e.g. 168.000
-    middle_name TEXT,  -- e.g. 'L.'
-    nickname_name TEXT,  -- e.g. 'Bob'
-    official_full_name TEXT,  -- e.g. 'Sherrod Brown'
-    opensecrets_id TEXT,  -- e.g. 'N00003535'
-    religion_bio TEXT,  -- e.g. 'Lutheran'
-    suffix_name TEXT,  -- values: {'II', 'III', 'Jr.'}
-    thomas_id INTEGER,  -- e.g. 136
-    votesmart_id REAL,  -- e.g. 27018.000
-    wikidata_id TEXT,  -- e.g. 'Q381880'
-    wikipedia_id TEXT,  -- e.g. 'Sherrod Brown'
+    ballotpedia_id TEXT NULL,
+        -- <example>'Sherrod Brown'</example>
+    bioguide_id TEXT NULL,
+        -- <example>'A000055'</example>
+    birthday_bio DATE NULL,
+        -- <example>'1952-11-09'</example>
+    cspan_id REAL NULL,
+        -- <example>45516.000</example>
+    fec_id TEXT NULL,
+        -- <example>'['H2OH13033', 'S6OH00163']'</example>
+    first_name TEXT NULL,
+        -- <example>'Sherrod'</example>
+    gender_bio TEXT NULL,
+        -- <values>{'F', 'M'}</values>
+    google_entity_id_id TEXT NULL,
+        -- <example>'kg:/m/034s80'</example>
+    govtrack_id INTEGER NULL,
+        -- <example>400050</example>
+    house_history_id REAL NULL,
+        -- <example>9996.000</example>
+    icpsr_id REAL NULL,
+        -- <example>29389.000</example>
+    last_name TEXT NULL,
+        -- <example>'Brown'</example>
+    lis_id TEXT NULL,
+        -- <example>'S307'</example>
+    maplight_id REAL NULL,
+        -- <example>168.000</example>
+    middle_name TEXT NULL,
+        -- <example>'L.'</example>
+    nickname_name TEXT NULL,
+        -- <example>'Bob'</example>
+    official_full_name TEXT NULL,
+        -- <example>'Sherrod Brown'</example>
+    opensecrets_id TEXT NULL,
+        -- <example>'N00003535'</example>
+    religion_bio TEXT NULL,
+        -- <example>'Lutheran'</example>
+    suffix_name TEXT NULL,
+        -- <values>{'II', 'III', 'Jr.'}</values>
+    thomas_id INTEGER NULL,
+        -- <example>136</example>
+    votesmart_id REAL NULL,
+        -- <example>27018.000</example>
+    wikidata_id TEXT NULL,
+        -- <example>'Q381880'</example>
+    wikipedia_id TEXT NULL,
+        -- <example>'Sherrod Brown'</example>
     PRIMARY KEY (bioguide_id, cspan_id)
 );
 
 -- Table: "current-terms" (3078 rows)
 CREATE TABLE "current-terms" (
-    address TEXT,  -- e.g. '713 HART SENATE OFFICE BUILDING WASHINGTON DC 20510'
-    bioguide TEXT,  -- e.g. 'A000055'; FK -> current.bioguide_id
-    caucus TEXT,  -- values: {'Democrat'}
-    chamber TEXT,  -- values: {'house', 'senate'}
-    class REAL,  -- e.g. 1.000
-    contact_form TEXT,  -- e.g. 'http://www.brown.senate.gov/contact/'
-    district REAL,  -- e.g. 13.000
-    end TEXT,  -- e.g. '1999-01-03'
-    fax TEXT,  -- e.g. '202-228-6321'
-    last TEXT,  -- values: {'Menendez'}
-    name TEXT,  -- e.g. 'Stewart Lee Udall'
-    office TEXT,  -- e.g. '713 Hart Senate Office Building'
-    party TEXT,  -- values: {'Democrat', 'Independent', 'Republican'}
-    party_affiliations TEXT,  -- values: {'{'start': '1993-01-05', 'end': '1994-11-09', 'party': 'Democrat'}', '{'start': '2009-01-06', 'end': '2009-02-23', 'party': 'Independent'}'}
-    phone TEXT,  -- e.g. '202-224-2315'
-    relation TEXT,  -- values: {'brother', 'cousin', 'daughter', 'first cousin once removed', 'grandson', 'great great grandson', 'great great great nephew', 'great nephew', 'nephew', 'relative', 'sister', 'son', 'wife'}
-    rss_url TEXT,  -- e.g. 'http://www.brown.senate.gov/rss/feeds/?type=all&amp;'
-    start TEXT,  -- e.g. '1993-01-05'
-    state TEXT,  -- e.g. 'OH'
-    state_rank TEXT,  -- values: {'junior', 'senior'}
-    title TEXT,  -- values: {'Majority Leader', 'Majority Whip', 'Minority Leader', 'Minority Whip', 'Speaker'}
-    type TEXT,  -- values: {'rep', 'sen'}
-    url TEXT,  -- e.g. 'http://www.house.gov/sherrodbrown'
+    address TEXT NULL,
+        -- <example>'713 HART SENATE OFFICE BUILDING WASHINGTON DC 20510'</example>
+    bioguide TEXT NULL,
+        -- <example>'A000055'</example>
+        -- <fk> -> current.bioguide_id</fk>
+    caucus TEXT NULL,
+        -- <values>{'Democrat'}</values>
+    chamber TEXT NULL,
+        -- <values>{'house', 'senate'}</values>
+    class REAL NULL,
+        -- <example>1.000</example>
+    contact_form TEXT NULL,
+        -- <example>'http://www.brown.senate.gov/contact/'</example>
+    district REAL NULL,
+        -- <example>13.000</example>
+    end TEXT NULL,
+        -- <example>'1999-01-03'</example>
+    fax TEXT NULL,
+        -- <example>'202-228-6321'</example>
+    last TEXT NULL,
+        -- <values>{'Menendez'}</values>
+    name TEXT NULL,
+        -- <example>'Stewart Lee Udall'</example>
+    office TEXT NULL,
+        -- <example>'713 Hart Senate Office Building'</example>
+    party TEXT NULL,
+        -- <values>{'Democrat', 'Independent', 'Republican'}</values>
+    party_affiliations TEXT NULL,
+        -- <values>{'{'start': '1993-01-05', 'end': '1994-11-09', 'party': 'Democrat'}', '{'start': '2009-01-06', 'end': '2009-02-23', 'party': 'Independent'}'}</values>
+    phone TEXT NULL,
+        -- <example>'202-224-2315'</example>
+    relation TEXT NULL,
+        -- <values>{'brother', 'cousin', 'daughter', 'first cousin once removed', 'grandson', 'great great grandson', 'great great great nephew', 'great nephew', 'nephew', 'relative', 'sister', 'son', 'wife'}</values>
+    rss_url TEXT NULL,
+        -- <example>'http://www.brown.senate.gov/rss/feeds/?type=all&amp;'</example>
+    start TEXT NULL,
+        -- <example>'1993-01-05'</example>
+    state TEXT NULL,
+        -- <example>'OH'</example>
+    state_rank TEXT NULL,
+        -- <values>{'junior', 'senior'}</values>
+    title TEXT NULL,
+        -- <values>{'Majority Leader', 'Majority Whip', 'Minority Leader', 'Minority Whip', 'Speaker'}</values>
+    type TEXT NULL,
+        -- <values>{'rep', 'sen'}</values>
+    url TEXT NULL,
+        -- <example>'http://www.house.gov/sherrodbrown'</example>
     PRIMARY KEY (bioguide, end),
     FOREIGN KEY (bioguide) REFERENCES current(bioguide_id)
 );
 
 -- Table: historical (11864 rows)
 CREATE TABLE historical (
-    ballotpedia_id TEXT,  -- e.g. 'Mo Cowan'
-    bioguide_id TEXT PRIMARY KEY,  -- e.g. 'A000001'
-    bioguide_previous_id TEXT,  -- values: {'['F000246']', '['L000266']', '['W000790']'}
-    birthday_bio TEXT,  -- e.g. '1745-04-02'
-    cspan_id TEXT,  -- e.g. '12590.0'
-    fec_id TEXT,  -- e.g. '['S6CO00168']'
-    first_name TEXT,  -- e.g. 'Richard'
-    gender_bio TEXT,  -- values: {'F', 'M'}
-    google_entity_id_id TEXT,  -- e.g. 'kg:/m/02pz46'
-    govtrack_id INTEGER,  -- e.g. 401222
-    house_history_alternate_id TEXT,  -- values: {'13283.0'}
-    house_history_id REAL,  -- e.g. 9479.000
-    icpsr_id REAL,  -- e.g. 507.000
-    last_name TEXT,  -- e.g. 'Bassett'
-    lis_id TEXT,  -- e.g. 'S134'
-    maplight_id TEXT,  -- e.g. '232.0'
-    middle_name TEXT,  -- e.g. 'Samuel'
-    nickname_name TEXT,  -- e.g. 'of Carrollton'
-    official_full_name TEXT,  -- e.g. 'Enid Greene Waldholtz'
-    opensecrets_id TEXT,  -- e.g. 'N00008333'
-    religion_bio TEXT,  -- e.g. 'Baptist'
-    suffix_name TEXT,  -- values: {'II', 'III', 'IV', 'Jr.', 'Sr.'}
-    thomas_id TEXT,  -- e.g. '01308'
-    votesmart_id TEXT,  -- e.g. '52156.0'
-    wikidata_id TEXT,  -- e.g. 'Q518823'
-    wikipedia_id TEXT  -- e.g. 'Richard Bassett (politician)'
+    ballotpedia_id TEXT NULL,
+        -- <example>'Mo Cowan'</example>
+    bioguide_id TEXT NULL PRIMARY KEY,
+        -- <example>'A000001'</example>
+    bioguide_previous_id TEXT NULL,
+        -- <values>{'['F000246']', '['L000266']', '['W000790']'}</values>
+    birthday_bio TEXT NULL,
+        -- <example>'1745-04-02'</example>
+    cspan_id TEXT NULL,
+        -- <example>'12590.0'</example>
+    fec_id TEXT NULL,
+        -- <example>'['S6CO00168']'</example>
+    first_name TEXT NULL,
+        -- <example>'Richard'</example>
+    gender_bio TEXT NULL,
+        -- <values>{'F', 'M'}</values>
+    google_entity_id_id TEXT NULL,
+        -- <example>'kg:/m/02pz46'</example>
+    govtrack_id INTEGER NULL,
+        -- <example>401222</example>
+    house_history_alternate_id TEXT NULL,
+        -- <values>{'13283.0'}</values>
+    house_history_id REAL NULL,
+        -- <example>9479.000</example>
+    icpsr_id REAL NULL,
+        -- <example>507.000</example>
+    last_name TEXT NULL,
+        -- <example>'Bassett'</example>
+    lis_id TEXT NULL,
+        -- <example>'S134'</example>
+    maplight_id TEXT NULL,
+        -- <example>'232.0'</example>
+    middle_name TEXT NULL,
+        -- <example>'Samuel'</example>
+    nickname_name TEXT NULL,
+        -- <example>'of Carrollton'</example>
+    official_full_name TEXT NULL,
+        -- <example>'Enid Greene Waldholtz'</example>
+    opensecrets_id TEXT NULL,
+        -- <example>'N00008333'</example>
+    religion_bio TEXT NULL,
+        -- <example>'Baptist'</example>
+    suffix_name TEXT NULL,
+        -- <values>{'II', 'III', 'IV', 'Jr.', 'Sr.'}</values>
+    thomas_id TEXT NULL,
+        -- <example>'01308'</example>
+    votesmart_id TEXT NULL,
+        -- <example>'52156.0'</example>
+    wikidata_id TEXT NULL,
+        -- <example>'Q518823'</example>
+    wikipedia_id TEXT NULL
+        -- <example>'Richard Bassett (politician)'</example>
 );
 
 -- Table: "historical-terms" (11864 rows)
 CREATE TABLE "historical-terms" (
-    address TEXT,  -- e.g. '248 RUSSELL SENATE OFFICE BUILDING WASHINGTON DC 20510'
-    bioguide TEXT PRIMARY KEY,  -- e.g. 'A000001'; FK -> historical.bioguide_id
-    chamber TEXT,  -- values: {'house', 'senate'}
-    class REAL,  -- e.g. 2.000
-    contact_form TEXT,  -- e.g. 'http://www.webb.senate.gov/contact.cfm'
-    district REAL,  -- e.g. 9.000
-    end TEXT,  -- e.g. '1793-03-03'
-    fax TEXT,  -- e.g. '202-228-6363'
-    last TEXT,  -- values: {'Bono', 'Lambert', 'Levy'}
-    middle TEXT,
-    name TEXT,
-    office TEXT,  -- e.g. '248 Russell Senate Office Building'
-    party TEXT,  -- e.g. 'Anti-Administration'
-    party_affiliations TEXT,  -- values: {'{'start': '2003-01-07', 'end': '2004-08-09', 'party': 'Democrat'}', '{'start': '2009-01-06', 'end': '2009-12-22', 'party': 'Democrat'}'}
-    phone TEXT,  -- e.g. '202-224-4024'
-    relation TEXT,
-    rss_url TEXT,  -- values: {'http://ayotte.senate.gov/rss/?p=news', 'http://bentivolio.house.gov/rss.xml', 'http://enyart.house.gov/rss.xml', 'http://gallego.house.gov/rss.xml', 'http://garcia.house.gov/rss.xml', 'http://horsford.house.gov/rss.xml', 'http://negretemcleod.house.gov/rss.xml', 'http://patrickmurphy.house.gov/news/rss.aspx', 'http://radel.house.gov/news/rss.aspx', 'http://www.begich.senate.gov/public/?a=rss.feed', 'http://www.hagan.senate.gov/rss', 'http://www.johanns.senate.gov/public/?a=RSS.Feed'}
-    start TEXT,  -- e.g. '1789-03-04'
-    state TEXT,  -- e.g. 'DE'
-    state_rank TEXT,  -- values: {'junior', 'senior'}
-    title TEXT,  -- values: {'Majority Leader', 'Speaker'}
-    type TEXT,  -- values: {'rep', 'sen'}
-    url TEXT,  -- e.g. 'http://edwards.senate.gov/'
+    address TEXT NULL,
+        -- <example>'248 RUSSELL SENATE OFFICE BUILDING WASHINGTON DC 20510'</example>
+    bioguide TEXT NULL PRIMARY KEY,
+        -- <example>'A000001'</example>
+        -- <fk> -> historical.bioguide_id</fk>
+    chamber TEXT NULL,
+        -- <values>{'house', 'senate'}</values>
+    class REAL NULL,
+        -- <example>2.000</example>
+    contact_form TEXT NULL,
+        -- <example>'http://www.webb.senate.gov/contact.cfm'</example>
+    district REAL NULL,
+        -- <example>9.000</example>
+    end TEXT NULL,
+        -- <example>'1793-03-03'</example>
+    fax TEXT NULL,
+        -- <example>'202-228-6363'</example>
+    last TEXT NULL,
+        -- <values>{'Bono', 'Lambert', 'Levy'}</values>
+    middle TEXT NULL,
+    name TEXT NULL,
+    office TEXT NULL,
+        -- <example>'248 Russell Senate Office Building'</example>
+    party TEXT NULL,
+        -- <example>'Anti-Administration'</example>
+    party_affiliations TEXT NULL,
+        -- <values>{'{'start': '2003-01-07', 'end': '2004-08-09', 'party': 'Democrat'}', '{'start': '2009-01-06', 'end': '2009-12-22', 'party': 'Democrat'}'}</values>
+    phone TEXT NULL,
+        -- <example>'202-224-4024'</example>
+    relation TEXT NULL,
+    rss_url TEXT NULL,
+        -- <values>{'http://ayotte.senate.gov/rss/?p=news', 'http://bentivolio.house.gov/rss.xml', 'http://enyart.house.gov/rss.xml', 'http://gallego.house.gov/rss.xml', 'http://garcia.house.gov/rss.xml', 'http://horsford.house.gov/rss.xml', 'http://negretemcleod.house.gov/rss.xml', 'http://patrickmurphy.house.gov/news/rss.aspx', 'http://radel.house.gov/news/rss.aspx', 'http://www.begich.senate.gov/public/?a=rss.feed', 'http://www.hagan.senate.gov/rss', 'http://www.johanns.senate.gov/public/?a=RSS.Feed'}</values>
+    start TEXT NULL,
+        -- <example>'1789-03-04'</example>
+    state TEXT NULL,
+        -- <example>'DE'</example>
+    state_rank TEXT NULL,
+        -- <values>{'junior', 'senior'}</values>
+    title TEXT NULL,
+        -- <values>{'Majority Leader', 'Speaker'}</values>
+    type TEXT NULL,
+        -- <values>{'rep', 'sen'}</values>
+    url TEXT NULL,
+        -- <example>'http://edwards.senate.gov/'</example>
     FOREIGN KEY (bioguide) REFERENCES historical(bioguide_id)
 );
 
 -- Table: "social-media" (479 rows)
 CREATE TABLE "social-media" (
-    bioguide TEXT PRIMARY KEY,  -- e.g. 'A000055'; FK -> current.bioguide_id
-    facebook TEXT,  -- e.g. 'congresswomanaumuaamata'
-    facebook_id REAL,  -- e.g. 1537155909907320.000
-    govtrack REAL,  -- e.g. 412664.000
-    instagram TEXT,  -- e.g. 'senjoniernst'
-    instagram_id REAL,  -- e.g. 1582702853.000
-    thomas INTEGER,  -- e.g. 2222
-    twitter TEXT,  -- e.g. 'RepAmata'
-    twitter_id REAL,  -- e.g. 3026622545.000
-    youtube TEXT,  -- e.g. 'RepToddYoung'
-    youtube_id TEXT,  -- e.g. 'UCGdrLQbt1PYDTPsampx4t1A'
+    bioguide TEXT NULL PRIMARY KEY,
+        -- <example>'A000055'</example>
+        -- <fk> -> current.bioguide_id</fk>
+    facebook TEXT NULL,
+        -- <example>'congresswomanaumuaamata'</example>
+    facebook_id REAL NULL,
+        -- <example>1537155909907320.000</example>
+    govtrack REAL NULL,
+        -- <example>412664.000</example>
+    instagram TEXT NULL,
+        -- <example>'senjoniernst'</example>
+    instagram_id REAL NULL,
+        -- <example>1582702853.000</example>
+    thomas INTEGER NULL,
+        -- <example>2222</example>
+    twitter TEXT NULL,
+        -- <example>'RepAmata'</example>
+    twitter_id REAL NULL,
+        -- <example>3026622545.000</example>
+    youtube TEXT NULL,
+        -- <example>'RepToddYoung'</example>
+    youtube_id TEXT NULL,
+        -- <example>'UCGdrLQbt1PYDTPsampx4t1A'</example>
     FOREIGN KEY (bioguide) REFERENCES current(bioguide_id)
 );
 ```

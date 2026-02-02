@@ -3,20 +3,31 @@
 
 -- Table: tags (161283 rows)
 CREATE TABLE tags (
-    index INTEGER PRIMARY KEY,  -- e.g. 0
-    id INTEGER,  -- e.g. 0; FK -> torrents.id
-    tag TEXT,  -- e.g. '1970s'
+    index INTEGER NULL PRIMARY KEY,
+        -- <example>0</example>
+    id INTEGER NULL,
+        -- <example>0</example>
+        -- <fk> -> torrents.id</fk>
+    tag TEXT NULL,
+        -- <example>'1970s'</example>
     FOREIGN KEY (id) REFERENCES torrents(id)
 );
 
 -- Table: torrents (75719 rows)
 CREATE TABLE torrents (
-    groupName TEXT,  -- e.g. 'superappin&#39;'
-    totalSnatched INTEGER,  -- e.g. 239
-    artist TEXT,  -- e.g. 'grandmaster flash & the furious five'
-    groupYear INTEGER,  -- e.g. 1979
-    releaseType TEXT,  -- values: {'album', 'anthology', 'bootleg', 'compilation', 'concert recording', 'demo', 'dj mix', 'ep', 'interview', 'live album', 'mixtape', 'remix', 'single', 'soundtrack', 'unknown'}
-    groupId INTEGER,  -- e.g. 720949
-    id INTEGER PRIMARY KEY  -- e.g. 0
+    groupName TEXT NULL,
+        -- <example>'superappin&#39;'</example>
+    totalSnatched INTEGER NULL,
+        -- <example>239</example>
+    artist TEXT NULL,
+        -- <example>'grandmaster flash & the furious five'</example>
+    groupYear INTEGER NULL,
+        -- <example>1979</example>
+    releaseType TEXT NULL,
+        -- <values>{'album', 'anthology', 'bootleg', 'compilation', 'concert recording', 'demo', 'dj mix', 'ep', 'interview', 'live album', 'mixtape', 'remix', 'single', 'soundtrack', 'unknown'}</values>
+    groupId INTEGER NULL,
+        -- <example>720949</example>
+    id INTEGER NULL PRIMARY KEY
+        -- <example>0</example>
 );
 ```

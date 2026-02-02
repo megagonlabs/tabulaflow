@@ -3,49 +3,76 @@
 
 -- Table: characters (56 rows)
 CREATE TABLE characters (
-    movie_title TEXT PRIMARY KEY,  -- e.g. 'Aladdin'
-    release_date TEXT,  -- e.g. '21-Dec-37'
-    hero TEXT,  -- e.g. 'Snow White'; FK -> "voice-actors".character
-    villian TEXT,  -- e.g. 'Evil Queen'
-    song TEXT,  -- e.g. 'Some Day My Prince Will Come'
+    movie_title TEXT NULL PRIMARY KEY,
+        -- <example>'Aladdin'</example>
+    release_date TEXT NULL,
+        -- <example>'21-Dec-37'</example>
+    hero TEXT NULL,
+        -- <example>'Snow White'</example>
+        -- <fk> -> "voice-actors".character</fk>
+    villian TEXT NULL,
+        -- <example>'Evil Queen'</example>
+    song TEXT NULL,
+        -- <example>'Some Day My Prince Will Come'</example>
     FOREIGN KEY (hero) REFERENCES "voice-actors"(character)
 );
 
 -- Table: director (56 rows)
 CREATE TABLE director (
-    name TEXT PRIMARY KEY,  -- e.g. '101 Dalmatians'; FK -> characters.movie_title
-    director TEXT,  -- e.g. 'David Hand'
+    name TEXT NULL PRIMARY KEY,
+        -- <example>'101 Dalmatians'</example>
+        -- <fk> -> characters.movie_title</fk>
+    director TEXT NULL,
+        -- <example>'David Hand'</example>
     FOREIGN KEY (name) REFERENCES characters(movie_title)
 );
 
 -- Table: movies_total_gross (579 rows)
 CREATE TABLE movies_total_gross (
-    movie_title TEXT,  -- e.g. '101 Dalmatians'; FK -> characters.movie_title
-    release_date TEXT,  -- e.g. 'Jan 25, 1961'
-    genre TEXT,  -- e.g. 'Musical'
-    MPAA_rating TEXT,  -- values: {'', 'G', 'Not Rated', 'PG', 'PG-13', 'R'}
-    total_gross TEXT,  -- e.g. '$184,925,485'
-    inflation_adjusted_gross TEXT,  -- e.g. '$5,228,953,251'
+    movie_title TEXT NULL,
+        -- <example>'101 Dalmatians'</example>
+        -- <fk> -> characters.movie_title</fk>
+    release_date TEXT NULL,
+        -- <example>'Jan 25, 1961'</example>
+    genre TEXT NULL,
+        -- <example>'Musical'</example>
+    MPAA_rating TEXT NULL,
+        -- <values>{'', 'G', 'Not Rated', 'PG', 'PG-13', 'R'}</values>
+    total_gross TEXT NULL,
+        -- <example>'$184,925,485'</example>
+    inflation_adjusted_gross TEXT NULL,
+        -- <example>'$5,228,953,251'</example>
     PRIMARY KEY (movie_title, release_date),
     FOREIGN KEY (movie_title) REFERENCES characters(movie_title)
 );
 
 -- Table: revenue (26 rows)
 CREATE TABLE revenue (
-    Year INTEGER PRIMARY KEY,  -- e.g. 1991
-    "Studio Entertainment[NI 1]" REAL,  -- e.g. 2593.000
-    "Disney Consumer Products[NI 2]" REAL,  -- e.g. 724.000
-    "Disney Interactive[NI 3][Rev 1]" INTEGER,  -- e.g. 174
-    "Walt Disney Parks and Resorts" REAL,  -- e.g. 2794.000
-    "Disney Media Networks" TEXT,  -- e.g. '359'
-    Total INTEGER  -- e.g. 6111
+    Year INTEGER NULL PRIMARY KEY,
+        -- <example>1991</example>
+    "Studio Entertainment[NI 1]" REAL NULL,
+        -- <example>2593.000</example>
+    "Disney Consumer Products[NI 2]" REAL NULL,
+        -- <example>724.000</example>
+    "Disney Interactive[NI 3][Rev 1]" INTEGER NULL,
+        -- <example>174</example>
+    "Walt Disney Parks and Resorts" REAL NULL,
+        -- <example>2794.000</example>
+    "Disney Media Networks" TEXT NULL,
+        -- <example>'359'</example>
+    Total INTEGER NULL
+        -- <example>6111</example>
 );
 
 -- Table: "voice-actors" (922 rows)
 CREATE TABLE "voice-actors" (
-    character TEXT PRIMARY KEY,  -- e.g. 'Abby Mallard'
-    "voice-actor" TEXT,  -- e.g. 'Joan Cusack'
-    movie TEXT,  -- e.g. 'Chicken Little'; FK -> characters.movie_title
+    character TEXT NULL PRIMARY KEY,
+        -- <example>'Abby Mallard'</example>
+    "voice-actor" TEXT NULL,
+        -- <example>'Joan Cusack'</example>
+    movie TEXT NULL,
+        -- <example>'Chicken Little'</example>
+        -- <fk> -> characters.movie_title</fk>
     FOREIGN KEY (movie) REFERENCES characters(movie_title)
 );
 ```

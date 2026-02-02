@@ -17,7 +17,7 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
-        schema_str = SQLDDLSchemaFormatter().format(schema)
+        schema_str = SQLDDLSchemaFormatter().format(schema, add_description=True)
         with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
@@ -37,7 +37,7 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
-        schema_str = SQLDDLSchemaFormatter().format(schema)
+        schema_str = SQLDDLSchemaFormatter().format(schema, add_description=True)
         with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")

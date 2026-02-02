@@ -3,80 +3,145 @@
 
 -- Table: Examination (806 rows)
 CREATE TABLE Examination (
-    ID INTEGER,  -- e.g. 14872; FK -> Patient.ID
-    "Examination Date" DATE,  -- e.g. '1997-05-27'
-    "aCL IgG" REAL,  -- e.g. 1.300
-    "aCL IgM" REAL,  -- e.g. 1.600
-    ANA INTEGER,  -- e.g. 256
-    "ANA Pattern" TEXT,  -- e.g. 'P'
-    "aCL IgA" INTEGER,  -- e.g. 0
-    Diagnosis TEXT,  -- e.g. 'MCTD, AMI'
-    KCT TEXT,  -- values: {'+', '-'}
-    RVVT TEXT,  -- values: {'+', '-'}
-    LAC TEXT,  -- values: {'+', '-'}
-    Symptoms TEXT,  -- e.g. 'AMI'
-    Thrombosis INTEGER,  -- e.g. 1
+    ID INTEGER NULL,
+        -- <example>14872</example>
+        -- <fk> -> Patient.ID</fk>
+    "Examination Date" DATE NULL,
+        -- <example>'1997-05-27'</example>
+    "aCL IgG" REAL NULL,
+        -- <example>1.300</example>
+    "aCL IgM" REAL NULL,
+        -- <example>1.600</example>
+    ANA INTEGER NULL,
+        -- <example>256</example>
+    "ANA Pattern" TEXT NULL,
+        -- <example>'P'</example>
+    "aCL IgA" INTEGER NULL,
+        -- <example>0</example>
+    Diagnosis TEXT NULL,
+        -- <example>'MCTD, AMI'</example>
+    KCT TEXT NULL,
+        -- <values>{'+', '-'}</values>
+    RVVT TEXT NULL,
+        -- <values>{'+', '-'}</values>
+    LAC TEXT NULL,
+        -- <values>{'+', '-'}</values>
+    Symptoms TEXT NULL,
+        -- <example>'AMI'</example>
+    Thrombosis INTEGER NULL,
+        -- <example>1</example>
     FOREIGN KEY (ID) REFERENCES Patient(ID)
 );
 
 -- Table: Laboratory (13908 rows)
 CREATE TABLE Laboratory (
-    ID INTEGER NOT NULL,  -- e.g. 27654; FK -> Patient.ID
-    Date DATE NOT NULL,  -- e.g. '1991-09-11'
-    GOT INTEGER,  -- e.g. 34
-    GPT INTEGER,  -- e.g. 36
-    LDH INTEGER,  -- e.g. 567
-    ALP INTEGER,  -- e.g. 166
-    TP REAL,  -- e.g. 4.500
-    ALB REAL,  -- e.g. 3.300
-    UA REAL,  -- e.g. 3.800
-    UN INTEGER,  -- e.g. 29
-    CRE REAL,  -- e.g. 0.800
-    "T-BIL" REAL,  -- e.g. 0.300
-    "T-CHO" INTEGER,  -- e.g. 165
-    TG INTEGER,  -- e.g. 185
-    CPK INTEGER,  -- e.g. 9
-    GLU INTEGER,  -- e.g. 88
-    WBC REAL,  -- e.g. 5.000
-    RBC REAL,  -- e.g. 2.600
-    HGB REAL,  -- e.g. 6.400
-    HCT REAL,  -- e.g. 20.300
-    PLT INTEGER,  -- e.g. 227
-    PT REAL,  -- e.g. 11.300
-    APTT INTEGER,  -- e.g. 108
-    FG REAL,  -- e.g. 27.000
-    PIC INTEGER,  -- e.g. 320
-    TAT INTEGER,  -- e.g. 77
-    TAT2 INTEGER,  -- e.g. 113
-    "U-PRO" TEXT,  -- values: {'%%', '+1(30)', '+2(100)', '-', '-15', '0', '1', '100', '2', '3', '30', '300', '4', '>=1000', '>=300', 'TR'}
-    IGG INTEGER,  -- e.g. 339
-    IGA INTEGER,  -- e.g. 145
-    IGM INTEGER,  -- e.g. 46
-    CRP TEXT,  -- e.g. '0.6'
-    RA TEXT,  -- values: {'+', '+-', '-', '2+', '7-'}
-    RF TEXT,  -- e.g. '<20.5'
-    C3 INTEGER,  -- e.g. 30
-    C4 INTEGER,  -- e.g. 14
-    RNP TEXT,  -- values: {'0', '1', '15', '16', '256', '4', '64', 'negative'}
-    SM TEXT,  -- values: {'0', '1', '2', '8', 'negative'}
-    SC170 TEXT,  -- values: {'0', '1', '16', '4', 'negative'}
-    SSA TEXT,  -- values: {'0', '1', '16', '256', '4', '64', 'negative'}
-    SSB TEXT,  -- values: {'0', '1', '2', '32', '8', 'negative'}
-    CENTROMEA TEXT,  -- values: {'0', 'negative'}
-    DNA TEXT,  -- e.g. '41.9'
-    "DNA-II" INTEGER,
+    ID INTEGER NOT NULL,
+        -- <example>27654</example>
+        -- <fk> -> Patient.ID</fk>
+    Date DATE NOT NULL,
+        -- <example>'1991-09-11'</example>
+    GOT INTEGER NULL,
+        -- <example>34</example>
+    GPT INTEGER NULL,
+        -- <example>36</example>
+    LDH INTEGER NULL,
+        -- <example>567</example>
+    ALP INTEGER NULL,
+        -- <example>166</example>
+    TP REAL NULL,
+        -- <example>4.500</example>
+    ALB REAL NULL,
+        -- <example>3.300</example>
+    UA REAL NULL,
+        -- <example>3.800</example>
+    UN INTEGER NULL,
+        -- <example>29</example>
+    CRE REAL NULL,
+        -- <example>0.800</example>
+    "T-BIL" REAL NULL,
+        -- <example>0.300</example>
+    "T-CHO" INTEGER NULL,
+        -- <example>165</example>
+    TG INTEGER NULL,
+        -- <example>185</example>
+    CPK INTEGER NULL,
+        -- <example>9</example>
+    GLU INTEGER NULL,
+        -- <example>88</example>
+    WBC REAL NULL,
+        -- <example>5.000</example>
+    RBC REAL NULL,
+        -- <example>2.600</example>
+    HGB REAL NULL,
+        -- <example>6.400</example>
+    HCT REAL NULL,
+        -- <example>20.300</example>
+    PLT INTEGER NULL,
+        -- <example>227</example>
+    PT REAL NULL,
+        -- <example>11.300</example>
+    APTT INTEGER NULL,
+        -- <example>108</example>
+    FG REAL NULL,
+        -- <example>27.000</example>
+    PIC INTEGER NULL,
+        -- <example>320</example>
+    TAT INTEGER NULL,
+        -- <example>77</example>
+    TAT2 INTEGER NULL,
+        -- <example>113</example>
+    "U-PRO" TEXT NULL,
+        -- <values>{'%%', '+1(30)', '+2(100)', '-', '-15', '0', '1', '100', '2', '3', '30', '300', '4', '>=1000', '>=300', 'TR'}</values>
+    IGG INTEGER NULL,
+        -- <example>339</example>
+    IGA INTEGER NULL,
+        -- <example>145</example>
+    IGM INTEGER NULL,
+        -- <example>46</example>
+    CRP TEXT NULL,
+        -- <example>'0.6'</example>
+    RA TEXT NULL,
+        -- <values>{'+', '+-', '-', '2+', '7-'}</values>
+    RF TEXT NULL,
+        -- <example>'<20.5'</example>
+    C3 INTEGER NULL,
+        -- <example>30</example>
+    C4 INTEGER NULL,
+        -- <example>14</example>
+    RNP TEXT NULL,
+        -- <values>{'0', '1', '15', '16', '256', '4', '64', 'negative'}</values>
+    SM TEXT NULL,
+        -- <values>{'0', '1', '2', '8', 'negative'}</values>
+    SC170 TEXT NULL,
+        -- <values>{'0', '1', '16', '4', 'negative'}</values>
+    SSA TEXT NULL,
+        -- <values>{'0', '1', '16', '256', '4', '64', 'negative'}</values>
+    SSB TEXT NULL,
+        -- <values>{'0', '1', '2', '32', '8', 'negative'}</values>
+    CENTROMEA TEXT NULL,
+        -- <values>{'0', 'negative'}</values>
+    DNA TEXT NULL,
+        -- <example>'41.9'</example>
+    "DNA-II" INTEGER NULL,
     PRIMARY KEY (ID, Date),
     FOREIGN KEY (ID) REFERENCES Patient(ID)
 );
 
 -- Table: Patient (1238 rows)
 CREATE TABLE Patient (
-    ID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 2110
-    SEX TEXT,  -- values: {'', 'F', 'M'}
-    Birthday DATE,  -- e.g. '1934-02-13'
-    Description DATE,  -- e.g. '1994-02-14'
-    "First Date" DATE,  -- e.g. '1993-02-10'
-    Admission TEXT,  -- values: {'', '+', '+(', '-'}
-    Diagnosis TEXT  -- e.g. 'RA susp.'
+    ID INTEGER NOT NULL PRIMARY KEY,
+        -- <example>2110</example>
+    SEX TEXT NULL,
+        -- <values>{'', 'F', 'M'}</values>
+    Birthday DATE NULL,
+        -- <example>'1934-02-13'</example>
+    Description DATE NULL,
+        -- <example>'1994-02-14'</example>
+    "First Date" DATE NULL,
+        -- <example>'1993-02-10'</example>
+    Admission TEXT NULL,
+        -- <values>{'', '+', '+(', '-'}</values>
+    Diagnosis TEXT NULL
+        -- <example>'RA susp.'</example>
 );
 ```

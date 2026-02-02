@@ -3,47 +3,80 @@
 
 -- Table: city (601 rows)
 CREATE TABLE city (
-    city_id INTEGER PRIMARY KEY,  -- e.g. 100
-    city_name TEXT,  -- e.g. 'Union City'
-    state TEXT,  -- e.g. 'New Jersey'
-    population INTEGER,  -- e.g. 67088
-    area REAL  -- e.g. 1.300
+    city_id INTEGER NULL PRIMARY KEY,
+        -- <example>100</example>
+    city_name TEXT NULL,
+        -- <example>'Union City'</example>
+    state TEXT NULL,
+        -- <example>'New Jersey'</example>
+    population INTEGER NULL,
+        -- <example>67088</example>
+    area REAL NULL
+        -- <example>1.300</example>
 );
 
 -- Table: customer (100 rows)
 CREATE TABLE customer (
-    cust_id INTEGER PRIMARY KEY,  -- e.g. 193
-    cust_name TEXT,  -- e.g. 'Advanced Fabricators'
-    annual_revenue INTEGER,  -- e.g. 39588651
-    cust_type TEXT,  -- values: {'manufacturer', 'retailer', 'wholesaler'}
-    address TEXT,  -- e.g. '5141 Summit Boulevard'
-    city TEXT,  -- e.g. 'West Palm Beach'
-    state TEXT,  -- e.g. 'FL'
-    zip REAL,  -- e.g. 33415.000
-    phone TEXT  -- e.g. '(561) 683-3535'
+    cust_id INTEGER NULL PRIMARY KEY,
+        -- <example>193</example>
+    cust_name TEXT NULL,
+        -- <example>'Advanced Fabricators'</example>
+    annual_revenue INTEGER NULL,
+        -- <example>39588651</example>
+    cust_type TEXT NULL,
+        -- <values>{'manufacturer', 'retailer', 'wholesaler'}</values>
+    address TEXT NULL,
+        -- <example>'5141 Summit Boulevard'</example>
+    city TEXT NULL,
+        -- <example>'West Palm Beach'</example>
+    state TEXT NULL,
+        -- <example>'FL'</example>
+    zip REAL NULL,
+        -- <example>33415.000</example>
+    phone TEXT NULL
+        -- <example>'(561) 683-3535'</example>
 );
 
 -- Table: driver (11 rows)
 CREATE TABLE driver (
-    driver_id INTEGER PRIMARY KEY,  -- e.g. 20
-    first_name TEXT,  -- e.g. 'Sue'
-    last_name TEXT,  -- e.g. 'Newell'
-    address TEXT,  -- e.g. '268 Richmond Ave'
-    city TEXT,  -- values: {'Memphis'}
-    state TEXT,  -- values: {'TN'}
-    zip_code INTEGER,  -- e.g. 38106
-    phone TEXT  -- e.g. '(901) 774-6569'
+    driver_id INTEGER NULL PRIMARY KEY,
+        -- <example>20</example>
+    first_name TEXT NULL,
+        -- <example>'Sue'</example>
+    last_name TEXT NULL,
+        -- <example>'Newell'</example>
+    address TEXT NULL,
+        -- <example>'268 Richmond Ave'</example>
+    city TEXT NULL,
+        -- <values>{'Memphis'}</values>
+    state TEXT NULL,
+        -- <values>{'TN'}</values>
+    zip_code INTEGER NULL,
+        -- <example>38106</example>
+    phone TEXT NULL
+        -- <example>'(901) 774-6569'</example>
 );
 
 -- Table: shipment (960 rows)
 CREATE TABLE shipment (
-    ship_id INTEGER PRIMARY KEY,  -- e.g. 1000
-    cust_id INTEGER,  -- e.g. 3660; FK -> customer.cust_id
-    weight REAL,  -- e.g. 3528.000
-    truck_id INTEGER,  -- e.g. 1; FK -> truck.truck_id
-    driver_id INTEGER,  -- e.g. 23; FK -> driver.driver_id
-    city_id INTEGER,  -- e.g. 137; FK -> city.city_id
-    ship_date TEXT,  -- e.g. '2016-01-08'
+    ship_id INTEGER NULL PRIMARY KEY,
+        -- <example>1000</example>
+    cust_id INTEGER NULL,
+        -- <example>3660</example>
+        -- <fk> -> customer.cust_id</fk>
+    weight REAL NULL,
+        -- <example>3528.000</example>
+    truck_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> truck.truck_id</fk>
+    driver_id INTEGER NULL,
+        -- <example>23</example>
+        -- <fk> -> driver.driver_id</fk>
+    city_id INTEGER NULL,
+        -- <example>137</example>
+        -- <fk> -> city.city_id</fk>
+    ship_date TEXT NULL,
+        -- <example>'2016-01-08'</example>
     FOREIGN KEY (cust_id) REFERENCES customer(cust_id),
     FOREIGN KEY (city_id) REFERENCES city(city_id),
     FOREIGN KEY (driver_id) REFERENCES driver(driver_id),
@@ -52,8 +85,11 @@ CREATE TABLE shipment (
 
 -- Table: truck (12 rows)
 CREATE TABLE truck (
-    truck_id INTEGER PRIMARY KEY,  -- e.g. 1
-    make TEXT,  -- values: {'Kenworth', 'Mack', 'Peterbilt'}
-    model_year INTEGER  -- e.g. 2005
+    truck_id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    make TEXT NULL,
+        -- <values>{'Kenworth', 'Mack', 'Peterbilt'}</values>
+    model_year INTEGER NULL
+        -- <example>2005</example>
 );
 ```

@@ -3,10 +3,17 @@
 
 -- Table: biwords (21587486 rows)
 CREATE TABLE biwords (
-    lid INTEGER NOT NULL,  -- e.g. 1; FK -> langs.lid
-    w1st INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
-    w2nd INTEGER NOT NULL,  -- e.g. 2; FK -> words.wid
-    occurrences INTEGER,  -- e.g. 4
+    lid INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> langs.lid</fk>
+    w1st INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> words.wid</fk>
+    w2nd INTEGER NOT NULL,
+        -- <example>2</example>
+        -- <fk> -> words.wid</fk>
+    occurrences INTEGER NULL,
+        -- <example>4</example>
     PRIMARY KEY (lid, w1st, w2nd),
     FOREIGN KEY (w2nd) REFERENCES words(wid),
     FOREIGN KEY (w1st) REFERENCES words(wid),
@@ -15,18 +22,28 @@ CREATE TABLE biwords (
 
 -- Table: langs (1 rows)
 CREATE TABLE langs (
-    lid INTEGER PRIMARY KEY,  -- e.g. 1
-    lang TEXT,  -- values: {'ca'}
-    locale TEXT,  -- values: {'ca_ES'}
-    pages INTEGER,  -- e.g. 1129144
-    words INTEGER  -- e.g. 2764996
+    lid INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    lang TEXT NULL,
+        -- <values>{'ca'}</values>
+    locale TEXT NULL,
+        -- <values>{'ca_ES'}</values>
+    pages INTEGER NULL,
+        -- <example>1129144</example>
+    words INTEGER NULL
+        -- <example>2764996</example>
 );
 
 -- Table: langs_words (2764996 rows)
 CREATE TABLE langs_words (
-    lid INTEGER NOT NULL,  -- e.g. 1; FK -> langs.lid
-    wid INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
-    occurrences INTEGER,  -- e.g. 242
+    lid INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> langs.lid</fk>
+    wid INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> words.wid</fk>
+    occurrences INTEGER NULL,
+        -- <example>242</example>
     PRIMARY KEY (lid, wid),
     FOREIGN KEY (wid) REFERENCES words(wid),
     FOREIGN KEY (lid) REFERENCES langs(lid)
@@ -34,20 +51,32 @@ CREATE TABLE langs_words (
 
 -- Table: pages (1129144 rows)
 CREATE TABLE pages (
-    pid INTEGER PRIMARY KEY,  -- e.g. 1
-    lid INTEGER,  -- e.g. 1; FK -> langs.lid
-    page INTEGER,  -- e.g. 1
-    revision INTEGER,  -- e.g. 28236978
-    title TEXT,  -- e.g. 'Àbac'
-    words INTEGER,  -- e.g. 1081
+    pid INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    lid INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> langs.lid</fk>
+    page INTEGER NULL,
+        -- <example>1</example>
+    revision INTEGER NULL,
+        -- <example>28236978</example>
+    title TEXT NULL,
+        -- <example>'Àbac'</example>
+    words INTEGER NULL,
+        -- <example>1081</example>
     FOREIGN KEY (lid) REFERENCES langs(lid)
 );
 
 -- Table: pages_words (129131916 rows)
 CREATE TABLE pages_words (
-    pid INTEGER NOT NULL,  -- e.g. 1; FK -> pages.pid
-    wid INTEGER NOT NULL,  -- e.g. 1; FK -> words.wid
-    occurrences INTEGER,  -- e.g. 30
+    pid INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> pages.pid</fk>
+    wid INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> words.wid</fk>
+    occurrences INTEGER NULL,
+        -- <example>30</example>
     PRIMARY KEY (pid, wid),
     FOREIGN KEY (wid) REFERENCES words(wid),
     FOREIGN KEY (pid) REFERENCES pages(pid)
@@ -55,8 +84,11 @@ CREATE TABLE pages_words (
 
 -- Table: words (2764996 rows)
 CREATE TABLE words (
-    wid INTEGER PRIMARY KEY,  -- e.g. 2148990
-    word TEXT,  -- e.g. '+,2'
-    occurrences INTEGER  -- e.g. 242
+    wid INTEGER NULL PRIMARY KEY,
+        -- <example>2148990</example>
+    word TEXT NULL,
+        -- <example>'+,2'</example>
+    occurrences INTEGER NULL
+        -- <example>242</example>
 );
 ```

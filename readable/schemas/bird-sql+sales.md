@@ -3,34 +3,53 @@
 
 -- Table: Customers (19759 rows)
 CREATE TABLE Customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    FirstName TEXT NOT NULL,  -- e.g. 'Aaron'
-    MiddleInitial TEXT,  -- e.g. 'A'
-    LastName TEXT NOT NULL  -- e.g. 'Alexander'
+    CustomerID INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    FirstName TEXT NOT NULL,
+        -- <example>'Aaron'</example>
+    MiddleInitial TEXT NULL,
+        -- <example>'A'</example>
+    LastName TEXT NOT NULL
+        -- <example>'Alexander'</example>
 );
 
 -- Table: Employees (22 rows)
 CREATE TABLE Employees (
-    EmployeeID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    FirstName TEXT NOT NULL,  -- e.g. 'Abraham'
-    MiddleInitial TEXT,  -- e.g. 'e'
-    LastName TEXT NOT NULL  -- e.g. 'Bennet'
+    EmployeeID INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    FirstName TEXT NOT NULL,
+        -- <example>'Abraham'</example>
+    MiddleInitial TEXT NULL,
+        -- <example>'e'</example>
+    LastName TEXT NOT NULL
+        -- <example>'Bennet'</example>
 );
 
 -- Table: Products (504 rows)
 CREATE TABLE Products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    Name TEXT NOT NULL,  -- e.g. 'Adjustable Race'
-    Price REAL  -- e.g. 1.600
+    ProductID INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    Name TEXT NOT NULL,
+        -- <example>'Adjustable Race'</example>
+    Price REAL NULL
+        -- <example>1.600</example>
 );
 
 -- Table: Sales (6715221 rows)
 CREATE TABLE Sales (
-    SalesID INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1
-    SalesPersonID INTEGER NOT NULL,  -- e.g. 17; FK -> Employees.EmployeeID
-    CustomerID INTEGER NOT NULL,  -- e.g. 10482; FK -> Customers.CustomerID
-    ProductID INTEGER NOT NULL,  -- e.g. 500; FK -> Products.ProductID
-    Quantity INTEGER NOT NULL,  -- e.g. 500
+    SalesID INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1</example>
+    SalesPersonID INTEGER NOT NULL,
+        -- <example>17</example>
+        -- <fk> -> Employees.EmployeeID</fk>
+    CustomerID INTEGER NOT NULL,
+        -- <example>10482</example>
+        -- <fk> -> Customers.CustomerID</fk>
+    ProductID INTEGER NOT NULL,
+        -- <example>500</example>
+        -- <fk> -> Products.ProductID</fk>
+    Quantity INTEGER NOT NULL,
+        -- <example>500</example>
     FOREIGN KEY (SalesPersonID) REFERENCES Employees(EmployeeID),
     FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
     FOREIGN KEY (ProductID) REFERENCES Products(ProductID)

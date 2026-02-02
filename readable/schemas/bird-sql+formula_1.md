@@ -3,84 +3,139 @@
 
 -- Table: circuits (72 rows)
 CREATE TABLE circuits (
-    circuitId INTEGER PRIMARY KEY,  -- e.g. 23
-    circuitRef TEXT NOT NULL,  -- e.g. 'sepang'
-    name TEXT NOT NULL,  -- e.g. 'Sepang International Circuit'
-    location TEXT,  -- e.g. 'Kuala Lumpur'
-    country TEXT,  -- e.g. 'Malaysia'
-    lat REAL,  -- e.g. 2.761
-    lng REAL,  -- e.g. 101.738
-    alt INTEGER,
-    url TEXT NOT NULL  -- e.g. 'http://en.wikipedia.org/wiki/A1-Ring'
+    circuitId INTEGER NULL PRIMARY KEY,
+        -- <example>23</example>
+    circuitRef TEXT NOT NULL,
+        -- <example>'sepang'</example>
+    name TEXT NOT NULL,
+        -- <example>'Sepang International Circuit'</example>
+    location TEXT NULL,
+        -- <example>'Kuala Lumpur'</example>
+    country TEXT NULL,
+        -- <example>'Malaysia'</example>
+    lat REAL NULL,
+        -- <example>2.761</example>
+    lng REAL NULL,
+        -- <example>101.738</example>
+    alt INTEGER NULL,
+    url TEXT NOT NULL
+        -- <example>'http://en.wikipedia.org/wiki/A1-Ring'</example>
 );
 
 -- Table: constructorResults (11082 rows)
 CREATE TABLE constructorResults (
-    constructorResultsId INTEGER PRIMARY KEY,  -- e.g. 1
-    raceId INTEGER NOT NULL,  -- e.g. 18; FK -> races.raceId
-    constructorId INTEGER NOT NULL,  -- e.g. 1; FK -> constructors.constructorId
-    points REAL,  -- e.g. 14.000
-    status TEXT,  -- values: {'D'}
+    constructorResultsId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    raceId INTEGER NOT NULL,
+        -- <example>18</example>
+        -- <fk> -> races.raceId</fk>
+    constructorId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> constructors.constructorId</fk>
+    points REAL NULL,
+        -- <example>14.000</example>
+    status TEXT NULL,
+        -- <values>{'D'}</values>
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (constructorId) REFERENCES constructors(constructorId)
 );
 
 -- Table: constructorStandings (11836 rows)
 CREATE TABLE constructorStandings (
-    constructorStandingsId INTEGER PRIMARY KEY,  -- e.g. 1
-    raceId INTEGER NOT NULL,  -- e.g. 18; FK -> races.raceId
-    constructorId INTEGER NOT NULL,  -- e.g. 1; FK -> constructors.constructorId
-    points REAL NOT NULL,  -- e.g. 14.000
-    position INTEGER,  -- e.g. 1
-    positionText TEXT,  -- e.g. '1'
-    wins INTEGER NOT NULL,  -- e.g. 1
+    constructorStandingsId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    raceId INTEGER NOT NULL,
+        -- <example>18</example>
+        -- <fk> -> races.raceId</fk>
+    constructorId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> constructors.constructorId</fk>
+    points REAL NOT NULL,
+        -- <example>14.000</example>
+    position INTEGER NULL,
+        -- <example>1</example>
+    positionText TEXT NULL,
+        -- <example>'1'</example>
+    wins INTEGER NOT NULL,
+        -- <example>1</example>
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (constructorId) REFERENCES constructors(constructorId)
 );
 
 -- Table: constructors (208 rows)
 CREATE TABLE constructors (
-    constructorId INTEGER PRIMARY KEY,  -- e.g. 147
-    constructorRef TEXT NOT NULL,  -- e.g. 'mclaren'
-    name TEXT NOT NULL,  -- e.g. 'AFM'
-    nationality TEXT,  -- e.g. 'British'
-    url TEXT NOT NULL  -- e.g. 'http://en.wikipedia.org/wiki/McLaren'
+    constructorId INTEGER NULL PRIMARY KEY,
+        -- <example>147</example>
+    constructorRef TEXT NOT NULL,
+        -- <example>'mclaren'</example>
+    name TEXT NOT NULL,
+        -- <example>'AFM'</example>
+    nationality TEXT NULL,
+        -- <example>'British'</example>
+    url TEXT NOT NULL
+        -- <example>'http://en.wikipedia.org/wiki/McLaren'</example>
 );
 
 -- Table: driverStandings (31578 rows)
 CREATE TABLE driverStandings (
-    driverStandingsId INTEGER PRIMARY KEY,  -- e.g. 1
-    raceId INTEGER NOT NULL,  -- e.g. 18; FK -> races.raceId
-    driverId INTEGER NOT NULL,  -- e.g. 1; FK -> drivers.driverId
-    points REAL NOT NULL,  -- e.g. 10.000
-    position INTEGER,  -- e.g. 1
-    positionText TEXT,  -- e.g. '1'
-    wins INTEGER NOT NULL,  -- e.g. 1
+    driverStandingsId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    raceId INTEGER NOT NULL,
+        -- <example>18</example>
+        -- <fk> -> races.raceId</fk>
+    driverId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> drivers.driverId</fk>
+    points REAL NOT NULL,
+        -- <example>10.000</example>
+    position INTEGER NULL,
+        -- <example>1</example>
+    positionText TEXT NULL,
+        -- <example>'1'</example>
+    wins INTEGER NOT NULL,
+        -- <example>1</example>
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (driverId) REFERENCES drivers(driverId)
 );
 
 -- Table: drivers (840 rows)
 CREATE TABLE drivers (
-    driverId INTEGER PRIMARY KEY,  -- e.g. 452
-    driverRef TEXT NOT NULL,  -- e.g. 'hamilton'
-    number INTEGER,  -- e.g. 44
-    code TEXT,  -- e.g. 'HAM'
-    forename TEXT NOT NULL,  -- e.g. 'Lewis'
-    surname TEXT NOT NULL,  -- e.g. 'Hamilton'
-    dob DATE,  -- e.g. '1985-01-07'
-    nationality TEXT,  -- e.g. 'British'
-    url TEXT NOT NULL  -- e.g. ''
+    driverId INTEGER NULL PRIMARY KEY,
+        -- <example>452</example>
+    driverRef TEXT NOT NULL,
+        -- <example>'hamilton'</example>
+    number INTEGER NULL,
+        -- <example>44</example>
+    code TEXT NULL,
+        -- <example>'HAM'</example>
+    forename TEXT NOT NULL,
+        -- <example>'Lewis'</example>
+    surname TEXT NOT NULL,
+        -- <example>'Hamilton'</example>
+    dob DATE NULL,
+        -- <example>'1985-01-07'</example>
+    nationality TEXT NULL,
+        -- <example>'British'</example>
+    url TEXT NOT NULL
+        -- <example>''</example>
 );
 
 -- Table: lapTimes (420369 rows)
 CREATE TABLE lapTimes (
-    raceId INTEGER NOT NULL,  -- e.g. 1; FK -> races.raceId
-    driverId INTEGER NOT NULL,  -- e.g. 1; FK -> drivers.driverId
-    lap INTEGER NOT NULL,  -- e.g. 1
-    position INTEGER,  -- e.g. 13
-    time TEXT,  -- e.g. '1:49.088'
-    milliseconds INTEGER,  -- e.g. 109088
+    raceId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> races.raceId</fk>
+    driverId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> drivers.driverId</fk>
+    lap INTEGER NOT NULL,
+        -- <example>1</example>
+    position INTEGER NULL,
+        -- <example>13</example>
+    time TEXT NULL,
+        -- <example>'1:49.088'</example>
+    milliseconds INTEGER NULL,
+        -- <example>109088</example>
     PRIMARY KEY (raceId, driverId, lap),
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (driverId) REFERENCES drivers(driverId)
@@ -88,13 +143,22 @@ CREATE TABLE lapTimes (
 
 -- Table: pitStops (6070 rows)
 CREATE TABLE pitStops (
-    raceId INTEGER NOT NULL,  -- e.g. 841; FK -> races.raceId
-    driverId INTEGER NOT NULL,  -- e.g. 1; FK -> drivers.driverId
-    stop INTEGER NOT NULL,  -- e.g. 1
-    lap INTEGER NOT NULL,  -- e.g. 16
-    time TEXT NOT NULL,  -- e.g. '17:28:24'
-    duration TEXT,  -- e.g. '23.227'
-    milliseconds INTEGER,  -- e.g. 23227
+    raceId INTEGER NOT NULL,
+        -- <example>841</example>
+        -- <fk> -> races.raceId</fk>
+    driverId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> drivers.driverId</fk>
+    stop INTEGER NOT NULL,
+        -- <example>1</example>
+    lap INTEGER NOT NULL,
+        -- <example>16</example>
+    time TEXT NOT NULL,
+        -- <example>'17:28:24'</example>
+    duration TEXT NULL,
+        -- <example>'23.227'</example>
+    milliseconds INTEGER NULL,
+        -- <example>23227</example>
     PRIMARY KEY (raceId, driverId, stop),
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (driverId) REFERENCES drivers(driverId)
@@ -102,15 +166,27 @@ CREATE TABLE pitStops (
 
 -- Table: qualifying (7397 rows)
 CREATE TABLE qualifying (
-    qualifyId INTEGER PRIMARY KEY,  -- e.g. 1
-    raceId INTEGER NOT NULL,  -- e.g. 18; FK -> races.raceId
-    driverId INTEGER NOT NULL,  -- e.g. 1; FK -> drivers.driverId
-    constructorId INTEGER NOT NULL,  -- e.g. 1; FK -> constructors.constructorId
-    number INTEGER NOT NULL,  -- e.g. 22
-    position INTEGER,  -- e.g. 1
-    q1 TEXT,  -- e.g. '1:26.572'
-    q2 TEXT,  -- e.g. '1:25.187'
-    q3 TEXT,  -- e.g. '1:26.714'
+    qualifyId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    raceId INTEGER NOT NULL,
+        -- <example>18</example>
+        -- <fk> -> races.raceId</fk>
+    driverId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> drivers.driverId</fk>
+    constructorId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> constructors.constructorId</fk>
+    number INTEGER NOT NULL,
+        -- <example>22</example>
+    position INTEGER NULL,
+        -- <example>1</example>
+    q1 TEXT NULL,
+        -- <example>'1:26.572'</example>
+    q2 TEXT NULL,
+        -- <example>'1:25.187'</example>
+    q3 TEXT NULL,
+        -- <example>'1:26.714'</example>
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (driverId) REFERENCES drivers(driverId),
     FOREIGN KEY (constructorId) REFERENCES constructors(constructorId)
@@ -118,38 +194,70 @@ CREATE TABLE qualifying (
 
 -- Table: races (976 rows)
 CREATE TABLE races (
-    raceId INTEGER PRIMARY KEY,  -- e.g. 837
-    year INTEGER NOT NULL,  -- e.g. 2009; FK -> seasons.year
-    round INTEGER NOT NULL,  -- e.g. 1
-    circuitId INTEGER NOT NULL,  -- e.g. 1; FK -> circuits.circuitId
-    name TEXT NOT NULL,  -- e.g. 'Australian Grand Prix'
-    date DATE NOT NULL,  -- e.g. '2009-03-29'
-    time TEXT,  -- e.g. '06:00:00'
-    url TEXT,  -- e.g. 'http://en.wikipedia.org/wiki/1950_Belgian_Grand_Prix'
+    raceId INTEGER NULL PRIMARY KEY,
+        -- <example>837</example>
+    year INTEGER NOT NULL,
+        -- <example>2009</example>
+        -- <fk> -> seasons.year</fk>
+    round INTEGER NOT NULL,
+        -- <example>1</example>
+    circuitId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> circuits.circuitId</fk>
+    name TEXT NOT NULL,
+        -- <example>'Australian Grand Prix'</example>
+    date DATE NOT NULL,
+        -- <example>'2009-03-29'</example>
+    time TEXT NULL,
+        -- <example>'06:00:00'</example>
+    url TEXT NULL,
+        -- <example>'http://en.wikipedia.org/wiki/1950_Belgian_Grand_Prix'</example>
     FOREIGN KEY (year) REFERENCES seasons(year),
     FOREIGN KEY (circuitId) REFERENCES circuits(circuitId)
 );
 
 -- Table: results (23657 rows)
 CREATE TABLE results (
-    resultId INTEGER PRIMARY KEY,  -- e.g. 1
-    raceId INTEGER NOT NULL,  -- e.g. 18; FK -> races.raceId
-    driverId INTEGER NOT NULL,  -- e.g. 1; FK -> drivers.driverId
-    constructorId INTEGER NOT NULL,  -- e.g. 1; FK -> constructors.constructorId
-    number INTEGER,  -- e.g. 22
-    grid INTEGER NOT NULL,  -- e.g. 1
-    position INTEGER,  -- e.g. 1
-    positionText TEXT NOT NULL,  -- e.g. '1'
-    positionOrder INTEGER NOT NULL,  -- e.g. 1
-    points REAL NOT NULL,  -- e.g. 10.000
-    laps INTEGER NOT NULL,  -- e.g. 58
-    time TEXT,  -- e.g. '1:34:50.616'
-    milliseconds INTEGER,  -- e.g. 5690616
-    fastestLap INTEGER,  -- e.g. 39
-    rank INTEGER,  -- e.g. 2
-    fastestLapTime TEXT,  -- e.g. '1:27.452'
-    fastestLapSpeed TEXT,  -- e.g. '218.300'
-    statusId INTEGER NOT NULL,  -- e.g. 1; FK -> status.statusId
+    resultId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    raceId INTEGER NOT NULL,
+        -- <example>18</example>
+        -- <fk> -> races.raceId</fk>
+    driverId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> drivers.driverId</fk>
+    constructorId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> constructors.constructorId</fk>
+    number INTEGER NULL,
+        -- <example>22</example>
+    grid INTEGER NOT NULL,
+        -- <example>1</example>
+    position INTEGER NULL,
+        -- <example>1</example>
+    positionText TEXT NOT NULL,
+        -- <example>'1'</example>
+    positionOrder INTEGER NOT NULL,
+        -- <example>1</example>
+    points REAL NOT NULL,
+        -- <example>10.000</example>
+    laps INTEGER NOT NULL,
+        -- <example>58</example>
+    time TEXT NULL,
+        -- <example>'1:34:50.616'</example>
+    milliseconds INTEGER NULL,
+        -- <example>5690616</example>
+    fastestLap INTEGER NULL,
+        -- <example>39</example>
+    rank INTEGER NULL,
+        -- <example>2</example>
+    fastestLapTime TEXT NULL,
+        -- <example>'1:27.452'</example>
+    fastestLapSpeed TEXT NULL,
+        -- <example>'218.300'</example>
+    statusId INTEGER NOT NULL,
+        -- <example>1</example>
+        -- <fk> -> status.statusId</fk>
     FOREIGN KEY (raceId) REFERENCES races(raceId),
     FOREIGN KEY (driverId) REFERENCES drivers(driverId),
     FOREIGN KEY (constructorId) REFERENCES constructors(constructorId),
@@ -158,13 +266,17 @@ CREATE TABLE results (
 
 -- Table: seasons (68 rows)
 CREATE TABLE seasons (
-    year INTEGER NOT NULL PRIMARY KEY,  -- e.g. 1950
-    url TEXT NOT NULL  -- e.g. 'http://en.wikipedia.org/wiki/1950_Formula_One_season'
+    year INTEGER NOT NULL PRIMARY KEY,
+        -- <example>1950</example>
+    url TEXT NOT NULL
+        -- <example>'http://en.wikipedia.org/wiki/1950_Formula_One_season'</example>
 );
 
 -- Table: status (134 rows)
 CREATE TABLE status (
-    statusId INTEGER PRIMARY KEY,  -- e.g. 1
-    status TEXT NOT NULL  -- e.g. 'Finished'
+    statusId INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    status TEXT NOT NULL
+        -- <example>'Finished'</example>
 );
 ```

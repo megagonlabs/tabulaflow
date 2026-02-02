@@ -3,21 +3,33 @@
 
 -- Table: divisions (21 rows)
 CREATE TABLE divisions (
-    division TEXT NOT NULL PRIMARY KEY,  -- e.g. 'B1'
-    name TEXT,  -- e.g. 'Division 1A'
-    country TEXT  -- e.g. 'Belgium'
+    division TEXT NOT NULL PRIMARY KEY,
+        -- <example>'B1'</example>
+    name TEXT NULL,
+        -- <example>'Division 1A'</example>
+    country TEXT NULL
+        -- <example>'Belgium'</example>
 );
 
 -- Table: matchs (123404 rows)
 CREATE TABLE matchs (
-    Div TEXT,  -- e.g. 'B1'; FK -> divisions.division
-    Date DATE,  -- e.g. '2020-08-08'
-    HomeTeam TEXT,  -- e.g. 'Club Brugge'
-    AwayTeam TEXT,  -- e.g. 'Charleroi'
-    FTHG INTEGER,  -- e.g. 0
-    FTAG INTEGER,  -- e.g. 1
-    FTR TEXT,  -- values: {'A', 'D', 'H'}
-    season INTEGER,  -- e.g. 2021
+    Div TEXT NULL,
+        -- <example>'B1'</example>
+        -- <fk> -> divisions.division</fk>
+    Date DATE NULL,
+        -- <example>'2020-08-08'</example>
+    HomeTeam TEXT NULL,
+        -- <example>'Club Brugge'</example>
+    AwayTeam TEXT NULL,
+        -- <example>'Charleroi'</example>
+    FTHG INTEGER NULL,
+        -- <example>0</example>
+    FTAG INTEGER NULL,
+        -- <example>1</example>
+    FTR TEXT NULL,
+        -- <values>{'A', 'D', 'H'}</values>
+    season INTEGER NULL,
+        -- <example>2021</example>
     FOREIGN KEY (Div) REFERENCES divisions(division)
 );
 ```

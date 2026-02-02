@@ -3,135 +3,282 @@
 
 -- Table: Country (11 rows)
 CREATE TABLE Country (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    name TEXT  -- e.g. 'Belgium'
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    name TEXT NULL
+        -- <example>'Belgium'</example>
 );
 
 -- Table: League (11 rows)
 CREATE TABLE League (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    country_id INTEGER,  -- e.g. 1; FK -> country.id
-    name TEXT,  -- e.g. 'Belgium Jupiler League'
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    country_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> country.id</fk>
+    name TEXT NULL,
+        -- <example>'Belgium Jupiler League'</example>
     FOREIGN KEY (country_id) REFERENCES country(id)
 );
 
 -- Table: Match (25979 rows)
 CREATE TABLE Match (
-    id INTEGER PRIMARY KEY,  -- e.g. 4769
-    country_id INTEGER,  -- e.g. 1; FK -> Country.id
-    league_id INTEGER,  -- e.g. 1; FK -> League.id
-    season TEXT,  -- values: {'2008/2009', '2009/2010', '2010/2011', '2011/2012', '2012/2013', '2013/2014', '2014/2015', '2015/2016'}
-    stage INTEGER,  -- e.g. 1
-    date TEXT,  -- e.g. '2008-08-17 00:00:00'
-    match_api_id INTEGER,  -- e.g. 483129
-    home_team_api_id INTEGER,  -- e.g. 9987; FK -> Team.team_api_id
-    away_team_api_id INTEGER,  -- e.g. 9993; FK -> Team.team_api_id
-    home_team_goal INTEGER,  -- e.g. 1
-    away_team_goal INTEGER,  -- e.g. 1
-    home_player_X1 INTEGER,  -- e.g. 1
-    home_player_X2 INTEGER,  -- e.g. 2
-    home_player_X3 INTEGER,  -- e.g. 4
-    home_player_X4 INTEGER,  -- e.g. 6
-    home_player_X5 INTEGER,  -- e.g. 8
-    home_player_X6 INTEGER,  -- e.g. 2
-    home_player_X7 INTEGER,  -- e.g. 4
-    home_player_X8 INTEGER,  -- e.g. 6
-    home_player_X9 INTEGER,  -- e.g. 8
-    home_player_X10 INTEGER,  -- e.g. 4
-    home_player_X11 INTEGER,  -- e.g. 6
-    away_player_X1 INTEGER,  -- e.g. 1
-    away_player_X2 INTEGER,  -- e.g. 2
-    away_player_X3 INTEGER,  -- e.g. 4
-    away_player_X4 INTEGER,  -- e.g. 6
-    away_player_X5 INTEGER,  -- e.g. 8
-    away_player_X6 INTEGER,  -- e.g. 2
-    away_player_X7 INTEGER,  -- e.g. 4
-    away_player_X8 INTEGER,  -- e.g. 6
-    away_player_X9 INTEGER,  -- e.g. 8
-    away_player_X10 INTEGER,  -- e.g. 4
-    away_player_X11 INTEGER,  -- e.g. 6
-    home_player_Y1 INTEGER,  -- e.g. 1
-    home_player_Y2 INTEGER,  -- e.g. 3
-    home_player_Y3 INTEGER,  -- e.g. 3
-    home_player_Y4 INTEGER,  -- e.g. 3
-    home_player_Y5 INTEGER,  -- e.g. 3
-    home_player_Y6 INTEGER,  -- e.g. 7
-    home_player_Y7 INTEGER,  -- e.g. 7
-    home_player_Y8 INTEGER,  -- e.g. 7
-    home_player_Y9 INTEGER,  -- e.g. 7
-    home_player_Y10 INTEGER,  -- e.g. 10
-    home_player_Y11 INTEGER,  -- e.g. 10
-    away_player_Y1 INTEGER,  -- e.g. 1
-    away_player_Y2 INTEGER,  -- e.g. 3
-    away_player_Y3 INTEGER,  -- e.g. 3
-    away_player_Y4 INTEGER,  -- e.g. 3
-    away_player_Y5 INTEGER,  -- e.g. 3
-    away_player_Y6 INTEGER,  -- e.g. 7
-    away_player_Y7 INTEGER,  -- e.g. 7
-    away_player_Y8 INTEGER,  -- e.g. 7
-    away_player_Y9 INTEGER,  -- e.g. 7
-    away_player_Y10 INTEGER,  -- e.g. 10
-    away_player_Y11 INTEGER,  -- e.g. 10
-    home_player_1 INTEGER,  -- e.g. 39890; FK -> Player.player_api_id
-    home_player_2 INTEGER,  -- e.g. 67950; FK -> Player.player_api_id
-    home_player_3 INTEGER,  -- e.g. 38788; FK -> Player.player_api_id
-    home_player_4 INTEGER,  -- e.g. 38312; FK -> Player.player_api_id
-    home_player_5 INTEGER,  -- e.g. 26235; FK -> Player.player_api_id
-    home_player_6 INTEGER,  -- e.g. 36393; FK -> Player.player_api_id
-    home_player_7 INTEGER,  -- e.g. 148286; FK -> Player.player_api_id
-    home_player_8 INTEGER,  -- e.g. 67898; FK -> Player.player_api_id
-    home_player_9 INTEGER,  -- e.g. 26916; FK -> Player.player_api_id
-    home_player_10 INTEGER,  -- e.g. 38801; FK -> Player.player_api_id
-    home_player_11 INTEGER,  -- e.g. 94289; FK -> Player.player_api_id
-    away_player_1 INTEGER,  -- e.g. 34480; FK -> Player.player_api_id
-    away_player_2 INTEGER,  -- e.g. 38388; FK -> Player.player_api_id
-    away_player_3 INTEGER,  -- e.g. 26458; FK -> Player.player_api_id
-    away_player_4 INTEGER,  -- e.g. 13423; FK -> Player.player_api_id
-    away_player_5 INTEGER,  -- e.g. 38389; FK -> Player.player_api_id
-    away_player_6 INTEGER,  -- e.g. 38798; FK -> Player.player_api_id
-    away_player_7 INTEGER,  -- e.g. 30949; FK -> Player.player_api_id
-    away_player_8 INTEGER,  -- e.g. 38253; FK -> Player.player_api_id
-    away_player_9 INTEGER,  -- e.g. 106013; FK -> Player.player_api_id
-    away_player_10 INTEGER,  -- e.g. 38383; FK -> Player.player_api_id
-    away_player_11 INTEGER,  -- e.g. 46552; FK -> Player.player_api_id
-    goal TEXT,  -- e.g. '<goal><value><comment>n</comment><stats><goals>1</...goal</type><goal_type>n</goal_type></value></goal>'
-    shoton TEXT,  -- e.g. '<shoton><value><stats><blocked>1</blocked></stats>...type>shoton</type><id>379466</id></value></shoton>'
-    shotoff TEXT,  -- e.g. '<shotoff><value><stats><shotoff>1</shotoff></stats...pe>shotoff</type><id>379573</id></value></shotoff>'
-    foulcommit TEXT,  -- e.g. '<foulcommit><value><stats><foulscommitted>1</fouls...lcommit</type><id>379571</id></value></foulcommit>'
-    card TEXT,  -- e.g. '<card><value><comment>y</comment><stats><ycards>1<.../n><type>card</type><id>379547</id></value></card>'
-    cross TEXT,  -- e.g. '<cross><value><stats><crosses>1</crosses></stats><...><type>cross</type><id>379540</id></value></cross>'
-    corner TEXT,  -- e.g. '<corner><value><stats><corners>1</corners></stats>...type>corner</type><id>379460</id></value></corner>'
-    possession TEXT,  -- e.g. '<possession><value><comment>56</comment><event_inc...special</type><id>379575</id></value></possession>'
-    B365H REAL,  -- e.g. 1.730
-    B365D REAL,  -- e.g. 3.400
-    B365A REAL,  -- e.g. 5.000
-    BWH REAL,  -- e.g. 1.750
-    BWD REAL,  -- e.g. 3.350
-    BWA REAL,  -- e.g. 4.200
-    IWH REAL,  -- e.g. 1.850
-    IWD REAL,  -- e.g. 3.200
-    IWA REAL,  -- e.g. 3.500
-    LBH REAL,  -- e.g. 1.800
-    LBD REAL,  -- e.g. 3.300
-    LBA REAL,  -- e.g. 3.750
-    PSH REAL,  -- e.g. 5.100
-    PSD REAL,  -- e.g. 3.820
-    PSA REAL,  -- e.g. 1.760
-    WHH REAL,  -- e.g. 1.700
-    WHD REAL,  -- e.g. 3.300
-    WHA REAL,  -- e.g. 4.330
-    SJH REAL,  -- e.g. 1.900
-    SJD REAL,  -- e.g. 3.300
-    SJA REAL,  -- e.g. 4.000
-    VCH REAL,  -- e.g. 1.650
-    VCD REAL,  -- e.g. 3.400
-    VCA REAL,  -- e.g. 4.500
-    GBH REAL,  -- e.g. 1.780
-    GBD REAL,  -- e.g. 3.250
-    GBA REAL,  -- e.g. 4.000
-    BSH REAL,  -- e.g. 1.730
-    BSD REAL,  -- e.g. 3.400
-    BSA REAL,  -- e.g. 4.200
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>4769</example>
+    country_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> Country.id</fk>
+    league_id INTEGER NULL,
+        -- <example>1</example>
+        -- <fk> -> League.id</fk>
+    season TEXT NULL,
+        -- <values>{'2008/2009', '2009/2010', '2010/2011', '2011/2012', '2012/2013', '2013/2014', '2014/2015', '2015/2016'}</values>
+    stage INTEGER NULL,
+        -- <example>1</example>
+    date TEXT NULL,
+        -- <example>'2008-08-17 00:00:00'</example>
+    match_api_id INTEGER NULL,
+        -- <example>483129</example>
+    home_team_api_id INTEGER NULL,
+        -- <example>9987</example>
+        -- <fk> -> Team.team_api_id</fk>
+    away_team_api_id INTEGER NULL,
+        -- <example>9993</example>
+        -- <fk> -> Team.team_api_id</fk>
+    home_team_goal INTEGER NULL,
+        -- <example>1</example>
+    away_team_goal INTEGER NULL,
+        -- <example>1</example>
+    home_player_X1 INTEGER NULL,
+        -- <example>1</example>
+    home_player_X2 INTEGER NULL,
+        -- <example>2</example>
+    home_player_X3 INTEGER NULL,
+        -- <example>4</example>
+    home_player_X4 INTEGER NULL,
+        -- <example>6</example>
+    home_player_X5 INTEGER NULL,
+        -- <example>8</example>
+    home_player_X6 INTEGER NULL,
+        -- <example>2</example>
+    home_player_X7 INTEGER NULL,
+        -- <example>4</example>
+    home_player_X8 INTEGER NULL,
+        -- <example>6</example>
+    home_player_X9 INTEGER NULL,
+        -- <example>8</example>
+    home_player_X10 INTEGER NULL,
+        -- <example>4</example>
+    home_player_X11 INTEGER NULL,
+        -- <example>6</example>
+    away_player_X1 INTEGER NULL,
+        -- <example>1</example>
+    away_player_X2 INTEGER NULL,
+        -- <example>2</example>
+    away_player_X3 INTEGER NULL,
+        -- <example>4</example>
+    away_player_X4 INTEGER NULL,
+        -- <example>6</example>
+    away_player_X5 INTEGER NULL,
+        -- <example>8</example>
+    away_player_X6 INTEGER NULL,
+        -- <example>2</example>
+    away_player_X7 INTEGER NULL,
+        -- <example>4</example>
+    away_player_X8 INTEGER NULL,
+        -- <example>6</example>
+    away_player_X9 INTEGER NULL,
+        -- <example>8</example>
+    away_player_X10 INTEGER NULL,
+        -- <example>4</example>
+    away_player_X11 INTEGER NULL,
+        -- <example>6</example>
+    home_player_Y1 INTEGER NULL,
+        -- <example>1</example>
+    home_player_Y2 INTEGER NULL,
+        -- <example>3</example>
+    home_player_Y3 INTEGER NULL,
+        -- <example>3</example>
+    home_player_Y4 INTEGER NULL,
+        -- <example>3</example>
+    home_player_Y5 INTEGER NULL,
+        -- <example>3</example>
+    home_player_Y6 INTEGER NULL,
+        -- <example>7</example>
+    home_player_Y7 INTEGER NULL,
+        -- <example>7</example>
+    home_player_Y8 INTEGER NULL,
+        -- <example>7</example>
+    home_player_Y9 INTEGER NULL,
+        -- <example>7</example>
+    home_player_Y10 INTEGER NULL,
+        -- <example>10</example>
+    home_player_Y11 INTEGER NULL,
+        -- <example>10</example>
+    away_player_Y1 INTEGER NULL,
+        -- <example>1</example>
+    away_player_Y2 INTEGER NULL,
+        -- <example>3</example>
+    away_player_Y3 INTEGER NULL,
+        -- <example>3</example>
+    away_player_Y4 INTEGER NULL,
+        -- <example>3</example>
+    away_player_Y5 INTEGER NULL,
+        -- <example>3</example>
+    away_player_Y6 INTEGER NULL,
+        -- <example>7</example>
+    away_player_Y7 INTEGER NULL,
+        -- <example>7</example>
+    away_player_Y8 INTEGER NULL,
+        -- <example>7</example>
+    away_player_Y9 INTEGER NULL,
+        -- <example>7</example>
+    away_player_Y10 INTEGER NULL,
+        -- <example>10</example>
+    away_player_Y11 INTEGER NULL,
+        -- <example>10</example>
+    home_player_1 INTEGER NULL,
+        -- <example>39890</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_2 INTEGER NULL,
+        -- <example>67950</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_3 INTEGER NULL,
+        -- <example>38788</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_4 INTEGER NULL,
+        -- <example>38312</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_5 INTEGER NULL,
+        -- <example>26235</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_6 INTEGER NULL,
+        -- <example>36393</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_7 INTEGER NULL,
+        -- <example>148286</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_8 INTEGER NULL,
+        -- <example>67898</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_9 INTEGER NULL,
+        -- <example>26916</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_10 INTEGER NULL,
+        -- <example>38801</example>
+        -- <fk> -> Player.player_api_id</fk>
+    home_player_11 INTEGER NULL,
+        -- <example>94289</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_1 INTEGER NULL,
+        -- <example>34480</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_2 INTEGER NULL,
+        -- <example>38388</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_3 INTEGER NULL,
+        -- <example>26458</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_4 INTEGER NULL,
+        -- <example>13423</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_5 INTEGER NULL,
+        -- <example>38389</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_6 INTEGER NULL,
+        -- <example>38798</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_7 INTEGER NULL,
+        -- <example>30949</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_8 INTEGER NULL,
+        -- <example>38253</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_9 INTEGER NULL,
+        -- <example>106013</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_10 INTEGER NULL,
+        -- <example>38383</example>
+        -- <fk> -> Player.player_api_id</fk>
+    away_player_11 INTEGER NULL,
+        -- <example>46552</example>
+        -- <fk> -> Player.player_api_id</fk>
+    goal TEXT NULL,
+        -- <example>'<goal><value><comment>n</comment><stats><goals>1</...goal</type><goal_type>n</goal_type></value></goal>'</example>
+    shoton TEXT NULL,
+        -- <example>'<shoton><value><stats><blocked>1</blocked></stats>...type>shoton</type><id>379466</id></value></shoton>'</example>
+    shotoff TEXT NULL,
+        -- <example>'<shotoff><value><stats><shotoff>1</shotoff></stats...pe>shotoff</type><id>379573</id></value></shotoff>'</example>
+    foulcommit TEXT NULL,
+        -- <example>'<foulcommit><value><stats><foulscommitted>1</fouls...lcommit</type><id>379571</id></value></foulcommit>'</example>
+    card TEXT NULL,
+        -- <example>'<card><value><comment>y</comment><stats><ycards>1<.../n><type>card</type><id>379547</id></value></card>'</example>
+    cross TEXT NULL,
+        -- <example>'<cross><value><stats><crosses>1</crosses></stats><...><type>cross</type><id>379540</id></value></cross>'</example>
+    corner TEXT NULL,
+        -- <example>'<corner><value><stats><corners>1</corners></stats>...type>corner</type><id>379460</id></value></corner>'</example>
+    possession TEXT NULL,
+        -- <example>'<possession><value><comment>56</comment><event_inc...special</type><id>379575</id></value></possession>'</example>
+    B365H REAL NULL,
+        -- <example>1.730</example>
+    B365D REAL NULL,
+        -- <example>3.400</example>
+    B365A REAL NULL,
+        -- <example>5.000</example>
+    BWH REAL NULL,
+        -- <example>1.750</example>
+    BWD REAL NULL,
+        -- <example>3.350</example>
+    BWA REAL NULL,
+        -- <example>4.200</example>
+    IWH REAL NULL,
+        -- <example>1.850</example>
+    IWD REAL NULL,
+        -- <example>3.200</example>
+    IWA REAL NULL,
+        -- <example>3.500</example>
+    LBH REAL NULL,
+        -- <example>1.800</example>
+    LBD REAL NULL,
+        -- <example>3.300</example>
+    LBA REAL NULL,
+        -- <example>3.750</example>
+    PSH REAL NULL,
+        -- <example>5.100</example>
+    PSD REAL NULL,
+        -- <example>3.820</example>
+    PSA REAL NULL,
+        -- <example>1.760</example>
+    WHH REAL NULL,
+        -- <example>1.700</example>
+    WHD REAL NULL,
+        -- <example>3.300</example>
+    WHA REAL NULL,
+        -- <example>4.330</example>
+    SJH REAL NULL,
+        -- <example>1.900</example>
+    SJD REAL NULL,
+        -- <example>3.300</example>
+    SJA REAL NULL,
+        -- <example>4.000</example>
+    VCH REAL NULL,
+        -- <example>1.650</example>
+    VCD REAL NULL,
+        -- <example>3.400</example>
+    VCA REAL NULL,
+        -- <example>4.500</example>
+    GBH REAL NULL,
+        -- <example>1.780</example>
+    GBD REAL NULL,
+        -- <example>3.250</example>
+    GBA REAL NULL,
+        -- <example>4.000</example>
+    BSH REAL NULL,
+        -- <example>1.730</example>
+    BSD REAL NULL,
+        -- <example>3.400</example>
+    BSA REAL NULL,
+        -- <example>4.200</example>
     FOREIGN KEY (away_player_11) REFERENCES Player(player_api_id),
     FOREIGN KEY (away_player_10) REFERENCES Player(player_api_id),
     FOREIGN KEY (away_player_9) REFERENCES Player(player_api_id),
@@ -162,99 +309,182 @@ CREATE TABLE Match (
 
 -- Table: Player (11060 rows)
 CREATE TABLE Player (
-    id INTEGER PRIMARY KEY,  -- e.g. 3879
-    player_api_id INTEGER,  -- e.g. 2625
-    player_name TEXT,  -- e.g. 'Aaron Appindangoye'
-    player_fifa_api_id INTEGER,  -- e.g. 2
-    birthday TEXT,  -- e.g. '1992-02-29 00:00:00'
-    height INTEGER,  -- e.g. 182.880
-    weight INTEGER  -- e.g. 187
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>3879</example>
+    player_api_id INTEGER NULL,
+        -- <example>2625</example>
+    player_name TEXT NULL,
+        -- <example>'Aaron Appindangoye'</example>
+    player_fifa_api_id INTEGER NULL,
+        -- <example>2</example>
+    birthday TEXT NULL,
+        -- <example>'1992-02-29 00:00:00'</example>
+    height INTEGER NULL,
+        -- <example>182.880</example>
+    weight INTEGER NULL
+        -- <example>187</example>
 );
 
 -- Table: Player_Attributes (183978 rows)
 CREATE TABLE Player_Attributes (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    player_fifa_api_id INTEGER,  -- e.g. 218353; FK -> Player.player_fifa_api_id
-    player_api_id INTEGER,  -- e.g. 505942; FK -> Player.player_api_id
-    date TEXT,  -- e.g. '2016-02-18 00:00:00'
-    overall_rating INTEGER,  -- e.g. 67
-    potential INTEGER,  -- e.g. 71
-    preferred_foot TEXT,  -- values: {'left', 'right'}
-    attacking_work_rate TEXT,  -- values: {'None', 'high', 'le', 'low', 'medium', 'norm', 'stoc', 'y'}
-    defensive_work_rate TEXT,  -- values: {'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_0', 'ean', 'es', 'high', 'low', 'medium', 'o', 'ormal', 'tocky'}
-    crossing INTEGER,  -- e.g. 49
-    finishing INTEGER,  -- e.g. 44
-    heading_accuracy INTEGER,  -- e.g. 71
-    short_passing INTEGER,  -- e.g. 61
-    volleys INTEGER,  -- e.g. 44
-    dribbling INTEGER,  -- e.g. 51
-    curve INTEGER,  -- e.g. 45
-    free_kick_accuracy INTEGER,  -- e.g. 39
-    long_passing INTEGER,  -- e.g. 64
-    ball_control INTEGER,  -- e.g. 49
-    acceleration INTEGER,  -- e.g. 60
-    sprint_speed INTEGER,  -- e.g. 64
-    agility INTEGER,  -- e.g. 59
-    reactions INTEGER,  -- e.g. 47
-    balance INTEGER,  -- e.g. 65
-    shot_power INTEGER,  -- e.g. 55
-    jumping INTEGER,  -- e.g. 58
-    stamina INTEGER,  -- e.g. 54
-    strength INTEGER,  -- e.g. 76
-    long_shots INTEGER,  -- e.g. 35
-    aggression INTEGER,  -- e.g. 71
-    interceptions INTEGER,  -- e.g. 70
-    positioning INTEGER,  -- e.g. 45
-    vision INTEGER,  -- e.g. 54
-    penalties INTEGER,  -- e.g. 48
-    marking INTEGER,  -- e.g. 65
-    standing_tackle INTEGER,  -- e.g. 69
-    sliding_tackle INTEGER,  -- e.g. 69
-    gk_diving INTEGER,  -- e.g. 6
-    gk_handling INTEGER,  -- e.g. 11
-    gk_kicking INTEGER,  -- e.g. 10
-    gk_positioning INTEGER,  -- e.g. 8
-    gk_reflexes INTEGER,  -- e.g. 8
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    player_fifa_api_id INTEGER NULL,
+        -- <example>218353</example>
+        -- <fk> -> Player.player_fifa_api_id</fk>
+    player_api_id INTEGER NULL,
+        -- <example>505942</example>
+        -- <fk> -> Player.player_api_id</fk>
+    date TEXT NULL,
+        -- <example>'2016-02-18 00:00:00'</example>
+    overall_rating INTEGER NULL,
+        -- <example>67</example>
+    potential INTEGER NULL,
+        -- <example>71</example>
+    preferred_foot TEXT NULL,
+        -- <values>{'left', 'right'}</values>
+    attacking_work_rate TEXT NULL,
+        -- <values>{'None', 'high', 'le', 'low', 'medium', 'norm', 'stoc', 'y'}</values>
+    defensive_work_rate TEXT NULL,
+        -- <values>{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '_0', 'ean', 'es', 'high', 'low', 'medium', 'o', 'ormal', 'tocky'}</values>
+    crossing INTEGER NULL,
+        -- <example>49</example>
+    finishing INTEGER NULL,
+        -- <example>44</example>
+    heading_accuracy INTEGER NULL,
+        -- <example>71</example>
+    short_passing INTEGER NULL,
+        -- <example>61</example>
+    volleys INTEGER NULL,
+        -- <example>44</example>
+    dribbling INTEGER NULL,
+        -- <example>51</example>
+    curve INTEGER NULL,
+        -- <example>45</example>
+    free_kick_accuracy INTEGER NULL,
+        -- <example>39</example>
+    long_passing INTEGER NULL,
+        -- <example>64</example>
+    ball_control INTEGER NULL,
+        -- <example>49</example>
+    acceleration INTEGER NULL,
+        -- <example>60</example>
+    sprint_speed INTEGER NULL,
+        -- <example>64</example>
+    agility INTEGER NULL,
+        -- <example>59</example>
+    reactions INTEGER NULL,
+        -- <example>47</example>
+    balance INTEGER NULL,
+        -- <example>65</example>
+    shot_power INTEGER NULL,
+        -- <example>55</example>
+    jumping INTEGER NULL,
+        -- <example>58</example>
+    stamina INTEGER NULL,
+        -- <example>54</example>
+    strength INTEGER NULL,
+        -- <example>76</example>
+    long_shots INTEGER NULL,
+        -- <example>35</example>
+    aggression INTEGER NULL,
+        -- <example>71</example>
+    interceptions INTEGER NULL,
+        -- <example>70</example>
+    positioning INTEGER NULL,
+        -- <example>45</example>
+    vision INTEGER NULL,
+        -- <example>54</example>
+    penalties INTEGER NULL,
+        -- <example>48</example>
+    marking INTEGER NULL,
+        -- <example>65</example>
+    standing_tackle INTEGER NULL,
+        -- <example>69</example>
+    sliding_tackle INTEGER NULL,
+        -- <example>69</example>
+    gk_diving INTEGER NULL,
+        -- <example>6</example>
+    gk_handling INTEGER NULL,
+        -- <example>11</example>
+    gk_kicking INTEGER NULL,
+        -- <example>10</example>
+    gk_positioning INTEGER NULL,
+        -- <example>8</example>
+    gk_reflexes INTEGER NULL,
+        -- <example>8</example>
     FOREIGN KEY (player_api_id) REFERENCES Player(player_api_id),
     FOREIGN KEY (player_fifa_api_id) REFERENCES Player(player_fifa_api_id)
 );
 
 -- Table: Team (299 rows)
 CREATE TABLE Team (
-    id INTEGER PRIMARY KEY,  -- e.g. 31446
-    team_api_id INTEGER,  -- e.g. 1601
-    team_fifa_api_id INTEGER,  -- e.g. 673
-    team_long_name TEXT,  -- e.g. 'KRC Genk'
-    team_short_name TEXT  -- e.g. 'GEN'
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>31446</example>
+    team_api_id INTEGER NULL,
+        -- <example>1601</example>
+    team_fifa_api_id INTEGER NULL,
+        -- <example>673</example>
+    team_long_name TEXT NULL,
+        -- <example>'KRC Genk'</example>
+    team_short_name TEXT NULL
+        -- <example>'GEN'</example>
 );
 
 -- Table: Team_Attributes (1458 rows)
 CREATE TABLE Team_Attributes (
-    id INTEGER PRIMARY KEY,  -- e.g. 1
-    team_fifa_api_id INTEGER,  -- e.g. 434; FK -> Team.team_fifa_api_id
-    team_api_id INTEGER,  -- e.g. 9930; FK -> Team.team_api_id
-    date TEXT,  -- values: {'2010-02-22 00:00:00', '2011-02-22 00:00:00', '2012-02-22 00:00:00', '2013-09-20 00:00:00', '2014-09-19 00:00:00', '2015-09-10 00:00:00'}
-    buildUpPlaySpeed INTEGER,  -- e.g. 60
-    buildUpPlaySpeedClass TEXT,  -- values: {'Balanced', 'Fast', 'Slow'}
-    buildUpPlayDribbling INTEGER,  -- e.g. 48
-    buildUpPlayDribblingClass TEXT,  -- values: {'Little', 'Lots', 'Normal'}
-    buildUpPlayPassing INTEGER,  -- e.g. 50
-    buildUpPlayPassingClass TEXT,  -- values: {'Long', 'Mixed', 'Short'}
-    buildUpPlayPositioningClass TEXT,  -- values: {'Free Form', 'Organised'}
-    chanceCreationPassing INTEGER,  -- e.g. 60
-    chanceCreationPassingClass TEXT,  -- values: {'Normal', 'Risky', 'Safe'}
-    chanceCreationCrossing INTEGER,  -- e.g. 65
-    chanceCreationCrossingClass TEXT,  -- values: {'Little', 'Lots', 'Normal'}
-    chanceCreationShooting INTEGER,  -- e.g. 55
-    chanceCreationShootingClass TEXT,  -- values: {'Little', 'Lots', 'Normal'}
-    chanceCreationPositioningClass TEXT,  -- values: {'Free Form', 'Organised'}
-    defencePressure INTEGER,  -- e.g. 50
-    defencePressureClass TEXT,  -- values: {'Deep', 'High', 'Medium'}
-    defenceAggression INTEGER,  -- e.g. 55
-    defenceAggressionClass TEXT,  -- values: {'Contain', 'Double', 'Press'}
-    defenceTeamWidth INTEGER,  -- e.g. 45
-    defenceTeamWidthClass TEXT,  -- values: {'Narrow', 'Normal', 'Wide'}
-    defenceDefenderLineClass TEXT,  -- values: {'Cover', 'Offside Trap'}
+    id INTEGER NULL PRIMARY KEY,
+        -- <example>1</example>
+    team_fifa_api_id INTEGER NULL,
+        -- <example>434</example>
+        -- <fk> -> Team.team_fifa_api_id</fk>
+    team_api_id INTEGER NULL,
+        -- <example>9930</example>
+        -- <fk> -> Team.team_api_id</fk>
+    date TEXT NULL,
+        -- <values>{'2010-02-22 00:00:00', '2011-02-22 00:00:00', '2012-02-22 00:00:00', '2013-09-20 00:00:00', '2014-09-19 00:00:00', '2015-09-10 00:00:00'}</values>
+    buildUpPlaySpeed INTEGER NULL,
+        -- <example>60</example>
+    buildUpPlaySpeedClass TEXT NULL,
+        -- <values>{'Balanced', 'Fast', 'Slow'}</values>
+    buildUpPlayDribbling INTEGER NULL,
+        -- <example>48</example>
+    buildUpPlayDribblingClass TEXT NULL,
+        -- <values>{'Little', 'Lots', 'Normal'}</values>
+    buildUpPlayPassing INTEGER NULL,
+        -- <example>50</example>
+    buildUpPlayPassingClass TEXT NULL,
+        -- <values>{'Long', 'Mixed', 'Short'}</values>
+    buildUpPlayPositioningClass TEXT NULL,
+        -- <values>{'Free Form', 'Organised'}</values>
+    chanceCreationPassing INTEGER NULL,
+        -- <example>60</example>
+    chanceCreationPassingClass TEXT NULL,
+        -- <values>{'Normal', 'Risky', 'Safe'}</values>
+    chanceCreationCrossing INTEGER NULL,
+        -- <example>65</example>
+    chanceCreationCrossingClass TEXT NULL,
+        -- <values>{'Little', 'Lots', 'Normal'}</values>
+    chanceCreationShooting INTEGER NULL,
+        -- <example>55</example>
+    chanceCreationShootingClass TEXT NULL,
+        -- <values>{'Little', 'Lots', 'Normal'}</values>
+    chanceCreationPositioningClass TEXT NULL,
+        -- <values>{'Free Form', 'Organised'}</values>
+    defencePressure INTEGER NULL,
+        -- <example>50</example>
+    defencePressureClass TEXT NULL,
+        -- <values>{'Deep', 'High', 'Medium'}</values>
+    defenceAggression INTEGER NULL,
+        -- <example>55</example>
+    defenceAggressionClass TEXT NULL,
+        -- <values>{'Contain', 'Double', 'Press'}</values>
+    defenceTeamWidth INTEGER NULL,
+        -- <example>45</example>
+    defenceTeamWidthClass TEXT NULL,
+        -- <values>{'Narrow', 'Normal', 'Wide'}</values>
+    defenceDefenderLineClass TEXT NULL,
+        -- <values>{'Cover', 'Offside Trap'}</values>
     FOREIGN KEY (team_api_id) REFERENCES Team(team_api_id),
     FOREIGN KEY (team_fifa_api_id) REFERENCES Team(team_fifa_api_id)
 );

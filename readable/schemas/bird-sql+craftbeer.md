@@ -3,21 +3,33 @@
 
 -- Table: beers (2410 rows)
 CREATE TABLE beers (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 2687
-    brewery_id INTEGER NOT NULL,  -- e.g. 0; FK -> breweries.id
-    abv REAL,  -- e.g. 0.065
-    ibu REAL,  -- e.g. 65.000
-    name TEXT NOT NULL,  -- e.g. 'Dale's Pale Ale'
-    style TEXT,  -- e.g. 'American Pale Ale (APA)'
-    ounces REAL NOT NULL,  -- e.g. 12.000
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>2687</example>
+    brewery_id INTEGER NOT NULL,
+        -- <example>0</example>
+        -- <fk> -> breweries.id</fk>
+    abv REAL NULL,
+        -- <example>0.065</example>
+    ibu REAL NULL,
+        -- <example>65.000</example>
+    name TEXT NOT NULL,
+        -- <example>'Dale's Pale Ale'</example>
+    style TEXT NULL,
+        -- <example>'American Pale Ale (APA)'</example>
+    ounces REAL NOT NULL,
+        -- <example>12.000</example>
     FOREIGN KEY (brewery_id) REFERENCES breweries(id)
 );
 
 -- Table: breweries (558 rows)
 CREATE TABLE breweries (
-    id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 0
-    name TEXT,  -- e.g. 'NorthGate Brewing '
-    city TEXT,  -- e.g. 'Minneapolis'
-    state TEXT  -- e.g. 'MN'
+    id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>0</example>
+    name TEXT NULL,
+        -- <example>'NorthGate Brewing '</example>
+    city TEXT NULL,
+        -- <example>'Minneapolis'</example>
+    state TEXT NULL
+        -- <example>'MN'</example>
 );
 ```

@@ -3,40 +3,67 @@
 
 -- Table: businesses (6358 rows)
 CREATE TABLE businesses (
-    business_id INTEGER NOT NULL PRIMARY KEY,  -- e.g. 10
-    name TEXT NOT NULL,  -- e.g. 'Tiramisu Kitchen'
-    address TEXT,  -- e.g. '033 Belden Pl'
-    city TEXT,  -- e.g. 'San Francisco'
-    postal_code TEXT,  -- e.g. '94104'
-    latitude REAL,  -- e.g. 37.791
-    longitude REAL,  -- e.g. -122.404
-    phone_number INTEGER,  -- e.g. 14155345060
-    tax_code TEXT,  -- e.g. 'H24'
-    business_certificate INTEGER NOT NULL,  -- e.g. 779059
-    application_date DATE,  -- e.g. '2001-10-10'
-    owner_name TEXT NOT NULL,  -- e.g. 'Tiramisu LLC'
-    owner_address TEXT,  -- e.g. '33 Belden St'
-    owner_city TEXT,  -- e.g. 'San Francisco'
-    owner_state TEXT,  -- e.g. 'CA'
-    owner_zip TEXT  -- e.g. '94104'
+    business_id INTEGER NOT NULL PRIMARY KEY,
+        -- <example>10</example>
+    name TEXT NOT NULL,
+        -- <example>'Tiramisu Kitchen'</example>
+    address TEXT NULL,
+        -- <example>'033 Belden Pl'</example>
+    city TEXT NULL,
+        -- <example>'San Francisco'</example>
+    postal_code TEXT NULL,
+        -- <example>'94104'</example>
+    latitude REAL NULL,
+        -- <example>37.791</example>
+    longitude REAL NULL,
+        -- <example>-122.404</example>
+    phone_number INTEGER NULL,
+        -- <example>14155345060</example>
+    tax_code TEXT NULL,
+        -- <example>'H24'</example>
+    business_certificate INTEGER NOT NULL,
+        -- <example>779059</example>
+    application_date DATE NULL,
+        -- <example>'2001-10-10'</example>
+    owner_name TEXT NOT NULL,
+        -- <example>'Tiramisu LLC'</example>
+    owner_address TEXT NULL,
+        -- <example>'33 Belden St'</example>
+    owner_city TEXT NULL,
+        -- <example>'San Francisco'</example>
+    owner_state TEXT NULL,
+        -- <example>'CA'</example>
+    owner_zip TEXT NULL
+        -- <example>'94104'</example>
 );
 
 -- Table: inspections (23764 rows)
 CREATE TABLE inspections (
-    business_id INTEGER NOT NULL,  -- e.g. 10; FK -> businesses.business_id
-    score INTEGER,  -- e.g. 92
-    date DATE NOT NULL,  -- e.g. '2014-01-14'
-    type TEXT NOT NULL,  -- values: {'Administrative or Document Review', 'Complaint Reinspection/Followup', 'Complaint', 'Foodborne Illness Investigation', 'Multi-agency Investigation', 'New Construction', 'New Ownership', 'Non-inspection site visit', 'Reinspection/Followup', 'Routine - Scheduled', 'Routine - Unscheduled', 'Special Event', 'Structural Inspection'}
+    business_id INTEGER NOT NULL,
+        -- <example>10</example>
+        -- <fk> -> businesses.business_id</fk>
+    score INTEGER NULL,
+        -- <example>92</example>
+    date DATE NOT NULL,
+        -- <example>'2014-01-14'</example>
+    type TEXT NOT NULL,
+        -- <values>{'Administrative or Document Review', 'Complaint Reinspection/Followup', 'Complaint', 'Foodborne Illness Investigation', 'Multi-agency Investigation', 'New Construction', 'New Ownership', 'Non-inspection site visit', 'Reinspection/Followup', 'Routine - Scheduled', 'Routine - Unscheduled', 'Special Event', 'Structural Inspection'}</values>
     FOREIGN KEY (business_id) REFERENCES businesses(business_id)
 );
 
 -- Table: violations (36050 rows)
 CREATE TABLE violations (
-    business_id INTEGER NOT NULL,  -- e.g. 10; FK -> businesses.business_id
-    date DATE NOT NULL,  -- e.g. '2014-07-29'
-    violation_type_id TEXT NOT NULL,  -- e.g. '103129'
-    risk_category TEXT NOT NULL,  -- values: {'High Risk', 'Low Risk', 'Moderate Risk'}
-    description TEXT NOT NULL,  -- e.g. 'Insufficient hot water or running water'
+    business_id INTEGER NOT NULL,
+        -- <example>10</example>
+        -- <fk> -> businesses.business_id</fk>
+    date DATE NOT NULL,
+        -- <example>'2014-07-29'</example>
+    violation_type_id TEXT NOT NULL,
+        -- <example>'103129'</example>
+    risk_category TEXT NOT NULL,
+        -- <values>{'High Risk', 'Low Risk', 'Moderate Risk'}</values>
+    description TEXT NOT NULL,
+        -- <example>'Insufficient hot water or running water'</example>
     FOREIGN KEY (business_id) REFERENCES businesses(business_id)
 );
 ```
