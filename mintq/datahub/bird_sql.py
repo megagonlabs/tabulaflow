@@ -10,24 +10,40 @@ from mintq.datahub.base import dataset_registry
 
 
 BIRD_DATASET_INSTRUCTIONS = """
-- If the user specifies a particular computation formula or requires using a specific column, you must follow those instructions.
-- Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
-- Do not alter the data shape:
+- **Strictly Follow Hints:**
+  - If the user specifies a particular computation formula or requires using a specific column, you must follow those instructions.
+- **SELECT Clause:**
+  - In the final SELECT clause only return explicitly requested columns.
+  - If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
+  - Ensure that the SELECT columns appear in the same order as they are mentioned in the question.
+  - Examples:
+    - If the question asks for a maximum value, do not include the entity that attains it.
+      Question: "What is the highest score?" Return columns: ["highest score"] (exclude the student).
+    - If the question asks for the entity that attains a maximum value, do not include the value itself.
+        Question: "Which student has the highest score?" Return columns: ["student name or id"] (exclude the score).
+    - If the question asks for attributes of a set of entities, do not include the entities themselves.
+        Question: "What are the birthdates of students?" Return columns: ["birthdate"] (exclude the student).
+    - If the question asks for a list of items ordered by a specific attribute, do not include the ordering attribute.
+        Question: "Who are the top 3 students by score?" Return columns: ["student name or id"] (exclude the score).
+- **No String Concatenation:**
+  - Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
+- **Preserve Data Shape:**
   - When returning a list of records (e.g., dates) from multiple rows, maintain one row per record.
   - When returning columns that represent similar concepts, keep them as separate columns and do not merge or union them into a single column.
-- Do not round percentage values unless explicitly requested.
-- If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
-- The final SELECT clause must not return any columns that are not explicitly requested.
-  - If the question asks for a maximum value, do not include the entity that attains it.
-    Question: "What is the highest score?" Return columns: ["highest score"] (exclude the student).
-  - If the question asks for the entity that attains a maximum value, do not include the value itself.
-    Question: "Which student has the highest score?" Return columns: ["student name or id"] (exclude the score).
-  - If the question asks for attributes of a set of entities, do not include the entities themselves.
-    Question: "What are the birthdates of students?" Return columns: ["birthdate"] (exclude the student).
-  - If the question asks for a list of items ordered by a specific attribute, do not include the ordering attribute.
-    Question: "Who are the top 3 students by score?" Return columns: ["student name or id"] (exclude the score).
-- Ensure that the columns in the SELECT clause appear in the same order as they are mentioned in the question.
-- If the question refers to the entity with the maximum or minimum value, assume there is exactly one such entity (i.e., use "ORDER BY … LIMIT 1").
+- **Percentage Values:**
+    - Do not round percentage values unless explicitly requested.
+- **DISTINCT Keyword:**
+  - Use `SELECT DISTINCT` when the question requires unique values (e.g., IDs, URLs). 
+  - Refer to column statistics ("Value Statics") to determine if `DISTINCT` is necessary.
+- **Column Selection:**
+  - Carefully analyze column descriptions and hints to choose the correct column when similar columns exist across tables.
+- **JOIN Preference:**
+  - Prioritize `INNER JOIN` over nested `SELECT` statements.
+  - If the question refers to the entity with the maximum or minimum value, assume there is exactly one such entity (i.e., use `ORDER BY ... LIMIT 1` instead of nested `= MAX(SELECT ...)`).
+- **SQLite Functions Only:**
+  - Use only functions available in SQLite.
+- **Date Processing:**
+  - Utilize `STRFTIME()` for date manipulation (e.g., `STRFTIME('%Y', SOMETIME)` to extract the year).
 """.strip()
 
 
