@@ -568,6 +568,7 @@ Feb 2
 - [x] Update BIRD instructions - rewrite format and add "No Ties in Highest or Lowest Entity" section
 - [x] Update sql_ddl formatter
 - [ ] Exp 195: Improved bird instructions and sql_ddl formatter
+- [ ] Update sql_agent prompt - handle ambiguity
 
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
