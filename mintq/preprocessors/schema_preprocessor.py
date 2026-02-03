@@ -13,12 +13,18 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
     name: ClassVar[str] = "schema_preprocessor"
     output_type: ClassVar[type[BaseModel]] = SQLSchema
 
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini", compress_schema: bool = True):
-        self.llm = llm
+    def __init__(
+        self,
+        column_profiler_llm: str = "openai-responses:gpt-4.1-mini",
+        foreign_key_predictor_llm: str = "openai-responses:gpt-5-mini",
+        compress_schema: bool = True,
+    ):
+        self.column_profiler_llm = column_profiler_llm
+        self.foreign_key_predictor_llm = foreign_key_predictor_llm
         self.compressor = SchemaCompressor() if compress_schema else None
-        self.column_profiler = ColumnProfiler(llm)
-        self.foreign_key_predictor = ForeignKeyPredictor(llm)
-        self._usage = Usage.create(llm=llm)
+        self.column_profiler = ColumnProfiler(column_profiler_llm)
+        self.foreign_key_predictor = ForeignKeyPredictor(foreign_key_predictor_llm)
+        self._usage = Usage.create(llm=foreign_key_predictor_llm)
 
     def usage(self) -> Usage:
         return self._usage

@@ -51,7 +51,7 @@ class LLMOutput(BaseModel):
 
 
 class ColumnProfiler:
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
+    def __init__(self, llm: str = "openai-responses:gpt-4.1-mini"):
         self.llm = llm
         self.formatter = SQLDDLSchemaFormatter()
         self._usage = Usage.create(llm=llm)
