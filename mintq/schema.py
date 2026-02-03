@@ -183,6 +183,14 @@ class SQLSchema(BaseModel):
                     new_columns.append(column)
             table.columns = new_columns
 
+            # Update sampled_df to only include remaining columns
+            remaining_col_names = [col.name for col in table.columns]
+            cols_to_keep = [c for c in remaining_col_names if c in table.sampled_df.columns]
+            if cols_to_keep:
+                table.sampled_df = table.sampled_df[cols_to_keep]
+            else:
+                table.sampled_df = pd.DataFrame()
+
         schema.tables = [table for table in schema.tables if table.columns]
         return schema
 
