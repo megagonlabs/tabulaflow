@@ -37,7 +37,7 @@ def main():
     for key, qs in sections.items():
         res += f"\n\n### {key}\n\n"
         for q in qs:
-            res += f"\n- [[{q}]]({base_dir_a}/readable/{q}/task_readable.md) -> [[{q}]]({base_dir_b}/readable/{q}/task_readable.md)\n"
+            res += f"\n- [[{q}]](../{base_dir_a}/readable/{q}/task_readable.md) -> [[{q}]](../{base_dir_b}/readable/{q}/task_readable.md)\n"
     with open(args.output_path, "w") as f:
         f.write(res)
     print(f"Saved to {args.output_path}")
