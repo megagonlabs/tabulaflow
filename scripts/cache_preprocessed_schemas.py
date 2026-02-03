@@ -17,10 +17,11 @@ async def main() -> None:
     print()
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
+    os.environ["MINTQ_CACHE_REQUIRED"] = "0"
     if args.overwrite:
-        os.environ["MINTQ_CACHE_REFRESH"] = "1"
+        os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
     else:
-        os.environ["MINTQ_CACHE_REFRESH"] = "0"
+        os.environ["MINTQ_CACHE_OVERWRITE"] = "0"
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

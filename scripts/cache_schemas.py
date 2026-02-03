@@ -7,8 +7,8 @@ from mintq.datahub import dataset_registry
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="spider2-snow")
-    parser.add_argument("--split", default="dev")
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev_20240627")
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
@@ -16,10 +16,11 @@ async def main() -> None:
     print()
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
+    os.environ["MINTQ_CACHE_REQUIRED"] = "0"
     if args.overwrite:
-        os.environ["MINTQ_CACHE_REFRESH"] = "1"
+        os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
     else:
-        os.environ["MINTQ_CACHE_REFRESH"] = "0"
+        os.environ["MINTQ_CACHE_OVERWRITE"] = "0"
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
