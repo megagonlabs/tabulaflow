@@ -12,7 +12,10 @@ class Config:
     DEFAULT_MAX_LLM_CONCURRENCY = 16
     DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
 
-    def __init__(self):
+    def __init__(self) -> None:
+        self._validate()
+
+    def _validate(self) -> None:
         if self.cache_required and self.cache_overwrite:
             raise ValueError("MINTQ_CACHE_REQUIRED and MINTQ_CACHE_OVERWRITE cannot be 1 at the same time")
 
@@ -86,7 +89,7 @@ class Config:
 
     def reload_from_env(self) -> None:
         """Re-validate the config from environment variables."""
-        self.__init__()
+        self._validate()
 
 
 config = Config()
