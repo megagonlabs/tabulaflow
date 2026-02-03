@@ -565,14 +565,27 @@ Jan 30
 - [x] Analyze moderate and challenging first 5 tasks: most errors are due to ambiguity
 
 Feb 2
-- [x] Update BIRD instructions - rewrite format and add "No Ties in Highest or Lowest Entity" section
-- [x] Update sql_ddl formatter
-  - [ ] Exp 195: Improved bird instructions and sql_ddl formatter
-- [ ] Update sql_agent prompt - handle ambiguity
-  - [ ] Exp 196: Ambiguity prompt
-- [ ] Sample rows in table
-- [ ] In-context examples
+- [x] Update BIRD instructions
+  - [x] Rewrite format
+  - [x] No Ties in Highest or Lowest Entity
+  - [x] AND vs OR ambiguity
+  - [x] Integer Division vs Decimal Division
+- [x] Update sql_ddl formatter - add xml tags for comment parts
+- [x] Exp 195: Improved bird instructions and sql_ddl formatter - no improvement
+- [x] Update sql_agent prompt - handle ambiguity
+  - [x] Exp 196: Ambiguity prompt - decreases performance by 1.6%
+- [x] Sample rows in table
+  - [x] Field `sampled_df` in SQLTableSchema
+  - [x] sql_ddl formatter
+  - [x] Update format_df
+  - [x] Update `sampled_df` when trimming schema
+- [x] diff_run.py
 
+Feb 3
+- [ ] Exp 198: subsampled rows, integer division, format_df
+- [ ] analyze_errors.py - support LLM classification using defined error categories
+
+- [ ] In-context examples
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
