@@ -95,7 +95,7 @@ async def test_run_query_failed(db_connector: SQLConnector) -> None:
     tool = RunQueryWithParamsTool(db_connector, timeout=10)
     result: str = await tool("SELECT * FROM nonexistent_table")
 
-    print(result)
+    # print(result)
 
     assert "query failed:" in result
     assert "[SQL" not in result

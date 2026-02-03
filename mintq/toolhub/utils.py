@@ -1,27 +1,33 @@
 import pandas as pd
-import numpy as np
 import re
 from tabulate import tabulate
 
 
-def format_df(df: pd.DataFrame, *, max_visible_rows: int = 5, tablefmt: str = "simple") -> str:
-    n = len(df)
+def format_df(
+    df: pd.DataFrame, *, max_visible_rows: int = 5, max_cell_width: int = 100, tablefmt: str = "simple"
+) -> str:
+    def truncate_cell(val: object) -> object:
+        if pd.isna(val):
+            return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
+        if isinstance(val, str) and len(val) > max_cell_width:
+            half = max_cell_width // 2
+            return val[:half] + "..." + val[-half:]
+        return val
+
+    # Apply truncation first to preserve numeric types (nulls stay as None for tabulate)
+    display_df = df.map(truncate_cell)
+
+    n = len(display_df)
     if n > max_visible_rows:
         first_n = (max_visible_rows + 1) // 2
         last_n = max_visible_rows - first_n
-        # Use numpy arrays to avoid pd.concat issues with duplicate column names
-        head_values = df.head(first_n).values
-        tail_values = df.tail(last_n).values
-        ellipsis_row = np.array([["..."] * len(df.columns)])
-        combined = np.vstack([head_values, ellipsis_row, tail_values])
-        display_df = pd.DataFrame(combined, columns=df.columns)
-    else:
-        display_df = df
-
-    display_df = display_df.replace({np.nan: "[null]"})
+        head_df = display_df.head(first_n)
+        tail_df = display_df.tail(last_n)
+        ellipsis_row = pd.DataFrame([["..."] * len(df.columns)], columns=df.columns)
+        display_df = pd.concat([head_df, ellipsis_row, tail_df], ignore_index=True)
 
     # showindex=False hides the automatic row numbers
-    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[null]")
+    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[NULL]")
 
 
 def equals_ci(a: str | None, b: str | None) -> bool:
