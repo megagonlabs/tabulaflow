@@ -3,6 +3,7 @@ import time
 import os
 import asyncio
 from mintq.datahub import dataset_registry
+from mintq.config import config
 
 
 async def main() -> None:
@@ -21,6 +22,7 @@ async def main() -> None:
         os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
     else:
         os.environ["MINTQ_CACHE_OVERWRITE"] = "0"
+    config.reload_from_env()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

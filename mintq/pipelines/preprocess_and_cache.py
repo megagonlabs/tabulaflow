@@ -44,9 +44,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    if not config.cache_enabled:
-        raise ValueError("Cache is not enabled. Set MINTQ_CACHE_ENABLED=1 to enable cache.")
-
+    os.environ["MINTQ_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
     config.reload_from_env()
 
