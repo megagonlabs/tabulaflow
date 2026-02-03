@@ -48,14 +48,14 @@ class SQLDDLSchemaFormatter:
         return dtype
 
     def _format_sampled_df(self, table: SQLTableSchema) -> str:
-        """Format a DataFrame as a markdown table."""
+        """Format a DataFrame as a markdown table (without wrapper)."""
         if table.num_rows <= 10:
             md_table = format_df(table.sampled_df, max_visible_rows=len(table.sampled_df))
-            return f"/* All rows:\n{md_table}\n*/"
+            return f"All rows:\n{md_table}"
         else:
             df = table.sampled_df.head(5)
             md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
-            return f"/* Sample rows:\n{md_table}\n*/"
+            return f"Sample rows:\n{md_table}"
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         lines = [f"-- Database: {schema.name}"]
@@ -74,18 +74,23 @@ class SQLDDLSchemaFormatter:
     ) -> str:
         lines = []
 
-        # Table header comment
+        # Build table info block content
         table_name = self.format_table_name(table)
-        header_comment = f"-- Table: {table_name}"
-        if table.num_rows is not None:
-            header_comment += f" ({table.num_rows} rows)"
-        lines.append(header_comment)
-
-        # Table description
-        if add_description and table.description:
-            lines.append(f"-- Description: {table.description}")
+        title = f"Table: {table_name}"
         if table.name_description:
-            lines.append(f"-- Note: {table.name_description}")
+            title += f" ({table.name_description})"
+        info_parts = [title]
+        if table.num_rows is not None:
+            info_parts.append(f"Rows: {table.num_rows}")
+        if add_description and table.description:
+            info_parts.append(f"Description: {table.description}")
+
+        # Add sampled rows to info block
+        if self.include_sampled_rows and table.sampled_df is not None and not table.sampled_df.empty:
+            info_parts.append(self._format_sampled_df(table))
+
+        # Format as single /* */ block
+        lines.append("/*\n" + "\n".join(info_parts) + "\n*/")
 
         # CREATE TABLE statement
         create_stmt = f"CREATE TABLE {table_name} ("
@@ -126,10 +131,6 @@ class SQLDDLSchemaFormatter:
             formatted_defs.append(col_def)
         lines.append("\n".join(formatted_defs))
         lines.append(");")
-
-        # Add sampled rows as markdown table
-        if self.include_sampled_rows and table.sampled_df is not None and not table.sampled_df.empty:
-            lines.append(self._format_sampled_df(table))
 
         return "\n".join(lines)
 
