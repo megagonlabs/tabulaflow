@@ -59,6 +59,28 @@ class SQLTableSchema(BaseModel):
     primary_key: list[str]
     num_rows: int
     foreign_keys: list[ForeignKeySchema]
+    sampled_df: pd.DataFrame
+
+    @field_serializer("sampled_df", when_used="always")
+    def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
+        if df is None:
+            return None
+        return {
+            "schema": {
+                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+            },
+            "data": df.to_dict(orient="records"),
+        }
+
+    @field_validator("sampled_df", mode="before")
+    @classmethod
+    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame) -> pd.DataFrame:
+        if isinstance(v, pd.DataFrame):
+            return v
+        dtypes = v["schema"]["dtypes"]
+        df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
+        df = df.astype(dtypes)
+        return df
 
 
 class ColumnRef(BaseModel):

@@ -190,7 +190,7 @@ async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: Thro
             else:
                 with open(cache_path, "r", encoding="utf-8") as f:
                     return SQLSchema.model_validate_json(f.read())
-    
+
         if config.cache_required:
             raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
 
@@ -326,6 +326,9 @@ async def build_table_async(
         for col in fk.columns:
             name2col[col].foreign_keys.append(fk)
 
+    # Sample rows from the table
+    sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
+
     return SQLTableSchema(
         name=table_name,
         schema_name=schema_name,
@@ -334,6 +337,7 @@ async def build_table_async(
         primary_key=primary_key,
         num_rows=num_rows,
         foreign_keys=foreign_keys,
+        sampled_df=sampled_df,
     )
 
 
