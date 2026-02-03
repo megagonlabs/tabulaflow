@@ -1,7 +1,9 @@
 from typing import ClassVar
 from dataclasses import dataclass
+import pandas as pd
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
+from mintq.formatters.utils import format_df
 
 
 @formatter_registry.register
@@ -12,6 +14,7 @@ class SQLDDLSchemaFormatter:
     name: ClassVar[str] = "sql_ddl"
     quote_char: str = '"'
     include_examples: bool = True
+    include_sampled_rows: bool = True
     example_max_chars: int = 100
 
     def _quote(self, s: str) -> str:
@@ -43,6 +46,11 @@ class SQLDDLSchemaFormatter:
         """Map internal dtype to SQL DDL type."""
         # Already in SQL format, return as-is
         return dtype
+
+    def _format_sampled_df(self, df: pd.DataFrame) -> str:
+        """Format a DataFrame as a markdown table."""
+        md_table = format_df(df, max_visible_rows=len(df))
+        return f"/* Sample rows:\n{md_table}\n*/"
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         lines = [f"-- Database: {schema.name}"]
@@ -113,6 +121,11 @@ class SQLDDLSchemaFormatter:
             formatted_defs.append(col_def)
         lines.append("\n".join(formatted_defs))
         lines.append(");")
+
+        # Add sampled rows as markdown table
+        if self.include_sampled_rows and table.sampled_df is not None and not table.sampled_df.empty:
+            lines.append("")
+            lines.append(self._format_sampled_df(table.sampled_df))
 
         return "\n".join(lines)
 
