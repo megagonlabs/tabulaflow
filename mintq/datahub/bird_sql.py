@@ -32,6 +32,9 @@ BIRD_DATASET_INSTRUCTIONS = """
   - When returning columns that represent similar concepts, keep them as separate columns and do not merge or union them into a single column.
 - **Percentage Values:**
     - Do not round percentage values unless explicitly requested.
+- **Integer Division vs Decimal Division:**
+  - SQLite uses integer division when both operands are integers (e.g., `5 / 2 = 2`, not `2.5`).
+  - To get decimal results, cast at least one operand to REAL: `CAST(a AS REAL) / b`.
 - **DISTINCT Keyword:**
   - Use `SELECT DISTINCT` when the question requires unique values (e.g., IDs, URLs). 
   - Refer to column statistics ("Value Statics") to determine if `DISTINCT` is necessary.
