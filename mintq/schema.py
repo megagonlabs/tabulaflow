@@ -47,6 +47,8 @@ class SQLColumnSchema(BaseModel):
 
 
 class SQLTableSchema(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     name: str
     name_description: str | None = None
     """Used for describing the merged table name in the compressed schema (e.g. "YYYYMMDD from 20200101 to 20200102")"""
