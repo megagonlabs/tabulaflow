@@ -51,7 +51,7 @@ class LLMOutput(BaseModel):
 
 
 class ColumnProfiler:
-    def __init__(self, llm: str = "openai-responses:gpt-4.1-mini"):
+    def __init__(self, llm: str = "openai-responses:gpt-5-mini"):
         self.llm = llm
         self.formatter = SQLDDLSchemaFormatter()
         self._usage = Usage.create(llm=llm)
@@ -70,7 +70,7 @@ class ColumnProfiler:
             model=self.llm,
             output_type=LLMOutput,
             instructions=system_prompt,
-            tools=[run_query_tool.as_pydantic_ai_tool()],
+            # tools=[run_query_tool.as_pydantic_ai_tool()],
         )
         user_prompt = format_user_prompt(column_ref)
         result = await agent.run(user_prompt)

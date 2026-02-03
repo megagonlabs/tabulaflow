@@ -15,7 +15,7 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
 
     def __init__(
         self,
-        column_profiler_llm: str = "openai-responses:gpt-4.1-mini",
+        column_profiler_llm: str = "openai-responses:gpt-5-mini",
         foreign_key_predictor_llm: str = "openai-responses:gpt-5-mini",
         compress_schema: bool = True,
     ):
