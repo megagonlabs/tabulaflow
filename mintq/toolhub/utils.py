@@ -4,7 +4,7 @@ from tabulate import tabulate
 
 
 def format_df(
-    df: pd.DataFrame, *, max_visible_rows: int = 10, max_cell_width: int = 200, tablefmt: str = "simple"
+    df: pd.DataFrame, *, max_visible_rows: int = 10, max_cell_width: int = 200, tablefmt: str = "github"
 ) -> str:
     def truncate_cell(val: object) -> object:
         if pd.isna(val):
