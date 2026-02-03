@@ -143,9 +143,9 @@ class SQLDDLSchemaFormatter:
         parts.append(f"    {col_name} {col_type}")
 
         # NULL / NOT NULL constraint
-        if not column.nullable and column.null_ratio < 1.0:
+        if column.null_ratio == 0.0:
             parts.append("NOT NULL")
-        elif column.nullable:
+        else:
             parts.append("NULL")
 
         # Single primary key constraint (inline)
