@@ -67,7 +67,11 @@ async def main_async() -> None:
     print()
     print("Preprocessor usage:")
     for preprocessor in preprocessors:
-        print(f"- {preprocessor.name}: {preprocessor.usage().api_cost_usd:.6f} USD")
+        usage = preprocessor.usage()
+        if usage is None:
+            print(f"- {preprocessor.name}: N/A")
+        else:
+            print(f"- {preprocessor.name}: {usage.api_cost_usd:.6f} USD")
 
 
 if __name__ == "__main__":

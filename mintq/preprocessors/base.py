@@ -5,13 +5,15 @@ import os
 from mintq.db_connector import NL2QDBConnector
 from mintq.config import config
 from pydantic import BaseModel
-
+from mintq.schema import Usage
 from mintq.registry import Registry
 
 
 class BaseCachedDBPreprocessor(Protocol):
     name: ClassVar[str]
     output_type: ClassVar[type[BaseModel]]
+
+    def usage(self) -> Usage | None: ...
 
     async def preprocess_async(self, db_connector: NL2QDBConnector) -> BaseModel: ...
 
