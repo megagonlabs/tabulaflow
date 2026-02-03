@@ -32,12 +32,11 @@ def main():
             sections["bird_sql_ex_1.0->0.0"].append(task_a.qid)
 
     res = ""
-    base_dir_a = os.path.dirname(args.result_dir_a)
-    base_dir_b = os.path.dirname(args.result_dir_b)
+    qid_to_db = {task.qid: task.db for task in result_a.tasks}
     for key, qs in sections.items():
         res += f"\n\n### {key}\n\n"
         for q in qs:
-            res += f"\n- [[{q}]](../{base_dir_a}/readable/{q}/task_readable.md) -> [[{q}]](../{base_dir_b}/readable/{q}/task_readable.md)\n"
+            res += f"\n- (DB: {qid_to_db[q]}) [[{q}]](../{args.result_dir_a}/readable/{q}/task_readable.md) -> [[{q}]](../{args.result_dir_b}/readable/{q}/task_readable.md)\n"
     with open(args.output_path, "w") as f:
         f.write(res)
     print(f"Saved to {args.output_path}")
