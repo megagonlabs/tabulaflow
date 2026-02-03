@@ -3,7 +3,8 @@ from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import PredQuery
-from mintq.toolhub.utils import format_df, format_sqlalchemy_error_msg
+from mintq.formatters.utils import format_df
+from mintq.toolhub.utils import format_sqlalchemy_error_msg
 
 
 class RunQueryToolMetrics(BaseModel):
