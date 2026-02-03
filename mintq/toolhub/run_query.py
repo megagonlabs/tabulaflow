@@ -58,7 +58,8 @@ class RunQueryWithParamsTool:
             parameter_values={p.parameter_name: p.parameter_value for p in parameters},
             exec_result=exec_result,
         )
-        if exec_result.error:
+        if exec_result.df is None:
+            assert exec_result.error is not None
             if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
                 return f"(query timed out after {self.timeout} seconds)"
@@ -67,13 +68,13 @@ class RunQueryWithParamsTool:
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
         df = exec_result.df
-        if df.empty:  # type: ignore
+        if df.empty:
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
 
-        if df.isnull().all().any():  # type: ignore
+        if df.isnull().all().any():
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 
@@ -116,7 +117,8 @@ class RunQueryNoParamsTool:
             query=query,
             exec_result=exec_result,
         )
-        if exec_result.error:
+        if exec_result.df is None:
+            assert exec_result.error is not None
             if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
                 return f"(query timed out after {self.timeout} seconds)"
@@ -125,13 +127,13 @@ class RunQueryNoParamsTool:
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
         df = exec_result.df
-        if df.empty:  # type: ignore
+        if df.empty:
             return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
 
-        if df.isnull().all().any():  # type: ignore
+        if df.isnull().all().any():
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 
