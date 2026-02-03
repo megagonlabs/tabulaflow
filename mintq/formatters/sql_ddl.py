@@ -47,10 +47,15 @@ class SQLDDLSchemaFormatter:
         # Already in SQL format, return as-is
         return dtype
 
-    def _format_sampled_df(self, df: pd.DataFrame) -> str:
+    def _format_sampled_df(self, table: SQLTableSchema) -> str:
         """Format a DataFrame as a markdown table."""
-        md_table = format_df(df, max_visible_rows=len(df))
-        return f"/* Sample rows:\n{md_table}\n*/"
+        if table.num_rows <= 10:
+            md_table = format_df(table.sampled_df, max_visible_rows=len(table.sampled_df))
+            return f"/* All rows:\n{md_table}\n*/"
+        else:
+            df = table.sampled_df.head(5)
+            md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
+            return f"/* Sample rows:\n{md_table}\n*/"
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         lines = [f"-- Database: {schema.name}"]
@@ -124,8 +129,7 @@ class SQLDDLSchemaFormatter:
 
         # Add sampled rows as markdown table
         if self.include_sampled_rows and table.sampled_df is not None and not table.sampled_df.empty:
-            lines.append("")
-            lines.append(self._format_sampled_df(table.sampled_df))
+            lines.append(self._format_sampled_df(table))
 
         return "\n".join(lines)
 

@@ -3,7 +3,12 @@ from tabulate import tabulate
 
 
 def format_df(
-    df: pd.DataFrame, *, max_visible_rows: int = 10, max_cell_width: int = 200, tablefmt: str = "github"
+    df: pd.DataFrame,
+    *,
+    max_visible_rows: int = 10,
+    max_cell_width: int = 200,
+    tablefmt: str = "github",
+    add_bottom_ellipsis_row: bool = False,
 ) -> str:
     def truncate_cell(val: object) -> object:
         if pd.isna(val):
@@ -24,6 +29,10 @@ def format_df(
         tail_df = display_df.tail(last_n)
         ellipsis_row = pd.DataFrame([["..."] * len(df.columns)], columns=df.columns)
         display_df = pd.concat([head_df, ellipsis_row, tail_df], ignore_index=True)
+
+    if add_bottom_ellipsis_row:
+        ellipsis_row = pd.DataFrame([["..."] * len(df.columns)], columns=df.columns)
+        display_df = pd.concat([display_df, ellipsis_row], ignore_index=True)
 
     # showindex=False hides the automatic row numbers
     return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[NULL]")
