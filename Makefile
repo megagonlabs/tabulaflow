@@ -17,7 +17,7 @@ lint:
 
 .PHONY: test
 test:
-	uv run pytest -s tests/
+	MINTQ_CACHE_ENABLED=0 MINTQ_CACHE_REQUIRED=0 uv run pytest -s tests/
 
 .PHONY: exp
 exp:
