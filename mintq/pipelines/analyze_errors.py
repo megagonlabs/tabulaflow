@@ -86,7 +86,15 @@ class LLMErrorClassifier:
         )
 
         output_type = Literal[tuple(c.name for c in self.categories)]
-        agent = Agent[None, list[output_type]](model=self.llm, output_type=list[output_type])
+        agent = Agent[None, list[output_type]](
+            model=self.llm,
+            output_type=list[output_type],
+            model_settings={
+                "temperature": 0.0,
+                "openai_reasoning_effort": "medium",
+                "openai_reasoning_summary": "detailed",
+            },
+        )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output
