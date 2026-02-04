@@ -582,10 +582,11 @@ Feb 2
 - [x] diff_run.py
 
 Feb 3
-- [ ] Exp 198: subsampled rows, integer division, format_df
-- [ ] analyze_errors.py - support LLM classification using defined error categories
-
+- [x] Exp 198: subsampled rows, integer division, format_df - slightly improve over 196
+- [x] Exp 199: remove resolve_ambiguity prompt - improvement to 65.65
+- [x] analyze_errors.py - support LLM classification using defined error categories
 - [ ] In-context examples
+
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
