@@ -38,6 +38,7 @@ DEFAULT_CATEGORIES = [
         name="task_has_AND_ambiguity_interpreted_as_LOGICAL_AND",
         description="""
 The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the logical AND interpretation.
+Applicable regardless of prediction and evaluation metrics.
 Example:
     Question: "students with ML and NLP papers", the gold query selects students with both ML and NLP papers.
 """.strip(),
@@ -46,8 +47,23 @@ Example:
         name="task_has_AND_ambiguity_interpreted_as_UNION",
         description="""
 The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the UNION interpretation.
+Applicable regardless of prediction and evaluation metrics.
 Example:
     Question: "students with ML and NLP papers", the gold query selects students with either ML or NLP papers.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="pred_query_uses_non_sqlite_syntax",
+        description="""
+The predicted query uses a SQL syntax or a function that is not supported by SQLite, leading to different execution results from the gold query.
+Only applicable if bird_sql_ex = 0.0.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="error_due_to_task_ambiguity",
+        description="""
+The error is due to task ambiguity. Both prediction and gold query are valid interpretations of the question.
+Only applicable if bird_sql_ex = 0.0.
 """.strip(),
     ),
 ]
