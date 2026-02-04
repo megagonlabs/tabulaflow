@@ -126,6 +126,7 @@ def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> 
 @preprocessor_registry.register
 class ERDiagramSynthesizer(CachedPreprocessorMixin):
     name: ClassVar[str] = "er_diagram_synthesizer"
+    input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[BaseModel]] = ERDiagram
 
     def __init__(self, llm: str = "openai-responses:gpt-5", compress_schema: bool = True):
@@ -137,7 +138,7 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin):
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
+    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> ERDiagram:  # type: ignore
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)

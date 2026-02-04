@@ -5,7 +5,7 @@ import os
 import logging
 from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
-from mintq.preprocessors.base import BaseCachedDBPreprocessor, preprocessor_registry
+from mintq.preprocessors.base import NL2QPreprocessor, preprocessor_registry
 from mintq.config import config
 from mintq.schema import NL2QDataset
 
@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 async def preprocess_and_cache_async(
     dataset: NL2QDataset,
-    preprocessors: list[BaseCachedDBPreprocessor],
+    preprocessors: list[NL2QPreprocessor],
     verbose: bool = True,
 ) -> None:
     for preprocessor in preprocessors:

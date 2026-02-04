@@ -1,4 +1,4 @@
-from typing import ClassVar
+from typing import ClassVar, Literal
 from pydantic import BaseModel
 from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
@@ -11,6 +11,7 @@ from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_regis
 @preprocessor_registry.register
 class SchemaPreprocessor(CachedPreprocessorMixin):
     name: ClassVar[str] = "schema_preprocessor"
+    input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[BaseModel]] = SQLSchema
 
     def __init__(
@@ -29,7 +30,7 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:
+    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:  # type: ignore
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
