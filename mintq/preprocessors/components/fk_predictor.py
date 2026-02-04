@@ -1,7 +1,6 @@
 import asyncio
 import copy
 import json
-from typing import ClassVar
 import jinja2
 from pydantic import BaseModel
 from pydantic_ai import Agent

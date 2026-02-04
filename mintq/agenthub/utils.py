@@ -1,13 +1,12 @@
 from typing import Any, Callable, Literal
 from functools import partial, wraps
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
 from mintq.schema import NL2QTask, Usage, Trajectory, SQLSchema
-from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.config import config
 from mintq.db_connector import NL2QDBConnector
 from mintq.toolhub import BaseTool

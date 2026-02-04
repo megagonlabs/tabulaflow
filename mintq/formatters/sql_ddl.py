@@ -1,6 +1,5 @@
 from typing import ClassVar
 from dataclasses import dataclass
-import pandas as pd
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
 from mintq.formatters.utils import format_df

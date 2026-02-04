@@ -5,7 +5,7 @@ import copy
 from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
-from mintq.schema import NL2QRunResult, Usage, SimpleNL2QTask
+from mintq.schema import NL2QRunResult, Usage, NL2QTaskOutput
 
 
 class ErrorCategory(BaseModel):
@@ -61,7 +61,7 @@ class LLMErrorClassifier:
     def usage(self) -> Usage:
         return self._usage
 
-    async def _classify_task_async(self, task: SimpleNL2QTask) -> list[str]:
+    async def _classify_task_async(self, task: NL2QTaskOutput) -> list[str]:
         prompt = jinja2.Template(CLASSIFICATION_PROMPT).render(
             task_and_output=task.to_markdown(),
             categories=self.categories,
