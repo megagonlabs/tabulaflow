@@ -20,6 +20,7 @@ CLASSIFICATION_PROMPT = """
 You are responsible for classifying the task characteristics and prediction errors in the following task.
 - The output should include be a list of categories that apply to the task.
   - If there are no applicable categories, return an empty list.
+  - There can be multiple categories that apply to one task.
 - For each category, identify whether it applies based on the relevant information.
   - Some categories may be determined from the question, the prediction, the gold query, or a combination of these elements.
 
