@@ -1,15 +1,108 @@
 import argparse
 import asyncio
 import os
-from mintq.schema import NL2QRunResult, Usage
+import copy
+from pydantic import BaseModel, Field
+import jinja2
+from pydantic_ai import Agent
+from mintq.schema import NL2QRunResult, Usage, SimpleNL2QTask
 
 
-class Analyzer:
-    def __init__(self, llm: str = "openai-responses:gpt-5"):
+class ErrorCategory(BaseModel):
+    name: str
+    description: str
+    qids: list[str] = Field(default_factory=list)
+
+
+CLASSIFICATION_PROMPT = """
+You are responsible for classifying the task characteristics and prediction errors in the following task.
+- The output should include be a list of categories that apply to the task.
+- For each category, identify whether it applies based on the relevant information.
+  - Some categories may be determined from the question, the prediction, the gold query, or a combination of these elements.
+
+<categories>
+{% for category in categories %}
+- {{category.name}}: {{category.description}}
+{% endfor %}
+</categories>
+
+<task_and_output>
+{{task_output}}
+</task_and_output>
+""".strip()
+
+
+DEFAULT_CATEGORIES = [
+    ErrorCategory(
+        name="task_has_AND_ambiguity_interpreted_as_LOGICAL_AND",
+        description="""
+The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the logical AND interpretation.
+Example:
+    Question: "students with ML and NLP papers", the gold query selects students with both ML and NLP papers.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="task_has_AND_ambiguity_interpreted_as_UNION",
+        description="""
+The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the UNION interpretation.
+Example:
+    Question: "students with ML and NLP papers", the gold query selects students with either ML or NLP papers.
+""".strip(),
+    ),
+]
+
+
+class LLMErrorClassifier:
+    def __init__(self, llm: str = "openai-responses:gpt-5-mini", categories: list[ErrorCategory] = DEFAULT_CATEGORIES):
+        self.llm = llm
+        self.categories = categories
         self._usage = Usage.create(llm)
 
     def usage(self) -> Usage:
         return self._usage
+
+    async def _classify_task_async(self, task: SimpleNL2QTask) -> list[str]:
+        prompt = jinja2.Template(CLASSIFICATION_PROMPT).render(
+            task_and_output=task.to_markdown(),
+            categories=self.categories,
+        )
+        agent = Agent[None, list[str]](model=self.llm, output_type=list[str])
+        result = await agent.run(prompt)
+        self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
+        return result.output
+
+    async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:
+        all_results = await asyncio.gather(*[self._classify_task_async(task) for task in result.tasks])
+        categories = {category.name: copy.deepcopy(category) for category in self.categories}
+        for task, task_categories in zip(result.tasks, all_results):
+            for cate in task_categories:
+                if cate not in categories:
+                    continue
+                categories[cate].qids.append(task.qid)
+        return list(categories.values())
+
+
+class Analyzer:
+    def __init__(self, classifier_llm: str = "openai-responses:gpt-5-mini"):
+        self.classifier_llm = classifier_llm
+        self._usage = Usage.create(classifier_llm)
+
+    def usage(self) -> Usage:
+        return self._usage
+
+    async def _error_categories_section(self, result: NL2QRunResult) -> str:
+        llm_classifier = LLMErrorClassifier(llm=self.classifier_llm)
+        categories = await llm_classifier.classify_async(result)
+        self._usage += llm_classifier.usage()
+        res = "## Error Categories"
+        for category in categories:
+            res += f"\n\n### {category.name}\n\n"
+            res += f"{category.description}\n\n"
+            if len(category.qids) > 0:
+                res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in category.qids)
+            else:
+                res += "(No tasks in this category)"
+        return res
 
     def _error_section(self, result: NL2QRunResult) -> str:
         res = "## Error Tasks"
@@ -65,6 +158,7 @@ class Analyzer:
     async def analyze_async(self, result: NL2QRunResult) -> str:
         """Analyze the run result and return a markdown string containing the error analysis report."""
         sections = [
+            await self._error_categories_section(result),
             self._error_section(result),
             self._num_tool_calls_section(result),
         ]
@@ -107,9 +201,7 @@ class Analyzer:
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
-    parser.add_argument("--batch_size", type=int, default=50)
-    parser.add_argument("--num_samples", type=int, default=100)
-    parser.add_argument("--llm", default="openai-responses:gpt-5")
+    parser.add_argument("--classifier_llm", default="openai-responses:gpt-5-mini")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--error_metric_name", default="simple_ex")
     args = parser.parse_args()
@@ -122,7 +214,7 @@ async def main_async() -> None:
     if not all(task.output_type == "simple" for task in result.tasks):
         raise ValueError("Only simple tasks are supported for now.")
 
-    analyzer = Analyzer(args.llm)
+    analyzer = Analyzer(classifier_llm=args.classifier_llm)
     error_analysis = await analyzer.analyze_async(result)
     with open(os.path.join(args.result_dir, "analysis.md"), "w") as f:
         f.write(error_analysis)
