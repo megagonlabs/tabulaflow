@@ -92,10 +92,10 @@ class LLMErrorClassifier:
             categories=json.dumps([{"name": c.name, "description": c.description} for c in self.categories], indent=2),
         )
 
-        output_type = Literal[tuple(c.name for c in self.categories)]
-        agent = Agent[None, list[output_type]](
+        output_type = list[Literal[tuple(c.name for c in self.categories)]]  # type: ignore
+        agent = Agent[None, output_type](  # type: ignore
             model=self.llm,
-            output_type=list[output_type],
+            output_type=output_type,
             model_settings={
                 "temperature": 0.0,
                 "openai_reasoning_effort": "medium",
@@ -104,7 +104,7 @@ class LLMErrorClassifier:
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return result.output
+        return result.output  # type: ignore
 
     async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:
         all_results = await asyncio.gather(*[self._classify_task_async(task) for task in result.tasks])
