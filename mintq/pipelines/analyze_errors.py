@@ -2,6 +2,8 @@ import argparse
 import asyncio
 import os
 import copy
+import json
+from typing import Literal
 from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
@@ -17,13 +19,12 @@ class ErrorCategory(BaseModel):
 CLASSIFICATION_PROMPT = """
 You are responsible for classifying the task characteristics and prediction errors in the following task.
 - The output should include be a list of categories that apply to the task.
+  - If there are no applicable categories, return an empty list.
 - For each category, identify whether it applies based on the relevant information.
   - Some categories may be determined from the question, the prediction, the gold query, or a combination of these elements.
 
 <categories>
-{% for category in categories %}
-- {{category.name}}: {{category.description}}
-{% endfor %}
+{{categories}}
 </categories>
 
 <task_and_output>
@@ -64,9 +65,11 @@ class LLMErrorClassifier:
     async def _classify_task_async(self, task: NL2QTaskOutput) -> list[str]:
         prompt = jinja2.Template(CLASSIFICATION_PROMPT).render(
             task_and_output=task.to_markdown(),
-            categories=self.categories,
+            categories=json.dumps([{"name": c.name, "description": c.description} for c in self.categories], indent=2),
         )
-        agent = Agent[None, list[str]](model=self.llm, output_type=list[str])
+
+        output_type = Literal[tuple(c.name for c in self.categories)]
+        agent = Agent[None, list[output_type]](model=self.llm, output_type=list[output_type])
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output
