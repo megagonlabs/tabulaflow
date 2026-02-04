@@ -20,6 +20,7 @@ from pydantic_ai.settings import ModelSettings
 from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
+from pydantic_ai.embeddings.base import EmbeddingModel
 from mintq.config import config
 
 
@@ -112,6 +113,9 @@ async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     Wraps Model.request() with semaphore throttling based on max_llm_concurrency in config.
     """
     async with AsyncExitStack() as stack:
+        print(
+            f"Throttling request to {self.model_name} with semaphore {_llm_semaphore} and rate limit {_llm_rate_limit}"
+        )
         if _llm_semaphore is not None:
             await stack.enter_async_context(_llm_semaphore)
         if _llm_rate_limit is not None:
@@ -152,3 +156,57 @@ def patch_all_models() -> None:
 
 
 patch_all_models()
+
+
+# ================================================================================================
+# |     Patch pydantic_ai embedding models to support max concurrency and rate limit throttling  |
+# ================================================================================================
+
+_embedding_semaphore = (
+    asyncio.Semaphore(config.max_embedding_concurrency) if config.max_embedding_concurrency is not None else None
+)
+_embedding_rate_limit = (
+    AsyncLimiter(config.max_embedding_requests_per_minute, 60)
+    if config.max_embedding_requests_per_minute is not None
+    else None
+)
+
+
+async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
+    """
+    Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in config.
+    """
+    async with AsyncExitStack() as stack:
+        print(
+            f"Throttling embedding to {self.model_name} with semaphore {_embedding_semaphore} and rate limit {_embedding_rate_limit}"
+        )
+        if _embedding_semaphore is not None:
+            await stack.enter_async_context(_embedding_semaphore)
+        if _embedding_rate_limit is not None:
+            await stack.enter_async_context(_embedding_rate_limit)
+        return await self.__original_embed__(*args, **kwargs)  # type: ignore
+
+
+def patch_embedding_model_class(model_class: type[EmbeddingModel]) -> None:
+    if not hasattr(model_class, "__original_embed__"):
+        model_class.__original_embed__ = model_class.embed  # type: ignore
+        model_class.embed = _throttled_embed  # type: ignore
+
+
+def patch_all_embedding_models() -> None:
+    from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
+    from pydantic_ai.embeddings.cohere import CohereEmbeddingModel
+    from pydantic_ai.embeddings.google import GoogleEmbeddingModel
+    from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
+
+    all_embedding_model_classes: list[type[EmbeddingModel]] = [
+        OpenAIEmbeddingModel,
+        CohereEmbeddingModel,
+        GoogleEmbeddingModel,
+        BedrockEmbeddingModel,
+    ]
+    for model_class in all_embedding_model_classes:
+        patch_embedding_model_class(model_class)
+
+
+patch_all_embedding_models()
