@@ -18,10 +18,17 @@ async def preprocess_and_cache_async(
     verbose: bool = True,
 ) -> None:
     for preprocessor in preprocessors:
-        await tqdm_asyncio.gather(
-            *[preprocessor.preprocess_async(db_connector) for db_connector in dataset.db_connectors.values()],
-            disable=not verbose,
-        )
+        if verbose:
+            print(f"Caching {preprocessor.name} results...")
+        if preprocessor.input_type == "db_connector":
+            await tqdm_asyncio.gather(
+                *[preprocessor.preprocess_async(db_connector) for db_connector in dataset.db_connectors.values()],
+                disable=not verbose,
+            )
+        elif preprocessor.input_type == "dataset":
+            await preprocessor.preprocess_async(dataset)
+        else:
+            raise ValueError(f"Unknown input type: {preprocessor.input_type}")
 
 
 async def main_async() -> None:
