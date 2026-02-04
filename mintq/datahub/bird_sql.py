@@ -51,6 +51,7 @@ BIRD_DATASET_INSTRUCTIONS = """
   - Utilize `STRFTIME()` for date manipulation (e.g., `STRFTIME('%Y', SOMETIME)` to extract the year).
 - **AND vs OR Ambiguity:**
   - Interpret the word "and" strictly as a logical AND, not as a UNION.
+  - Only consider the UNION interpretation when there is no matching entities for the logical AND interpretation.
   - Example: "Entities with A and B" or "Entities that are A and B" means entities that satisfy both condition A and condition B simultaneously.
 """.strip()
 
