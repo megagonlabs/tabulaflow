@@ -45,7 +45,10 @@ class CachedPreprocessorMixin:
     def _get_cache_id(self, input_data: NL2QDBConnector | NL2QDataset) -> str:
         """Get a unique cache identifier for the input data."""
         if isinstance(input_data, NL2QDataset):
-            return f"{input_data.name}_{input_data.split}"
+            cache_id = f"{input_data.name}_{input_data.split}"
+            if input_data.databases is not None:
+                cache_id += "".join(f"_{db}" for db in input_data.databases)
+            return cache_id
         else:
             return input_data.global_id
 
