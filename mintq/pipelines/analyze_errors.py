@@ -114,6 +114,7 @@ class Analyzer:
         categories = await llm_classifier.classify_async(result)
         self._usage += llm_classifier.usage()
         res = "## Error Categories"
+
         for category in categories:
             res += f"\n\n### {category.name}\n\n"
             res += f"{category.description}\n\n"
@@ -121,6 +122,18 @@ class Analyzer:
                 res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in category.qids)
             else:
                 res += "(No tasks in this category)"
+
+        # Add not-classified error qids subsection
+        error_qids = [task.qid for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
+        classified_qids = {qid for category in categories for qid in category.qids}
+        not_classified_qids = [qid for qid in error_qids if qid not in classified_qids]
+
+        res += "\n\n### not_classified\n\n"
+        res += "Error tasks (simple_ex = 0.0) that were not classified into any of the above categories.\n\n"
+        if len(not_classified_qids) > 0:
+            res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in not_classified_qids)
+        else:
+            res += "(No tasks in this category)"
         return res
 
     def _error_section(self, result: NL2QRunResult) -> str:
