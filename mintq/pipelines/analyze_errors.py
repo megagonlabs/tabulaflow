@@ -27,7 +27,7 @@ You are responsible for classifying the task characteristics and prediction erro
 </categories>
 
 <task_and_output>
-{{task_output}}
+{{task_and_output}}
 </task_and_output>
 """.strip()
 
