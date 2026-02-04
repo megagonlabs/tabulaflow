@@ -67,6 +67,13 @@ The error is due to task ambiguity. Both prediction and gold query are valid int
 Only applicable if bird_sql_ex = 0.0.
 """.strip(),
     ),
+    ErrorCategory(
+        name="error_due_to_incorrect_gold_query",
+        description="""
+The gold query is incorrect. The predicted query aligns better with the question than the gold query.
+Only applicable if bird_sql_ex = 0.0.
+""".strip(),
+    ),
 ]
 
 
