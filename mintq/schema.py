@@ -485,13 +485,23 @@ class Usage(BaseModel):
         )
 
     @classmethod
-    def from_pydantic_ai_usage(cls, usage: pydantic_ai.usage.RunUsage, llm: str) -> "Usage":
-        return cls.create(
-            llm=llm,
-            api_requests=usage.requests,
-            input_tokens=usage.input_tokens,
-            output_tokens=usage.output_tokens,
-        )
+    def from_pydantic_ai_usage(
+        cls, usage: pydantic_ai.usage.RunUsage | pydantic_ai.usage.RequestUsage, llm: str
+    ) -> "Usage":
+        if isinstance(usage, pydantic_ai.usage.RunUsage):
+            return cls.create(
+                llm=llm,
+                api_requests=usage.requests,
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+            )
+        else:
+            return cls.create(
+                llm=llm,
+                api_requests=1,
+                input_tokens=usage.input_tokens,
+                output_tokens=usage.output_tokens,
+            )
 
 
 class ErrorInfo(BaseModel):
