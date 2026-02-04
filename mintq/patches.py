@@ -113,9 +113,6 @@ async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     Wraps Model.request() with semaphore throttling based on max_llm_concurrency in config.
     """
     async with AsyncExitStack() as stack:
-        print(
-            f"Throttling request to {self.model_name} with semaphore {_llm_semaphore} and rate limit {_llm_rate_limit}"
-        )
         if _llm_semaphore is not None:
             await stack.enter_async_context(_llm_semaphore)
         if _llm_rate_limit is not None:
@@ -177,9 +174,6 @@ async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> A
     Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in config.
     """
     async with AsyncExitStack() as stack:
-        print(
-            f"Throttling embedding to {self.model_name} with semaphore {_embedding_semaphore} and rate limit {_embedding_rate_limit}"
-        )
         if _embedding_semaphore is not None:
             await stack.enter_async_context(_embedding_semaphore)
         if _embedding_rate_limit is not None:
