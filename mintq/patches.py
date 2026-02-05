@@ -7,7 +7,7 @@ Import this module to ensure patches are applied.
 
 import asyncio
 from contextlib import AsyncExitStack
-from typing import Any
+from typing import Any, Callable
 import os
 import re
 from anthropic import AsyncAnthropicVertex
@@ -16,6 +16,7 @@ from aiolimiter import AsyncLimiter
 import pydantic_ai.models
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
+from pydantic_ai.providers import Provider, infer_provider
 from pydantic_ai.settings import ModelSettings
 from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
@@ -89,7 +90,9 @@ def get_anthropic_vertex_model(model_name: str) -> Model:
 _original_infer_model = pydantic_ai.models.infer_model
 
 
-def _patched_infer_model(model: Model | KnownModelName | str) -> Model:
+def _patched_infer_model(  # noqa: C901
+    model: Model | KnownModelName | str, provider_factory: Callable[[str], Provider[Any]] = infer_provider
+) -> Model:
     if isinstance(model, str) and model.startswith("google-vertex:claude"):
         return get_anthropic_vertex_model(model.split(":")[1])
     return _original_infer_model(model)
