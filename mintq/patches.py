@@ -78,7 +78,7 @@ def get_anthropic_vertex_model(model_name: str) -> Model:
     """Adpapted from https://github.com/pydantic/pydantic-ai/pull/1392#issuecomment-2851287096"""
     return AnthropicModel(
         model_name,
-        provider=AnthropicProvider(  # type: ignore
+        provider=AnthropicProvider(
             anthropic_client=AsyncAnthropicVertex(
                 project_id=os.environ["GOOGLE_CLOUD_PROJECT"],
                 region=os.environ["GOOGLE_CLOUD_LOCATION"],
