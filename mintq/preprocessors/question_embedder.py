@@ -71,7 +71,7 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
         self.preprocessing_llm = preprocessing_llm
         self.disable_preprocessing = disable_preprocessing
 
-        self.embedding_embedder = Embedder(embedding_llm)
+        self.embedder = Embedder(embedding_llm)
         self._usage = Usage.create(llm=embedding_llm)
 
     def usage(self) -> Usage:
@@ -95,9 +95,9 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
             skeleton = await self._preprocess(question)
         else:
             skeleton = question
-        result = await self.embeddingembed_task_asyncder.embed_query(skeleton)
+        result = await self.embedder.embed_query(skeleton)
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.embedding_llm)
-        return np.array(result.embeddings), QuestionSkeleton(qid=task.qid, question=question, skeleton=skeleton)
+        return np.array(result.embeddings[0]), QuestionSkeleton(qid=task.qid, question=question, skeleton=skeleton)
 
     async def _preprocess_impl_async(self, dataset: NL2QDataset) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
         all_results = await asyncio.gather(*[self.embed_task_async(task) for task in dataset.tasks])

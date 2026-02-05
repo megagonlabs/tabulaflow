@@ -49,6 +49,7 @@ async def run_agent_async(
     agent_cls: type[NL2QAgent],
     agent_config: BaseAgentConfig,
     dataset: NL2QDataset,
+    few_shot_dataset: NL2QDataset | None,
     batch_size: int,
     metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
     sleep_between_batches: float = 0.0,
@@ -63,6 +64,13 @@ async def run_agent_async(
 
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
+
+        agent_kwargs = {}
+        if few_shot_dataset is not None:
+            agent_kwargs["few_shot_dataset"] = few_shot_dataset
+        agents: list[NL2QAgent] = await asyncio.gather(
+            *[agent_cls.from_config_async(agent_config, **agent_kwargs) for _ in batch]  # type: ignore
+        )
 
         batch_kwargs = []
         for task in batch:
@@ -81,7 +89,6 @@ async def run_agent_async(
             else:
                 batch_kwargs.append({})
 
-        agents: list[NL2QAgent] = await asyncio.gather(*[agent_cls.from_config_async(agent_config) for _ in batch])  # type: ignore
         batch_outputs = await tqdm_gather_with_exceptions(
             *[
                 agent.predict_async(task, dataset.db_connectors[task.db], **kwargs)  # type: ignore
@@ -145,6 +152,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     }
     if agent_cls.name == "simple_zero_shot":
         kwargs["num_candidates"] = args.num_majority_voting_candidates
+    if agent_cls.name == "sql_agent":
+        kwargs["num_few_shot_examples"] = args.num_few_shot_examples
     if args.no_query_for_intended_only:
         kwargs["query_for_intended_only"] = False
     if args.use_gold_phrases:
@@ -169,6 +178,11 @@ async def main_async() -> None:
     parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("--openai_reasoning_summary", default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
+
+    # sql agent
+    parser.add_argument("--num_few_shot_examples", default=5, type=int)
+    parser.add_argument("--few_shot_dataset", default="bird-sql")
+    parser.add_argument("--few_shot_split", default="train")
 
     # ambig agents
     parser.add_argument("--no_query_for_intended_only", action="store_true")
@@ -249,13 +263,29 @@ async def main_async() -> None:
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
 
+    few_shot_dataset = None
+    if args.num_few_shot_examples > 0:
+        t0 = time.time()
+        few_shot_dataset_loader = dataset_registry.get_class(args.few_shot_dataset)()
+        few_shot_dataset = await few_shot_dataset_loader.get_split_async(args.few_shot_split)
+        print(
+            f"Loaded {len(few_shot_dataset.tasks)} tasks and {len(few_shot_dataset.db_connectors)} databases from {args.few_shot_dataset} ({args.few_shot_split}) in {time.time() - t0:.2f} seconds."
+        )
+
     agent_class = agent_registry.get_class(args.agent)
     config = parse_agent_config(agent_class, args)
     print(f"Running agent {agent_class.name} with config:")
     print(config.model_dump_json(indent=2))
 
     t0 = time.time()
-    result = await run_agent_async(agent_class, config, dataset, args.batch_size, verbose=True)
+    result = await run_agent_async(
+        agent_cls=agent_class,
+        agent_config=config,
+        dataset=dataset,
+        few_shot_dataset=few_shot_dataset,
+        batch_size=args.batch_size,
+        verbose=True,
+    )
     print()
     print(f"Ran on {len(dataset.tasks)} tasks in {time.time() - t0:.2f} seconds.")
     agent_cost = "N/A" if result.total_usage is None else f"{result.total_usage.api_cost_usd:.6f}"

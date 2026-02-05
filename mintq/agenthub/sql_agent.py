@@ -4,12 +4,15 @@ import json
 import jinja2
 import time
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, Any
+import numpy as np
+import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
     ExtraPredInfo,
+    NL2QDataset,
     SQLSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
@@ -18,7 +21,7 @@ from mintq.schema import (
     Trajectory,
     ColumnRef,
 )
-from mintq.preprocessors import ERDiagramSynthesizer, SchemaPreprocessor
+from mintq.preprocessors import ERDiagramSynthesizer, QuestionEmbedder, SchemaPreprocessor
 from mintq.toolhub import (
     BaseTool,
     RunQueryNoParamsTool,
@@ -40,6 +43,7 @@ from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 
 class SQLAgentConfig(BasicAgentConfig):
     min_columns_for_schema_linking: int = 20
+    num_few_shot_examples: int = 0
 
 
 def format_question(task: SimpleNL2QTask) -> str:
@@ -106,7 +110,16 @@ You are an agent - please keep going until the database query is fully construct
 <physical_database_schema>
 {{schema}}
 </physical_database_schema>
+{%- if examples %}
 
+<examples>
+Here are some similar questions and their correct SQL queries for reference:
+{% for example in examples %}
+Question: {{example.question}} {{example.question_instructions}}
+SQL: {{example.gold_query.query}}
+{% endfor -%}
+</examples>
+{%- endif %}
 """.strip()
 
 EXPAND_COLUMNS_PROMPT = """
@@ -393,15 +406,32 @@ class SQLAgent:
     output_type: ClassVar = "simple"
     config_cls: ClassVar[type[BaseAgentConfig]] = SQLAgentConfig
 
-    def __init__(self, config: SQLAgentConfig):
+    def __init__(
+        self,
+        config: SQLAgentConfig,
+        few_shot_dataset: NL2QDataset | None = None,
+        few_shot_embeddings: npt.NDArray[Any] | None = None,
+    ):
         self.config = config
+        self.few_shot_dataset = few_shot_dataset
+        self.few_shot_embeddings = few_shot_embeddings
+
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        self.question_embedder = QuestionEmbedder()
         self.schema_linker = SchemaLinker(config)
         self.postprocessor = Postprocessor(config)
 
     @classmethod
-    async def from_config_async(cls, config: SQLAgentConfig) -> "SQLAgent":
-        return cls(config)
+    async def from_config_async(cls, config: SQLAgentConfig, few_shot_dataset: NL2QDataset | None = None) -> "SQLAgent":
+        if config.num_few_shot_examples > 0 and few_shot_dataset is None:
+            raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
+
+        question_embedder = QuestionEmbedder()
+        if few_shot_dataset is not None:
+            few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
+        else:
+            few_shot_embeddings = None
+        return cls(config, few_shot_dataset, few_shot_embeddings)
 
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
@@ -412,6 +442,7 @@ class SQLAgent:
         er_diagram_synthesizer = ERDiagramSynthesizer()
         er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
         er_diagram_formatter = ERDiagramMermaidFormatter()
+
         ctx = SQLAgentContext(
             task=task,
             db_connector=db_connector,
@@ -423,7 +454,25 @@ class SQLAgent:
             er_diagram=er_diagram,
             er_diagram_formatter=er_diagram_formatter,
         )
+        ctx.usage += er_diagram_synthesizer.usage()
         ctx.usage += schema_preprocessor.usage()
+
+        examples: list[SimpleNL2QTask] = []
+        if (
+            self.config.num_few_shot_examples > 0
+            and self.few_shot_embeddings is not None
+            and self.few_shot_dataset is not None
+        ):
+            vec, _ = await self.question_embedder.embed_task_async(task)
+            ctx.usage += self.question_embedder.usage()
+            # Compute cosine similarity between task embedding and few-shot embeddings
+            # Normalize embeddings for cosine similarity
+            vec_norm = vec / np.linalg.norm(vec)
+            few_shot_norms = self.few_shot_embeddings / np.linalg.norm(self.few_shot_embeddings, axis=1, keepdims=True)
+            similarities = np.dot(few_shot_norms, vec_norm)
+            # Get top-k most similar example indices
+            top_k_indices = np.argsort(similarities)[::-1][: self.config.num_few_shot_examples]
+            examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]
 
         linked_schema = await self.schema_linker.link_schema_async(ctx, task)
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)
@@ -440,6 +489,7 @@ class SQLAgent:
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=True),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),
+            examples=examples,
         )
 
         agent = Agent[None, None](  # type: ignore
