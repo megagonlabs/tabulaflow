@@ -59,7 +59,7 @@ class QuestionEmbedderOutput(BaseModel):
 class QuestionEmbedder(CachedPreprocessorMixin):
     name: ClassVar[str] = "question_embedder"
     input_type: ClassVar[Literal["dataset"]] = "dataset"
-    output_type: ClassVar[type[CacheableResult]] = tuple[np.ndarray, QuestionEmbedderOutput]
+    output_type: ClassVar[type[CacheableResult]] = tuple[npt.NDArray[Any], QuestionEmbedderOutput]
 
     def __init__(
         self,
@@ -89,7 +89,7 @@ class QuestionEmbedder(CachedPreprocessorMixin):
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.preprocessing_llm)
         return result.output
 
-    async def _embed(self, task: NL2QTask) -> tuple[np.ndarray, QuestionSkeleton]:
+    async def _embed(self, task: NL2QTask) -> tuple[npt.NDArray[Any], QuestionSkeleton]:
         question = task.question
         if not self.disable_preprocessing:
             skeleton = await self._preprocess(question)
