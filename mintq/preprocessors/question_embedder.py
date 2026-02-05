@@ -3,8 +3,9 @@ import asyncio
 import jinja2
 import numpy as np
 import numpy.typing as npt
+from pydantic import BaseModel
 from pydantic_ai import Agent, Embedder
-from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry
+from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from mintq.schema import NL2QDataset, Usage, NL2QTask
 
 
@@ -44,11 +45,21 @@ Generate the question skeleton for the following question:
 """.strip()
 
 
+class QuestionSkeleton(BaseModel):
+    qid: str
+    question: str
+    skeleton: str
+
+
+class QuestionEmbedderOutput(BaseModel):
+    question_skeletons: list[QuestionSkeleton]
+
+
 @preprocessor_registry.register
 class QuestionEmbedder(CachedPreprocessorMixin):
     name: ClassVar[str] = "question_embedder"
     input_type: ClassVar[Literal["dataset"]] = "dataset"
-    output_type: ClassVar[type[npt.NDArray[Any]]] = np.ndarray
+    output_type: ClassVar[type[CacheableResult]] = tuple[np.ndarray, QuestionEmbedderOutput]
 
     def __init__(
         self,
@@ -78,14 +89,18 @@ class QuestionEmbedder(CachedPreprocessorMixin):
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.preprocessing_llm)
         return result.output
 
-    async def _embed(self, task: NL2QTask) -> np.ndarray:
+    async def _embed(self, task: NL2QTask) -> tuple[np.ndarray, QuestionSkeleton]:
         question = task.question
         if not self.disable_preprocessing:
-            question = await self._preprocess(question)
-        result = await self.embedding_embedder.embed_query(question)
+            skeleton = await self._preprocess(question)
+        else:
+            skeleton = question
+        result = await self.embedding_embedder.embed_query(skeleton)
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.embedding_llm)
-        return np.array(result.embeddings)
+        return np.array(result.embeddings), QuestionSkeleton(qid=task.qid, question=question, skeleton=skeleton)
 
-    async def _preprocess_impl_async(self, dataset: NL2QDataset) -> npt.NDArray[Any]:
+    async def _preprocess_impl_async(self, dataset: NL2QDataset) -> tuple[npt.NDArray[Any], QuestionEmbedderOutput]:
         all_results = await asyncio.gather(*[self._embed(task) for task in dataset.tasks])
-        return np.stack(all_results)
+        return np.stack([result[0] for result in all_results]), QuestionEmbedderOutput(
+            question_skeletons=[result[1] for result in all_results]
+        )
