@@ -6,7 +6,7 @@ from mintq.formatters.base import BaseSQLSchemaFormatter
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.schema import SQLSchema, TableRef, Usage
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry
+from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.toolhub.run_query import RunQueryNoParamsTool
 
@@ -127,7 +127,7 @@ def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> 
 class ERDiagramSynthesizer(CachedPreprocessorMixin):
     name: ClassVar[str] = "er_diagram_synthesizer"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
-    output_type: ClassVar[type[BaseModel]] = ERDiagram
+    output_type: ClassVar[type[CacheableResult]] = ERDiagram
 
     def __init__(self, llm: str = "openai-responses:gpt-5", compress_schema: bool = True):
         self.llm = llm
@@ -138,7 +138,7 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin):
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> ERDiagram:  # type: ignore
+    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> ERDiagram:
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)

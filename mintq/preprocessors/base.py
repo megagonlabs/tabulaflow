@@ -42,7 +42,7 @@ class CachedPreprocessorMixin:
     input_type: ClassVar[Literal["db_connector", "dataset"]]
     output_type: ClassVar[type[CacheableResult]]
 
-    async def _preprocess_impl_async(self, input_data: NL2QDBConnector | NL2QDataset) -> CacheableResult:
+    async def _preprocess_impl_async(self, input_data: Any) -> CacheableResult:
         raise NotImplementedError()
 
     def _get_cache_id(self, input_data: NL2QDBConnector | NL2QDataset) -> str:
@@ -91,34 +91,31 @@ class CachedPreprocessorMixin:
         else:
             return [self._get_element_cache_path(cache_dir, cache_id, self.output_type)]
 
-    def _load_element(self, cache_path: str, elem_type: type) -> Any:
+    def _load_element(self, cache_path: str, elem_type: type) -> BaseModel | npt.NDArray[Any]:
         """Load a single cached element."""
         if self._is_ndarray_type(elem_type):
-            return np.load(cache_path, allow_pickle=True)
+            return np.load(cache_path, allow_pickle=True)  # type: ignore
         elif isinstance(elem_type, type) and issubclass(elem_type, BaseModel):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return elem_type.model_validate_json(f.read())
         else:
             raise NotImplementedError(f"Element type {elem_type} is not supported for caching")
 
-    def _save_element(self, cache_path: str, elem: Any, elem_type: type) -> None:
+    def _save_element(self, cache_path: str, elem: BaseModel | npt.NDArray[Any], elem_type: type) -> None:
         """Save a single element to cache."""
         if self._is_ndarray_type(elem_type):
-            np.save(cache_path, elem)
+            np.save(cache_path, elem)  # type: ignore
         elif isinstance(elem_type, type) and issubclass(elem_type, BaseModel):
             with open(cache_path, "w", encoding="utf-8") as f:
-                f.write(elem.model_dump_json(indent=2))
+                f.write(elem.model_dump_json(indent=2))  # type: ignore
         else:
             raise NotImplementedError(f"Element type {elem_type} is not supported for caching")
 
-    def _load_from_cache(self, cache_paths: list[str]) -> Any:
+    def _load_from_cache(self, cache_paths: list[str]) -> CacheableResult:
         """Load cached result based on output type."""
         if self._is_tuple_type():
             element_types = self._get_tuple_element_types()
-            return tuple(
-                self._load_element(path, elem_type)
-                for path, elem_type in zip(cache_paths, element_types)
-            )
+            return tuple(self._load_element(path, elem_type) for path, elem_type in zip(cache_paths, element_types))
         else:
             return self._load_element(cache_paths[0], self.output_type)
 
@@ -141,7 +138,7 @@ class CachedPreprocessorMixin:
             if os.path.exists(path):
                 os.remove(path)
 
-    async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> Any:
+    async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> CacheableResult:
         cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
         os.makedirs(cache_dir, exist_ok=True)
 

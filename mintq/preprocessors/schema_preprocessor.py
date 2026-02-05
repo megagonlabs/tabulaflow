@@ -5,14 +5,14 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.components.column_profiler import ColumnProfiler
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.preprocessors.components.fk_predictor import ForeignKeyPredictor
-from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry
+from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 
 
 @preprocessor_registry.register
 class SchemaPreprocessor(CachedPreprocessorMixin):
     name: ClassVar[str] = "schema_preprocessor"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
-    output_type: ClassVar[type[BaseModel]] = SQLSchema
+    output_type: ClassVar[type[CacheableResult]] = SQLSchema
 
     def __init__(
         self,
@@ -30,7 +30,7 @@ class SchemaPreprocessor(CachedPreprocessorMixin):
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:  # type: ignore
+    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
