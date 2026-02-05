@@ -56,7 +56,7 @@ class QuestionEmbedderOutput(BaseModel):
 
 
 @preprocessor_registry.register
-class QuestionEmbedder(CachedPreprocessorMixin):
+class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionEmbedderOutput]]):
     name: ClassVar[str] = "question_embedder"
     input_type: ClassVar[Literal["dataset"]] = "dataset"
     output_type: ClassVar[type[CacheableResult]] = tuple[npt.NDArray[Any], QuestionEmbedderOutput]

@@ -78,7 +78,7 @@ async def main_async() -> None:
         t0 = time.time()
         for split in args.extra_splits_for_dataset_preprocessors:
             dataset = await dataset_loader.get_split_async(split)
-            await preprocess_and_cache_async(dataset, dataset_preprocessors)
+            await preprocess_and_cache_async(dataset, dataset_preprocessors)  # type: ignore
         print(
             f"Finished preprocess and cache of extra splits for dataset preprocessors in {time.time() - t0:.2f} seconds."
         )

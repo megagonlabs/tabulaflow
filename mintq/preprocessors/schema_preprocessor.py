@@ -1,5 +1,4 @@
 from typing import ClassVar, Literal
-from pydantic import BaseModel
 from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.components.column_profiler import ColumnProfiler
@@ -9,7 +8,7 @@ from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_regis
 
 
 @preprocessor_registry.register
-class SchemaPreprocessor(CachedPreprocessorMixin):
+class SchemaPreprocessor(CachedPreprocessorMixin[SQLSchema]):
     name: ClassVar[str] = "schema_preprocessor"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[CacheableResult]] = SQLSchema

@@ -1,4 +1,4 @@
-from typing import Any, Protocol, ClassVar, Literal, TypeAlias, get_origin, get_args
+from typing import Any, Protocol, ClassVar, Literal, TypeAlias, TypeVar, Generic, get_origin, get_args
 import numpy as np
 import numpy.typing as npt
 import asyncio
@@ -34,15 +34,17 @@ class BaseDatasetPreprocessor(Protocol):
     async def preprocess_async(self, dataset: NL2QDataset) -> CacheableResult: ...
 
 
+OutputT = TypeVar("OutputT", bound=CacheableResult)
+
 _cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
-class CachedPreprocessorMixin:
+class CachedPreprocessorMixin(Generic[OutputT]):
     name: ClassVar[str]
     input_type: ClassVar[Literal["db_connector", "dataset"]]
     output_type: ClassVar[type[CacheableResult]]
 
-    async def _preprocess_impl_async(self, input_data: Any) -> CacheableResult:
+    async def _preprocess_impl_async(self, input_data: Any) -> OutputT:
         raise NotImplementedError()
 
     def _get_cache_id(self, input_data: NL2QDBConnector | NL2QDataset) -> str:
@@ -138,7 +140,7 @@ class CachedPreprocessorMixin:
             if os.path.exists(path):
                 os.remove(path)
 
-    async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> CacheableResult:
+    async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> OutputT:
         cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
         os.makedirs(cache_dir, exist_ok=True)
 
@@ -151,7 +153,7 @@ class CachedPreprocessorMixin:
                 if config.cache_overwrite:
                     self._remove_cache(cache_paths)
                 else:
-                    return self._load_from_cache(cache_paths)
+                    return self._load_from_cache(cache_paths)  # type: ignore[return-value]
 
             if config.cache_required:
                 raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_paths}")

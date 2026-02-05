@@ -124,7 +124,7 @@ def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> 
 
 
 @preprocessor_registry.register
-class ERDiagramSynthesizer(CachedPreprocessorMixin):
+class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
     name: ClassVar[str] = "er_diagram_synthesizer"
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[CacheableResult]] = ERDiagram
