@@ -587,6 +587,7 @@ Feb 3
 - [x] analyze_errors.py - support LLM classification using defined error categories
 - [ ] In-context examples
 
+- [ ] Analyze output/199_gpt-5-mini-medium/analysis.md
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
