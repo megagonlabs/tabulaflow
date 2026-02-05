@@ -32,7 +32,7 @@ class AskUserTool:
             return "I cannot answer this question as it is out of scope."
         return response.answer_free_text
 
-    async def _pydantic_ai_prepare(self, ctx: RunContext, tool_def: ToolDefinition) -> ToolDefinition | None:
+    async def _pydantic_ai_prepare(self, ctx: RunContext[object], tool_def: ToolDefinition) -> ToolDefinition | None:
         """After the patience limit is reached, this tool will not be provided to the LLM anymore."""
         return None if self.patience is not None and self._metrics.num_calls >= self.patience else tool_def
 
