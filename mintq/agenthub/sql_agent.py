@@ -297,17 +297,31 @@ You are a helpful AI database expert who can analyze a given text-to-SQL questio
 - If an information piece is ambiguous and could map to multiple columns, explicitly mention this in its description.
 - To decide which information pieces are required, strictly follow the dataset and question instructions.
 
-=== START OF EXAMPLES ===
-Input: Which 3 students with a GPA below 2.5 are performing the worst in the Math course? Include the age.
+<output_format_example>
+Text-to-SQL question: Which 3 students with a GPA below 2.5 are performing the worst in the Math course? Include the age.
 Output: ["student name or id", "student age"]
-=== END OF EXAMPLES ===
+</output_format_example>
+{%- if dataset_instructions %}
 
-=== START OF DATASET INSTRUCTIONS ===
+<dataset_instructions>
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ===
+</dataset_instructions>
+{%- endif %}
+{%- if examples %}
+
+<dataset_examples>
+Here are some similar questions and their correct SQL queries for reference:
+{% for example in examples %}
+Question: {{example.question}} {{example.question_instructions}}
+SQL: {{example.gold_query.query}}
+{% endfor -%}
+</dataset_examples>
+{%- endif %}
+
+===== Your Task =====
 
 Text-to-SQL question: {{question}}
-Your output:
+Output:
 """.strip()
 
 
@@ -322,9 +336,24 @@ You are a helpful AI database expert who can refine the final SELECT clause of a
 - All other modifications are forbidden. You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
 - If no changes are needed, return the original query unchanged.
 
-=== START OF DATASET INSTRUCTIONS ===
+{%- if dataset_instructions %}
+
+<dataset_instructions>
 {{dataset_instructions}}
-=== END OF DATASET INSTRUCTIONS ===
+</dataset_instructions>
+{%- endif %}
+{%- if examples %}
+
+<examples>
+Here are some similar questions and their correct SQL queries for reference:
+{% for example in examples %}
+Question: {{example.question}} {{example.question_instructions}}
+SQL: {{example.gold_query.query}}
+{% endfor -%}
+</examples>
+{%- endif %}
+
+===== Your Task =====
 
 Text-to-SQL question: {{question}}
 
@@ -354,6 +383,7 @@ class Postprocessor:
         prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             question=format_question(task),
+            examples=ctx.few_shot_examples,
         )
         result = await agent.run(prompt)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
@@ -373,6 +403,7 @@ class Postprocessor:
             language=task.language,
             question=format_question(task),
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
+            examples=ctx.few_shot_examples,
             allowed_columns=information_pieces,
             raw_pred_query_with_exec_results=pred_query.to_readable(),
         )
