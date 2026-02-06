@@ -601,11 +601,32 @@ Feb 4 - 5
     - sql_dev_20240627_469
     - sql_dev_20240627_473
   - [ ] Column order
-  - [ ] Do not strictly follow - hints might have typo
+  - [ ] Do not strictly follow - hints might have typo / incorrect formula
+    - bird-sql_dev_20240627_1306
   - [ ] FK inconsistency
   - [ ] Exact column name not used (the other column in the FK used instead)
   - [ ] Removing NULL in results - need to investigate the net improvement
   - [ ] Postprocessing failure (mostly due to question parsing)
+  - [ ] Nested queries over ORDER BY ... LIMIT 1
+    - bird-sql_dev_20240627_837
+  - [ ] Empty results
+    - bird-sql_dev_20240627_860
+  - [ ] Full name
+    - bird-sql_dev_20240627_878
+  - [ ] Percentage
+    - bird-sql_dev_20240627_881
+  - [ ] Truncated execution results
+    - bird-sql_dev_20240627_929
+  - [ ] Return only one for top N questions
+  - [ ] Gold incorrect
+    - bird-sql_dev_20240627_1026
+    - bird-sql_dev_20240627_1028
+    - bird-sql_dev_20240627_1085
+    - bird-sql_dev_20240627_1144
+    - bird-sql_dev_20240627_1174
+    - bird-sql_dev_20240627_1297
+    - bird-sql_dev_20240627_1520
+  - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
