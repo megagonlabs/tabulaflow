@@ -57,6 +57,7 @@ def format_question(task: SimpleNL2QTask) -> str:
 class SQLAgentContext(TaskRunContext):
     er_diagram: ERDiagram
     er_diagram_formatter: ERDiagramMermaidFormatter
+    few_shot_examples: list[SimpleNL2QTask]
 
 
 # <resolving_ambiguity>
@@ -417,7 +418,6 @@ class SQLAgent:
         self.few_shot_embeddings = few_shot_embeddings
 
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-        self.question_embedder = QuestionEmbedder()
         self.schema_linker = SchemaLinker(config)
         self.postprocessor = Postprocessor(config)
 
@@ -439,9 +439,27 @@ class SQLAgent:
 
         schema_preprocessor = SchemaPreprocessor()
         preprocessed_schema = await schema_preprocessor.preprocess_async(db_connector)
+        question_embedder = QuestionEmbedder()
         er_diagram_synthesizer = ERDiagramSynthesizer()
         er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
         er_diagram_formatter = ERDiagramMermaidFormatter()
+
+        examples: list[SimpleNL2QTask] = []
+        if (
+            self.config.num_few_shot_examples > 0
+            and self.few_shot_embeddings is not None
+            and self.few_shot_dataset is not None
+        ):
+            vec, _ = await question_embedder.embed_task_async(task)
+
+            # Compute cosine similarity between task embedding and few-shot embeddings
+            # Normalize embeddings for cosine similarity
+            vec_norm = vec / np.linalg.norm(vec)
+            few_shot_norms = self.few_shot_embeddings / np.linalg.norm(self.few_shot_embeddings, axis=1, keepdims=True)
+            similarities = np.dot(few_shot_norms, vec_norm)
+            # Get top-k most similar example indices
+            top_k_indices = np.argsort(similarities)[::-1][: self.config.num_few_shot_examples]
+            examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]
 
         ctx = SQLAgentContext(
             task=task,
@@ -453,26 +471,11 @@ class SQLAgent:
             trajectories=[],
             er_diagram=er_diagram,
             er_diagram_formatter=er_diagram_formatter,
+            few_shot_examples=examples,
         )
         ctx.usage += er_diagram_synthesizer.usage()
         ctx.usage += schema_preprocessor.usage()
-
-        examples: list[SimpleNL2QTask] = []
-        if (
-            self.config.num_few_shot_examples > 0
-            and self.few_shot_embeddings is not None
-            and self.few_shot_dataset is not None
-        ):
-            vec, _ = await self.question_embedder.embed_task_async(task)
-            ctx.usage += self.question_embedder.usage()
-            # Compute cosine similarity between task embedding and few-shot embeddings
-            # Normalize embeddings for cosine similarity
-            vec_norm = vec / np.linalg.norm(vec)
-            few_shot_norms = self.few_shot_embeddings / np.linalg.norm(self.few_shot_embeddings, axis=1, keepdims=True)
-            similarities = np.dot(few_shot_norms, vec_norm)
-            # Get top-k most similar example indices
-            top_k_indices = np.argsort(similarities)[::-1][: self.config.num_few_shot_examples]
-            examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]
+        ctx.usage += question_embedder.usage()
 
         linked_schema = await self.schema_linker.link_schema_async(ctx, task)
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)
