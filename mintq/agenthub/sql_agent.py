@@ -193,6 +193,7 @@ class SchemaLinker:
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram),
+            examples=ctx.few_shot_examples,
         )
 
         agent = Agent[None, None](  # type: ignore
