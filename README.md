@@ -595,8 +595,8 @@ Feb 4 - 5
 - [x] Small improvements
   - [x] xml syntax for all prompts
   - [x] order tables in schema to match ER diagram
-- [ ] Exp 203: few-shot examples
-- [ ] Analyze output/199_gpt-5-mini-medium/analysis.md
+- [x] Exp 203: few-shot examples - improved to 0.6656 raw_pred_bird_sql_ex
+- [x] Analyze output/199_gpt-5-mini-medium/analysis.md
   - [ ] YES / NO
     - sql_dev_20240627_469
     - sql_dev_20240627_473
@@ -627,6 +627,8 @@ Feb 4 - 5
     - bird-sql_dev_20240627_1297
     - bird-sql_dev_20240627_1520
   - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
+
+- [ ] Caching for embedding models
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
