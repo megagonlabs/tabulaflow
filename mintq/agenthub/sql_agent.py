@@ -14,6 +14,7 @@ from mintq.schema import (
     ExtraPredInfo,
     NL2QDataset,
     SQLSchema,
+    SQLTableSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
     PredQuery,
@@ -458,6 +459,24 @@ class SQLAgent:
             few_shot_embeddings = None
         return cls(config, few_shot_dataset, few_shot_embeddings)
 
+    def _sort_tables(self, preprocessed_schema: SQLSchema, er_diagram: ERDiagram) -> SQLSchema:
+        """Reorder the tables in preprocessed_schema to match the order in er_diagram"""
+        er_table_order: dict[tuple[str | None, str], int] = {}
+        for entity in er_diagram.conceptual_entities:
+            for source_table in entity.source_tables:
+                key = (source_table.schema_name, source_table.table_name)
+                if key not in er_table_order:
+                    er_table_order[key] = len(er_table_order)
+
+        def get_table_sort_key(table: SQLTableSchema) -> tuple[int, int]:
+            key = (table.schema_name, table.name)
+            if key in er_table_order:
+                return (0, er_table_order[key])
+            return (1, 0)  # Tables not in ER diagram go to the end
+
+        preprocessed_schema.tables.sort(key=get_table_sort_key)
+        return preprocessed_schema
+
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
@@ -468,6 +487,8 @@ class SQLAgent:
         er_diagram_synthesizer = ERDiagramSynthesizer()
         er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
         er_diagram_formatter = ERDiagramMermaidFormatter()
+
+        preprocessed_schema = self._sort_tables(preprocessed_schema, er_diagram)
 
         examples: list[SimpleNL2QTask] = []
         if (
