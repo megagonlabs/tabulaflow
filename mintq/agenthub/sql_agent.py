@@ -131,7 +131,7 @@ Given a list of columns that can be used to answer a question, identify potentia
 - The alternative columns can be from the same table or different tables.
 - The alternative columns can be an empty list if there are no alternatives.
 
-=== START OF EXAMPLE ===
+<example>
 Question: "What is the date of order 1005?"
 Columns: [{schema_name: null, table_name: "order", column_name: "order_date"}]
 Output:
@@ -151,24 +151,18 @@ Output:
     ]
   }
 ]
-=== END OF EXAMPLE ===
+</example>
 
-=== START OF DATABASE SCHEMA ===
+===== Your Task =====
+
+<database_schema>
 {{schema}}
-=== END OF DATABASE SCHEMA ===
+</database_schema>
 
-=== START OF QUESTION ===
-{{question}}
-{%- if dataset_instructions %}
+Question: {{question}}
 
-Additional instructions:
-{{dataset_instructions}}
-{%- endif %}
-=== END OF QUESTION ===
-
-=== START OF COLUMNS ===
+Columns:
 {{columns}}
-=== END OF COLUMNS ===
 
 Your output:
 """.strip()
@@ -232,7 +226,6 @@ class SchemaLinker:
             prompt = jinja2.Template(EXPAND_COLUMNS_PROMPT).render(
                 schema=ctx.schema_formatter.format(ctx.preprocessed_schema),
                 question=format_question(task),
-                dataset_instructions=task.dataset_instructions,
                 columns=json.dumps(
                     [
                         {"schema_name": c.schema_name, "table_name": c.table_name, "column_name": c.column_name}
@@ -405,7 +398,7 @@ class Postprocessor:
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             examples=ctx.few_shot_examples,
             allowed_columns=information_pieces,
-            raw_pred_query_with_exec_results=pred_query.to_readable(),
+            raw_pred_query_with_exec_results=pred_query.to_markdown(),
         )
         result = await agent.run(prompt)
         revised_pred_query = extract_code(result.output)
