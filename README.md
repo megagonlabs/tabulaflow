@@ -585,9 +585,27 @@ Feb 3
 - [x] Exp 198: subsampled rows, integer division, format_df - slightly improve over 196
 - [x] Exp 199: remove resolve_ambiguity prompt - improvement to 65.65
 - [x] analyze_errors.py - support LLM classification using defined error categories
-- [ ] In-context examples
 
+Feb 4 - 5
+- [x] BaseDatasetPreprocessor
+- [x] Support variable length tuples for caching
+- [x] Upgrade pydantic-ai to 1.52.0
+- [x] Few-shot examples for SQL generation
+- [x] Few-shot examples for postprocessing
+- [x] Small improvements
+  - [x] xml syntax for all prompts
+  - [x] order tables in schema to match ER diagram
+- [ ] Exp 203: few-shot examples
 - [ ] Analyze output/199_gpt-5-mini-medium/analysis.md
+  - [ ] YES / NO
+    - sql_dev_20240627_469
+    - sql_dev_20240627_473
+  - [ ] Column order
+  - [ ] Do not strictly follow - hints might have typo
+  - [ ] FK inconsistency
+  - [ ] Exact column name not used (the other column in the FK used instead)
+  - [ ] Removing NULL in results - need to investigate the net improvement
+  - [ ] Postprocessing failure (mostly due to question parsing)
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
 - [ ] get_table_schema for non-linked tables
