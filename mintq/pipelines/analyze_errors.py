@@ -97,7 +97,7 @@ class LLMErrorClassifier:
             model=self.llm,
             output_type=output_type,
             model_settings={
-                "temperature": 0.0,
+                "temperature": None,
                 "openai_reasoning_effort": "medium",
                 "openai_reasoning_summary": "detailed",
             },
