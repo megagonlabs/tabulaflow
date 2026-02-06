@@ -148,12 +148,13 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     kwargs = {
         "llm": args.llm,
         "schema_formatter": args.schema_formatter,
-        "temperature": args.temperature,
     }
     if agent_cls.name == "simple_zero_shot":
         kwargs["num_candidates"] = args.num_majority_voting_candidates
     if agent_cls.name == "sql_agent":
         kwargs["num_few_shot_examples"] = args.num_few_shot_examples
+    if args.temperature is not None:
+        kwargs["temperature"] = args.temperature
     if args.no_query_for_intended_only:
         kwargs["query_for_intended_only"] = False
     if args.use_gold_phrases:
@@ -174,7 +175,7 @@ async def main_async() -> None:
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_ddl")
     parser.add_argument("--llm", default="openai-responses:gpt-4.1")
-    parser.add_argument("--temperature", default=0.0, type=float)
+    parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("--openai_reasoning_summary", default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
