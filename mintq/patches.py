@@ -162,25 +162,16 @@ patch_all_models()
 # |     Patch pydantic_ai embedding models to support max concurrency and rate limit throttling  |
 # ================================================================================================
 
-_embedding_semaphore = (
-    asyncio.Semaphore(config.max_embedding_concurrency) if config.max_embedding_concurrency is not None else None
-)
-_embedding_rate_limit = (
-    AsyncLimiter(config.max_embedding_requests_per_minute, 60)
-    if config.max_embedding_requests_per_minute is not None
-    else None
-)
-
 
 async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
     """
-    Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in config.
+    Wraps EmbeddingModel.embed() with semaphore throttling based on max_llm_concurrency in config.
     """
     async with AsyncExitStack() as stack:
-        if _embedding_semaphore is not None:
-            await stack.enter_async_context(_embedding_semaphore)
-        if _embedding_rate_limit is not None:
-            await stack.enter_async_context(_embedding_rate_limit)
+        if _llm_semaphore is not None:
+            await stack.enter_async_context(_llm_semaphore)
+        if _llm_rate_limit is not None:
+            await stack.enter_async_context(_llm_rate_limit)
         return await self.__original_embed__(*args, **kwargs)  # type: ignore
 
 
