@@ -27,6 +27,61 @@ from mintq.schema import (
 
 logger = logging.getLogger(__name__)
 
+A199_QIDS = [
+    "bird-sql_dev_20240627_17",
+    "bird-sql_dev_20240627_30",
+    "bird-sql_dev_20240627_33",
+    "bird-sql_dev_20240627_36",
+    "bird-sql_dev_20240627_49",
+    "bird-sql_dev_20240627_164",
+    "bird-sql_dev_20240627_199",
+    "bird-sql_dev_20240627_225",
+    "bird-sql_dev_20240627_237",
+    "bird-sql_dev_20240627_239",
+    "bird-sql_dev_20240627_267",
+    "bird-sql_dev_20240627_275",
+    "bird-sql_dev_20240627_352",
+    "bird-sql_dev_20240627_378",
+    "bird-sql_dev_20240627_384",
+    "bird-sql_dev_20240627_403",
+    "bird-sql_dev_20240627_407",
+    "bird-sql_dev_20240627_447",
+    "bird-sql_dev_20240627_469",
+    "bird-sql_dev_20240627_473",
+    "bird-sql_dev_20240627_500",
+    "bird-sql_dev_20240627_560",
+    "bird-sql_dev_20240627_565",
+    "bird-sql_dev_20240627_586",
+    "bird-sql_dev_20240627_587",
+    "bird-sql_dev_20240627_805",
+    "bird-sql_dev_20240627_837",
+    "bird-sql_dev_20240627_860",
+    "bird-sql_dev_20240627_861",
+    "bird-sql_dev_20240627_878",
+    "bird-sql_dev_20240627_881",
+    "bird-sql_dev_20240627_929",
+    "bird-sql_dev_20240627_985",
+    "bird-sql_dev_20240627_998",
+    "bird-sql_dev_20240627_1004",
+    "bird-sql_dev_20240627_1011",
+    # "bird-sql_dev_20240627_1026",
+    # "bird-sql_dev_20240627_1028",
+    # "bird-sql_dev_20240627_1085",
+    # "bird-sql_dev_20240627_1144",
+    # "bird-sql_dev_20240627_1174",
+    "bird-sql_dev_20240627_1196",
+    "bird-sql_dev_20240627_1277",
+    # "bird-sql_dev_20240627_1297",
+    "bird-sql_dev_20240627_1360",
+    "bird-sql_dev_20240627_1370",
+    "bird-sql_dev_20240627_1421",
+    "bird-sql_dev_20240627_1433",
+    "bird-sql_dev_20240627_1458",
+    "bird-sql_dev_20240627_1498",
+    # "bird-sql_dev_20240627_1520",
+    "bird-sql_dev_20240627_1529",
+]
+
 
 def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutput:
     if agent_cls.output_type == "simple":
@@ -222,6 +277,13 @@ async def main_async() -> None:
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
+    ##### DELETE #####
+    is_a199_flag = False
+    if args.split == "a199":
+        is_a199_flag = True
+        args.split = "dev_20240627"
+    ##################
+
     if args.debug_litellm:
         litellm._turn_on_debug()  # type: ignore
 
@@ -260,6 +322,10 @@ async def main_async() -> None:
             ]
         else:
             dataset.tasks = dataset.tasks[:5]
+    ##### DELETE #####
+    elif is_a199_flag:
+        dataset.tasks = [task for task in dataset.tasks if task.qid in A199_QIDS]
+    ##################
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
