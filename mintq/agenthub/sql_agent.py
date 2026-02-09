@@ -104,14 +104,6 @@ You are an agent - please keep going until the database query is fully construct
 - You may use the `search_keywords` tool to search for multiple keywords within a column.
 - Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
 </tool_calling>
-
-<conceptual_er_diagram>
-{{er_diagram}}
-</conceptual_er_diagram>
-
-<physical_database_schema>
-{{schema}}
-</physical_database_schema>
 {%- if examples %}
 
 <examples>
@@ -122,6 +114,14 @@ SQL: {{example.gold_query.query}}
 {% endfor -%}
 </examples>
 {%- endif %}
+
+<conceptual_er_diagram>
+{{er_diagram}}
+</conceptual_er_diagram>
+
+<physical_database_schema>
+{{schema}}
+</physical_database_schema>
 """.strip()
 
 EXPAND_COLUMNS_PROMPT = """
