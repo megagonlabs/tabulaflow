@@ -267,8 +267,6 @@ async def main_async() -> None:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
         if args.dataset == "bird-sql":
             parser.set_defaults(split="dev_20240627")
-            if not args.qids:
-                parser.set_defaults(databases=["california_schools"])
         elif args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
@@ -312,6 +310,10 @@ async def main_async() -> None:
     )
     if args.qids is not None:
         dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
+    ##### DELETE #####
+    elif is_a199_flag:
+        dataset.tasks = [task for task in dataset.tasks if task.qid in A199_QIDS]
+    ##################
     elif args.debug:
         if args.dataset == "arcs":
             # dataset.tasks = dataset.tasks[10:13]
@@ -322,10 +324,10 @@ async def main_async() -> None:
             ]
         else:
             dataset.tasks = dataset.tasks[:5]
-    ##### DELETE #####
-    elif is_a199_flag:
-        dataset.tasks = [task for task in dataset.tasks if task.qid in A199_QIDS]
-    ##################
+            dataset.db_connectors = {
+                k: v for k, v in dataset.db_connectors.items() if any(k == t.db for t in dataset.tasks)
+            }
+
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
