@@ -50,7 +50,7 @@ test-bird-agent:
 
 .PHONY: test-bird-a199-agent
 test-bird-a199-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --split a199 --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed --batch_size 50
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --split a199 --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed --batch_size 50 --log_level INFO
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
