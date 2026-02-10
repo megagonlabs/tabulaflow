@@ -628,6 +628,7 @@ Feb 4 - 5
     - bird-sql_dev_20240627_1520
   - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
 
+- [ ] Fix reading cache every time
 - [ ] Caching for embedding models
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
