@@ -10,9 +10,9 @@ class Config:
     DEFAULT_INSTRUMENT_PREFIX = "exp"
     DEFAULT_DF_MAX_ROWS = None
     DEFAULT_MAX_LLM_CONCURRENCY = 16
-    """Applies to both text generation and embedding LLMs"""
     DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
-    """Applies to both text generation and embedding LLMs"""
+    DEFAULT_MAX_EMBEDDING_CONCURRENCY = 16
+    DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 200
 
     def __init__(self) -> None:
         self._validate()
@@ -81,6 +81,20 @@ class Config:
         if (value := os.getenv("MINTQ_MAX_LLM_REQUESTS_PER_MINUTE")) is not None:
             return int(value) if int(value) > 0 else None
         return self.DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE
+
+    @property
+    def max_embedding_concurrency(self) -> int | None:
+        """Maximum number of concurrent embedding calls."""
+        if (value := os.getenv("MINTQ_MAX_EMBEDDING_CONCURRENCY")) is not None:
+            return int(value) if int(value) > 0 else None
+        return self.DEFAULT_MAX_EMBEDDING_CONCURRENCY
+
+    @property
+    def max_embedding_requests_per_minute(self) -> int | None:
+        """Maximum number of embedding requests per minute."""
+        if (value := os.getenv("MINTQ_MAX_EMBEDDING_REQUESTS_PER_MINUTE")) is not None:
+            return int(value) if int(value) > 0 else None
+        return self.DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE
 
     def __repr__(self) -> str:
         props = {
