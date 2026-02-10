@@ -163,12 +163,6 @@ async def run_agent_async(
             else:
                 task_outputs.append(output)
 
-        if i == 0 and verbose:
-            trajectory = getattr(task_outputs[0], "trajectory", None)
-            if trajectory:
-                for tr in trajectory if isinstance(trajectory, list) else [trajectory]:
-                    print(tr.to_readable())
-
         if verbose:
             print(f"{j}/{len(dataset.tasks)} tasks completed ({num_failed} failed)")
 
