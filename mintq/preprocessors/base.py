@@ -37,6 +37,7 @@ class BaseDatasetPreprocessor(Protocol):
 OutputT = TypeVar("OutputT", bound=CacheableResult)
 
 _cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
+_memory_cache: dict[tuple[str, ...], CacheableResult] = {}
 
 
 class CachedPreprocessorMixin(Generic[OutputT]):
@@ -147,19 +148,26 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         cache_id = self._get_cache_id(input_data)
         cache_paths = self._get_cache_paths(cache_dir, cache_id)
 
+        cache_key = tuple(cache_paths)
         lock = _cache_locks[cache_id]
         async with lock:
             if config.cache_enabled and self._cache_exists(cache_paths):
                 if config.cache_overwrite:
                     self._remove_cache(cache_paths)
+                    _memory_cache.pop(cache_key, None)
                 else:
-                    return self._load_from_cache(cache_paths)  # type: ignore[return-value]
+                    if cache_key in _memory_cache:
+                        return _memory_cache[cache_key]  # type: ignore[return-value]
+                    result = self._load_from_cache(cache_paths)
+                    _memory_cache[cache_key] = result
+                    return result  # type: ignore[return-value]
 
             if config.cache_required:
                 raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_paths}")
 
             result = await self._preprocess_impl_async(input_data)
             self._save_to_cache(cache_paths, result)
+            _memory_cache[cache_key] = result
             return result
 
 
