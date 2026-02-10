@@ -44,6 +44,7 @@ async def main_async() -> None:
     # parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
     # parser.add_argument("--include_taxonomy", action="store_true")
 
+    parser.add_argument("--log_level", default="WARNING", type=str)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     if args.debug:
@@ -53,6 +54,8 @@ async def main_async() -> None:
     args = parser.parse_args()
     print(args)
     print()
+
+    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
