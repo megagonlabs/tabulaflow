@@ -107,7 +107,7 @@ pydantic_ai.models.infer_model = _patched_infer_model
 
 _llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency) if config.max_llm_concurrency is not None else None
 _llm_rate_limit = (
-    AsyncLimiter(1, 60 / config.max_llm_requests_per_minute) if config.max_llm_requests_per_minute is not None else None
+    AsyncLimiter(config.max_llm_requests_per_minute, 60) if config.max_llm_requests_per_minute is not None else None
 )
 
 
@@ -166,7 +166,7 @@ _embedding_semaphore = (
     asyncio.Semaphore(config.max_embedding_concurrency) if config.max_embedding_concurrency is not None else None
 )
 _embedding_rate_limit = (
-    AsyncLimiter(1, 60 / config.max_embedding_requests_per_minute)
+    AsyncLimiter(config.max_embedding_requests_per_minute, 60)
     if config.max_embedding_requests_per_minute is not None
     else None
 )
