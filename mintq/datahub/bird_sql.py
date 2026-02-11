@@ -45,7 +45,7 @@ BIRD_DATASET_INSTRUCTIONS = """
   - Prioritize `INNER JOIN` over nested `SELECT` statements.
 - **No Ties in Highest or Lowest Entity:**
   - When the question asks for the entities with the highest or lowest value, assume no ties exist.
-  - Always prioritize using `[JOIN ...] ORDER BY ... LIMIT N` over a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
+  - Always prioritize using `[JOIN ...] [GROUP BY ...] ORDER BY ... LIMIT N` over a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
 - **SQLite Functions Only:**
   - Use only functions available in SQLite.
 - **Date Processing:**
