@@ -3,11 +3,11 @@ import copy
 import json
 import jinja2
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import ClassVar, Any
 import numpy as np
 import numpy.typing as npt
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
@@ -59,9 +59,9 @@ def format_question(task: SimpleNL2QTask) -> str:
 
 @dataclass
 class SQLAgentContext(TaskRunContext):
-    er_diagram: ERDiagram
-    er_diagram_formatter: ERDiagramMermaidFormatter
-    few_shot_examples: list[SimpleNL2QTask]
+    er_diagram: ERDiagram | None = None
+    er_diagram_formatter: ERDiagramMermaidFormatter | None = None
+    few_shot_examples: list[SimpleNL2QTask] = field(default_factory=list)
 
 
 # <resolving_ambiguity>
@@ -190,7 +190,7 @@ class SchemaLinker:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
-            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram),
+            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,
             examples=ctx.few_shot_examples,
         )
 
@@ -462,6 +462,13 @@ class SQLAgent:
         ctx.usage += er_diagram_synthesizer.usage()
         ctx.usage += schema_preprocessor.usage()
         ctx.usage += question_embedder.usage()
+
+        ##### Remove #####
+        if task.pred_query is not None:
+            postprocessed_pred_query = await self.postprocessor.postprocess_async(ctx, task, task.extra_pred_info.raw_pred_query)
+            task.pred_query = postprocessed_pred_query
+            return task
+        ##################
 
         if self.schema_linker is not None:
             linked_schema = await self.schema_linker.link_schema_async(ctx, task)

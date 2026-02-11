@@ -101,6 +101,9 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
     else:
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
+##### Remove #####
+RESUME_EXP_RESULT = None
+##################
 
 async def run_agent_async(
     agent_cls: type[NL2QAgent],
@@ -121,6 +124,10 @@ async def run_agent_async(
 
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
+        ##### Remove #####
+        if RESUME_EXP_RESULT is not None:
+            batch = RESUME_EXP_RESULT.tasks[i:j]
+        ##################
 
         agent_kwargs = {}
         if few_shot_dataset is not None:
@@ -265,6 +272,11 @@ async def main_async() -> None:
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_litellm", action="store_true")
     parser.add_argument("--log_level", default="WARNING", type=str)
+
+    ##### Remove #####
+    parser.add_argument("--resume_exp", default=None)
+    ##################
+
     args = parser.parse_args()
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
@@ -278,11 +290,16 @@ async def main_async() -> None:
 
     logging.basicConfig(level=getattr(logging, args.log_level.upper()))
 
-    ##### DELETE #####
+    ##### Remove #####
     is_a199_flag = False
     if args.split == "a199":
         is_a199_flag = True
         args.split = "dev_20240627"
+    if args.resume_exp is not None:
+        with open(os.path.join(args.resume_exp, "result.json"), "r") as f:
+            global RESUME_EXP_RESULT
+            RESUME_EXP_RESULT = NL2QRunResult.model_validate_json(f.read())
+
     ##################
 
     if args.debug_litellm:

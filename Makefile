@@ -55,6 +55,14 @@ test-bird-a199-agent:
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
+
+.PHONY: test-bird-postprocessor
+test-bird-postprocessor:
+	uv run mintq/pipelines/run_agent.py --overwrite --num_few_shot_examples 0 --resume_exp output/206_gpt-5-mini-medium-percentage/ --agent sql_agent --dataset bird-sql --split dev_20240627 --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed --batch_size 50 --log_level INFO
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
+
 .PHONY: test-bird-agent-qids
 test-bird-agent-qids:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --qids $(QIDS) --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
