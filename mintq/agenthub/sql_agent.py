@@ -465,12 +465,11 @@ class SQLAgent:
 
         ##### Remove #####
         if task.pred_query is not None:
-            task.trajectory = [tr for tr in ctx.trajectories if tr.id != "TRJY-POSTPROCESS"]
             postprocessed_pred_query = await self.postprocessor.postprocess_async(
                 ctx, task, task.extra_pred_info.raw_pred_query
             )
             task.pred_query = postprocessed_pred_query
-            task.trajectory += ctx.trajectories
+            task.trajectory = ctx.trajectories
             return task
         ##################
 
