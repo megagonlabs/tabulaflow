@@ -11,6 +11,7 @@ import traceback
 from mintq import agent_registry, dataset_registry
 from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
 from mintq.utils import pprint_dict, tqdm_gather_with_exceptions
+from mintq.pipelines.utils import bool_flag
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.schema import (
@@ -26,6 +27,7 @@ from mintq.schema import (
 )
 
 logger = logging.getLogger(__name__)
+
 
 A199_QIDS = [
     "bird-sql_dev_20240627_17",
@@ -202,6 +204,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["num_candidates"] = args.num_majority_voting_candidates
     if agent_cls.name == "sql_agent":
         kwargs["num_few_shot_examples"] = args.num_few_shot_examples
+        kwargs["do_schema_linking"] = args.do_schema_linking
+        kwargs["do_postprocessing"] = args.do_postprocessing
     if args.temperature is not None:
         kwargs["temperature"] = args.temperature
     if args.no_query_for_intended_only:
@@ -230,6 +234,8 @@ async def main_async() -> None:
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
 
     # sql agent
+    parser.add_argument("--do_schema_linking", type=bool_flag, default=True)
+    parser.add_argument("--do_postprocessing", type=bool_flag, default=True)
     parser.add_argument("--num_few_shot_examples", default=5, type=int)
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")

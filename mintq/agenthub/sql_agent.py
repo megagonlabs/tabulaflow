@@ -45,6 +45,8 @@ from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 class SQLAgentConfig(BasicAgentConfig):
     min_columns_for_schema_linking: int = 20
     num_few_shot_examples: int = 0
+    do_schema_linking: bool = True
+    do_postprocessing: bool = True
     question_embedder_embedding_llm: str = "openai:text-embedding-3-small"
 
 
@@ -445,8 +447,8 @@ class SQLAgent:
         self.few_shot_embeddings = few_shot_embeddings
 
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
-        self.schema_linker = SchemaLinker(config)
-        self.postprocessor = Postprocessor(config)
+        self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
+        self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
 
     @classmethod
     async def from_config_async(cls, config: SQLAgentConfig, few_shot_dataset: NL2QDataset | None = None) -> "SQLAgent":
@@ -520,7 +522,10 @@ class SQLAgent:
         ctx.usage += schema_preprocessor.usage()
         ctx.usage += question_embedder.usage()
 
-        linked_schema = await self.schema_linker.link_schema_async(ctx, task)
+        if self.schema_linker is not None:
+            linked_schema = await self.schema_linker.link_schema_async(ctx, task)
+        else:
+            linked_schema = ctx.preprocessed_schema
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)
 
         tools: dict[str, BaseTool] = {
@@ -552,7 +557,10 @@ class SQLAgent:
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
         ctx.trajectories.append(trajectory)
 
-        pred_query = await self.postprocessor.postprocess_async(ctx, task, raw_pred_query)
+        if self.postprocessor is not None:
+            pred_query = await self.postprocessor.postprocess_async(ctx, task, raw_pred_query)
+        else:
+            pred_query = raw_pred_query
 
         metrics = {}
         metrics["latency_seconds"] = time.time() - t0
