@@ -250,8 +250,8 @@ async def main_async() -> None:
     parser.add_argument("--user_patience", default=None)
 
     # dataset
-    parser.add_argument("--dataset", default="arcs")
-    parser.add_argument("--split", default="test")
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev_20240627")
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--qids", default=None, nargs="+")
     parser.add_argument("--subsample_size", default=None, type=int)
