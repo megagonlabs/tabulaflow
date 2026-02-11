@@ -74,12 +74,13 @@ class TaskRunContext:
 
 class BasicAgentConfig(BaseModel):
     llm: str
-    schema_formatter: str = "sql_basic"
+    schema_formatter: str = "sql_ddl"
     compress_schema: bool = True
     temperature: float | None = None
     max_steps: int = 10
     openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = None
     openai_reasoning_summary: Literal["detailed", "concise"] | None = None
+    openai_service_tier: Literal['auto', 'default', 'flex', 'priority'] | None = "priority"
 
     def to_model_settings(self) -> dict[str, Any]:
         res: dict[str, Any] = {}
@@ -89,4 +90,6 @@ class BasicAgentConfig(BaseModel):
             res["openai_reasoning_effort"] = self.openai_reasoning_effort
         if self.openai_reasoning_summary is not None:
             res["openai_reasoning_summary"] = self.openai_reasoning_summary
+        if self.openai_service_tier is not None:
+            res["openai_service_tier"] = self.openai_service_tier
         return res
