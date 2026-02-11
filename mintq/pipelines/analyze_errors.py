@@ -3,6 +3,7 @@ import asyncio
 import os
 import copy
 import json
+import time
 from typing import Literal
 from pydantic import BaseModel, Field
 import jinja2
@@ -35,72 +36,93 @@ You are responsible for classifying the task characteristics and prediction erro
 
 
 DEFAULT_CATEGORIES = [
+    #     ErrorCategory(
+    #         name="task_has_AND_ambiguity_interpreted_as_LOGICAL_AND",
+    #         description="""
+    # The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the logical AND interpretation.
+    # Applicable regardless of prediction and evaluation metrics.
+    # Example:
+    #     Question: "students with ML and NLP papers", the gold query selects students with both ML and NLP papers.
+    # """.strip(),
+    #     ),
+    #     ErrorCategory(
+    #         name="task_has_AND_ambiguity_interpreted_as_UNION",
+    #         description="""
+    # The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the UNION interpretation.
+    # Applicable regardless of prediction and evaluation metrics.
+    # Example:
+    #     Question: "students with ML and NLP papers", the gold query selects students with either ML or NLP papers.
+    # """.strip(),
+    #     ),
+    #     ErrorCategory(
+    #         name="task_has_percentage_not_specified_not_multiply_by_100",
+    #         description="""
+    # The task question asks for a percentage value (excluding rates) **without specifying to multiply by 100**, the resulting value in the gold query is not multiplied by 100.
+    # Applicable regardless of prediction and evaluation metrics.
+    # """.strip(),
+    #     ),
+    #     ErrorCategory(
+    #         name="task_has_percentage_not_specified_multiplied_by_100",
+    #         description="""
+    # The task question asks for a percentage value (excluding rates) **without specifying to multiply by 100**, the resulting value in the gold query is multiplied by 100.
+    # Applicable regardless of prediction and evaluation metrics.
+    # """.strip(),
+    #     ),
+    #     ErrorCategory(
+    #         name="task_has_percentage_specified",
+    #         description="""
+    # The task question asks for a percentage value (excluding rates) and specifies to multiply by 100.
+    # Applicable regardless of prediction and evaluation metrics.
+    # """.strip(),
+    #     ),
     ErrorCategory(
-        name="task_has_AND_ambiguity_interpreted_as_LOGICAL_AND",
+        name="pred_query_uses_incorrect_syntax_or_function",
         description="""
-The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the logical AND interpretation.
-Applicable regardless of prediction and evaluation metrics.
-Example:
-    Question: "students with ML and NLP papers", the gold query selects students with both ML and NLP papers.
-""".strip(),
-    ),
-    ErrorCategory(
-        name="task_has_AND_ambiguity_interpreted_as_UNION",
-        description="""
-The task question contains the word "and" that can be interpreted as either a logical AND or a UNION, and the gold query follows the UNION interpretation.
-Applicable regardless of prediction and evaluation metrics.
-Example:
-    Question: "students with ML and NLP papers", the gold query selects students with either ML or NLP papers.
-""".strip(),
-    ),
-    ErrorCategory(
-        name="task_has_percentage_not_multiply_by_100",
-        description="""
-The task question ask of a percentage value, the resulting value is not multiplied by 100.
-Applicable regardless of prediction and evaluation metrics.
-""".strip(),
-    ),
-    ErrorCategory(
-        name="task_has_percentage_multiplied_by_100",
-        description="""
-The task question ask of a percentage value, the resulting value is multiplied by 100.
-Applicable regardless of prediction and evaluation metrics.
-""".strip(),
-    ),
-    ErrorCategory(
-        name="pred_query_uses_non_sqlite_syntax",
-        description="""
-The predicted query uses a SQL syntax or a function that is not supported by SQLite, leading to different execution results from the gold query.
-Only applicable if bird_sql_ex = 0.0.
-""".strip(),
+    The predicted query uses a syntax or a function that is not supported by corresponding DBMS or dialect, leading to different execution results from the gold query.
+    Only applicable if simple_ex = 0.0.
+    """.strip(),
     ),
     ErrorCategory(
         name="error_due_to_task_ambiguity",
         description="""
-The error is due to task ambiguity. Both prediction and gold query are valid interpretations of the question.
-Only applicable if bird_sql_ex = 0.0.
-""".strip(),
+    The error is due to task ambiguity. Both prediction and gold query are valid interpretations of the question.
+    Only applicable if simple_ex = 0.0.
+    """.strip(),
     ),
     ErrorCategory(
         name="error_due_to_incorrect_gold_query",
         description="""
-The gold query is incorrect. The predicted query aligns better with the question than the gold query.
-Only applicable if bird_sql_ex = 0.0.
-""".strip(),
+    The gold query is incorrect. The predicted query aligns better with the question than the gold query.
+    Only applicable if simple_ex = 0.0.
+    """.strip(),
     ),
 ]
 
 
 class LLMErrorClassifier:
-    def __init__(self, llm: str = "openai-responses:gpt-5-mini", categories: list[ErrorCategory] = DEFAULT_CATEGORIES):
+    def __init__(
+        self,
+        llm: str = "openai-responses:gpt-5-mini",
+        categories: list[ErrorCategory] = DEFAULT_CATEGORIES,
+        mask_prediction: bool = False,
+    ):
         self.llm = llm
         self.categories = categories
+        self.mask_prediction = mask_prediction
         self._usage = Usage.create(llm)
 
     def usage(self) -> Usage:
         return self._usage
 
     async def _classify_task_async(self, task: NL2QTaskOutput) -> list[str]:
+        if self.mask_prediction:
+            task = copy.deepcopy(task)
+            task.pred_query = None
+            task.extra_pred_info.raw_pred_query = None
+            task.extra_pred_info.linked_schema = None
+            task.inference_metrics = {}
+            task.eval_metrics = {}
+
         prompt = jinja2.Template(CLASSIFICATION_PROMPT).render(
             task_and_output=task.to_markdown(),
             categories=json.dumps([{"name": c.name, "description": c.description} for c in self.categories], indent=2),
@@ -232,33 +254,6 @@ class Analyzer:
         return res
 
 
-# ANALYZE_TASK_PROMPT = """
-# You are responsible for analyzing the errors in the following task.
-# - The output should a 1-3 sentence concise report on the sources of the error.
-
-# === START OF PREDICTION ===
-# {{pred_str}}
-# === END OF PREDICTION ===
-
-# === START OF GROUND TRUTH ===
-# {{gold_str}}
-# === END OF GROUND TRUTH ===
-# """.strip()
-
-
-# SUMMARY_PROMPT = """
-# You are responsible for summarizing the following error reports.
-# - The output should include all major error categories.
-
-# === START OF ERROR TASK REPORTS ===
-# {% for task_report in task_reports %}
-# QID: {{ task_report.qid }}
-# {{ task_report.report }}
-# {% endfor %}
-# === END OF ERROR TASK REPORTS ===
-# """.strip()
-
-
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
@@ -276,7 +271,9 @@ async def main_async() -> None:
         raise ValueError("Only simple tasks are supported for now.")
 
     analyzer = Analyzer(classifier_llm=args.classifier_llm)
+    t0 = time.time()
     error_analysis = await analyzer.analyze_async(result)
+    print(f"Analysis finished in {time.time() - t0:.2f} seconds")
     with open(os.path.join(args.result_dir, "analysis.md"), "w") as f:
         f.write(error_analysis)
     print(f"Total cost USD: {analyzer.usage().api_cost_usd:.6f}")
