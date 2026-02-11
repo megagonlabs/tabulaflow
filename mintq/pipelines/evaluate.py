@@ -107,8 +107,9 @@ async def main_async() -> None:
         print()
         print("=== DEBUG MODE === ")
         for task in result.tasks:
+            md_path = os.path.join(args.result_dir, "readable", task.qid, "task_readable.md")
             print(
-                f"{task.qid}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}"
+                f"{md_path}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}"
             )
 
 
