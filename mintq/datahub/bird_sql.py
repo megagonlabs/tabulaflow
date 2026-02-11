@@ -44,7 +44,7 @@ BIRD_DATASET_INSTRUCTIONS = """
 - **JOIN Preference:**
   - Prioritize `INNER JOIN` over nested `SELECT` statements.
 - **No Ties in Highest or Lowest Entity:**
-  - When a query asks for the entities with the highest or lowest value, assume no ties exist.
+  - When the question asks for the entities with the highest or lowest value, assume no ties exist.
   - Always prioritize using `[JOIN ...] ORDER BY ... LIMIT N` over a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
 - **SQLite Functions Only:**
   - Use only functions available in SQLite.
@@ -54,6 +54,8 @@ BIRD_DATASET_INSTRUCTIONS = """
   - The word "and" can be ambiguous as it can be interpreted as a logical AND or a UNION/OR.
     In such cases, prioritize the logical AND interpretation by default, but when there are no matching entities, try the UNION/OR interpretation.
   - Example: "Entities with A and B" or "Entities that are A and B" by default means entities that satisfy both condition A and condition B simultaneously.
+- **No Empty Results:**
+  - The correct SQL query must return at least one row. If your query returns empty results, it is likely incorrect or the question may require a different interpretation.
 """.strip()
 
 
