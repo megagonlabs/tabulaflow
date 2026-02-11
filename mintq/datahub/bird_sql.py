@@ -11,11 +11,10 @@ from mintq.datahub.base import dataset_registry
 
 BIRD_DATASET_INSTRUCTIONS = """
 - **Strictly Follow Hints:**
-  - If the user specifies a particular computation formula or requires using a specific column, you must follow those instructions.
+  - If the user specifies a particular computation formula or requires using a specific column, follow those instructions.
 - **SELECT Clause:**
   - In the final SELECT clause only return explicitly requested columns.
   - If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
-  - Ensure that the SELECT columns appear in the same order as they are mentioned in the question.
   - Examples:
     - If the question asks for a maximum value, do not include the entity that attains it.
       Question: "What is the highest score?" Return columns: ["highest score"] (exclude the student).
@@ -25,6 +24,8 @@ BIRD_DATASET_INSTRUCTIONS = """
         Question: "What are the birthdates of students?" Return columns: ["birthdate"] (exclude the student).
     - If the question asks for a list of items ordered by a specific attribute, do not include the ordering attribute.
         Question: "Who are the top 3 students by score?" Return columns: ["student name or id"] (exclude the score).
+- **Yes/No Questions:**
+  - Binary information (e.g. "Whether ...") should be represented as a column with values "YES" or "NO".
 - **No String Concatenation:**
   - Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
 - **Preserve Data Shape:**
@@ -44,7 +45,7 @@ BIRD_DATASET_INSTRUCTIONS = """
   - Prioritize `INNER JOIN` over nested `SELECT` statements.
 - **No Ties in Highest or Lowest Entity:**
   - When a query asks for the entities with the highest or lowest value, assume no ties exist.
-  - Always prioritize using `[JOIN ...] ORDER BY ... LIMIT 1` over a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
+  - Always prioritize using `[JOIN ...] ORDER BY ... LIMIT N` over a nested `WHERE column = (SELECT MAX(column) FROM ...)`.
 - **SQLite Functions Only:**
   - Use only functions available in SQLite.
 - **Date Processing:**
