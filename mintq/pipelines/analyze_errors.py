@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
 from mintq.schema import NL2QRunResult, Usage, NL2QTaskOutput
+from mintq.pipelines.utils import bool_flag
 
 
 class ErrorCategory(BaseModel):
@@ -153,8 +154,9 @@ class LLMErrorClassifier:
 
 
 class Analyzer:
-    def __init__(self, classifier_llm: str = "openai-responses:gpt-5-mini"):
+    def __init__(self, classifier_llm: str = "openai-responses:gpt-5-mini", do_error_classification: bool = True):
         self.classifier_llm = classifier_llm
+        self.do_error_classification = do_error_classification
         self._usage = Usage.create(classifier_llm)
 
     def usage(self) -> Usage:
@@ -250,11 +252,11 @@ class Analyzer:
 
     async def analyze_async(self, result: NL2QRunResult) -> str:
         """Analyze the run result and return a markdown string containing the error analysis report."""
-        sections = [
-            await self._error_categories_section(result),
-            self._error_section(result),
-            self._num_tool_calls_section(result),
-        ]
+        sections = []
+        if self.do_error_classification:
+            sections.append(await self._error_categories_section(result))
+        sections.append(self._error_section(result))
+        sections.append(self._num_tool_calls_section(result))
         if any(task.extra_pred_info.linked_schema is not None for task in result.tasks):
             sections.append(self._schema_linking_section(result))
         if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
@@ -270,6 +272,7 @@ async def main_async() -> None:
     parser.add_argument("--classifier_llm", default="openai-responses:gpt-5-mini")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--error_metric_name", default="simple_ex")
+    parser.add_argument("--do_error_classification", type=bool_flag, default=True)
     args = parser.parse_args()
     print(args)
     print()
@@ -280,7 +283,7 @@ async def main_async() -> None:
     if not all(task.output_type == "simple" for task in result.tasks):
         raise ValueError("Only simple tasks are supported for now.")
 
-    analyzer = Analyzer(classifier_llm=args.classifier_llm)
+    analyzer = Analyzer(classifier_llm=args.classifier_llm, do_error_classification=args.do_error_classification)
     t0 = time.time()
     error_analysis = await analyzer.analyze_async(result)
     print(f"Analysis finished in {time.time() - t0:.2f} seconds")
