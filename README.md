@@ -603,7 +603,7 @@ Feb 4 - 5
   - [x] Column order
   - [x] Do not strictly follow - hints might have typo / incorrect formula
     - bird-sql_dev_20240627_1306
-  - [ ] FK inconsistency
+  - [ ] FK inconsistency (using each side give different results)
   - [ ] Exact column name not used (the other column in the FK used instead)
   - [ ] Removing NULL in results - need to investigate the net improvement
   - [ ] Postprocessing failure (mostly due to question parsing)
@@ -611,11 +611,11 @@ Feb 4 - 5
     - bird-sql_dev_20240627_837
   - [x] Empty results
     - bird-sql_dev_20240627_860
-  - [ ] Full name
+  - [x] Full name
     - bird-sql_dev_20240627_878
-  - [ ] Percentage
+  - [x] Percentage
     - bird-sql_dev_20240627_881
-  - [ ] Truncated execution results
+  - [x] Truncated execution results
     - bird-sql_dev_20240627_929
   - [x] Return only one for top N questions
   - [x] Gold incorrect
@@ -629,11 +629,21 @@ Feb 4 - 5
   - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
 
 Feb 6 - 7
-- [ ] Split a199
-- [ ] Fix rate limit
-- [ ] openai_service_tier
+- [x] Split a199
+- [x] Fix rate limit
+- [x] openai_service_tier
+- [x] Fix reading cache every time
+- [x] Fix a199 errors
+  - [x] Update bird instructions
 
-- [ ] Fix reading cache every time
+Feb 8
+- [x] Exp 206: updated bird instructions
+  - [x]
+- [ ] Spider 2.0
+
+- [ ] Update schema preprocessor - fix gas station price
+- [ ] Test GPT-5, gemini-3-flash/pro
+- [ ] Model ensemble
 - [ ] Caching for embedding models
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
@@ -644,8 +654,6 @@ Feb 6 - 7
 - [ ] Show intermediate tables for CTE in run_query tool
 - [ ] Remove unuseful FKs in linked schema
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
-- [ ] Model ensemble
-- [ ] Support in-context examples
 - [ ] Fix Spider table and column names casing
 - [ ] Read CHESS source code
 - [ ] Support LSH index
