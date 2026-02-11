@@ -31,8 +31,10 @@ BIRD_DATASET_INSTRUCTIONS = """
 - **Preserve Data Shape:**
   - When returning a list of records (e.g., dates) from multiple rows, maintain one row per record.
   - When returning columns that represent similar concepts, keep them as separate columns and do not merge or union them into a single column.
-- **Percentage Values:**
+- **Percentage Values Format:**
     - Do not round percentage values unless explicitly requested.
+    - If the question specifies * 1.0 or * 100.0, follow the instructions.
+    - If the question does not specified, percentage values should be multiplied by 100 by default, while rates or ratios should not be multiplied by 100.
 - **Integer Division vs Decimal Division:**
   - SQLite uses integer division when both operands are integers (e.g., `5 / 2 = 2`, not `2.5`).
   - To get decimal results, cast at least one operand to REAL: `CAST(a AS REAL) / b`.
