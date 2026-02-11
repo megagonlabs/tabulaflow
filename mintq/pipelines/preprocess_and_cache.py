@@ -3,6 +3,7 @@ import time
 import asyncio
 import os
 import logging
+from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.preprocessors.base import NL2QPreprocessor, preprocessor_registry
@@ -31,6 +32,16 @@ async def preprocess_and_cache_async(
             raise ValueError(f"Unknown input type: {preprocessor.input_type}")
 
 
+def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
+    all_preprocessor_args = {
+        "question_embedder": {},
+        "schema_preprocessor": {},
+    }
+    if args.question_embedder_embedding_llm is not None:
+        all_preprocessor_args["question_embedder"]["embedding_llm"] = args.question_embedder_embedding_llm
+    return all_preprocessor_args
+
+
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--preprocessors", nargs="+", default=None)
@@ -43,6 +54,9 @@ async def main_async() -> None:
     # parser.add_argument("--subsample_size", default=None, type=int)
     # parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
     # parser.add_argument("--include_taxonomy", action="store_true")
+
+    # question embedder
+    parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
 
     parser.add_argument("--log_level", default="WARNING", type=str)
     parser.add_argument("--debug", action="store_true")
@@ -62,7 +76,10 @@ async def main_async() -> None:
     config.reload_from_env()
 
     preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
-    preprocessors = [preprocessor_registry.get_class(name)() for name in preprocessor_names]
+    all_preprocessor_args = parse_preprocessor_args(args)
+    preprocessors = [
+        preprocessor_registry.get_class(name)(**all_preprocessor_args.get(name, {})) for name in preprocessor_names
+    ]
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

@@ -234,6 +234,9 @@ async def main_async() -> None:
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")
 
+    # question embedder
+    parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
+
     # ambig agents
     parser.add_argument("--no_query_for_intended_only", action="store_true")
     parser.add_argument("--use_gold_phrases", action="store_true")

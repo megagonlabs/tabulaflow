@@ -45,6 +45,7 @@ from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 class SQLAgentConfig(BasicAgentConfig):
     min_columns_for_schema_linking: int = 20
     num_few_shot_examples: int = 0
+    question_embedder_embedding_llm: str = "openai:text-embedding-3-small"
 
 
 def format_question(task: SimpleNL2QTask) -> str:
@@ -452,7 +453,7 @@ class SQLAgent:
         if config.num_few_shot_examples > 0 and few_shot_dataset is None:
             raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
 
-        question_embedder = QuestionEmbedder()
+        question_embedder = QuestionEmbedder(embedding_llm=config.question_embedder_embedding_llm)
         if few_shot_dataset is not None:
             few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
         else:
@@ -483,7 +484,7 @@ class SQLAgent:
 
         schema_preprocessor = SchemaPreprocessor()
         preprocessed_schema = await schema_preprocessor.preprocess_async(db_connector)
-        question_embedder = QuestionEmbedder()
+        question_embedder = QuestionEmbedder(embedding_llm=self.config.question_embedder_embedding_llm)
         er_diagram_synthesizer = ERDiagramSynthesizer()
         er_diagram = await er_diagram_synthesizer.preprocess_async(db_connector)
         er_diagram_formatter = ERDiagramMermaidFormatter()
