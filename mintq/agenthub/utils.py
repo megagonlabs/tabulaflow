@@ -80,7 +80,7 @@ class BasicAgentConfig(BaseModel):
     max_steps: int = 10
     openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = None
     openai_reasoning_summary: Literal["detailed", "concise"] | None = None
-    openai_service_tier: Literal['auto', 'default', 'flex', 'priority'] | None = None
+    openai_service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
     def to_model_settings(self) -> dict[str, Any]:
         res: dict[str, Any] = {}

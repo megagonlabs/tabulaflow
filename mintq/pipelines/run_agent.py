@@ -101,9 +101,11 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
     else:
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
+
 ##### Remove #####
 RESUME_EXP_RESULT = None
 ##################
+
 
 async def run_agent_async(
     agent_cls: type[NL2QAgent],

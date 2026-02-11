@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from typing import ClassVar, Any
 import numpy as np
 import numpy.typing as npt
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
@@ -465,7 +465,9 @@ class SQLAgent:
 
         ##### Remove #####
         if task.pred_query is not None:
-            postprocessed_pred_query = await self.postprocessor.postprocess_async(ctx, task, task.extra_pred_info.raw_pred_query)
+            postprocessed_pred_query = await self.postprocessor.postprocess_async(
+                ctx, task, task.extra_pred_info.raw_pred_query
+            )
             task.pred_query = postprocessed_pred_query
             return task
         ##################
