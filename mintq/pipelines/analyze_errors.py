@@ -202,21 +202,31 @@ class Analyzer:
         return res
 
     def _postprocess_impact_section(self, result: NL2QRunResult) -> str:
-        qids: dict[str, list[str]] = {"Improved": [], "Regressed": [], "Potential Improvable": []}
+        qids: dict[str, list[str]] = {
+            "Improved": [],
+            "Regressed": [],
+            "Potential Improvable (bird_sql_ex_soft)": [],
+            "Potential Improvable (simple_ex)": [],
+        }
         for task in result.tasks:
             if task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0 and task.eval_metrics["bird_sql_ex"] == 1.0:
                 qids["Improved"].append(task.qid)
             elif task.eval_metrics["raw_pred_bird_sql_ex"] == 1.0 and task.eval_metrics["bird_sql_ex"] == 0.0:
                 qids["Regressed"].append(task.qid)
             elif task.eval_metrics["raw_pred_bird_sql_ex"] == task.eval_metrics["bird_sql_ex"] == 0.0 and (
+                task.eval_metrics["bird_sql_ex_soft"] == 1.0
+            ):
+                qids["Potential Improvable (bird_sql_ex_soft)"].append(task.qid)
+            elif task.eval_metrics["bird_sql_ex_soft"] == 0.0 and (
                 task.eval_metrics["raw_pred_simple_ex"] == 1.0 or task.eval_metrics["simple_ex"] == 1.0
             ):
-                qids["Potential Improvable"].append(task.qid)
+                qids["Potential Improvable (simple_ex)"].append(task.qid)
 
         descriptions = {
             "Improved": "Tasks where bird_sql_ex improved from 0.0 to 1.0",
             "Regressed": "Tasks where bird_sql_ex regressed from 1.0 to 0.0",
-            "Potential Improvable": "Tasks where bird_sql_ex remains 0.0, but raw_pred_simple_ex or simple_ex is 1.0",
+            "Potential Improvable (bird_sql_ex_soft)": "Tasks where bird_sql_ex remains 0.0, but bird_sql_ex_soft is 1.0",
+            "Potential Improvable (simple_ex)": "Tasks where bird_sql_ex_soft remains 0.0, but simple_ex is 1.0",
         }
 
         res = "## Postprocessing Impact"
