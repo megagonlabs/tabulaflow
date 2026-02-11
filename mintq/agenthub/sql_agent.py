@@ -291,7 +291,7 @@ You are a helpful AI database expert who can refine the final SELECT clause of a
 - You may ONLY apply the following modifications to **the final SELECT clause**:
   (1) Remove columns
   (2) Reorder the columns
-  (3) Concatenate or de-concatenate columns
+  (3) De-concatenate columns
   (4) Add or remove the DISTINCT keyword
 - All other modifications are forbidden.
   - You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
