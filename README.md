@@ -638,7 +638,7 @@ Feb 6 - 7
 
 Feb 8
 - [x] Exp 206: updated bird instructions
-  - [x]
+  - [x] Updated bird instructions with percentage value format - bird_sql_ex: 0.6623, simple_ex: 0.6943
 - [ ] Spider 2.0
 
 - [ ] Update schema preprocessor - fix gas station price
