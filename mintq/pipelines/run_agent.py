@@ -102,9 +102,6 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
 
-##### Remove #####
-RESUME_EXP_RESULT = None
-##################
 
 
 async def run_agent_async(
@@ -126,10 +123,6 @@ async def run_agent_async(
 
         j = min(i + batch_size, len(dataset.tasks))
         batch = dataset.tasks[i:j]
-        ##### Remove #####
-        if RESUME_EXP_RESULT is not None:
-            batch = RESUME_EXP_RESULT.tasks[i:j]
-        ##################
 
         agent_kwargs = {}
         if few_shot_dataset is not None:
@@ -276,7 +269,7 @@ async def main_async() -> None:
     parser.add_argument("--log_level", default="WARNING", type=str)
 
     ##### Remove #####
-    parser.add_argument("--resume_exp", default=None)
+    parser.add_argument("--TMP_resume_exp_for_postprocessor", default=None)
     ##################
 
     args = parser.parse_args()
@@ -297,11 +290,6 @@ async def main_async() -> None:
     if args.split == "a199":
         is_a199_flag = True
         args.split = "dev_20240627"
-    if args.resume_exp is not None:
-        with open(os.path.join(args.resume_exp, "result.json"), "r") as f:
-            global RESUME_EXP_RESULT
-            RESUME_EXP_RESULT = NL2QRunResult.model_validate_json(f.read())
-
     ##################
 
     if args.debug_litellm:
@@ -332,9 +320,13 @@ async def main_async() -> None:
     )
     if args.qids is not None:
         dataset.tasks = [task for task in dataset.tasks if task.qid in args.qids]
-    ##### DELETE #####
+    ##### Remove #####
     elif is_a199_flag:
         dataset.tasks = [task for task in dataset.tasks if task.qid in A199_QIDS]
+    elif args.TMP_resume_exp_for_postprocessor is not None:
+        with open(os.path.join(args.TMP_resume_exp_for_postprocessor, "result.json"), "r") as f:
+            result = NL2QRunResult.model_validate_json(f.read())
+            dataset.tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 1.0 and task.eval_metrics["bird_sql_ex"] == 0.0]
     ##################
     elif args.debug:
         if args.dataset == "arcs":
