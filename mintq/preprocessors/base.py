@@ -48,15 +48,29 @@ class CachedPreprocessorMixin(Generic[OutputT]):
     async def _preprocess_impl_async(self, input_data: Any) -> OutputT:
         raise NotImplementedError()
 
+    def _get_cache_id_suffix(self) -> str:
+        """Return an optional suffix appended to the cache identifier.
+
+        Subclasses can override this to differentiate cache entries when the
+        same preprocessor may produce different results depending on its
+        configuration (e.g. the embedding model used). The suffix is appended
+        to the base cache id which is either the dataset or db_connector identifier.
+
+        Returns:
+            A string to append to the cache id. Defaults to an empty string
+            (no suffix).
+        """
+        return ""
+
     def _get_cache_id(self, input_data: NL2QDBConnector | NL2QDataset) -> str:
         """Get a unique cache identifier for the input data."""
         if isinstance(input_data, NL2QDataset):
             cache_id = f"{input_data.name}_{input_data.split}"
             if input_data.databases is not None:
                 cache_id += "".join(f"_{db}" for db in input_data.databases)
-            return cache_id
+            return cache_id + self._get_cache_id_suffix()
         else:
-            return input_data.global_id
+            return input_data.global_id + self._get_cache_id_suffix()
 
     def _is_ndarray_type(self, t: type) -> bool:
         """Check if a type is a numpy ndarray type."""

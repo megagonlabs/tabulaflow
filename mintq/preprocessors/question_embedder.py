@@ -77,7 +77,10 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess(self, question: str) -> str:
+    def _get_cache_id_suffix(self) -> str:
+        return "_" + self.embedding_llm.replace(":", "--")
+
+    async def _get_skeleton_async(self, question: str) -> str:
         system_prompt = jinja2.Template(PREPROCESSING_SYSTEM_PROMPT).render()
         user_prompt = jinja2.Template(PREPROCESSING_USER_PROMPT).render(question=question)
         agent = Agent[None, str](
@@ -92,7 +95,7 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
     async def embed_task_async(self, task: NL2QTask) -> tuple[npt.NDArray[Any], QuestionSkeleton]:
         question = task.question
         if not self.disable_preprocessing:
-            skeleton = await self._preprocess(question)
+            skeleton = await self._get_skeleton_async(question)
         else:
             skeleton = question
         result = await self.embedder.embed_query(skeleton)
