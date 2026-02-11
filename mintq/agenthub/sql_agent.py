@@ -453,8 +453,8 @@ class SQLAgent:
         if config.num_few_shot_examples > 0 and few_shot_dataset is None:
             raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
 
-        question_embedder = QuestionEmbedder(embedding_llm=config.question_embedder_embedding_llm)
-        if few_shot_dataset is not None:
+        if config.num_few_shot_examples > 0:
+            question_embedder = QuestionEmbedder(embedding_llm=config.question_embedder_embedding_llm)
             few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
         else:
             few_shot_embeddings = None
@@ -492,11 +492,7 @@ class SQLAgent:
         preprocessed_schema = self._sort_tables(preprocessed_schema, er_diagram)
 
         examples: list[SimpleNL2QTask] = []
-        if (
-            self.config.num_few_shot_examples > 0
-            and self.few_shot_embeddings is not None
-            and self.few_shot_dataset is not None
-        ):
+        if self.config.num_few_shot_examples > 0:
             vec, _ = await question_embedder.embed_task_async(task)
 
             # Compute cosine similarity between task embedding and few-shot embeddings
