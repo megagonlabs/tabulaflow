@@ -286,59 +286,18 @@ class SchemaLinker:
         return expanded_linked_schema
 
 
-PARSE_QUESTION_PROMPT = """
-You are a helpful AI database expert who can analyze a given text-to-SQL question and identify the specific information pieces that must appear in the final result table.
-
-- The output should be an ordered list of information piece descriptions.
-- The information pieces must correspond exactly to the columns that should appear in the final table.
-- If an information piece is ambiguous and could map to multiple columns, explicitly mention this in its description.
-- To decide which information pieces are required, strictly follow the dataset and question instructions.
-
-<output_format_example>
-Text-to-SQL question: Which 3 students with a GPA below 2.5 are performing the worst in the Math course? Include the age.
-Output: ["student name or id", "student age"]
-</output_format_example>
-{%- if dataset_instructions %}
-
-<dataset_instructions>
-{{dataset_instructions}}
-</dataset_instructions>
-{%- endif %}
-{%- if examples %}
-
-<dataset_examples>
-Here are some similar questions and their correct SQL queries for reference:
-{% for example in examples %}
-Question: {{example.question}} {{example.question_instructions}}
-SQL: {{example.gold_query.query}}
-{% endfor -%}
-</dataset_examples>
-{%- endif %}
-
-===== Your Task =====
-
-Text-to-SQL question: {{question}}
-Output:
-""".strip()
-
-
 POSTPROCESS_PROMPT = """
 You are a helpful AI database expert who can refine the final SELECT clause of a given {{language}} query to ensure it strictly follows the dataset and question instructions.
-- The revised query must return only the columns allowed and comply with all question and dataset constraints.
-- You may ONLY apply the following modifications to the final SELECT clause:
-  (1) Remove columns that are not in the allowed list
-  (2) Reorder the columns to match the order in the allowed list
-  (3) Concatenate or de-concatenate columns if there are instructions for the question or dataset
+- You may ONLY apply the following modifications to **the final SELECT clause**:
+  (1) Remove columns
+  (2) Reorder the columns
+  (3) Concatenate or de-concatenate columns
   (4) Add or remove the DISTINCT keyword
-- All other modifications are forbidden. You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
+- All other modifications are forbidden.
+  - You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
+  - You are NOT allowed to modify other clauses.
 - If no changes are needed, return the original query unchanged.
 
-{%- if dataset_instructions %}
-
-<dataset_instructions>
-{{dataset_instructions}}
-</dataset_instructions>
-{%- endif %}
 {%- if examples %}
 
 <examples>
@@ -351,11 +310,14 @@ SQL: {{example.gold_query.query}}
 {%- endif %}
 
 ===== Your Task =====
+{%- if dataset_instructions %}
+
+<dataset_instructions>
+{{dataset_instructions}}
+</dataset_instructions>
+{%- endif %}
 
 Text-to-SQL question: {{question}}
-
-Descriptions of the columns allowed (in order):
-{{allowed_columns}}
 
 Current {{language}} query:
 {{raw_pred_query_with_exec_results}}
@@ -368,30 +330,10 @@ class Postprocessor:
     def __init__(self, config: SQLAgentConfig):
         self.config = config
 
-    async def parse_question_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask) -> list[str]:
-        class LLMOutput(BaseModel):
-            information_pieces: list[str]
-
-        agent = Agent[None, LLMOutput](  # type: ignore
-            model=self.config.llm,
-            output_type=LLMOutput,
-            model_settings=self.config.to_model_settings(),
-        )
-        prompt = jinja2.Template(PARSE_QUESTION_PROMPT).render(
-            dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
-            question=format_question(task),
-            examples=ctx.few_shot_examples,
-        )
-        result = await agent.run(prompt)
-        ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
-        ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-PARSE-QUESTION"))
-        return result.output.information_pieces  # type: ignore
-
     async def postprocess_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
         if not task.dataset_instructions:
             return pred_query
 
-        information_pieces = await self.parse_question_async(ctx, task)
         agent = Agent[None, str](  # type: ignore
             model=self.config.llm,
             model_settings=self.config.to_model_settings(),
@@ -401,7 +343,6 @@ class Postprocessor:
             question=format_question(task),
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             examples=ctx.few_shot_examples,
-            allowed_columns=information_pieces,
             raw_pred_query_with_exec_results=pred_query.to_markdown(),
         )
         result = await agent.run(prompt)
@@ -417,7 +358,7 @@ class Postprocessor:
             return pred_query
         elif pred_query.exec_result.df is not None and len(revised_exec_result.df.columns) > len(
             pred_query.exec_result.df.columns
-        ):
+        ):  # We do not allow adding columns
             return pred_query
 
         return PredQuery(
