@@ -134,8 +134,8 @@ class RunQueryNoParamsTool:
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
 
-        if df.isnull().all().any():
-            res += "\n(warning: a column is entirely null, the query might be incorrect)"
+        # if df.isnull().all().any():
+        #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:
