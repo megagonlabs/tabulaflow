@@ -134,7 +134,7 @@ class RunQueryNoParamsTool:
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
         if len(df) > self.max_visible_rows:
-            res += "\n(note: the complete results have been recorded)"
+            res += "\n(note: results are truncated for display, but the full results have been recorded)"
 
         # if df.isnull().all().any():
         #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
