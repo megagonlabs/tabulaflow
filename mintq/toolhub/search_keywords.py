@@ -18,8 +18,9 @@ class SearchKeywordsToolMetrics(BaseModel):
 class SearchKeywordsTool:
     name: ClassVar = "search_keywords"
 
-    def __init__(self, db_connector: BaseSQLDBConnector):
+    def __init__(self, db_connector: BaseSQLDBConnector, max_visible_results: int = 40):
         self.db_connector = db_connector
+        self.max_visible_results = max_visible_results
         self._metrics = SearchKeywordsToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str, keywords: list[str]) -> str:
@@ -85,10 +86,14 @@ class SearchKeywordsTool:
         if not matches:
             return "(no matches found)"
 
-        res = f"{len(matches)} matches:\n"
-        res += "\n".join(matches[:10])
-        if len(matches) > 10:
-            res += "\n..."
+        res = f"{len(matches)} matches found:\n"
+        if len(matches) <= self.max_visible_results:
+            res += "\n".join(matches)
+        else:
+            half = self.max_visible_results // 2
+            res += "\n".join(matches[:half])
+            res += f"\n... ({len(matches) - self.max_visible_results} more) ...\n"
+            res += "\n".join(matches[-(self.max_visible_results - half) :])
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:
