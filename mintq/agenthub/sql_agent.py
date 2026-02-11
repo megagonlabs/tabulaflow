@@ -331,8 +331,8 @@ class Postprocessor:
         self.config = config
 
     async def postprocess_async(self, ctx: SQLAgentContext, task: SimpleNL2QTask, pred_query: PredQuery) -> PredQuery:
-        if not task.dataset_instructions:
-            return pred_query
+        # if not task.dataset_instructions:
+        #     return pred_query
 
         agent = Agent[None, str](  # type: ignore
             model=self.config.llm,
