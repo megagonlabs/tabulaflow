@@ -289,10 +289,11 @@ class SchemaLinker:
 POSTPROCESS_PROMPT = """
 You are a helpful AI database expert who can refine the final SELECT clause of a given {{language}} query to ensure it strictly follows the dataset and question instructions.
 - You may ONLY apply the following modifications to **the final SELECT clause**:
-  (1) Remove columns
-  (2) Reorder the columns
-  (3) De-concatenate columns
-  (4) Add or remove the DISTINCT keyword
+  (1) Remove columns.
+  (2) Reorder the columns.
+  (3) De-concatenate columns.
+  (4) Add or remove the DISTINCT keyword.
+  (5) Adjust placement of * 100 in percentage calculations (e.g., move between numerator and denominator). However, you cannot introduce or remove * 100.
 - All other modifications are forbidden.
   - You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
   - You are NOT allowed to modify other clauses.
