@@ -597,11 +597,11 @@ Feb 4 - 5
   - [x] order tables in schema to match ER diagram
 - [x] Exp 203: few-shot examples - improved to 0.6656 raw_pred_bird_sql_ex
 - [x] Analyze output/199_gpt-5-mini-medium/analysis.md
-  - [ ] YES / NO
+  - [x] YES / NO
     - sql_dev_20240627_469
     - sql_dev_20240627_473
-  - [ ] Column order
-  - [ ] Do not strictly follow - hints might have typo / incorrect formula
+  - [x] Column order
+  - [x] Do not strictly follow - hints might have typo / incorrect formula
     - bird-sql_dev_20240627_1306
   - [ ] FK inconsistency
   - [ ] Exact column name not used (the other column in the FK used instead)
@@ -609,7 +609,7 @@ Feb 4 - 5
   - [ ] Postprocessing failure (mostly due to question parsing)
   - [ ] Nested queries over ORDER BY ... LIMIT 1
     - bird-sql_dev_20240627_837
-  - [ ] Empty results
+  - [x] Empty results
     - bird-sql_dev_20240627_860
   - [ ] Full name
     - bird-sql_dev_20240627_878
@@ -617,8 +617,8 @@ Feb 4 - 5
     - bird-sql_dev_20240627_881
   - [ ] Truncated execution results
     - bird-sql_dev_20240627_929
-  - [ ] Return only one for top N questions
-  - [ ] Gold incorrect
+  - [x] Return only one for top N questions
+  - [x] Gold incorrect
     - bird-sql_dev_20240627_1026
     - bird-sql_dev_20240627_1028
     - bird-sql_dev_20240627_1085
@@ -627,6 +627,11 @@ Feb 4 - 5
     - bird-sql_dev_20240627_1297
     - bird-sql_dev_20240627_1520
   - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
+
+Feb 6 - 7
+- [ ] Split a199
+- [ ] Fix rate limit
+- [ ] openai_service_tier
 
 - [ ] Fix reading cache every time
 - [ ] Caching for embedding models
