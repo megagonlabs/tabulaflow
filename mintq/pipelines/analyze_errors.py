@@ -54,6 +54,20 @@ Example:
 """.strip(),
     ),
     ErrorCategory(
+        name="task_has_percentage_not_multiply_by_100",
+        description="""
+The task question ask of a percentage value, the resulting value is not multiplied by 100.
+Applicable regardless of prediction and evaluation metrics.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="task_has_percentage_multiplied_by_100",
+        description="""
+The task question ask of a percentage value, the resulting value is multiplied by 100.
+Applicable regardless of prediction and evaluation metrics.
+""".strip(),
+    ),
+    ErrorCategory(
         name="pred_query_uses_non_sqlite_syntax",
         description="""
 The predicted query uses a SQL syntax or a function that is not supported by SQLite, leading to different execution results from the gold query.
