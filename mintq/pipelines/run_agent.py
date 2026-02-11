@@ -326,7 +326,7 @@ async def main_async() -> None:
     elif args.TMP_resume_exp_for_postprocessor is not None:
         with open(os.path.join(args.TMP_resume_exp_for_postprocessor, "result.json"), "r") as f:
             result = NL2QRunResult.model_validate_json(f.read())
-            dataset.tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 1.0 and task.eval_metrics["bird_sql_ex"] == 0.0]
+            dataset.tasks = [task for task in result.tasks if task.eval_metrics["raw_pred_simple_ex"] == 1.0 and task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0]
     ##################
     elif args.debug:
         if args.dataset == "arcs":
