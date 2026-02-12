@@ -466,7 +466,7 @@ class SQLAgent:
         ctx.usage += question_embedder.usage()
 
         ##### Remove #####
-        if task.pred_query is not None:
+        if hasattr(task, "pred_query") and task.pred_query is not None:
             from mintq.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
             task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
             postprocessed_pred_query = await self.postprocessor.postprocess_async(
