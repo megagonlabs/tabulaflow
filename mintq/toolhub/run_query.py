@@ -23,10 +23,11 @@ class LLMParameter(BaseModel):
 class RunQueryWithParamsTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20, floatfmt: str = ".8g"):
         self.db_connector = db_connector
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
+        self.floatfmt = floatfmt
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
@@ -74,7 +75,7 @@ class RunQueryWithParamsTool:
 
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
-        res += "\n(note: results may be truncated or numeric values may be rounded for display, but the precise execution results have been recorded)"
+        res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
         if df.isnull().all().any():
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
@@ -95,10 +96,11 @@ class RunQueryWithParamsTool:
 class RunQueryNoParamsTool:
     name: ClassVar = "run_query"
 
-    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20):
+    def __init__(self, db_connector: BaseSQLDBConnector, timeout: int | None = 90, max_visible_rows: int = 20, floatfmt: str = ".8g"):
         self.db_connector = db_connector
         self.timeout = timeout
         self.max_visible_rows = max_visible_rows
+        self.floatfmt = floatfmt
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
@@ -134,7 +136,7 @@ class RunQueryNoParamsTool:
 
         res = format_df(df, max_visible_rows=self.max_visible_rows)
         res += f"\n({len(df)} rows)"
-        res += "\n(note: results may be truncated or numeric values may be rounded for display, but the precise execution results have been recorded)"
+        res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
         # if df.isnull().all().any():
         #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
