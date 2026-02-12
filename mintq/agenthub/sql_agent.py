@@ -293,7 +293,8 @@ You are a helpful AI database expert who can refine the final SELECT clause of a
   (2) Reorder the columns.
   (3) De-concatenate columns.
   (4) Add or remove the DISTINCT keyword.
-  (5) Move the placement of * 100.0 in percentage calculations from denominator to numerator or vice versa. However, you cannot introduce or remove * 100.0.
+  (5) Rounding of numeric values.
+  (6) Move the placement of * 100.0 in percentage calculations from denominator to numerator or vice versa. However, you cannot introduce or remove * 100.0.
 - If you remove an aliased column that is referenced in other clauses (e.g., ORDER BY, HAVING), you are allowed to modify those clauses to keep the query executable.
 - All other modifications are forbidden.
   - You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
