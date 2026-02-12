@@ -77,27 +77,39 @@ DEFAULT_CATEGORIES = [
     # """.strip(),
     #     ),
     ErrorCategory(
-        name="pred_query_uses_incorrect_syntax_or_function",
-        description="""
-    The predicted query uses a syntax or a function that is not supported by corresponding DBMS or dialect, leading to different execution results from the gold query.
-    Only applicable if simple_ex = 0.0.
-    """.strip(),
+        name="gold_query_columns_follow_question_mention_order",
+        description="The SELECT columns in the gold query appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
     ),
     ErrorCategory(
-        name="error_due_to_task_ambiguity",
-        description="""
-    The error is due to task ambiguity. Both prediction and gold query are valid interpretations of the question.
-    Only applicable if simple_ex = 0.0.
-    """.strip(),
+        name="gold_query_columns_do_not_follow_question_mention_order",
+        description="The SELECT columns in the gold query do not appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
     ),
-    ErrorCategory(
-        name="error_due_to_incorrect_gold_query",
-        description="""
-    The gold query is incorrect. The predicted query aligns better with the question than the gold query.
-    Only applicable if simple_ex = 0.0.
-    """.strip(),
-    ),
+    # ErrorCategory(
+    #     name="pred_query_uses_incorrect_syntax_or_function",
+    #     description="""
+    # The predicted query uses a syntax or a function that is not supported by corresponding DBMS or dialect, leading to different execution results from the gold query.
+    # Only applicable if simple_ex = 0.0.
+    # """.strip(),
+    # ),
+    # ErrorCategory(
+    #     name="error_due_to_task_ambiguity",
+    #     description="""
+    # The error is due to task ambiguity. Both prediction and gold query are valid interpretations of the question.
+    # Only applicable if simple_ex = 0.0.
+    # """.strip(),
+    # ),
+    # ErrorCategory(
+    #     name="error_due_to_incorrect_gold_query",
+    #     description="""
+    # The gold query is incorrect. The predicted query aligns better with the question than the gold query.
+    # Only applicable if simple_ex = 0.0.
+    # """.strip(),
+    # ),
 ]
+
+##### Remove #####
+MASK_PREDICTION = True
+##################
 
 
 class LLMErrorClassifier:
@@ -105,7 +117,7 @@ class LLMErrorClassifier:
         self,
         llm: str = "openai-responses:gpt-5-mini",
         categories: list[ErrorCategory] = DEFAULT_CATEGORIES,
-        mask_prediction: bool = False,
+        mask_prediction: bool = MASK_PREDICTION,
     ):
         self.llm = llm
         self.categories = categories
