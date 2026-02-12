@@ -76,13 +76,17 @@ DEFAULT_CATEGORIES = [
     # Applicable regardless of prediction and evaluation metrics.
     # """.strip(),
     #     ),
+    # ErrorCategory(
+    #     name="gold_query_columns_follow_question_mention_order",
+    #     description="The SELECT columns in the gold query appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
+    # ),
+    # ErrorCategory(
+    #     name="gold_query_columns_do_not_follow_question_mention_order",
+    #     description="The SELECT columns in the gold query do not appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
+    # ),
     ErrorCategory(
-        name="gold_query_columns_follow_question_mention_order",
-        description="The SELECT columns in the gold query appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
-    ),
-    ErrorCategory(
-        name="gold_query_columns_do_not_follow_question_mention_order",
-        description="The SELECT columns in the gold query do not appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
+        name="error_due_to_numeric_precision",
+        description="The displayed predicted query execution results are exactly the same as the gold query results. Only applicable if simple_ex = 1.0 and one other _ex metric is 0.0.",
     ),
     # ErrorCategory(
     #     name="pred_query_uses_incorrect_syntax_or_function",
