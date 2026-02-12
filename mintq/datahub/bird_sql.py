@@ -15,6 +15,7 @@ BIRD_DATASET_INSTRUCTIONS = """
 - **SELECT Clause:**
   - In the final SELECT clause only return explicitly requested columns.
   - If the question asks for a set of entities, return their names if available (e.g. for students), otherwise return their IDs (e.g. for transactions).
+  - Ensure that the SELECT columns appear in the same order as they are mentioned in the question.
   - Examples:
     - If the question asks for a maximum value, do not include the entity that attains it.
       Question: "What is the highest score?" Return columns: ["highest score"] (exclude the student).
