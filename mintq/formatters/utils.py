@@ -8,6 +8,7 @@ def format_df(
     max_visible_rows: int = 10,
     max_cell_width: int = 200,
     tablefmt: str = "github",
+    floatfmt: str = ".5f",
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
     def truncate_cell(val: object) -> object:
@@ -35,4 +36,6 @@ def format_df(
         display_df = pd.concat([display_df, ellipsis_row], ignore_index=True)
 
     # showindex=False hides the automatic row numbers
-    return tabulate(display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[NULL]")
+    return tabulate(
+        display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[NULL]", floatfmt=floatfmt
+    )
