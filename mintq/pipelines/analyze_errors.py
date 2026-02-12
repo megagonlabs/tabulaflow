@@ -86,7 +86,7 @@ DEFAULT_CATEGORIES = [
     # ),
     ErrorCategory(
         name="error_due_to_numeric_precision",
-        description="The displayed predicted query execution results are exactly the same as the gold query results. Only applicable if simple_ex = 1.0 and one other _ex metric is 0.0.",
+        description="The displayed predicted query execution results in the `## Pred Query` section are exactly the same as the gold query results (same shape and values). Only applicable if simple_ex = 1.0 and one other _ex metric is 0.0.",
     ),
     # ErrorCategory(
     #     name="pred_query_uses_incorrect_syntax_or_function",
