@@ -50,10 +50,6 @@ async def main_async() -> None:
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_20240627")
     parser.add_argument("--databases", default=None, nargs="+")
-    parser.add_argument("--extra_splits_for_dataset_preprocessors", nargs="+", default=None)
-    # parser.add_argument("--subsample_size", default=None, type=int)
-    # parser.add_argument("--difficulty", default=None, choices=["simple", "moderate", "challenging"])
-    # parser.add_argument("--include_taxonomy", action="store_true")
 
     # question embedder
     parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
@@ -64,14 +60,10 @@ async def main_async() -> None:
 
     if args.dataset == "bird-sql":
         parser.set_defaults(
-            preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "question_embedder"],
-            split="dev_20240627",
-            extra_splits_for_dataset_preprocessors=["train"],
+            split="dev_20240627", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "question_embedder"]
         )
     elif args.dataset == "spider2-snow":
-        parser.set_defaults(
-            preprocessors=["er_diagram_synthesizer"], split="test", extra_splits_for_dataset_preprocessors=[]
-        )
+        parser.set_defaults(split="test", preprocessors=["er_diagram_synthesizer"])
 
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
@@ -102,17 +94,6 @@ async def main_async() -> None:
     t0 = time.time()
     await preprocess_and_cache_async(dataset, preprocessors)
     print(f"Finished preprocess and cache in {time.time() - t0:.2f} seconds.")
-
-    if args.extra_splits_for_dataset_preprocessors is not None:
-        print(f"Preprocessing extra splits for dataset preprocessors: {args.extra_splits_for_dataset_preprocessors}")
-        dataset_preprocessors = [p for p in preprocessors if p.input_type == "dataset"]
-        t0 = time.time()
-        for split in args.extra_splits_for_dataset_preprocessors:
-            dataset = await dataset_loader.get_split_async(split)
-            await preprocess_and_cache_async(dataset, dataset_preprocessors)  # type: ignore
-        print(
-            f"Finished preprocess and cache of extra splits for dataset preprocessors in {time.time() - t0:.2f} seconds."
-        )
 
     print()
     print("Preprocessor usage:")
