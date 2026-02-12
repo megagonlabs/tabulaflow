@@ -112,7 +112,7 @@ DEFAULT_CATEGORIES = [
 ]
 
 ##### Remove #####
-MASK_PREDICTION = True
+MASK_PREDICTION = False
 ##################
 
 
@@ -156,7 +156,7 @@ class LLMErrorClassifier:
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return result.output  # type: ignore
+        return list(set(result.output))
 
     async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:
         all_results = await asyncio.gather(*[self._classify_task_async(task) for task in result.tasks])
