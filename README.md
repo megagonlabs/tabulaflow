@@ -651,6 +651,7 @@ Feb 11
 Feb 12
 - [x] Exp 207: bird_sql_ex at 0.6734!
 - [ ] Spider 2.0
+
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] Test GPT-5, gemini-3-flash/pro
 - [ ] Model ensemble
