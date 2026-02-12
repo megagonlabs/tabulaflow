@@ -35,7 +35,7 @@ BIRD_DATASET_INSTRUCTIONS = """
     - Do not round percentage values unless explicitly requested.
     - If the question specifies * 1.0 or * 100.0, follow those instructions. 
     - If the question does not specified, percentage values should be multiplied by 100 by default, while rates or ratios should not be multiplied by 100.
-    - When multiplying by 100, apply it to the numerator rather than the denominator.
+    - When multiplying by 100.0, you must apply it to the numerator rather than the denominator, regardless of the formula in question hints.
 - **Integer Division vs Decimal Division:**
   - SQLite uses integer division when both operands are integers (e.g., `5 / 2 = 2`, not `2.5`).
   - To get decimal results, cast at least one operand to REAL: `CAST(a AS REAL) / b`.

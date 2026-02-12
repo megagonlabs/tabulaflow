@@ -293,7 +293,7 @@ You are a helpful AI database expert who can refine the final SELECT clause of a
   (2) Reorder the columns.
   (3) De-concatenate columns.
   (4) Add or remove the DISTINCT keyword.
-  (5) Adjust placement of * 100 in percentage calculations (e.g., move between numerator and denominator). However, you cannot introduce or remove * 100.
+  (5) Move the placement of * 100.0 in percentage calculations from denominator to numerator or vice versa. However, you cannot introduce or remove * 100.0.
 - All other modifications are forbidden.
   - You are NOT allowed to add additional returned columns or modify existing columns in the final SELECT clause.
   - You are NOT allowed to modify other clauses.
@@ -466,6 +466,8 @@ class SQLAgent:
 
         ##### Remove #####
         if task.pred_query is not None:
+            from mintq.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
+            task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
             postprocessed_pred_query = await self.postprocessor.postprocess_async(
                 ctx, task, task.extra_pred_info.raw_pred_query
             )
