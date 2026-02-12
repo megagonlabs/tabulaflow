@@ -40,6 +40,8 @@ BIRD_DATASET_INSTRUCTIONS = """
 - **Integer Division vs Decimal Division:**
   - SQLite uses integer division when both operands are integers (e.g., `5 / 2 = 2`, not `2.5`).
   - To get decimal results, cast at least one operand to REAL: `CAST(a AS REAL) / b`.
+- **Rounding:**
+  - Use ROUND() instead of printf() to round percentage values, since printf returns STRING instead of FLOAT.
 - **DISTINCT Keyword:**
   - Use `SELECT DISTINCT` when the question requires unique values (e.g., IDs, URLs). 
   - Refer to column statistics ("Value Statics") to determine if `DISTINCT` is necessary.
