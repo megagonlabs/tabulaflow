@@ -628,7 +628,7 @@ Feb 4 - 5
     - bird-sql_dev_20240627_1520
   - [ ] preprocssed schema quality - gas station price is aggreageted price not unit price
 
-Feb 6 - 7
+Feb 9 - 10
 - [x] Split a199
 - [x] Fix rate limit
 - [x] openai_service_tier
@@ -636,11 +636,21 @@ Feb 6 - 7
 - [x] Fix a199 errors
   - [x] Update bird instructions
 
-Feb 8
+Feb 11
 - [x] Exp 206: updated bird instructions
   - [x] Updated bird instructions with percentage value format - bird_sql_ex: 0.6623, simple_ex: 0.6943
-- [ ] Spider 2.0
+- [x] Tune postprocessing module
+  - [x] percentage value * 100 order (multiplied after numerator vs denominator)
+  - [x] Column order
+  - [x] Removing aliased column require modifying other clauses to keep the query executable
+  - [x] printf returns string instead of float
+    - bird-sql_dev_20240627_226
+    - bird-sql_dev_20240627_227
+    - bird-sql_dev_20240627_255
 
+Feb 12
+- [x] Exp 207: bird_sql_ex at 0.6734!
+- [ ] Spider 2.0
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] Test GPT-5, gemini-3-flash/pro
 - [ ] Model ensemble
