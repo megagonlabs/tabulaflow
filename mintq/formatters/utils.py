@@ -5,10 +5,10 @@ from tabulate import tabulate
 def format_df(
     df: pd.DataFrame,
     *,
-    max_visible_rows: int = 10,
+    max_visible_rows: int = 20,
     max_cell_width: int = 200,
     tablefmt: str = "github",
-    floatfmt: str = ".5f",
+    floatfmt: str = ".8g",
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
     def truncate_cell(val: object) -> object:
