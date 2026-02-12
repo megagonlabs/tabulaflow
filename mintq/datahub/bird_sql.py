@@ -25,8 +25,8 @@ BIRD_DATASET_INSTRUCTIONS = """
         Question: "What are the birthdates of students?" Return columns: ["birthdate"] (exclude the student).
     - If the question asks for a list of items ordered by a specific attribute, do not include the ordering attribute.
         Question: "Who are the top 3 students by score?" Return columns: ["student name or id"] (exclude the score).
-- **Yes/No Questions:**
-  - Binary information (e.g. "Whether ...") should be represented as a column with values "YES" or "NO".
+- **Yes/No Answers:**
+  - Binary information (e.g. "Whether ...") that does not directly corresponds to a database column should be represented as values "YES" or "NO".
 - **No String Concatenation:**
   - Do not concatenate strings in the results unless explicitly requested. In particular, do not combine first and last names into a single column.
 - **Preserve Data Shape:**
