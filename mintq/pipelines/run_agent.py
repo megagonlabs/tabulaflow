@@ -102,8 +102,6 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 
 
-
-
 async def run_agent_async(
     agent_cls: type[NL2QAgent],
     agent_config: BaseAgentConfig,
@@ -273,11 +271,14 @@ async def main_async() -> None:
     ##################
 
     args = parser.parse_args()
+    if args.dataset == "bird-sql":
+        parser.set_defaults(split="dev_20240627", num_few_shot_examples=5)
+    elif args.dataset == "spider2-snow":
+        parser.set_defaults(split="test", num_few_shot_examples=0)
+
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
-        if args.dataset == "bird-sql":
-            parser.set_defaults(split="dev_20240627")
-        elif args.dataset == "spider2-snow":
+        if args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
     print(args)
@@ -326,7 +327,11 @@ async def main_async() -> None:
     elif args.TMP_resume_exp_for_postprocessor is not None:
         with open(os.path.join(args.TMP_resume_exp_for_postprocessor, "result.json"), "r") as f:
             result = NL2QRunResult.model_validate_json(f.read())
-            dataset.tasks = [task for task in result.tasks if task.eval_metrics["raw_pred_simple_ex"] == 1.0 and task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0]
+            dataset.tasks = [
+                task
+                for task in result.tasks
+                if task.eval_metrics["raw_pred_simple_ex"] == 1.0 and task.eval_metrics["raw_pred_bird_sql_ex"] == 0.0
+            ]
     ##################
     elif args.debug:
         if args.dataset == "arcs":

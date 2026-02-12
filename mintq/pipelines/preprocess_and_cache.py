@@ -61,10 +61,21 @@ async def main_async() -> None:
     parser.add_argument("--log_level", default="WARNING", type=str)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
+
+    if args.dataset == "bird-sql":
+        parser.set_defaults(
+            preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "question_embedder"],
+            split="dev_20240627",
+            extra_splits_for_dataset_preprocessors=["train"],
+        )
+    elif args.dataset == "spider2-snow":
+        parser.set_defaults(
+            preprocessors=["er_diagram_synthesizer"], split="test", extra_splits_for_dataset_preprocessors=[]
+        )
+
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
-    if args.dataset == "bird-sql":
-        parser.set_defaults(extra_splits_for_dataset_preprocessors=["train"])
+
     args = parser.parse_args()
     print(args)
     print()
