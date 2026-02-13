@@ -52,7 +52,7 @@ class ERDiagramMermaidFormatter:
     def _format_table_name(self, table_name: str, schema_name: str | None) -> str:
         """Format a fully qualified table name, sanitized for Mermaid."""
         if schema_name:
-            return self._sanitize_name(f"{schema_name}_{table_name}")
+            return self._sanitize_name(f"{schema_name}__{table_name}")
         return self._sanitize_name(table_name)
 
     def _format_relationship(self, rel: ERDRelationship) -> str:
