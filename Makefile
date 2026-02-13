@@ -350,7 +350,9 @@ test-arcs-structured-kimi:
 .PHONY: test-spider2-agent
 test-spider2-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset spider2-snow --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-beaver-agent
 test-beaver-agent:
