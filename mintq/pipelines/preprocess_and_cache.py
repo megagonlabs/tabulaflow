@@ -44,14 +44,16 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--preprocessors", nargs="+", default=None)
+    parser.add_argument("--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer"])
 
     # dataset
     parser.add_argument("--dataset", default="bird-sql")
     parser.add_argument("--split", default="dev_20240627")
     parser.add_argument("--databases", default=None, nargs="+")
 
-    # question embedder
+    # preprocessor configs
+    parser.add_argument("--schema_preprocessor_column_profiler_llm", default=None)
+    parser.add_argument("--schema_preprocessor_foreign_key_predictor_llm", default=None)
     parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
 
     parser.add_argument("--overwrite", action="store_true")
@@ -60,11 +62,9 @@ async def main_async() -> None:
     args = parser.parse_args()
 
     if args.dataset == "bird-sql":
-        parser.set_defaults(
-            split="dev_20240627", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "question_embedder"]
-        )
+        parser.set_defaults(split="dev_20240627", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
     elif args.dataset == "spider2-snow":
-        parser.set_defaults(split="test", preprocessors=["er_diagram_synthesizer"])
+        parser.set_defaults(split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
 
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
