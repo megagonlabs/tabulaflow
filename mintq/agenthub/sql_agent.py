@@ -164,6 +164,12 @@ Output:
 </example>
 
 ===== Your Task =====
+{%- if document %}
+
+<document>
+{{document}}
+</document>
+{%- endif %}
 
 <database_schema>
 {{schema}}
@@ -244,6 +250,7 @@ class SchemaLinker:
                     ],
                     indent=2,
                 ),
+                document=task.document,
             )
             result = await agent.run(prompt)
             ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
