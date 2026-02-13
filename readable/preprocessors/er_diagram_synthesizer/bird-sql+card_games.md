@@ -1,39 +1,42 @@
 ```mermaid
 erDiagram
     Card {
-        table cards "Core card printing columns (names, costs, types, text, identifiers, printing and set metadata)."
+        table cards "One row per card printing in a set (core printed attributes, identifiers, and setCode)."
     }
     Set {
-        table sets "One row per set code with set properties and release information."
+        table sets "One row per set/release product with size, codes, release date, and product metadata."
+    }
+    CardTranslation {
+        table foreign_data "One row per (card uuid, language) with localized name/type/text/flavor; dependent on cards via uuid."
     }
     CardLegality {
-        table legalities "One row per (card, format) describing legality status; references cards via uuid."
+        table legalities "One row per (card uuid, format) with the status value."
     }
     CardRuling {
-        table rulings "One row per ruling text and date for a given card; references cards via uuid."
-    }
-    CardLocalization {
-        table foreign_data "One row per (card, language) with localized name/type/text/flavor; references cards via uuid."
+        table rulings "One row per ruling entry (date, text) linked to a card by uuid."
     }
     SetTranslation {
-        table set_translations "One row per (set, language) with translated set name; references sets via setCode."
+        table set_translations "One row per (setCode, language) with the localized set name; dependent on sets via setCode."
     }
 
     %% FROM cards JOIN sets ON cards.setCode = sets.code
-    Set |o--|{ Card : "CardBelongsToSet"
+    Set }o--|| Card : "CardPrintedInSet"
 
-    %% FROM cards JOIN legalities ON cards.uuid = legalities.uuid
-    Card |o--|{ CardLegality : "CardHasLegalities"
+    %% FROM cards JOIN foreign_data ON foreign_data.uuid = cards.uuid
+    Card }o--|| CardTranslation : "CardHasTranslations"
 
-    %% FROM cards JOIN rulings ON cards.uuid = rulings.uuid
-    Card |o--|{ CardRuling : "CardHasRulings"
+    %% FROM cards JOIN legalities ON legalities.uuid = cards.uuid
+    Card }o--|| CardLegality : "CardHasLegality"
 
-    %% FROM cards JOIN foreign_data ON cards.uuid = foreign_data.uuid
-    Card |o--|{ CardLocalization : "CardHasLocalizations"
+    %% FROM cards JOIN rulings ON rulings.uuid = cards.uuid
+    Card }o--|| CardRuling : "CardHasRulings"
 
-    %% FROM sets JOIN set_translations ON sets.code = set_translations.setCode
-    Set |o--|{ SetTranslation : "SetHasTranslations"
+    %% FROM sets JOIN set_translations ON set_translations.setCode = sets.code
+    Set }o--|| SetTranslation : "SetHasTranslations"
 
-    %% FROM sets AS childSet LEFT JOIN sets AS parentSet ON childSet.parentCode = parentSet.code
-    Set |o--o{ Set : "SetParentChildHierarchy"
+    %% FROM cards c1 JOIN cards c2 ON (',' || COALESCE(c1.otherFaceIds, '') || ',') LIKE '%,' || c2.uuid || ',%'
+    Card }o--o{ Card : "CardOtherFaceLink"
+
+    %% FROM sets child JOIN sets parent ON child.parentCode = parent.code
+    Set }o--o| Set : "SetHierarchy"
 ```

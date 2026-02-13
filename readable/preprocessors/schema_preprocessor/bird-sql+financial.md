@@ -1,212 +1,308 @@
 ```sql
 -- Database: financial
 
--- Table: account (4500 rows)
+/*
+Table: account
+Rows: 4500
+Sample rows:
+| account_id   | district_id   | frequency        | date       |
+|--------------|---------------|------------------|------------|
+| 1            | 18            | POPLATEK MESICNE | 1995-03-24 |
+| 2            | 1             | POPLATEK MESICNE | 1993-02-26 |
+| 3            | 5             | POPLATEK MESICNE | 1997-07-07 |
+| 4            | 12            | POPLATEK MESICNE | 1996-02-21 |
+| 5            | 15            | POPLATEK MESICNE | 1997-05-30 |
+| ...          | ...           | ...              | ...        |
+*/
 CREATE TABLE account (
     account_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Unique account identifier — primary key for the account table; used to link accounts to dispositions, transactions, orders and loans.</description>
+        -- <description>Account identifier — primary key of the account table; uniquely identifies each account and is used to link account-related records (transactions, loans, dispositions, orders).</description>
         -- <example>1</example>
     district_id INTEGER NOT NULL,
-        -- <description>Branch district identifier for the account. Identifies the district where the account's branch is located; populated for all 4,500 accounts with 77 distinct districts (IDs 1–77). Most accounts are in 'Hl.m. Praha' (554 accounts).</description>
+        -- <description>Branch district identifier — the district where the account's branch is located.</description>
         -- <example>18</example>
         -- <fk> -> district.district_id</fk>
     frequency TEXT NOT NULL,
-        -- <description>Account fee frequency — indicates how often account fees are charged.</description>
+        -- <description>Account fee billing frequency — indicates how often the account’s service/maintenance fee is charged (e.g., monthly, weekly, or per transaction).</description>
         -- <values>{'POPLATEK MESICNE', 'POPLATEK PO OBRATU', 'POPLATEK TYDNE'}</values>
     date DATE NOT NULL,
-        -- <description>Account creation date — the account's opening date (range: 1993-01-01 to 1997-12-29).</description>
+        -- <description>Account creation date — the date when the account was opened.</description>
         -- <example>'1995-03-24'</example>
     FOREIGN KEY (district_id) REFERENCES district(district_id)
 );
 
--- Table: card (892 rows)
+/*
+Table: card
+Rows: 892
+Sample rows:
+| card_id   | disp_id   | type    | issued     |
+|-----------|-----------|---------|------------|
+| 1         | 9         | gold    | 1998-10-16 |
+| 2         | 19        | classic | 1998-03-13 |
+| 3         | 41        | gold    | 1995-09-03 |
+| 4         | 42        | classic | 1998-11-26 |
+| 5         | 51        | junior  | 1995-04-24 |
+| ...       | ...       | ...     | ...        |
+*/
 CREATE TABLE card (
     card_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>card identifier — unique identifier for each credit card record (serves as the table's primary key).</description>
+        -- <description>Credit card identifier — unique identifier for each card record.</description>
         -- <example>1</example>
     disp_id INTEGER NOT NULL,
-        -- <description>Disposition identifier linking the card to a disposition (the client–account role that owns or can use the account). Always populated in this table and all values reference existing disposition records.</description>
+        -- <description>Disposition identifier for the card — identifies the client-account disposition (for example OWNER or DISPONENT) associated with this card.</description>
         -- <example>9</example>
         -- <fk> -> disp.disp_id</fk>
     type TEXT NOT NULL,
-        -- <description>Credit card tier indicating the card’s class and relative privilege level (junior = entry-level, classic = standard, gold = premium).</description>
+        -- <description>Card tier indicating the class/level of the credit card (clarifies customer/service level; e.g., junior = entry-level, classic = standard, gold = premium).</description>
         -- <values>{'classic', 'gold', 'junior'}</values>
     issued DATE NOT NULL,
-        -- <description>Credit card issue date — the date when the card was issued; values span 1993-11-07 to 1998-12-29 with no missing values (892 rows), useful for computing card age or tenure.</description>
+        -- <description>Credit card issue date — the date the card was issued (e.g., 1998-10-16).</description>
         -- <example>'1998-10-16'</example>
     FOREIGN KEY (disp_id) REFERENCES disp(disp_id)
 );
 
--- Table: client (5369 rows)
+/*
+Table: client
+Rows: 5369
+Sample rows:
+| client_id   | gender   | birth_date   | district_id   |
+|-------------|----------|--------------|---------------|
+| 1           | F        | 1970-12-13   | 18            |
+| 2           | M        | 1945-02-04   | 1             |
+| 3           | F        | 1940-10-09   | 1             |
+| 4           | M        | 1956-12-01   | 5             |
+| 5           | F        | 1960-07-03   | 5             |
+| ...         | ...      | ...          | ...           |
+*/
 CREATE TABLE client (
     client_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Unique client identifier — a stable ID that identifies each client (primary key); referenced by other tables such as disp.client_id.</description>
+        -- <description>Unique client identifier.</description>
         -- <example>1</example>
     gender TEXT NOT NULL,
-        -- <description>client gender — recorded client gender/sex</description>
+        -- <description>Client gender — the client's recorded sex used for demographic segmentation and analysis.</description>
         -- <values>{'F', 'M'}</values>
     birth_date DATE NOT NULL,
-        -- <description>Client birth date — the client's date of birth; values in this table span 1911-08-20 to 1987-09-27 (no NULLs), with 4,738 distinct dates among 5,369 clients.</description>
+        -- <description>Client date of birth — the client's date of birth, used to compute age and support age-based analyses or eligibility checks.</description>
         -- <example>'1970-12-13'</example>
     district_id INTEGER NOT NULL,
-        -- <description>client's district identifier — the client's branch/home district (links to district.district_id).</description>
+        -- <description>Client district identifier (the branch/district where the client is registered).</description>
         -- <example>18</example>
         -- <fk> -> district.district_id</fk>
     FOREIGN KEY (district_id) REFERENCES district(district_id)
 );
 
--- Table: disp (5369 rows)
+/*
+Table: disp
+Rows: 5369
+Sample rows:
+| disp_id   | client_id   | account_id   | type      |
+|-----------|-------------|--------------|-----------|
+| 1         | 1           | 1            | OWNER     |
+| 2         | 2           | 2            | OWNER     |
+| 3         | 3           | 2            | DISPONENT |
+| 4         | 4           | 3            | OWNER     |
+| 5         | 5           | 3            | DISPONENT |
+| ...       | ...         | ...          | ...       |
+*/
 CREATE TABLE disp (
     disp_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Disposition record identifier linking a client to an account (unique per disposition).</description>
+        -- <description>Disposition identifier — the unique id for each disposition record in the disp table.</description>
         -- <example>1</example>
     client_id INTEGER NOT NULL,
-        -- <description>Client identifier linking the disposition row to a client record (every disp row has a non-null client_id; values are unique per disposition and all match existing client records).</description>
+        -- <description>Client identifier for the disposition — identifies the client associated with this account (e.g., owner or disponent).</description>
         -- <example>1</example>
         -- <fk> -> client.client_id</fk>
     account_id INTEGER NOT NULL,
-        -- <description>Account identifier for the account associated with this disposition (links each disposition to an existing account).</description>
+        -- <description>Account identifier linking this disposition record to its associated account.</description>
         -- <example>1</example>
         -- <fk> -> account.account_id</fk>
     type TEXT NOT NULL,
-        -- <description>Disposition role on the account: indicates whether the client is the account owner or an authorized signatory (holds rights on the account).</description>
+        -- <description>Account disposition role indicating the client's relationship to the account and the rights that role confers (owner has full control; disponent has limited operating authority).</description>
         -- <values>{'DISPONENT', 'OWNER'}</values>
     FOREIGN KEY (account_id) REFERENCES account(account_id),
     FOREIGN KEY (client_id) REFERENCES client(client_id)
 );
 
--- Table: district (77 rows)
+/*
+Table: district
+Rows: 77
+Sample rows:
+| district_id   | A2          | A3              | A4      | A5   | A6   | A7   | A8   | A9   | A10   | A11   | A12   | A13   | A14   | A15   | A16   |
+|---------------|-------------|-----------------|---------|------|------|------|------|------|-------|-------|-------|-------|-------|-------|-------|
+| 1             | Hl.m. Praha | Prague          | 1204953 | 0    | 0    | 0    | 1    | 1    | 100.0 | 12541 | 0.2   | 0.43  | 167   | 85677 | 99107 |
+| 2             | Benesov     | central Bohemia | 88884   | 80   | 26   | 6    | 2    | 5    | 46.7  | 8507  | 1.6   | 1.85  | 132   | 2159  | 2674  |
+| 3             | Beroun      | central Bohemia | 75232   | 55   | 26   | 4    | 1    | 5    | 41.7  | 8980  | 1.9   | 2.21  | 111   | 2824  | 2813  |
+| 4             | Kladno      | central Bohemia | 149893  | 63   | 29   | 6    | 2    | 6    | 67.4  | 9753  | 4.6   | 5.05  | 109   | 5244  | 5892  |
+| 5             | Kolin       | central Bohemia | 95616   | 65   | 30   | 4    | 1    | 6    | 51.4  | 9307  | 3.8   | 4.43  | 118   | 2616  | 3040  |
+| ...           | ...         | ...             | ...     | ...  | ...  | ...  | ...  | ...  | ...   | ...   | ...   | ...   | ...   | ...   | ...   |
+*/
 CREATE TABLE district (
     district_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>District identifier for branch location — identifies the geographic district where a bank branch (and clients) are located; used to link district-level attributes (region, population, unemployment, etc.) to accounts and clients.</description>
+        -- <description>district identifier for the bank branch location</description>
         -- <example>1</example>
     A2 TEXT NOT NULL,
-        -- <description>District name — the name of the administrative district where the bank branch (district) is located.</description>
+        -- <description>District name — the name of the district where the bank branch is located.</description>
         -- <example>'Hl.m. Praha'</example>
     A3 TEXT NOT NULL,
-        -- <description>Administrative region of the district — the name of the larger geographic/administrative region that contains the district (used to group districts by region).</description>
+        -- <description>District region — the name of the larger administrative region that contains the district.</description>
         -- <values>{'Prague', 'central Bohemia', 'east Bohemia', 'north Bohemia', 'north Moravia', 'south Bohemia', 'south Moravia', 'west Bohemia'}</values>
     A4 TEXT NOT NULL,
-        -- <description>Number of inhabitants in the district.</description>
+        -- <description>Total number of inhabitants in the district (district population).</description>
         -- <example>'1204953'</example>
     A5 TEXT NOT NULL,
         -- <description>Count of municipalities in the district with fewer than 500 inhabitants.</description>
         -- <example>'0'</example>
     A6 TEXT NOT NULL,
-        -- <description>Number of municipalities in the district with 500–1,999 inhabitants. (Observed values range roughly 0–70 across districts.)</description>
+        -- <description>Number of municipalities in the district with 500–1,999 inhabitants.</description>
         -- <example>'0'</example>
     A7 TEXT NOT NULL,
-        -- <description>Count of municipalities in the district with between 2,000 and 9,999 inhabitants.</description>
+        -- <description>Count of municipalities in the district with 2,000–9,999 inhabitants</description>
         -- <example>'0'</example>
     A8 INTEGER NOT NULL,
-        -- <description>Count of municipalities in the district with more than 10,000 inhabitants (observed values 0–5; all 77 districts populated).</description>
+        -- <description>Count of municipalities in the district with more than 10,000 inhabitants.</description>
         -- <example>1</example>
     A10 REAL NOT NULL,
-        -- <description>Percentage of the district population living in urban areas.</description>
+        -- <description>Share of district population living in urban areas (percentage, 0–100).</description>
         -- <example>100.000</example>
     A11 INTEGER NOT NULL,
-        -- <description>average salary of employees in the district — per-district average salary (units not specified); values range 8,110–12,541 across all 77 districts (mean ≈ 9,032).</description>
+        -- <description>Average salary of employees in the district (unit/currency not specified).</description>
         -- <example>12541</example>
     A12 REAL NULL,
-        -- <description>District unemployment rate in 1995 (proportion of residents unemployed; e.g., 0.20 = 20%).</description>
+        -- <description>1995 district unemployment rate — the share of unemployed residents in the district for 1995 (expressed as a proportion; e.g., 0.20 = 20%).</description>
         -- <example>0.200</example>
     A13 REAL NOT NULL,
-        -- <description>Unemployment rate in 1996 for the district (share of residents unemployed). Values are numeric rates — confirm whether they represent proportions (0–1) or percentages (0–100).</description>
+        -- <description>1996 district unemployment rate — percentage of the district's population that was unemployed in 1996.</description>
         -- <example>0.430</example>
     A14 INTEGER NOT NULL,
         -- <description>Number of entrepreneurs per 1,000 inhabitants in the district.</description>
         -- <example>167</example>
     A15 INTEGER NULL,
-        -- <description>number of crimes committed in 1995 for the district (district-level count) — contains one NULL; observed range 818–85,677</description>
+        -- <description>Number of recorded crimes in 1995 for the district.</description>
         -- <example>85677</example>
     A16 INTEGER NOT NULL
-        -- <description>Number of crimes committed in the district during 1996.</description>
+        -- <description>Count of crimes committed in the district in 1996.</description>
         -- <example>99107</example>
 );
 
--- Table: loan (682 rows)
+/*
+Table: loan
+Rows: 682
+Sample rows:
+| loan_id   | account_id   | date       | amount   | duration   | payments   | status   |
+|-----------|--------------|------------|----------|------------|------------|----------|
+| 4959      | 2            | 1994-01-05 | 80952    | 24         | 3373.0     | A        |
+| 4961      | 19           | 1996-04-29 | 30276    | 12         | 2523.0     | B        |
+| 4962      | 25           | 1997-12-08 | 30276    | 12         | 2523.0     | A        |
+| 4967      | 37           | 1998-10-14 | 318480   | 60         | 5308.0     | D        |
+| 4968      | 38           | 1998-04-19 | 110736   | 48         | 2307.0     | C        |
+| ...       | ...          | ...        | ...      | ...        | ...        | ...      |
+*/
 CREATE TABLE loan (
     loan_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Loan identifier — unique identifier assigned to each loan record (values in this dataset range from 4959 to 7308).</description>
+        -- <description>Unique loan identifier for each loan record (table primary key).</description>
         -- <example>4959</example>
     account_id INTEGER NOT NULL,
-        -- <description>Account identifier (foreign key to account.account_id) for the account associated with this loan.</description>
+        -- <description>Account associated with the loan — identifies which account the loan belongs to and is used to join loan records to the account table.</description>
         -- <example>2</example>
         -- <fk> -> account.account_id</fk>
     date DATE NOT NULL,
-        -- <description>Loan approval date — the date the loan was approved; values range from 1993-07-05 to 1998-12-08 with no missing values.</description>
+        -- <description>Loan approval date — the date the loan was approved (when the loan was granted).</description>
         -- <example>'1994-01-05'</example>
     amount INTEGER NOT NULL,
-        -- <description>Approved loan amount (the principal approved for the loan, in USD).</description>
+        -- <description>Approved loan principal at origination, expressed in US dollars.</description>
         -- <example>80952</example>
     duration INTEGER NOT NULL,
-        -- <description>Loan term in months — the length of the loan repayment period (values range 12–60 months; mean ≈36.5; no missing values).</description>
+        -- <description>Loan duration in months (length of the loan repayment period).</description>
         -- <example>24</example>
     payments REAL NOT NULL,
-        -- <description>Monthly loan installment amount — the scheduled payment the borrower must pay each month (non-null; values in this dataset range roughly from 304 to 9,910 with a mean around 4,190).</description>
+        -- <description>Monthly scheduled repayment amount for the loan — the amount the borrower is required to pay each month (monetary units).</description>
         -- <example>3373.000</example>
     status TEXT NOT NULL,
-        -- <description>Loan repayment status code indicating contract stage and repayment condition: A = finished, no problems; B = finished, loan not paid; C = running (active), OK so far; D = running, client in debt.</description>
+        -- <description>Loan repayment status — coded indicator of the loan’s repayment state (A = finished, no problems; B = finished, loan not paid; C = active and current; D = active and delinquent).</description>
         -- <values>{'A', 'B', 'C', 'D'}</values>
     FOREIGN KEY (account_id) REFERENCES account(account_id)
 );
 
--- Table: order (6471 rows)
+/*
+Table: order
+Rows: 6471
+Sample rows:
+| order_id   | account_id   | bank_to   | account_to   | amount   | k_symbol   |
+|------------|--------------|-----------|--------------|----------|------------|
+| 29401      | 1            | YZ        | 87144583     | 2452.0   | SIPO       |
+| 29402      | 2            | ST        | 89597016     | 3372.7   | UVER       |
+| 29403      | 2            | QR        | 13943797     | 7266.0   | SIPO       |
+| 29404      | 3            | WX        | 83084338     | 1135.0   | SIPO       |
+| 29405      | 3            | CD        | 24485939     | 327.0    |            |
+| ...        | ...          | ...       | ...          | ...      | ...        |
+*/
 CREATE TABLE order (
     order_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Payment order identifier — unique ID for each payment/transfer order record in the orders table.</description>
+        -- <description>Unique order identifier — the primary key that uniquely identifies each payment order record in the order table.</description>
         -- <example>29401</example>
     account_id INTEGER NOT NULL,
-        -- <description>Ordering account identifier — the account that initiated (or is charged by) the payment order.</description>
+        -- <description>Account identifier for the order — identifies the account that submitted or is charged by the payment order.</description>
         -- <example>1</example>
         -- <fk> -> account.account_id</fk>
     bank_to TEXT NOT NULL,
-        -- <description>Recipient bank code — two-letter identifier for the payment recipient's bank (unique per bank). Always populated in this table (6,471 rows) with 13 distinct codes (examples: QR, YZ, AB).</description>
+        -- <description>Recipient bank code — two-letter code identifying the receiving bank for the payment.</description>
         -- <values>{'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}</values>
     account_to INTEGER NOT NULL,
-        -- <description>Recipient (beneficiary) account number — the account number to which the payment is sent; populated for all orders and almost always unique (6,446 distinct values out of 6,471 rows). Values are typically 8 digits (examples: 99149345, 97387158); observed range in the table is roughly 399 to 99,994,200.</description>
+        -- <description>Recipient account number — the destination account for the payment; used together with bank_to to identify the full recipient bank account.</description>
         -- <example>87144583</example>
     amount REAL NOT NULL,
-        -- <description>Debited amount — the money withdrawn from the customer's account for a payment order.</description>
+        -- <description>Debited amount for the payment order — the money withdrawn from the originating account when the order was executed.</description>
         -- <example>2452.000</example>
     k_symbol TEXT NOT NULL,
-        -- <description>Payment purpose code — short label classifying the purpose/characterization of the payment on the order (e.g., household payment, insurance, leasing, loan repayment). Many rows contain an empty value.</description>
+        -- <description>Payment purpose code — a short label that characterizes the purpose of the outgoing order (e.g., SIPO = household payment, POJISTNE = insurance, LEASING = leasing, UVER = loan repayment).</description>
         -- <values>{'', 'LEASING', 'POJISTNE', 'SIPO', 'UVER'}</values>
     FOREIGN KEY (account_id) REFERENCES account(account_id)
 );
 
--- Table: trans (1056320 rows)
+/*
+Table: trans
+Rows: 1056320
+Sample rows:
+| trans_id   | account_id   | date       | type   | operation     | amount   | balance   | k_symbol   | bank   | account    |
+|------------|--------------|------------|--------|---------------|----------|-----------|------------|--------|------------|
+| 1          | 1            | 1995-03-24 | PRIJEM | VKLAD         | 1000     | 1000      | [NULL]     | [NULL] | [NULL]     |
+| 5          | 1            | 1995-04-13 | PRIJEM | PREVOD Z UCTU | 3679     | 4679      | [NULL]     | AB     | 41403269.0 |
+| 6          | 1            | 1995-05-13 | PRIJEM | PREVOD Z UCTU | 3679     | 20977     | [NULL]     | AB     | 41403269.0 |
+| 7          | 1            | 1995-06-13 | PRIJEM | PREVOD Z UCTU | 3679     | 26835     | [NULL]     | AB     | 41403269.0 |
+| 8          | 1            | 1995-07-13 | PRIJEM | PREVOD Z UCTU | 3679     | 30415     | [NULL]     | AB     | 41403269.0 |
+| ...        | ...          | ...        | ...    | ...           | ...      | ...       | ...        | ...    | ...        |
+*/
 CREATE TABLE trans (
     trans_id INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Unique transaction identifier — non-null primary key for each transaction record (observed values range 1 to 3,682,990; all values are distinct).</description>
+        -- <description>Transaction identifier for individual transaction records.</description>
         -- <example>1</example>
     account_id INTEGER NOT NULL,
-        -- <description>Owning account of the transaction.</description>
+        -- <description>Account identifier linking a transaction to the account that performed it.</description>
         -- <example>1</example>
         -- <fk> -> account.account_id</fk>
     date DATE NOT NULL,
-        -- <description>Transaction date — the calendar day on which each transaction occurred; values span 1993-01-01 to 1998-12-31 with no missing values (1,056,320 rows, 2,191 distinct dates).</description>
+        -- <description>Transaction date — the calendar date when the transaction was made (the posting date).</description>
         -- <example>'1995-03-24'</example>
     type TEXT NOT NULL,
-        -- <description>transaction direction — indicates whether the transaction increases the account balance (credit) or decreases it (withdrawal/debit); the dataset uses separate codes to distinguish different kinds of outflows.</description>
+        -- <description>Transaction direction indicator — whether the record is an inflow (credit) or an outflow (withdrawal).</description>
         -- <values>{'PRIJEM', 'VYBER', 'VYDAJ'}</values>
     operation TEXT NULL,
-        -- <description>Transaction mode — short label indicating how the transaction was executed (e.g., transfer to/from account, cash deposit, or card/cash withdrawal). Contains a substantial fraction of NULLs (~17%).</description>
+        -- <description>transaction method indicating how the transaction was carried out (the mode or channel of the transaction, e.g., cash deposit, cash withdrawal, card withdrawal, incoming transfer from another account, outgoing transfer to another account).</description>
         -- <values>{'PREVOD NA UCET', 'PREVOD Z UCTU', 'VKLAD', 'VYBER KARTOU', 'VYBER'}</values>
     amount INTEGER NOT NULL,
-        -- <description>Transaction amount — cash value of the transaction in USD (amount credited or debited). No missing values; observed range 0–87,400 with mean ≈ 5,924 and about 35,890 distinct amounts across 1,056,320 rows.</description>
+        -- <description>Transaction amount — monetary value of the individual transaction in USD; consult the trans.type column to tell whether this amount was a credit (PRIJEM) or a debit/withdrawal (VYDAJ/VYBER).</description>
         -- <example>1000</example>
     balance INTEGER NOT NULL,
-        -- <description>Post-transaction account balance — the account balance immediately after each transaction; values can be negative.</description>
+        -- <description>Account balance after transaction (amount in USD), i.e., the account's balance immediately following that transaction.</description>
         -- <example>1000</example>
     k_symbol TEXT NULL,
-        -- <description>Transaction purpose code — a short text code indicating the reason or category of the transaction (e.g., UROK = interest credited; SLUZBY = service charges; POJISTNE = insurance payment; SIPO = household payments; DUCHOD = pension; UVER = loan repayment; SANKC. UROK = penalty/late interest). Many rows are NULL (no purpose recorded).</description>
+        -- <description>Transaction purpose label — a short text classification indicating the reason or purpose of the transaction (used to categorize transactions for reporting and accounting).</description>
         -- <values>{' ', 'DUCHOD', 'POJISTNE', 'SANKC. UROK', 'SIPO', 'SLUZBY', 'UROK', 'UVER'}</values>
     bank TEXT NULL,
-        -- <description>Partner bank identifier for the transaction — the counterparty bank code associated with a transaction (nullable). Many transactions have no partner bank recorded.</description>
+        -- <description>Counterparty bank code — a two‑letter code identifying the other party’s bank for the transaction.</description>
         -- <values>{'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}</values>
     account INTEGER NULL,
-        -- <description>counterparty account number — the partner (recipient/sender) account number for the transaction. Many rows are empty (~72% null); when present there are ~7.7k distinct accounts and a frequent sentinel value 0 (21,881 occurrences), indicating internal or unspecified counterparties.</description>
+        -- <description>counterparty account number — the account number of the transaction partner (populated for transfers/remittances and other inter-account operations; typically used together with the partner bank code; NULL for many cash/card operations).</description>
         -- <example>41403269</example>
     FOREIGN KEY (account_id) REFERENCES account(account_id)
 );

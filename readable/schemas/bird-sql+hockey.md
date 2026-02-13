@@ -1,38 +1,74 @@
 ```sql
 -- Database: hockey
 
--- Table: AwardsCoaches (77 rows)
+/*
+Table: AwardsCoaches
+Rows: 77
+Sample rows:
+| coachID    | award                | year   | lgID   | note   |
+|------------|----------------------|--------|--------|--------|
+| patrile01c | First Team All-Star  | 1930   | NHL    | [NULL] |
+| irvindi01c | Second Team All-Star | 1930   | NHL    | [NULL] |
+| patrile01c | First Team All-Star  | 1931   | NHL    | [NULL] |
+| irvindi01c | Second Team All-Star | 1931   | NHL    | [NULL] |
+| patrile01c | First Team All-Star  | 1932   | NHL    | [NULL] |
+| ...        | ...                  | ...    | ...    | ...    |
+*/
 CREATE TABLE AwardsCoaches (
-    coachID TEXT NULL,
+    coachID TEXT NOT NULL,
         -- <example>'patrile01c'</example>
         -- <fk> -> Coaches.coachID</fk>
-    award TEXT NULL,
+    award TEXT NOT NULL,
         -- <values>{'Baldwin', 'First Team All-Star', 'Jack Adams', 'Schmertz', 'Second Team All-Star'}</values>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1930</example>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHL', 'WHA'}</values>
     note TEXT NULL,
     FOREIGN KEY (coachID) REFERENCES Coaches(coachID)
 );
 
--- Table: AwardsMisc (124 rows)
+/*
+Table: AwardsMisc
+Rows: 124
+Sample rows:
+| name                                  | ID        | award   | year   | lgID   | note   |
+|---------------------------------------|-----------|---------|--------|--------|--------|
+| 1960 U.S. Olympic Hockey Team         | [NULL]    | Patrick | 2001   | NHL    | [NULL] |
+| 1998 U.S. Olympic Women's Hockey Team | [NULL]    | Patrick | 1998   | NHL    | [NULL] |
+| Al Arbour                             | arboual01 | Patrick | 1991   | NHL    | [NULL] |
+| Alex Delvecchio                       | delveal01 | Patrick | 1973   | NHL    | [NULL] |
+| Art Berglund                          | [NULL]    | Patrick | 1991   | NHL    | [NULL] |
+| ...                                   | ...       | ...     | ...    | ...    | ...    |
+*/
 CREATE TABLE AwardsMisc (
     name TEXT NOT NULL PRIMARY KEY,
         -- <example>'1960 U.S. Olympic Hockey Team'</example>
     ID TEXT NULL,
         -- <example>'arboual01'</example>
-    award TEXT NULL,
+    award TEXT NOT NULL,
         -- <values>{'Patrick'}</values>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>2001</example>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHL'}</values>
     note TEXT NULL
         -- <values>{'posthumous'}</values>
 );
 
--- Table: AwardsPlayers (2091 rows)
+/*
+Table: AwardsPlayers
+Rows: 2091
+Sample rows:
+| playerID   | award                | year   | lgID   | note   | pos    |
+|------------|----------------------|--------|--------|--------|--------|
+| abelsi01   | First Team All-Star  | 1948   | NHL    | [NULL] | C      |
+| abelsi01   | First Team All-Star  | 1949   | NHL    | [NULL] | C      |
+| abelsi01   | Hart                 | 1948   | NHL    | [NULL] | [NULL] |
+| abelsi01   | Second Team All-Star | 1941   | NHL    | [NULL] | LW     |
+| abelsi01   | Second Team All-Star | 1950   | NHL    | tie    | C      |
+| ...        | ...                  | ...    | ...    | ...    | ...    |
+*/
 CREATE TABLE AwardsPlayers (
     playerID TEXT NOT NULL,
         -- <example>'abelsi01'</example>
@@ -41,7 +77,7 @@ CREATE TABLE AwardsPlayers (
         -- <example>'First Team All-Star'</example>
     year INTEGER NOT NULL,
         -- <example>1948</example>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHL', 'WHA'}</values>
     note TEXT NULL,
         -- <values>{'Best Defenceman', 'Best Goaltender', 'MVP', 'Most Gentlemanly', 'Rookie', 'Scoring', 'shared', 'tie'}</values>
@@ -51,7 +87,19 @@ CREATE TABLE AwardsPlayers (
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: Coaches (1812 rows)
+/*
+Table: Coaches
+Rows: 1812
+Sample rows:
+| coachID   | year   | tmID   | lgID   | stint   | notes   | g   | w   | l   | t   | postg   | postw   | postl   | postt   |
+|-----------|--------|--------|--------|---------|---------|-----|-----|-----|-----|---------|---------|---------|---------|
+| abelsi01c | 1952   | CHI    | NHL    | 1       | [NULL]  | 70  | 27  | 28  | 15  | 7       | 3       | 4       | 0       |
+| abelsi01c | 1953   | CHI    | NHL    | 1       | [NULL]  | 70  | 12  | 51  | 7   | [NULL]  | [NULL]  | [NULL]  | [NULL]  |
+| abelsi01c | 1957   | DET    | NHL    | 2       | [NULL]  | 33  | 16  | 12  | 5   | 4       | 0       | 4       | 0       |
+| abelsi01c | 1958   | DET    | NHL    | 1       | [NULL]  | 70  | 25  | 37  | 8   | [NULL]  | [NULL]  | [NULL]  | [NULL]  |
+| abelsi01c | 1959   | DET    | NHL    | 1       | [NULL]  | 70  | 26  | 29  | 15  | 6       | 2       | 4       | 0       |
+| ...       | ...    | ...    | ...    | ...     | ...     | ... | ... | ... | ... | ...     | ...     | ...     | ...     |
+*/
 CREATE TABLE Coaches (
     coachID TEXT NOT NULL,
         -- <example>'abelsi01c'</example>
@@ -61,7 +109,7 @@ CREATE TABLE Coaches (
     tmID TEXT NOT NULL,
         -- <example>'CHI'</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     stint INTEGER NOT NULL,
         -- <example>1</example>
@@ -87,31 +135,55 @@ CREATE TABLE Coaches (
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID)
 );
 
--- Table: CombinedShutouts (54 rows)
+/*
+Table: CombinedShutouts
+Rows: 54
+Sample rows:
+| year   | month   | date   | tmID   | oppID   | R/P   | IDgoalie1   | IDgoalie2   |
+|--------|---------|--------|--------|---------|-------|-------------|-------------|
+| 1929   | 3       | 14     | TOR    | NYA     | R     | chabolo01   | grantbe01   |
+| 1941   | 3       | 15     | MTL    | NYA     | R     | bibeapa01   | gardibe01   |
+| 1955   | 3       | 22     | MTL    | BOS     | P     | plantja01   | hodgech01   |
+| 1968   | 2       | 14     | OAK    | PHI     | R     | smithga01   | hodgech01   |
+| 1970   | 11      | 5      | STL    | BOS     | R     | hallgl01    | wakeler01   |
+| ...    | ...     | ...    | ...    | ...     | ...   | ...         | ...         |
+*/
 CREATE TABLE CombinedShutouts (
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1929</example>
-    month INTEGER NULL,
+    month INTEGER NOT NULL,
         -- <example>3</example>
-    date INTEGER NULL,
+    date INTEGER NOT NULL,
         -- <example>14</example>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'TOR'</example>
-    oppID TEXT NULL,
+    oppID TEXT NOT NULL,
         -- <example>'NYA'</example>
-    "R/P" TEXT NULL,
+    "R/P" TEXT NOT NULL,
         -- <values>{'P', 'R'}</values>
-    IDgoalie1 TEXT NULL,
+    IDgoalie1 TEXT NOT NULL,
         -- <example>'chabolo01'</example>
         -- <fk> -> Master.playerID</fk>
-    IDgoalie2 TEXT NULL,
+    IDgoalie2 TEXT NOT NULL,
         -- <example>'grantbe01'</example>
         -- <fk> -> Master.playerID</fk>
     FOREIGN KEY (IDgoalie1) REFERENCES Master(playerID),
     FOREIGN KEY (IDgoalie2) REFERENCES Master(playerID)
 );
 
--- Table: Goalies (4278 rows)
+/*
+Table: Goalies
+Rows: 4278
+Sample rows:
+| playerID   | year   | stint   | tmID   | lgID   | GP   | Min   | W   | L   | T/OL   | ENG    | SHO   | GA   | SA     | PostGP   | PostMin   | PostW   | PostL   | PostT   | PostENG   | PostSHO   | PostGA   | PostSA   |
+|------------|--------|---------|--------|--------|------|-------|-----|-----|--------|--------|-------|------|--------|----------|-----------|---------|---------|---------|-----------|-----------|----------|----------|
+| abbotge01  | 1943   | 1       | BOS    | NHL    | 1    | 60    | 0   | 1   | 0      | [NULL] | 0     | 7    | [NULL] | [NULL]   | [NULL]    | [NULL]  | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]   | [NULL]   |
+| abrahch01  | 1974   | 1       | NEW    | WHA    | 16   | 870   | 8   | 6   | 1      | 0      | 1     | 47   | 504    | [NULL]   | [NULL]    | [NULL]  | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]   | [NULL]   |
+| abrahch01  | 1975   | 1       | NEW    | WHA    | 41   | 2385  | 18  | 18  | 2      | 1      | 2     | 136  | 1221   | 1        | 1         | 0       | 0       | [NULL]  | 0         | 0         | 0        | [NULL]   |
+| abrahch01  | 1976   | 1       | NEW    | WHA    | 45   | 2484  | 15  | 22  | 4      | 0      | 0     | 159  | 1438   | 2        | 90        | 0       | 1       | [NULL]  | 0         | 0         | 5        | 51       |
+| adamsjo02  | 1972   | 1       | BOS    | NHL    | 14   | 780   | 9   | 3   | 1      | 0      | 1     | 39   | [NULL] | [NULL]   | [NULL]    | [NULL]  | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]   | [NULL]   |
+| ...        | ...    | ...     | ...    | ...    | ...  | ...   | ... | ... | ...    | ...    | ...   | ...  | ...    | ...      | ...       | ...     | ...     | ...     | ...       | ...       | ...      | ...      |
+*/
 CREATE TABLE Goalies (
     playerID TEXT NOT NULL,
         -- <example>'abbotge01'</example>
@@ -121,10 +193,10 @@ CREATE TABLE Goalies (
         -- <fk>composite</fk>
     stint INTEGER NOT NULL,
         -- <example>1</example>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'BOS'</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     GP TEXT NULL,
         -- <example>'1'</example>
@@ -167,7 +239,19 @@ CREATE TABLE Goalies (
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: GoaliesSC (31 rows)
+/*
+Table: GoaliesSC
+Rows: 31
+Sample rows:
+| playerID   | year   | tmID   | lgID   | GP   | Min   | W   | L   | T   | SHO   | GA   |
+|------------|--------|--------|--------|------|-------|-----|-----|-----|-------|------|
+| benedcl01  | 1914   | OT1    | NHA    | 3    | 180   | 0   | 3   | 0   | 0     | 26   |
+| benedcl01  | 1919   | OTS    | NHL    | 5    | 300   | 3   | 2   | 0   | 1     | 11   |
+| benedcl01  | 1920   | OTS    | NHL    | 5    | 300   | 3   | 2   | 0   | 0     | 12   |
+| benedcl01  | 1922   | OTS    | NHL    | 6    | 361   | 5   | 1   | 0   | 1     | 8    |
+| benedcl01  | 1925   | MTM    | NHL    | 4    | 240   | 3   | 1   | 0   | 3     | 3    |
+| ...        | ...    | ...    | ...    | ...  | ...   | ... | ... | ... | ...   | ...  |
+*/
 CREATE TABLE GoaliesSC (
     playerID TEXT NOT NULL,
         -- <example>'benedcl01'</example>
@@ -175,68 +259,104 @@ CREATE TABLE GoaliesSC (
     year INTEGER NOT NULL,
         -- <example>1914</example>
         -- <fk>composite</fk>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'OT1'</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL'}</values>
-    GP INTEGER NULL,
+    GP INTEGER NOT NULL,
         -- <example>3</example>
-    Min INTEGER NULL,
+    Min INTEGER NOT NULL,
         -- <example>180</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>0</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>3</example>
-    T INTEGER NULL,
+    T INTEGER NOT NULL,
         -- <example>0</example>
-    SHO INTEGER NULL,
+    SHO INTEGER NOT NULL,
         -- <example>0</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>26</example>
     PRIMARY KEY (playerID, year),
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID),
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: GoaliesShootout (480 rows)
+/*
+Table: GoaliesShootout
+Rows: 480
+Sample rows:
+| playerID   | year   | stint   | tmID   | W   | L   | SA   | GA   |
+|------------|--------|---------|--------|-----|-----|------|------|
+| aebisda01  | 2005   | 1       | COL    | 2   | 1   | 10   | 2    |
+| aebisda01  | 2006   | 1       | MTL    | 2   | 2   | 18   | 6    |
+| andercr01  | 2005   | 1       | CHI    | 0   | 3   | 7    | 5    |
+| andercr01  | 2006   | 1       | FLO    | 1   | 0   | 2    | 0    |
+| andercr01  | 2008   | 1       | FLO    | 0   | 4   | 11   | 7    |
+| ...        | ...    | ...     | ...    | ... | ... | ...  | ...  |
+*/
 CREATE TABLE GoaliesShootout (
-    playerID TEXT NULL,
+    playerID TEXT NOT NULL,
         -- <example>'aebisda01'</example>
         -- <fk> -> Master.playerID</fk>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>2005</example>
         -- <fk>composite</fk>
-    stint INTEGER NULL,
+    stint INTEGER NOT NULL,
         -- <example>1</example>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'COL'</example>
         -- <fk>composite</fk>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>2</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>1</example>
-    SA INTEGER NULL,
+    SA INTEGER NOT NULL,
         -- <example>10</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>2</example>
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID),
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: HOF (365 rows)
+/*
+Table: HOF
+Rows: 365
+Sample rows:
+| year   | hofID      | name          | category   |
+|--------|------------|---------------|------------|
+| 1969   | abelsi01h  | Sid Abel      | Player     |
+| 1960   | adamsch01h | Charles Adams | Builder    |
+| 1959   | adamsja01h | Jack Adams    | Player     |
+| 1972   | adamswe01h | Weston Adams  | Builder    |
+| 1977   | ahearbu01h | Bunny Ahearne | Builder    |
+| ...    | ...        | ...           | ...        |
+*/
 CREATE TABLE HOF (
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1969</example>
     hofID TEXT NOT NULL PRIMARY KEY,
         -- <example>'abelsi01h'</example>
-    name TEXT NULL,
+    name TEXT NOT NULL,
         -- <example>'Sid Abel'</example>
-    category TEXT NULL
+    category TEXT NOT NULL
         -- <values>{'Builder', 'Player', 'Referee/Linesman'}</values>
 );
 
--- Table: Master (7761 rows)
+/*
+Table: Master
+Rows: 7761
+Sample rows:
+| playerID   | coachID   | hofID   | firstName   | lastName   | nameNote   | nameGiven        | nameNick   | height   | weight   | shootCatch   | legendsID   | ihdbID   | hrefID    | firstNHL   | lastNHL   | firstWHA   | lastWHA   | pos   | birthYear   | birthMon   | birthDay   | birthCountry   | birthState   | birthCity    | deathYear   | deathMon   | deathDay   | deathCountry   | deathState   | deathCity   |
+|------------|-----------|---------|-------------|------------|------------|------------------|------------|----------|----------|--------------|-------------|----------|-----------|------------|-----------|------------|-----------|-------|-------------|------------|------------|----------------|--------------|--------------|-------------|------------|------------|----------------|--------------|-------------|
+| aaltoan01  | [NULL]    | [NULL]  | Antti       | Aalto      | [NULL]     | Antti            | [NULL]     | 73       | 210      | L            | 14862       | 5928     | aaltoan01 | 1997       | 2000      | [NULL]     | [NULL]    | C     | 1975        | 3          | 4          | Finland        | [NULL]       | Lappeenranta | [NULL]      | [NULL]     | [NULL]     | [NULL]         | [NULL]       | [NULL]      |
+| abbeybr01  | [NULL]    | [NULL]  | Bruce       | Abbey      | [NULL]     | Bruce            | [NULL]     | 73       | 185      | L            | [NULL]      | 11918    | abbeybr01 | [NULL]     | [NULL]    | 1975       | 1975      | D     | 1951        | 8          | 18         | Canada         | ON           | Toronto      | [NULL]      | [NULL]     | [NULL]     | [NULL]         | [NULL]       | [NULL]      |
+| abbotge01  | [NULL]    | [NULL]  | George      | Abbott     | [NULL]     | George Henry     | Preacher   | 67       | 153      | L            | 18411       | 14591    | abbotge01 | 1943       | 1943      | [NULL]     | [NULL]    | G     | 1911        | 8          | 3          | Canada         | ON           | Synenham     | [NULL]      | [NULL]     | [NULL]     | [NULL]         | [NULL]       | [NULL]      |
+| abbotre01  | [NULL]    | [NULL]  | Reg         | Abbott     | [NULL]     | Reginald Stewart | [NULL]     | 71       | 164      | L            | 11801       | 11431    | abbotre01 | 1952       | 1952      | [NULL]     | [NULL]    | C     | 1930        | 2          | 4          | Canada         | MB           | Winnipeg     | [NULL]      | [NULL]     | [NULL]     | [NULL]         | [NULL]       | [NULL]      |
+| abdelju01  | [NULL]    | [NULL]  | Justin      | Abdelkader | [NULL]     | [NULL]           | [NULL]     | 73       | 195      | L            | 21661       | 81002    | abdelju01 | 2007       | 2011      | [NULL]     | [NULL]    | L     | 1987        | 2          | 25         | USA            | MI           | Muskegon     | [NULL]      | [NULL]     | [NULL]     | [NULL]         | [NULL]       | [NULL]      |
+| ...        | ...       | ...     | ...         | ...        | ...        | ...              | ...        | ...      | ...      | ...          | ...         | ...      | ...       | ...        | ...       | ...        | ...       | ...   | ...         | ...        | ...        | ...            | ...          | ...          | ...         | ...        | ...        | ...            | ...          | ...         |
+*/
 CREATE TABLE Master (
     playerID TEXT NULL,
         -- <example>'aaltoan01'</example>
@@ -304,20 +424,32 @@ CREATE TABLE Master (
     FOREIGN KEY (coachID) REFERENCES Coaches(coachID)
 );
 
--- Table: Scoring (45967 rows)
+/*
+Table: Scoring
+Rows: 45967
+Sample rows:
+| playerID   | year   | stint   | tmID   | lgID   | pos   | GP   | G   | A   | Pts   | PIM   | +/-   | PPG   | PPA    | SHG   | SHA    | GWG   | GTG    | SOG   | PostGP   | PostG   | PostA   | PostPts   | PostPIM   | Post+/-   | PostPPG   | PostPPA   | PostSHG   | PostSHA   | PostGWG   | PostSOG   |
+|------------|--------|---------|--------|--------|-------|------|-----|-----|-------|-------|-------|-------|--------|-------|--------|-------|--------|-------|----------|---------|---------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|-----------|
+| aaltoan01  | 1997   | 1       | ANA    | NHL    | C     | 3    | 0   | 0   | 0     | 0     | -1    | 0     | 0      | 0     | 0      | 0     | 0      | 1     | [NULL]   | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    |
+| aaltoan01  | 1998   | 1       | ANA    | NHL    | C     | 73   | 3   | 5   | 8     | 24    | -12   | 2     | 1      | 0     | 0      | 0     | 0      | 61    | 4        | 0       | 0       | 0         | 2         | 0         | 0         | 0         | 0         | 0         | 0         | 0         |
+| aaltoan01  | 1999   | 1       | ANA    | NHL    | C     | 63   | 7   | 11  | 18    | 26    | -13   | 1     | 0      | 0     | 0      | 1     | 0      | 102   | [NULL]   | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    |
+| aaltoan01  | 2000   | 1       | ANA    | NHL    | C     | 12   | 1   | 1   | 2     | 2     | 1     | 0     | 0      | 0     | 0      | 0     | 0      | 18    | [NULL]   | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    |
+| abbeybr01  | 1975   | 1       | CIN    | WHA    | D     | 17   | 1   | 0   | 1     | 12    | -3    | 0     | [NULL] | 0     | [NULL] | 0     | [NULL] | 2     | [NULL]   | [NULL]  | [NULL]  | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    | [NULL]    |
+| ...        | ...    | ...     | ...    | ...    | ...   | ...  | ... | ... | ...   | ...   | ...   | ...   | ...    | ...   | ...    | ...   | ...    | ...   | ...      | ...     | ...     | ...       | ...       | ...       | ...       | ...       | ...       | ...       | ...       | ...       |
+*/
 CREATE TABLE Scoring (
-    playerID TEXT NULL,
+    playerID TEXT NOT NULL,
         -- <example>'aaltoan01'</example>
         -- <fk> -> Master.playerID</fk>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1997</example>
         -- <fk>composite</fk>
-    stint INTEGER NULL,
+    stint INTEGER NOT NULL,
         -- <example>1</example>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'ANA'</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     pos TEXT NULL,
         -- <example>'C'</example>
@@ -375,64 +507,100 @@ CREATE TABLE Scoring (
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: ScoringSC (284 rows)
+/*
+Table: ScoringSC
+Rows: 284
+Sample rows:
+| playerID   | year   | tmID   | lgID   | pos   | GP   | G   | A   | Pts   | PIM   |
+|------------|--------|--------|--------|-------|------|-----|-----|-------|-------|
+| adamsbi01  | 1920   | VML    | PCHA   | R     | 4    | 0   | 0   | 0     | 0     |
+| adamsja01  | 1920   | VML    | PCHA   | C     | 5    | 2   | 1   | 3     | 6     |
+| adamsja01  | 1921   | VML    | PCHA   | C     | 5    | 6   | 1   | 7     | 18    |
+| anderer02  | 1923   | CAT    | WCHL   | R     | 2    | 0   | 0   | 0     | 2     |
+| anderjo03  | 1924   | VIC    | WCHL   | L     | 4    | 1   | 0   | 1     | 10    |
+| ...        | ...    | ...    | ...    | ...   | ...  | ... | ... | ...   | ...   |
+*/
 CREATE TABLE ScoringSC (
-    playerID TEXT NULL,
+    playerID TEXT NOT NULL,
         -- <example>'adamsbi01'</example>
         -- <fk> -> Master.playerID</fk>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1920</example>
         -- <fk>composite</fk>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'VML'</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL'}</values>
-    pos TEXT NULL,
+    pos TEXT NOT NULL,
         -- <example>'R'</example>
-    GP INTEGER NULL,
+    GP INTEGER NOT NULL,
         -- <example>4</example>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>0</example>
-    A INTEGER NULL,
+    A INTEGER NOT NULL,
         -- <example>0</example>
-    Pts INTEGER NULL,
+    Pts INTEGER NOT NULL,
         -- <example>0</example>
-    PIM INTEGER NULL,
+    PIM INTEGER NOT NULL,
         -- <example>0</example>
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID),
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: ScoringShootout (2072 rows)
+/*
+Table: ScoringShootout
+Rows: 2072
+Sample rows:
+| playerID   | year   | stint   | tmID   | S   | G   | GDG   |
+|------------|--------|---------|--------|-----|-----|-------|
+| adamske01  | 2006   | 1       | PHO    | 1   | 0   | 0     |
+| afanadm01  | 2005   | 1       | TBL    | 1   | 0   | 0     |
+| afanadm01  | 2006   | 1       | TBL    | 2   | 1   | 1     |
+| afinoma01  | 2005   | 1       | BUF    | 5   | 3   | 2     |
+| afinoma01  | 2006   | 1       | BUF    | 6   | 2   | 1     |
+| ...        | ...    | ...     | ...    | ... | ... | ...   |
+*/
 CREATE TABLE ScoringShootout (
-    playerID TEXT NULL,
+    playerID TEXT NOT NULL,
         -- <example>'adamske01'</example>
         -- <fk> -> Master.playerID</fk>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>2006</example>
         -- <fk>composite</fk>
-    stint INTEGER NULL,
+    stint INTEGER NOT NULL,
         -- <example>1</example>
-    tmID TEXT NULL,
+    tmID TEXT NOT NULL,
         -- <example>'PHO'</example>
         -- <fk>composite</fk>
-    S INTEGER NULL,
+    S INTEGER NOT NULL,
         -- <example>1</example>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>0</example>
-    GDG INTEGER NULL,
+    GDG INTEGER NOT NULL,
         -- <example>0</example>
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID),
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: ScoringSup (137 rows)
+/*
+Table: ScoringSup
+Rows: 137
+Sample rows:
+| playerID   | year   | PPA    | SHA    |
+|------------|--------|--------|--------|
+| actonke01  | 1988   | [NULL] | 1      |
+| adamsgr01  | 1988   | 1      | [NULL] |
+| adamsgr01  | 1989   | 1      | [NULL] |
+| allismi01  | 1987   | 5      | [NULL] |
+| archida01  | 1989   | 4      | [NULL] |
+| ...        | ...    | ...    | ...    |
+*/
 CREATE TABLE ScoringSup (
-    playerID TEXT NULL,
+    playerID TEXT NOT NULL,
         -- <example>'actonke01'</example>
         -- <fk> -> Master.playerID</fk>
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1988</example>
     PPA TEXT NULL,
         -- <example>'1'</example>
@@ -441,35 +609,47 @@ CREATE TABLE ScoringSup (
     FOREIGN KEY (playerID) REFERENCES Master(playerID)
 );
 
--- Table: SeriesPost (832 rows)
+/*
+Table: SeriesPost
+Rows: 832
+Sample rows:
+| year   | round   | series   | tmIDWinner   | lgIDWinner   | tmIDLoser   | lgIDLoser   | W   | L   | T   | GoalsWinner   | GoalsLoser   | note   |
+|--------|---------|----------|--------------|--------------|-------------|-------------|-----|-----|-----|---------------|--------------|--------|
+| 1912   | SCF     | [NULL]   | VA1          | PCHA         | QU1         | NHA         | 2   | 1   | 0   | 16            | 12           | EX     |
+| 1913   | F       | [NULL]   | TBS          | NHA          | MOC         | NHA         | 1   | 1   | 0   | 6             | 2            | TG     |
+| 1913   | SCF     | [NULL]   | TBS          | NHA          | VA1         | PCHA        | 3   | 0   | 0   | 13            | 8            | [NULL] |
+| 1914   | F       | [NULL]   | OT1          | NHA          | MOW         | NHA         | 1   | 1   | 0   | 4             | 1            | TG     |
+| 1914   | SCF     | [NULL]   | VML          | PCHA         | OT1         | NHA         | 3   | 0   | 0   | 26            | 8            | [NULL] |
+| ...    | ...     | ...      | ...          | ...          | ...         | ...         | ... | ... | ... | ...           | ...          | ...    |
+*/
 CREATE TABLE SeriesPost (
-    year INTEGER NULL,
+    year INTEGER NOT NULL,
         -- <example>1912</example>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
-    round TEXT NULL,
+    round TEXT NOT NULL,
         -- <example>'SCF'</example>
     series TEXT NULL,
         -- <example>'A'</example>
-    tmIDWinner TEXT NULL,
+    tmIDWinner TEXT NOT NULL,
         -- <example>'VA1'</example>
         -- <fk>composite</fk>
-    lgIDWinner TEXT NULL,
+    lgIDWinner TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
-    tmIDLoser TEXT NULL,
+    tmIDLoser TEXT NOT NULL,
         -- <example>'QU1'</example>
         -- <fk>composite</fk>
-    lgIDLoser TEXT NULL,
+    lgIDLoser TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>2</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>1</example>
-    T INTEGER NULL,
+    T INTEGER NOT NULL,
         -- <example>0</example>
-    GoalsWinner INTEGER NULL,
+    GoalsWinner INTEGER NOT NULL,
         -- <example>16</example>
-    GoalsLoser INTEGER NULL,
+    GoalsLoser INTEGER NOT NULL,
         -- <example>12</example>
     note TEXT NULL,
         -- <values>{'DEF', 'EX', 'ND', 'TG'}</values>
@@ -477,27 +657,39 @@ CREATE TABLE SeriesPost (
     FOREIGN KEY (year, tmIDLoser) REFERENCES Teams(year, tmID)
 );
 
--- Table: TeamSplits (1519 rows)
+/*
+Table: TeamSplits
+Rows: 1519
+Sample rows:
+| year   | lgID   | tmID   | hW   | hL   | hT   | hOTL   | rW   | rL   | rT   | rOTL   | SepW   | SepL   | SepT   | SepOL   | OctW   | OctL   | OctT   | OctOL   | NovW   | NovL   | NovT   | NovOL   | DecW   | DecL   | DecT   | DecOL   | JanW   | JanL   | JanT   | JanOL   | FebW   | FebL   | FebT   | FebOL   | MarW   | MarL   | MarT   | MarOL   | AprW   | AprL   | AprT   | AprOL   |
+|--------|--------|--------|------|------|------|--------|------|------|------|--------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|--------|--------|--------|---------|
+| 1909   | NHA    | COB    | 2    | 4    | 0    | [NULL] | 2    | 4    | 0    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | 1      | 1      | 0      | [NULL]  | 2      | 3      | 0      | [NULL]  | 1      | 4      | 0      | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  |
+| 1909   | NHA    | HAI    | 3    | 3    | 0    | [NULL] | 1    | 5    | 0    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | 1      | 3      | 0      | [NULL]  | 2      | 5      | 0      | [NULL]  | 1      | 0      | 0      | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  |
+| 1909   | NHA    | LES    | 2    | 4    | 0    | [NULL] | 0    | 6    | 0    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | 0      | 3      | 0      | [NULL]  | 1      | 5      | 0      | [NULL]  | 1      | 2      | 0      | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  |
+| 1909   | NHA    | MOS    | 3    | 2    | 1    | [NULL] | 0    | 6    | 0    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | 1      | 2      | 1      | [NULL]  | 1      | 5      | 0      | [NULL]  | 1      | 1      | 0      | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  |
+| 1909   | NHA    | MOW    | 6    | 0    | 0    | [NULL] | 5    | 1    | 0    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  | 2      | 1      | 0      | [NULL]  | 6      | 0      | 0      | [NULL]  | 3      | 0      | 0      | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL]  |
+| ...    | ...    | ...    | ...  | ...  | ...  | ...    | ...  | ...  | ...  | ...    | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...     |
+*/
 CREATE TABLE TeamSplits (
     year INTEGER NOT NULL,
         -- <example>1909</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     tmID TEXT NOT NULL,
         -- <example>'COB'</example>
         -- <fk>composite</fk>
-    hW INTEGER NULL,
+    hW INTEGER NOT NULL,
         -- <example>2</example>
-    hL INTEGER NULL,
+    hL INTEGER NOT NULL,
         -- <example>4</example>
     hT INTEGER NULL,
         -- <example>0</example>
     hOTL TEXT NULL,
         -- <values>{'0', '1', '10', '11', '2', '3', '4', '5', '6', '7', '8', '9'}</values>
-    rW INTEGER NULL,
+    rW INTEGER NOT NULL,
         -- <example>2</example>
-    rL INTEGER NULL,
+    rL INTEGER NOT NULL,
         -- <example>4</example>
     rT INTEGER NULL,
         -- <example>0</example>
@@ -570,13 +762,25 @@ CREATE TABLE TeamSplits (
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID)
 );
 
--- Table: TeamVsTeam (25602 rows)
+/*
+Table: TeamVsTeam
+Rows: 25602
+Sample rows:
+| year   | lgID   | tmID   | oppID   | W   | L   | T   | OTL    |
+|--------|--------|--------|---------|-----|-----|-----|--------|
+| 1909   | NHA    | COB    | HAI     | 1   | 1   | 0   | [NULL] |
+| 1909   | NHA    | COB    | LES     | 2   | 0   | 0   | [NULL] |
+| 1909   | NHA    | COB    | MOS     | 1   | 1   | 0   | [NULL] |
+| 1909   | NHA    | COB    | MOW     | 0   | 2   | 0   | [NULL] |
+| 1909   | NHA    | COB    | OT1     | 0   | 2   | 0   | [NULL] |
+| ...    | ...    | ...    | ...     | ... | ... | ... | ...    |
+*/
 CREATE TABLE TeamVsTeam (
     year INTEGER NOT NULL,
         -- <example>1909</example>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     tmID TEXT NOT NULL,
         -- <example>'COB'</example>
@@ -584,9 +788,9 @@ CREATE TABLE TeamVsTeam (
     oppID TEXT NOT NULL,
         -- <example>'HAI'</example>
         -- <fk>composite</fk>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>1</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>1</example>
     T INTEGER NULL,
         -- <example>0</example>
@@ -597,45 +801,57 @@ CREATE TABLE TeamVsTeam (
     FOREIGN KEY (oppID, year) REFERENCES Teams(tmID, year)
 );
 
--- Table: Teams (1519 rows)
+/*
+Table: Teams
+Rows: 1519
+Sample rows:
+| year   | lgID   | tmID   | franchID   | confID   | divID   | rank   | playoff   | G   | W   | L   | T   | OTL    | Pts   | SoW    | SoL    | GF   | GA   | name                   | PIM    | BenchMinor   | PPG    | PPC    | SHA    | PKG    | PKC    | SHF    |
+|--------|--------|--------|------------|----------|---------|--------|-----------|-----|-----|-----|-----|--------|-------|--------|--------|------|------|------------------------|--------|--------------|--------|--------|--------|--------|--------|--------|
+| 1909   | NHA    | COB    | BKN        | [NULL]   | [NULL]  | 4      | [NULL]    | 12  | 4   | 8   | 0   | [NULL] | 8     | [NULL] | [NULL] | 79   | 104  | Cobalt Silver Kings    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1909   | NHA    | HAI    | MTL        | [NULL]   | [NULL]  | 5      | [NULL]    | 12  | 4   | 8   | 0   | [NULL] | 8     | [NULL] | [NULL] | 77   | 83   | Haileybury Hockey Club | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1909   | NHA    | LES    | TBS        | [NULL]   | [NULL]  | 7      | [NULL]    | 12  | 2   | 10  | 0   | [NULL] | 4     | [NULL] | [NULL] | 59   | 100  | Les Canadiens          | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1909   | NHA    | MOS    | MOS        | [NULL]   | [NULL]  | 6      | [NULL]    | 12  | 3   | 8   | 1   | [NULL] | 7     | [NULL] | [NULL] | 52   | 95   | Montreal Shamrocks     | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1909   | NHA    | MOW    | MTW        | [NULL]   | [NULL]  | 1      | [NULL]    | 12  | 11  | 1   | 0   | [NULL] | 22    | [NULL] | [NULL] | 91   | 41   | Montreal Wanderers     | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| ...    | ...    | ...    | ...        | ...      | ...     | ...    | ...       | ... | ... | ... | ... | ...    | ...   | ...    | ...    | ...  | ...  | ...                    | ...    | ...          | ...    | ...    | ...    | ...    | ...    | ...    |
+*/
 CREATE TABLE Teams (
     year INTEGER NOT NULL,
         -- <example>1909</example>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     tmID TEXT NOT NULL,
         -- <example>'COB'</example>
-    franchID TEXT NULL,
+    franchID TEXT NOT NULL,
         -- <example>'BKN'</example>
     confID TEXT NULL,
         -- <values>{'CC', 'EC', 'WA', 'WC'}</values>
     divID TEXT NULL,
         -- <example>'AM'</example>
-    rank INTEGER NULL,
+    rank INTEGER NOT NULL,
         -- <example>4</example>
     playoff TEXT NULL,
         -- <example>'LCS'</example>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>12</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>4</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>8</example>
     T INTEGER NULL,
         -- <example>0</example>
     OTL TEXT NULL,
         -- <example>'3'</example>
-    Pts INTEGER NULL,
+    Pts INTEGER NOT NULL,
         -- <example>8</example>
     SoW TEXT NULL,
         -- <values>{'0', '1', '10', '11', '12', '14', '15', '2', '3', '4', '5', '6', '7', '8', '9'}</values>
     SoL TEXT NULL,
         -- <values>{'1', '10', '11', '12', '2', '3', '4', '5', '6', '7', '8', '9'}</values>
-    GF INTEGER NULL,
+    GF INTEGER NOT NULL,
         -- <example>79</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>104</example>
-    name TEXT NULL,
+    name TEXT NOT NULL,
         -- <example>'Cobalt Silver Kings'</example>
     PIM TEXT NULL,
         -- <example>'336'</example>
@@ -656,57 +872,81 @@ CREATE TABLE Teams (
     PRIMARY KEY (year, tmID)
 );
 
--- Table: TeamsHalf (41 rows)
+/*
+Table: TeamsHalf
+Rows: 41
+Sample rows:
+| year   | lgID   | tmID   | half   | rank   | G   | W   | L   | T   | GF   | GA   |
+|--------|--------|--------|--------|--------|-----|-----|-----|-----|------|------|
+| 1916   | NHA    | MOC    | 1      | 1      | 10  | 7   | 3   | 0   | 58   | 38   |
+| 1916   | NHA    | MOC    | 2      | 3      | 10  | 3   | 7   | 0   | 31   | 42   |
+| 1916   | NHA    | MOW    | 1      | 5      | 10  | 3   | 7   | 0   | 56   | 72   |
+| 1916   | NHA    | MOW    | 2      | 4      | 10  | 2   | 8   | 0   | 38   | 65   |
+| 1916   | NHA    | OT1    | 1      | 2      | 10  | 7   | 3   | 0   | 56   | 41   |
+| ...    | ...    | ...    | ...    | ...    | ... | ... | ... | ... | ...  | ...  |
+*/
 CREATE TABLE TeamsHalf (
     year INTEGER NOT NULL,
         -- <example>1916</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL'}</values>
     tmID TEXT NOT NULL,
         -- <example>'MOC'</example>
         -- <fk>composite</fk>
     half INTEGER NOT NULL,
         -- <example>1</example>
-    rank INTEGER NULL,
+    rank INTEGER NOT NULL,
         -- <example>1</example>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>10</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>7</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>3</example>
-    T INTEGER NULL,
+    T INTEGER NOT NULL,
         -- <example>0</example>
-    GF INTEGER NULL,
+    GF INTEGER NOT NULL,
         -- <example>58</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>38</example>
     PRIMARY KEY (year, tmID, half),
     FOREIGN KEY (tmID, year) REFERENCES Teams(tmID, year)
 );
 
--- Table: TeamsPost (927 rows)
+/*
+Table: TeamsPost
+Rows: 927
+Sample rows:
+| year   | lgID   | tmID   | G   | W   | L   | T   | GF   | GA   | PIM    | BenchMinor   | PPG    | PPC    | SHA    | PKG    | PKC    | SHF    |
+|--------|--------|--------|-----|-----|-----|-----|------|------|--------|--------------|--------|--------|--------|--------|--------|--------|
+| 1913   | NHA    | MOC    | 2   | 1   | 1   | 0   | 2    | 6    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1913   | NHA    | TBS    | 2   | 1   | 1   | 0   | 6    | 2    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1914   | NHA    | MOW    | 2   | 1   | 1   | 0   | 1    | 4    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1914   | NHA    | OT1    | 2   | 1   | 1   | 0   | 4    | 1    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| 1916   | NHA    | MOC    | 2   | 1   | 1   | 0   | 7    | 6    | [NULL] | [NULL]       | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] |
+| ...    | ...    | ...    | ... | ... | ... | ... | ...  | ...  | ...    | ...          | ...    | ...    | ...    | ...    | ...    | ...    |
+*/
 CREATE TABLE TeamsPost (
     year INTEGER NOT NULL,
         -- <example>1913</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL', 'WHA'}</values>
     tmID TEXT NOT NULL,
         -- <example>'MOC'</example>
         -- <fk>composite</fk>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>2</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>1</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>1</example>
-    T INTEGER NULL,
+    T INTEGER NOT NULL,
         -- <example>0</example>
-    GF INTEGER NULL,
+    GF INTEGER NOT NULL,
         -- <example>2</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>6</example>
     PIM TEXT NULL,
         -- <example>'59'</example>
@@ -728,27 +968,39 @@ CREATE TABLE TeamsPost (
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID)
 );
 
--- Table: TeamsSC (30 rows)
+/*
+Table: TeamsSC
+Rows: 30
+Sample rows:
+| year   | lgID   | tmID   | G   | W   | L   | T   | GF   | GA   | PIM    |
+|--------|--------|--------|-----|-----|-----|-----|------|------|--------|
+| 1912   | NHA    | QU1    | 3   | 1   | 2   | 0   | 12   | 16   | [NULL] |
+| 1912   | PCHA   | VA1    | 3   | 2   | 1   | 0   | 16   | 12   | [NULL] |
+| 1913   | NHA    | TBS    | 3   | 3   | 0   | 0   | 13   | 8    | [NULL] |
+| 1913   | PCHA   | VA1    | 3   | 0   | 3   | 0   | 8    | 13   | [NULL] |
+| 1914   | NHA    | OT1    | 3   | 0   | 3   | 0   | 8    | 26   | [NULL] |
+| ...    | ...    | ...    | ... | ... | ... | ... | ...  | ...  | ...    |
+*/
 CREATE TABLE TeamsSC (
     year INTEGER NOT NULL,
         -- <example>1912</example>
         -- <fk>composite</fk>
-    lgID TEXT NULL,
+    lgID TEXT NOT NULL,
         -- <values>{'NHA', 'NHL', 'PCHA', 'WCHL'}</values>
     tmID TEXT NOT NULL,
         -- <example>'QU1'</example>
         -- <fk>composite</fk>
-    G INTEGER NULL,
+    G INTEGER NOT NULL,
         -- <example>3</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>1</example>
-    L INTEGER NULL,
+    L INTEGER NOT NULL,
         -- <example>2</example>
-    T INTEGER NULL,
+    T INTEGER NOT NULL,
         -- <example>0</example>
-    GF INTEGER NULL,
+    GF INTEGER NOT NULL,
         -- <example>12</example>
-    GA INTEGER NULL,
+    GA INTEGER NOT NULL,
         -- <example>16</example>
     PIM TEXT NULL,
         -- <values>{'18', '20', '24', '49', '50', '53', '75'}</values>
@@ -756,13 +1008,25 @@ CREATE TABLE TeamsSC (
     FOREIGN KEY (year, tmID) REFERENCES Teams(year, tmID)
 );
 
--- Table: abbrev (58 rows)
+/*
+Table: abbrev
+Rows: 58
+Sample rows:
+| Type       | Code   | Fullname            |
+|------------|--------|---------------------|
+| Conference | CC     | Campbell Conference |
+| Conference | EC     | Eastern Conference  |
+| Conference | WA     | Wales Conference    |
+| Conference | WC     | Western Conference  |
+| Division   | AD     | Adams Division      |
+| ...        | ...    | ...                 |
+*/
 CREATE TABLE abbrev (
     Type TEXT NOT NULL,
         -- <values>{'Conference', 'Division', 'Playoffs', 'Round'}</values>
     Code TEXT NOT NULL,
         -- <example>'CC'</example>
-    Fullname TEXT NULL,
+    Fullname TEXT NOT NULL,
         -- <example>'Campbell Conference'</example>
     PRIMARY KEY (Type, Code)
 );

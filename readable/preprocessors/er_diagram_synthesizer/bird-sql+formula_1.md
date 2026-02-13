@@ -1,99 +1,99 @@
 ```mermaid
 erDiagram
     Race {
-        table races "Core race metadata and foreign keys to season (year) and circuit."
+        table races "Core race metadata: season year, round, circuit link, name, date/time, and reference URL."
     }
     Driver {
-        table drivers "Core driver attributes (reference, name, number/code, DOB, nationality, URL)."
+        table drivers "Core driver identity and demographics: code/number, name, DOB, nationality, and URL."
     }
     Constructor {
-        table constructors "Core constructor/team attributes (reference, name, nationality, URL)."
-    }
-    Season {
-        table seasons "One row per championship year with reference URL."
+        table constructors "Core constructor/team identity: reference key, name, nationality, and URL."
     }
     Circuit {
-        table circuits "Track identity, location, geo-coordinates, altitude, and URL."
+        table circuits "Venue details including location, country, latitude/longitude, altitude, and URL."
     }
-    Status {
-        table status "Status ID and textual description of result outcome."
+    Season {
+        table seasons "Season reference by year and URL."
     }
     RaceResult {
-        table results "Fact table keyed by resultId with FKs to race, driver, constructor, and status; includes timing, position, and points."
+        table results "Per-race, per-driver result with grid/finish data, timing metrics, points, and status reference."
     }
-    QualifyingAttempt {
-        table qualifying "One row per driver–constructor entry in qualifying for a race; includes Q1–Q3 times and final position/number."
+    QualifyingSessionResult {
+        table qualifying "Per-race qualifying entry with driver/constructor, position, and Q1/Q2/Q3 times."
     }
     LapTime {
-        table lapTimes "Composite PK (raceId, driverId, lap); lap order, positions, and timing in text/milliseconds."
+        table lapTimes "Per-lap timing and position for a driver in a race (composite PK: raceId, driverId, lap)."
     }
     PitStop {
-        table pitStops "Composite PK (raceId, driverId, stop); lap, timestamp, and duration in text/milliseconds."
+        table pitStops "Per-stop timing for a driver in a race (composite PK: raceId, driverId, stop)."
     }
     DriverStanding {
-        table driverStandings "Fact table by (raceId, driverId) with points, position, wins; FK to races and drivers."
+        table driverStandings "Per-race cumulative driver standings with points, position, positionText, and wins."
     }
     ConstructorStanding {
-        table constructorStandings "Fact table by (raceId, constructorId) with points, position, wins; FK to races and constructors."
+        table constructorStandings "Per-race cumulative constructor standings with points, position, positionText, and wins."
     }
-    ConstructorResult {
-        table constructorResults "Fact table by (raceId, constructorId) with points and textual status; FKs to races and constructors."
+    ConstructorRaceResult {
+        table constructorResults "Per-race constructor result/points and optional status text."
+    }
+    Status {
+        table status "Lookup of race result statuses."
     }
 
-    %% FROM seasons s JOIN races r ON r.year = s.year
-    Season }o--|| Race : "SeasonHasRaces"
+    %% FROM races r JOIN seasons s ON r.year = s.year
+    Season |o--|{ Race : "RaceInSeason"
 
-    %% FROM circuits c JOIN races r ON r.circuitId = c.circuitId
-    Circuit }o--|| Race : "CircuitHostsRaces"
+    %% FROM races r JOIN circuits c ON r.circuitId = c.circuitId
+    Circuit |o--|{ Race : "RaceAtCircuit"
 
-    %% FROM races r JOIN results res ON res.raceId = r.raceId
-    Race }o--|| RaceResult : "RaceHasResults"
+    %% FROM races ra JOIN results rr ON rr.raceId = ra.raceId
+    Race |o--|{ RaceResult : "RaceHasRaceResults"
 
-    %% FROM drivers d JOIN results res ON res.driverId = d.driverId
-    Driver }o--|| RaceResult : "ResultInvolvesDriver"
+    %% FROM drivers d JOIN results rr ON rr.driverId = d.driverId
+    Driver |o--|{ RaceResult : "DriverHasRaceResults"
 
-    %% FROM constructors c JOIN results res ON res.constructorId = c.constructorId
-    Constructor }o--|| RaceResult : "ResultInvolvesConstructor"
+    %% FROM constructors c JOIN results rr ON rr.constructorId = c.constructorId
+    Constructor |o--|{ RaceResult : "ConstructorHasRaceResults"
 
-    %% FROM results res JOIN status st ON st.statusId = res.statusId
-    RaceResult ||--o{ Status : "ResultHasStatus"
-
-    %% FROM races r JOIN qualifying q ON q.raceId = r.raceId
-    Race }o--|| QualifyingAttempt : "RaceHasQualifyingAttempts"
-
-    %% FROM drivers d JOIN qualifying q ON q.driverId = d.driverId
-    Driver }o--|| QualifyingAttempt : "QualifyingInvolvesDriver"
-
-    %% FROM constructors c JOIN qualifying q ON q.constructorId = c.constructorId
-    Constructor }o--|| QualifyingAttempt : "QualifyingInvolvesConstructor"
+    %% FROM results rr JOIN status s ON rr.statusId = s.statusId
+    RaceResult }|--o| Status : "RaceResultHasStatus"
 
     %% FROM races r JOIN lapTimes lt ON lt.raceId = r.raceId
-    Race }o--|| LapTime : "RaceHasLapTimes"
+    Race |o--|{ LapTime : "RaceHasLapTimes"
 
     %% FROM drivers d JOIN lapTimes lt ON lt.driverId = d.driverId
-    Driver }o--|| LapTime : "LapTimeForDriver"
+    Driver |o--|{ LapTime : "DriverHasLapTimes"
 
     %% FROM races r JOIN pitStops ps ON ps.raceId = r.raceId
-    Race }o--|| PitStop : "RaceHasPitStops"
+    Race |o--|{ PitStop : "RaceHasPitStops"
 
     %% FROM drivers d JOIN pitStops ps ON ps.driverId = d.driverId
-    Driver }o--|| PitStop : "PitStopForDriver"
+    Driver |o--|{ PitStop : "DriverHasPitStops"
+
+    %% FROM races r JOIN qualifying q ON q.raceId = r.raceId
+    Race |o--|{ QualifyingSessionResult : "RaceHasQualifyingResults"
+
+    %% FROM drivers d JOIN qualifying q ON q.driverId = d.driverId
+    Driver |o--|{ QualifyingSessionResult : "DriverHasQualifyingResults"
+
+    %% FROM constructors c JOIN qualifying q ON q.constructorId = c.constructorId
+    Constructor |o--|{ QualifyingSessionResult : "ConstructorHasQualifyingResults"
 
     %% FROM races r JOIN driverStandings ds ON ds.raceId = r.raceId
-    Race }o--|| DriverStanding : "RaceHasDriverStandings"
+    Race |o--|{ DriverStanding : "RaceHasDriverStandings"
 
     %% FROM drivers d JOIN driverStandings ds ON ds.driverId = d.driverId
-    Driver }o--|| DriverStanding : "DriverHasStandings"
+    Driver |o--|{ DriverStanding : "DriverHasDriverStandings"
 
     %% FROM races r JOIN constructorStandings cs ON cs.raceId = r.raceId
-    Race }o--|| ConstructorStanding : "RaceHasConstructorStandings"
+    Race |o--|{ ConstructorStanding : "RaceHasConstructorStandings"
 
     %% FROM constructors c JOIN constructorStandings cs ON cs.constructorId = c.constructorId
-    Constructor }o--|| ConstructorStanding : "ConstructorHasStandings"
+    Constructor |o--|{ ConstructorStanding : "ConstructorHasConstructorStandings"
 
     %% FROM races r JOIN constructorResults cr ON cr.raceId = r.raceId
-    Race }o--|| ConstructorResult : "RaceHasConstructorResults"
+    Race |o--|{ ConstructorRaceResult : "RaceHasConstructorRaceResults"
 
     %% FROM constructors c JOIN constructorResults cr ON cr.constructorId = c.constructorId
-    Constructor }o--|| ConstructorResult : "ConstructorHasConstructorResults"
+    Constructor |o--|{ ConstructorRaceResult : "ConstructorHasConstructorRaceResults"
 ```

@@ -1,19 +1,19 @@
 ```mermaid
 erDiagram
     Transaction {
-        table transactions_1k "Core transaction fact rows and foreign-key-like references (CustomerID, GasStationID, ProductID)."
+        table transactions_1k "Core transaction facts including timestamp, foreign keys to customer, gas station, and product, amount, and price."
     }
     Customer {
-        table customers "Customer master data (segment, currency)."
+        table customers "Core customer master data (identifier, segment, currency)."
     }
     GasStation {
-        table gasstations "Gas station master data (ChainID, Country, Segment)."
+        table gasstations "Gas station reference data (identifier, chain ID, country, segment)."
     }
     Product {
-        table products "Product catalog entries (description)."
+        table products "Product catalog with product identifiers and descriptions."
     }
-    CustomerMonthlyConsumption {
-        table yearmonth "Per-customer monthly consumption summary rows (one row per customer-month)."
+    MonthlyConsumption {
+        table yearmonth "Monthly consumption fact table keyed by (CustomerID, Date)."
     }
 
     %% FROM transactions_1k t JOIN customers c ON c.CustomerID = t.CustomerID
@@ -23,11 +23,8 @@ erDiagram
     GasStation |o--|{ Transaction : "TransactionOccursAtGasStation"
 
     %% FROM transactions_1k t JOIN products p ON p.ProductID = t.ProductID
-    Product |o--|{ Transaction : "TransactionInvolvesProduct"
+    Product |o--|{ Transaction : "TransactionIncludesProduct"
 
-    %% FROM customers c JOIN yearmonth ym ON ym.CustomerID = c.CustomerID
-    Customer |o--|{ CustomerMonthlyConsumption : "CustomerHasMonthlyConsumption"
-
-    %% FROM transactions_1k t JOIN yearmonth ym   ON ym.CustomerID = t.CustomerID  AND ym.Date = strftime('%Y%m', t.Date)
-    CustomerMonthlyConsumption |o--o{ Transaction : "TransactionRollsUpIntoMonthlyConsumption"
+    %% FROM yearmonth ym JOIN customers c ON c.CustomerID = ym.CustomerID
+    Customer |o--|{ MonthlyConsumption : "CustomerHasMonthlyConsumption"
 ```

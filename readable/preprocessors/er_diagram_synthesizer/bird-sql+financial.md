@@ -1,48 +1,51 @@
 ```mermaid
 erDiagram
     Account {
-        table financial_account "Core account record including district_id, frequency, and opened date."
-    }
-    District {
-        table financial_district "Master data for districts; includes region names and various metrics (A2–A16)."
+        table account "Core account attributes (district, statement frequency, open date)."
     }
     Client {
-        table financial_client "Core client record including gender, birth_date, and home district."
+        table client "Core client demographics and district reference."
     }
-    AccountAccess {
-        table financial_disp "Associative table between client and account; stores access role type."
+    District {
+        table district "District master data and metrics (A2–A16)."
+    }
+    Disposition {
+        table disp "Junction/authorization records connecting clients to accounts with role type."
     }
     Card {
-        table financial_card "Card artifact linked to an AccountAccess (disp) with type and issued date."
+        table card "Card issuance linked to a disposition (authorization)."
     }
     Loan {
-        table financial_loan "Loan records keyed by loan_id and referencing the owning account."
+        table loan "Loan records referencing the owning account."
     }
     PaymentOrder {
-        table financial_order "Payment order details including beneficiary bank/account, amount, and k_symbol."
+        table order "Outgoing payment order details (beneficiary bank/account, amount, k_symbol)."
     }
-    AccountTransaction {
-        table financial_trans "Atomic transaction entries for accounts; includes type, operation, amount, balance, and optional k_symbol/bank/account."
+    Transaction {
+        table trans "Transactional movements on accounts (type, operation, amounts, balances)."
     }
 
     %% FROM account JOIN district ON account.district_id = district.district_id
-    Account }|--o| District : "AccountInDistrict"
+    Account ||--o{ District : "AccountAssignedToDistrict"
 
     %% FROM client JOIN district ON client.district_id = district.district_id
-    Client }|--o| District : "ClientInDistrict"
+    Client ||--o{ District : "ClientLocatedInDistrict"
 
-    %% FROM client JOIN disp ON disp.client_id = client.client_id JOIN account ON account.account_id = disp.account_id
-    Client }o--o{ Account : "ClientAccessesAccount"
+    %% FROM disp JOIN client ON disp.client_id = client.client_id
+    Client }o--|| Disposition : "ClientHasDisposition"
 
-    %% FROM card JOIN disp ON card.disp_id = disp.disp_id
-    Card ||--o{ AccountAccess : "CardAssignedToAccountAccess"
+    %% FROM account JOIN disp ON account.account_id = disp.account_id
+    Account }o--|| Disposition : "AccountHasDisposition"
 
-    %% FROM loan JOIN account ON loan.account_id = account.account_id
-    Loan ||--o{ Account : "LoanBelongsToAccount"
+    %% FROM disp JOIN card ON card.disp_id = disp.disp_id
+    Disposition }o--|| Card : "DispositionHasCard"
 
-    %% FROM "order" JOIN account ON "order".account_id = account.account_id
-    PaymentOrder ||--o{ Account : "PaymentOrderFromAccount"
+    %% FROM account JOIN loan ON account.account_id = loan.account_id
+    Account }o--|| Loan : "AccountHasLoan"
 
-    %% FROM trans JOIN account ON trans.account_id = account.account_id
-    AccountTransaction ||--o{ Account : "TransactionOnAccount"
+    %% FROM account JOIN "order" ON account.account_id = "order".account_id
+    Account }o--|| PaymentOrder : "AccountHasPaymentOrder"
+
+    %% FROM account JOIN trans ON account.account_id = trans.account_id
+    Account }o--|| Transaction : "AccountHasTransaction"
 ```

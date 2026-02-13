@@ -1,18 +1,18 @@
 ```mermaid
 erDiagram
-    Institution {
-        table schools "Core institution master data: identification, status, governance types, grades, contact, website, and geolocation."
+    EducationOrganization {
+        table schools "Master reference of organizations; includes both district/COE rows (School is NULL) and school sites with detailed profile and contact fields."
     }
-    FRPMSnapshot2014_2015 {
-        table frpm "2014–2015 FRPM enrollment and eligibility metrics with some redundant identifying fields; one row per CDSCode."
+    FRPMStatistics {
+        table frpm "Per-organization FRPM metrics for a given academic year; contains enrollment, free meal counts, FRPM counts, and provision/charter indicators."
     }
-    SATResult {
-        table satscores "SAT participation counts and average section scores; rtype indicates school ('S') vs district ('D') level; one row per CDSCode."
+    SATScoreSummary {
+        table satscores "Per-organization SAT summary (one row per CDS code in this dataset) including participants, average Reading/Math/Writing scores, and count scoring ≥1500."
     }
 
-    %% FROM schools s JOIN frpm f ON f.CDSCode = s.CDSCode
-    Institution |o--|| FRPMSnapshot2014_2015 : "InstitutionHasFRPMSnapshot2014_2015"
+    %% FROM frpm JOIN schools ON frpm.CDSCode = schools.CDSCode
+    EducationOrganization |o--|{ FRPMStatistics : "OrganizationHasFRPMStatistics"
 
-    %% FROM schools s JOIN satscores sat ON sat.cds = s.CDSCode
-    Institution |o--|| SATResult : "InstitutionHasSATResult"
+    %% FROM satscores JOIN schools ON satscores.cds = schools.CDSCode
+    EducationOrganization |o--|| SATScoreSummary : "OrganizationHasSATScoreSummary"
 ```

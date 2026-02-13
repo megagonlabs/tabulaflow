@@ -1,45 +1,45 @@
 ```mermaid
 erDiagram
     Member {
-        table member "Core member profile, contact info, officer position, shirt size, and references to major and ZIP code."
+        table member "Core member attributes including name, email, position, t-shirt size, phone, ZIP, and optional link to academic major."
     }
     Event {
-        table event "Event master record including name, schedule, type, location, notes, and lifecycle status."
-    }
-    Budget {
-        table budget "Per-event budget categories with amounts, spend, remaining, and event linkage."
-    }
-    Expense {
-        table expense "Expense details including description, date, cost, approval flag, and links to submitting member and funded budget."
-    }
-    Income {
-        table income "Income entries with date received, amount, source, notes, and recording member."
+        table event "Core event details such as name, date/time, type, location, notes, and status."
     }
     Major {
-        table major "Lookup of academic majors and their affiliated department and college."
+        table major "Academic major master data including major name, department, and college."
     }
     ZipCode {
-        table zip_code "ZIP code directory with type, city, county, state, and abbreviation."
+        table zip_code "ZIP code reference data including city, county, state, and type."
+    }
+    BudgetItem {
+        table budget "Per-event budget line items with category, amounts (planned/spent/remaining), and event linkage."
+    }
+    Expense {
+        table expense "Expense records linked to a budget item and the submitting/incurring member."
+    }
+    Income {
+        table income "Income transactions with date, amount, source, notes, and optional link to a member."
     }
 
-    %% FROM event JOIN attendance ON attendance.link_to_event = event.event_id JOIN member ON member.member_id = attendance.link_to_member
+    %% FROM event e JOIN attendance a ON a.link_to_event = e.event_id JOIN member m ON a.link_to_member = m.member_id
     Event }o--o{ Member : "EventAttendance"
 
-    %% FROM event JOIN budget ON budget.link_to_event = event.event_id
-    Event |o--|{ Budget : "EventBudgeting"
+    %% FROM event e JOIN budget b ON b.link_to_event = e.event_id
+    Event |o--|{ BudgetItem : "EventHasBudgetItems"
 
-    %% FROM budget JOIN expense ON expense.link_to_budget = budget.budget_id
-    Budget |o--|{ Expense : "BudgetExpenses"
+    %% FROM budget b JOIN expense x ON x.link_to_budget = b.budget_id
+    BudgetItem |o--|{ Expense : "BudgetItemHasExpenses"
 
-    %% FROM member JOIN expense ON expense.link_to_member = member.member_id
-    Member |o--|{ Expense : "MemberExpenseSubmission"
+    %% FROM member m JOIN expense x ON x.link_to_member = m.member_id
+    Member |o--|{ Expense : "MemberIncursExpense"
 
-    %% FROM member JOIN income ON income.link_to_member = member.member_id
-    Member |o--|{ Income : "MemberIncomeCollection"
+    %% FROM income i LEFT JOIN member m ON i.link_to_member = m.member_id
+    Member |o--o{ Income : "MemberReceivesIncome"
 
-    %% FROM member JOIN major ON major.major_id = member.link_to_major
-    Major |o--o{ Member : "MemberMajor"
+    %% FROM member m LEFT JOIN major j ON m.link_to_major = j.major_id
+    Member |o--o{ Major : "MemberMajorsIn"
 
-    %% FROM member JOIN zip_code ON zip_code.zip_code = member.zip
-    ZipCode |o--o{ Member : "MemberLocation"
+    %% FROM member m JOIN zip_code z ON m.zip = z.zip_code
+    Member }|--o| ZipCode : "MemberResidesInZipCode"
 ```

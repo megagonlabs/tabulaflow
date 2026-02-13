@@ -1,209 +1,247 @@
 ```sql
 -- Database: thrombosis_prediction
 
--- Table: Examination (806 rows)
+/*
+Table: Examination
+Rows: 806
+Sample rows:
+| ID     | Examination Date   | aCL IgG   | aCL IgM   | ANA   | ANA Pattern   | aCL IgA   | Diagnosis         | KCT    | RVVT   | LAC    | Symptoms   | Thrombosis   |
+|--------|--------------------|-----------|-----------|-------|---------------|-----------|-------------------|--------|--------|--------|------------|--------------|
+| 14872  | 1997-05-27         | 1.3       | 1.6       | 256   | P             | 0         | MCTD, AMI         | [NULL] | [NULL] | -      | AMI        | 1            |
+| 48473  | 1992-12-21         | 4.3       | 4.6       | 256   | P,S           | 3         | SLE               | -      | -      | -      | [NULL]     | 0            |
+| 102490 | 1995-04-20         | 2.3       | 2.5       | 0     | [NULL]        | 4         | PSS               | [NULL] | [NULL] | [NULL] | [NULL]     | 0            |
+| 108788 | 1997-05-06         | 0.0       | 0.0       | 16    | S             | 0         | [NULL]            | [NULL] | [NULL] | -      | [NULL]     | 0            |
+| 122405 | 1998-04-02         | 0.0       | 4.0       | 4     | P             | 0         | SLE, SjS, vertigo | [NULL] | [NULL] | [NULL] | [NULL]     | 0            |
+| ...    | ...                | ...       | ...       | ...   | ...           | ...       | ...               | ...    | ...    | ...    | ...        | ...          |
+*/
 CREATE TABLE Examination (
     ID INTEGER NULL,
-        -- <description>patient identifier referencing Patient.ID — identifies which patient each examination record belongs to; nullable and not unique (multiple exam rows may share the same ID). In this dataset 36 of 806 rows are NULL; 770 non-null values map to 763 distinct IDs (7 duplicates). Many Examination.ID values do not match the Patient table (736 rows have no matching Patient.ID), suggesting broken or external references.</description>
+        -- <description>patient identifier referencing Patient.ID (foreign key linking this examination record to a patient)</description>
         -- <example>14872</example>
         -- <fk> -> Patient.ID</fk>
     "Examination Date" DATE NULL,
-        -- <description>examination date — date when the patient’s clinical examination was performed; in this dataset values range from 1989-04-18 to 1998-04-17 and 10 of 806 rows are null.</description>
+        -- <description>Examination date — the calendar date on which the patient's examination (tests and observations) was performed and recorded.</description>
         -- <example>'1997-05-27'</example>
-    "aCL IgG" REAL NULL,
-        -- <description>Anti‑cardiolipin IgG antibody level — patient serum concentration of anti‑cardiolipin (IgG) antibodies; typically used to detect antiphospholipid antibodies and support diagnosis/monitoring of antiphospholipid syndrome or other autoimmune activity.</description>
+    "aCL IgG" REAL NOT NULL,
+        -- <description>Anti-cardiolipin (aCL) IgG antibody concentration in the patient's blood — a measure of antiphospholipid antibody level used when evaluating autoimmune disorders and thrombosis risk.</description>
         -- <example>1.300</example>
-    "aCL IgM" REAL NULL,
-        -- <description>Anti‑cardiolipin (aCL) IgM antibody level in patient serum — numeric measurement of IgM-class anticardiolipin antibodies used in autoimmune/thrombosis assessment; higher values indicate greater antibody presence (observed in dataset: 806 non-null records; range 0–187,122; mean ≈ 238).</description>
+    "aCL IgM" REAL NOT NULL,
+        -- <description>Anti-cardiolipin (aCL) IgM antibody concentration measured at the examination — a serologic marker used to detect antiphospholipid antibodies and help assess thrombosis/autoimmune risk.</description>
         -- <example>1.600</example>
     ANA INTEGER NULL,
-        -- <description>Anti‑nuclear antibody (ANA) result — numeric ANA titer/result recorded as discrete levels (commonly 0, 16, 64, 256, 4096); used to indicate ANA negativity/positivity and approximate titre.</description>
+        -- <description>Anti‑nuclear antibody (ANA) titer — the measured ANA concentration/titer indicating presence and level of antinuclear antibodies, used to assess autoimmune activity (e.g., sample values like 256).</description>
         -- <example>256</example>
     "ANA Pattern" TEXT NULL,
-        -- <description>ANA immunofluorescence staining pattern — short letter codes (single letters or comma‑separated combinations) indicating the pattern seen on the ANA test; many records are missing (≈32% null).</description>
+        -- <description>ANA staining pattern from the antinuclear antibody (ANA) test</description>
         -- <example>'P'</example>
-    "aCL IgA" INTEGER NULL,
-        -- <description>Anti‑cardiolipin (aCL) IgA antibody level — patient anti‑cardiolipin IgA measurement used in autoimmune/antiphospholipid evaluation. Many records are zero (409 of 806); observed range 0–48547, mean ≈66, 52 distinct values.</description>
+    "aCL IgA" INTEGER NOT NULL,
+        -- <description>Anti‑cardiolipin IgA antibody level — concentration of anti‑cardiolipin (IgA) measured at the examination, used to detect antiphospholipid antibodies and help assess thrombotic risk.</description>
         -- <example>0</example>
     Diagnosis TEXT NULL,
-        -- <description>Clinical diagnosis recorded at the examination — free-text disease names (often comma-separated), e.g. SLE, SjS, MCTD; many rows are missing (331 of 806).</description>
+        -- <description>Patient diagnoses — one or more comma-separated disease names or short clinical findings (may include comorbid conditions or symptoms); examples: 'MCTD, AMI', 'SLE', 'SjS'.</description>
         -- <example>'MCTD, AMI'</example>
     KCT TEXT NULL,
-        -- <description>Kaolin Clotting Time (KCT) test result — an indicator of coagulation abnormality associated with lupus anticoagulant; positive indicates an abnormal/prolonged clotting result. Sparsely recorded in this dataset (present in 146 of 806 rows, 660 null/empty).</description>
+        -- <description>KCT result — kaolin clotting time, a coagulation‑screening test used to detect lupus anticoagulant and other clotting abnormalities.</description>
         -- <values>{'+', '-'}</values>
     RVVT TEXT NULL,
-        -- <description>Russell viper venom (RVVT) test result — a coagulation assay used to detect lupus anticoagulant; indicates whether the test is positive or negative (note: this column has many missing values in this dataset).</description>
+        -- <description>RVVT test result — Russell Viper Venom Time clotting assay interpretation (positive or negative).</description>
         -- <values>{'+', '-'}</values>
     LAC TEXT NULL,
-        -- <description>Lupus anticoagulant (LAC) qualitative result — flag for presence of lupus anticoagulant (positive vs negative); strongly under-recorded in this table (584 of 806 rows NULL, ~72%).</description>
+        -- <description>Lupus anticoagulant (LAC) test result — a qualitative indicator of the presence of lupus anticoagulant associated with coagulation abnormalities.</description>
         -- <values>{'+', '-'}</values>
     Symptoms TEXT NULL,
-        -- <description>Other clinical symptoms recorded at the examination (free-text). Examples: CNS lupus, brain infarction, pulmonary emboli, DVT, leg ulcer. Sparse — present in 80 of 806 rows.</description>
+        -- <description>Examination symptoms and clinical events — free-text notes of signs, symptoms or related clinical events observed at the examination (e.g., AMI, brain infarction/stroke, pulmonary emboli, DVT, leg ulcer, CNS lupus).</description>
         -- <example>'AMI'</example>
-    Thrombosis INTEGER NULL,
-        -- <description>Thrombosis severity indicator — ordinal code for thrombosis extent (0 = none, 1 = most severe, 2 = severe, 3 = mild).</description>
+    Thrombosis INTEGER NOT NULL,
+        -- <description>Thrombosis severity score — ordinal code for presence and severity of thrombosis (0 = no thrombosis; 1 = most serious; 2 = severe; 3 = mild).</description>
         -- <example>1</example>
     FOREIGN KEY (ID) REFERENCES Patient(ID)
 );
 
--- Table: Laboratory (13908 rows)
+/*
+Table: Laboratory
+Rows: 13908
+Sample rows:
+| ID    | Date       | GOT    | GPT    | LDH    | ALP    | TP     | ALB    | UA     | UN     | CRE    | T-BIL   | T-CHO   | TG     | CPK    | GLU    | WBC   | RBC   | HGB   | HCT   | PLT   | PT     | APTT   | FG     | PIC    | TAT    | TAT2   | U-PRO   | IGG    | IGA    | IGM    | CRP    | RA     | RF     | C3     | C4     | RNP    | SM     | SC170   | SSA    | SSB    | CENTROMEA   | DNA    | DNA-II   |
+|-------|------------|--------|--------|--------|--------|--------|--------|--------|--------|--------|---------|---------|--------|--------|--------|-------|-------|-------|-------|-------|--------|--------|--------|--------|--------|--------|---------|--------|--------|--------|--------|--------|--------|--------|--------|--------|--------|---------|--------|--------|-------------|--------|----------|
+| 27654 | 1991-09-11 | 34.0   | 36.0   | 567.0  | 166.0  | 4.5    | 3.3    | 3.8    | 29.0   | 0.8    | 0.3     | 165.0   | [NULL] | 9.0    | [NULL] | 5.0   | 2.6   | 6.4   | 20.3  | 227   | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | 339.0  | 145.0  | 46.0   | 0.6    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL]      | [NULL] | [NULL]   |
+| 27654 | 1991-09-17 | 29.0   | 31.0   | 579.0  | 154.0  | 5.1    | 3.4    | 4.2    | 36.0   | 0.8    | [NULL]  | [NULL]  | [NULL] | [NULL] | [NULL] | 10.4  | 2.9   | 6.7   | 21.6  | 242   | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | 771.0  | 188.0  | 132.0  | 0.6    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL]      | [NULL] | [NULL]   |
+| 27654 | 1991-09-19 | 26.0   | 22.0   | 684.0  | 138.0  | 5.5    | 3.6    | 4.9    | 34.0   | 0.9    | [NULL]  | [NULL]  | [NULL] | [NULL] | 88.0   | 10.5  | 3.4   | 7.9   | 24.7  | 233   | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | 2.7    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL]      | [NULL] | [NULL]   |
+| 27654 | 1991-09-20 | 23.0   | 18.0   | 552.0  | 131.0  | 4.2    | 2.9    | 4.8    | 22.0   | 0.7    | 0.2     | 134.0   | [NULL] | 10.0   | [NULL] | 10.3  | 2.6   | 6.1   | 19.3  | 201   | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | 430.0  | 118.0  | 56.0   | 1.2    | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL]      | [NULL] | [NULL]   |
+| 27654 | 1991-09-21 | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL]  | [NULL] | [NULL] | [NULL] | 14.3  | 3.2   | 7.2   | 23.4  | 215   | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL] | [NULL]  | [NULL] | [NULL] | [NULL]      | [NULL] | [NULL]   |
+| ...   | ...        | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...     | ...    | ...    | ...    | ...   | ...   | ...   | ...   | ...   | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...    | ...    | ...         | ...    | ...      |
+*/
 CREATE TABLE Laboratory (
     ID INTEGER NOT NULL,
-        -- <description>Patient identifier for a laboratory record.</description>
+        -- <description>Patient identifier for the laboratory record (links this row to a Patient)</description>
         -- <example>27654</example>
         -- <fk> -> Patient.ID</fk>
     Date DATE NOT NULL,
-        -- <description>Date of the laboratory test (date when the specimen was collected / tests were performed).</description>
+        -- <description>Laboratory test date — the calendar date when the laboratory measurements were taken (recorded as YYYY-MM-DD; e.g., 1991-09-11).</description>
         -- <example>'1991-09-11'</example>
     GOT INTEGER NULL,
-        -- <description>Serum aspartate aminotransferase (AST / GOT) activity — a clinical marker of hepatocellular or muscle injury (values above the normal range, N < 60, indicate elevation).</description>
+        -- <description>AST (GOT) liver enzyme level — measurement of glutamic oxaloacetic transaminase used to help assess hepatocellular injury or muscle damage; values above the usual reference (commonly <60) indicate possible tissue injury.</description>
         -- <example>34</example>
     GPT INTEGER NULL,
-        -- <description>Alanine aminotransferase (ALT, also reported as GPT) — serum liver enzyme used to detect and monitor hepatocellular injury; values above the reference suggest liver cell damage (reference < 60 U/L).</description>
+        -- <description>Serum alanine aminotransferase (ALT) activity — a liver enzyme used to detect hepatocellular injury or inflammation (commonly considered normal < 60).</description>
         -- <example>36</example>
     LDH INTEGER NULL,
-        -- <description>Lactate dehydrogenase (LDH) level — serum enzyme concentration used as a nonspecific marker of tissue damage or hemolysis; values above the typical laboratory cutoff (~500) are considered elevated. Dataset notes: 11,305 of 13,908 rows populated (observed range ~25–67,080; mean ≈ 322).</description>
+        -- <description>Serum lactate dehydrogenase (LDH) level — a laboratory marker of tissue damage or cell turnover; values above ~500 are typically considered elevated.</description>
         -- <example>567</example>
     ALP INTEGER NULL,
-        -- <description>Serum alkaline phosphatase level — routine liver/bone enzyme measurement; typical clinical cutoff noted as <300. Contains values ranging from 11 to 1308 (mean ≈122) with about 19.8% missing.</description>
+        -- <description>Alkaline phosphatase (ALP) — patient serum ALP enzyme level; values above ~300 are considered elevated (indicating possible liver or bone pathology).</description>
         -- <example>166</example>
     TP REAL NULL,
-        -- <description>Total serum protein — patient total protein concentration in serum, a general marker of nutritional and liver status (typical normal range ≈ 6.0–8.5). In this dataset 11,118 of 13,908 rows are non‑null; values range ~0–9.9 with mean ≈ 7.12.</description>
+        -- <description>Total protein level in the patient's blood (total serum protein), used to assess nutritional status and liver function; typical reference range approximately 6.0–8.5.</description>
         -- <example>4.500</example>
     ALB REAL NULL,
-        -- <description>Serum albumin concentration — patient's blood albumin level used to assess nutritional and liver status; normal range ≈ 3.5–5.5 (commonly reported in g/dL). Dataset: 11,068/13,908 records non‑null (mean ≈ 4.14, min 1.0, max 5.8).</description>
+        -- <description>Serum albumin level — blood albumin concentration used to assess nutritional status and liver/kidney function; typical normal range ≈ 3.5–5.5.</description>
         -- <example>3.300</example>
     UA REAL NULL,
-        -- <description>Serum uric acid level measured at each laboratory visit — used to assess hyperuricemia. In this dataset the column is populated in 11,103 of 13,908 rows (~79.8%), with values ranging ~0.4–17.3 and a mean ≈4.40. Reference thresholds are higher in males than females (commonly ≳8.0 for males, ≳6.5 for females).</description>
+        -- <description>Serum uric acid concentration (measure of uric acid in the blood), used to assess hyperuricemia; clinical thresholds often cited: >8.0 (male) and >6.5 (female).</description>
         -- <example>3.800</example>
     UN INTEGER NULL,
-        -- <description>Serum urea nitrogen (blood urea nitrogen, BUN) level — numeric measure of urea nitrogen in the patient’s blood; values above ~30 are generally considered elevated. Observed range in the table: 0–152 (mean ≈ 15.4); 11,238 non-null entries (≈80.8% populated), 2,670 nulls (≈19.2%).</description>
+        -- <description>Serum urea nitrogen — blood urea nitrogen level used to assess renal function and protein metabolism; values above the typical reference (<30) suggest renal impairment, dehydration, or increased protein catabolism.</description>
         -- <example>29</example>
     CRE REAL NULL,
-        -- <description>Serum creatinine level — blood creatinine concentration used to assess kidney (renal) function; values > 1.5 are typically considered above the normal range.</description>
+        -- <description>Serum creatinine level — blood creatinine concentration used to assess kidney (renal) function; values below ~1.5 are considered normal (per original metadata).</description>
         -- <example>0.800</example>
     "T-BIL" REAL NULL,
-        -- <description>Total bilirubin (serum) level from the laboratory panel — a measure of bilirubin in blood; values above ≈2.0 are generally considered elevated (indicative of cholestasis/hepatic dysfunction).</description>
+        -- <description>Total bilirubin level in the patient's blood — a clinical marker of liver function and bilirubin clearance; values above ~2.0 (common normal upper limit) indicate elevated bilirubin/jaundice and possible hepatobiliary dysfunction.</description>
         -- <example>0.300</example>
     "T-CHO" INTEGER NULL,
-        -- <description>Total cholesterol (T-CHO) level measured at each laboratory visit; used to assess lipid status (schema note: normal < 250). Present in 10,664 of 13,908 records (~76.7%); observed values range 37–568 with mean ≈203 and 325 distinct values.</description>
+        -- <description>Serum total cholesterol — the patient's total blood (serum) cholesterol level; values ≥250 are above the typical normal range (<250).</description>
         -- <example>165</example>
     TG INTEGER NULL,
-        -- <description>Serum triglyceride level — patient blood triglyceride concentration (clinical normal < 200).</description>
+        -- <description>Serum triglyceride level — the patient's blood triglyceride concentration; values above ~200 are commonly considered elevated (hypertriglyceridemia).</description>
         -- <example>185</example>
     CPK INTEGER NULL,
-        -- <description>Serum creatine phosphokinase (CPK) — enzyme level used to detect muscle or myocardial injury; values typically considered normal < 250.</description>
+        -- <description>Creatine phosphokinase (CPK) level — serum enzyme measurement used to detect muscle injury (including myocardial or skeletal muscle); higher values indicate muscle damage. Metadata notes a typical upper bound of < 250.</description>
         -- <example>9</example>
     GLU INTEGER NULL,
-        -- <description>Blood glucose level measured in the laboratory (likely mg/dL). High missingness — ~87.8% of rows are NULL; among non‑null values (n=2,705) observed range is 62–499 with mean ≈115.7. Used to assess glycaemia (hyperglycaemia/hypoglycaemia) at the time of the lab draw.</description>
+        -- <description>Blood glucose level measured in the laboratory (patient blood glucose); values above about 180 are indicative of hyperglycemia and may reflect abnormal glucose control.</description>
         -- <example>88</example>
     WBC REAL NULL,
-        -- <description>white blood cell count — peripheral blood leukocyte count (typical adult reference ≈ 3.5–9.0).</description>
+        -- <description>White blood cell count (peripheral leukocyte count) — patient’s measured WBC; typical reference range approximately 3.5–9.0 (as recorded).</description>
         -- <example>5.000</example>
     RBC REAL NULL,
-        -- <description>Red blood cell count — patient’s red blood cell concentration (RBC). Typical adult reference ≈ 3.5–6.0; in this table values range from 0.4 to 6.6 (mean ≈ 4.32). 1,827 of 13,908 rows are null.</description>
+        -- <description>Red blood cell count (RBC) — numeric measure of the patient’s red blood cells from a blood sample, used to evaluate anemia or erythrocytosis (typical reference ~3.5–6.0).</description>
         -- <example>2.600</example>
     HGB REAL NULL,
-        -- <description>Hemoglobin concentration in the patient's blood — a laboratory measure used to assess anemia and oxygen‑carrying capacity; commonly referenced normal range ≈ 10–17 (dataset range ~1.3–18.9, mean ≈ 12.4).</description>
+        -- <description>Blood hemoglobin concentration — the patient’s hemoglobin level used to evaluate anemia and oxygen-carrying capacity; typical reference range ≈ 10–17 (from original metadata).</description>
         -- <example>6.400</example>
     HCT REAL NULL,
-        -- <description>Hematocrit percentage — the proportion of blood volume made up of red blood cells (packed cell volume), a clinical indicator of anemia or polycythemia. Typical reference ~29–52%. Dataset notes: mean ≈ 37.9, observed range 3–56, ~13% missing; very low values (e.g., 3) likely represent outliers or data entry errors.</description>
+        -- <description>Hematocrit — percentage of blood volume composed of red blood cells, used to assess anemia or polycythemia; typical reference range ~29–52%.</description>
         -- <example>20.300</example>
     PLT INTEGER NULL,
-        -- <description>Platelet count — patient platelet measurement used to assess bleeding and clotting status (clinically ~100–400). Dataset: 11,287 non‑null values (mean ≈263); observed range 5–5844 — contains extreme outliers that may indicate entry/unit errors and should be checked.</description>
+        -- <description>Platelet count — measure of circulating platelets used to evaluate bleeding and clotting risk; typical reference range ≈ 100–400.</description>
         -- <example>227</example>
     PT REAL NULL,
-        -- <description>Prothrombin time (PT) — a coagulation test measuring time to form a blood clot (seconds); elevated values indicate prolonged clotting. Normal range ≲ 14 s. Note: this field is sparsely populated (~4.5% of Laboratory rows contain a value).</description>
+        -- <description>Prothrombin time — result of the PT coagulation test (seconds), used to assess blood clotting; normal range reported as <14 seconds.</description>
         -- <example>11.300</example>
     APTT INTEGER NULL,
-        -- <description>Activated partial thromboplastin time (APTT) — coagulation time in seconds (reference: <45 s). Values are very sparse in this dataset (51 non-null of 13,908) and span 57–146 s (mean ≈97.3 s), so recorded values are typically above the reference and coverage is limited.</description>
+        -- <description>Activated partial thromboplastin time (APTT) test result — a measure of intrinsic-pathway blood coagulation; prolonged values indicate slower clotting. Normal range: < 45 seconds.</description>
         -- <example>108</example>
     FG REAL NULL,
-        -- <description>Fibrinogen level in the patient's blood (clinical fibrinogen). Normal range reported in metadata: ~150–450. In this dataset FG is very sparse (~455 non-null of 13,908 rows, ≈3.3%) and observed values range ≈23.8–106.5 (mean ≈43.3) — units/scale are not specified and appear inconsistent with the metadata range, so confirm units before using.</description>
+        -- <description>Fibrinogen level — a laboratory measure of plasma fibrinogen used to assess coagulation and clotting risk; typical reference range noted in the metadata is 150–450 (units not specified).</description>
         -- <example>27.000</example>
     PIC INTEGER NULL,
-        -- <description>Plasma PIC (plasmin–α2‑plasmin inhibitor complex) level — a fibrinolysis/coagulation marker (units not recorded).</description>
+        -- <description>Plasmin–α2‑plasmin inhibitor complex (PIC) level — a blood fibrinolysis marker reflecting plasmin activity and fibrin degradation; elevated values suggest increased fibrinolysis or thrombotic activity.</description>
         -- <example>320</example>
     TAT INTEGER NULL,
-        -- <description>Thrombin–antithrombin complex (TAT) level — a coagulation marker reflecting thrombin generation; very sparsely populated (142 non-null of 13,908 rows, ~1%), observed values range ~63–183 with mean ≈121.</description>
+        -- <description>Thrombin–antithrombin complex (TAT) level — a blood marker of thrombin generation and coagulation activation; elevated values indicate increased clotting/thrombogenic activity.</description>
         -- <example>77</example>
     TAT2 INTEGER NULL,
-        -- <description>Additional/alternate thrombin–antithrombin (TAT) assay result — a second TAT measurement (likely the same analyte as TAT); units not recorded. Sparse: present in few rows.</description>
+        -- <description>Second thrombin–antithrombin complex measurement (TAT2), a laboratory marker of thrombin generation used to detect and monitor activation of coagulation; typically recorded as a follow-up or repeat TAT value to track changes over time.</description>
         -- <example>113</example>
     "U-PRO" TEXT NULL,
-        -- <description>Urine protein (proteinuria) result — the measured amount of protein in the patient’s urine, recorded as numeric values or semi‑quantitative codes (e.g., '0', '30', '300', '>=1000', 'TR', '+1(30)', '-' for negative). Typical clinical reference noted in source: ~0–30 (normal). Many rows are null and the column mixes exact amounts and shorthand/trace notations.</description>
+        -- <description>Urine protein result (proteinuria) — coded protein measurement reported using numeric values and qualitative codes.</description>
         -- <values>{'%%', '+1(30)', '+2(100)', '-', '-15', '0', '1', '100', '2', '3', '30', '300', '4', '>=1000', '>=300', 'TR'}</values>
     IGG INTEGER NULL,
-        -- <description>Serum immunoglobulin G (IgG) level — total IgG concentration in patient serum, used to assess humoral (antibody-mediated) immunity. Dataset contains 2,680 non-null measurements (of 13,908 rows); observed values range ≈3–6510 with mean ≈1800. Metadata/notes suggest a typical reference range near 900–2000.</description>
+        -- <description>Serum immunoglobulin G concentration — the patient’s IgG antibody level used to assess humoral immunity; dataset notes a typical reference range of about 900–2000 (units not specified), though recorded values in this table can vary (example: 339).</description>
         -- <example>339</example>
     IGA INTEGER NULL,
-        -- <description>Serum immunoglobulin A (IgA) level — patient IgA concentration used to assess humoral immunity; commonly interpreted against a reference range of ~80–500 (units not specified). Sparsely populated in this table (2,680 of 13,908 records non-null); observed values range from 1 to 1,765.</description>
+        -- <description>Serum immunoglobulin A (IgA) level — patient IgA concentration used to assess humoral immunity and some autoimmune conditions; dataset notes a typical normal range of about 80–500.</description>
         -- <example>145</example>
     IGM INTEGER NULL,
-        -- <description>Immunoglobulin M (IgM) level — serum IgM measurement; normal reference roughly 40–400 (units not recorded). Note: sparsely populated (≈19% non-null) and contains extreme values/outliers (observed range 0–1573).</description>
+        -- <description>IgM antibody level (immunoglobulin M) — measures the patient’s IgM in blood; commonly used to assess recent or ongoing immune response. Normal range approximately 40–400 (units as in original lab reporting).</description>
         -- <example>46</example>
     CRP TEXT NULL,
-        -- <description>C-reactive protein result (inflammation marker) — values are mostly numeric strings but also include censored entries and missing markers (e.g. '<0.3', '-', NULL); convert/canonicalize to numeric (handle '<' as below detection limit) before analysis; clinically elevated ≳1.0.</description>
+        -- <description>C-reactive protein (CRP) measurement — a marker of systemic inflammation; values are typically numeric (examples: 0.48, 2.11, 6.5) but the column also contains non-numeric markers such as '-' or '+-' to indicate negative/indeterminate results; normal CRP is generally < 1.0.</description>
         -- <example>'0.6'</example>
     RA TEXT NULL,
-        -- <description>Rheumatoid factor test result — qualitative interpretation of the rheumatoid factor (presence/absence and relative strength), used to support diagnosis of rheumatoid arthritis and other autoimmune disorders. Symbols like '+' and '-' denote positive/negative; variants such as '+-' or numeric modifiers (e.g. '2+') indicate borderline or stronger reactivity. Note: this field is frequently missing (~80% NULL).</description>
+        -- <description>Rheumatoid factor test result — qualitative indicator of the presence/degree of rheumatoid factor, commonly recorded with symbols or short codes (e.g. '-', '+', '+-', '2+', '7-').</description>
         -- <values>{'+', '+-', '-', '2+', '7-'}</values>
     RF TEXT NULL,
-        -- <description>Rheumatoid factor test result — recorded as the reported value or qualifier (examples: '<20.5', '<40', 'negative', or numeric strings such as '57.9'). Contains many missing values.</description>
+        -- <description>Rheumatoid factor (RF) test result — reported as a numeric or comparative text value (e.g. '<20.5', '324.4'); values above approximately 20 are typically considered elevated and suggest presence of rheumatoid factor.</description>
         -- <example>'<20.5'</example>
     C3 INTEGER NULL,
-        -- <description>Complement C3 level — patient serum complement C3 test result used to assess complement-system activity (commonly interpreted with normal >35). Observed values in the table range ~15–196 with mean ≈70.7; substantial missingness (5,461 non-null of 13,908 rows).</description>
+        -- <description>Complement component 3 (C3) serum level — a laboratory complement test result (decreased values indicate complement consumption); values >35 are considered within the normal range.</description>
         -- <example>30</example>
     C4 INTEGER NULL,
-        -- <description>Serum complement component 4 (C4) — patient serum complement protein level used to assess complement activation/deficiency; values ≤10 are considered low (normal >10). Many records in this dataset are missing.</description>
+        -- <description>Complement C4 level (serum complement component 4), a clinical immunology marker used to assess complement system activity; normal range reported as >10.</description>
         -- <example>14</example>
     RNP TEXT NULL,
-        -- <description>Anti-ribonucleoprotein (RNP) antibody test result — records whether anti‑RNP antibodies were detected (reported as text, typically numeric titer values or 'negative'). Used in autoimmune-disease evaluation. The column is very sparse (≈99% missing).</description>
+        -- <description>Anti-ribonuclear protein (RNP) antibody test result — reported as numeric titers or 'negative', used to detect anti‑RNP autoantibodies when evaluating autoimmune diseases (e.g., SLE).</description>
         -- <values>{'0', '1', '15', '16', '256', '4', '64', 'negative'}</values>
     SM TEXT NULL,
-        -- <description>anti‑SM (anti‑Smith) autoantibody test result used to help diagnose systemic lupus erythematosus (SLE). This laboratory antibody result is recorded infrequently in the dataset — only 128 non-null entries out of 13,908 rows.</description>
+        -- <description>Anti‑SM (anti‑Smith) autoantibody test result — assay result used to help diagnose and monitor systemic lupus erythematosus (SLE); recorded as the reported value (e.g., 'negative' or numeric titer).</description>
         -- <values>{'0', '1', '2', '8', 'negative'}</values>
     SC170 TEXT NULL,
-        -- <description>Anti‑Scl‑70 (anti‑topoisomerase I) antibody test result — a serological marker used in the diagnosis of scleroderma; recorded values are sparse (only ~28 non-null out of 13,908 rows) and appear as 'negative' or small integer titers/codes (e.g. 0, 1, 4, 16).</description>
+        -- <description>Anti‑Scl‑70 (anti–topoisomerase I) antibody test result — indicates presence or level of anti‑Scl‑70 antibodies used to detect and monitor scleroderma; entries may be numeric titers or 'negative'.</description>
         -- <values>{'0', '1', '16', '4', 'negative'}</values>
     SSA TEXT NULL,
-        -- <description>Anti‑SSA (Ro) autoantibody test result — qualitative/semiquantitative indicator of anti‑SSA (Ro) antibodies used in autoimmune disease workup.</description>
+        -- <description>Anti‑SSA (Ro) antibody test result — indicates presence/level of anti‑SSA antibodies in the patient’s serum; used when evaluating or monitoring autoimmune diseases (e.g., Sjögren’s syndrome, SLE).</description>
         -- <values>{'0', '1', '16', '256', '4', '64', 'negative'}</values>
     SSB TEXT NULL,
-        -- <description>Anti-SSB (La) antibody test result — recorded as text codes/levels (examples: 'negative', '0', '1', '2', '8', '32'). Most entries are missing.</description>
+        -- <description>Anti-SSB (La) antibody result — indicates presence/level of anti-SSB autoantibodies used to support diagnosis of autoimmune disorders (for example Sjögren's syndrome or SLE); a value of 'negative' denotes a normal (absent) result.</description>
         -- <values>{'0', '1', '2', '32', '8', 'negative'}</values>
     CENTROMEA TEXT NULL,
-        -- <description>Anti‑centromere antibody test result — qualitative indicator used in autoimmune serology (presence/absence); recorded inconsistently and has very sparse coverage in this table.</description>
+        -- <description>Anti‑centromere antibody test result indicating presence or absence of anti‑centromere antibodies used in evaluation of scleroderma / limited cutaneous systemic sclerosis.</description>
         -- <values>{'0', 'negative'}</values>
     DNA TEXT NULL,
-        -- <description>Anti‑DNA (anti‑dsDNA) antibody level — reported in IU/mL (used to help diagnose/monitor autoimmune disease; common clinical cutoff ~<8 IU/mL). Sparsely populated in this table (69 non‑null values out of 13,908).</description>
+        -- <description>Anti‑double‑stranded DNA (anti‑DNA) antibody level — a serologic measure used to detect and monitor autoimmune disease activity (notably systemic lupus erythematosus); reported in IU/mL (typical normal < 8 IU/mL).</description>
         -- <example>'41.9'</example>
+    "DNA-II" INTEGER NULL,
+        -- <description>Anti-DNA antibody level — numeric measurement of anti‑DNA (anti‑dsDNA) antibodies; values below 8 are generally considered within the normal range, higher values indicate elevated anti‑DNA associated with autoimmune activity.</description>
     PRIMARY KEY (ID, Date),
     FOREIGN KEY (ID) REFERENCES Patient(ID)
 );
 
--- Table: Patient (1238 rows)
+/*
+Table: Patient
+Rows: 1238
+Sample rows:
+| ID    | SEX   | Birthday   | Description   | First Date   | Admission   | Diagnosis    |
+|-------|-------|------------|---------------|--------------|-------------|--------------|
+| 2110  | F     | 1934-02-13 | 1994-02-14    | 1993-02-10   | +           | RA susp.     |
+| 11408 | F     | 1937-05-02 | 1996-12-01    | 1973-01-01   | +           | PSS          |
+| 12052 | F     | 1956-04-14 | 1991-08-13    | [NULL]       | +           | SLE          |
+| 14872 | F     | 1953-09-21 | 1997-08-13    | [NULL]       | +           | MCTD         |
+| 27654 | F     | 1936-03-25 | [NULL]        | 1992-02-03   | +           | RA, SLE susp |
+| ...   | ...   | ...        | ...           | ...          | ...         | ...          |
+*/
 CREATE TABLE Patient (
     ID INTEGER NOT NULL PRIMARY KEY,
-        -- <description>Patient identifier — unique identifier for each patient (one row per patient); non‑null and distinct across all 1,238 records.</description>
+        -- <description>patient identifier — the unique primary key for the Patient table used to identify and link a patient across related records (e.g., Examination and Laboratory).</description>
         -- <example>2110</example>
-    SEX TEXT NULL,
-        -- <description>Patient sex — recorded sex at registration. Values: 'F' = female, 'M' = male; empty string indicates missing/unrecorded.</description>
+    SEX TEXT NOT NULL,
+        -- <description>Patient sex — the recorded gender of the patient; may be missing or left blank when unknown or unspecified.</description>
         -- <values>{'', 'F', 'M'}</values>
     Birthday DATE NULL,
-        -- <description>Patient date of birth — mostly complete (1,237 of 1,238 rows present); observed values range from 1912-08-28 to 2007-05-28.</description>
+        -- <description>Patient date of birth (birthdate of the patient; may be null when not recorded)</description>
         -- <example>'1934-02-13'</example>
     Description DATE NULL,
-        -- <description>Initial patient-record date — the first date when this patient's information was entered into the dataset (initial recorded visit/date).</description>
+        -- <description>date when the patient's information was first recorded (first documentation date); null if not recorded</description>
         -- <example>'1994-02-14'</example>
     "First Date" DATE NULL,
-        -- <description>Date of the patient's first recorded hospital visit or registration (first recorded encounter). May be missing for some patients — 251 of 1,238 rows are null; recorded values span 1972-08-02 to 1998-08-28.</description>
+        -- <description>Patient's first visit date to the hospital (date of the first recorded encounter).</description>
         -- <example>'1993-02-10'</example>
-    Admission TEXT NULL,
-        -- <description>Patient admission status indicating if the patient was admitted to hospital or followed as an outpatient.</description>
+    Admission TEXT NOT NULL,
+        -- <description>Patient admission status flag indicating whether the patient was managed as an inpatient or outpatient; encoded with symbolic legacy values and occasional empty/malformed entries.</description>
         -- <values>{'', '+', '+(', '-'}</values>
-    Diagnosis TEXT NULL
-        -- <description>Primary patient diagnosis — free-text disease name(s) recorded for each patient (mostly populated; 1 blank of 1,238). Common entries include SLE, SJS, RA.</description>
+    Diagnosis TEXT NOT NULL
+        -- <description>Patient diagnosis — one or more disease names (often comma-separated), sometimes annotated with qualifiers (e.g., 'susp.' for suspected).</description>
         -- <example>'RA susp.'</example>
 );
 ```

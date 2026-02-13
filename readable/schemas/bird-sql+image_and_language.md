@@ -1,7 +1,19 @@
 ```sql
 -- Database: image_and_language
 
--- Table: ATT_CLASSES (699 rows)
+/*
+Table: ATT_CLASSES
+Rows: 699
+Sample rows:
+| ATT_CLASS_ID   | ATT_CLASS   |
+|----------------|-------------|
+| 0              | building s  |
+| 1              | indoors     |
+| 2              | cluttered   |
+| 3              | park        |
+| 4              | two story   |
+| ...            | ...         |
+*/
 CREATE TABLE ATT_CLASSES (
     ATT_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
@@ -9,28 +21,52 @@ CREATE TABLE ATT_CLASSES (
         -- <example>'building s'</example>
 );
 
--- Table: IMG_OBJ (1750617 rows)
+/*
+Table: IMG_OBJ
+Rows: 1750617
+Sample rows:
+| IMG_ID   | OBJ_SAMPLE_ID   | OBJ_CLASS_ID   | X   | Y   | W   | H   |
+|----------|-----------------|----------------|-----|-----|-----|-----|
+| 1        | 1               | 298            | 0   | 0   | 799 | 557 |
+| 1        | 2               | 246            | 78  | 308 | 722 | 290 |
+| 1        | 3               | 293            | 1   | 0   | 222 | 538 |
+| 1        | 4               | 239            | 439 | 283 | 359 | 258 |
+| 1        | 5               | 295            | 0   | 1   | 135 | 535 |
+| ...      | ...             | ...            | ... | ... | ... | ... |
+*/
 CREATE TABLE IMG_OBJ (
     IMG_ID INTEGER NOT NULL,
         -- <example>1</example>
     OBJ_SAMPLE_ID INTEGER NOT NULL,
         -- <example>1</example>
-    OBJ_CLASS_ID INTEGER NULL,
+    OBJ_CLASS_ID INTEGER NOT NULL,
         -- <example>298</example>
         -- <fk> -> OBJ_CLASSES.OBJ_CLASS_ID</fk>
-    X INTEGER NULL,
+    X INTEGER NOT NULL,
         -- <example>0</example>
-    Y INTEGER NULL,
+    Y INTEGER NOT NULL,
         -- <example>0</example>
-    W INTEGER NULL,
+    W INTEGER NOT NULL,
         -- <example>799</example>
-    H INTEGER NULL,
+    H INTEGER NOT NULL,
         -- <example>557</example>
     PRIMARY KEY (IMG_ID, OBJ_SAMPLE_ID),
     FOREIGN KEY (OBJ_CLASS_ID) REFERENCES OBJ_CLASSES(OBJ_CLASS_ID)
 );
 
--- Table: IMG_OBJ_ATT (1074674 rows)
+/*
+Table: IMG_OBJ_ATT
+Rows: 1074674
+Sample rows:
+| IMG_ID   | ATT_CLASS_ID   | OBJ_SAMPLE_ID   |
+|----------|----------------|-----------------|
+| 1113     | 0              | 21              |
+| 1113     | 0              | 22              |
+| 1113     | 0              | 23              |
+| 1113     | 0              | 24              |
+| 1113     | 0              | 25              |
+| ...      | ...            | ...             |
+*/
 CREATE TABLE IMG_OBJ_ATT (
     IMG_ID INTEGER NOT NULL,
         -- <example>1</example>
@@ -46,7 +82,19 @@ CREATE TABLE IMG_OBJ_ATT (
     FOREIGN KEY (IMG_ID, OBJ_SAMPLE_ID) REFERENCES IMG_OBJ(IMG_ID, OBJ_SAMPLE_ID)
 );
 
--- Table: IMG_REL (763159 rows)
+/*
+Table: IMG_REL
+Rows: 763159
+Sample rows:
+| IMG_ID   | PRED_CLASS_ID   | OBJ1_SAMPLE_ID   | OBJ2_SAMPLE_ID   |
+|----------|-----------------|------------------|------------------|
+| 675      | 0               | 13               | 1                |
+| 1193     | 0               | 12               | 34               |
+| 3447     | 0               | 4                | 5                |
+| 2316535  | 0               | 17               | 9                |
+| 2316535  | 0               | 33               | 8                |
+| ...      | ...             | ...              | ...              |
+*/
 CREATE TABLE IMG_REL (
     IMG_ID INTEGER NOT NULL,
         -- <example>1</example>
@@ -67,7 +115,19 @@ CREATE TABLE IMG_REL (
     FOREIGN KEY (IMG_ID, OBJ2_SAMPLE_ID) REFERENCES IMG_OBJ(IMG_ID, OBJ_SAMPLE_ID)
 );
 
--- Table: OBJ_CLASSES (300 rows)
+/*
+Table: OBJ_CLASSES
+Rows: 300
+Sample rows:
+| OBJ_CLASS_ID   | OBJ_CLASS   |
+|----------------|-------------|
+| 0              | awning      |
+| 1              | goggles     |
+| 2              | dot         |
+| 3              | kitchen     |
+| 4              | feathers    |
+| ...            | ...         |
+*/
 CREATE TABLE OBJ_CLASSES (
     OBJ_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
@@ -75,7 +135,19 @@ CREATE TABLE OBJ_CLASSES (
         -- <example>'awning'</example>
 );
 
--- Table: PRED_CLASSES (150 rows)
+/*
+Table: PRED_CLASSES
+Rows: 150
+Sample rows:
+| PRED_CLASS_ID   | PRED_CLASS   |
+|-----------------|--------------|
+| 0               | playing on   |
+| 1               | looking a    |
+| 2               | to left of   |
+| 3               | beyond       |
+| 4               | covers       |
+| ...             | ...          |
+*/
 CREATE TABLE PRED_CLASSES (
     PRED_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
