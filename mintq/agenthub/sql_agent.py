@@ -275,7 +275,9 @@ class SchemaLinker:
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
 
         if not linked_schema.tables:
-            raise ValueError("No tables found in the linked schema")
+            raise ValueError(
+                f"No tables found in the linked schema. Pred query: {pred_query.query}. Extracted source columns: {source_columns}. "
+            )
 
         expanded_linked_schema = await self.expand_schema_async(ctx, linked_schema, task)
 
@@ -469,6 +471,7 @@ class SQLAgent:
         ##### Remove #####
         if hasattr(task, "pred_query") and task.pred_query is not None:
             from mintq.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
+
             task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
             postprocessed_pred_query = await self.postprocessor.postprocess_async(
                 ctx, task, task.extra_pred_info.raw_pred_query
