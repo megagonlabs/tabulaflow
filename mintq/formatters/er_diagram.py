@@ -14,6 +14,7 @@ class ERDiagramMermaidFormatter:
     name: ClassVar[str] = "er_diagram_mermaid"
     include_source_tables: bool = True
     include_descriptions: bool = True
+    include_relation_descriptions: bool = True
     include_join_snippets: bool = True
 
     def format(self, er_diagram: ERDiagram) -> str:
@@ -61,11 +62,6 @@ class ERDiagramMermaidFormatter:
 
         lines = []
 
-        # Add join SQL as a Mermaid comment on its own line (inline comments break GitHub renderer)
-        if self.include_join_snippets and rel.join_sql_snippet:
-            join_sql = self._sanitize_comment(rel.join_sql_snippet)
-            lines.append(f"    %% {join_sql}")
-
         # For binary relationships, use standard Mermaid ER notation
         if len(rel.participants) == 2:
             p1, p2 = rel.participants[0], rel.participants[1]
@@ -85,6 +81,16 @@ class ERDiagramMermaidFormatter:
                 e2 = self._sanitize_name(other.entity)
                 label = self._sanitize_string(f"{rel.name}_{other.role}")
                 lines.append(f'    {e1} {left_card}--{right_card} {e2} : "{label}"')
+
+        # Add relation description as a Mermaid comment
+        if self.include_relation_descriptions and rel.description:
+            desc = self._sanitize_comment(rel.description)
+            lines.append(f"    %% {desc}")
+
+        # Add join SQL as a Mermaid comment on its own line (inline comments break GitHub renderer)
+        if self.include_join_snippets and rel.join_sql_snippet:
+            join_sql = self._sanitize_comment(rel.join_sql_snippet)
+            lines.append(f"    %% SQL join path: `{join_sql}`")
 
         return "\n".join(lines)
 
