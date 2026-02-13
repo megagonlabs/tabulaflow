@@ -20,6 +20,30 @@ logger = logging.getLogger(__name__)
 
 NumericOrNull: TypeAlias = Union[float, int, None]
 
+SQLDialect: TypeAlias = Literal[
+    "athena",
+    "bigquery",
+    "clickhouse",
+    "databricks",
+    "doris",
+    "duckdb",
+    "hive",
+    "mysql",
+    "oracle",
+    "postgres",
+    "presto",
+    "redshift",
+    "snowflake",
+    "spark",
+    "sqlite",
+    "starrocks",
+    "teradata",
+    "trino",
+    "tsql",
+]
+
+NonSQLLanguage: TypeAlias = Literal["cypher", "mongo"]
+
 
 class ForeignKeySchema(BaseModel):
     columns: list[str]
@@ -702,7 +726,7 @@ class CSVSummaryRow(BaseModel):
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
-    language: str
+    language: SQLDialect | NonSQLLanguage
     db: str
     question: str
     question_instructions: str | None = None
@@ -807,7 +831,7 @@ class AmbigNL2QTask(BaseModel):
     qid: str
     task_type: Literal["ambig"] = "ambig"
     has_intended_resolution: bool
-    language: str
+    language: SQLDialect
     db: str
     question: str
     dataset_instructions: str | None = None
