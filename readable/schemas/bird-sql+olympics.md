@@ -2,7 +2,7 @@
 -- Database: olympics
 
 /*
-Table: city
+Schema: NULLTable: city
 Rows: 42
 Sample rows:
 | id   | city_name   |
@@ -22,7 +22,7 @@ CREATE TABLE city (
 );
 
 /*
-Table: competitor_event
+Schema: NULLTable: competitor_event
 Rows: 260971
 Sample rows:
 | event_id   | competitor_id   | medal_id   |
@@ -50,7 +50,7 @@ CREATE TABLE competitor_event (
 );
 
 /*
-Table: event
+Schema: NULLTable: event
 Rows: 757
 Sample rows:
 | id   | sport_id   | event_name                       |
@@ -74,7 +74,7 @@ CREATE TABLE event (
 );
 
 /*
-Table: games
+Schema: NULLTable: games
 Rows: 51
 Sample rows:
 | id   | games_year   | games_name   | season   |
@@ -98,7 +98,7 @@ CREATE TABLE games (
 );
 
 /*
-Table: games_city
+Schema: NULLTable: games_city
 Rows: 52
 Sample rows:
 | games_id   | city_id   |
@@ -122,7 +122,7 @@ CREATE TABLE games_city (
 );
 
 /*
-Table: games_competitor
+Schema: NULLTable: games_competitor
 Rows: 180252
 Sample rows:
 | id   | games_id   | person_id   | age   |
@@ -150,7 +150,7 @@ CREATE TABLE games_competitor (
 );
 
 /*
-Table: medal
+Schema: NULLTable: medal
 Rows: 4
 All rows:
 |   id | medal_name   |
@@ -168,7 +168,7 @@ CREATE TABLE medal (
 );
 
 /*
-Table: noc_region
+Schema: NULLTable: noc_region
 Rows: 231
 Sample rows:
 | id   | noc   | region_name          |
@@ -190,7 +190,7 @@ CREATE TABLE noc_region (
 );
 
 /*
-Table: person
+Schema: NULLTable: person
 Rows: 128854
 Sample rows:
 | id   | full_name                | gender   | height   | weight   |
@@ -216,7 +216,7 @@ CREATE TABLE person (
 );
 
 /*
-Table: person_region
+Schema: NULLTable: person_region
 Rows: 130521
 Sample rows:
 | person_id   | region_id   |
@@ -240,7 +240,7 @@ CREATE TABLE person_region (
 );
 
 /*
-Table: sport
+Schema: NULLTable: sport
 Rows: 66
 Sample rows:
 | id   | sport_name       |

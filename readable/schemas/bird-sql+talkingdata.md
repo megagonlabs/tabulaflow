@@ -2,7 +2,7 @@
 -- Database: talkingdata
 
 /*
-Table: app_all
+Schema: NULLTable: app_all
 Rows: 113211
 Sample rows:
 | app_id               |
@@ -20,7 +20,7 @@ CREATE TABLE app_all (
 );
 
 /*
-Table: app_events
+Schema: NULLTable: app_events
 Rows: 32473067
 Sample rows:
 | event_id   | app_id               | is_installed   | is_active   |
@@ -47,7 +47,7 @@ CREATE TABLE app_events (
 );
 
 /*
-Table: app_events_relevant
+Schema: NULLTable: app_events_relevant
 Rows: 3701900
 Sample rows:
 | event_id   | app_id               | is_installed   | is_active   |
@@ -76,7 +76,7 @@ CREATE TABLE app_events_relevant (
 );
 
 /*
-Table: app_labels
+Schema: NULLTable: app_labels
 Rows: 459943
 Sample rows:
 | app_id               | label_id   |
@@ -100,7 +100,7 @@ CREATE TABLE app_labels (
 );
 
 /*
-Table: events
+Schema: NULLTable: events
 Rows: 3252950
 Sample rows:
 | event_id   | device_id            | timestamp             | longitude   | latitude   |
@@ -126,7 +126,7 @@ CREATE TABLE events (
 );
 
 /*
-Table: events_relevant
+Schema: NULLTable: events_relevant
 Rows: 167389
 Sample rows:
 | event_id   | device_id   | timestamp            | longitude   | latitude   |
@@ -153,7 +153,7 @@ CREATE TABLE events_relevant (
 );
 
 /*
-Table: gender_age
+Schema: NULLTable: gender_age
 Rows: 186697
 Sample rows:
 | device_id            | gender   | age    | group   |
@@ -179,7 +179,7 @@ CREATE TABLE gender_age (
 );
 
 /*
-Table: gender_age_test
+Schema: NULLTable: gender_age_test
 Rows: 112071
 Sample rows:
 | device_id            |
@@ -197,7 +197,7 @@ CREATE TABLE gender_age_test (
 );
 
 /*
-Table: gender_age_train
+Schema: NULLTable: gender_age_train
 Rows: 74645
 Sample rows:
 | device_id            | gender   | age   | group   |
@@ -221,7 +221,7 @@ CREATE TABLE gender_age_train (
 );
 
 /*
-Table: label_categories
+Schema: NULLTable: label_categories
 Rows: 930
 Sample rows:
 | label_id   | category          |
@@ -241,7 +241,7 @@ CREATE TABLE label_categories (
 );
 
 /*
-Table: phone_brand_device_model2
+Schema: NULLTable: phone_brand_device_model2
 Rows: 89200
 Sample rows:
 | device_id            | phone_brand   | device_model   |
@@ -264,7 +264,7 @@ CREATE TABLE phone_brand_device_model2 (
 );
 
 /*
-Table: sample_submission
+Schema: NULLTable: sample_submission
 Rows: 13700
 Sample rows:
 | device_id            | F23-   | F24-26   | F27-28   | F29-32   | F33-42   | F43+   | M22-   | M23-26   | M27-28   | M29-31   | M32-38   | M39+   |

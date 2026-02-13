@@ -2,7 +2,7 @@
 -- Database: craftbeer
 
 /*
-Table: beers
+Schema: NULLTable: beers
 Rows: 2410
 Sample rows:
 | id   | brewery_id   | abv   | ibu   | name                     | style                          | ounces   |
@@ -34,7 +34,7 @@ CREATE TABLE beers (
 );
 
 /*
-Table: breweries
+Schema: NULLTable: breweries
 Rows: 558
 Sample rows:
 | id   | name                      | city          | state   |

@@ -2,7 +2,7 @@
 -- Database: regional_sales
 
 /*
-Table: Customers
+Schema: NULLTable: Customers
 Rows: 50
 Sample rows:
 | CustomerID   | Customer Names   |
@@ -22,7 +22,7 @@ CREATE TABLE Customers (
 );
 
 /*
-Table: Products
+Schema: NULLTable: Products
 Rows: 47
 Sample rows:
 | ProductID   | Product Name       |
@@ -42,7 +42,7 @@ CREATE TABLE Products (
 );
 
 /*
-Table: Regions
+Schema: NULLTable: Regions
 Rows: 48
 Sample rows:
 | StateCode   | State      | Region   |
@@ -64,7 +64,7 @@ CREATE TABLE Regions (
 );
 
 /*
-Table: "Sales Orders"
+Schema: NULLTable: "Sales Orders"
 Rows: 7991
 Sample rows:
 | OrderNumber   | Sales Channel   | WarehouseCode   | ProcuredDate   | OrderDate   | ShipDate   | DeliveryDate   | CurrencyCode   | _SalesTeamID   | _CustomerID   | _StoreID   | _ProductID   | Order Quantity   | Discount Applied   | Unit Price   | Unit Cost   |
@@ -120,7 +120,7 @@ CREATE TABLE "Sales Orders" (
 );
 
 /*
-Table: "Sales Team"
+Schema: NULLTable: "Sales Team"
 Rows: 28
 Sample rows:
 | SalesTeamID   | Sales Team      | Region    |
@@ -142,7 +142,7 @@ CREATE TABLE "Sales Team" (
 );
 
 /*
-Table: "Store Locations"
+Schema: NULLTable: "Store Locations"
 Rows: 367
 Sample rows:
 | StoreID   | City Name   | County                          | StateCode   | State    | Type   | Latitude   | Longitude   | AreaCode   | Population   | Household Income   | Median Income   | Land Area   | Water Area   | Time Zone       |

@@ -2,7 +2,7 @@
 -- Database: music_tracker
 
 /*
-Table: tags
+Schema: NULLTable: tags
 Rows: 161283
 Sample rows:
 | index   | id   | tag      |
@@ -26,7 +26,7 @@ CREATE TABLE tags (
 );
 
 /*
-Table: torrents
+Schema: NULLTable: torrents
 Rows: 75719
 Sample rows:
 | groupName                      | totalSnatched   | artist                               | groupYear   | releaseType   | groupId   | id   |

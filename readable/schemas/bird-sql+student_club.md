@@ -2,7 +2,7 @@
 -- Database: student_club
 
 /*
-Table: attendance
+Schema: NULLTable: attendance
 Rows: 326
 Sample rows:
 | link_to_event     | link_to_member    |
@@ -27,7 +27,7 @@ CREATE TABLE attendance (
 );
 
 /*
-Table: budget
+Schema: NULLTable: budget
 Rows: 52
 Sample rows:
 | budget_id         | category      | spent   | remaining          | amount   | event_status   | link_to_event     |
@@ -59,7 +59,7 @@ CREATE TABLE budget (
 );
 
 /*
-Table: event
+Schema: NULLTable: event
 Rows: 42
 Sample rows:
 | event_id          | event_name                 | event_date          | type     | notes                                                         | location                       | status   |
@@ -89,7 +89,7 @@ CREATE TABLE event (
 );
 
 /*
-Table: expense
+Schema: NULLTable: expense
 Rows: 32
 Sample rows:
 | expense_id        | expense_description   | expense_date   | cost   | approved   | link_to_member    | link_to_budget    |
@@ -123,7 +123,7 @@ CREATE TABLE expense (
 );
 
 /*
-Table: income
+Schema: NULLTable: income
 Rows: 36
 Sample rows:
 | income_id         | date_received   | amount   | source   | notes   | link_to_member    |
@@ -153,7 +153,7 @@ CREATE TABLE income (
 );
 
 /*
-Table: major
+Schema: NULLTable: major
 Rows: 113
 Sample rows:
 | major_id          | major_name                             | department                                           | college                                     |
@@ -177,7 +177,7 @@ CREATE TABLE major (
 );
 
 /*
-Table: member
+Schema: NULLTable: member
 Rows: 33
 Sample rows:
 | member_id         | first_name   | last_name   | email                  | position   | t_shirt_size   | phone          | zip   | link_to_major     |
@@ -215,7 +215,7 @@ CREATE TABLE member (
 );
 
 /*
-Table: zip_code
+Schema: NULLTable: zip_code
 Rows: 41877
 Sample rows:
 | zip_code   | type     | city       | county              | state       | short_state   |

@@ -2,7 +2,7 @@
 -- Database: cs_semester
 
 /*
-Table: RA
+Schema: NULLTable: RA
 Rows: 35
 Sample rows:
 | student_id   | capability   | prof_id   | salary   |
@@ -31,7 +31,7 @@ CREATE TABLE RA (
 );
 
 /*
-Table: course
+Schema: NULLTable: course
 Rows: 13
 Sample rows:
 | course_id   | name                        | credit   | diff   |
@@ -55,7 +55,7 @@ CREATE TABLE course (
 );
 
 /*
-Table: prof
+Schema: NULLTable: prof
 Rows: 10
 All rows:
 |   prof_id | gender   | first_name   | last_name   | email                     |   popularity |   teachingability | graduate_from                         |
@@ -91,7 +91,7 @@ CREATE TABLE prof (
 );
 
 /*
-Table: registration
+Schema: NULLTable: registration
 Rows: 101
 Sample rows:
 | course_id   | student_id   | grade   | sat   |
@@ -120,7 +120,7 @@ CREATE TABLE registration (
 );
 
 /*
-Table: student
+Schema: NULLTable: student
 Rows: 38
 Sample rows:
 | student_id   | f_name   | l_name    | phone_number   | email                  | intelligence   | gpa   | type   |

@@ -2,7 +2,7 @@
 -- Database: trains
 
 /*
-Table: cars
+Schema: NULLTable: cars
 Rows: 63
 Sample rows:
 | id   | train_id   | position   | shape     | len   | sides      | roof   | wheels   | load_shape   | load_num   |
@@ -40,7 +40,7 @@ CREATE TABLE cars (
 );
 
 /*
-Table: trains
+Schema: NULLTable: trains
 Rows: 20
 Sample rows:
 | id   | direction   |

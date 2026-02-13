@@ -2,7 +2,7 @@
 -- Database: movies_4
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 88
 Sample rows:
 | country_id   | country_iso_code   | country_name         |
@@ -24,7 +24,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: department
+Schema: NULLTable: department
 Rows: 12
 Sample rows:
 | department_id   | department_name   |
@@ -44,7 +44,7 @@ CREATE TABLE department (
 );
 
 /*
-Table: gender
+Schema: NULLTable: gender
 Rows: 3
 All rows:
 |   gender_id | gender      |
@@ -61,7 +61,7 @@ CREATE TABLE gender (
 );
 
 /*
-Table: genre
+Schema: NULLTable: genre
 Rows: 20
 Sample rows:
 | genre_id   | genre_name   |
@@ -81,7 +81,7 @@ CREATE TABLE genre (
 );
 
 /*
-Table: keyword
+Schema: NULLTable: keyword
 Rows: 9794
 Sample rows:
 | keyword_id   | keyword_name     |
@@ -101,7 +101,7 @@ CREATE TABLE keyword (
 );
 
 /*
-Table: language
+Schema: NULLTable: language
 Rows: 88
 Sample rows:
 | language_id   | language_code   | language_name   |
@@ -123,7 +123,7 @@ CREATE TABLE language (
 );
 
 /*
-Table: language_role
+Schema: NULLTable: language_role
 Rows: 2
 All rows:
 |   role_id | language_role   |
@@ -139,7 +139,7 @@ CREATE TABLE language_role (
 );
 
 /*
-Table: movie
+Schema: NULLTable: movie
 Rows: 4627
 Sample rows:
 | movie_id   | title           | budget   | homepage                                                      | overview                                                                                                                                                                                                    | popularity   | release_date   | revenue   | runtime   | movie_status   | tagline                                                                                                                                                     | vote_average   | vote_count   |
@@ -181,7 +181,7 @@ CREATE TABLE movie (
 );
 
 /*
-Table: movie_cast
+Schema: NULLTable: movie_cast
 Rows: 59083
 Sample rows:
 | movie_id   | person_id   | character_name                | gender_id   | cast_order   |
@@ -213,7 +213,7 @@ CREATE TABLE movie_cast (
 );
 
 /*
-Table: movie_company
+Schema: NULLTable: movie_company
 Rows: 13677
 Sample rows:
 | movie_id   | company_id   |
@@ -237,7 +237,7 @@ CREATE TABLE movie_company (
 );
 
 /*
-Table: movie_crew
+Schema: NULLTable: movie_crew
 Rows: 129581
 Sample rows:
 | movie_id   | person_id   | department_id   | job                     |
@@ -267,7 +267,7 @@ CREATE TABLE movie_crew (
 );
 
 /*
-Table: movie_genres
+Schema: NULLTable: movie_genres
 Rows: 12160
 Sample rows:
 | movie_id   | genre_id   |
@@ -291,7 +291,7 @@ CREATE TABLE movie_genres (
 );
 
 /*
-Table: movie_keywords
+Schema: NULLTable: movie_keywords
 Rows: 36162
 Sample rows:
 | movie_id   | keyword_id   |
@@ -315,7 +315,7 @@ CREATE TABLE movie_keywords (
 );
 
 /*
-Table: movie_languages
+Schema: NULLTable: movie_languages
 Rows: 11740
 Sample rows:
 | movie_id   | language_id   | language_role_id   |
@@ -343,7 +343,7 @@ CREATE TABLE movie_languages (
 );
 
 /*
-Table: person
+Schema: NULLTable: person
 Rows: 104838
 Sample rows:
 | person_id   | person_name   |
@@ -363,7 +363,7 @@ CREATE TABLE person (
 );
 
 /*
-Table: production_company
+Schema: NULLTable: production_company
 Rows: 5047
 Sample rows:
 | company_id   | company_name            |
@@ -383,7 +383,7 @@ CREATE TABLE production_company (
 );
 
 /*
-Table: production_country
+Schema: NULLTable: production_country
 Rows: 6436
 Sample rows:
 | movie_id   | country_id   |

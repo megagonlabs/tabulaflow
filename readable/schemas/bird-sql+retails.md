@@ -2,7 +2,7 @@
 -- Database: retails
 
 /*
-Table: customer
+Schema: NULLTable: customer
 Rows: 150000
 Sample rows:
 | c_custkey   | c_mktsegment   | c_nationkey   | c_name             | c_address              | c_phone      | c_acctbal   | c_comment                                                                     |
@@ -36,7 +36,7 @@ CREATE TABLE customer (
 );
 
 /*
-Table: lineitem
+Schema: NULLTable: lineitem
 Rows: 4423659
 Sample rows:
 | l_shipdate   | l_orderkey   | l_discount   | l_extendedprice   | l_suppkey   | l_quantity   | l_returnflag   | l_partkey   | l_linestatus   | l_tax   | l_commitdate   | l_receiptdate   | l_shipmode   | l_linenumber   | l_shipinstruct    | l_comment                             |
@@ -90,7 +90,7 @@ CREATE TABLE lineitem (
 );
 
 /*
-Table: nation
+Schema: NULLTable: nation
 Rows: 25
 Sample rows:
 | n_nationkey   | n_name    | n_regionkey   | n_comment                                                                                                        |
@@ -116,7 +116,7 @@ CREATE TABLE nation (
 );
 
 /*
-Table: orders
+Schema: NULLTable: orders
 Rows: 1500000
 Sample rows:
 | o_orderdate   | o_orderkey   | o_custkey   | o_orderpriority   | o_shippriority   | o_clerk         | o_orderstatus   | o_totalprice   | o_comment                                                           |
@@ -152,7 +152,7 @@ CREATE TABLE orders (
 );
 
 /*
-Table: part
+Schema: NULLTable: part
 Rows: 200000
 Sample rows:
 | p_partkey   | p_type                   | p_size   | p_brand   | p_name                             | p_container   | p_mfgr         | p_retailprice   | p_comment              |
@@ -186,7 +186,7 @@ CREATE TABLE part (
 );
 
 /*
-Table: partsupp
+Schema: NULLTable: partsupp
 Rows: 800000
 Sample rows:
 | ps_partkey   | ps_suppkey   | ps_supplycost   | ps_availqty   | ps_comment                                                                                                                                                            |
@@ -217,7 +217,7 @@ CREATE TABLE partsupp (
 );
 
 /*
-Table: region
+Schema: NULLTable: region
 Rows: 5
 All rows:
 |   r_regionkey | r_name      | r_comment                                                                                         |
@@ -238,7 +238,7 @@ CREATE TABLE region (
 );
 
 /*
-Table: supplier
+Schema: NULLTable: supplier
 Rows: 10000
 Sample rows:
 | s_suppkey   | s_nationkey   | s_comment                                                                          | s_name             | s_address                       | s_phone      | s_acctbal   |

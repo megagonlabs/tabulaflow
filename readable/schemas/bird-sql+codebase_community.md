@@ -2,7 +2,7 @@
 -- Database: codebase_community
 
 /*
-Table: badges
+Schema: NULLTable: badges
 Rows: 79851
 Sample rows:
 | Id   | UserId   | Name    | Date                  |
@@ -28,7 +28,7 @@ CREATE TABLE badges (
 );
 
 /*
-Table: comments
+Schema: NULLTable: comments
 Rows: 174285
 Sample rows:
 | Id   | PostId   | Score   | Text                                                                                                                          | CreationDate          | UserId   | UserDisplayName   |
@@ -62,7 +62,7 @@ CREATE TABLE comments (
 );
 
 /*
-Table: postHistory
+Schema: NULLTable: postHistory
 Rows: 303155
 Sample rows:
 | Id   | PostHistoryTypeId   | PostId   | RevisionGUID                         | CreationDate          | UserId   | Text                                                                                                                                       | Comment   | UserDisplayName   |
@@ -100,7 +100,7 @@ CREATE TABLE postHistory (
 );
 
 /*
-Table: postLinks
+Schema: NULLTable: postLinks
 Rows: 11102
 Sample rows:
 | Id   | CreationDate          | PostId   | RelatedPostId   | LinkTypeId   |
@@ -130,7 +130,7 @@ CREATE TABLE postLinks (
 );
 
 /*
-Table: posts
+Schema: NULLTable: posts
 Rows: 91966
 Sample rows:
 | Id   | PostTypeId   | AcceptedAnswerId   | CreaionDate           | Score   | ViewCount   | Body                                                                                                                                                                                                       | OwnerUserId   | LasActivityDate       | Title                                                             | Tags                                      | AnswerCount   | CommentCount   | FavoriteCount   | LastEditorUserId   | LastEditDate          | CommunityOwnedDate    | ParentId   | ClosedDate   | OwnerDisplayName   | LastEditorDisplayName   |
@@ -202,7 +202,7 @@ CREATE TABLE posts (
 );
 
 /*
-Table: tags
+Schema: NULLTable: tags
 Rows: 1032
 Sample rows:
 | Id   | TagName     | Count   | ExcerptPostId   | WikiPostId   |
@@ -230,7 +230,7 @@ CREATE TABLE tags (
 );
 
 /*
-Table: users
+Schema: NULLTable: users
 Rows: 40325
 Sample rows:
 | Id   | Reputation   | CreationDate          | DisplayName   | LastAccessDate        | WebsiteUrl                     | Location           | AboutMe   | Views   | UpVotes   | DownVotes   | AccountId   | Age    | ProfileImageUrl                    |
@@ -289,7 +289,7 @@ CREATE TABLE users (
 );
 
 /*
-Table: votes
+Schema: NULLTable: votes
 Rows: 38930
 Sample rows:
 | Id   | PostId   | VoteTypeId   | CreationDate   | UserId   | BountyAmount   |

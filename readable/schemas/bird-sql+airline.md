@@ -2,7 +2,7 @@
 -- Database: airline
 
 /*
-Table: "Air Carriers"
+Schema: NULLTable: "Air Carriers"
 Rows: 1656
 Sample rows:
 | Code   | Description                     |
@@ -22,7 +22,7 @@ CREATE TABLE "Air Carriers" (
 );
 
 /*
-Table: Airlines
+Schema: NULLTable: Airlines
 Rows: 701352
 Sample rows:
 | FL_DATE   | OP_CARRIER_AIRLINE_ID   | TAIL_NUM   | OP_CARRIER_FL_NUM   | ORIGIN_AIRPORT_ID   | ORIGIN_AIRPORT_SEQ_ID   | ORIGIN_CITY_MARKET_ID   | ORIGIN   | DEST_AIRPORT_ID   | DEST_AIRPORT_SEQ_ID   | DEST_CITY_MARKET_ID   | DEST   | CRS_DEP_TIME   | DEP_TIME   | DEP_DELAY   | DEP_DELAY_NEW   | ARR_TIME   | ARR_DELAY   | ARR_DELAY_NEW   | CANCELLED   | CANCELLATION_CODE   | CRS_ELAPSED_TIME   | ACTUAL_ELAPSED_TIME   | CARRIER_DELAY   | WEATHER_DELAY   | NAS_DELAY   | SECURITY_DELAY   | LATE_AIRCRAFT_DELAY   |
@@ -100,7 +100,7 @@ CREATE TABLE Airlines (
 );
 
 /*
-Table: Airports
+Schema: NULLTable: Airports
 Rows: 6510
 Sample rows:
 | Code   | Description                                   |

@@ -2,7 +2,7 @@
 -- Database: shakespeare
 
 /*
-Table: chapters
+Schema: NULLTable: chapters
 Rows: 945
 Sample rows:
 | id    | Act   | Scene   | Description           | work_id   |
@@ -30,7 +30,7 @@ CREATE TABLE chapters (
 );
 
 /*
-Table: characters
+Schema: NULLTable: characters
 Rows: 1266
 Sample rows:
 | id   | CharName          | Abbrev            | Description   |
@@ -54,7 +54,7 @@ CREATE TABLE characters (
 );
 
 /*
-Table: paragraphs
+Schema: NULLTable: paragraphs
 Rows: 35126
 Sample rows:
 | id     | ParagraphNum   | PlainText                                                        | character_id   | chapter_id   |
@@ -88,7 +88,7 @@ CREATE TABLE paragraphs (
 );
 
 /*
-Table: works
+Schema: NULLTable: works
 Rows: 43
 Sample rows:
 | id   | Title                     | LongTitle                       | Date   | GenreType   |

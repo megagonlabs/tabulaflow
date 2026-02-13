@@ -2,7 +2,7 @@
 -- Database: food_inspection
 
 /*
-Table: businesses
+Schema: NULLTable: businesses
 Rows: 6358
 Sample rows:
 | business_id   | name                               | address                       | city          | postal_code   | latitude   | longitude   | phone_number   | tax_code   | business_certificate   | application_date   | owner_name                    | owner_address                | owner_city    | owner_state   | owner_zip   |
@@ -50,7 +50,7 @@ CREATE TABLE businesses (
 );
 
 /*
-Table: inspections
+Schema: NULLTable: inspections
 Rows: 23764
 Sample rows:
 | business_id   | score   | date       | type                  |
@@ -76,7 +76,7 @@ CREATE TABLE inspections (
 );
 
 /*
-Table: violations
+Schema: NULLTable: violations
 Rows: 36050
 Sample rows:
 | business_id   | date       | violation_type_id   | risk_category   | description                                        |

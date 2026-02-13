@@ -2,7 +2,7 @@
 -- Database: food_inspection_2
 
 /*
-Table: employee
+Schema: NULLTable: employee
 Rows: 75
 Sample rows:
 | employee_id   | first_name   | last_name   | address               | city    | state   | zip   | phone          | title      | salary   | supervisor   |
@@ -42,7 +42,7 @@ CREATE TABLE employee (
 );
 
 /*
-Table: establishment
+Schema: NULLTable: establishment
 Rows: 31642
 Sample rows:
 | license_no   | dba_name                               | aka_name   | facility_type   | risk_level   | address            | city    | state   | zip   | latitude         | longitude         | ward   |
@@ -82,7 +82,7 @@ CREATE TABLE establishment (
 );
 
 /*
-Table: inspection
+Schema: NULLTable: inspection
 Rows: 143870
 Sample rows:
 | inspection_id   | inspection_date   | inspection_type       | results   | employee_id   | license_no   | followup_to   |
@@ -118,7 +118,7 @@ CREATE TABLE inspection (
 );
 
 /*
-Table: inspection_point
+Schema: NULLTable: inspection_point
 Rows: 46
 Sample rows:
 | point_id   | Description                                                                                              | category        | code               | fine   | point_level   |
@@ -146,7 +146,7 @@ CREATE TABLE inspection_point (
 );
 
 /*
-Table: violation
+Schema: NULLTable: violation
 Rows: 525709
 Sample rows:
 | inspection_id   | point_id   | fine   | inspector_comment                                                                                                                                                                                           |

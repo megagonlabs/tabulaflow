@@ -2,7 +2,7 @@
 -- Database: human_resources
 
 /*
-Table: employee
+Schema: NULLTable: employee
 Rows: 25
 Sample rows:
 | ssn         | lastname   | firstname   | hiredate   | salary       | gender   | performance   | positionID   | locationID   |
@@ -40,7 +40,7 @@ CREATE TABLE employee (
 );
 
 /*
-Table: location
+Schema: NULLTable: location
 Rows: 8
 All rows:
 |   locationID | locationcity   | address              | state   |   zipcode | officephone   |
@@ -70,7 +70,7 @@ CREATE TABLE location (
 );
 
 /*
-Table: position
+Schema: NULLTable: position
 Rows: 4
 All rows:
 |   positionID | positiontitle          | educationrequired   | minsalary     | maxsalary     |

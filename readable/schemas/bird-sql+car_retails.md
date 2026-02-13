@@ -2,7 +2,7 @@
 -- Database: car_retails
 
 /*
-Table: customers
+Schema: NULLTable: customers
 Rows: 122
 Sample rows:
 | customerNumber   | customerName               | contactLastName   | contactFirstName   | phone        | addressLine1                 | addressLine2   | city      | state    | postalCode   | country   | salesRepEmployeeNumber   | creditLimit   |
@@ -46,7 +46,7 @@ CREATE TABLE customers (
 );
 
 /*
-Table: employees
+Schema: NULLTable: employees
 Rows: 23
 Sample rows:
 | employeeNumber   | lastName   | firstName   | extension   | email                           | officeCode   | reportsTo   | jobTitle             |
@@ -82,7 +82,7 @@ CREATE TABLE employees (
 );
 
 /*
-Table: offices
+Schema: NULLTable: offices
 Rows: 7
 All rows:
 |   officeCode | city          | phone            | addressLine1             | addressLine2   | state      | country   | postalCode   | territory   |
@@ -117,7 +117,7 @@ CREATE TABLE offices (
 );
 
 /*
-Table: orderdetails
+Schema: NULLTable: orderdetails
 Rows: 2996
 Sample rows:
 | orderNumber   | productCode   | quantityOrdered   | priceEach   | orderLineNumber   |
@@ -148,7 +148,7 @@ CREATE TABLE orderdetails (
 );
 
 /*
-Table: orders
+Schema: NULLTable: orders
 Rows: 326
 Sample rows:
 | orderNumber   | orderDate   | requiredDate   | shippedDate   | status   | comments               | customerNumber   |
@@ -180,7 +180,7 @@ CREATE TABLE orders (
 );
 
 /*
-Table: payments
+Schema: NULLTable: payments
 Rows: 273
 Sample rows:
 | customerNumber   | checkNumber   | paymentDate   | amount   |
@@ -207,7 +207,7 @@ CREATE TABLE payments (
 );
 
 /*
-Table: productlines
+Schema: NULLTable: productlines
 Rows: 7
 All rows:
 | productLine      | textDescription                                                                                                                                                                                             | htmlDescription   | image   |
@@ -230,7 +230,7 @@ CREATE TABLE productlines (
 );
 
 /*
-Table: products
+Schema: NULLTable: products
 Rows: 110
 Sample rows:
 | productCode   | productName                           | productLine   | productScale   | productVendor            | productDescription                                                                                                                                                                                          | quantityInStock   | buyPrice   | MSRP   |

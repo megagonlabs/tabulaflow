@@ -2,7 +2,7 @@
 -- Database: books
 
 /*
-Table: address
+Schema: NULLTable: address
 Rows: 1000
 Sample rows:
 | address_id   | street_number   | street_name         | city         | country_id   |
@@ -30,7 +30,7 @@ CREATE TABLE address (
 );
 
 /*
-Table: address_status
+Schema: NULLTable: address_status
 Rows: 2
 All rows:
 |   status_id | address_status   |
@@ -46,7 +46,7 @@ CREATE TABLE address_status (
 );
 
 /*
-Table: author
+Schema: NULLTable: author
 Rows: 9235
 Sample rows:
 | author_id   | author_name          |
@@ -66,7 +66,7 @@ CREATE TABLE author (
 );
 
 /*
-Table: book
+Schema: NULLTable: book
 Rows: 11127
 Sample rows:
 | book_id   | title                                                                      | isbn13      | language_id   | num_pages   | publication_date   | publisher_id   |
@@ -100,7 +100,7 @@ CREATE TABLE book (
 );
 
 /*
-Table: book_author
+Schema: NULLTable: book_author
 Rows: 17642
 Sample rows:
 | book_id   | author_id   |
@@ -125,7 +125,7 @@ CREATE TABLE book_author (
 );
 
 /*
-Table: book_language
+Schema: NULLTable: book_language
 Rows: 27
 Sample rows:
 | language_id   | language_code   | language_name         |
@@ -147,7 +147,7 @@ CREATE TABLE book_language (
 );
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 232
 Sample rows:
 | country_id   | country_name         |
@@ -167,7 +167,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: cust_order
+Schema: NULLTable: cust_order
 Rows: 7550
 Sample rows:
 | order_id   | order_date          | customer_id   | shipping_method_id   | dest_address_id   |
@@ -199,7 +199,7 @@ CREATE TABLE cust_order (
 );
 
 /*
-Table: customer
+Schema: NULLTable: customer
 Rows: 2000
 Sample rows:
 | customer_id   | first_name   | last_name   | email                  |
@@ -223,7 +223,7 @@ CREATE TABLE customer (
 );
 
 /*
-Table: customer_address
+Schema: NULLTable: customer_address
 Rows: 3350
 Sample rows:
 | customer_id   | address_id   | status_id   |
@@ -250,7 +250,7 @@ CREATE TABLE customer_address (
 );
 
 /*
-Table: order_history
+Schema: NULLTable: order_history
 Rows: 22348
 Sample rows:
 | history_id   | order_id   | status_id   | status_date         |
@@ -278,7 +278,7 @@ CREATE TABLE order_history (
 );
 
 /*
-Table: order_line
+Schema: NULLTable: order_line
 Rows: 7550
 Sample rows:
 | line_id   | order_id   | book_id   | price   |
@@ -306,7 +306,7 @@ CREATE TABLE order_line (
 );
 
 /*
-Table: order_status
+Schema: NULLTable: order_status
 Rows: 6
 All rows:
 |   status_id | status_value         |
@@ -326,7 +326,7 @@ CREATE TABLE order_status (
 );
 
 /*
-Table: publisher
+Schema: NULLTable: publisher
 Rows: 2264
 Sample rows:
 | publisher_id   | publisher_name                |
@@ -346,7 +346,7 @@ CREATE TABLE publisher (
 );
 
 /*
-Table: shipping_method
+Schema: NULLTable: shipping_method
 Rows: 4
 All rows:
 |   method_id | method_name   |   cost |

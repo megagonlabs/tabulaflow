@@ -2,7 +2,7 @@
 -- Database: menu
 
 /*
-Table: Dish
+Schema: NULLTable: Dish
 Rows: 426713
 Sample rows:
 | id   | name                       | description   | menus_appeared   | times_appeared   | first_appeared   | last_appeared   | lowest_price   | highest_price   |
@@ -36,7 +36,7 @@ CREATE TABLE Dish (
 );
 
 /*
-Table: Menu
+Schema: NULLTable: Menu
 Rows: 17527
 Sample rows:
 | id    | name   | sponsor                    | event                | venue      | place                              | physical_description        | occasion   | notes                                                                                                                                                                                                       | call_number   | keywords   | language   | date       | location                   | location_type   | currency   | currency_symbol   | status   | page_count   | dish_count   |
@@ -89,7 +89,7 @@ CREATE TABLE Menu (
 );
 
 /*
-Table: MenuItem
+Schema: NULLTable: MenuItem
 Rows: 1334410
 Sample rows:
 | id   | menu_page_id   | price   | high_price   | dish_id   | created_at              | updated_at              | xpos     | ypos     |
@@ -127,7 +127,7 @@ CREATE TABLE MenuItem (
 );
 
 /*
-Table: MenuPage
+Schema: NULLTable: MenuPage
 Rows: 66937
 Sample rows:
 | id   | menu_id   | page_number   | image_id   | full_height   | full_width   | uuid                                 |

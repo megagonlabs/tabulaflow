@@ -2,7 +2,7 @@
 -- Database: movie_platform
 
 /*
-Table: lists
+Schema: NULLTable: lists
 Rows: 79565
 Sample rows:
 | user_id   | list_id   | list_title                          | list_movie_number   | list_update_timestamp_utc   | list_creation_timestamp_utc   | list_followers   | list_url                                                  | list_comments   | list_description                                                                                          | list_cover_image_url                                                   | list_first_image_url                                                  | list_second_image_url                                                 | list_third_image_url                                                  |
@@ -53,7 +53,7 @@ CREATE TABLE lists (
 );
 
 /*
-Table: lists_users
+Schema: NULLTable: lists_users
 Rows: 80311
 Sample rows:
 | user_id   | list_id   | list_update_date_utc   | list_creation_date_utc   | user_trialist   | user_subscriber   | user_avatar_image_url                                                      | user_cover_image_url   | user_eligible_for_trial   | user_has_payment_method   |
@@ -94,7 +94,7 @@ CREATE TABLE lists_users (
 );
 
 /*
-Table: movies
+Schema: NULLTable: movies
 Rows: 226087
 Sample rows:
 | movie_id   | movie_title                 | movie_release_year   | movie_url                                         | movie_title_language   | movie_popularity   | movie_image_url                                                                  | director_id   | director_name                  | director_url                                                             |
@@ -130,7 +130,7 @@ CREATE TABLE movies (
 );
 
 /*
-Table: ratings
+Schema: NULLTable: ratings
 Rows: 15517252
 Sample rows:
 | movie_id   | rating_id   | rating_url                                                              | rating_score   | rating_timestamp_utc   | critic                                                                                                                                                                                                      | critic_likes   | critic_comments   | user_id   | user_trialist   | user_subscriber   | user_eligible_for_trial   | user_has_payment_method   |
@@ -180,7 +180,7 @@ CREATE TABLE ratings (
 );
 
 /*
-Table: ratings_users
+Schema: NULLTable: ratings_users
 Rows: 4297641
 Sample rows:
 | user_id   | rating_date_utc   | user_trialist   | user_subscriber   | user_avatar_image_url                                                                                      | user_cover_image_url   | user_eligible_for_trial   | user_has_payment_method   |

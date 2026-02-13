@@ -2,7 +2,7 @@
 -- Database: student_loan
 
 /*
-Table: bool
+Schema: NULLTable: bool
 Rows: 2
 All rows:
 | name   |
@@ -16,7 +16,7 @@ CREATE TABLE bool (
 );
 
 /*
-Table: disabled
+Schema: NULLTable: disabled
 Rows: 95
 Sample rows:
 | name       |
@@ -36,7 +36,7 @@ CREATE TABLE disabled (
 );
 
 /*
-Table: enlist
+Schema: NULLTable: enlist
 Rows: 306
 Sample rows:
 | name       | organ           |
@@ -58,7 +58,7 @@ CREATE TABLE enlist (
 );
 
 /*
-Table: enrolled
+Schema: NULLTable: enrolled
 Rows: 1194
 Sample rows:
 | name       | school   | month   |
@@ -83,7 +83,7 @@ CREATE TABLE enrolled (
 );
 
 /*
-Table: filed_for_bankrupcy
+Schema: NULLTable: filed_for_bankrupcy
 Rows: 96
 Sample rows:
 | name       |
@@ -103,7 +103,7 @@ CREATE TABLE filed_for_bankrupcy (
 );
 
 /*
-Table: longest_absense_from_school
+Schema: NULLTable: longest_absense_from_school
 Rows: 1000
 Sample rows:
 | name       | month   |
@@ -125,7 +125,7 @@ CREATE TABLE longest_absense_from_school (
 );
 
 /*
-Table: male
+Schema: NULLTable: male
 Rows: 497
 Sample rows:
 | name       |
@@ -145,7 +145,7 @@ CREATE TABLE male (
 );
 
 /*
-Table: no_payment_due
+Schema: NULLTable: no_payment_due
 Rows: 1000
 Sample rows:
 | name       | bool   |
@@ -169,7 +169,7 @@ CREATE TABLE no_payment_due (
 );
 
 /*
-Table: person
+Schema: NULLTable: person
 Rows: 1000
 Sample rows:
 | name        |
@@ -187,7 +187,7 @@ CREATE TABLE person (
 );
 
 /*
-Table: unemployed
+Schema: NULLTable: unemployed
 Rows: 98
 Sample rows:
 | name        |

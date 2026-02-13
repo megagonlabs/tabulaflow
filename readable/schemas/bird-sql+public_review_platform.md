@@ -2,7 +2,7 @@
 -- Database: public_review_platform
 
 /*
-Table: Attributes
+Schema: NULLTable: Attributes
 Rows: 80
 Sample rows:
 | attribute_id   | attribute_name   |
@@ -22,7 +22,7 @@ CREATE TABLE Attributes (
 );
 
 /*
-Table: Business
+Schema: NULLTable: Business
 Rows: 15585
 Sample rows:
 | business_id   | active   | city       | state   | stars   | review_count   |
@@ -50,7 +50,7 @@ CREATE TABLE Business (
 );
 
 /*
-Table: Business_Attributes
+Schema: NULLTable: Business_Attributes
 Rows: 206934
 Sample rows:
 | attribute_id   | business_id   | attribute_value   |
@@ -77,7 +77,7 @@ CREATE TABLE Business_Attributes (
 );
 
 /*
-Table: Business_Categories
+Schema: NULLTable: Business_Categories
 Rows: 43703
 Sample rows:
 | business_id   | category_id   |
@@ -102,7 +102,7 @@ CREATE TABLE Business_Categories (
 );
 
 /*
-Table: Business_Hours
+Schema: NULLTable: Business_Hours
 Rows: 47831
 Sample rows:
 | business_id   | day_id   | opening_time   | closing_time   |
@@ -131,7 +131,7 @@ CREATE TABLE Business_Hours (
 );
 
 /*
-Table: Categories
+Schema: NULLTable: Categories
 Rows: 591
 Sample rows:
 | category_id   | category_name        |
@@ -151,7 +151,7 @@ CREATE TABLE Categories (
 );
 
 /*
-Table: Checkins
+Schema: NULLTable: Checkins
 Rows: 80038
 Sample rows:
 | business_id   | day_id   | label_time_0   | label_time_1   | label_time_2   | label_time_3   | label_time_4   | label_time_5   | label_time_6   | label_time_7   | label_time_8   | label_time_9   | label_time_10   | label_time_11   | label_time_12   | label_time_13   | label_time_14   | label_time_15   | label_time_16   | label_time_17   | label_time_18   | label_time_19   | label_time_20   | label_time_21   | label_time_22   | label_time_23   |
@@ -224,7 +224,7 @@ CREATE TABLE Checkins (
 );
 
 /*
-Table: Compliments
+Schema: NULLTable: Compliments
 Rows: 11
 Sample rows:
 | compliment_id   | compliment_type   |
@@ -244,7 +244,7 @@ CREATE TABLE Compliments (
 );
 
 /*
-Table: Days
+Schema: NULLTable: Days
 Rows: 7
 All rows:
 |   day_id | day_of_week   |
@@ -265,7 +265,7 @@ CREATE TABLE Days (
 );
 
 /*
-Table: Elite
+Schema: NULLTable: Elite
 Rows: 16366
 Sample rows:
 | user_id   | year_id   |
@@ -290,7 +290,7 @@ CREATE TABLE Elite (
 );
 
 /*
-Table: Reviews
+Schema: NULLTable: Reviews
 Rows: 322906
 Sample rows:
 | business_id   | user_id   | review_stars   | review_votes_funny   | review_votes_useful   | review_votes_cool   | review_length   |
@@ -325,7 +325,7 @@ CREATE TABLE Reviews (
 );
 
 /*
-Table: Tips
+Schema: NULLTable: Tips
 Rows: 87157
 Sample rows:
 | business_id   | user_id   | likes   | tip_length   |
@@ -354,7 +354,7 @@ CREATE TABLE Tips (
 );
 
 /*
-Table: Users
+Schema: NULLTable: Users
 Rows: 70817
 Sample rows:
 | user_id   | user_yelping_since_year   | user_average_stars   | user_votes_funny   | user_votes_useful   | user_votes_cool   | user_review_count   | user_fans   |
@@ -386,7 +386,7 @@ CREATE TABLE Users (
 );
 
 /*
-Table: Users_Compliments
+Schema: NULLTable: Users_Compliments
 Rows: 98810
 Sample rows:
 | compliment_id   | user_id   | number_of_compliments   |
@@ -413,7 +413,7 @@ CREATE TABLE Users_Compliments (
 );
 
 /*
-Table: Years
+Schema: NULLTable: Years
 Rows: 10
 All rows:
 |   year_id |   actual_year |

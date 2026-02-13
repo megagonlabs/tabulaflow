@@ -2,7 +2,7 @@
 -- Database: address
 
 /*
-Table: CBSA
+Schema: NULLTable: CBSA
 Rows: 465
 Sample rows:
 | CBSA   | CBSA_name                   | CBSA_type   |
@@ -24,7 +24,7 @@ CREATE TABLE CBSA (
 );
 
 /*
-Table: alias
+Schema: NULLTable: alias
 Rows: 41701
 Sample rows:
 | zip_code   | alias      |
@@ -46,7 +46,7 @@ CREATE TABLE alias (
 );
 
 /*
-Table: area_code
+Schema: NULLTable: area_code
 Rows: 53796
 Sample rows:
 | zip_code   | area_code   |
@@ -69,7 +69,7 @@ CREATE TABLE area_code (
 );
 
 /*
-Table: avoid
+Schema: NULLTable: avoid
 Rows: 24114
 Sample rows:
 | zip_code   | bad_alias                |
@@ -92,7 +92,7 @@ CREATE TABLE avoid (
 );
 
 /*
-Table: congress
+Schema: NULLTable: congress
 Rows: 540
 Sample rows:
 | cognress_rep_id   | first_name   | last_name   | CID       | party      | state   | abbreviation   | House                  | District   | land_area   |
@@ -130,7 +130,7 @@ CREATE TABLE congress (
 );
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 51001
 Sample rows:
 | zip_code   | county    | state   |
@@ -157,7 +157,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: state
+Schema: NULLTable: state
 Rows: 62
 Sample rows:
 | abbreviation   | name                  |
@@ -177,7 +177,7 @@ CREATE TABLE state (
 );
 
 /*
-Table: zip_congress
+Schema: NULLTable: zip_congress
 Rows: 45231
 Sample rows:
 | zip_code   | district   |
@@ -202,7 +202,7 @@ CREATE TABLE zip_congress (
 );
 
 /*
-Table: zip_data
+Schema: NULLTable: zip_data
 Rows: 41563
 Sample rows:
 | zip_code   | city       | state   | multi_county   | type               | organization         | time_zone   | daylight_savings   | latitude   | longitude   | elevation   | state_fips   | county_fips   | region    | division        | population_2020   | population_2010   | households   | avg_house_value   | avg_income_per_household   | persons_per_household   | white_population   | black_population   | hispanic_population   | asian_population   | american_indian_population   | hawaiian_population   | other_population   | male_population   | female_population   | median_age   | male_median_age   | female_median_age   | residential_mailboxes   | business_mailboxes   | total_delivery_receptacles   | businesses   | 1st_quarter_payroll   | annual_payroll   | employees   | water_area   | land_area   | single_family_delivery_units   | multi_family_delivery_units   | total_beneficiaries   | retired_workers   | disabled_workers   | parents_and_widowed   | spouses   | children   | over_65   | monthly_benefits_all   | monthly_benefits_retired_workers   | monthly_benefits_widowed   | CBSA    |

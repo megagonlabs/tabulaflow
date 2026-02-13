@@ -2,7 +2,7 @@
 -- Database: AIRLINES
 
 /*
-Table: airlines.aircrafts_data
+Schema: airlinesTable: aircrafts_data
 Rows: 9
 All rows:
 | aircraft_code   | model                                                      |   range |
@@ -27,7 +27,7 @@ CREATE TABLE airlines.aircrafts_data (
 );
 
 /*
-Table: airlines.airports_data
+Schema: airlinesTable: airports_data
 Rows: 104
 Sample rows:
 | airport_code   | airport_name                                               | city                                                      | coordinates                               | timezone         |
@@ -53,7 +53,7 @@ CREATE TABLE airlines.airports_data (
 );
 
 /*
-Table: airlines.boarding_passes
+Schema: airlinesTable: boarding_passes
 Rows: 579686
 Sample rows:
 | ticket_no     | flight_id   | boarding_no   | seat_no   |
@@ -77,7 +77,7 @@ CREATE TABLE airlines.boarding_passes (
 );
 
 /*
-Table: airlines.bookings
+Schema: airlinesTable: bookings
 Rows: 262788
 Sample rows:
 | book_ref   | book_date              | total_amount   |
@@ -99,7 +99,7 @@ CREATE TABLE airlines.bookings (
 );
 
 /*
-Table: airlines.flights
+Schema: airlinesTable: flights
 Rows: 33121
 Sample rows:
 | flight_id   | flight_no   | scheduled_departure    | scheduled_arrival      | departure_airport   | arrival_airport   | status    | aircraft_code   | actual_departure   | actual_arrival   |
@@ -135,7 +135,7 @@ CREATE TABLE airlines.flights (
 );
 
 /*
-Table: airlines.seats
+Schema: airlinesTable: seats
 Rows: 1339
 Sample rows:
 | aircraft_code   | seat_no   | fare_conditions   |
@@ -157,7 +157,7 @@ CREATE TABLE airlines.seats (
 );
 
 /*
-Table: airlines.tickets
+Schema: airlinesTable: tickets
 Rows: 366733
 Sample rows:
 | ticket_no     | book_ref   | passenger_id   |
@@ -179,7 +179,7 @@ CREATE TABLE airlines.tickets (
 );
 
 /*
-Table: airlines.ticket_flights
+Schema: airlinesTable: ticket_flights
 Rows: 1045726
 Sample rows:
 | ticket_no     | flight_id   | fare_conditions   | amount   |

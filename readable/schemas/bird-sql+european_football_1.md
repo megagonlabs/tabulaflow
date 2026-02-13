@@ -2,7 +2,7 @@
 -- Database: european_football_1
 
 /*
-Table: divisions
+Schema: NULLTable: divisions
 Rows: 21
 Sample rows:
 | division   | name             | country     |
@@ -24,7 +24,7 @@ CREATE TABLE divisions (
 );
 
 /*
-Table: matchs
+Schema: NULLTable: matchs
 Rows: 123404
 Sample rows:
 | Div   | Date       | HomeTeam    | AwayTeam      | FTHG   | FTAG   | FTR   | season   |

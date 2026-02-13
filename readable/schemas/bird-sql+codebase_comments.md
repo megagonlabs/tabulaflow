@@ -2,7 +2,7 @@
 -- Database: codebase_comments
 
 /*
-Table: Method
+Schema: NULLTable: Method
 Rows: 3508215
 Sample rows:
 | Id   | Name                                     | FullComment                                    | Summary                                                                                                                | ApiCalls                                                                                                                                                                                                    | CommentIsXml   | SampledAt          | SolutionId   | Lang   | NameTokenized                        |
@@ -49,7 +49,7 @@ CREATE TABLE Method (
 );
 
 /*
-Table: MethodParameter
+Schema: NULLTable: MethodParameter
 Rows: 5132027
 Sample rows:
 | Id   | MethodId   | Type                               | Name         |
@@ -73,7 +73,7 @@ CREATE TABLE MethodParameter (
 );
 
 /*
-Table: Repo
+Schema: NULLTable: Repo
 Rows: 140990
 Sample rows:
 | Id   | Url                                                   | Stars   | Forks   | Watchers   | ProcessedTime      |
@@ -101,7 +101,7 @@ CREATE TABLE Repo (
 );
 
 /*
-Table: Solution
+Schema: NULLTable: Solution
 Rows: 338087
 Sample rows:
 | Id   | RepoId   | Path                                             | ProcessedTime      | WasCompiled   |

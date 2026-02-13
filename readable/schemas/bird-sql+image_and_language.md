@@ -2,7 +2,7 @@
 -- Database: image_and_language
 
 /*
-Table: ATT_CLASSES
+Schema: NULLTable: ATT_CLASSES
 Rows: 699
 Sample rows:
 | ATT_CLASS_ID   | ATT_CLASS   |
@@ -22,7 +22,7 @@ CREATE TABLE ATT_CLASSES (
 );
 
 /*
-Table: IMG_OBJ
+Schema: NULLTable: IMG_OBJ
 Rows: 1750617
 Sample rows:
 | IMG_ID   | OBJ_SAMPLE_ID   | OBJ_CLASS_ID   | X   | Y   | W   | H   |
@@ -55,7 +55,7 @@ CREATE TABLE IMG_OBJ (
 );
 
 /*
-Table: IMG_OBJ_ATT
+Schema: NULLTable: IMG_OBJ_ATT
 Rows: 1074674
 Sample rows:
 | IMG_ID   | ATT_CLASS_ID   | OBJ_SAMPLE_ID   |
@@ -83,7 +83,7 @@ CREATE TABLE IMG_OBJ_ATT (
 );
 
 /*
-Table: IMG_REL
+Schema: NULLTable: IMG_REL
 Rows: 763159
 Sample rows:
 | IMG_ID   | PRED_CLASS_ID   | OBJ1_SAMPLE_ID   | OBJ2_SAMPLE_ID   |
@@ -116,7 +116,7 @@ CREATE TABLE IMG_REL (
 );
 
 /*
-Table: OBJ_CLASSES
+Schema: NULLTable: OBJ_CLASSES
 Rows: 300
 Sample rows:
 | OBJ_CLASS_ID   | OBJ_CLASS   |
@@ -136,7 +136,7 @@ CREATE TABLE OBJ_CLASSES (
 );
 
 /*
-Table: PRED_CLASSES
+Schema: NULLTable: PRED_CLASSES
 Rows: 150
 Sample rows:
 | PRED_CLASS_ID   | PRED_CLASS   |

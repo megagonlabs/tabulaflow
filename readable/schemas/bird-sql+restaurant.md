@@ -2,7 +2,7 @@
 -- Database: restaurant
 
 /*
-Table: generalinfo
+Schema: NULLTable: generalinfo
 Rows: 9590
 Sample rows:
 | id_restaurant   | label                | food_type     | city          | review   |
@@ -30,7 +30,7 @@ CREATE TABLE generalinfo (
 );
 
 /*
-Table: geographic
+Schema: NULLTable: geographic
 Rows: 168
 Sample rows:
 | city            | county              | region   |
@@ -52,7 +52,7 @@ CREATE TABLE geographic (
 );
 
 /*
-Table: location
+Schema: NULLTable: location
 Rows: 9539
 Sample rows:
 | id_restaurant   | street_num   | street_name       | city          |

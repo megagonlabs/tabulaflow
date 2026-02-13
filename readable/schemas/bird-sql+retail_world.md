@@ -2,7 +2,7 @@
 -- Database: retail_world
 
 /*
-Table: Categories
+Schema: NULLTable: Categories
 Rows: 8
 All rows:
 |   CategoryID | CategoryName   | Description                                                |
@@ -26,7 +26,7 @@ CREATE TABLE Categories (
 );
 
 /*
-Table: Customers
+Schema: NULLTable: Customers
 Rows: 91
 Sample rows:
 | CustomerID   | CustomerName                       | ContactName        | Address                       | City        | PostalCode   | Country   |
@@ -56,7 +56,7 @@ CREATE TABLE Customers (
 );
 
 /*
-Table: Employees
+Schema: NULLTable: Employees
 Rows: 10
 All rows:
 |   EmployeeID | LastName   | FirstName   | BirthDate   | Photo       | Notes                                                                                                                                                                                                       |
@@ -88,7 +88,7 @@ CREATE TABLE Employees (
 );
 
 /*
-Table: OrderDetails
+Schema: NULLTable: OrderDetails
 Rows: 518
 Sample rows:
 | OrderDetailID   | OrderID   | ProductID   | Quantity   |
@@ -116,7 +116,7 @@ CREATE TABLE OrderDetails (
 );
 
 /*
-Table: Orders
+Schema: NULLTable: Orders
 Rows: 196
 Sample rows:
 | OrderID   | CustomerID   | EmployeeID   | OrderDate   | ShipperID   |
@@ -148,7 +148,7 @@ CREATE TABLE Orders (
 );
 
 /*
-Table: Products
+Schema: NULLTable: Products
 Rows: 77
 Sample rows:
 | ProductID   | ProductName                  | SupplierID   | CategoryID   | Unit                | Price   |
@@ -180,7 +180,7 @@ CREATE TABLE Products (
 );
 
 /*
-Table: Shippers
+Schema: NULLTable: Shippers
 Rows: 3
 All rows:
 |   ShipperID | ShipperName      | Phone          |
@@ -199,7 +199,7 @@ CREATE TABLE Shippers (
 );
 
 /*
-Table: Suppliers
+Schema: NULLTable: Suppliers
 Rows: 29
 Sample rows:
 | SupplierID   | SupplierName                       | ContactName                | Address                   | City        | PostalCode   | Country   | Phone          |

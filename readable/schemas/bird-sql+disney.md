@@ -2,7 +2,7 @@
 -- Database: disney
 
 /*
-Table: characters
+Schema: NULLTable: characters
 Rows: 56
 Sample rows:
 | movie_title                     | release_date   | hero       | villian    | song                         |
@@ -30,7 +30,7 @@ CREATE TABLE characters (
 );
 
 /*
-Table: director
+Schema: NULLTable: director
 Rows: 56
 Sample rows:
 | name                            | director       |
@@ -52,7 +52,7 @@ CREATE TABLE director (
 );
 
 /*
-Table: movies_total_gross
+Schema: NULLTable: movies_total_gross
 Rows: 579
 Sample rows:
 | movie_title                     | release_date   | genre     | MPAA_rating   | total_gross   | inflation_adjusted_gross   |
@@ -83,7 +83,7 @@ CREATE TABLE movies_total_gross (
 );
 
 /*
-Table: revenue
+Schema: NULLTable: revenue
 Rows: 26
 Sample rows:
 | Year   | Studio Entertainment[NI 1]   | Disney Consumer Products[NI 2]   | Disney Interactive[NI 3][Rev 1]   | Walt Disney Parks and Resorts   | Disney Media Networks   | Total   |
@@ -113,7 +113,7 @@ CREATE TABLE revenue (
 );
 
 /*
-Table: "voice-actors"
+Schema: NULLTable: "voice-actors"
 Rows: 922
 Sample rows:
 | character      | voice-actor     | movie                       |

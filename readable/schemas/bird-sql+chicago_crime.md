@@ -2,7 +2,7 @@
 -- Database: chicago_crime
 
 /*
-Table: Community_Area
+Schema: NULLTable: Community_Area
 Rows: 77
 Sample rows:
 | community_area_no   | community_area_name   | side      | population   |
@@ -26,7 +26,7 @@ CREATE TABLE Community_Area (
 );
 
 /*
-Table: Crime
+Schema: NULLTable: Crime
 Rows: 268002
 Sample rows:
 | report_no   | case_number   | date           | block                    | iucr_no   | location_description   | arrest   | domestic   | beat   | district_no   | ward_no   | community_area_no   | fbi_code_no   | latitude    | longitude    |
@@ -82,7 +82,7 @@ CREATE TABLE Crime (
 );
 
 /*
-Table: District
+Schema: NULLTable: District
 Rows: 22
 Sample rows:
 | district_no   | district_name   | address                      | zip_code   | commander         | email                              | phone        | fax          | tty          | twitter       |
@@ -118,7 +118,7 @@ CREATE TABLE District (
 );
 
 /*
-Table: FBI_Code
+Schema: NULLTable: FBI_Code
 Rows: 26
 Sample rows:
 | fbi_code_no   | title                     | description                                                                                                                                                                                                 | crime_against   |
@@ -142,7 +142,7 @@ CREATE TABLE FBI_Code (
 );
 
 /*
-Table: IUCR
+Schema: NULLTable: IUCR
 Rows: 401
 Sample rows:
 | iucr_no   | primary_description   | secondary_description    | index_code   |
@@ -166,7 +166,7 @@ CREATE TABLE IUCR (
 );
 
 /*
-Table: Neighborhood
+Schema: NULLTable: Neighborhood
 Rows: 246
 Sample rows:
 | neighborhood_name   | community_area_no   |
@@ -188,7 +188,7 @@ CREATE TABLE Neighborhood (
 );
 
 /*
-Table: Ward
+Schema: NULLTable: Ward
 Rows: 50
 Sample rows:
 | ward_no   | alderman_first_name   | alderman_last_name   | alderman_name_suffix   | ward_office_address    | ward_office_zip   | ward_email               | ward_office_phone   | ward_office_fax   | city_hall_office_room   | city_hall_office_phone   | city_hall_office_fax   | Population   |

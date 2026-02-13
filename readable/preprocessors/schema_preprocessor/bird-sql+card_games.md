@@ -2,7 +2,7 @@
 -- Database: card_games
 
 /*
-Table: cards
+Schema: NULLTable: cards
 Rows: 56822
 Sample rows:
 | id   | artist            | asciiName   | availability   | borderColor   | cardKingdomFoilId   | cardKingdomId   | colorIdentity   | colorIndicator   | colors   | convertedManaCost   | duelDeck   | edhrecRank   | faceConvertedManaCost   | faceName   | flavorName   | flavorText                                                                      | frameEffects   | frameVersion   | hand   | hasAlternativeDeckLimit   | hasContentWarning   | hasFoil   | hasNonFoil   | isAlternative   | isFullArt   | isOnlineOnly   | isOversized   | isPromo   | isReprint   | isReserved   | isStarter   | isStorySpotlight   | isTextless   | isTimeshifted   | keywords     | layout   | leadershipSkills   | life   | loyalty   | manaCost   | mcmId   | mcmMetaId   | mtgArenaId   | mtgjsonV4Id                          | mtgoFoilId   | mtgoId   | multiverseId   | name              | number   | originalReleaseDate   | originalText                                                                         | originalType            | otherFaceIds   | power   | printings                                             | promoTypes   | purchaseUrls                                                                                                                                                                                                | rarity   | scryfallId                           | scryfallIllustrationId               | scryfallOracleId                     | setCode   | side   | subtypes     | supertypes   | tcgplayerProductId   | text                                                                                 | toughness   | type                    | types    | uuid                                 | variations                           | watermark   |
@@ -220,7 +220,7 @@ CREATE TABLE cards (
 );
 
 /*
-Table: foreign_data
+Schema: NULLTable: foreign_data
 Rows: 229186
 Sample rows:
 | id   | flavorText                                                  | language   | multiverseid   | name                     | text                                                                                                                                                                                                        | type                            | uuid                                 |
@@ -266,7 +266,7 @@ CREATE TABLE foreign_data (
 );
 
 /*
-Table: legalities
+Schema: NULLTable: legalities
 Rows: 427907
 Sample rows:
 | id   | format    | status   | uuid                                 |
@@ -296,7 +296,7 @@ CREATE TABLE legalities (
 );
 
 /*
-Table: rulings
+Schema: NULLTable: rulings
 Rows: 87769
 Sample rows:
 | id   | date       | text                                                                                                                                                               | uuid                                 |
@@ -326,7 +326,7 @@ CREATE TABLE rulings (
 );
 
 /*
-Table: set_translations
+Schema: NULLTable: set_translations
 Rows: 1210
 Sample rows:
 | id   | language            | setCode   | translation              |
@@ -356,7 +356,7 @@ CREATE TABLE set_translations (
 );
 
 /*
-Table: sets
+Schema: NULLTable: sets
 Rows: 551
 Sample rows:
 | id   | baseSetSize   | block    | booster                                                                                                                                                                                                     | code   | isFoilOnly   | isForeignOnly   | isNonFoilOnly   | isOnlineOnly   | isPartialPreview   | keyruneCode   | mcmId   | mcmIdExtras   | mcmName        | mtgoCode   | name                                | parentCode   | releaseDate   | tcgplayerGroupId   | totalSetSize   | type    |

@@ -2,7 +2,7 @@
 -- Database: world
 
 /*
-Table: City
+Schema: NULLTable: City
 Rows: 4079
 Sample rows:
 | ID   | Name           | CountryCode   | District      | Population   |
@@ -30,7 +30,7 @@ CREATE TABLE City (
 );
 
 /*
-Table: Country
+Schema: NULLTable: Country
 Rows: 239
 Sample rows:
 | Code   | Name        | Continent     | Region                    | SurfaceArea   | IndepYear   | Population   | LifeExpectancy   | GNP    | GNPOld   | LocalName             | GovernmentForm                               | HeadOfState             | Capital   | Code2   |
@@ -76,7 +76,7 @@ CREATE TABLE Country (
 );
 
 /*
-Table: CountryLanguage
+Schema: NULLTable: CountryLanguage
 Rows: 984
 Sample rows:
 | CountryCode   | Language   | IsOfficial   | Percentage   |

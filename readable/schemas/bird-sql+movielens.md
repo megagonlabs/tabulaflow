@@ -2,7 +2,7 @@
 -- Database: movielens
 
 /*
-Table: actors
+Schema: NULLTable: actors
 Rows: 98690
 Sample rows:
 | actorid   | a_gender   | a_quality   |
@@ -24,7 +24,7 @@ CREATE TABLE actors (
 );
 
 /*
-Table: directors
+Schema: NULLTable: directors
 Rows: 2201
 Sample rows:
 | directorid   | d_quality   | avg_revenue   |
@@ -46,7 +46,7 @@ CREATE TABLE directors (
 );
 
 /*
-Table: movies
+Schema: NULLTable: movies
 Rows: 3832
 Sample rows:
 | movieid   | year   | isEnglish   | country   | runningtime   |
@@ -72,7 +72,7 @@ CREATE TABLE movies (
 );
 
 /*
-Table: movies2actors
+Schema: NULLTable: movies2actors
 Rows: 138349
 Sample rows:
 | movieid   | actorid   | cast_num   |
@@ -99,7 +99,7 @@ CREATE TABLE movies2actors (
 );
 
 /*
-Table: movies2directors
+Schema: NULLTable: movies2directors
 Rows: 4141
 Sample rows:
 | movieid   | directorid   | genre   |
@@ -126,7 +126,7 @@ CREATE TABLE movies2directors (
 );
 
 /*
-Table: u2base
+Schema: NULLTable: u2base
 Rows: 996159
 Sample rows:
 | userid   | movieid   | rating   |
@@ -153,7 +153,7 @@ CREATE TABLE u2base (
 );
 
 /*
-Table: users
+Schema: NULLTable: users
 Rows: 6039
 Sample rows:
 | userid   | age   | u_gender   | occupation   |

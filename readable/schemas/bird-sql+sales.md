@@ -2,7 +2,7 @@
 -- Database: sales
 
 /*
-Table: Customers
+Schema: NULLTable: Customers
 Rows: 19759
 Sample rows:
 | CustomerID   | FirstName   | MiddleInitial   | LastName   |
@@ -26,7 +26,7 @@ CREATE TABLE Customers (
 );
 
 /*
-Table: Employees
+Schema: NULLTable: Employees
 Rows: 22
 Sample rows:
 | EmployeeID   | FirstName   | MiddleInitial   | LastName       |
@@ -50,7 +50,7 @@ CREATE TABLE Employees (
 );
 
 /*
-Table: Products
+Schema: NULLTable: Products
 Rows: 504
 Sample rows:
 | ProductID   | Name                  | Price   |
@@ -72,7 +72,7 @@ CREATE TABLE Products (
 );
 
 /*
-Table: Sales
+Schema: NULLTable: Sales
 Rows: 6715221
 Sample rows:
 | SalesID   | SalesPersonID   | CustomerID   | ProductID   | Quantity   |

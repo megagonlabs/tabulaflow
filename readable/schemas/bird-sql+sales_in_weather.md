@@ -2,7 +2,7 @@
 -- Database: sales_in_weather
 
 /*
-Table: relation
+Schema: NULLTable: relation
 Rows: 45
 Sample rows:
 | store_nbr   | station_nbr   |
@@ -26,7 +26,7 @@ CREATE TABLE relation (
 );
 
 /*
-Table: sales_in_weather
+Schema: NULLTable: sales_in_weather
 Rows: 4617600
 Sample rows:
 | date       | store_nbr   | item_nbr   | units   |
@@ -51,7 +51,7 @@ CREATE TABLE sales_in_weather (
 );
 
 /*
-Table: weather
+Schema: NULLTable: weather
 Rows: 20517
 Sample rows:
 | station_nbr   | date       | tmax   | tmin   | tavg   | depart   | dewpoint   | wetbulb   | heat   | cool   | sunrise   | sunset   | codesum    | snowfall   | preciptotal   | stnpressure   | sealevel   | resultspeed   | resultdir   | avgspeed   |

@@ -2,7 +2,7 @@
 -- Database: soccer_2016
 
 /*
-Table: Ball_by_Ball
+Schema: NULLTable: Ball_by_Ball
 Rows: 136590
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Innings_No   | Team_Batting   | Team_Bowling   | Striker_Batting_Position   | Striker   | Non_Striker   | Bowler   |
@@ -41,7 +41,7 @@ CREATE TABLE Ball_by_Ball (
 );
 
 /*
-Table: Batsman_Scored
+Schema: NULLTable: Batsman_Scored
 Rows: 133097
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Runs_Scored   | Innings_No   |
@@ -70,7 +70,7 @@ CREATE TABLE Batsman_Scored (
 );
 
 /*
-Table: Batting_Style
+Schema: NULLTable: Batting_Style
 Rows: 2
 All rows:
 |   Batting_Id | Batting_hand   |
@@ -86,7 +86,7 @@ CREATE TABLE Batting_Style (
 );
 
 /*
-Table: Bowling_Style
+Schema: NULLTable: Bowling_Style
 Rows: 14
 Sample rows:
 | Bowling_Id   | Bowling_skill         |
@@ -106,7 +106,7 @@ CREATE TABLE Bowling_Style (
 );
 
 /*
-Table: City
+Schema: NULLTable: City
 Rows: 29
 Sample rows:
 | City_Id   | City_Name   | Country_id   |
@@ -128,7 +128,7 @@ CREATE TABLE City (
 );
 
 /*
-Table: Country
+Schema: NULLTable: Country
 Rows: 12
 Sample rows:
 | Country_Id   | Country_Name   |
@@ -150,7 +150,7 @@ CREATE TABLE Country (
 );
 
 /*
-Table: Extra_Runs
+Schema: NULLTable: Extra_Runs
 Rows: 7469
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Extra_Type_Id   | Extra_Runs   | Innings_No   |
@@ -181,7 +181,7 @@ CREATE TABLE Extra_Runs (
 );
 
 /*
-Table: Extra_Type
+Schema: NULLTable: Extra_Type
 Rows: 5
 All rows:
 |   Extra_Id | Extra_Name   |
@@ -200,7 +200,7 @@ CREATE TABLE Extra_Type (
 );
 
 /*
-Table: Match
+Schema: NULLTable: Match
 Rows: 577
 Sample rows:
 | Match_Id   | Team_1   | Team_2   | Match_Date   | Season_Id   | Venue_Id   | Toss_Winner   | Toss_Decide   | Win_Type   | Win_Margin   | Outcome_type   | Match_Winner   | Man_of_the_Match   |
@@ -262,7 +262,7 @@ CREATE TABLE Match (
 );
 
 /*
-Table: Out_Type
+Schema: NULLTable: Out_Type
 Rows: 9
 All rows:
 |   Out_Id | Out_Name              |
@@ -285,7 +285,7 @@ CREATE TABLE Out_Type (
 );
 
 /*
-Table: Outcome
+Schema: NULLTable: Outcome
 Rows: 3
 All rows:
 |   Outcome_Id | Outcome_Type   |
@@ -302,7 +302,7 @@ CREATE TABLE Outcome (
 );
 
 /*
-Table: Player
+Schema: NULLTable: Player
 Rows: 469
 Sample rows:
 | Player_Id   | Player_Name     | DOB        | Batting_hand   | Bowling_skill   | Country_Name   |
@@ -336,7 +336,7 @@ CREATE TABLE Player (
 );
 
 /*
-Table: Player_Match
+Schema: NULLTable: Player_Match
 Rows: 12694
 Sample rows:
 | Match_Id   | Player_Id   | Role_Id   | Team_Id   |
@@ -369,7 +369,7 @@ CREATE TABLE Player_Match (
 );
 
 /*
-Table: Rolee
+Schema: NULLTable: Rolee
 Rows: 4
 All rows:
 |   Role_Id | Role_Desc     |
@@ -387,7 +387,7 @@ CREATE TABLE Rolee (
 );
 
 /*
-Table: Season
+Schema: NULLTable: Season
 Rows: 9
 All rows:
 |   Season_Id |   Man_of_the_Series |   Orange_Cap |   Purple_Cap |   Season_Year |
@@ -416,7 +416,7 @@ CREATE TABLE Season (
 );
 
 /*
-Table: Team
+Schema: NULLTable: Team
 Rows: 13
 Sample rows:
 | Team_Id   | Team_Name                   |
@@ -436,7 +436,7 @@ CREATE TABLE Team (
 );
 
 /*
-Table: Toss_Decision
+Schema: NULLTable: Toss_Decision
 Rows: 2
 All rows:
 |   Toss_Id | Toss_Name   |
@@ -452,7 +452,7 @@ CREATE TABLE Toss_Decision (
 );
 
 /*
-Table: Umpire
+Schema: NULLTable: Umpire
 Rows: 52
 Sample rows:
 | Umpire_Id   | Umpire_Name   | Umpire_Country   |
@@ -476,7 +476,7 @@ CREATE TABLE Umpire (
 );
 
 /*
-Table: Venue
+Schema: NULLTable: Venue
 Rows: 35
 Sample rows:
 | Venue_Id   | Venue_Name                         | City_Id   |
@@ -500,7 +500,7 @@ CREATE TABLE Venue (
 );
 
 /*
-Table: Wicket_Taken
+Schema: NULLTable: Wicket_Taken
 Rows: 6727
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Player_Out   | Kind_Out   | Fielders   | Innings_No   |
@@ -539,7 +539,7 @@ CREATE TABLE Wicket_Taken (
 );
 
 /*
-Table: Win_By
+Schema: NULLTable: Win_By
 Rows: 4
 All rows:
 |   Win_Id | Win_Type   |

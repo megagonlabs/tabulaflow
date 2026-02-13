@@ -2,7 +2,7 @@
 -- Database: beer_factory
 
 /*
-Table: customers
+Schema: NULLTable: customers
 Rows: 554
 Sample rows:
 | CustomerID   | First     | Last    | StreetAddress        | City       | State   | ZipCode   | Email                   | PhoneNumber    | FirstPurchaseDate   | SubscribedToEmailList   | Gender   |
@@ -42,7 +42,7 @@ CREATE TABLE customers (
 );
 
 /*
-Table: geolocation
+Schema: NULLTable: geolocation
 Rows: 3
 All rows:
 |   LocationID |   Latitude |   Longitude |
@@ -63,7 +63,7 @@ CREATE TABLE geolocation (
 );
 
 /*
-Table: location
+Schema: NULLTable: location
 Rows: 3
 All rows:
 |   LocationID | LocationName                       | StreetAddress   | City       | State   | ZipCode   |
@@ -90,7 +90,7 @@ CREATE TABLE location (
 );
 
 /*
-Table: rootbeer
+Schema: NULLTable: rootbeer
 Rows: 6430
 Sample rows:
 | RootBeerID   | BrandID   | ContainerType   | LocationID   | PurchaseDate   |
@@ -122,7 +122,7 @@ CREATE TABLE rootbeer (
 );
 
 /*
-Table: rootbeerbrand
+Schema: NULLTable: rootbeerbrand
 Rows: 24
 Sample rows:
 | BrandID   | BrandName     | FirstBrewedYear   | BreweryName             | City         | State   | Country       | Description                                                                                                                                                                                                 | CaneSugar   | CornSyrup   | Honey   | ArtificialSweetener   | Caffeinated   | Alcoholic   | AvailableInCans   | AvailableInBottles   | AvailableInKegs   | Website                                           | FacebookPage   | Twitter   | WholesaleCost   | CurrentRetailPrice   |
@@ -183,7 +183,7 @@ CREATE TABLE rootbeerbrand (
 );
 
 /*
-Table: rootbeerreview
+Schema: NULLTable: rootbeerreview
 Rows: 713
 Sample rows:
 | CustomerID   | BrandID   | StarRating   | ReviewDate   | Review   |
@@ -214,7 +214,7 @@ CREATE TABLE rootbeerreview (
 );
 
 /*
-Table: transaction
+Schema: NULLTable: transaction
 Rows: 6312
 Sample rows:
 | TransactionID   | CreditCardNumber   | CustomerID   | TransactionDate   | CreditCardType   | LocationID   | RootBeerID   | PurchasePrice   |

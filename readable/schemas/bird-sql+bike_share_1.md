@@ -2,7 +2,7 @@
 -- Database: bike_share_1
 
 /*
-Table: station
+Schema: NULLTable: station
 Rows: 70
 Sample rows:
 | id   | name                              | lat                | long                | dock_count   | city     | installation_date   |
@@ -32,7 +32,7 @@ CREATE TABLE station (
 );
 
 /*
-Table: status
+Schema: NULLTable: status
 Rows: 71984434
 Sample rows:
 | station_id   | bikes_available   | docks_available   | time                |
@@ -56,7 +56,7 @@ CREATE TABLE status (
 );
 
 /*
-Table: trip
+Schema: NULLTable: trip
 Rows: 658901
 Sample rows:
 | id   | duration   | start_date     | start_station_name       | start_station_id   | end_date       | end_station_name                        | end_station_id   | bike_id   | subscription_type   | zip_code   |
@@ -94,7 +94,7 @@ CREATE TABLE trip (
 );
 
 /*
-Table: weather
+Schema: NULLTable: weather
 Rows: 3665
 Sample rows:
 | date      | max_temperature_f   | mean_temperature_f   | min_temperature_f   | max_dew_point_f   | mean_dew_point_f   | min_dew_point_f   | max_humidity   | mean_humidity   | min_humidity   | max_sea_level_pressure_inches   | mean_sea_level_pressure_inches   | min_sea_level_pressure_inches   | max_visibility_miles   | mean_visibility_miles   | min_visibility_miles   | max_wind_Speed_mph   | mean_wind_speed_mph   | max_gust_speed_mph   | precipitation_inches   | cloud_cover   | events   | wind_dir_degrees   | zip_code   |

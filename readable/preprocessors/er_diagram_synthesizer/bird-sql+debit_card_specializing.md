@@ -16,15 +16,19 @@ erDiagram
         table yearmonth "Monthly consumption fact table keyed by (CustomerID, Date)."
     }
 
-    %% FROM transactions_1k t JOIN customers c ON c.CustomerID = t.CustomerID
     Customer |o--|{ Transaction : "CustomerMakesTransactions"
+    %% Customers perform zero or more transactions; each transaction belongs to exactly one customer.
+    %% SQL join path: `FROM transactions_1k t JOIN customers c ON c.CustomerID = t.CustomerID`
 
-    %% FROM transactions_1k t JOIN gasstations g ON g.GasStationID = t.GasStationID
     GasStation |o--|{ Transaction : "TransactionOccursAtGasStation"
+    %% Each transaction occurs at a single gas station; a gas station can host many transactions.
+    %% SQL join path: `FROM transactions_1k t JOIN gasstations g ON g.GasStationID = t.GasStationID`
 
-    %% FROM transactions_1k t JOIN products p ON p.ProductID = t.ProductID
     Product |o--|{ Transaction : "TransactionIncludesProduct"
+    %% Each transaction references exactly one product; a product can appear on many transactions.
+    %% SQL join path: `FROM transactions_1k t JOIN products p ON p.ProductID = t.ProductID`
 
-    %% FROM yearmonth ym JOIN customers c ON c.CustomerID = ym.CustomerID
     Customer |o--|{ MonthlyConsumption : "CustomerHasMonthlyConsumption"
+    %% Customers may have monthly consumption records; each monthly record belongs to exactly one customer.
+    %% SQL join path: `FROM yearmonth ym JOIN customers c ON c.CustomerID = ym.CustomerID`
 ```

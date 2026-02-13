@@ -2,7 +2,7 @@
 -- Database: superhero
 
 /*
-Table: alignment
+Schema: NULLTable: alignment
 Rows: 4
 All rows:
 |   id | alignment   |
@@ -22,7 +22,7 @@ CREATE TABLE alignment (
 );
 
 /*
-Table: attribute
+Schema: NULLTable: attribute
 Rows: 6
 All rows:
 |   id | attribute_name   |
@@ -44,7 +44,7 @@ CREATE TABLE attribute (
 );
 
 /*
-Table: colour
+Schema: NULLTable: colour
 Rows: 35
 Sample rows:
 | id   | colour     |
@@ -66,7 +66,7 @@ CREATE TABLE colour (
 );
 
 /*
-Table: gender
+Schema: NULLTable: gender
 Rows: 3
 All rows:
 |   id | gender   |
@@ -85,7 +85,7 @@ CREATE TABLE gender (
 );
 
 /*
-Table: hero_attribute
+Schema: NULLTable: hero_attribute
 Rows: 3738
 Sample rows:
 | hero_id   | attribute_id   | attribute_value   |
@@ -114,7 +114,7 @@ CREATE TABLE hero_attribute (
 );
 
 /*
-Table: hero_power
+Schema: NULLTable: hero_power
 Rows: 5825
 Sample rows:
 | hero_id   | power_id   |
@@ -140,7 +140,7 @@ CREATE TABLE hero_power (
 );
 
 /*
-Table: publisher
+Schema: NULLTable: publisher
 Rows: 25
 Sample rows:
 | id   | publisher_name    |
@@ -162,7 +162,7 @@ CREATE TABLE publisher (
 );
 
 /*
-Table: race
+Schema: NULLTable: race
 Rows: 61
 Sample rows:
 | id   | race    |
@@ -184,7 +184,7 @@ CREATE TABLE race (
 );
 
 /*
-Table: superhero
+Schema: NULLTable: superhero
 Rows: 750
 Sample rows:
 | id   | superhero_name   | full_name              | gender_id   | eye_colour_id   | hair_colour_id   | skin_colour_id   | race_id   | publisher_id   | alignment_id   | height_cm   | weight_kg   |
@@ -250,7 +250,7 @@ CREATE TABLE superhero (
 );
 
 /*
-Table: superpower
+Schema: NULLTable: superpower
 Rows: 167
 Sample rows:
 | id   | power_name            |

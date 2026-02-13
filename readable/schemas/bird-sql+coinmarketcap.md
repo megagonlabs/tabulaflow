@@ -2,7 +2,7 @@
 -- Database: coinmarketcap
 
 /*
-Table: coins
+Schema: NULLTable: coins
 Rows: 8927
 Sample rows:
 | id   | name      | slug      | symbol   | status   | category   | description                                                                                                                                                                                                 | subreddit   | notice   | tags                                                                                                                                                                                                        | tag_names                                                                                                                                                                                                  | website                   | platform_id   | date_added               | date_launched   |
@@ -48,7 +48,7 @@ CREATE TABLE coins (
 );
 
 /*
-Table: historical
+Schema: NULLTable: historical
 Rows: 4441972
 Sample rows:
 | date       | coin_id   | cmc_rank   | market_cap         | price             | open   | high   | low    | close   | time_high   | time_low   | volume_24h   | percent_change_1h   | percent_change_24h   | percent_change_7d   | circulating_supply   | total_supply   | max_supply   | num_market_pairs   |

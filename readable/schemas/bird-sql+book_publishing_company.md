@@ -2,7 +2,7 @@
 -- Database: book_publishing_company
 
 /*
-Table: authors
+Schema: NULLTable: authors
 Rows: 23
 Sample rows:
 | au_id       | au_lname   | au_fname   | phone        | address              | city       | state   | zip   | contract   |
@@ -36,7 +36,7 @@ CREATE TABLE authors (
 );
 
 /*
-Table: discounts
+Schema: NULLTable: discounts
 Rows: 3
 All rows:
 | discounttype      | stor_id   | lowqty   | highqty   |   discount |
@@ -61,7 +61,7 @@ CREATE TABLE discounts (
 );
 
 /*
-Table: employee
+Schema: NULLTable: employee
 Rows: 43
 Sample rows:
 | emp_id    | fname   | minit   | lname     | job_id   | job_lvl   | pub_id   | hire_date             |
@@ -97,7 +97,7 @@ CREATE TABLE employee (
 );
 
 /*
-Table: jobs
+Schema: NULLTable: jobs
 Rows: 14
 Sample rows:
 | job_id   | job_desc                     | min_lvl   | max_lvl   |
@@ -121,7 +121,7 @@ CREATE TABLE jobs (
 );
 
 /*
-Table: pub_info
+Schema: NULLTable: pub_info
 Rows: 7
 All rows:
 |   pub_id | logo                                                                                                                                                                                                        | pr_info                                                                                                                                                                                                     |
@@ -146,7 +146,7 @@ CREATE TABLE pub_info (
 );
 
 /*
-Table: publishers
+Schema: NULLTable: publishers
 Rows: 8
 All rows:
 |   pub_id | pub_name              | city       | state   | country   |
@@ -174,7 +174,7 @@ CREATE TABLE publishers (
 );
 
 /*
-Table: roysched
+Schema: NULLTable: roysched
 Rows: 86
 Sample rows:
 | title_id   | lorange   | hirange   | royalty   |
@@ -200,7 +200,7 @@ CREATE TABLE roysched (
 );
 
 /*
-Table: sales
+Schema: NULLTable: sales
 Rows: 21
 Sample rows:
 | stor_id   | ord_num   | ord_date              | qty   | payterms   | title_id   |
@@ -233,7 +233,7 @@ CREATE TABLE sales (
 );
 
 /*
-Table: stores
+Schema: NULLTable: stores
 Rows: 6
 All rows:
 |   stor_id | stor_name                            | stor_address        | city      | state   |   zip |
@@ -261,7 +261,7 @@ CREATE TABLE stores (
 );
 
 /*
-Table: titleauthor
+Schema: NULLTable: titleauthor
 Rows: 25
 Sample rows:
 | au_id       | title_id   | au_ord   | royaltyper   |
@@ -290,7 +290,7 @@ CREATE TABLE titleauthor (
 );
 
 /*
-Table: titles
+Schema: NULLTable: titles
 Rows: 18
 Sample rows:
 | title_id   | title                                                | type     | pub_id   | price   | advance   | royalty   | ytd_sales   | notes                                                                                                                   | pubdate               |

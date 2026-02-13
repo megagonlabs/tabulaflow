@@ -2,7 +2,7 @@
 -- Database: cookbook
 
 /*
-Table: Ingredient
+Schema: NULLTable: Ingredient
 Rows: 3346
 Sample rows:
 | ingredient_id   | category         | name                     | plural   |
@@ -26,7 +26,7 @@ CREATE TABLE Ingredient (
 );
 
 /*
-Table: Nutrition
+Schema: NULLTable: Nutrition
 Rows: 878
 Sample rows:
 | recipe_id   | protein   | carbo   | alcohol   | total_fat   | sat_fat   | cholestrl   | sodium   | iron   | vitamin_c   | vitamin_a   | fiber   | pcnt_cal_carb   | pcnt_cal_fat   | pcnt_cal_prot   | calories   |
@@ -76,7 +76,7 @@ CREATE TABLE Nutrition (
 );
 
 /*
-Table: Quantity
+Schema: NULLTable: Quantity
 Rows: 5116
 Sample rows:
 | quantity_id   | recipe_id   | ingredient_id   | max_qty   | min_qty   | unit        | preparation   | optional   |
@@ -114,7 +114,7 @@ CREATE TABLE Quantity (
 );
 
 /*
-Table: Recipe
+Schema: NULLTable: Recipe
 Rows: 1031
 Sample rows:
 | recipe_id   | title                   | subtitle               | servings   | yield_unit   | prep_min   | cook_min   | stnd_min   | source                                           | intro                                                                                                     | directions                                                                                                                                                                                                  |

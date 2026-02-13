@@ -2,7 +2,7 @@
 -- Database: hockey
 
 /*
-Table: AwardsCoaches
+Schema: NULLTable: AwardsCoaches
 Rows: 77
 Sample rows:
 | coachID    | award                | year   | lgID   | note   |
@@ -29,7 +29,7 @@ CREATE TABLE AwardsCoaches (
 );
 
 /*
-Table: AwardsMisc
+Schema: NULLTable: AwardsMisc
 Rows: 124
 Sample rows:
 | name                                  | ID        | award   | year   | lgID   | note   |
@@ -57,7 +57,7 @@ CREATE TABLE AwardsMisc (
 );
 
 /*
-Table: AwardsPlayers
+Schema: NULLTable: AwardsPlayers
 Rows: 2091
 Sample rows:
 | playerID   | award                | year   | lgID   | note   | pos    |
@@ -88,7 +88,7 @@ CREATE TABLE AwardsPlayers (
 );
 
 /*
-Table: Coaches
+Schema: NULLTable: Coaches
 Rows: 1812
 Sample rows:
 | coachID   | year   | tmID   | lgID   | stint   | notes   | g   | w   | l   | t   | postg   | postw   | postl   | postt   |
@@ -136,7 +136,7 @@ CREATE TABLE Coaches (
 );
 
 /*
-Table: CombinedShutouts
+Schema: NULLTable: CombinedShutouts
 Rows: 54
 Sample rows:
 | year   | month   | date   | tmID   | oppID   | R/P   | IDgoalie1   | IDgoalie2   |
@@ -172,7 +172,7 @@ CREATE TABLE CombinedShutouts (
 );
 
 /*
-Table: Goalies
+Schema: NULLTable: Goalies
 Rows: 4278
 Sample rows:
 | playerID   | year   | stint   | tmID   | lgID   | GP   | Min   | W   | L   | T/OL   | ENG    | SHO   | GA   | SA     | PostGP   | PostMin   | PostW   | PostL   | PostT   | PostENG   | PostSHO   | PostGA   | PostSA   |
@@ -240,7 +240,7 @@ CREATE TABLE Goalies (
 );
 
 /*
-Table: GoaliesSC
+Schema: NULLTable: GoaliesSC
 Rows: 31
 Sample rows:
 | playerID   | year   | tmID   | lgID   | GP   | Min   | W   | L   | T   | SHO   | GA   |
@@ -284,7 +284,7 @@ CREATE TABLE GoaliesSC (
 );
 
 /*
-Table: GoaliesShootout
+Schema: NULLTable: GoaliesShootout
 Rows: 480
 Sample rows:
 | playerID   | year   | stint   | tmID   | W   | L   | SA   | GA   |
@@ -321,7 +321,7 @@ CREATE TABLE GoaliesShootout (
 );
 
 /*
-Table: HOF
+Schema: NULLTable: HOF
 Rows: 365
 Sample rows:
 | year   | hofID      | name          | category   |
@@ -345,7 +345,7 @@ CREATE TABLE HOF (
 );
 
 /*
-Table: Master
+Schema: NULLTable: Master
 Rows: 7761
 Sample rows:
 | playerID   | coachID   | hofID   | firstName   | lastName   | nameNote   | nameGiven        | nameNick   | height   | weight   | shootCatch   | legendsID   | ihdbID   | hrefID    | firstNHL   | lastNHL   | firstWHA   | lastWHA   | pos   | birthYear   | birthMon   | birthDay   | birthCountry   | birthState   | birthCity    | deathYear   | deathMon   | deathDay   | deathCountry   | deathState   | deathCity   |
@@ -425,7 +425,7 @@ CREATE TABLE Master (
 );
 
 /*
-Table: Scoring
+Schema: NULLTable: Scoring
 Rows: 45967
 Sample rows:
 | playerID   | year   | stint   | tmID   | lgID   | pos   | GP   | G   | A   | Pts   | PIM   | +/-   | PPG   | PPA    | SHG   | SHA    | GWG   | GTG    | SOG   | PostGP   | PostG   | PostA   | PostPts   | PostPIM   | Post+/-   | PostPPG   | PostPPA   | PostSHG   | PostSHA   | PostGWG   | PostSOG   |
@@ -508,7 +508,7 @@ CREATE TABLE Scoring (
 );
 
 /*
-Table: ScoringSC
+Schema: NULLTable: ScoringSC
 Rows: 284
 Sample rows:
 | playerID   | year   | tmID   | lgID   | pos   | GP   | G   | A   | Pts   | PIM   |
@@ -549,7 +549,7 @@ CREATE TABLE ScoringSC (
 );
 
 /*
-Table: ScoringShootout
+Schema: NULLTable: ScoringShootout
 Rows: 2072
 Sample rows:
 | playerID   | year   | stint   | tmID   | S   | G   | GDG   |
@@ -584,7 +584,7 @@ CREATE TABLE ScoringShootout (
 );
 
 /*
-Table: ScoringSup
+Schema: NULLTable: ScoringSup
 Rows: 137
 Sample rows:
 | playerID   | year   | PPA    | SHA    |
@@ -610,7 +610,7 @@ CREATE TABLE ScoringSup (
 );
 
 /*
-Table: SeriesPost
+Schema: NULLTable: SeriesPost
 Rows: 832
 Sample rows:
 | year   | round   | series   | tmIDWinner   | lgIDWinner   | tmIDLoser   | lgIDLoser   | W   | L   | T   | GoalsWinner   | GoalsLoser   | note   |
@@ -658,7 +658,7 @@ CREATE TABLE SeriesPost (
 );
 
 /*
-Table: TeamSplits
+Schema: NULLTable: TeamSplits
 Rows: 1519
 Sample rows:
 | year   | lgID   | tmID   | hW   | hL   | hT   | hOTL   | rW   | rL   | rT   | rOTL   | SepW   | SepL   | SepT   | SepOL   | OctW   | OctL   | OctT   | OctOL   | NovW   | NovL   | NovT   | NovOL   | DecW   | DecL   | DecT   | DecOL   | JanW   | JanL   | JanT   | JanOL   | FebW   | FebL   | FebT   | FebOL   | MarW   | MarL   | MarT   | MarOL   | AprW   | AprL   | AprT   | AprOL   |
@@ -763,7 +763,7 @@ CREATE TABLE TeamSplits (
 );
 
 /*
-Table: TeamVsTeam
+Schema: NULLTable: TeamVsTeam
 Rows: 25602
 Sample rows:
 | year   | lgID   | tmID   | oppID   | W   | L   | T   | OTL    |
@@ -802,7 +802,7 @@ CREATE TABLE TeamVsTeam (
 );
 
 /*
-Table: Teams
+Schema: NULLTable: Teams
 Rows: 1519
 Sample rows:
 | year   | lgID   | tmID   | franchID   | confID   | divID   | rank   | playoff   | G   | W   | L   | T   | OTL    | Pts   | SoW    | SoL    | GF   | GA   | name                   | PIM    | BenchMinor   | PPG    | PPC    | SHA    | PKG    | PKC    | SHF    |
@@ -873,7 +873,7 @@ CREATE TABLE Teams (
 );
 
 /*
-Table: TeamsHalf
+Schema: NULLTable: TeamsHalf
 Rows: 41
 Sample rows:
 | year   | lgID   | tmID   | half   | rank   | G   | W   | L   | T   | GF   | GA   |
@@ -915,7 +915,7 @@ CREATE TABLE TeamsHalf (
 );
 
 /*
-Table: TeamsPost
+Schema: NULLTable: TeamsPost
 Rows: 927
 Sample rows:
 | year   | lgID   | tmID   | G   | W   | L   | T   | GF   | GA   | PIM    | BenchMinor   | PPG    | PPC    | SHA    | PKG    | PKC    | SHF    |
@@ -969,7 +969,7 @@ CREATE TABLE TeamsPost (
 );
 
 /*
-Table: TeamsSC
+Schema: NULLTable: TeamsSC
 Rows: 30
 Sample rows:
 | year   | lgID   | tmID   | G   | W   | L   | T   | GF   | GA   | PIM    |
@@ -1009,7 +1009,7 @@ CREATE TABLE TeamsSC (
 );
 
 /*
-Table: abbrev
+Schema: NULLTable: abbrev
 Rows: 58
 Sample rows:
 | Type       | Code   | Fullname            |

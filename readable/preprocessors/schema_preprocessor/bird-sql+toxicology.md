@@ -2,7 +2,7 @@
 -- Database: toxicology
 
 /*
-Table: atom
+Schema: NULLTable: atom
 Rows: 12333
 Sample rows:
 | atom_id   | molecule_id   | element   |
@@ -29,7 +29,7 @@ CREATE TABLE atom (
 );
 
 /*
-Table: bond
+Schema: NULLTable: bond
 Rows: 12379
 Sample rows:
 | bond_id     | molecule_id   | bond_type   |
@@ -56,7 +56,7 @@ CREATE TABLE bond (
 );
 
 /*
-Table: connected
+Schema: NULLTable: connected
 Rows: 24758
 Sample rows:
 | atom_id   | atom_id2   | bond_id   |
@@ -88,7 +88,7 @@ CREATE TABLE connected (
 );
 
 /*
-Table: molecule
+Schema: NULLTable: molecule
 Rows: 343
 Sample rows:
 | molecule_id   | label   |

@@ -2,7 +2,7 @@
 -- Database: app_store
 
 /*
-Table: playstore
+Schema: NULLTable: playstore
 Rows: 10840
 Sample rows:
 | App                                                | Category       | Rating   | Reviews   | Size   | Installs    | Type   | Price   | Content Rating   | Genres                    |
@@ -38,7 +38,7 @@ CREATE TABLE playstore (
 );
 
 /*
-Table: user_reviews
+Schema: NULLTable: user_reviews
 Rows: 64286
 Sample rows:
 | App                   | Translated_Review                                                                                                          | Sentiment   | Sentiment_Polarity   | Sentiment_Subjectivity   |

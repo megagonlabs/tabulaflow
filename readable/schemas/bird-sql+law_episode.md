@@ -2,7 +2,7 @@
 -- Database: law_episode
 
 /*
-Table: Award
+Schema: NULLTable: Award
 Rows: 22
 Sample rows:
 | award_id   | organization                 | year   | award_category   | award                                                | series        | episode_id   | person_id   | role   | result   |
@@ -42,7 +42,7 @@ CREATE TABLE Award (
 );
 
 /*
-Table: Credit
+Schema: NULLTable: Credit
 Rows: 2231
 Sample rows:
 | episode_id   | person_id   | category        | role                                      | credited   |
@@ -73,7 +73,7 @@ CREATE TABLE Credit (
 );
 
 /*
-Table: Episode
+Schema: NULLTable: Episode
 Rows: 24
 Sample rows:
 | episode_id   | series        | season   | episode   | number_in_series   | title     | summary                                                                                                                                                                                                     | air_date   | episode_image                                                                                                                                        | rating   | votes   |
@@ -111,7 +111,7 @@ CREATE TABLE Episode (
 );
 
 /*
-Table: Keyword
+Schema: NULLTable: Keyword
 Rows: 33
 Sample rows:
 | episode_id   | keyword               |
@@ -134,7 +134,7 @@ CREATE TABLE Keyword (
 );
 
 /*
-Table: Person
+Schema: NULLTable: Person
 Rows: 800
 Sample rows:
 | person_id   | name               | birthdate   | birth_name            | birth_place   | birth_region   | birth_country   | height_meters   | nickname   |
@@ -168,7 +168,7 @@ CREATE TABLE Person (
 );
 
 /*
-Table: Vote
+Schema: NULLTable: Vote
 Rows: 240
 Sample rows:
 | episode_id   | stars   | votes   | percent   |

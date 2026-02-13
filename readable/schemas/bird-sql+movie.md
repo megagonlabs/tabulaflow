@@ -2,7 +2,7 @@
 -- Database: movie
 
 /*
-Table: actor
+Schema: NULLTable: actor
 Rows: 2713
 Sample rows:
 | ActorID   | Name            | Date of Birth   | Birth City   | Birth Country   | Height (Inches)   | Biography                                                                                                                                                                                                   | Gender   | Ethnicity   | NetWorth        |
@@ -38,7 +38,7 @@ CREATE TABLE actor (
 );
 
 /*
-Table: characters
+Schema: NULLTable: characters
 Rows: 4312
 Sample rows:
 | MovieID   | ActorID   | Character Name   | creditOrder   | pay    | screentime   |
@@ -71,7 +71,7 @@ CREATE TABLE characters (
 );
 
 /*
-Table: movie
+Schema: NULLTable: movie
 Rows: 634
 Sample rows:
 | MovieID   | Title                      | MPAA Rating   | Budget   | Gross     | Release Date   | Genre   | Runtime   | Rating   | Rating Count   | Summary                                                                                                                                                                                                     |

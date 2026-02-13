@@ -2,7 +2,7 @@
 -- Database: world_development_indicators
 
 /*
-Table: Country
+Schema: NULLTable: Country
 Rows: 247
 Sample rows:
 | CountryCode   | ShortName      | TableName      | LongName                                | Alpha2Code   | CurrencyUnit   | SpecialNotes                                                                                                                                                                                                | Region                     | IncomeGroup          | Wb2Code   | NationalAccountsBaseYear                           | NationalAccountsReferenceYear   | SnaPriceValuation                 | LendingCategory   | OtherGroups   | SystemOfNationalAccounts                                       | AlternativeConversionFactor   | PppSurveyYear                      | BalanceOfPaymentsManualInUse                 | ExternalDebtReportingStatus   | SystemOfTrade        | GovernmentAccountingConcept     | ImfDataDisseminationStandard             | LatestPopulationCensus                                        | LatestHouseholdSurvey                             | SourceOfMostRecentIncomeAndExpenditureData                | VitalRegistrationComplete   | LatestAgriculturalCensus   | LatestIndustrialData   | LatestTradeData   | LatestWaterWithdrawalData   |
@@ -80,7 +80,7 @@ CREATE TABLE Country (
 );
 
 /*
-Table: CountryNotes
+Schema: NULLTable: CountryNotes
 Rows: 4857
 Sample rows:
 | Countrycode   | Seriescode        | Description                                                                                       |
@@ -107,7 +107,7 @@ CREATE TABLE CountryNotes (
 );
 
 /*
-Table: Footnotes
+Schema: NULLTable: Footnotes
 Rows: 532415
 Sample rows:
 | Countrycode   | Seriescode        | Year   | Description                                                                                            |
@@ -136,7 +136,7 @@ CREATE TABLE Footnotes (
 );
 
 /*
-Table: Indicators
+Schema: NULLTable: Indicators
 Rows: 5656458
 Sample rows:
 | CountryName   | CountryCode   | IndicatorName                                                 | IndicatorCode   | Year   | Value   |
@@ -167,7 +167,7 @@ CREATE TABLE Indicators (
 );
 
 /*
-Table: Series
+Schema: NULLTable: Series
 Rows: 1345
 Sample rows:
 | SeriesCode           | Topic                                                                    | IndicatorName                                             | ShortDefinition   | LongDefinition                                                                                                                                                                                              | UnitOfMeasure   | Periodicity   | BasePeriod   | OtherNotes   | AggregationMethod   | LimitationsAndExceptions                                                                                                                                                                                   | NotesFromOriginalSource   | GeneralComments                                                                                                                                                                                             | Source                                                                                                                                                                               | StatisticalConceptAndMethodology                                                                                                                                                                            | DevelopmentRelevance                                                                                                                                                                                        | RelatedSourceLinks   | OtherWebLinks   | RelatedIndicators   | LicenseType   |
@@ -220,7 +220,7 @@ CREATE TABLE Series (
 );
 
 /*
-Table: SeriesNotes
+Schema: NULLTable: SeriesNotes
 Rows: 369
 Sample rows:
 | Seriescode        | Year   | Description                                                                                                 |

@@ -2,7 +2,7 @@
 -- Database: thrombosis_prediction
 
 /*
-Table: Examination
+Schema: NULLTable: Examination
 Rows: 806
 Sample rows:
 | ID     | Examination Date   | aCL IgG   | aCL IgM   | ANA   | ANA Pattern   | aCL IgA   | Diagnosis         | KCT    | RVVT   | LAC    | Symptoms   | Thrombosis   |
@@ -59,7 +59,7 @@ CREATE TABLE Examination (
 );
 
 /*
-Table: Laboratory
+Schema: NULLTable: Laboratory
 Rows: 13908
 Sample rows:
 | ID    | Date       | GOT    | GPT    | LDH    | ALP    | TP     | ALB    | UA     | UN     | CRE    | T-BIL   | T-CHO   | TG     | CPK    | GLU    | WBC   | RBC   | HGB   | HCT   | PLT   | PT     | APTT   | FG     | PIC    | TAT    | TAT2   | U-PRO   | IGG    | IGA    | IGM    | CRP    | RA     | RF     | C3     | C4     | RNP    | SM     | SC170   | SSA    | SSB    | CENTROMEA   | DNA    | DNA-II   |
@@ -209,7 +209,7 @@ CREATE TABLE Laboratory (
 );
 
 /*
-Table: Patient
+Schema: NULLTable: Patient
 Rows: 1238
 Sample rows:
 | ID    | SEX   | Birthday   | Description   | First Date   | Admission   | Diagnosis    |

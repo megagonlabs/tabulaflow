@@ -2,7 +2,7 @@
 -- Database: formula_1
 
 /*
-Table: circuits
+Schema: NULLTable: circuits
 Rows: 72
 Sample rows:
 | circuitId   | circuitRef   | name                           | location     | country   | lat     | lng     | alt    | url                                                         |
@@ -35,7 +35,7 @@ CREATE TABLE circuits (
 );
 
 /*
-Table: constructorResults
+Schema: NULLTable: constructorResults
 Rows: 11082
 Sample rows:
 | constructorResultsId   | raceId   | constructorId   | points   | status   |
@@ -65,7 +65,7 @@ CREATE TABLE constructorResults (
 );
 
 /*
-Table: constructorStandings
+Schema: NULLTable: constructorStandings
 Rows: 11836
 Sample rows:
 | constructorStandingsId   | raceId   | constructorId   | points   | position   | positionText   | wins   |
@@ -99,7 +99,7 @@ CREATE TABLE constructorStandings (
 );
 
 /*
-Table: constructors
+Schema: NULLTable: constructors
 Rows: 208
 Sample rows:
 | constructorId   | constructorRef   | name       | nationality   | url                                                          |
@@ -125,7 +125,7 @@ CREATE TABLE constructors (
 );
 
 /*
-Table: driverStandings
+Schema: NULLTable: driverStandings
 Rows: 31578
 Sample rows:
 | driverStandingsId   | raceId   | driverId   | points   | position   | positionText   | wins   |
@@ -159,7 +159,7 @@ CREATE TABLE driverStandings (
 );
 
 /*
-Table: drivers
+Schema: NULLTable: drivers
 Rows: 840
 Sample rows:
 | driverId   | driverRef   | number   | code   | forename   | surname    | dob        | nationality   | url                                            |
@@ -193,7 +193,7 @@ CREATE TABLE drivers (
 );
 
 /*
-Table: lapTimes
+Schema: NULLTable: lapTimes
 Rows: 420369
 Sample rows:
 | raceId   | driverId   | lap   | position   | time     | milliseconds   |
@@ -226,7 +226,7 @@ CREATE TABLE lapTimes (
 );
 
 /*
-Table: pitStops
+Schema: NULLTable: pitStops
 Rows: 6070
 Sample rows:
 | raceId   | driverId   | stop   | lap   | time     | duration   | milliseconds   |
@@ -261,7 +261,7 @@ CREATE TABLE pitStops (
 );
 
 /*
-Table: qualifying
+Schema: NULLTable: qualifying
 Rows: 7397
 Sample rows:
 | qualifyId   | raceId   | driverId   | constructorId   | number   | position   | q1       | q2       | q3       |
@@ -301,7 +301,7 @@ CREATE TABLE qualifying (
 );
 
 /*
-Table: races
+Schema: NULLTable: races
 Rows: 976
 Sample rows:
 | raceId   | year   | round   | circuitId   | name                  | date       | time     | url                                                     |
@@ -337,7 +337,7 @@ CREATE TABLE races (
 );
 
 /*
-Table: results
+Schema: NULLTable: results
 Rows: 23657
 Sample rows:
 | resultId   | raceId   | driverId   | constructorId   | number   | grid   | position   | positionText   | positionOrder   | points   | laps   | time        | milliseconds   | fastestLap   | rank   | fastestLapTime   | fastestLapSpeed   | statusId   |
@@ -397,7 +397,7 @@ CREATE TABLE results (
 );
 
 /*
-Table: seasons
+Schema: NULLTable: seasons
 Rows: 68
 Sample rows:
 | year   | url                                                  |
@@ -417,7 +417,7 @@ CREATE TABLE seasons (
 );
 
 /*
-Table: status
+Schema: NULLTable: status
 Rows: 134
 Sample rows:
 | statusId   | status       |

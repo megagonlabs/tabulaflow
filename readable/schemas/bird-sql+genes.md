@@ -2,7 +2,7 @@
 -- Database: genes
 
 /*
-Table: Classification
+Schema: NULLTable: Classification
 Rows: 862
 Sample rows:
 | GeneID   | Localization   |
@@ -22,7 +22,7 @@ CREATE TABLE Classification (
 );
 
 /*
-Table: Genes
+Schema: NULLTable: Genes
 Rows: 4346
 Sample rows:
 | GeneID   | Essential     | Class                           | Complex               | Phenotype   | Motif   | Chromosome   | Function                                                                      | Localization   |
@@ -58,7 +58,7 @@ CREATE TABLE Genes (
 );
 
 /*
-Table: Interactions
+Schema: NULLTable: Interactions
 Rows: 910
 Sample rows:
 | GeneID1   | GeneID2   | Type             | Expression_Corr   |

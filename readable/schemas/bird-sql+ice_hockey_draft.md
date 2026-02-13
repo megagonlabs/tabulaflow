@@ -2,7 +2,7 @@
 -- Database: ice_hockey_draft
 
 /*
-Table: PlayerInfo
+Schema: NULLTable: PlayerInfo
 Rows: 2171
 Sample rows:
 | ELITEID   | PlayerName       | birthdate   | birthyear   | birthmonth   | birthday   | birthplace     | nation   | height   | weight   | position_info   | shoots   | draftyear   | draftround   | overall   | overallby             | CSS_rank   | sum_7yr_GP   | sum_7yr_TOI   | GP_greater_than_0   |
@@ -62,7 +62,7 @@ CREATE TABLE PlayerInfo (
 );
 
 /*
-Table: SeasonStatus
+Schema: NULLTable: SeasonStatus
 Rows: 5485
 Sample rows:
 | ELITEID   | SEASON    | TEAM             | LEAGUE   | GAMETYPE       | GP   | G   | A   | P   | PIM   | PLUSMINUS   |
@@ -102,7 +102,7 @@ CREATE TABLE SeasonStatus (
 );
 
 /*
-Table: height_info
+Schema: NULLTable: height_info
 Rows: 16
 Sample rows:
 | height_id   | height_in_cm   | height_in_inch   |
@@ -124,7 +124,7 @@ CREATE TABLE height_info (
 );
 
 /*
-Table: weight_info
+Schema: NULLTable: weight_info
 Rows: 46
 Sample rows:
 | weight_id   | weight_in_kg   | weight_in_lbs   |

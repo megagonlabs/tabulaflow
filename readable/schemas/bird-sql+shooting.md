@@ -2,7 +2,7 @@
 -- Database: shooting
 
 /*
-Table: incidents
+Schema: NULLTable: incidents
 Rows: 219
 Sample rows:
 | case_number   | date       | location                    | subject_statuses   | subject_weapon   | subjects                   | subject_count   | officers             |
@@ -34,7 +34,7 @@ CREATE TABLE incidents (
 );
 
 /*
-Table: officers
+Schema: NULLTable: officers
 Rows: 370
 Sample rows:
 | case_number   | race   | gender   | last_name   | first_name   | full_name        |
@@ -64,7 +64,7 @@ CREATE TABLE officers (
 );
 
 /*
-Table: subjects
+Schema: NULLTable: subjects
 Rows: 223
 Sample rows:
 | case_number   | race   | gender   | last_name   | first_name   | full_name       |

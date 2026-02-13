@@ -2,7 +2,7 @@
 -- Database: social_media
 
 /*
-Table: location
+Schema: NULLTable: location
 Rows: 6211
 Sample rows:
 | LocationID   | Country   | State       | StateCode   | City        |
@@ -28,7 +28,7 @@ CREATE TABLE location (
 );
 
 /*
-Table: twitter
+Schema: NULLTable: twitter
 Rows: 99901
 Sample rows:
 | TweetID               | Weekday   | Hour   | Day   | Lang   | IsReshare   | Reach   | RetweetCount   | Likes   | Klout   | Sentiment   | text                                                                                                                                                                                                        | LocationID   | UserID        |
@@ -76,7 +76,7 @@ CREATE TABLE twitter (
 );
 
 /*
-Table: user
+Schema: NULLTable: user
 Rows: 99260
 Sample rows:
 | UserID        | Gender   |

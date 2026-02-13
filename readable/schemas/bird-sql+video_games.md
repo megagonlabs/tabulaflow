@@ -2,7 +2,7 @@
 -- Database: video_games
 
 /*
-Table: game
+Schema: NULLTable: game
 Rows: 11317
 Sample rows:
 | id   | genre_id   | game_name                                                          |
@@ -26,7 +26,7 @@ CREATE TABLE game (
 );
 
 /*
-Table: game_platform
+Schema: NULLTable: game_platform
 Rows: 16326
 Sample rows:
 | id   | game_publisher_id   | platform_id   | release_year   |
@@ -54,7 +54,7 @@ CREATE TABLE game_platform (
 );
 
 /*
-Table: game_publisher
+Schema: NULLTable: game_publisher
 Rows: 11732
 Sample rows:
 | id   | game_id   | publisher_id   |
@@ -80,7 +80,7 @@ CREATE TABLE game_publisher (
 );
 
 /*
-Table: genre
+Schema: NULLTable: genre
 Rows: 12
 Sample rows:
 | id   | genre_name   |
@@ -100,7 +100,7 @@ CREATE TABLE genre (
 );
 
 /*
-Table: platform
+Schema: NULLTable: platform
 Rows: 31
 Sample rows:
 | id   | platform_name   |
@@ -120,7 +120,7 @@ CREATE TABLE platform (
 );
 
 /*
-Table: publisher
+Schema: NULLTable: publisher
 Rows: 577
 Sample rows:
 | id   | publisher_name               |
@@ -140,7 +140,7 @@ CREATE TABLE publisher (
 );
 
 /*
-Table: region
+Schema: NULLTable: region
 Rows: 4
 All rows:
 |   id | region_name   |
@@ -158,7 +158,7 @@ CREATE TABLE region (
 );
 
 /*
-Table: region_sales
+Schema: NULLTable: region_sales
 Rows: 65320
 Sample rows:
 | region_id   | game_platform_id   | num_sales   |

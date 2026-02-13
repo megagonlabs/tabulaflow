@@ -2,7 +2,7 @@
 -- Database: authors
 
 /*
-Table: Author
+Schema: NULLTable: Author
 Rows: 247030
 Sample rows:
 | Id   | Name              | Affiliation                               |
@@ -24,7 +24,7 @@ CREATE TABLE Author (
 );
 
 /*
-Table: Conference
+Schema: NULLTable: Conference
 Rows: 4545
 Sample rows:
 | Id   | ShortName   | FullName                                                             | HomePage                                                        |
@@ -48,7 +48,7 @@ CREATE TABLE Conference (
 );
 
 /*
-Table: Journal
+Schema: NULLTable: Journal
 Rows: 15151
 Sample rows:
 | Id   | ShortName   | FullName                                                                  | HomePage                                          |
@@ -72,7 +72,7 @@ CREATE TABLE Journal (
 );
 
 /*
-Table: Paper
+Schema: NULLTable: Paper
 Rows: 2254920
 Sample rows:
 | Id   | Title                                                                                   | Year   | ConferenceId   | JournalId   | Keyword                                                        |
@@ -104,7 +104,7 @@ CREATE TABLE Paper (
 );
 
 /*
-Table: PaperAuthor
+Schema: NULLTable: PaperAuthor
 Rows: 2315574
 Sample rows:
 | PaperId   | AuthorId   | Name                | Affiliation                                           |

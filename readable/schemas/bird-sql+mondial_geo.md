@@ -2,7 +2,7 @@
 -- Database: mondial_geo
 
 /*
-Table: borders
+Schema: NULLTable: borders
 Rows: 320
 Sample rows:
 | Country1   | Country2   | Length   |
@@ -29,7 +29,7 @@ CREATE TABLE borders (
 );
 
 /*
-Table: city
+Schema: NULLTable: city
 Rows: 3111
 Sample rows:
 | Name    | Country   | Province            | Population   | Longitude   | Latitude   |
@@ -63,7 +63,7 @@ CREATE TABLE city (
 );
 
 /*
-Table: continent
+Schema: NULLTable: continent
 Rows: 5
 All rows:
 | Name              |     Area |
@@ -82,7 +82,7 @@ CREATE TABLE continent (
 );
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 238
 Sample rows:
 | Name                | Code   | Capital     | Province            | Area     | Population   |
@@ -110,7 +110,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: desert
+Schema: NULLTable: desert
 Rows: 63
 Sample rows:
 | Name                   | Area     | Longitude   | Latitude   |
@@ -134,7 +134,7 @@ CREATE TABLE desert (
 );
 
 /*
-Table: economy
+Schema: NULLTable: economy
 Rows: 238
 Sample rows:
 | Country   | GDP      | Agriculture   | Service   | Industry   | Inflation   |
@@ -164,7 +164,7 @@ CREATE TABLE economy (
 );
 
 /*
-Table: encompasses
+Schema: NULLTable: encompasses
 Rows: 242
 Sample rows:
 | Country   | Continent         | Percentage   |
@@ -191,7 +191,7 @@ CREATE TABLE encompasses (
 );
 
 /*
-Table: ethnicGroup
+Schema: NULLTable: ethnicGroup
 Rows: 540
 Sample rows:
 | Country   | Name   | Percentage   |
@@ -216,7 +216,7 @@ CREATE TABLE ethnicGroup (
 );
 
 /*
-Table: geo_desert
+Schema: NULLTable: geo_desert
 Rows: 155
 Sample rows:
 | Desert          | Country   | Province    |
@@ -246,7 +246,7 @@ CREATE TABLE geo_desert (
 );
 
 /*
-Table: geo_estuary
+Schema: NULLTable: geo_estuary
 Rows: 266
 Sample rows:
 | River                     | Country   | Province    |
@@ -276,7 +276,7 @@ CREATE TABLE geo_estuary (
 );
 
 /*
-Table: geo_island
+Schema: NULLTable: geo_island
 Rows: 202
 Sample rows:
 | Island   | Country   | Province   |
@@ -306,7 +306,7 @@ CREATE TABLE geo_island (
 );
 
 /*
-Table: geo_lake
+Schema: NULLTable: geo_lake
 Rows: 254
 Sample rows:
 | Lake               | Country   | Province   |
@@ -336,7 +336,7 @@ CREATE TABLE geo_lake (
 );
 
 /*
-Table: geo_mountain
+Schema: NULLTable: geo_mountain
 Rows: 296
 Sample rows:
 | Mountain     | Country   | Province    |
@@ -366,7 +366,7 @@ CREATE TABLE geo_mountain (
 );
 
 /*
-Table: geo_river
+Schema: NULLTable: geo_river
 Rows: 852
 Sample rows:
 | River                     | Country   | Province    |
@@ -396,7 +396,7 @@ CREATE TABLE geo_river (
 );
 
 /*
-Table: geo_sea
+Schema: NULLTable: geo_sea
 Rows: 736
 Sample rows:
 | Sea               | Country   | Province   |
@@ -426,7 +426,7 @@ CREATE TABLE geo_sea (
 );
 
 /*
-Table: geo_source
+Schema: NULLTable: geo_source
 Rows: 220
 Sample rows:
 | River      | Country   | Province    |
@@ -456,7 +456,7 @@ CREATE TABLE geo_source (
 );
 
 /*
-Table: isMember
+Schema: NULLTable: isMember
 Rows: 8009
 Sample rows:
 | Country   | Organization   | Type               |
@@ -483,7 +483,7 @@ CREATE TABLE isMember (
 );
 
 /*
-Table: island
+Schema: NULLTable: island
 Rows: 276
 Sample rows:
 | Name    | Islands               | Area   | Height   | Type     | Longitude   | Latitude   |
@@ -513,7 +513,7 @@ CREATE TABLE island (
 );
 
 /*
-Table: islandIn
+Schema: NULLTable: islandIn
 Rows: 350
 Sample rows:
 | Island    | Sea            | Lake   | River   |
@@ -545,7 +545,7 @@ CREATE TABLE islandIn (
 );
 
 /*
-Table: lake
+Schema: NULLTable: lake
 Rows: 130
 Sample rows:
 | Name               | Area   | Depth   | Altitude   | Type       | River       | Longitude   | Latitude   |
@@ -577,7 +577,7 @@ CREATE TABLE lake (
 );
 
 /*
-Table: language
+Schema: NULLTable: language
 Rows: 144
 Sample rows:
 | Country   | Name           | Percentage   |
@@ -602,7 +602,7 @@ CREATE TABLE language (
 );
 
 /*
-Table: located
+Schema: NULLTable: located
 Rows: 858
 Sample rows:
 | City    | Province                        | Country   | River   | Lake         | Sea               |
@@ -644,7 +644,7 @@ CREATE TABLE located (
 );
 
 /*
-Table: locatedOn
+Schema: NULLTable: locatedOn
 Rows: 435
 Sample rows:
 | City        | Province         | Country   | Island        |
@@ -679,7 +679,7 @@ CREATE TABLE locatedOn (
 );
 
 /*
-Table: mergesWith
+Schema: NULLTable: mergesWith
 Rows: 55
 Sample rows:
 | Sea1        | Sea2           |
@@ -704,7 +704,7 @@ CREATE TABLE mergesWith (
 );
 
 /*
-Table: mountain
+Schema: NULLTable: mountain
 Rows: 0
 */
 CREATE TABLE mountain (
@@ -717,7 +717,7 @@ CREATE TABLE mountain (
 );
 
 /*
-Table: mountainOnIsland
+Schema: NULLTable: mountainOnIsland
 Rows: 68
 Sample rows:
 | Mountain     | Island           |
@@ -742,7 +742,7 @@ CREATE TABLE mountainOnIsland (
 );
 
 /*
-Table: organization
+Schema: NULLTable: organization
 Rows: 154
 Sample rows:
 | Abbreviation   | Name                                          | City     | Country   | Province      | Established   |
@@ -778,7 +778,7 @@ CREATE TABLE organization (
 );
 
 /*
-Table: politics
+Schema: NULLTable: politics
 Rows: 239
 Sample rows:
 | Country   | Independence   | Dependent   | Government              |
@@ -806,7 +806,7 @@ CREATE TABLE politics (
 );
 
 /*
-Table: population
+Schema: NULLTable: population
 Rows: 238
 Sample rows:
 | Country   | Population_Growth   | Infant_Mortality   |
@@ -830,7 +830,7 @@ CREATE TABLE population (
 );
 
 /*
-Table: province
+Schema: NULLTable: province
 Rows: 1450
 Sample rows:
 | Name                 | Country   | Population   | Area     | Capital    | CapProv              |
@@ -861,7 +861,7 @@ CREATE TABLE province (
 );
 
 /*
-Table: religion
+Schema: NULLTable: religion
 Rows: 454
 Sample rows:
 | Country   | Name                        | Percentage   |
@@ -886,7 +886,7 @@ CREATE TABLE religion (
 );
 
 /*
-Table: river
+Schema: NULLTable: river
 Rows: 218
 Sample rows:
 | Name            | River      | Lake          | Sea    | Length   | SourceLongitude   | SourceLatitude   | Mountains             | SourceAltitude   | EstuaryLongitude   | EstuaryLatitude   |
@@ -926,7 +926,7 @@ CREATE TABLE river (
 );
 
 /*
-Table: sea
+Schema: NULLTable: sea
 Rows: 35
 Sample rows:
 | Name           | Depth   |
@@ -946,7 +946,7 @@ CREATE TABLE sea (
 );
 
 /*
-Table: target
+Schema: NULLTable: target
 Rows: 205
 Sample rows:
 | Country   | Target        |

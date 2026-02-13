@@ -2,7 +2,7 @@
 -- Database: simpson_episodes
 
 /*
-Table: Award
+Schema: NULLTable: Award
 Rows: 75
 Sample rows:
 | award_id   | organization          | year   | award_category   | award                                                             | person           | role               | episode_id   | season   | song   | result   |
@@ -42,7 +42,7 @@ CREATE TABLE Award (
 );
 
 /*
-Table: Character_Award
+Schema: NULLTable: Character_Award
 Rows: 12
 Sample rows:
 | award_id   | character     |
@@ -64,7 +64,7 @@ CREATE TABLE Character_Award (
 );
 
 /*
-Table: Credit
+Schema: NULLTable: Credit
 Rows: 4557
 Sample rows:
 | episode_id   | category             | person         | role             | credited   |
@@ -94,7 +94,7 @@ CREATE TABLE Credit (
 );
 
 /*
-Table: Episode
+Schema: NULLTable: Episode
 Rows: 21
 Sample rows:
 | episode_id   | season   | episode   | number_in_series   | title                          | summary                                                                                                                                                                   | air_date   | episode_image                                                                                                        | rating   | votes   |
@@ -130,7 +130,7 @@ CREATE TABLE Episode (
 );
 
 /*
-Table: Keyword
+Schema: NULLTable: Keyword
 Rows: 307
 Sample rows:
 | episode_id   | keyword           |
@@ -153,7 +153,7 @@ CREATE TABLE Keyword (
 );
 
 /*
-Table: Person
+Schema: NULLTable: Person
 Rows: 369
 Sample rows:
 | name             | birthdate   | birth_name              | birth_place   | birth_region   | birth_country   | height_meters   | nickname   |
@@ -185,7 +185,7 @@ CREATE TABLE Person (
 );
 
 /*
-Table: Vote
+Schema: NULLTable: Vote
 Rows: 210
 Sample rows:
 | episode_id   | stars   | votes   | percent   |

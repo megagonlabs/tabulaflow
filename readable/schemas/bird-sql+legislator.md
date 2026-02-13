@@ -2,7 +2,7 @@
 -- Database: legislator
 
 /*
-Table: current
+Schema: NULLTable: current
 Rows: 541
 Sample rows:
 | ballotpedia_id   | bioguide_id   | birthday_bio   | cspan_id   | fec_id                     | first_name   | gender_bio   | google_entity_id_id   | govtrack_id   | house_history_id   | icpsr_id   | last_name   | lis_id   | maplight_id   | middle_name   | nickname_name   | official_full_name   | opensecrets_id   | religion_bio   | suffix_name   | thomas_id   | votesmart_id   | wikidata_id   | wikipedia_id   |
@@ -67,7 +67,7 @@ CREATE TABLE current (
 );
 
 /*
-Table: "current-terms"
+Schema: NULLTable: "current-terms"
 Rows: 3078
 Sample rows:
 | address   | bioguide   | caucus   | chamber   | class   | contact_form   | district   | end        | fax    | last   | name   | office   | party    | party_affiliations   | phone   | relation   | rss_url   | start      | state   | state_rank   | title   | type   | url    |
@@ -132,7 +132,7 @@ CREATE TABLE "current-terms" (
 );
 
 /*
-Table: historical
+Schema: NULLTable: historical
 Rows: 11864
 Sample rows:
 | ballotpedia_id   | bioguide_id   | bioguide_previous_id   | birthday_bio   | cspan_id   | fec_id   | first_name   | gender_bio   | google_entity_id_id   | govtrack_id   | house_history_alternate_id   | house_history_id   | icpsr_id   | last_name   | lis_id   | maplight_id   | middle_name   | nickname_name   | official_full_name   | opensecrets_id   | religion_bio   | suffix_name   | thomas_id   | votesmart_id   | wikidata_id   | wikipedia_id                   |
@@ -200,7 +200,7 @@ CREATE TABLE historical (
 );
 
 /*
-Table: "historical-terms"
+Schema: NULLTable: "historical-terms"
 Rows: 11864
 Sample rows:
 | address   | bioguide   | chamber   | class   | contact_form   | district   | end        | fax    | last   | middle   | name   | office   | party               | party_affiliations   | phone   | relation   | rss_url   | start      | state   | state_rank   | title   | type   | url    |
@@ -261,7 +261,7 @@ CREATE TABLE "historical-terms" (
 );
 
 /*
-Table: "social-media"
+Schema: NULLTable: "social-media"
 Rows: 479
 Sample rows:
 | bioguide   | facebook                | facebook_id        | govtrack   | instagram    | instagram_id   | thomas   | twitter       | twitter_id   | youtube      | youtube_id               |

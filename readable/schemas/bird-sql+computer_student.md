@@ -2,7 +2,7 @@
 -- Database: computer_student
 
 /*
-Table: advisedBy
+Schema: NULLTable: advisedBy
 Rows: 113
 Sample rows:
 | p_id   | p_id_dummy   |
@@ -26,7 +26,7 @@ CREATE TABLE advisedBy (
 );
 
 /*
-Table: course
+Schema: NULLTable: course
 Rows: 132
 Sample rows:
 | course_id   | courseLevel   |
@@ -46,7 +46,7 @@ CREATE TABLE course (
 );
 
 /*
-Table: person
+Schema: NULLTable: person
 Rows: 278
 Sample rows:
 | p_id   | professor   | student   | hasPosition   | inPhase    | yearsInProgram   |
@@ -74,7 +74,7 @@ CREATE TABLE person (
 );
 
 /*
-Table: taughtBy
+Schema: NULLTable: taughtBy
 Rows: 189
 Sample rows:
 | course_id   | p_id   |

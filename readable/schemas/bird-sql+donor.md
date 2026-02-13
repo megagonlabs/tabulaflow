@@ -2,7 +2,7 @@
 -- Database: donor
 
 /*
-Table: donations
+Schema: NULLTable: donations
 Rows: 3097556
 Sample rows:
 | donationid                       | projectid                        | donor_acctid                     | donor_city     | donor_state   | donor_zip   | is_teacher_acct   | donation_timestamp      | donation_to_project   | donation_optional_support   | donation_total   | dollar_amount   | donation_included_optional_support   | payment_method   | payment_included_acct_credit   | payment_included_campaign_gift_card   | payment_included_web_purchased_gift_card   | payment_was_promo_matched   | via_giving_page   | for_honoree   | donation_message                                                                                                                                                                                            |
@@ -62,7 +62,7 @@ CREATE TABLE donations (
 );
 
 /*
-Table: essays
+Schema: NULLTable: essays
 Rows: 99998
 Sample rows:
 | projectid                        | teacher_acctid                   | title                                        | short_description                                                                                                                                                                                           | need_statement                                                                                                                             | essay                                                                                                                                                                                                       |
@@ -96,7 +96,7 @@ CREATE TABLE essays (
 );
 
 /*
-Table: projects
+Schema: NULLTable: projects
 Rows: 664098
 Sample rows:
 | projectid                        | teacher_acctid                   | schoolid                         | school_ncesid   | school_latitude   | school_longitude   | school_city   | school_state   | school_zip   | school_metro   | school_district                | school_county    | school_charter   | school_magnet   | school_year_round   | school_nlns   | school_kipp   | school_charter_ready_promise   | teacher_prefix   | teacher_teach_for_america   | teacher_ny_teaching_fellow   | primary_focus_subject   | primary_focus_area   | secondary_focus_subject   | secondary_focus_area   | resource_type   | poverty_level   | grade_level   | fulfillment_labor_materials   | total_price_excluding_optional_support   | total_price_including_optional_support   | students_reached   | eligible_double_your_impact_match   | eligible_almost_home_match   | date_posted   |
@@ -182,7 +182,7 @@ CREATE TABLE projects (
 );
 
 /*
-Table: resources
+Schema: NULLTable: resources
 Rows: 3666757
 Sample rows:
 | resourceid                       | projectid                        | vendorid   | vendor_name                  | project_resource_type   | item_name                                                    | item_number   | item_unit_price   | item_quantity   |

@@ -2,7 +2,7 @@
 -- Database: university
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 74
 Sample rows:
 | id   | country_name   |
@@ -22,7 +22,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: ranking_criteria
+Schema: NULLTable: ranking_criteria
 Rows: 21
 Sample rows:
 | id   | ranking_system_id   | criteria_name   |
@@ -46,7 +46,7 @@ CREATE TABLE ranking_criteria (
 );
 
 /*
-Table: ranking_system
+Schema: NULLTable: ranking_system
 Rows: 3
 All rows:
 |   id | system_name                                     |
@@ -63,7 +63,7 @@ CREATE TABLE ranking_system (
 );
 
 /*
-Table: university
+Schema: NULLTable: university
 Rows: 1247
 Sample rows:
 | id   | country_id   | university_name                       |
@@ -87,7 +87,7 @@ CREATE TABLE university (
 );
 
 /*
-Table: university_ranking_year
+Schema: NULLTable: university_ranking_year
 Rows: 29612
 Sample rows:
 | university_id   | ranking_criteria_id   | year   | score   |
@@ -115,7 +115,7 @@ CREATE TABLE university_ranking_year (
 );
 
 /*
-Table: university_year
+Schema: NULLTable: university_year
 Rows: 1085
 Sample rows:
 | university_id   | year   | num_students   | student_staff_ratio   | pct_international_students   | pct_female_students   |

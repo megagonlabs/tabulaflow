@@ -2,7 +2,7 @@
 -- Database: superstore
 
 /*
-Table: central_superstore
+Schema: NULLTable: central_superstore
 Rows: 4646
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -48,7 +48,7 @@ CREATE TABLE central_superstore (
 );
 
 /*
-Table: east_superstore
+Schema: NULLTable: east_superstore
 Rows: 5696
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -94,7 +94,7 @@ CREATE TABLE east_superstore (
 );
 
 /*
-Table: people
+Schema: NULLTable: people
 Rows: 2501
 Sample rows:
 | Customer ID   | Customer Name   | Segment   | Country       | City          | State    | Postal Code   | Region   |
@@ -127,7 +127,7 @@ CREATE TABLE people (
 );
 
 /*
-Table: product
+Schema: NULLTable: product
 Rows: 5298
 Sample rows:
 | Product ID      | Product Name                                                   | Category   | Sub-Category   | Region   |
@@ -154,7 +154,7 @@ CREATE TABLE product (
 );
 
 /*
-Table: south_superstore
+Schema: NULLTable: south_superstore
 Rows: 3240
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -200,7 +200,7 @@ CREATE TABLE south_superstore (
 );
 
 /*
-Table: west_superstore
+Schema: NULLTable: west_superstore
 Rows: 6406
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |

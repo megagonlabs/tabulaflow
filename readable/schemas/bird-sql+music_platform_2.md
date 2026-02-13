@@ -2,7 +2,7 @@
 -- Database: music_platform_2
 
 /*
-Table: categories
+Schema: NULLTable: categories
 Rows: 210329
 Sample rows:
 | podcast_id                       | category             |
@@ -25,7 +25,7 @@ CREATE TABLE categories (
 );
 
 /*
-Table: podcasts
+Schema: NULLTable: podcasts
 Rows: 108578
 Sample rows:
 | podcast_id                       | itunes_id   | slug                                  | itunes_url                                                                              | title                                 |
@@ -51,7 +51,7 @@ CREATE TABLE podcasts (
 );
 
 /*
-Table: reviews
+Schema: NULLTable: reviews
 Rows: 1964856
 Sample rows:
 | podcast_id                       | title                                            | content                                                                                                                                                                                                     | rating   | author_id       | created_at                |
@@ -81,7 +81,7 @@ CREATE TABLE reviews (
 );
 
 /*
-Table: runs
+Schema: NULLTable: runs
 Rows: 12
 Sample rows:
 | run_at              | max_rowid   | reviews_added   |

@@ -2,7 +2,7 @@
 -- Database: citeseer
 
 /*
-Table: cites
+Schema: NULLTable: cites
 Rows: 4732
 Sample rows:
 | cited_paper_id   | citing_paper_id        |
@@ -23,7 +23,7 @@ CREATE TABLE cites (
 );
 
 /*
-Table: content
+Schema: NULLTable: content
 Rows: 105165
 Sample rows:
 | paper_id   | word_cited_id   |
@@ -46,7 +46,7 @@ CREATE TABLE content (
 );
 
 /*
-Table: paper
+Schema: NULLTable: paper
 Rows: 3312
 Sample rows:
 | paper_id   | class_label   |

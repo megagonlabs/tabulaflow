@@ -2,7 +2,7 @@
 -- Database: language_corpus
 
 /*
-Table: biwords
+Schema: NULLTable: biwords
 Rows: 21587486
 Sample rows:
 | lid   | w1st   | w2nd   | occurrences   |
@@ -33,7 +33,7 @@ CREATE TABLE biwords (
 );
 
 /*
-Table: langs
+Schema: NULLTable: langs
 Rows: 1
 All rows:
 |   lid | lang   | locale   |   pages |   words |
@@ -54,7 +54,7 @@ CREATE TABLE langs (
 );
 
 /*
-Table: langs_words
+Schema: NULLTable: langs_words
 Rows: 2764996
 Sample rows:
 | lid   | wid   | occurrences   |
@@ -81,7 +81,7 @@ CREATE TABLE langs_words (
 );
 
 /*
-Table: pages
+Schema: NULLTable: pages
 Rows: 1129144
 Sample rows:
 | pid   | lid   | page   | revision   | title    | words   |
@@ -111,7 +111,7 @@ CREATE TABLE pages (
 );
 
 /*
-Table: pages_words
+Schema: NULLTable: pages_words
 Rows: 129131916
 Sample rows:
 | pid   | wid   | occurrences   |
@@ -138,7 +138,7 @@ CREATE TABLE pages_words (
 );
 
 /*
-Table: words
+Schema: NULLTable: words
 Rows: 2764996
 Sample rows:
 | wid   | word   | occurrences   |

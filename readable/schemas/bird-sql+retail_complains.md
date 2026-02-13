@@ -2,7 +2,7 @@
 -- Database: retail_complains
 
 /*
-Table: callcenterlogs
+Schema: NULLTable: callcenterlogs
 Rows: 3999
 Sample rows:
 | Date received   | Complaint ID   | rand client   | phonefinal   | vru+line   | call_id   | priority   | type   | outcome   | server   | ser_start   | ser_exit   | ser_time   |
@@ -46,7 +46,7 @@ CREATE TABLE callcenterlogs (
 );
 
 /*
-Table: client
+Schema: NULLTable: client
 Rows: 5369
 Sample rows:
 | client_id   | sex    | day   | month   | year   | age   | social      | first   | middle     | last     | phone        | email                      | address_1              | address_2   | city          | state   | zipcode   | district_id   |
@@ -100,7 +100,7 @@ CREATE TABLE client (
 );
 
 /*
-Table: district
+Schema: NULLTable: district
 Rows: 77
 Sample rows:
 | district_id   | city          | state_abbrev   | division           |
@@ -126,7 +126,7 @@ CREATE TABLE district (
 );
 
 /*
-Table: events
+Schema: NULLTable: events
 Rows: 23419
 Sample rows:
 | Date received   | Product                 | Sub-product      | Issue                                   | Sub-issue   | Consumer complaint narrative   | Tags   | Consumer consent provided?   | Submitted via   | Date sent to company   | Company response to consumer   | Timely response?   | Consumer disputed?   | Complaint ID   | Client_ID   |
@@ -176,7 +176,7 @@ CREATE TABLE events (
 );
 
 /*
-Table: reviews
+Schema: NULLTable: reviews
 Rows: 377
 Sample rows:
 | Date       | Stars   | Reviews                                                                                                                                                                                                     | Product                 | district_id   |
@@ -204,7 +204,7 @@ CREATE TABLE reviews (
 );
 
 /*
-Table: state
+Schema: NULLTable: state
 Rows: 48
 Sample rows:
 | StateCode   | State      | Region   |

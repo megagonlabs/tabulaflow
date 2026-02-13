@@ -2,7 +2,7 @@
 -- Database: california_schools
 
 /*
-Table: frpm
+Schema: NULLTable: frpm
 Rows: 9986
 Sample rows:
 | CDSCode        | Academic Year   | County Code   | District Code   | School Code   | County Name   | District Name                      | School Name                                   | District Type                    | School Type                 | Educational Option Type   | NSLP Provision Status   | Charter School (Y/N)   | Charter School Number   | Charter Funding Type   | IRC   | Low Grade   | High Grade   | Enrollment (K-12)   | Free Meal Count (K-12)   | Percent (%) Eligible Free (K-12)   | FRPM Count (K-12)   | Percent (%) Eligible FRPM (K-12)   | Enrollment (Ages 5-17)   | Free Meal Count (Ages 5-17)   | Percent (%) Eligible Free (Ages 5-17)   | FRPM Count (Ages 5-17)   | Percent (%) Eligible FRPM (Ages 5-17)   | 2013-14 CALPADS Fall 1 Certification Status   |
@@ -106,7 +106,7 @@ CREATE TABLE frpm (
 );
 
 /*
-Table: satscores
+Schema: NULLTable: satscores
 Rows: 2269
 Sample rows:
 | cds           | rtype   | sname                                         | dname                              | cname   | enroll12   | NumTstTakr   | AvgScrRead   | AvgScrMath   | AvgScrWrite   | NumGE1500   |
@@ -154,7 +154,7 @@ CREATE TABLE satscores (
 );
 
 /*
-Table: schools
+Schema: NULLTable: schools
 Rows: 17686
 Sample rows:
 | CDSCode        | NCESDist   | NCESSchool   | StatusType   | County   | District                           | School                                        | Street                           | StreetAbr                     | City     | Zip        | State   | MailStreet                       | MailStrAbr                    | MailCity   | MailZip    | MailState   | Phone          | Ext    | Website                                     | OpenDate   | ClosedDate   | Charter   | CharterNum   | FundingType     | DOC   | DOCType                          | SOC    | SOCType                     | EdOpsCode   | EdOpsName   | EILCode   | EILName                     | GSoffered   | GSserved   | Virtual   | Magnet   | Latitude   | Longitude   | AdmFName1   | AdmLName1   | AdmEmail1                                         | AdmFName2   | AdmLName2   | AdmEmail2   | AdmFName3   | AdmLName3   | AdmEmail3   | LastUpdate   |

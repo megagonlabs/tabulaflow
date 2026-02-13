@@ -2,7 +2,7 @@
 -- Database: mental_health_survey
 
 /*
-Table: Answer
+Schema: NULLTable: Answer
 Rows: 234640
 Sample rows:
 | AnswerText   | SurveyID   | UserID   | QuestionID   |
@@ -31,7 +31,7 @@ CREATE TABLE Answer (
 );
 
 /*
-Table: Question
+Schema: NULLTable: Question
 Rows: 105
 Sample rows:
 | questiontext                                                               | questionid   |
@@ -51,7 +51,7 @@ CREATE TABLE Question (
 );
 
 /*
-Table: Survey
+Schema: NULLTable: Survey
 Rows: 5
 All rows:
 |   SurveyID | Description                   |

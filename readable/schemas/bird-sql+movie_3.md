@@ -2,7 +2,7 @@
 -- Database: movie_3
 
 /*
-Table: actor
+Schema: NULLTable: actor
 Rows: 200
 Sample rows:
 | actor_id   | first_name   | last_name    | last_update           |
@@ -26,7 +26,7 @@ CREATE TABLE actor (
 );
 
 /*
-Table: address
+Schema: NULLTable: address
 Rows: 603
 Sample rows:
 | address_id   | address              | address2   | district   | city_id   | postal_code   | phone       | last_update           |
@@ -60,7 +60,7 @@ CREATE TABLE address (
 );
 
 /*
-Table: category
+Schema: NULLTable: category
 Rows: 16
 Sample rows:
 | category_id   | name      | last_update           |
@@ -82,7 +82,7 @@ CREATE TABLE category (
 );
 
 /*
-Table: city
+Schema: NULLTable: city
 Rows: 600
 Sample rows:
 | city_id   | city               | country_id   | last_update           |
@@ -108,7 +108,7 @@ CREATE TABLE city (
 );
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 109
 Sample rows:
 | country_id   | country        | last_update           |
@@ -130,7 +130,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: customer
+Schema: NULLTable: customer
 Rows: 599
 Sample rows:
 | customer_id   | store_id   | first_name   | last_name   | email                               | address_id   | active   | create_date           | last_update           |
@@ -168,7 +168,7 @@ CREATE TABLE customer (
 );
 
 /*
-Table: film
+Schema: NULLTable: film
 Rows: 1000
 Sample rows:
 | film_id   | title            | description                                                                                                           | release_year   | language_id   | original_language_id   | rental_duration   | rental_rate   | length   | replacement_cost   | rating   | special_features                 | last_update           |
@@ -213,7 +213,7 @@ CREATE TABLE film (
 );
 
 /*
-Table: film_actor
+Schema: NULLTable: film_actor
 Rows: 5462
 Sample rows:
 | actor_id   | film_id   | last_update           |
@@ -240,7 +240,7 @@ CREATE TABLE film_actor (
 );
 
 /*
-Table: film_category
+Schema: NULLTable: film_category
 Rows: 1000
 Sample rows:
 | film_id   | category_id   | last_update           |
@@ -267,7 +267,7 @@ CREATE TABLE film_category (
 );
 
 /*
-Table: film_text
+Schema: NULLTable: film_text
 Rows: 1000
 Sample rows:
 | film_id   | title            | description                                                                                                           |
@@ -289,7 +289,7 @@ CREATE TABLE film_text (
 );
 
 /*
-Table: inventory
+Schema: NULLTable: inventory
 Rows: 4581
 Sample rows:
 | inventory_id   | film_id   | store_id   | last_update           |
@@ -317,7 +317,7 @@ CREATE TABLE inventory (
 );
 
 /*
-Table: language
+Schema: NULLTable: language
 Rows: 6
 All rows:
 |   language_id | name     | last_update           |
@@ -339,7 +339,7 @@ CREATE TABLE language (
 );
 
 /*
-Table: payment
+Schema: NULLTable: payment
 Rows: 16049
 Sample rows:
 | payment_id   | customer_id   | staff_id   | rental_id   | amount   | payment_date          | last_update           |
@@ -375,7 +375,7 @@ CREATE TABLE payment (
 );
 
 /*
-Table: rental
+Schema: NULLTable: rental
 Rows: 16044
 Sample rows:
 | rental_id   | rental_date           | inventory_id   | customer_id   | return_date           | staff_id   | last_update           |
@@ -411,7 +411,7 @@ CREATE TABLE rental (
 );
 
 /*
-Table: staff
+Schema: NULLTable: staff
 Rows: 2
 All rows:
 |   staff_id | first_name   | last_name   |   address_id | picture                                                                                                                                                                                                     | email                        |   store_id |   active | username   | password                                 | last_update           |
@@ -449,7 +449,7 @@ CREATE TABLE staff (
 );
 
 /*
-Table: store
+Schema: NULLTable: store
 Rows: 2
 All rows:
 |   store_id |   manager_staff_id |   address_id | last_update           |

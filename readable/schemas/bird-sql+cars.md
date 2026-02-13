@@ -2,7 +2,7 @@
 -- Database: cars
 
 /*
-Table: country
+Schema: NULLTable: country
 Rows: 3
 All rows:
 |   origin | country   |
@@ -19,7 +19,7 @@ CREATE TABLE country (
 );
 
 /*
-Table: data
+Schema: NULLTable: data
 Rows: 398
 Sample rows:
 | ID   | mpg   | cylinders   | displacement   | horsepower   | weight   | acceleration   | model   | car_name                  |
@@ -55,7 +55,7 @@ CREATE TABLE data (
 );
 
 /*
-Table: price
+Schema: NULLTable: price
 Rows: 398
 Sample rows:
 | ID   | price       |
@@ -75,7 +75,7 @@ CREATE TABLE price (
 );
 
 /*
-Table: production
+Schema: NULLTable: production
 Rows: 692
 Sample rows:
 | ID   | model_year   | country   |

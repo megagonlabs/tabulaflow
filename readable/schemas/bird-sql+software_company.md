@@ -2,7 +2,7 @@
 -- Database: software_company
 
 /*
-Table: Customers
+Schema: NULLTable: Customers
 Rows: 360000
 Sample rows:
 | ID   | SEX    | MARITAL_STATUS     | GEOID   | EDUCATIONNUM   | OCCUPATION        | age   |
@@ -34,7 +34,7 @@ CREATE TABLE Customers (
 );
 
 /*
-Table: Demog
+Schema: NULLTable: Demog
 Rows: 200
 Sample rows:
 | GEOID   | INHABITANTS_K   | INCOME_K   | A_VAR1   | A_VAR2   | A_VAR3   | A_VAR4   | A_VAR5   | A_VAR6   | A_VAR7   | A_VAR8   | A_VAR9   | A_VAR10   | A_VAR11   | A_VAR12   | A_VAR13   | A_VAR14   | A_VAR15   | A_VAR16   | A_VAR17   | A_VAR18   |
@@ -92,7 +92,7 @@ CREATE TABLE Demog (
 );
 
 /*
-Table: Mailings1_2
+Schema: NULLTable: Mailings1_2
 Rows: 60000
 Sample rows:
 | REFID   | REF_DATE              | RESPONSE   |
@@ -116,7 +116,7 @@ CREATE TABLE Mailings1_2 (
 );
 
 /*
-Table: Sales
+Schema: NULLTable: Sales
 Rows: 3420829
 Sample rows:
 | EVENTID   | REFID   | EVENT_DATE            | AMOUNT   |
@@ -142,7 +142,7 @@ CREATE TABLE Sales (
 );
 
 /*
-Table: mailings3
+Schema: NULLTable: mailings3
 Rows: 300000
 Sample rows:
 | REFID   | REF_DATE              | RESPONSE   |

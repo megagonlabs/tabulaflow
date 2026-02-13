@@ -2,7 +2,7 @@
 -- Database: debit_card_specializing
 
 /*
-Table: customers
+Schema: NULLTable: customers
 Rows: 32461
 Sample rows:
 | CustomerID   | Segment   | Currency   |
@@ -27,7 +27,7 @@ CREATE TABLE customers (
 );
 
 /*
-Table: gasstations
+Schema: NULLTable: gasstations
 Rows: 5716
 Sample rows:
 | GasStationID   | ChainID   | Country   | Segment         |
@@ -59,7 +59,7 @@ CREATE TABLE gasstations (
 );
 
 /*
-Table: products
+Schema: NULLTable: products
 Rows: 591
 Sample rows:
 | ProductID   | Description   |
@@ -81,7 +81,7 @@ CREATE TABLE products (
 );
 
 /*
-Table: transactions_1k
+Schema: NULLTable: transactions_1k
 Rows: 1000
 Sample rows:
 | TransactionID   | Date       | Time     | CustomerID   | CardID   | GasStationID   | ProductID   | Amount   | Price   |
@@ -130,7 +130,7 @@ CREATE TABLE transactions_1k (
 );
 
 /*
-Table: yearmonth
+Schema: NULLTable: yearmonth
 Rows: 383282
 Sample rows:
 | CustomerID   | Date   | Consumption   |

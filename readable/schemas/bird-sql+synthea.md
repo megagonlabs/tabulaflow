@@ -2,7 +2,7 @@
 -- Database: synthea
 
 /*
-Table: all_prevalences
+Schema: NULLTable: all_prevalences
 Rows: 244
 Sample rows:
 | ITEM                                 | POPULATION TYPE   | OCCURRENCES   | POPULATION COUNT   | PREVALENCE RATE   | PREVALENCE PERCENTAGE   |
@@ -30,7 +30,7 @@ CREATE TABLE all_prevalences (
 );
 
 /*
-Table: allergies
+Schema: NULLTable: allergies
 Rows: 572
 Sample rows:
 | START   | STOP   | PATIENT                              | ENCOUNTER                            | CODE      | DESCRIPTION              |
@@ -63,7 +63,7 @@ CREATE TABLE allergies (
 );
 
 /*
-Table: careplans
+Schema: NULLTable: careplans
 Rows: 12125
 Sample rows:
 | ID                                   | START      | STOP       | PATIENT                              | ENCOUNTER                            | CODE              | DESCRIPTION                           | REASONCODE   | REASONDESCRIPTION           |
@@ -101,7 +101,7 @@ CREATE TABLE careplans (
 );
 
 /*
-Table: claims
+Schema: NULLTable: claims
 Rows: 20523
 Sample rows:
 | ID                                   | PATIENT                              | BILLABLEPERIOD   | ORGANIZATION      | ENCOUNTER                            | DIAGNOSIS   | TOTAL   |
@@ -134,7 +134,7 @@ CREATE TABLE claims (
 );
 
 /*
-Table: conditions
+Schema: NULLTable: conditions
 Rows: 7040
 Sample rows:
 | START      | STOP       | PATIENT                              | ENCOUNTER                            | CODE      | DESCRIPTION                        |
@@ -168,7 +168,7 @@ CREATE TABLE conditions (
 );
 
 /*
-Table: encounters
+Schema: NULLTable: encounters
 Rows: 20524
 Sample rows:
 | ID                                   | DATE       | PATIENT                              | CODE      | DESCRIPTION                | REASONCODE   | REASONDESCRIPTION           |
@@ -200,7 +200,7 @@ CREATE TABLE encounters (
 );
 
 /*
-Table: immunizations
+Schema: NULLTable: immunizations
 Rows: 13189
 Sample rows:
 | DATE       | PATIENT                              | ENCOUNTER                            | CODE   | DESCRIPTION                                        |
@@ -231,7 +231,7 @@ CREATE TABLE immunizations (
 );
 
 /*
-Table: medications
+Schema: NULLTable: medications
 Rows: 6048
 Sample rows:
 | START      | STOP       | PATIENT                              | ENCOUNTER                            | CODE    | DESCRIPTION                                         | REASONCODE   | REASONDESCRIPTION                    |
@@ -268,7 +268,7 @@ CREATE TABLE medications (
 );
 
 /*
-Table: observations
+Schema: NULLTable: observations
 Rows: 78899
 Sample rows:
 | DATE       | PATIENT                              | ENCOUNTER                            | CODE    | DESCRIPTION              | VALUE   | UNITS   |
@@ -302,7 +302,7 @@ CREATE TABLE observations (
 );
 
 /*
-Table: patients
+Schema: NULLTable: patients
 Rows: 1462
 Sample rows:
 | patient                              | birthdate   | deathdate   | ssn         | drivers   | passport   | prefix   | first     | last         | suffix   | maiden   | marital   | race     | ethnicity    | gender   | birthplace       | address                                              |
@@ -352,7 +352,7 @@ CREATE TABLE patients (
 );
 
 /*
-Table: procedures
+Schema: NULLTable: procedures
 Rows: 10184
 Sample rows:
 | DATE       | PATIENT                              | ENCOUNTER                            | CODE      | DESCRIPTION                                     | REASONCODE   | REASONDESCRIPTION           |

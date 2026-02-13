@@ -2,7 +2,7 @@
 -- Database: college_completion
 
 /*
-Table: institution_details
+Schema: NULLTable: institution_details
 Rows: 3798
 Sample rows:
 | unitid   | chronname                           | city       | state   | level   | control                | basic                                              | hbcu   | flagship   | long_x     | lat_y     | site                           | student_count   | awards_per_value   | awards_per_state_value   | awards_per_natl_value   | exp_award_value   | exp_award_state_value   | exp_award_natl_value   | exp_award_percentile   | ft_pct   | fte_value   | fte_percentile   | med_sat_value   | med_sat_percentile   | aid_value   | aid_percentile   | endow_value   | endow_percentile   | grad_100_value   | grad_100_percentile   | grad_150_value   | grad_150_percentile   | pell_value   | pell_percentile   | retain_value   | retain_percentile   | ft_fac_value   | ft_fac_percentile   | vsa_year   | vsa_grad_after4_first   | vsa_grad_elsewhere_after4_first   | vsa_enroll_after4_first   | vsa_enroll_elsewhere_after4_first   | vsa_grad_after6_first   | vsa_grad_elsewhere_after6_first   | vsa_enroll_after6_first   | vsa_enroll_elsewhere_after6_first   | vsa_grad_after4_transfer   | vsa_grad_elsewhere_after4_transfer   | vsa_enroll_after4_transfer   | vsa_enroll_elsewhere_after4_transfer   | vsa_grad_after6_transfer   | vsa_grad_elsewhere_after6_transfer   | vsa_enroll_after6_transfer   | vsa_enroll_elsewhere_after6_transfer   | similar                                                                                                                                     | state_sector_ct   | carnegie_ct   | counted_pct   | nicknames   | cohort_size   |
@@ -142,7 +142,7 @@ CREATE TABLE institution_details (
 );
 
 /*
-Table: institution_grads
+Schema: NULLTable: institution_grads
 Rows: 1302102
 Sample rows:
 | unitid   | year   | gender   | race   | cohort   | grad_cohort   | grad_100   | grad_150   | grad_100_rate   | grad_150_rate   |
@@ -180,7 +180,7 @@ CREATE TABLE institution_grads (
 );
 
 /*
-Table: state_sector_details
+Schema: NULLTable: state_sector_details
 Rows: 312
 Sample rows:
 | stateid   | state         | state_post   | level   | control                | schools_count   | counted_pct   | awards_per_state_value   | awards_per_natl_value   | exp_award_state_value   | exp_award_natl_value   | state_appr_value   | state_appr_rank   | grad_rate_rank   | awards_per_rank   |
@@ -229,7 +229,7 @@ CREATE TABLE state_sector_details (
 );
 
 /*
-Table: state_sector_grads
+Schema: NULLTable: state_sector_grads
 Rows: 84942
 Sample rows:
 | stateid   | state   | state_abbr   | control            | level   | year   | gender   | race   | cohort   | grad_cohort   | grad_100   | grad_150   | grad_100_rate   | grad_150_rate   | grad_cohort_ct   |

@@ -2,7 +2,7 @@
 -- Database: shipping
 
 /*
-Table: city
+Schema: NULLTable: city
 Rows: 601
 Sample rows:
 | city_id   | city_name       | state      | population   | area   |
@@ -28,7 +28,7 @@ CREATE TABLE city (
 );
 
 /*
-Table: customer
+Schema: NULLTable: customer
 Rows: 100
 Sample rows:
 | cust_id   | cust_name                                | annual_revenue   | cust_type    | address                   | city            | state   | zip     | phone          |
@@ -62,7 +62,7 @@ CREATE TABLE customer (
 );
 
 /*
-Table: driver
+Schema: NULLTable: driver
 Rows: 11
 Sample rows:
 | driver_id   | first_name   | last_name   | address            | city    | state   | zip_code   | phone          |
@@ -94,7 +94,7 @@ CREATE TABLE driver (
 );
 
 /*
-Table: shipment
+Schema: NULLTable: shipment
 Rows: 960
 Sample rows:
 | ship_id   | cust_id   | weight   | truck_id   | driver_id   | city_id   | ship_date   |
@@ -132,7 +132,7 @@ CREATE TABLE shipment (
 );
 
 /*
-Table: truck
+Schema: NULLTable: truck
 Rows: 12
 Sample rows:
 | truck_id   | make      | model_year   |

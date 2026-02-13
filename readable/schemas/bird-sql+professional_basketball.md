@@ -2,7 +2,7 @@
 -- Database: professional_basketball
 
 /*
-Table: awards_coaches
+Schema: NULLTable: awards_coaches
 Rows: 61
 Sample rows:
 | id   | year   | coachID   | award                 | lgID   | note   |
@@ -33,7 +33,7 @@ CREATE TABLE awards_coaches (
 );
 
 /*
-Table: awards_players
+Schema: NULLTable: awards_players
 Rows: 1719
 Sample rows:
 | playerID   | award                     | year   | lgID   | note   | pos    |
@@ -64,7 +64,7 @@ CREATE TABLE awards_players (
 );
 
 /*
-Table: coaches
+Schema: NULLTable: coaches
 Rows: 1689
 Sample rows:
 | coachID   | year   | tmID   | lgID   | stint   | won   | lost   | post_wins   | post_losses   |
@@ -102,7 +102,7 @@ CREATE TABLE coaches (
 );
 
 /*
-Table: draft
+Schema: NULLTable: draft
 Rows: 8621
 Sample rows:
 | id   | draftYear   | draftRound   | draftSelection   | draftOverall   | tmID   | firstName   | lastName   | suffixName   | playerID   | draftFrom      | lgID   |
@@ -145,7 +145,7 @@ CREATE TABLE draft (
 );
 
 /*
-Table: player_allstar
+Schema: NULLTable: player_allstar
 Rows: 1608
 Sample rows:
 | playerID   | last_name    | first_name   | season_id   | conference   | league_id   | games_played   | minutes   | points   | o_rebounds   | d_rebounds   | rebounds   | assists   | steals   | blocks   | turnovers   | personal_fouls   | fg_attempted   | fg_made   | ft_attempted   | ft_made   | three_attempted   | three_made   |
@@ -210,7 +210,7 @@ CREATE TABLE player_allstar (
 );
 
 /*
-Table: players
+Schema: NULLTable: players
 Rows: 5062
 Sample rows:
 | playerID   | useFirst   | firstName   | middleName   | lastName     | nameGiven   | fullGivenName                 | nameSuffix   | nameNick   | pos   | firstseason   | lastseason   | height   | weight   | college         | collegeOther      | birthDate   | birthCity      | birthState   | birthCountry   | highSchool            | hsCity                | hsState   | hsCountry   | deathDate   | race   |
@@ -278,7 +278,7 @@ CREATE TABLE players (
 );
 
 /*
-Table: players_teams
+Schema: NULLTable: players_teams
 Rows: 23751
 Sample rows:
 | id   | playerID   | year   | stint   | tmID   | lgID   | GP   | GS   | minutes   | points   | oRebounds   | dRebounds   | rebounds   | assists   | steals   | blocks   | turnovers   | PF   | fgAttempted   | fgMade   | ftAttempted   | ftMade   | threeAttempted   | threeMade   | PostGP   | PostGS   | PostMinutes   | PostPoints   | PostoRebounds   | PostdRebounds   | PostRebounds   | PostAssists   | PostSteals   | PostBlocks   | PostTurnovers   | PostPF   | PostfgAttempted   | PostfgMade   | PostftAttempted   | PostftMade   | PostthreeAttempted   | PostthreeMade   | note   |
@@ -385,7 +385,7 @@ CREATE TABLE players_teams (
 );
 
 /*
-Table: series_post
+Schema: NULLTable: series_post
 Rows: 775
 Sample rows:
 | id   | year   | round   | series   | tmIDWinner   | lgIDWinner   | tmIDLoser   | lgIDLoser   | W   | L   |
@@ -427,7 +427,7 @@ CREATE TABLE series_post (
 );
 
 /*
-Table: teams
+Schema: NULLTable: teams
 Rows: 1536
 Sample rows:
 | year   | lgID   | tmID   | franchID   | confID   | divID   | rank   | confRank   | playoff   | name                                        | o_fgm   | o_ftm   | o_pts   | d_pts   | homeWon   | homeLost   | awayWon   | awayLost   | won   | lost   | games   | arena   |

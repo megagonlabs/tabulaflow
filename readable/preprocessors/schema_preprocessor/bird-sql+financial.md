@@ -2,7 +2,7 @@
 -- Database: financial
 
 /*
-Table: account
+Schema: NULLTable: account
 Rows: 4500
 Sample rows:
 | account_id   | district_id   | frequency        | date       |
@@ -32,7 +32,7 @@ CREATE TABLE account (
 );
 
 /*
-Table: card
+Schema: NULLTable: card
 Rows: 892
 Sample rows:
 | card_id   | disp_id   | type    | issued     |
@@ -62,7 +62,7 @@ CREATE TABLE card (
 );
 
 /*
-Table: client
+Schema: NULLTable: client
 Rows: 5369
 Sample rows:
 | client_id   | gender   | birth_date   | district_id   |
@@ -92,7 +92,7 @@ CREATE TABLE client (
 );
 
 /*
-Table: disp
+Schema: NULLTable: disp
 Rows: 5369
 Sample rows:
 | disp_id   | client_id   | account_id   | type      |
@@ -124,7 +124,7 @@ CREATE TABLE disp (
 );
 
 /*
-Table: district
+Schema: NULLTable: district
 Rows: 77
 Sample rows:
 | district_id   | A2          | A3              | A4      | A5   | A6   | A7   | A8   | A9   | A10   | A11   | A12   | A13   | A14   | A15   | A16   |
@@ -185,7 +185,7 @@ CREATE TABLE district (
 );
 
 /*
-Table: loan
+Schema: NULLTable: loan
 Rows: 682
 Sample rows:
 | loan_id   | account_id   | date       | amount   | duration   | payments   | status   |
@@ -224,7 +224,7 @@ CREATE TABLE loan (
 );
 
 /*
-Table: order
+Schema: NULLTable: order
 Rows: 6471
 Sample rows:
 | order_id   | account_id   | bank_to   | account_to   | amount   | k_symbol   |
@@ -260,7 +260,7 @@ CREATE TABLE order (
 );
 
 /*
-Table: trans
+Schema: NULLTable: trans
 Rows: 1056320
 Sample rows:
 | trans_id   | account_id   | date       | type   | operation     | amount   | balance   | k_symbol   | bank   | account    |
