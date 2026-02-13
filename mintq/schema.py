@@ -447,15 +447,24 @@ def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_reques
 
 
 class Usage(BaseModel):
-    llm: str | Literal["MULTI"]
+    llm: str | Literal["MULTI"] | None
     api_requests: int
     input_tokens: int
     output_tokens: int
     api_cost_usd: Decimal
 
     def __add__(self, other: "Usage") -> "Usage":
+        if self.llm is None:
+            llm = other.llm
+        elif other.llm is None:
+            llm = self.llm
+        elif self.llm == other.llm:
+            llm = self.llm
+        else:
+            llm = "MULTI"
+
         return Usage(
-            llm="MULTI" if self.llm != other.llm else self.llm,
+            llm=llm,
             api_requests=self.api_requests + other.api_requests,
             input_tokens=self.input_tokens + other.input_tokens,
             output_tokens=self.output_tokens + other.output_tokens,
@@ -465,7 +474,7 @@ class Usage(BaseModel):
     @classmethod
     def create(
         cls,
-        llm: str,
+        llm: str | None = None,
         api_requests: int = 0,
         input_tokens: int = 0,
         output_tokens: int = 0,
