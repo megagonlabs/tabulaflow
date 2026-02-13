@@ -54,6 +54,7 @@ async def main_async() -> None:
     # question embedder
     parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
 
+    parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--log_level", default="WARNING", type=str)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
@@ -67,6 +68,9 @@ async def main_async() -> None:
 
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
+
+    if args.overwrite:
+        os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
 
     args = parser.parse_args()
     print(args)
