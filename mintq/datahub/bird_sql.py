@@ -177,7 +177,7 @@ WHERE c.name = 'Italy';"""
                         language="sqlite",
                         db=item["db_id"],
                         question=item["question"],
-                        question_instructions=item["evidence"],
+                        question_instructions=item["document"],
                         gold_query=GoldQuery(query=self._fix_gold_query(item["SQL"])),
                         dataset_instructions=BIRD_DATASET_INSTRUCTIONS,
                         extra_info={} if split == "train" else {"bird_sql": {"difficulty": item["difficulty"]}},

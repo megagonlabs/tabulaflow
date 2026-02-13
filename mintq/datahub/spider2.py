@@ -78,11 +78,11 @@ class Spider2SnowDatasetLoader:
                     continue
 
                 if item["external_knowledge"]:
-                    evidence_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
-                    with open(evidence_file, "r") as f:
-                        evidence = f.read()
+                    document_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
+                    with open(document_file, "r") as f:
+                        document = f.read()
                 else:
-                    evidence = None
+                    document = None
 
                 gold_sql_file = os.path.join(
                     self.directory, "evaluation_suite", "gold", "sql", item["instance_id"] + ".sql"
@@ -110,7 +110,7 @@ class Spider2SnowDatasetLoader:
                         language="snowflake",
                         db=item["db_id"],
                         question=item["instruction"],
-                        evidence=evidence,
+                        document=document,
                         gold_query=GoldQuery(
                             query=gold_sql,
                             exec_result=ExecResult(df=gold_exec_results[0]),

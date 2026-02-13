@@ -55,7 +55,7 @@ class BeaverDatasetLoader:
                             language="MySQL",
                             db=item["db_id"],
                             question=item["question"],
-                            evidence=None,
+                            document=None,
                             gold_query=GoldQuery(query=item["sql"]),
                         )
                     )

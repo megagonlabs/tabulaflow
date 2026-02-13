@@ -709,7 +709,7 @@ class SimpleNL2QTask(BaseModel):
     """Instructions that apply to this question only."""
     dataset_instructions: str | None = None
     """Instructions (e.g. for formatting) that apply to all questions in the dataset."""
-    evidence: str | None = None
+    document: str | None = None
     gold_query: GoldQuery
     extra_info: dict[str, Any] = {}
 
@@ -1131,11 +1131,11 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
 def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
     query_fields = _get_query_fields(task, GoldQuery)
     query_fields += _get_query_fields(task, PredQuery)
-    header = task.model_dump_json(indent=2, exclude=set(["evidence", "trajectory", "extra_pred_info"] + query_fields))
+    header = task.model_dump_json(indent=2, exclude=set(["document", "trajectory", "extra_pred_info"] + query_fields))
     res = f"/*\n{header}\n*/"
-    evidence = getattr(task, "evidence", None)
-    if evidence is not None:
-        res += f"\n\n\n----- START OF EVIDENCE -----\n/*\n{evidence}\n*/\n----- END OF EVIDENCE -----"
+    document = getattr(task, "document", None)
+    if document is not None:
+        res += f"\n\n\n----- START OF DOCUMENT -----\n/*\n{document}\n*/\n----- END OF DOCUMENT -----"
     for field in query_fields:
         queries = getattr(task, field)
         if not isinstance(queries, list):
@@ -1171,11 +1171,11 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
     if question_instructions:
         lines.append(f"\n**Question Instructions:** {question_instructions}")
 
-    # Evidence
-    evidence = getattr(task, "evidence", None)
-    if evidence:
-        lines.append(f"\n{h2} Evidence")
-        lines.append(evidence)
+    # Document
+    document = getattr(task, "document", None)
+    if document:
+        lines.append(f"\n{h2} Document")
+        lines.append(document)
 
     def _quote(s: str) -> str:
         return f'"{s}"' if " " in s else s

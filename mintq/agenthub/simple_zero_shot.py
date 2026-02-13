@@ -97,7 +97,7 @@ class SimpleZeroShotNL2Q:
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
         user_prompt = jinja2.Template(TASK_PROMPT).render(
             schema=schema_str,
-            hints=task.evidence,
+            hints=task.document,
             question=task.question,
             language=task.language,
         )
