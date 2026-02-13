@@ -17,7 +17,10 @@ class SQLBasicSchemaFormatter:
     def _quote_if_needed(self, s: str | None) -> str:
         if s is None:
             return "NULL"
-        return self._quote(s) if " " in s else s
+        # Quote if contains spaces, special chars, or is a reserved word
+        if " " in s or "-" in s or not s.isidentifier():
+            return self._quote(s)
+        return s
 
     def _full_table_name(self, table: str, schema: str | None) -> str:
         if schema is None:
