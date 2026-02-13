@@ -125,6 +125,12 @@ SQL: {{example.gold_query.query}}
 <physical_database_schema>
 {{schema}}
 </physical_database_schema>
+{%- if document %}
+
+<document>
+{{document}}
+</document>
+{%- endif %}
 """.strip()
 
 EXPAND_COLUMNS_PROMPT = """
@@ -191,6 +197,7 @@ class SchemaLinker:
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,
+            document=task.document,
             examples=ctx.few_shot_examples,
         )
 
@@ -499,6 +506,7 @@ class SQLAgent:
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=True),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),
+            document=task.document,
             examples=examples,
         )
 
