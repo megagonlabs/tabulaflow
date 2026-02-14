@@ -9,6 +9,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent
+import logging
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
     ExtraPredInfo,
@@ -40,6 +41,9 @@ from mintq.agenthub.utils import (
 from mintq.utils import extract_code, extract_all_source_columns
 from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
+
+
+logger = logging.getLogger(__name__)
 
 
 class SQLAgentConfig(BasicAgentConfig):
@@ -290,9 +294,10 @@ class SchemaLinker:
         linked_schema.tables = [table for table in linked_schema.tables if table.columns]
 
         if not linked_schema.tables:
-            raise ValueError(
+            logger.warning(
                 f"No tables found in the linked schema. Pred query: {pred_query.query}. Extracted source columns: {source_columns}. "
             )
+            return ctx.preprocessed_schema
 
         expanded_linked_schema = await self.expand_schema_async(ctx, linked_schema, task)
 
