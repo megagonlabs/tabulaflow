@@ -277,7 +277,7 @@ async def main_async() -> None:
         parser.set_defaults(split="test", num_few_shot_examples=0)
 
     if args.debug:
-        parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/", split="test")
+        parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
         if args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
     args = parser.parse_args()
