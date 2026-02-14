@@ -1,81 +1,15 @@
-import pytest
-import tempfile
-import sqlalchemy
-import os
-from typing import AsyncGenerator, Any
-import pandas as pd
 from mintq.utils import extract_all_source_columns
-from mintq.db_connector.sql_conn import SQLConnector
-from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
-from sqlalchemy.ext.asyncio import create_async_engine
 
 
-def _make_col(name: str, dtype: str = "VARCHAR") -> SQLColumnSchema:
-    """Helper to create a minimal SQLColumnSchema for testing."""
-    return SQLColumnSchema(
-        name=name, dtype=dtype, nullable=True, null_ratio=0.0,
-        num_unique=None, unique_ratio=None, examples=[],
-    )
-
-
-def _make_table(
-    name: str, columns: list[str], schema_name: str | None = None, dtypes: list[str] | None = None,
-) -> SQLTableSchema:
-    """Helper to create a minimal SQLTableSchema for testing."""
-    if dtypes is None:
-        dtypes = ["VARCHAR"] * len(columns)
-    return SQLTableSchema(
-        name=name, schema_name=schema_name, is_view=False,
-        columns=[_make_col(c, d) for c, d in zip(columns, dtypes)],
-        primary_key=[], num_rows=0, foreign_keys=[], sampled_df=pd.DataFrame(),
-    )
-
-INIT_SQL = [
-    "CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(100), age INTEGER);",
-    "CREATE TABLE orders (id INTEGER PRIMARY KEY, user_id INTEGER, amount REAL, FOREIGN KEY (user_id) REFERENCES users(id));",
-    "INSERT INTO users (id, name, age) VALUES (1, 'Alice', 25), (2, 'Bob', 30), (3, 'Charlie', NULL);",
-    "INSERT INTO orders (id, user_id, amount) VALUES (1, 1, 100.0), (2, 1, 150.5), (3, 2, 200.0), (4, 2, 75.25);",
-]
-
-
-@pytest.fixture
-async def sql_engine() -> AsyncGenerator[Any, None]:
-    with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tmp:
-        db_path = tmp.name
-        engine = create_async_engine(f"sqlite+aiosqlite:///{db_path}")
-        async with engine.begin() as conn:
-            for sql in INIT_SQL:
-                await conn.execute(sqlalchemy.text(sql))
-        yield engine
-        if os.path.exists(db_path):
-            os.unlink(db_path)
-        await engine.dispose()
-
-
-@pytest.fixture
-async def db_connector(sql_engine: Any) -> SQLConnector:
-    return await SQLConnector.from_url_async(
-        global_id="test_sqlite",
-        db_name="test_db",
-        engine_type="async",
-        url=sql_engine.url,
-    )
-
-
-@pytest.fixture
-async def schema(db_connector: SQLConnector) -> SQLSchema:
-    return db_connector.schema
-
-
-def test_simple_query_without_schema() -> None:
-    """Test extracting columns from a simple query without schema."""
+def test_simple_query() -> None:
+    """Test extracting columns from a simple query."""
     query = "SELECT name, age FROM users WHERE id = 1"
     result = extract_all_source_columns(query)
 
     assert set(result) == {("users", "name"), ("users", "age"), ("users", "id")}
 
 
-def test_query_with_table_alias_without_schema() -> None:
+def test_query_with_table_alias() -> None:
     """Test extracting columns with table aliases."""
     query = "SELECT u.name, u.age FROM users u WHERE u.id = 1"
     result = extract_all_source_columns(query)
@@ -83,7 +17,7 @@ def test_query_with_table_alias_without_schema() -> None:
     assert set(result) == {("users", "name"), ("users", "age"), ("users", "id")}
 
 
-def test_join_query_without_schema() -> None:
+def test_join_query() -> None:
     """Test extracting columns from a JOIN query."""
     query = """
     SELECT u.name, o.amount
@@ -102,7 +36,7 @@ def test_join_query_without_schema() -> None:
     }
 
 
-def test_cte_query_without_schema() -> None:
+def test_cte_query() -> None:
     """Test extracting columns from a CTE query, tracing back to source tables."""
     query = """
     WITH user_orders AS (
@@ -125,7 +59,7 @@ def test_cte_query_without_schema() -> None:
     }
 
 
-def test_subquery_without_schema() -> None:
+def test_subquery() -> None:
     """Test extracting columns from a subquery in FROM clause."""
     query = """
     SELECT t.total_amount
@@ -153,73 +87,13 @@ def test_empty_query_returns_empty() -> None:
     assert result == []
 
 
-@pytest.mark.asyncio
-async def test_select_star_with_schema(schema: SQLSchema) -> None:
-    """Test that SELECT * is expanded when schema is provided."""
-    query = "SELECT * FROM users"
-    result = extract_all_source_columns(query, schema)
-
-    # Should include all columns from users table
-    assert set(result) == {("users", "id"), ("users", "name"), ("users", "age")}
-
-
-@pytest.mark.asyncio
-async def test_select_star_without_schema() -> None:
-    """Test that SELECT * returns empty when no schema is provided."""
-    query = "SELECT * FROM users"
-    result = extract_all_source_columns(query)
-
-    # Without schema, cannot expand SELECT *
+def test_select_star_returns_empty() -> None:
+    """Test that SELECT * returns empty (cannot expand without schema)."""
+    result = extract_all_source_columns("SELECT * FROM users")
     assert result == []
 
 
-@pytest.mark.asyncio
-async def test_select_table_star_with_schema(schema: SQLSchema) -> None:
-    """Test that SELECT table.* is expanded when schema is provided."""
-    query = """
-    SELECT u.*, o.amount
-    FROM users u
-    JOIN orders o ON u.id = o.user_id
-    """
-    result = extract_all_source_columns(query, schema)
-
-    # Should include all columns from users (via u.*) plus orders columns
-    assert set(result) == {
-        ("users", "id"),
-        ("users", "name"),
-        ("users", "age"),
-        ("orders", "amount"),
-        ("orders", "user_id"),
-    }
-
-
-@pytest.mark.asyncio
-async def test_complex_query_with_schema(schema: SQLSchema) -> None:
-    """Test a complex query with CTE, JOIN, and ORDER BY."""
-    query = """
-    WITH high_value_orders AS (
-        SELECT o.user_id, o.amount
-        FROM orders o
-        WHERE o.amount > 100
-    )
-    SELECT u.name, hvo.amount
-    FROM users u
-    JOIN high_value_orders hvo ON u.id = hvo.user_id
-    ORDER BY u.age DESC
-    """
-    result = extract_all_source_columns(query, schema)
-
-    assert set(result) == {
-        ("users", "name"),
-        ("users", "id"),
-        ("users", "age"),
-        ("orders", "user_id"),
-        ("orders", "amount"),
-    }
-
-
-@pytest.mark.asyncio
-async def test_group_by_having_with_schema(schema: SQLSchema) -> None:
+def test_group_by_having() -> None:
     """Test extracting columns from GROUP BY and HAVING clauses."""
     query = """
     SELECT user_id, SUM(amount) as total
@@ -227,7 +101,7 @@ async def test_group_by_having_with_schema(schema: SQLSchema) -> None:
     GROUP BY user_id
     HAVING SUM(amount) > 100
     """
-    result = extract_all_source_columns(query, schema)
+    result = extract_all_source_columns(query)
 
     assert set(result) == {("orders", "user_id"), ("orders", "amount")}
 
@@ -438,25 +312,14 @@ def test_multiple_unions() -> None:
 
 
 # --------------------------------------------------------------------------- #
-#  Snowflake dialect + schema_name tests                                       #
+#  Snowflake dialect tests                                                     #
 # --------------------------------------------------------------------------- #
 
-@pytest.fixture
-def snowflake_schema() -> SQLSchema:
-    """Schema mimicking Snowflake AIRLINES database with schema_name='airlines'."""
-    return SQLSchema(
-        name="AIRLINES",
-        tables=[
-            _make_table("airports_data", ["airport_code", "airport_name", "city", "coordinates", "timezone"], schema_name="airlines"),
-            _make_table("flights", ["flight_id", "flight_no", "scheduled_departure", "scheduled_arrival", "departure_airport", "arrival_airport", "status", "aircraft_code", "actual_departure", "actual_arrival"], schema_name="airlines"),
-        ],
-    )
 
-
-def test_snowflake_simple_with_schema_name(snowflake_schema: SQLSchema) -> None:
-    """Test Snowflake query with schema-qualified table (airlines.airports_data) and schema passed."""
-    query = 'SELECT a.airport_code, a.city FROM airlines.airports_data a WHERE a.timezone IS NOT NULL'
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
+def test_snowflake_schema_qualified_table() -> None:
+    """Test Snowflake query with schema-qualified table (airlines.airports_data)."""
+    query = "SELECT a.airport_code, a.city FROM airlines.airports_data a WHERE a.timezone IS NOT NULL"
+    result = extract_all_source_columns(query, language="snowflake")
 
     assert set(result) == {
         ("AIRPORTS_DATA", "AIRPORT_CODE"),
@@ -465,29 +328,8 @@ def test_snowflake_simple_with_schema_name(snowflake_schema: SQLSchema) -> None:
     }
 
 
-def test_snowflake_quoted_lowercase_fallback(snowflake_schema: SQLSchema) -> None:
-    """Test that quoted lowercase identifiers (Snowflake case-sensitive) fall back gracefully.
-
-    Snowflake quoted identifiers ("airport_code") stay lowercase, but MappingSchema
-    normalizes to UPPERCASE. qualify() can't match them, so we fall back to schema-less
-    qualify which still extracts columns correctly.
-    """
-    query = '''
-    SELECT a."airport_code", a."city"
-    FROM airlines.airports_data a
-    WHERE a."timezone" IS NOT NULL
-    '''
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
-
-    assert set(result) == {
-        ("AIRPORTS_DATA", "airport_code"),
-        ("AIRPORTS_DATA", "city"),
-        ("AIRPORTS_DATA", "timezone"),
-    }
-
-
-def test_snowflake_quoted_lowercase_without_schema() -> None:
-    """Test that quoted lowercase Snowflake identifiers work without schema too."""
+def test_snowflake_quoted_lowercase_identifiers() -> None:
+    """Test Snowflake quoted lowercase identifiers (case-sensitive, preserved as-is)."""
     query = '''
     SELECT a."airport_code", a."city"
     FROM airlines.airports_data a
@@ -502,8 +344,8 @@ def test_snowflake_quoted_lowercase_without_schema() -> None:
     }
 
 
-def test_snowflake_cte_with_schema(snowflake_schema: SQLSchema) -> None:
-    """Test Snowflake CTE query with schema — verifies qualify fallback on multi-CTE."""
+def test_snowflake_cte() -> None:
+    """Test Snowflake CTE query."""
     query = """
     WITH recent_flights AS (
         SELECT f.departure_airport, f.arrival_airport
@@ -513,7 +355,7 @@ def test_snowflake_cte_with_schema(snowflake_schema: SQLSchema) -> None:
     SELECT rf.departure_airport
     FROM recent_flights rf
     """
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
+    result = extract_all_source_columns(query, language="snowflake")
 
     assert set(result) == {
         ("FLIGHTS", "DEPARTURE_AIRPORT"),
@@ -522,8 +364,8 @@ def test_snowflake_cte_with_schema(snowflake_schema: SQLSchema) -> None:
     }
 
 
-def test_snowflake_multi_cte_join_with_schema(snowflake_schema: SQLSchema) -> None:
-    """Test Snowflake multi-CTE with JOIN between CTE and real table, with schema passed."""
+def test_snowflake_multi_cte_join() -> None:
+    """Test Snowflake multi-CTE with JOIN between CTE and real table."""
     query = """
     WITH airport_cities AS (
         SELECT a.airport_code, a.city
@@ -533,7 +375,7 @@ def test_snowflake_multi_cte_join_with_schema(snowflake_schema: SQLSchema) -> No
     FROM airlines.flights f
     JOIN airport_cities ac ON ac.airport_code = f.departure_airport
     """
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
+    result = extract_all_source_columns(query, language="snowflake")
 
     assert set(result) == {
         ("AIRPORTS_DATA", "AIRPORT_CODE"),
@@ -543,8 +385,8 @@ def test_snowflake_multi_cte_join_with_schema(snowflake_schema: SQLSchema) -> No
     }
 
 
-def test_snowflake_complex_multi_cte_with_schema(snowflake_schema: SQLSchema) -> None:
-    """Test the full AIRLINES haversine-distance query with schema — the original bug case."""
+def test_snowflake_complex_multi_cte() -> None:
+    """Test a complex Snowflake query with 4 CTEs, JOINs, subqueries, and haversine math."""
     query = '''WITH abakan_airport AS (
       SELECT "airport_code"
       FROM airlines.airports_data
@@ -587,9 +429,8 @@ def test_snowflake_complex_multi_cte_with_schema(snowflake_schema: SQLSchema) ->
     SELECT MAX(distance_km) AS longest_route_km
     FROM route_distances'''
 
-    # With schema — previously returned [] due to qualify crash
-    result_with = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
-    assert set(result_with) == {
+    result = extract_all_source_columns(query, language="snowflake")
+    assert set(result) == {
         ("AIRPORTS_DATA", "airport_code"),
         ("AIRPORTS_DATA", "city"),
         ("AIRPORTS_DATA", "coordinates"),
@@ -597,29 +438,9 @@ def test_snowflake_complex_multi_cte_with_schema(snowflake_schema: SQLSchema) ->
         ("FLIGHTS", "arrival_airport"),
     }
 
-    # Without schema — should give the same result
-    result_without = extract_all_source_columns(query, language="snowflake")
-    assert set(result_with) == set(result_without)
 
-
-def test_snowflake_schema_with_unquoted_identifiers(snowflake_schema: SQLSchema) -> None:
-    """Test that unquoted Snowflake identifiers (normalized to UPPERCASE) work with schema."""
-    query = """
-    SELECT airport_code, city
-    FROM airlines.airports_data
-    WHERE timezone IS NOT NULL
-    """
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
-
-    assert set(result) == {
-        ("AIRPORTS_DATA", "AIRPORT_CODE"),
-        ("AIRPORTS_DATA", "CITY"),
-        ("AIRPORTS_DATA", "TIMEZONE"),
-    }
-
-
-def test_snowflake_subquery_in_where_with_schema(snowflake_schema: SQLSchema) -> None:
-    """Test Snowflake subquery in WHERE clause with schema — verifies CTE + subquery combo."""
+def test_snowflake_subquery_in_where() -> None:
+    """Test Snowflake subquery in WHERE clause."""
     query = """
     SELECT f.flight_no, f.departure_airport
     FROM airlines.flights f
@@ -627,7 +448,7 @@ def test_snowflake_subquery_in_where_with_schema(snowflake_schema: SQLSchema) ->
         SELECT a.airport_code FROM airlines.airports_data a WHERE a.city = 'Moscow'
     )
     """
-    result = extract_all_source_columns(query, schema=snowflake_schema, language="snowflake")
+    result = extract_all_source_columns(query, language="snowflake")
 
     assert set(result) == {
         ("FLIGHTS", "FLIGHT_NO"),
@@ -637,27 +458,26 @@ def test_snowflake_subquery_in_where_with_schema(snowflake_schema: SQLSchema) ->
     }
 
 
-def test_schema_without_schema_name_still_works() -> None:
-    """Test that SQLite-style schemas (no schema_name) still work correctly with the new code."""
-    schema = SQLSchema(
-        name="test_db",
-        tables=[
-            _make_table("users", ["id", "name", "age"], dtypes=["INTEGER", "VARCHAR", "INTEGER"]),
-            _make_table("orders", ["id", "user_id", "amount"], dtypes=["INTEGER", "INTEGER", "REAL"]),
-        ],
+def test_snowflake_trim_both_parse_fallback() -> None:
+    """Test that TRIM(BOTH '(' FROM ...) which fails Snowflake parsing falls back to permissive parse."""
+    query = '''WITH other_airports AS (
+        SELECT a."airport_code", a."coordinates"
+        FROM airlines.airports_data a
+        JOIN airlines.flights f ON f."departure_airport" = a."airport_code"
+    ),
+    other_coords AS (
+        SELECT
+            oa."airport_code",
+            CAST(SPLIT_PART(TRIM(BOTH '(' FROM oa."coordinates"), ',', 1) AS FLOAT) AS lon2
+        FROM other_airports oa
     )
-    query = """
-    SELECT u.name, o.amount
-    FROM users u
-    JOIN orders o ON u.id = o.user_id
-    WHERE u.age > 20
-    """
-    result = extract_all_source_columns(query, schema=schema, language="sqlite")
+    SELECT oc."airport_code"
+    FROM other_coords oc'''
+    result = extract_all_source_columns(query, language="snowflake")
 
+    # Falls back to dialect-free parsing; table names stay lowercase
     assert set(result) == {
-        ("users", "name"),
-        ("users", "id"),
-        ("users", "age"),
-        ("orders", "amount"),
-        ("orders", "user_id"),
+        ("airports_data", "airport_code"),
+        ("airports_data", "coordinates"),
+        ("flights", "departure_airport"),
     }

@@ -285,7 +285,7 @@ class SchemaLinker:
 
         source_columns = set(
             (c[0].lower(), c[1].lower())
-            for c in extract_all_source_columns(pred_query.query, ctx.db_connector.schema, language=task.language)
+            for c in extract_all_source_columns(pred_query.query, language=task.language)
         )
 
         linked_schema = copy.deepcopy(ctx.preprocessed_schema)

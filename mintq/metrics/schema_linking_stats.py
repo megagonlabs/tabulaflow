@@ -40,7 +40,7 @@ class SchemaLinkingStats:
         )
         gold_linked_schema = set(
             (c[0].lower(), c[1].lower())
-            for c in extract_all_source_columns(gold_query.query, db_connector.schema, language=task.language)
+            for c in extract_all_source_columns(gold_query.query, language=task.language)
         )
 
         n_overlap = len(pred_linked_schema & gold_linked_schema)

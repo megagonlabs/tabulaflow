@@ -12,7 +12,7 @@ from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import build_scope, Scope
 from tqdm.asyncio import tqdm_asyncio
 
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull, SQLSchema
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
 
 
 def extract_code(response: str) -> str:
@@ -223,23 +223,19 @@ async def tqdm_gather_with_exceptions(
     return await tqdm_asyncio.gather(*map(wrap, fs), **kwargs)  # type: ignore
 
 
-def extract_all_source_columns(
-    query: str, schema: SQLSchema | None = None, language: str = "sqlite"
-) -> list[tuple[str, str]]:
+def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tuple[str, str]]:
     """
     Extracts ALL source columns used anywhere in the query (SELECT, WHERE, JOIN, ORDER BY, GROUP BY, etc.).
-    NOTE: All table names and column names are normalized to lowercase.
 
     Resolves table aliases and traces columns through CTEs and subqueries back to their
     original source tables.
 
     Args:
         query: SQL query string to analyze
-        schema: Optional SQL schema to use for resolving SELECT *
-        dialect: SQL dialect for parsing (e.g., "sqlite", "postgres", "mysql", "snowflake")
+        language: SQL dialect for parsing (e.g., "sqlite", "postgres", "mysql", "snowflake")
 
     Returns:
-        List of lowercase (table_name, column_name) tuples for all source columns referenced
+        List of (table_name, column_name) tuples for all source columns referenced
         in the query. Returns an empty list if the query cannot be parsed.
 
     Example:
@@ -252,59 +248,34 @@ def extract_all_source_columns(
         ... FROM users u
         ... JOIN recent_orders ro ON u.id = ro.user_id
         ... '''
-        >>> extract_all_source_columns(query, schema)
+        >>> extract_all_source_columns(query)
         [('orders', 'user_id'), ('orders', 'total'), ('orders', 'order_dates'), ('users', 'id')]
     """
-    # Convert SQLSchema to sqlglot's schema format for qualify (if provided)
-    # Uses nested dict {schema_name: {table_name: {col: dtype}}} when schema_name is present,
-    # otherwise flat dict {table_name: {col: dtype}} (e.g. for SQLite).
-    sqlglot_schema: dict[str, dict] | None = None
-    if schema is not None:
-        sqlglot_schema = {}
-        for table in schema.tables:
-            col_dict = {col.name: col.dtype for col in table.columns}
-            if table.schema_name:
-                sqlglot_schema.setdefault(table.schema_name, {})[table.name] = col_dict
-            else:
-                sqlglot_schema[table.name] = col_dict
-
     try:
         parsed = sqlglot.parse_one(query, dialect=language)
-        if sqlglot_schema is not None:
-            try:
-                qualified = qualify(
-                    parsed.copy(), schema=sqlglot_schema, dialect=language, validate_qualify_columns=False
-                )
-            except Exception:
-                # Schema-aware qualify can fail due to case-sensitivity mismatches (e.g. Snowflake
-                # quoted lowercase identifiers vs schema uppercase). Fall back to qualifying without
-                # schema — loses SELECT * expansion but still extracts explicitly named columns.
-                qualified = qualify(parsed, dialect=language, validate_qualify_columns=False)
-        else:
-            qualified = qualify(parsed, dialect=language, validate_qualify_columns=False)
+        qualified = qualify(parsed, dialect=language, validate_qualify_columns=False)
         root = build_scope(qualified)
     except Exception:
-        return []
+        # Dialect-specific parsing can fail on valid SQL (e.g. Snowflake TRIM(BOTH '(' FROM ...)).
+        # Fall back to permissive dialect-free parsing.
+        try:
+            parsed = sqlglot.parse_one(query)
+            qualified = qualify(parsed, validate_qualify_columns=False)
+            root = build_scope(qualified)
+        except Exception:
+            return []
 
     if root is None:
         return []
 
     def collect_columns(scope: Scope, result: list[tuple[str, str]], seen: set[tuple[str, str]]) -> None:
         """Recursively collect source columns from a scope and all nested scopes."""
-        # Pre-compute table sources for fallback when qualify drops table qualifiers
-        # (happens when schema is provided and columns are unambiguous in a single-table scope)
-        table_sources = {k: v for k, v in scope.sources.items() if isinstance(v, exp.Table)}
-
         for col in scope.columns:
             table_alias = col.table
             col_name = col.name
 
             source = scope.sources.get(table_alias)
-            if source is None and not table_alias and len(table_sources) == 1:
-                # Fallback: qualify dropped the table qualifier for unambiguous single-table scopes
-                source = next(iter(table_sources.values()))
             if isinstance(source, exp.Table):
-                # Direct table reference - resolve alias to actual table name
                 table_name = source.name
                 key = (table_name, col_name)
                 if key not in seen:
