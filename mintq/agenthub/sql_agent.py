@@ -94,9 +94,6 @@ You are an agent - please keep going until the database query is fully construct
 - Adhere strictly to the given database schema when constructing queries.
 - Pay close attention to detail. When multiple similar columns exist, select the one that best matches the question and the instructions.
 - Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
-{%- if language == "snowflake" %}
-- For Snowflake SQL, the column names must be quoted with double quotes (e.g. SELECT ORDER."product_id").
-{%- endif %}
 </goal>
 {%- if dataset_instructions %}
 
