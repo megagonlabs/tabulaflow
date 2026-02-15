@@ -180,11 +180,7 @@ class CachedPreprocessorMixin(Generic[OutputT]):
                 raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_paths}")
 
             result = await self._preprocess_impl_async(input_data)
-            self._save_to_cache(cache_paths, result)
-            _memory_cache[cache_key] = result
+            if config.cache_enabled:
+                self._save_to_cache(cache_paths, result)
+                _memory_cache[cache_key] = result
             return result
-
-
-NL2QPreprocessor: TypeAlias = BaseDBPreprocessor | BaseDatasetPreprocessor
-
-preprocessor_registry = Registry[NL2QPreprocessor]("preprocessor")
