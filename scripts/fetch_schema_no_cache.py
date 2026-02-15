@@ -13,6 +13,15 @@ async def main() -> None:
     parser.add_argument("--database", default="european_football_2")
     parser.add_argument("--from_cache", action="store_true")
     args = parser.parse_args()
+    if args.dataset == "bird-sql":
+        parser.set_defaults(split="dev_20240627")
+    elif args.dataset == "spider2-snow":
+        parser.set_defaults(split="test")
+    elif args.dataset == "beaver":
+        parser.set_defaults(split="test")
+    else:
+        raise ValueError(f"Unknown dataset: {args.dataset}")
+
     print(args)
     print()
 
