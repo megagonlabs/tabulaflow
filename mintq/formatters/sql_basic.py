@@ -9,6 +9,7 @@ from mintq.formatters.base import formatter_registry
 class SQLBasicSchemaFormatter:
     name: ClassVar[str] = "sql_basic"
     quote_char: str = '"'
+    always_quote_columns: bool = True
     example_max_chars: int = 100
 
     def _quote(self, s: str) -> str:
@@ -21,6 +22,11 @@ class SQLBasicSchemaFormatter:
         if " " in s or "-" in s or not s.isidentifier():
             return self._quote(s)
         return s
+
+    def _quote_column(self, s: str) -> str:
+        if self.always_quote_columns:
+            return self._quote(s)
+        return self._quote_if_needed(s)
 
     def _full_table_name(self, table: str, schema: str | None) -> str:
         if schema is None:
@@ -56,8 +62,8 @@ class SQLBasicSchemaFormatter:
         composite_fks = []
         for fk in table.foreign_keys:
             if len(fk.columns) > 1:
-                columns = "(" + ", ".join([self._quote_if_needed(c) for c in fk.columns]) + ")"
-                fk_columns = "(" + ", ".join([self._quote_if_needed(c) for c in fk.foreign_columns]) + ")"
+                columns = "(" + ", ".join([self._quote_column(c) for c in fk.columns]) + ")"
+                fk_columns = "(" + ", ".join([self._quote_column(c) for c in fk.foreign_columns]) + ")"
                 fk_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
                 composite_fks.append(f"* {columns} -> {fk_table}.{fk_columns}")
         if composite_fks:
@@ -74,7 +80,7 @@ class SQLBasicSchemaFormatter:
         return res
 
     def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
-        res = f"- {self._quote_if_needed(column.name)}: {column.dtype}"
+        res = f"- {self._quote_column(column.name)}: {column.dtype}"
         if column.null_ratio == 1.0:
             res += " (all values are null)"
         elif column.null_ratio > 0.0:
@@ -105,7 +111,7 @@ class SQLBasicSchemaFormatter:
         for fk in column.foreign_keys:
             is_composite_fk = len(fk.columns) > 1
             res += (
-                f" [FK -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_if_needed(fk.foreign_columns[0])}]"
+                f" [FK -> {self._full_table_name(fk.foreign_table, fk.foreign_schema_name)}.{self._quote_column(fk.foreign_columns[0])}]"
                 if not is_composite_fk
                 else " [FK-composite]"
             )

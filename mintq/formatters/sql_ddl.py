@@ -12,6 +12,7 @@ class SQLDDLSchemaFormatter:
 
     name: ClassVar[str] = "sql_ddl"
     quote_char: str = '"'
+    always_quote_columns: bool = True
     include_examples: bool = True
     include_sampled_rows: bool = True
     example_max_chars: int = 100
@@ -26,6 +27,11 @@ class SQLDDLSchemaFormatter:
         if " " in s or "-" in s or not s.isidentifier():
             return self._quote(s)
         return s
+
+    def _quote_column(self, s: str) -> str:
+        if self.always_quote_columns:
+            return self._quote(s)
+        return self._quote_if_needed(s)
 
     def _full_table_name(self, table: str, schema: str | None) -> str:
         if schema is None:
@@ -107,14 +113,14 @@ class SQLDDLSchemaFormatter:
         # Add composite primary key constraint if needed
         composite_pk_cols = [col.name for col in table.columns if col.primary_key_type == "composite"]
         if composite_pk_cols:
-            pk_cols_str = ", ".join(self._quote_if_needed(c) for c in composite_pk_cols)
+            pk_cols_str = ", ".join(self._quote_column(c) for c in composite_pk_cols)
             column_defs.append(f"    PRIMARY KEY ({pk_cols_str})")
 
         # Add foreign key constraints
         for fk in table.foreign_keys:
-            fk_cols = ", ".join(self._quote_if_needed(c) for c in fk.columns)
+            fk_cols = ", ".join(self._quote_column(c) for c in fk.columns)
             ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-            ref_cols = ", ".join(self._quote_if_needed(c) for c in fk.foreign_columns)
+            ref_cols = ", ".join(self._quote_column(c) for c in fk.foreign_columns)
             column_defs.append(f"    FOREIGN KEY ({fk_cols}) REFERENCES {ref_table}({ref_cols})")
 
         lines.append(create_stmt)
@@ -139,7 +145,7 @@ class SQLDDLSchemaFormatter:
         parts = []
 
         # Column name and type
-        col_name = self._quote_if_needed(column.name)
+        col_name = self._quote_column(column.name)
         col_type = self._map_dtype_to_sql(column.dtype)
         parts.append(f"    {col_name} {col_type}")
 
@@ -188,7 +194,7 @@ class SQLDDLSchemaFormatter:
         for fk in column.foreign_keys:
             if len(fk.columns) == 1:  # Single column FK
                 ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-                ref_col = self._quote_if_needed(fk.foreign_columns[0])
+                ref_col = self._quote_column(fk.foreign_columns[0])
                 comment_lines.append(f"        -- <fk> -> {ref_table}.{ref_col}</fk>")
             else:
                 comment_lines.append("        -- <fk>composite</fk>")
