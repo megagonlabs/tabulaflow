@@ -184,3 +184,8 @@ class CachedPreprocessorMixin(Generic[OutputT]):
                 self._save_to_cache(cache_paths, result)
                 _memory_cache[cache_key] = result
             return result
+
+
+NL2QPreprocessor: TypeAlias = BaseDBPreprocessor | BaseDatasetPreprocessor
+
+preprocessor_registry = Registry[NL2QPreprocessor]("preprocessor")
