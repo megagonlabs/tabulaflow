@@ -2,7 +2,8 @@
 -- Database: soccer_2016
 
 /*
-Schema: NULLTable: Ball_by_Ball
+Schema: NULL
+Table: Ball_by_Ball
 Rows: 136590
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Innings_No   | Team_Batting   | Team_Bowling   | Striker_Batting_Position   | Striker   | Non_Striker   | Bowler   |
@@ -15,33 +16,34 @@ Sample rows:
 | ...        | ...       | ...       | ...          | ...            | ...            | ...                        | ...       | ...           | ...      |
 */
 CREATE TABLE Ball_by_Ball (
-    Match_Id INTEGER NOT NULL,
+    "Match_Id" INTEGER NOT NULL,
         -- <example>335987</example>
-        -- <fk> -> Match.Match_Id</fk>
-    Over_Id INTEGER NOT NULL,
+        -- <fk> -> Match."Match_Id"</fk>
+    "Over_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Ball_Id INTEGER NOT NULL,
+    "Ball_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Innings_No INTEGER NOT NULL,
+    "Innings_No" INTEGER NOT NULL,
         -- <example>1</example>
-    Team_Batting INTEGER NOT NULL,
+    "Team_Batting" INTEGER NOT NULL,
         -- <example>1</example>
-    Team_Bowling INTEGER NOT NULL,
+    "Team_Bowling" INTEGER NOT NULL,
         -- <example>2</example>
-    Striker_Batting_Position INTEGER NOT NULL,
+    "Striker_Batting_Position" INTEGER NOT NULL,
         -- <example>1</example>
-    Striker INTEGER NOT NULL,
+    "Striker" INTEGER NOT NULL,
         -- <example>1</example>
-    Non_Striker INTEGER NOT NULL,
+    "Non_Striker" INTEGER NOT NULL,
         -- <example>2</example>
-    Bowler INTEGER NOT NULL,
+    "Bowler" INTEGER NOT NULL,
         -- <example>14</example>
-    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
-    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id)
+    PRIMARY KEY ("Match_Id", "Over_Id", "Ball_Id", "Innings_No"),
+    FOREIGN KEY ("Match_Id") REFERENCES Match("Match_Id")
 );
 
 /*
-Schema: NULLTable: Batsman_Scored
+Schema: NULL
+Table: Batsman_Scored
 Rows: 133097
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Runs_Scored   | Innings_No   |
@@ -54,23 +56,24 @@ Sample rows:
 | ...        | ...       | ...       | ...           | ...          |
 */
 CREATE TABLE Batsman_Scored (
-    Match_Id INTEGER NOT NULL,
+    "Match_Id" INTEGER NOT NULL,
         -- <example>335987</example>
-        -- <fk> -> Match.Match_Id</fk>
-    Over_Id INTEGER NOT NULL,
+        -- <fk> -> Match."Match_Id"</fk>
+    "Over_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Ball_Id INTEGER NOT NULL,
+    "Ball_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Runs_Scored INTEGER NOT NULL,
+    "Runs_Scored" INTEGER NOT NULL,
         -- <example>0</example>
-    Innings_No INTEGER NOT NULL,
+    "Innings_No" INTEGER NOT NULL,
         -- <example>1</example>
-    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
-    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id)
+    PRIMARY KEY ("Match_Id", "Over_Id", "Ball_Id", "Innings_No"),
+    FOREIGN KEY ("Match_Id") REFERENCES Match("Match_Id")
 );
 
 /*
-Schema: NULLTable: Batting_Style
+Schema: NULL
+Table: Batting_Style
 Rows: 2
 All rows:
 |   Batting_Id | Batting_hand   |
@@ -79,14 +82,15 @@ All rows:
 |            2 | Right-hand bat |
 */
 CREATE TABLE Batting_Style (
-    Batting_Id INTEGER NOT NULL PRIMARY KEY,
+    "Batting_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Batting_hand TEXT NOT NULL
+    "Batting_hand" TEXT NOT NULL
         -- <values>{'Left-hand bat', 'Right-hand bat'}</values>
 );
 
 /*
-Schema: NULLTable: Bowling_Style
+Schema: NULL
+Table: Bowling_Style
 Rows: 14
 Sample rows:
 | Bowling_Id   | Bowling_skill         |
@@ -99,14 +103,15 @@ Sample rows:
 | ...          | ...                   |
 */
 CREATE TABLE Bowling_Style (
-    Bowling_Id INTEGER NOT NULL PRIMARY KEY,
+    "Bowling_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Bowling_skill TEXT NOT NULL
+    "Bowling_skill" TEXT NOT NULL
         -- <example>'Right-arm medium'</example>
 );
 
 /*
-Schema: NULLTable: City
+Schema: NULL
+Table: City
 Rows: 29
 Sample rows:
 | City_Id   | City_Name   | Country_id   |
@@ -119,16 +124,17 @@ Sample rows:
 | ...       | ...         | ...          |
 */
 CREATE TABLE City (
-    City_Id INTEGER NOT NULL PRIMARY KEY,
+    "City_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    City_Name TEXT NOT NULL,
+    "City_Name" TEXT NOT NULL,
         -- <example>'Bangalore'</example>
-    Country_id INTEGER NOT NULL
+    "Country_id" INTEGER NOT NULL
         -- <example>1</example>
 );
 
 /*
-Schema: NULLTable: Country
+Schema: NULL
+Table: Country
 Rows: 12
 Sample rows:
 | Country_Id   | Country_Name   |
@@ -141,16 +147,17 @@ Sample rows:
 | ...          | ...            |
 */
 CREATE TABLE Country (
-    Country_Id INTEGER NOT NULL PRIMARY KEY,
+    "Country_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-        -- <fk> -> Country.Country_Id</fk>
-    Country_Name TEXT NOT NULL,
+        -- <fk> -> Country."Country_Id"</fk>
+    "Country_Name" TEXT NOT NULL,
         -- <example>'India'</example>
-    FOREIGN KEY (Country_Id) REFERENCES Country(Country_Id)
+    FOREIGN KEY ("Country_Id") REFERENCES Country("Country_Id")
 );
 
 /*
-Schema: NULLTable: Extra_Runs
+Schema: NULL
+Table: Extra_Runs
 Rows: 7469
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Extra_Type_Id   | Extra_Runs   | Innings_No   |
@@ -163,25 +170,26 @@ Sample rows:
 | ...        | ...       | ...       | ...             | ...          | ...          |
 */
 CREATE TABLE Extra_Runs (
-    Match_Id INTEGER NOT NULL,
+    "Match_Id" INTEGER NOT NULL,
         -- <example>335987</example>
-    Over_Id INTEGER NOT NULL,
+    "Over_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Ball_Id INTEGER NOT NULL,
+    "Ball_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Extra_Type_Id INTEGER NOT NULL,
+    "Extra_Type_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Extra_Type.Extra_Id</fk>
-    Extra_Runs INTEGER NOT NULL,
+        -- <fk> -> Extra_Type."Extra_Id"</fk>
+    "Extra_Runs" INTEGER NOT NULL,
         -- <example>1</example>
-    Innings_No INTEGER NOT NULL,
+    "Innings_No" INTEGER NOT NULL,
         -- <example>1</example>
-    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
-    FOREIGN KEY (Extra_Type_Id) REFERENCES Extra_Type(Extra_Id)
+    PRIMARY KEY ("Match_Id", "Over_Id", "Ball_Id", "Innings_No"),
+    FOREIGN KEY ("Extra_Type_Id") REFERENCES Extra_Type("Extra_Id")
 );
 
 /*
-Schema: NULLTable: Extra_Type
+Schema: NULL
+Table: Extra_Type
 Rows: 5
 All rows:
 |   Extra_Id | Extra_Name   |
@@ -193,14 +201,15 @@ All rows:
 |          5 | penalty      |
 */
 CREATE TABLE Extra_Type (
-    Extra_Id INTEGER NOT NULL PRIMARY KEY,
+    "Extra_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Extra_Name TEXT NOT NULL
+    "Extra_Name" TEXT NOT NULL
         -- <values>{'byes', 'legbyes', 'noballs', 'penalty', 'wides'}</values>
 );
 
 /*
-Schema: NULLTable: Match
+Schema: NULL
+Table: Match
 Rows: 577
 Sample rows:
 | Match_Id   | Team_1   | Team_2   | Match_Date   | Season_Id   | Venue_Id   | Toss_Winner   | Toss_Decide   | Win_Type   | Win_Margin   | Outcome_type   | Match_Winner   | Man_of_the_Match   |
@@ -213,56 +222,57 @@ Sample rows:
 | ...        | ...      | ...      | ...          | ...         | ...        | ...           | ...           | ...        | ...          | ...            | ...            | ...                |
 */
 CREATE TABLE Match (
-    Match_Id INTEGER NOT NULL PRIMARY KEY,
+    "Match_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>335987</example>
-    Team_1 INTEGER NOT NULL,
+    "Team_1" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Team.Team_Id</fk>
-    Team_2 INTEGER NOT NULL,
+        -- <fk> -> Team."Team_Id"</fk>
+    "Team_2" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Team.Team_Id</fk>
-    Match_Date DATE NOT NULL,
+        -- <fk> -> Team."Team_Id"</fk>
+    "Match_Date" DATE NOT NULL,
         -- <example>'2008-04-18'</example>
-    Season_Id INTEGER NOT NULL,
+    "Season_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Season.Season_Id</fk>
-    Venue_Id INTEGER NOT NULL,
+        -- <fk> -> Season."Season_Id"</fk>
+    "Venue_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Venue.Venue_Id</fk>
-    Toss_Winner INTEGER NOT NULL,
+        -- <fk> -> Venue."Venue_Id"</fk>
+    "Toss_Winner" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Team.Team_Id</fk>
-    Toss_Decide INTEGER NOT NULL,
+        -- <fk> -> Team."Team_Id"</fk>
+    "Toss_Decide" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Toss_Decision.Toss_Id</fk>
-    Win_Type INTEGER NOT NULL,
+        -- <fk> -> Toss_Decision."Toss_Id"</fk>
+    "Win_Type" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Win_By.Win_Id</fk>
-    Win_Margin INTEGER NULL,
+        -- <fk> -> Win_By."Win_Id"</fk>
+    "Win_Margin" INTEGER NULL,
         -- <example>140</example>
-    Outcome_type INTEGER NOT NULL,
+    "Outcome_type" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Out_Type.Out_Id</fk>
-    Match_Winner INTEGER NULL,
+        -- <fk> -> Out_Type."Out_Id"</fk>
+    "Match_Winner" INTEGER NULL,
         -- <example>1</example>
-        -- <fk> -> Team.Team_Id</fk>
-    Man_of_the_Match INTEGER NULL,
+        -- <fk> -> Team."Team_Id"</fk>
+    "Man_of_the_Match" INTEGER NULL,
         -- <example>2</example>
-        -- <fk> -> Player.Player_Id</fk>
-    FOREIGN KEY (Team_1) REFERENCES Team(Team_Id),
-    FOREIGN KEY (Team_2) REFERENCES Team(Team_Id),
-    FOREIGN KEY (Season_Id) REFERENCES Season(Season_Id),
-    FOREIGN KEY (Venue_Id) REFERENCES Venue(Venue_Id),
-    FOREIGN KEY (Toss_Winner) REFERENCES Team(Team_Id),
-    FOREIGN KEY (Toss_Decide) REFERENCES Toss_Decision(Toss_Id),
-    FOREIGN KEY (Win_Type) REFERENCES Win_By(Win_Id),
-    FOREIGN KEY (Outcome_type) REFERENCES Out_Type(Out_Id),
-    FOREIGN KEY (Match_Winner) REFERENCES Team(Team_Id),
-    FOREIGN KEY (Man_of_the_Match) REFERENCES Player(Player_Id)
+        -- <fk> -> Player."Player_Id"</fk>
+    FOREIGN KEY ("Team_1") REFERENCES Team("Team_Id"),
+    FOREIGN KEY ("Team_2") REFERENCES Team("Team_Id"),
+    FOREIGN KEY ("Season_Id") REFERENCES Season("Season_Id"),
+    FOREIGN KEY ("Venue_Id") REFERENCES Venue("Venue_Id"),
+    FOREIGN KEY ("Toss_Winner") REFERENCES Team("Team_Id"),
+    FOREIGN KEY ("Toss_Decide") REFERENCES Toss_Decision("Toss_Id"),
+    FOREIGN KEY ("Win_Type") REFERENCES Win_By("Win_Id"),
+    FOREIGN KEY ("Outcome_type") REFERENCES Out_Type("Out_Id"),
+    FOREIGN KEY ("Match_Winner") REFERENCES Team("Team_Id"),
+    FOREIGN KEY ("Man_of_the_Match") REFERENCES Player("Player_Id")
 );
 
 /*
-Schema: NULLTable: Out_Type
+Schema: NULL
+Table: Out_Type
 Rows: 9
 All rows:
 |   Out_Id | Out_Name              |
@@ -278,14 +288,15 @@ All rows:
 |        9 | obstructing the field |
 */
 CREATE TABLE Out_Type (
-    Out_Id INTEGER NOT NULL PRIMARY KEY,
+    "Out_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Out_Name TEXT NOT NULL
+    "Out_Name" TEXT NOT NULL
         -- <values>{'bowled', 'caught and bowled', 'caught', 'hit wicket', 'lbw', 'obstructing the field', 'retired hurt', 'run out', 'stumped'}</values>
 );
 
 /*
-Schema: NULLTable: Outcome
+Schema: NULL
+Table: Outcome
 Rows: 3
 All rows:
 |   Outcome_Id | Outcome_Type   |
@@ -295,14 +306,15 @@ All rows:
 |            3 | Superover      |
 */
 CREATE TABLE Outcome (
-    Outcome_Id INTEGER NOT NULL PRIMARY KEY,
+    "Outcome_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Outcome_Type TEXT NOT NULL
+    "Outcome_Type" TEXT NOT NULL
         -- <values>{'No Result', 'Result', 'Superover'}</values>
 );
 
 /*
-Schema: NULLTable: Player
+Schema: NULL
+Table: Player
 Rows: 469
 Sample rows:
 | Player_Id   | Player_Name     | DOB        | Batting_hand   | Bowling_skill   | Country_Name   |
@@ -315,28 +327,29 @@ Sample rows:
 | ...         | ...             | ...        | ...            | ...             | ...            |
 */
 CREATE TABLE Player (
-    Player_Id INTEGER NOT NULL PRIMARY KEY,
+    "Player_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Player_Name TEXT NOT NULL,
+    "Player_Name" TEXT NOT NULL,
         -- <example>'SC Ganguly'</example>
-    DOB DATE NOT NULL,
+    "DOB" DATE NOT NULL,
         -- <example>'1972-07-08'</example>
-    Batting_hand INTEGER NOT NULL,
+    "Batting_hand" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Batting_Style.Batting_Id</fk>
-    Bowling_skill INTEGER NULL,
+        -- <fk> -> Batting_Style."Batting_Id"</fk>
+    "Bowling_skill" INTEGER NULL,
         -- <example>1</example>
-        -- <fk> -> Bowling_Style.Bowling_Id</fk>
-    Country_Name INTEGER NOT NULL,
+        -- <fk> -> Bowling_Style."Bowling_Id"</fk>
+    "Country_Name" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Country.Country_Id</fk>
-    FOREIGN KEY (Batting_hand) REFERENCES Batting_Style(Batting_Id),
-    FOREIGN KEY (Bowling_skill) REFERENCES Bowling_Style(Bowling_Id),
-    FOREIGN KEY (Country_Name) REFERENCES Country(Country_Id)
+        -- <fk> -> Country."Country_Id"</fk>
+    FOREIGN KEY ("Batting_hand") REFERENCES Batting_Style("Batting_Id"),
+    FOREIGN KEY ("Bowling_skill") REFERENCES Bowling_Style("Bowling_Id"),
+    FOREIGN KEY ("Country_Name") REFERENCES Country("Country_Id")
 );
 
 /*
-Schema: NULLTable: Player_Match
+Schema: NULL
+Table: Player_Match
 Rows: 12694
 Sample rows:
 | Match_Id   | Player_Id   | Role_Id   | Team_Id   |
@@ -349,27 +362,28 @@ Sample rows:
 | ...        | ...         | ...       | ...       |
 */
 CREATE TABLE Player_Match (
-    Match_Id INTEGER NOT NULL,
+    "Match_Id" INTEGER NOT NULL,
         -- <example>335987</example>
-        -- <fk> -> Match.Match_Id</fk>
-    Player_Id INTEGER NOT NULL,
+        -- <fk> -> Match."Match_Id"</fk>
+    "Player_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Player.Player_Id</fk>
-    Role_Id INTEGER NOT NULL,
+        -- <fk> -> Player."Player_Id"</fk>
+    "Role_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Rolee.Role_Id</fk>
-    Team_Id INTEGER NOT NULL,
+        -- <fk> -> Rolee."Role_Id"</fk>
+    "Team_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Team.Team_Id</fk>
-    PRIMARY KEY (Match_Id, Player_Id, Role_Id),
-    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id),
-    FOREIGN KEY (Player_Id) REFERENCES Player(Player_Id),
-    FOREIGN KEY (Team_Id) REFERENCES Team(Team_Id),
-    FOREIGN KEY (Role_Id) REFERENCES Rolee(Role_Id)
+        -- <fk> -> Team."Team_Id"</fk>
+    PRIMARY KEY ("Match_Id", "Player_Id", "Role_Id"),
+    FOREIGN KEY ("Match_Id") REFERENCES Match("Match_Id"),
+    FOREIGN KEY ("Player_Id") REFERENCES Player("Player_Id"),
+    FOREIGN KEY ("Team_Id") REFERENCES Team("Team_Id"),
+    FOREIGN KEY ("Role_Id") REFERENCES Rolee("Role_Id")
 );
 
 /*
-Schema: NULLTable: Rolee
+Schema: NULL
+Table: Rolee
 Rows: 4
 All rows:
 |   Role_Id | Role_Desc     |
@@ -380,14 +394,15 @@ All rows:
 |         4 | CaptainKeeper |
 */
 CREATE TABLE Rolee (
-    Role_Id INTEGER NOT NULL PRIMARY KEY,
+    "Role_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Role_Desc TEXT NOT NULL
+    "Role_Desc" TEXT NOT NULL
         -- <values>{'Captain', 'CaptainKeeper', 'Keeper', 'Player'}</values>
 );
 
 /*
-Schema: NULLTable: Season
+Schema: NULL
+Table: Season
 Rows: 9
 All rows:
 |   Season_Id |   Man_of_the_Series |   Orange_Cap |   Purple_Cap |   Season_Year |
@@ -403,20 +418,21 @@ All rows:
 |           9 |                   8 |            8 |          299 |          2016 |
 */
 CREATE TABLE Season (
-    Season_Id INTEGER NOT NULL PRIMARY KEY,
+    "Season_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Man_of_the_Series INTEGER NOT NULL,
+    "Man_of_the_Series" INTEGER NOT NULL,
         -- <example>32</example>
-    Orange_Cap INTEGER NOT NULL,
+    "Orange_Cap" INTEGER NOT NULL,
         -- <example>100</example>
-    Purple_Cap INTEGER NOT NULL,
+    "Purple_Cap" INTEGER NOT NULL,
         -- <example>102</example>
-    Season_Year INTEGER NOT NULL
+    "Season_Year" INTEGER NOT NULL
         -- <example>2008</example>
 );
 
 /*
-Schema: NULLTable: Team
+Schema: NULL
+Table: Team
 Rows: 13
 Sample rows:
 | Team_Id   | Team_Name                   |
@@ -429,14 +445,15 @@ Sample rows:
 | ...       | ...                         |
 */
 CREATE TABLE Team (
-    Team_Id INTEGER NOT NULL PRIMARY KEY,
+    "Team_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Team_Name TEXT NOT NULL
+    "Team_Name" TEXT NOT NULL
         -- <example>'Kolkata Knight Riders'</example>
 );
 
 /*
-Schema: NULLTable: Toss_Decision
+Schema: NULL
+Table: Toss_Decision
 Rows: 2
 All rows:
 |   Toss_Id | Toss_Name   |
@@ -445,14 +462,15 @@ All rows:
 |         2 | bat         |
 */
 CREATE TABLE Toss_Decision (
-    Toss_Id INTEGER NOT NULL PRIMARY KEY,
+    "Toss_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Toss_Name TEXT NOT NULL
+    "Toss_Name" TEXT NOT NULL
         -- <values>{'bat', 'field'}</values>
 );
 
 /*
-Schema: NULLTable: Umpire
+Schema: NULL
+Table: Umpire
 Rows: 52
 Sample rows:
 | Umpire_Id   | Umpire_Name   | Umpire_Country   |
@@ -465,18 +483,19 @@ Sample rows:
 | ...         | ...           | ...              |
 */
 CREATE TABLE Umpire (
-    Umpire_Id INTEGER NOT NULL PRIMARY KEY,
+    "Umpire_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Umpire_Name TEXT NOT NULL,
+    "Umpire_Name" TEXT NOT NULL,
         -- <example>'Asad Rauf'</example>
-    Umpire_Country INTEGER NOT NULL,
+    "Umpire_Country" INTEGER NOT NULL,
         -- <example>6</example>
-        -- <fk> -> Country.Country_Id</fk>
-    FOREIGN KEY (Umpire_Country) REFERENCES Country(Country_Id)
+        -- <fk> -> Country."Country_Id"</fk>
+    FOREIGN KEY ("Umpire_Country") REFERENCES Country("Country_Id")
 );
 
 /*
-Schema: NULLTable: Venue
+Schema: NULL
+Table: Venue
 Rows: 35
 Sample rows:
 | Venue_Id   | Venue_Name                         | City_Id   |
@@ -489,18 +508,19 @@ Sample rows:
 | ...        | ...                                | ...       |
 */
 CREATE TABLE Venue (
-    Venue_Id INTEGER NOT NULL PRIMARY KEY,
+    "Venue_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Venue_Name TEXT NOT NULL,
+    "Venue_Name" TEXT NOT NULL,
         -- <example>'M Chinnaswamy Stadium'</example>
-    City_Id INTEGER NOT NULL,
+    "City_Id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> City.City_Id</fk>
-    FOREIGN KEY (City_Id) REFERENCES City(City_Id)
+        -- <fk> -> City."City_Id"</fk>
+    FOREIGN KEY ("City_Id") REFERENCES City("City_Id")
 );
 
 /*
-Schema: NULLTable: Wicket_Taken
+Schema: NULL
+Table: Wicket_Taken
 Rows: 6727
 Sample rows:
 | Match_Id   | Over_Id   | Ball_Id   | Player_Out   | Kind_Out   | Fielders   | Innings_No   |
@@ -513,33 +533,34 @@ Sample rows:
 | ...        | ...       | ...       | ...          | ...        | ...        | ...          |
 */
 CREATE TABLE Wicket_Taken (
-    Match_Id INTEGER NOT NULL,
+    "Match_Id" INTEGER NOT NULL,
         -- <example>335987</example>
-        -- <fk> -> Match.Match_Id</fk>
-    Over_Id INTEGER NOT NULL,
+        -- <fk> -> Match."Match_Id"</fk>
+    "Over_Id" INTEGER NOT NULL,
         -- <example>2</example>
-    Ball_Id INTEGER NOT NULL,
+    "Ball_Id" INTEGER NOT NULL,
         -- <example>1</example>
-    Player_Out INTEGER NOT NULL,
+    "Player_Out" INTEGER NOT NULL,
         -- <example>6</example>
-        -- <fk> -> Player.Player_Id</fk>
-    Kind_Out INTEGER NOT NULL,
+        -- <fk> -> Player."Player_Id"</fk>
+    "Kind_Out" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Out_Type.Out_Id</fk>
-    Fielders INTEGER NULL,
+        -- <fk> -> Out_Type."Out_Id"</fk>
+    "Fielders" INTEGER NULL,
         -- <example>83</example>
-        -- <fk> -> Player.Player_Id</fk>
-    Innings_No INTEGER NOT NULL,
+        -- <fk> -> Player."Player_Id"</fk>
+    "Innings_No" INTEGER NOT NULL,
         -- <example>2</example>
-    PRIMARY KEY (Match_Id, Over_Id, Ball_Id, Innings_No),
-    FOREIGN KEY (Match_Id) REFERENCES Match(Match_Id),
-    FOREIGN KEY (Player_Out) REFERENCES Player(Player_Id),
-    FOREIGN KEY (Kind_Out) REFERENCES Out_Type(Out_Id),
-    FOREIGN KEY (Fielders) REFERENCES Player(Player_Id)
+    PRIMARY KEY ("Match_Id", "Over_Id", "Ball_Id", "Innings_No"),
+    FOREIGN KEY ("Match_Id") REFERENCES Match("Match_Id"),
+    FOREIGN KEY ("Player_Out") REFERENCES Player("Player_Id"),
+    FOREIGN KEY ("Kind_Out") REFERENCES Out_Type("Out_Id"),
+    FOREIGN KEY ("Fielders") REFERENCES Player("Player_Id")
 );
 
 /*
-Schema: NULLTable: Win_By
+Schema: NULL
+Table: Win_By
 Rows: 4
 All rows:
 |   Win_Id | Win_Type   |
@@ -550,9 +571,9 @@ All rows:
 |        4 | Tie        |
 */
 CREATE TABLE Win_By (
-    Win_Id INTEGER NOT NULL PRIMARY KEY,
+    "Win_Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Win_Type TEXT NOT NULL
+    "Win_Type" TEXT NOT NULL
         -- <values>{'NO Result', 'Tie', 'runs', 'wickets'}</values>
 );
 ```

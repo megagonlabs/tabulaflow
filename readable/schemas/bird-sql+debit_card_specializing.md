@@ -2,7 +2,8 @@
 -- Database: debit_card_specializing
 
 /*
-Schema: NULLTable: customers
+Schema: NULL
+Table: customers
 Rows: 32461
 Sample rows:
 | CustomerID   | Segment   | Currency   |
@@ -15,16 +16,17 @@ Sample rows:
 | ...          | ...       | ...        |
 */
 CREATE TABLE customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>3</example>
-    Segment TEXT NOT NULL,
+    "Segment" TEXT NOT NULL,
         -- <values>{'KAM', 'LAM', 'SME'}</values>
-    Currency TEXT NOT NULL
+    "Currency" TEXT NOT NULL
         -- <values>{'CZK', 'EUR'}</values>
 );
 
 /*
-Schema: NULLTable: gasstations
+Schema: NULL
+Table: gasstations
 Rows: 5716
 Sample rows:
 | GasStationID   | ChainID   | Country   | Segment         |
@@ -37,18 +39,19 @@ Sample rows:
 | ...            | ...       | ...       | ...             |
 */
 CREATE TABLE gasstations (
-    GasStationID INTEGER NOT NULL PRIMARY KEY,
+    "GasStationID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>44</example>
-    ChainID INTEGER NOT NULL,
+    "ChainID" INTEGER NOT NULL,
         -- <example>13</example>
-    Country TEXT NOT NULL,
+    "Country" TEXT NOT NULL,
         -- <values>{'CZE', 'SVK'}</values>
-    Segment TEXT NOT NULL
+    "Segment" TEXT NOT NULL
         -- <values>{'Discount', 'Noname', 'Other', 'Premium', 'Value for money'}</values>
 );
 
 /*
-Schema: NULLTable: products
+Schema: NULL
+Table: products
 Rows: 591
 Sample rows:
 | ProductID   | Description   |
@@ -61,14 +64,15 @@ Sample rows:
 | ...         | ...           |
 */
 CREATE TABLE products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <example>'Rucní zadání'</example>
 );
 
 /*
-Schema: NULLTable: transactions_1k
+Schema: NULL
+Table: transactions_1k
 Rows: 1000
 Sample rows:
 | TransactionID   | Date       | Time     | CustomerID   | CardID   | GasStationID   | ProductID   | Amount   | Price   |
@@ -81,28 +85,29 @@ Sample rows:
 | ...             | ...        | ...      | ...          | ...      | ...            | ...         | ...      | ...     |
 */
 CREATE TABLE transactions_1k (
-    TransactionID INTEGER NOT NULL PRIMARY KEY,
+    "TransactionID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Date DATE NOT NULL,
+    "Date" DATE NOT NULL,
         -- <example>'2012-08-24'</example>
-    Time TEXT NOT NULL,
+    "Time" TEXT NOT NULL,
         -- <example>'09:41:00'</example>
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>31543</example>
-    CardID INTEGER NOT NULL,
+    "CardID" INTEGER NOT NULL,
         -- <example>486621</example>
-    GasStationID INTEGER NOT NULL,
+    "GasStationID" INTEGER NOT NULL,
         -- <example>3704</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>2</example>
-    Amount INTEGER NOT NULL,
+    "Amount" INTEGER NOT NULL,
         -- <example>28</example>
-    Price REAL NOT NULL
+    "Price" REAL NOT NULL
         -- <example>672.640</example>
 );
 
 /*
-Schema: NULLTable: yearmonth
+Schema: NULL
+Table: yearmonth
 Rows: 383282
 Sample rows:
 | CustomerID   | Date   | Consumption   |
@@ -115,14 +120,14 @@ Sample rows:
 | ...          | ...    | ...           |
 */
 CREATE TABLE yearmonth (
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>39</example>
-        -- <fk> -> customers.CustomerID</fk>
-    Date TEXT NOT NULL,
+        -- <fk> -> customers."CustomerID"</fk>
+    "Date" TEXT NOT NULL,
         -- <example>'201112'</example>
-    Consumption REAL NOT NULL,
+    "Consumption" REAL NOT NULL,
         -- <example>528.300</example>
-    PRIMARY KEY (CustomerID, Date),
-    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID)
+    PRIMARY KEY ("CustomerID", "Date"),
+    FOREIGN KEY ("CustomerID") REFERENCES customers("CustomerID")
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: donor
 
 /*
-Schema: NULLTable: donations
+Schema: NULL
+Table: donations
 Rows: 3097556
 Sample rows:
 | donationid                       | projectid                        | donor_acctid                     | donor_city     | donor_state   | donor_zip   | is_teacher_acct   | donation_timestamp      | donation_to_project   | donation_optional_support   | donation_total   | dollar_amount   | donation_included_optional_support   | payment_method   | payment_included_acct_credit   | payment_included_campaign_gift_card   | payment_included_web_purchased_gift_card   | payment_was_promo_matched   | via_giving_page   | for_honoree   | donation_message                                                                                                                                                                                            |
@@ -15,54 +16,55 @@ Sample rows:
 | ...                              | ...                              | ...                              | ...            | ...           | ...         | ...               | ...                     | ...                   | ...                         | ...              | ...             | ...                                  | ...              | ...                            | ...                                   | ...                                        | ...                         | ...               | ...           | ...                                                                                                                                                                                                         |
 */
 CREATE TABLE donations (
-    donationid TEXT NOT NULL PRIMARY KEY,
+    "donationid" TEXT NOT NULL PRIMARY KEY,
         -- <example>'000000a91a14ed37bef82e125c102e77'</example>
-    projectid TEXT NOT NULL,
+    "projectid" TEXT NOT NULL,
         -- <example>'ffffac55ee02a49d1abc87ba6fc61135'</example>
-        -- <fk> -> projects.projectid</fk>
-    donor_acctid TEXT NOT NULL,
+        -- <fk> -> projects."projectid"</fk>
+    "donor_acctid" TEXT NOT NULL,
         -- <example>'22cbc920c9b5fa08dfb331422f5926b5'</example>
-    donor_city TEXT NULL,
+    "donor_city" TEXT NULL,
         -- <example>'Peachtree City'</example>
-    donor_state TEXT NULL,
+    "donor_state" TEXT NULL,
         -- <example>'GA'</example>
-    donor_zip TEXT NULL,
+    "donor_zip" TEXT NULL,
         -- <example>'30269'</example>
-    is_teacher_acct TEXT NOT NULL,
+    "is_teacher_acct" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    donation_timestamp DATETIME NOT NULL,
+    "donation_timestamp" DATETIME NOT NULL,
         -- <example>'2011-08-25 14:27:34.807'</example>
-    donation_to_project REAL NOT NULL,
+    "donation_to_project" REAL NOT NULL,
         -- <example>42.500</example>
-    donation_optional_support REAL NOT NULL,
+    "donation_optional_support" REAL NOT NULL,
         -- <example>7.500</example>
-    donation_total REAL NOT NULL,
+    "donation_total" REAL NOT NULL,
         -- <example>50.000</example>
-    dollar_amount TEXT NOT NULL,
+    "dollar_amount" TEXT NOT NULL,
         -- <values>{'100_and_up', '10_to_100', 'under_10'}</values>
-    donation_included_optional_support TEXT NOT NULL,
+    "donation_included_optional_support" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    payment_method TEXT NOT NULL,
+    "payment_method" TEXT NOT NULL,
         -- <values>{'almost_home_match', 'amazon', 'check', 'creditcard', 'double_your_impact_match', 'no_cash_received', 'paypal', 'promo_code_match'}</values>
-    payment_included_acct_credit TEXT NOT NULL,
+    "payment_included_acct_credit" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    payment_included_campaign_gift_card TEXT NOT NULL,
+    "payment_included_campaign_gift_card" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    payment_included_web_purchased_gift_card TEXT NOT NULL,
+    "payment_included_web_purchased_gift_card" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    payment_was_promo_matched TEXT NOT NULL,
+    "payment_was_promo_matched" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    via_giving_page TEXT NOT NULL,
+    "via_giving_page" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    for_honoree TEXT NOT NULL,
+    "for_honoree" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    donation_message TEXT NULL,
+    "donation_message" TEXT NULL,
         -- <example>'I gave to this project because I support the effor...students, and her school, Suder Elementary School.'</example>
-    FOREIGN KEY (projectid) REFERENCES projects(projectid)
+    FOREIGN KEY ("projectid") REFERENCES projects("projectid")
 );
 
 /*
-Schema: NULLTable: essays
+Schema: NULL
+Table: essays
 Rows: 99998
 Sample rows:
 | projectid                        | teacher_acctid                   | title                                        | short_description                                                                                                                                                                                           | need_statement                                                                                                                             | essay                                                                                                                                                                                                       |
@@ -81,22 +83,23 @@ Sample rows:
 | ...                              | ...                              | ...                                          | ...                                                                                                                                                                                                         | ...                                                                                                                                        | ...                                                                                                                                                                                                         |
 */
 CREATE TABLE essays (
-    projectid TEXT NOT NULL,
+    "projectid" TEXT NOT NULL,
         -- <example>'ffffc4f85b60efc5b52347df489d0238'</example>
-    teacher_acctid TEXT NOT NULL,
+    "teacher_acctid" TEXT NOT NULL,
         -- <example>'c24011b20fc161ed02248e85beb59a90'</example>
-    title TEXT NULL,
+    "title" TEXT NULL,
         -- <example>'iMath'</example>
-    short_description TEXT NULL,
+    "short_description" TEXT NULL,
         -- <example>'It is imperative that teachers bring technology in...e iMath project will help students by obtaining cl'</example>
-    need_statement TEXT NULL,
+    "need_statement" TEXT NULL,
         -- <example>'My students need four iPods.'</example>
-    essay TEXT NOT NULL
+    "essay" TEXT NOT NULL
         -- <example>'I am a fourth year fifth grade math teacher. The s... the process of completing a Masters degree in Tec'</example>
 );
 
 /*
-Schema: NULLTable: projects
+Schema: NULL
+Table: projects
 Rows: 664098
 Sample rows:
 | projectid                        | teacher_acctid                   | schoolid                         | school_ncesid   | school_latitude   | school_longitude   | school_city   | school_state   | school_zip   | school_metro   | school_district                | school_county    | school_charter   | school_magnet   | school_year_round   | school_nlns   | school_kipp   | school_charter_ready_promise   | teacher_prefix   | teacher_teach_for_america   | teacher_ny_teaching_fellow   | primary_focus_subject   | primary_focus_area   | secondary_focus_subject   | secondary_focus_area   | resource_type   | poverty_level   | grade_level   | fulfillment_labor_materials   | total_price_excluding_optional_support   | total_price_including_optional_support   | students_reached   | eligible_double_your_impact_match   | eligible_almost_home_match   | date_posted   |
@@ -109,80 +112,81 @@ Sample rows:
 | ...                              | ...                              | ...                              | ...             | ...               | ...                | ...           | ...            | ...          | ...            | ...                            | ...              | ...              | ...             | ...                 | ...           | ...           | ...                            | ...              | ...                         | ...                          | ...                     | ...                  | ...                       | ...                    | ...             | ...             | ...           | ...                           | ...                                      | ...                                      | ...                | ...                                 | ...                          | ...           |
 */
 CREATE TABLE projects (
-    projectid TEXT NOT NULL PRIMARY KEY,
+    "projectid" TEXT NOT NULL PRIMARY KEY,
         -- <example>'00001ccc0e81598c4bd86bacb94d7acb'</example>
-    teacher_acctid TEXT NOT NULL,
+    "teacher_acctid" TEXT NOT NULL,
         -- <example>'42d43fa6f37314365d08692e08680973'</example>
-    schoolid TEXT NOT NULL,
+    "schoolid" TEXT NOT NULL,
         -- <example>'c0e6ce89b244764085691a1b8e28cb81'</example>
-    school_ncesid TEXT NULL,
+    "school_ncesid" TEXT NULL,
         -- <example>'063627006187'</example>
-    school_latitude REAL NOT NULL,
+    "school_latitude" REAL NOT NULL,
         -- <example>36.576</example>
-    school_longitude REAL NOT NULL,
+    "school_longitude" REAL NOT NULL,
         -- <example>-119.609</example>
-    school_city TEXT NOT NULL,
+    "school_city" TEXT NOT NULL,
         -- <example>'Selma'</example>
-    school_state TEXT NOT NULL,
+    "school_state" TEXT NOT NULL,
         -- <example>'CA'</example>
-    school_zip INTEGER NULL,
+    "school_zip" INTEGER NULL,
         -- <example>93662</example>
-    school_metro TEXT NULL,
+    "school_metro" TEXT NULL,
         -- <values>{'rural', 'suburban', 'urban'}</values>
-    school_district TEXT NULL,
+    "school_district" TEXT NULL,
         -- <example>'Selma Unified Sch District'</example>
-    school_county TEXT NULL,
+    "school_county" TEXT NULL,
         -- <example>'Fresno'</example>
-    school_charter TEXT NOT NULL,
+    "school_charter" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    school_magnet TEXT NOT NULL,
+    "school_magnet" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    school_year_round TEXT NOT NULL,
+    "school_year_round" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    school_nlns TEXT NOT NULL,
+    "school_nlns" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    school_kipp TEXT NOT NULL,
+    "school_kipp" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    school_charter_ready_promise TEXT NOT NULL,
+    "school_charter_ready_promise" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    teacher_prefix TEXT NOT NULL,
+    "teacher_prefix" TEXT NOT NULL,
         -- <values>{'', 'Dr.', 'Mr. & Mrs.', 'Mr.', 'Mrs.', 'Ms.'}</values>
-    teacher_teach_for_america TEXT NOT NULL,
+    "teacher_teach_for_america" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    teacher_ny_teaching_fellow TEXT NOT NULL,
+    "teacher_ny_teaching_fellow" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    primary_focus_subject TEXT NULL,
+    "primary_focus_subject" TEXT NULL,
         -- <example>'Literature & Writing'</example>
-    primary_focus_area TEXT NULL,
+    "primary_focus_area" TEXT NULL,
         -- <values>{'Applied Learning', 'Health & Sports', 'History & Civics', 'Literacy & Language', 'Math & Science', 'Music & The Arts', 'Special Needs'}</values>
-    secondary_focus_subject TEXT NULL,
+    "secondary_focus_subject" TEXT NULL,
         -- <example>'College & Career Prep'</example>
-    secondary_focus_area TEXT NULL,
+    "secondary_focus_area" TEXT NULL,
         -- <values>{'Applied Learning', 'Health & Sports', 'History & Civics', 'Literacy & Language', 'Math & Science', 'Music & The Arts', 'Special Needs'}</values>
-    resource_type TEXT NULL,
+    "resource_type" TEXT NULL,
         -- <values>{'Books', 'Other', 'Supplies', 'Technology', 'Trips', 'Visitors'}</values>
-    poverty_level TEXT NOT NULL,
+    "poverty_level" TEXT NOT NULL,
         -- <values>{'high poverty', 'highest poverty', 'low poverty', 'moderate poverty'}</values>
-    grade_level TEXT NULL,
+    "grade_level" TEXT NULL,
         -- <values>{'Grades 3-5', 'Grades 6-8', 'Grades 9-12', 'Grades PreK-2'}</values>
-    fulfillment_labor_materials REAL NULL,
+    "fulfillment_labor_materials" REAL NULL,
         -- <example>30.000</example>
-    total_price_excluding_optional_support REAL NOT NULL,
+    "total_price_excluding_optional_support" REAL NOT NULL,
         -- <example>555.810</example>
-    total_price_including_optional_support REAL NOT NULL,
+    "total_price_including_optional_support" REAL NOT NULL,
         -- <example>653.890</example>
-    students_reached INTEGER NULL,
+    "students_reached" INTEGER NULL,
         -- <example>32</example>
-    eligible_double_your_impact_match TEXT NOT NULL,
+    "eligible_double_your_impact_match" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    eligible_almost_home_match TEXT NOT NULL,
+    "eligible_almost_home_match" TEXT NOT NULL,
         -- <values>{'f', 't'}</values>
-    date_posted DATE NOT NULL
+    "date_posted" DATE NOT NULL
         -- <example>'2014-05-12'</example>
 );
 
 /*
-Schema: NULLTable: resources
+Schema: NULL
+Table: resources
 Rows: 3666757
 Sample rows:
 | resourceid                       | projectid                        | vendorid   | vendor_name                  | project_resource_type   | item_name                                                    | item_number   | item_unit_price   | item_quantity   |
@@ -195,25 +199,25 @@ Sample rows:
 | ...                              | ...                              | ...        | ...                          | ...                     | ...                                                          | ...           | ...               | ...             |
 */
 CREATE TABLE resources (
-    resourceid TEXT NOT NULL PRIMARY KEY,
+    "resourceid" TEXT NOT NULL PRIMARY KEY,
         -- <example>'0000037fecc4461faf0e49328ae66661'</example>
-    projectid TEXT NOT NULL,
+    "projectid" TEXT NOT NULL,
         -- <example>'ffffc4f85b60efc5b52347df489d0238'</example>
-        -- <fk> -> projects.projectid</fk>
-    vendorid INTEGER NULL,
+        -- <fk> -> projects."projectid"</fk>
+    "vendorid" INTEGER NULL,
         -- <example>430</example>
-    vendor_name TEXT NULL,
+    "vendor_name" TEXT NULL,
         -- <example>'Woodwind and Brasswind'</example>
-    project_resource_type TEXT NULL,
+    "project_resource_type" TEXT NULL,
         -- <values>{'Books', 'Other', 'Supplies', 'Technology', 'Trips', 'Visitors'}</values>
-    item_name TEXT NULL,
+    "item_name" TEXT NULL,
         -- <example>'iPod nano 4th Gen 8GB (Black)'</example>
-    item_number TEXT NULL,
+    "item_number" TEXT NULL,
         -- <example>'249995.001'</example>
-    item_unit_price REAL NULL,
+    "item_unit_price" REAL NULL,
         -- <example>149.000</example>
-    item_quantity INTEGER NULL,
+    "item_quantity" INTEGER NULL,
         -- <example>4</example>
-    FOREIGN KEY (projectid) REFERENCES projects(projectid)
+    FOREIGN KEY ("projectid") REFERENCES projects("projectid")
 );
 ```

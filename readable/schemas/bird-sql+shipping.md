@@ -2,7 +2,8 @@
 -- Database: shipping
 
 /*
-Schema: NULLTable: city
+Schema: NULL
+Table: city
 Rows: 601
 Sample rows:
 | city_id   | city_name       | state      | population   | area   |
@@ -15,20 +16,21 @@ Sample rows:
 | ...       | ...             | ...        | ...          | ...    |
 */
 CREATE TABLE city (
-    city_id INTEGER NOT NULL PRIMARY KEY,
+    "city_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>100</example>
-    city_name TEXT NOT NULL,
+    "city_name" TEXT NOT NULL,
         -- <example>'Union City'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'New Jersey'</example>
-    population INTEGER NOT NULL,
+    "population" INTEGER NOT NULL,
         -- <example>67088</example>
-    area REAL NOT NULL
+    "area" REAL NOT NULL
         -- <example>1.300</example>
 );
 
 /*
-Schema: NULLTable: customer
+Schema: NULL
+Table: customer
 Rows: 100
 Sample rows:
 | cust_id   | cust_name                                | annual_revenue   | cust_type    | address                   | city            | state   | zip     | phone          |
@@ -41,28 +43,29 @@ Sample rows:
 | ...       | ...                                      | ...              | ...          | ...                       | ...             | ...     | ...     | ...            |
 */
 CREATE TABLE customer (
-    cust_id INTEGER NOT NULL PRIMARY KEY,
+    "cust_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>193</example>
-    cust_name TEXT NOT NULL,
+    "cust_name" TEXT NOT NULL,
         -- <example>'Advanced Fabricators'</example>
-    annual_revenue INTEGER NOT NULL,
+    "annual_revenue" INTEGER NOT NULL,
         -- <example>39588651</example>
-    cust_type TEXT NOT NULL,
+    "cust_type" TEXT NOT NULL,
         -- <values>{'manufacturer', 'retailer', 'wholesaler'}</values>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'5141 Summit Boulevard'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'West Palm Beach'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'FL'</example>
-    zip REAL NOT NULL,
+    "zip" REAL NOT NULL,
         -- <example>33415.000</example>
-    phone TEXT NOT NULL
+    "phone" TEXT NOT NULL
         -- <example>'(561) 683-3535'</example>
 );
 
 /*
-Schema: NULLTable: driver
+Schema: NULL
+Table: driver
 Rows: 11
 Sample rows:
 | driver_id   | first_name   | last_name   | address            | city    | state   | zip_code   | phone          |
@@ -75,26 +78,27 @@ Sample rows:
 | ...         | ...          | ...         | ...                | ...     | ...     | ...        | ...            |
 */
 CREATE TABLE driver (
-    driver_id INTEGER NOT NULL PRIMARY KEY,
+    "driver_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>20</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Sue'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <example>'Newell'</example>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'268 Richmond Ave'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Memphis'}</values>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <values>{'TN'}</values>
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>38106</example>
-    phone TEXT NOT NULL
+    "phone" TEXT NOT NULL
         -- <example>'(901) 774-6569'</example>
 );
 
 /*
-Schema: NULLTable: shipment
+Schema: NULL
+Table: shipment
 Rows: 960
 Sample rows:
 | ship_id   | cust_id   | weight   | truck_id   | driver_id   | city_id   | ship_date   |
@@ -107,32 +111,33 @@ Sample rows:
 | ...       | ...       | ...      | ...        | ...         | ...       | ...         |
 */
 CREATE TABLE shipment (
-    ship_id INTEGER NOT NULL PRIMARY KEY,
+    "ship_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1000</example>
-    cust_id INTEGER NOT NULL,
+    "cust_id" INTEGER NOT NULL,
         -- <example>3660</example>
-        -- <fk> -> customer.cust_id</fk>
-    weight REAL NOT NULL,
+        -- <fk> -> customer."cust_id"</fk>
+    "weight" REAL NOT NULL,
         -- <example>3528.000</example>
-    truck_id INTEGER NOT NULL,
+    "truck_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> truck.truck_id</fk>
-    driver_id INTEGER NOT NULL,
+        -- <fk> -> truck."truck_id"</fk>
+    "driver_id" INTEGER NOT NULL,
         -- <example>23</example>
-        -- <fk> -> driver.driver_id</fk>
-    city_id INTEGER NOT NULL,
+        -- <fk> -> driver."driver_id"</fk>
+    "city_id" INTEGER NOT NULL,
         -- <example>137</example>
-        -- <fk> -> city.city_id</fk>
-    ship_date TEXT NOT NULL,
+        -- <fk> -> city."city_id"</fk>
+    "ship_date" TEXT NOT NULL,
         -- <example>'2016-01-08'</example>
-    FOREIGN KEY (cust_id) REFERENCES customer(cust_id),
-    FOREIGN KEY (city_id) REFERENCES city(city_id),
-    FOREIGN KEY (driver_id) REFERENCES driver(driver_id),
-    FOREIGN KEY (truck_id) REFERENCES truck(truck_id)
+    FOREIGN KEY ("cust_id") REFERENCES customer("cust_id"),
+    FOREIGN KEY ("city_id") REFERENCES city("city_id"),
+    FOREIGN KEY ("driver_id") REFERENCES driver("driver_id"),
+    FOREIGN KEY ("truck_id") REFERENCES truck("truck_id")
 );
 
 /*
-Schema: NULLTable: truck
+Schema: NULL
+Table: truck
 Rows: 12
 Sample rows:
 | truck_id   | make      | model_year   |
@@ -145,11 +150,11 @@ Sample rows:
 | ...        | ...       | ...          |
 */
 CREATE TABLE truck (
-    truck_id INTEGER NOT NULL PRIMARY KEY,
+    "truck_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    make TEXT NOT NULL,
+    "make" TEXT NOT NULL,
         -- <values>{'Kenworth', 'Mack', 'Peterbilt'}</values>
-    model_year INTEGER NOT NULL
+    "model_year" INTEGER NOT NULL
         -- <example>2005</example>
 );
 ```

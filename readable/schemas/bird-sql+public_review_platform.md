@@ -2,7 +2,8 @@
 -- Database: public_review_platform
 
 /*
-Schema: NULLTable: Attributes
+Schema: NULL
+Table: Attributes
 Rows: 80
 Sample rows:
 | attribute_id   | attribute_name   |
@@ -15,14 +16,15 @@ Sample rows:
 | ...            | ...              |
 */
 CREATE TABLE Attributes (
-    attribute_id INTEGER NOT NULL PRIMARY KEY,
+    "attribute_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    attribute_name TEXT NOT NULL
+    "attribute_name" TEXT NOT NULL
         -- <example>'Alcohol'</example>
 );
 
 /*
-Schema: NULLTable: Business
+Schema: NULL
+Table: Business
 Rows: 15585
 Sample rows:
 | business_id   | active   | city       | state   | stars   | review_count   |
@@ -35,22 +37,23 @@ Sample rows:
 | ...           | ...      | ...        | ...     | ...     | ...            |
 */
 CREATE TABLE Business (
-    business_id INTEGER NOT NULL PRIMARY KEY,
+    "business_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    active TEXT NOT NULL,
+    "active" TEXT NOT NULL,
         -- <values>{'false', 'true'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Phoenix'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <values>{'AZ', 'CA', 'SC'}</values>
-    stars REAL NOT NULL,
+    "stars" REAL NOT NULL,
         -- <example>3.000</example>
-    review_count TEXT NOT NULL
+    "review_count" TEXT NOT NULL
         -- <values>{'High', 'Low', 'Medium', 'Uber'}</values>
 );
 
 /*
-Schema: NULLTable: Business_Attributes
+Schema: NULL
+Table: Business_Attributes
 Rows: 206934
 Sample rows:
 | attribute_id   | business_id   | attribute_value   |
@@ -63,21 +66,22 @@ Sample rows:
 | ...            | ...           | ...               |
 */
 CREATE TABLE Business_Attributes (
-    attribute_id INTEGER NOT NULL,
+    "attribute_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Attributes.attribute_id</fk>
-    business_id INTEGER NOT NULL,
+        -- <fk> -> Attributes."attribute_id"</fk>
+    "business_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Business.business_id</fk>
-    attribute_value TEXT NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "attribute_value" TEXT NOT NULL,
         -- <example>'none'</example>
-    PRIMARY KEY (attribute_id, business_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id),
-    FOREIGN KEY (attribute_id) REFERENCES Attributes(attribute_id)
+    PRIMARY KEY ("attribute_id", "business_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id"),
+    FOREIGN KEY ("attribute_id") REFERENCES Attributes("attribute_id")
 );
 
 /*
-Schema: NULLTable: Business_Categories
+Schema: NULL
+Table: Business_Categories
 Rows: 43703
 Sample rows:
 | business_id   | category_id   |
@@ -90,19 +94,20 @@ Sample rows:
 | ...           | ...           |
 */
 CREATE TABLE Business_Categories (
-    business_id INTEGER NOT NULL,
+    "business_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Business.business_id</fk>
-    category_id INTEGER NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "category_id" INTEGER NOT NULL,
         -- <example>8</example>
-        -- <fk> -> Categories.category_id</fk>
-    PRIMARY KEY (business_id, category_id),
-    FOREIGN KEY (category_id) REFERENCES Categories(category_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id)
+        -- <fk> -> Categories."category_id"</fk>
+    PRIMARY KEY ("business_id", "category_id"),
+    FOREIGN KEY ("category_id") REFERENCES Categories("category_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id")
 );
 
 /*
-Schema: NULLTable: Business_Hours
+Schema: NULL
+Table: Business_Hours
 Rows: 47831
 Sample rows:
 | business_id   | day_id   | opening_time   | closing_time   |
@@ -115,23 +120,24 @@ Sample rows:
 | ...           | ...      | ...            | ...            |
 */
 CREATE TABLE Business_Hours (
-    business_id INTEGER NOT NULL,
+    "business_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Business.business_id</fk>
-    day_id INTEGER NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "day_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Days.day_id</fk>
-    opening_time TEXT NOT NULL,
+        -- <fk> -> Days."day_id"</fk>
+    "opening_time" TEXT NOT NULL,
         -- <example>'11AM'</example>
-    closing_time TEXT NOT NULL,
+    "closing_time" TEXT NOT NULL,
         -- <example>'8PM'</example>
-    PRIMARY KEY (business_id, day_id),
-    FOREIGN KEY (day_id) REFERENCES Days(day_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id)
+    PRIMARY KEY ("business_id", "day_id"),
+    FOREIGN KEY ("day_id") REFERENCES Days("day_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id")
 );
 
 /*
-Schema: NULLTable: Categories
+Schema: NULL
+Table: Categories
 Rows: 591
 Sample rows:
 | category_id   | category_name        |
@@ -144,14 +150,15 @@ Sample rows:
 | ...           | ...                  |
 */
 CREATE TABLE Categories (
-    category_id INTEGER NOT NULL PRIMARY KEY,
+    "category_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    category_name TEXT NOT NULL
+    "category_name" TEXT NOT NULL
         -- <example>'Active Life'</example>
 );
 
 /*
-Schema: NULLTable: Checkins
+Schema: NULL
+Table: Checkins
 Rows: 80038
 Sample rows:
 | business_id   | day_id   | label_time_0   | label_time_1   | label_time_2   | label_time_3   | label_time_4   | label_time_5   | label_time_6   | label_time_7   | label_time_8   | label_time_9   | label_time_10   | label_time_11   | label_time_12   | label_time_13   | label_time_14   | label_time_15   | label_time_16   | label_time_17   | label_time_18   | label_time_19   | label_time_20   | label_time_21   | label_time_22   | label_time_23   |
@@ -164,67 +171,68 @@ Sample rows:
 | ...           | ...      | ...            | ...            | ...            | ...            | ...            | ...            | ...            | ...            | ...            | ...            | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             | ...             |
 */
 CREATE TABLE Checkins (
-    business_id INTEGER NOT NULL,
+    "business_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Business.business_id</fk>
-    day_id INTEGER NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "day_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Days.day_id</fk>
-    label_time_0 TEXT NOT NULL,
+        -- <fk> -> Days."day_id"</fk>
+    "label_time_0" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None'}</values>
-    label_time_1 TEXT NOT NULL,
+    "label_time_1" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None'}</values>
-    label_time_2 TEXT NOT NULL,
+    "label_time_2" TEXT NOT NULL,
         -- <values>{'Low', 'Medium', 'None'}</values>
-    label_time_3 TEXT NOT NULL,
+    "label_time_3" TEXT NOT NULL,
         -- <values>{'Low', 'Medium', 'None'}</values>
-    label_time_4 TEXT NOT NULL,
+    "label_time_4" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None'}</values>
-    label_time_5 TEXT NOT NULL,
+    "label_time_5" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_6 TEXT NOT NULL,
+    "label_time_6" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_7 TEXT NOT NULL,
+    "label_time_7" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_8 TEXT NOT NULL,
+    "label_time_8" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_9 TEXT NOT NULL,
+    "label_time_9" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_10 TEXT NOT NULL,
+    "label_time_10" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_11 TEXT NOT NULL,
+    "label_time_11" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_12 TEXT NOT NULL,
+    "label_time_12" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_13 TEXT NOT NULL,
+    "label_time_13" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_14 TEXT NOT NULL,
+    "label_time_14" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_15 TEXT NOT NULL,
+    "label_time_15" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_16 TEXT NOT NULL,
+    "label_time_16" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_17 TEXT NOT NULL,
+    "label_time_17" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_18 TEXT NOT NULL,
+    "label_time_18" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_19 TEXT NOT NULL,
+    "label_time_19" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_20 TEXT NOT NULL,
+    "label_time_20" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_21 TEXT NOT NULL,
+    "label_time_21" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_22 TEXT NOT NULL,
+    "label_time_22" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    label_time_23 TEXT NOT NULL,
+    "label_time_23" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None'}</values>
-    PRIMARY KEY (business_id, day_id),
-    FOREIGN KEY (day_id) REFERENCES Days(day_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id)
+    PRIMARY KEY ("business_id", "day_id"),
+    FOREIGN KEY ("day_id") REFERENCES Days("day_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id")
 );
 
 /*
-Schema: NULLTable: Compliments
+Schema: NULL
+Table: Compliments
 Rows: 11
 Sample rows:
 | compliment_id   | compliment_type   |
@@ -237,14 +245,15 @@ Sample rows:
 | ...             | ...               |
 */
 CREATE TABLE Compliments (
-    compliment_id INTEGER NOT NULL PRIMARY KEY,
+    "compliment_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    compliment_type TEXT NOT NULL
+    "compliment_type" TEXT NOT NULL
         -- <example>'photos'</example>
 );
 
 /*
-Schema: NULLTable: Days
+Schema: NULL
+Table: Days
 Rows: 7
 All rows:
 |   day_id | day_of_week   |
@@ -258,14 +267,15 @@ All rows:
 |        7 | Saturday      |
 */
 CREATE TABLE Days (
-    day_id INTEGER NOT NULL PRIMARY KEY,
+    "day_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    day_of_week TEXT NOT NULL
+    "day_of_week" TEXT NOT NULL
         -- <values>{'Friday', 'Monday', 'Saturday', 'Sunday', 'Thursday', 'Tuesday', 'Wednesday'}</values>
 );
 
 /*
-Schema: NULLTable: Elite
+Schema: NULL
+Table: Elite
 Rows: 16366
 Sample rows:
 | user_id   | year_id   |
@@ -278,19 +288,20 @@ Sample rows:
 | ...       | ...       |
 */
 CREATE TABLE Elite (
-    user_id INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> Users.user_id</fk>
-    year_id INTEGER NOT NULL,
+        -- <fk> -> Users."user_id"</fk>
+    "year_id" INTEGER NOT NULL,
         -- <example>2010</example>
-        -- <fk> -> Years.year_id</fk>
-    PRIMARY KEY (user_id, year_id),
-    FOREIGN KEY (year_id) REFERENCES Years(year_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id)
+        -- <fk> -> Years."year_id"</fk>
+    PRIMARY KEY ("user_id", "year_id"),
+    FOREIGN KEY ("year_id") REFERENCES Years("year_id"),
+    FOREIGN KEY ("user_id") REFERENCES Users("user_id")
 );
 
 /*
-Schema: NULLTable: Reviews
+Schema: NULL
+Table: Reviews
 Rows: 322906
 Sample rows:
 | business_id   | user_id   | review_stars   | review_votes_funny   | review_votes_useful   | review_votes_cool   | review_length   |
@@ -303,29 +314,30 @@ Sample rows:
 | ...           | ...       | ...            | ...                  | ...                   | ...                 | ...             |
 */
 CREATE TABLE Reviews (
-    business_id INTEGER NOT NULL,
+    "business_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Business.business_id</fk>
-    user_id INTEGER NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "user_id" INTEGER NOT NULL,
         -- <example>36129</example>
-        -- <fk> -> Users.user_id</fk>
-    review_stars INTEGER NOT NULL,
+        -- <fk> -> Users."user_id"</fk>
+    "review_stars" INTEGER NOT NULL,
         -- <example>2</example>
-    review_votes_funny TEXT NOT NULL,
+    "review_votes_funny" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    review_votes_useful TEXT NOT NULL,
+    "review_votes_useful" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    review_votes_cool TEXT NOT NULL,
+    "review_votes_cool" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    review_length TEXT NOT NULL,
+    "review_length" TEXT NOT NULL,
         -- <values>{'Long', 'Medium', 'Short'}</values>
-    PRIMARY KEY (business_id, user_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id)
+    PRIMARY KEY ("business_id", "user_id"),
+    FOREIGN KEY ("user_id") REFERENCES Users("user_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id")
 );
 
 /*
-Schema: NULLTable: Tips
+Schema: NULL
+Table: Tips
 Rows: 87157
 Sample rows:
 | business_id   | user_id   | likes   | tip_length   |
@@ -338,23 +350,24 @@ Sample rows:
 | ...           | ...       | ...     | ...          |
 */
 CREATE TABLE Tips (
-    business_id INTEGER NOT NULL,
+    "business_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> Business.business_id</fk>
-    user_id INTEGER NOT NULL,
+        -- <fk> -> Business."business_id"</fk>
+    "user_id" INTEGER NOT NULL,
         -- <example>12490</example>
-        -- <fk> -> Users.user_id</fk>
-    likes INTEGER NOT NULL,
+        -- <fk> -> Users."user_id"</fk>
+    "likes" INTEGER NOT NULL,
         -- <example>0</example>
-    tip_length TEXT NOT NULL,
+    "tip_length" TEXT NOT NULL,
         -- <values>{'Long', 'Medium', 'Short'}</values>
-    PRIMARY KEY (business_id, user_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (business_id) REFERENCES Business(business_id)
+    PRIMARY KEY ("business_id", "user_id"),
+    FOREIGN KEY ("user_id") REFERENCES Users("user_id"),
+    FOREIGN KEY ("business_id") REFERENCES Business("business_id")
 );
 
 /*
-Schema: NULLTable: Users
+Schema: NULL
+Table: Users
 Rows: 70817
 Sample rows:
 | user_id   | user_yelping_since_year   | user_average_stars   | user_votes_funny   | user_votes_useful   | user_votes_cool   | user_review_count   | user_fans   |
@@ -367,26 +380,27 @@ Sample rows:
 | ...       | ...                       | ...                  | ...                | ...                 | ...               | ...                 | ...         |
 */
 CREATE TABLE Users (
-    user_id INTEGER NOT NULL PRIMARY KEY,
+    "user_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    user_yelping_since_year INTEGER NOT NULL,
+    "user_yelping_since_year" INTEGER NOT NULL,
         -- <example>2012</example>
-    user_average_stars TEXT NOT NULL,
+    "user_average_stars" TEXT NOT NULL,
         -- <values>{'0.0', '1.0', '1.5', '2.0', '2.5', '3.0', '3.5', '4.0', '4.5', '5.0'}</values>
-    user_votes_funny TEXT NOT NULL,
+    "user_votes_funny" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    user_votes_useful TEXT NOT NULL,
+    "user_votes_useful" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    user_votes_cool TEXT NOT NULL,
+    "user_votes_cool" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
-    user_review_count TEXT NOT NULL,
+    "user_review_count" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'Uber'}</values>
-    user_fans TEXT NOT NULL
+    "user_fans" TEXT NOT NULL
         -- <values>{'High', 'Low', 'Medium', 'None', 'Uber'}</values>
 );
 
 /*
-Schema: NULLTable: Users_Compliments
+Schema: NULL
+Table: Users_Compliments
 Rows: 98810
 Sample rows:
 | compliment_id   | user_id   | number_of_compliments   |
@@ -399,21 +413,22 @@ Sample rows:
 | ...             | ...       | ...                     |
 */
 CREATE TABLE Users_Compliments (
-    compliment_id INTEGER NOT NULL,
+    "compliment_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Compliments.compliment_id</fk>
-    user_id INTEGER NOT NULL,
+        -- <fk> -> Compliments."compliment_id"</fk>
+    "user_id" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> Users.user_id</fk>
-    number_of_compliments TEXT NOT NULL,
+        -- <fk> -> Users."user_id"</fk>
+    "number_of_compliments" TEXT NOT NULL,
         -- <values>{'High', 'Low', 'Medium', 'Uber'}</values>
-    PRIMARY KEY (compliment_id, user_id),
-    FOREIGN KEY (user_id) REFERENCES Users(user_id),
-    FOREIGN KEY (compliment_id) REFERENCES Compliments(compliment_id)
+    PRIMARY KEY ("compliment_id", "user_id"),
+    FOREIGN KEY ("user_id") REFERENCES Users("user_id"),
+    FOREIGN KEY ("compliment_id") REFERENCES Compliments("compliment_id")
 );
 
 /*
-Schema: NULLTable: Years
+Schema: NULL
+Table: Years
 Rows: 10
 All rows:
 |   year_id |   actual_year |
@@ -430,9 +445,9 @@ All rows:
 |      2014 |          2014 |
 */
 CREATE TABLE Years (
-    year_id INTEGER NOT NULL PRIMARY KEY,
+    "year_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2005</example>
-    actual_year INTEGER NOT NULL
+    "actual_year" INTEGER NOT NULL
         -- <example>2005</example>
 );
 ```

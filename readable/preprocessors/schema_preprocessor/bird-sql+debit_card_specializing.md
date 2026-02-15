@@ -2,7 +2,8 @@
 -- Database: debit_card_specializing
 
 /*
-Schema: NULLTable: customers
+Schema: NULL
+Table: customers
 Rows: 32461
 Sample rows:
 | CustomerID   | Segment   | Currency   |
@@ -15,19 +16,20 @@ Sample rows:
 | ...          | ...       | ...        |
 */
 CREATE TABLE customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <description>Customer identifier linking a customer record to related tables (used to associate transactions and monthly consumption with a specific customer).</description>
         -- <example>3</example>
-    Segment TEXT NOT NULL,
+    "Segment" TEXT NOT NULL,
         -- <description>Customer segment — the customer's client/market category used to classify accounts by client type.</description>
         -- <values>{'KAM', 'LAM', 'SME'}</values>
-    Currency TEXT NOT NULL
+    "Currency" TEXT NOT NULL
         -- <description>Customer account currency — the currency in which the customer's account and related transactions are denominated.</description>
         -- <values>{'CZK', 'EUR'}</values>
 );
 
 /*
-Schema: NULLTable: gasstations
+Schema: NULL
+Table: gasstations
 Rows: 5716
 Sample rows:
 | GasStationID   | ChainID   | Country   | Segment         |
@@ -40,26 +42,27 @@ Sample rows:
 | ...            | ...       | ...       | ...             |
 */
 CREATE TABLE gasstations (
-    GasStationID INTEGER NOT NULL PRIMARY KEY,
+    "GasStationID" INTEGER NOT NULL PRIMARY KEY,
         -- <description>Gas station identifier used to link transactions to the station and to represent chain membership (referenced by transactions_1k.GasStationID and by gasstations.ChainID).</description>
         -- <example>44</example>
-    ChainID INTEGER NOT NULL,
+    "ChainID" INTEGER NOT NULL,
         -- <description>Gas station chain identifier linking a station to its parent chain (used to group stations by chain; typically a self-referential reference to gasstations.GasStationID).</description>
         -- <example>13</example>
-        -- <fk> -> gasstations.GasStationID</fk>
-        -- <fk> -> products.ProductID</fk>
-    Country TEXT NOT NULL,
+        -- <fk> -> gasstations."GasStationID"</fk>
+        -- <fk> -> products."ProductID"</fk>
+    "Country" TEXT NOT NULL,
         -- <description>Country of the gas station’s location, used for regional grouping and filtering.</description>
         -- <values>{'CZE', 'SVK'}</values>
-    Segment TEXT NOT NULL,
+    "Segment" TEXT NOT NULL,
         -- <description>Gas station chain segment — categorical label indicating the chain's market positioning.</description>
         -- <values>{'Discount', 'Noname', 'Other', 'Premium', 'Value for money'}</values>
-    FOREIGN KEY (ChainID) REFERENCES gasstations(GasStationID),
-    FOREIGN KEY (ChainID) REFERENCES products(ProductID)
+    FOREIGN KEY ("ChainID") REFERENCES gasstations("GasStationID"),
+    FOREIGN KEY ("ChainID") REFERENCES products("ProductID")
 );
 
 /*
-Schema: NULLTable: products
+Schema: NULL
+Table: products
 Rows: 591
 Sample rows:
 | ProductID   | Description   |
@@ -72,16 +75,17 @@ Sample rows:
 | ...         | ...           |
 */
 CREATE TABLE products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <description>Product identifier used to reference product records from other tables (e.g., transactions).</description>
         -- <example>1</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <description>Product description — a short human-readable name or label for the product (e.g., 'Rucní zadání', 'Nafta', 'Special').</description>
         -- <example>'Rucní zadání'</example>
 );
 
 /*
-Schema: NULLTable: transactions_1k
+Schema: NULL
+Table: transactions_1k
 Rows: 1000
 Sample rows:
 | TransactionID   | Date       | Time     | CustomerID   | CardID   | GasStationID   | ProductID   | Amount   | Price   |
@@ -94,43 +98,44 @@ Sample rows:
 | ...             | ...        | ...      | ...          | ...      | ...            | ...         | ...      | ...     |
 */
 CREATE TABLE transactions_1k (
-    TransactionID INTEGER NOT NULL PRIMARY KEY,
+    "TransactionID" INTEGER NOT NULL PRIMARY KEY,
         -- <description>Unique identifier for each transaction.</description>
         -- <example>1</example>
-    Date DATE NOT NULL,
+    "Date" DATE NOT NULL,
         -- <description>Transaction date — the calendar date on which the transaction occurred (ISO YYYY-MM-DD).</description>
         -- <example>'2012-08-24'</example>
-    Time TEXT NOT NULL,
+    "Time" TEXT NOT NULL,
         -- <description>Transaction time — the clock time when each transaction occurred, recorded in hours:minutes:seconds (e.g., 14:28:00).</description>
         -- <example>'09:41:00'</example>
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <description>Customer identifier for the transaction — the customer who made the purchase.</description>
         -- <example>31543</example>
-        -- <fk> -> customers.CustomerID</fk>
-    CardID INTEGER NOT NULL,
+        -- <fk> -> customers."CustomerID"</fk>
+    "CardID" INTEGER NOT NULL,
         -- <description>Debit card identifier linking the transaction to the specific card used.</description>
         -- <example>486621</example>
-    GasStationID INTEGER NOT NULL,
+    "GasStationID" INTEGER NOT NULL,
         -- <description>Gas station identifier — foreign key to gasstations.GasStationID indicating the station where the transaction occurred.</description>
         -- <example>3704</example>
-        -- <fk> -> gasstations.GasStationID</fk>
-    ProductID INTEGER NOT NULL,
+        -- <fk> -> gasstations."GasStationID"</fk>
+    "ProductID" INTEGER NOT NULL,
         -- <description>Product identifier for the item purchased in the transaction (foreign key to products.ProductID).</description>
         -- <example>2</example>
-        -- <fk> -> products.ProductID</fk>
-    Amount INTEGER NOT NULL,
+        -- <fk> -> products."ProductID"</fk>
+    "Amount" INTEGER NOT NULL,
         -- <description>Quantity purchased in the transaction — integer number of units (e.g., liters or items); combine with Price (the transaction total) to derive a per‑unit price if needed.</description>
         -- <example>28</example>
-    Price REAL NOT NULL,
+    "Price" REAL NOT NULL,
         -- <description>Unit price of the purchased product in the transaction; multiply by Amount to obtain the transaction line total.</description>
         -- <example>672.640</example>
-    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID),
-    FOREIGN KEY (GasStationID) REFERENCES gasstations(GasStationID),
-    FOREIGN KEY (ProductID) REFERENCES products(ProductID)
+    FOREIGN KEY ("CustomerID") REFERENCES customers("CustomerID"),
+    FOREIGN KEY ("GasStationID") REFERENCES gasstations("GasStationID"),
+    FOREIGN KEY ("ProductID") REFERENCES products("ProductID")
 );
 
 /*
-Schema: NULLTable: yearmonth
+Schema: NULL
+Table: yearmonth
 Rows: 383282
 Sample rows:
 | CustomerID   | Date   | Consumption   |
@@ -143,17 +148,17 @@ Sample rows:
 | ...          | ...    | ...           |
 */
 CREATE TABLE yearmonth (
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <description>Customer identifier (foreign key to customers.CustomerID; part of the yearmonth table's composite primary key).</description>
         -- <example>39</example>
-        -- <fk> -> customers.CustomerID</fk>
-    Date TEXT NOT NULL,
+        -- <fk> -> customers."CustomerID"</fk>
+    "Date" TEXT NOT NULL,
         -- <description>Year–month period of the record, encoded as YYYYMM (four-digit year followed by two-digit month); examples: '201205', '201302', '201304'.</description>
         -- <example>'201112'</example>
-    Consumption REAL NOT NULL,
+    "Consumption" REAL NOT NULL,
         -- <description>Monthly consumption amount per customer (total monetary consumption for the specified year‑month).</description>
         -- <example>528.300</example>
-    PRIMARY KEY (CustomerID, Date),
-    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID)
+    PRIMARY KEY ("CustomerID", "Date"),
+    FOREIGN KEY ("CustomerID") REFERENCES customers("CustomerID")
 );
 ```

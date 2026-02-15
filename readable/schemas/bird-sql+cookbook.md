@@ -2,7 +2,8 @@
 -- Database: cookbook
 
 /*
-Schema: NULLTable: Ingredient
+Schema: NULL
+Table: Ingredient
 Rows: 3346
 Sample rows:
 | ingredient_id   | category         | name                     | plural   |
@@ -15,18 +16,19 @@ Sample rows:
 | ...             | ...              | ...                      | ...      |
 */
 CREATE TABLE Ingredient (
-    ingredient_id INTEGER NOT NULL PRIMARY KEY,
+    "ingredient_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    category TEXT NOT NULL,
+    "category" TEXT NOT NULL,
         -- <example>'dairy'</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'1% lowfat cottage cheese'</example>
-    plural TEXT NULL
+    "plural" TEXT NULL
         -- <values>{'#NAME?', 'es', 's'}</values>
 );
 
 /*
-Schema: NULLTable: Nutrition
+Schema: NULL
+Table: Nutrition
 Rows: 878
 Sample rows:
 | recipe_id   | protein   | carbo   | alcohol   | total_fat   | sat_fat   | cholestrl   | sodium   | iron   | vitamin_c   | vitamin_a   | fiber   | pcnt_cal_carb   | pcnt_cal_fat   | pcnt_cal_prot   | calories   |
@@ -39,44 +41,45 @@ Sample rows:
 | ...         | ...       | ...     | ...       | ...         | ...       | ...         | ...      | ...    | ...         | ...         | ...     | ...             | ...            | ...             | ...        |
 */
 CREATE TABLE Nutrition (
-    recipe_id INTEGER NOT NULL PRIMARY KEY,
+    "recipe_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>214</example>
-        -- <fk> -> Recipe.recipe_id</fk>
-    protein REAL NOT NULL,
+        -- <fk> -> Recipe."recipe_id"</fk>
+    "protein" REAL NOT NULL,
         -- <example>5.470</example>
-    carbo REAL NOT NULL,
+    "carbo" REAL NOT NULL,
         -- <example>41.290</example>
-    alcohol REAL NOT NULL,
+    "alcohol" REAL NOT NULL,
         -- <example>0.000</example>
-    total_fat REAL NOT NULL,
+    "total_fat" REAL NOT NULL,
         -- <example>11.530</example>
-    sat_fat REAL NOT NULL,
+    "sat_fat" REAL NOT NULL,
         -- <example>2.210</example>
-    cholestrl REAL NOT NULL,
+    "cholestrl" REAL NOT NULL,
         -- <example>1.390</example>
-    sodium REAL NOT NULL,
+    "sodium" REAL NOT NULL,
         -- <example>260.780</example>
-    iron REAL NOT NULL,
+    "iron" REAL NOT NULL,
         -- <example>0.810</example>
-    vitamin_c REAL NOT NULL,
+    "vitamin_c" REAL NOT NULL,
         -- <example>8.890</example>
-    vitamin_a REAL NOT NULL,
+    "vitamin_a" REAL NOT NULL,
         -- <example>586.200</example>
-    fiber REAL NOT NULL,
+    "fiber" REAL NOT NULL,
         -- <example>0.870</example>
-    pcnt_cal_carb REAL NOT NULL,
+    "pcnt_cal_carb" REAL NOT NULL,
         -- <example>56.800</example>
-    pcnt_cal_fat REAL NOT NULL,
+    "pcnt_cal_fat" REAL NOT NULL,
         -- <example>35.680</example>
-    pcnt_cal_prot REAL NOT NULL,
+    "pcnt_cal_prot" REAL NOT NULL,
         -- <example>7.530</example>
-    calories REAL NOT NULL,
+    "calories" REAL NOT NULL,
         -- <example>290.790</example>
-    FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id)
+    FOREIGN KEY ("recipe_id") REFERENCES Recipe("recipe_id")
 );
 
 /*
-Schema: NULLTable: Quantity
+Schema: NULL
+Table: Quantity
 Rows: 5116
 Sample rows:
 | quantity_id   | recipe_id   | ingredient_id   | max_qty   | min_qty   | unit        | preparation   | optional   |
@@ -89,32 +92,33 @@ Sample rows:
 | ...           | ...         | ...             | ...       | ...       | ...         | ...           | ...        |
 */
 CREATE TABLE Quantity (
-    quantity_id INTEGER NOT NULL PRIMARY KEY,
+    "quantity_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    recipe_id INTEGER NULL,
+    "recipe_id" INTEGER NULL,
         -- <example>214</example>
-        -- <fk> -> Recipe.recipe_id</fk>
-        -- <fk> -> Nutrition.recipe_id</fk>
-    ingredient_id INTEGER NULL,
+        -- <fk> -> Recipe."recipe_id"</fk>
+        -- <fk> -> Nutrition."recipe_id"</fk>
+    "ingredient_id" INTEGER NULL,
         -- <example>1613</example>
-        -- <fk> -> Ingredient.ingredient_id</fk>
-    max_qty REAL NULL,
+        -- <fk> -> Ingredient."ingredient_id"</fk>
+    "max_qty" REAL NULL,
         -- <example>2.000</example>
-    min_qty REAL NULL,
+    "min_qty" REAL NULL,
         -- <example>2.000</example>
-    unit TEXT NULL,
+    "unit" TEXT NULL,
         -- <example>'cup(s)'</example>
-    preparation TEXT NULL,
+    "preparation" TEXT NULL,
         -- <example>'melted'</example>
-    optional TEXT NULL,
+    "optional" TEXT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    FOREIGN KEY (recipe_id) REFERENCES Recipe(recipe_id),
-    FOREIGN KEY (ingredient_id) REFERENCES Ingredient(ingredient_id),
-    FOREIGN KEY (recipe_id) REFERENCES Nutrition(recipe_id)
+    FOREIGN KEY ("recipe_id") REFERENCES Recipe("recipe_id"),
+    FOREIGN KEY ("ingredient_id") REFERENCES Ingredient("ingredient_id"),
+    FOREIGN KEY ("recipe_id") REFERENCES Nutrition("recipe_id")
 );
 
 /*
-Schema: NULLTable: Recipe
+Schema: NULL
+Table: Recipe
 Rows: 1031
 Sample rows:
 | recipe_id   | title                   | subtitle               | servings   | yield_unit   | prep_min   | cook_min   | stnd_min   | source                                           | intro                                                                                                     | directions                                                                                                                                                                                                  |
@@ -132,27 +136,27 @@ twice), or until filling is hot and bubbly.                                     
 | ...         | ...                     | ...                    | ...        | ...          | ...        | ...        | ...        | ...                                              | ...                                                                                                       | ...                                                                                                                                                                                                         |
 */
 CREATE TABLE Recipe (
-    recipe_id INTEGER NOT NULL PRIMARY KEY,
+    "recipe_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>214</example>
-    title TEXT NULL,
+    "title" TEXT NULL,
         -- <example>'Raspberry Chiffon Pie'</example>
-    subtitle TEXT NULL,
+    "subtitle" TEXT NULL,
         -- <example>'with Banana Cream Whip'</example>
-    servings INTEGER NULL,
+    "servings" INTEGER NULL,
         -- <example>10</example>
-    yield_unit TEXT NULL,
+    "yield_unit" TEXT NULL,
         -- <example>'1 pie'</example>
-    prep_min INTEGER NULL,
+    "prep_min" INTEGER NULL,
         -- <example>20</example>
-    cook_min INTEGER NULL,
+    "cook_min" INTEGER NULL,
         -- <example>8</example>
-    stnd_min INTEGER NULL,
+    "stnd_min" INTEGER NULL,
         -- <example>305</example>
-    source TEXT NULL,
+    "source" TEXT NULL,
         -- <example>'The California Tree Fruit Agreement'</example>
-    intro TEXT NULL,
+    "intro" TEXT NULL,
         -- <example>'Serve in stemmed glasses and top with sliced apricots for elegant endings.'</example>
-    directions TEXT NULL
+    "directions" TEXT NULL
         -- <example>'For crust, preheat oven to 375 degrees F.
 In light...ly slice remaining 2 plums and garnish top of pie.'</example>
 );

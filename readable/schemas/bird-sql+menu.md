@@ -2,7 +2,8 @@
 -- Database: menu
 
 /*
-Schema: NULLTable: Dish
+Schema: NULL
+Table: Dish
 Rows: 426713
 Sample rows:
 | id   | name                       | description   | menus_appeared   | times_appeared   | first_appeared   | last_appeared   | lowest_price   | highest_price   |
@@ -15,28 +16,29 @@ Sample rows:
 | ...  | ...                        | ...           | ...              | ...              | ...              | ...             | ...            | ...             |
 */
 CREATE TABLE Dish (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Consomme printaniere royal'</example>
-    description TEXT NULL,
+    "description" TEXT NULL,
         -- <values>{''}</values>
-    menus_appeared INTEGER NOT NULL,
+    "menus_appeared" INTEGER NOT NULL,
         -- <example>8</example>
-    times_appeared INTEGER NOT NULL,
+    "times_appeared" INTEGER NOT NULL,
         -- <example>8</example>
-    first_appeared INTEGER NOT NULL,
+    "first_appeared" INTEGER NOT NULL,
         -- <example>1897</example>
-    last_appeared INTEGER NOT NULL,
+    "last_appeared" INTEGER NOT NULL,
         -- <example>1927</example>
-    lowest_price REAL NULL,
+    "lowest_price" REAL NULL,
         -- <example>0.200</example>
-    highest_price REAL NULL
+    "highest_price" REAL NULL
         -- <example>0.400</example>
 );
 
 /*
-Schema: NULLTable: Menu
+Schema: NULL
+Table: Menu
 Rows: 17527
 Sample rows:
 | id    | name   | sponsor                    | event                | venue      | place                              | physical_description        | occasion   | notes                                                                                                                                                                                                       | call_number   | keywords   | language   | date       | location                   | location_type   | currency   | currency_symbol   | status   | page_count   | dish_count   |
@@ -49,47 +51,48 @@ Sample rows:
 | ...   | ...    | ...                        | ...                  | ...        | ...                                | ...                         | ...        | ...                                                                                                                                                                                                         | ...           | ...        | ...        | ...        | ...                        | ...             | ...        | ...               | ...      | ...          | ...          |
 */
 CREATE TABLE Menu (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>12463</example>
-    name TEXT NULL,
+    "name" TEXT NULL,
         -- <example>''</example>
-    sponsor TEXT NULL,
+    "sponsor" TEXT NULL,
         -- <example>'HOTEL EASTMAN'</example>
-    event TEXT NULL,
+    "event" TEXT NULL,
         -- <example>'BREAKFAST'</example>
-    venue TEXT NULL,
+    "venue" TEXT NULL,
         -- <example>'COMMERCIAL'</example>
-    place TEXT NULL,
+    "place" TEXT NULL,
         -- <example>'HOT SPRINGS, AR'</example>
-    physical_description TEXT NULL,
+    "physical_description" TEXT NULL,
         -- <example>'CARD; 4.75X7.5;'</example>
-    occasion TEXT NULL,
+    "occasion" TEXT NULL,
         -- <example>'EASTER;'</example>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <example>''</example>
-    call_number TEXT NULL,
+    "call_number" TEXT NULL,
         -- <example>'1900-2822'</example>
-    keywords TEXT NULL,
-    language TEXT NULL,
-    date DATE NULL,
+    "keywords" TEXT NULL,
+    "language" TEXT NULL,
+    "date" DATE NULL,
         -- <example>'1900-04-15'</example>
-    location TEXT NOT NULL,
+    "location" TEXT NOT NULL,
         -- <example>'Hotel Eastman'</example>
-    location_type TEXT NULL,
-    currency TEXT NULL,
+    "location_type" TEXT NULL,
+    "currency" TEXT NULL,
         -- <example>'Dollars'</example>
-    currency_symbol TEXT NULL,
+    "currency_symbol" TEXT NULL,
         -- <example>'$'</example>
-    status TEXT NOT NULL,
+    "status" TEXT NOT NULL,
         -- <values>{'complete'}</values>
-    page_count INTEGER NOT NULL,
+    "page_count" INTEGER NOT NULL,
         -- <example>2</example>
-    dish_count INTEGER NOT NULL
+    "dish_count" INTEGER NOT NULL
         -- <example>67</example>
 );
 
 /*
-Schema: NULLTable: MenuItem
+Schema: NULL
+Table: MenuItem
 Rows: 1334410
 Sample rows:
 | id   | menu_page_id   | price   | high_price   | dish_id   | created_at              | updated_at              | xpos     | ypos     |
@@ -102,32 +105,33 @@ Sample rows:
 | ...  | ...            | ...     | ...          | ...       | ...                     | ...                     | ...      | ...      |
 */
 CREATE TABLE MenuItem (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    menu_page_id INTEGER NOT NULL,
+    "menu_page_id" INTEGER NOT NULL,
         -- <example>1389</example>
-        -- <fk> -> MenuPage.id</fk>
-    price REAL NULL,
+        -- <fk> -> MenuPage."id"</fk>
+    "price" REAL NULL,
         -- <example>0.400</example>
-    high_price REAL NULL,
+    "high_price" REAL NULL,
         -- <example>1.000</example>
-    dish_id INTEGER NULL,
+    "dish_id" INTEGER NULL,
         -- <example>1</example>
-        -- <fk> -> Dish.id</fk>
-    created_at TEXT NOT NULL,
+        -- <fk> -> Dish."id"</fk>
+    "created_at" TEXT NOT NULL,
         -- <example>'2011-03-28 15:00:44 UTC'</example>
-    updated_at TEXT NOT NULL,
+    "updated_at" TEXT NOT NULL,
         -- <example>'2011-04-19 04:33:15 UTC'</example>
-    xpos REAL NOT NULL,
+    "xpos" REAL NOT NULL,
         -- <example>0.111</example>
-    ypos REAL NOT NULL,
+    "ypos" REAL NOT NULL,
         -- <example>0.255</example>
-    FOREIGN KEY (dish_id) REFERENCES Dish(id),
-    FOREIGN KEY (menu_page_id) REFERENCES MenuPage(id)
+    FOREIGN KEY ("dish_id") REFERENCES Dish("id"),
+    FOREIGN KEY ("menu_page_id") REFERENCES MenuPage("id")
 );
 
 /*
-Schema: NULLTable: MenuPage
+Schema: NULL
+Table: MenuPage
 Rows: 66937
 Sample rows:
 | id   | menu_id   | page_number   | image_id   | full_height   | full_width   | uuid                                 |
@@ -140,21 +144,21 @@ Sample rows:
 | ...  | ...       | ...           | ...        | ...           | ...          | ...                                  |
 */
 CREATE TABLE MenuPage (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>119</example>
-    menu_id INTEGER NOT NULL,
+    "menu_id" INTEGER NOT NULL,
         -- <example>12460</example>
-        -- <fk> -> Menu.id</fk>
-    page_number INTEGER NULL,
+        -- <fk> -> Menu."id"</fk>
+    "page_number" INTEGER NULL,
         -- <example>1</example>
-    image_id REAL NULL,
+    "image_id" REAL NULL,
         -- <example>1603595.000</example>
-    full_height INTEGER NULL,
+    "full_height" INTEGER NULL,
         -- <example>7230</example>
-    full_width INTEGER NULL,
+    "full_width" INTEGER NULL,
         -- <example>5428</example>
-    uuid TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
         -- <example>'510d47e4-2955-a3d9-e040-e00a18064a99'</example>
-    FOREIGN KEY (menu_id) REFERENCES Menu(id)
+    FOREIGN KEY ("menu_id") REFERENCES Menu("id")
 );
 ```

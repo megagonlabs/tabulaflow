@@ -2,7 +2,8 @@
 -- Database: california_schools
 
 /*
-Schema: NULLTable: frpm
+Schema: NULL
+Table: frpm
 Rows: 9986
 Sample rows:
 | CDSCode        | Academic Year   | County Code   | District Code   | School Code   | County Name   | District Name                      | School Name                                   | District Type                    | School Type                 | Educational Option Type   | NSLP Provision Status   | Charter School (Y/N)   | Charter School Number   | Charter Funding Type   | IRC   | Low Grade   | High Grade   | Enrollment (K-12)   | Free Meal Count (K-12)   | Percent (%) Eligible Free (K-12)   | FRPM Count (K-12)   | Percent (%) Eligible FRPM (K-12)   | Enrollment (Ages 5-17)   | Free Meal Count (Ages 5-17)   | Percent (%) Eligible Free (Ages 5-17)   | FRPM Count (Ages 5-17)   | Percent (%) Eligible FRPM (Ages 5-17)   | 2013-14 CALPADS Fall 1 Certification Status   |
@@ -15,11 +16,11 @@ Sample rows:
 | ...            | ...             | ...           | ...             | ...           | ...           | ...                                | ...                                           | ...                              | ...                         | ...                       | ...                     | ...                    | ...                     | ...                    | ...   | ...         | ...          | ...                 | ...                      | ...                                | ...                 | ...                                | ...                      | ...                           | ...                                     | ...                      | ...                                     | ...                                           |
 */
 CREATE TABLE frpm (
-    CDSCode TEXT NOT NULL PRIMARY KEY,
+    "CDSCode" TEXT NOT NULL PRIMARY KEY,
         -- <description>School CDS code — the California Department of Education (CDE) school identifier for this FRPM row; uniquely identifies the school (table primary key) and links to schools.CDSCode and satscores.cds.</description>
         -- <example>'01100170109835'</example>
-        -- <fk> -> schools.CDSCode</fk>
-        -- <fk> -> satscores.cds</fk>
+        -- <fk> -> schools."CDSCode"</fk>
+        -- <fk> -> satscores."cds"</fk>
     "Academic Year" TEXT NOT NULL,
         -- <description>Academic year for which the FRPM record applies (school-year span, e.g., '2014-2015').</description>
         -- <values>{'2014-2015'}</values>
@@ -101,12 +102,13 @@ CREATE TABLE frpm (
     "2013-14 CALPADS Fall 1 Certification Status" INTEGER NOT NULL,
         -- <description>CALPADS Fall 1 (2013–14) certification status for the school's FRPM record — an indicator coded as status values denoting whether the 2013–14 Fall 1 FRPM submission was certified.</description>
         -- <example>1</example>
-    FOREIGN KEY (CDSCode) REFERENCES schools(CDSCode),
-    FOREIGN KEY (CDSCode) REFERENCES satscores(cds)
+    FOREIGN KEY ("CDSCode") REFERENCES schools("CDSCode"),
+    FOREIGN KEY ("CDSCode") REFERENCES satscores("cds")
 );
 
 /*
-Schema: NULLTable: satscores
+Schema: NULL
+Table: satscores
 Rows: 2269
 Sample rows:
 | cds           | rtype   | sname                                         | dname                              | cname   | enroll12   | NumTstTakr   | AvgScrRead   | AvgScrMath   | AvgScrWrite   | NumGE1500   |
@@ -119,42 +121,43 @@ Sample rows:
 | ...           | ...     | ...                                           | ...                                | ...     | ...        | ...          | ...          | ...          | ...           | ...         |
 */
 CREATE TABLE satscores (
-    cds TEXT NOT NULL PRIMARY KEY,
+    "cds" TEXT NOT NULL PRIMARY KEY,
         -- <description>California Department of Education (CDS) school/district identifier — the unique CDS code used to identify and link a district or school (matches schools.CDSCode).</description>
         -- <example>'10101080000000'</example>
-        -- <fk> -> schools.CDSCode</fk>
-    sname TEXT NULL,
+        -- <fk> -> schools."CDSCode"</fk>
+    "sname" TEXT NULL,
         -- <description>School name — the reported school-level name associated with the SAT score record; often NULL for district-level (rtype = 'D') summary rows.</description>
         -- <example>'FAME Public Charter'</example>
-    dname TEXT NOT NULL,
+    "dname" TEXT NOT NULL,
         -- <description>District name — the name of the school district associated with the SAT score record (for example, 'Alameda County Office of Education').</description>
         -- <example>'Alameda County Office of Education'</example>
-    cname TEXT NOT NULL,
+    "cname" TEXT NOT NULL,
         -- <description>County name where the school is located.</description>
         -- <example>'Alameda'</example>
-    enroll12 INTEGER NOT NULL,
+    "enroll12" INTEGER NOT NULL,
         -- <description>Enrollment in grades 1–12 — total number of students enrolled in grades 1 through 12 at the school for the reported year, used to contextualize SAT participation and test-taker rates.</description>
         -- <example>398</example>
-    NumTstTakr INTEGER NOT NULL,
+    "NumTstTakr" INTEGER NOT NULL,
         -- <description>Count of students who took the SAT for the record (school or district); the raw number of test takers used to compute participation rates and to weight average scores.</description>
         -- <example>88</example>
-    AvgScrRead INTEGER NULL,
+    "AvgScrRead" INTEGER NULL,
         -- <description>School-level average SAT Reading score (mean of the Reading-section scores of students who took the SAT at that school).</description>
         -- <example>418</example>
-    AvgScrMath INTEGER NULL,
+    "AvgScrMath" INTEGER NULL,
         -- <description>Average SAT Math score for the school's test takers</description>
         -- <example>418</example>
-    AvgScrWrite INTEGER NULL,
+    "AvgScrWrite" INTEGER NULL,
         -- <description>Average SAT Writing score for the school’s test takers — the mean Writing-section SAT score among students from the school (null when no scores are reported).</description>
         -- <example>417</example>
-    NumGE1500 INTEGER NULL,
+    "NumGE1500" INTEGER NULL,
         -- <description>Count of test takers whose total SAT score is greater than or equal to 1500.</description>
         -- <example>14</example>
-    FOREIGN KEY (cds) REFERENCES schools(CDSCode)
+    FOREIGN KEY ("cds") REFERENCES schools("CDSCode")
 );
 
 /*
-Schema: NULLTable: schools
+Schema: NULL
+Table: schools
 Rows: 17686
 Sample rows:
 | CDSCode        | NCESDist   | NCESSchool   | StatusType   | County   | District                           | School                                        | Street                           | StreetAbr                     | City     | Zip        | State   | MailStreet                       | MailStrAbr                    | MailCity   | MailZip    | MailState   | Phone          | Ext    | Website                                     | OpenDate   | ClosedDate   | Charter   | CharterNum   | FundingType     | DOC   | DOCType                          | SOC    | SOCType                     | EdOpsCode   | EdOpsName   | EILCode   | EILName                     | GSoffered   | GSserved   | Virtual   | Magnet   | Latitude   | Longitude   | AdmFName1   | AdmLName1   | AdmEmail1                                         | AdmFName2   | AdmLName2   | AdmEmail2   | AdmFName3   | AdmLName3   | AdmEmail3   | LastUpdate   |
@@ -167,142 +170,142 @@ Sample rows:
 | ...            | ...        | ...          | ...          | ...      | ...                                | ...                                           | ...                              | ...                           | ...      | ...        | ...     | ...                              | ...                           | ...        | ...        | ...         | ...            | ...    | ...                                         | ...        | ...          | ...       | ...          | ...             | ...   | ...                              | ...    | ...                         | ...         | ...         | ...       | ...                         | ...         | ...        | ...       | ...      | ...        | ...         | ...         | ...         | ...                                               | ...         | ...         | ...         | ...         | ...         | ...         | ...          |
 */
 CREATE TABLE schools (
-    CDSCode TEXT NOT NULL PRIMARY KEY,
+    "CDSCode" TEXT NOT NULL PRIMARY KEY,
         -- <description>School CDS code — the state's canonical school identifier (County+District+School) used to link school records across datasets.</description>
         -- <example>'01100170000000'</example>
-    NCESDist TEXT NULL,
+    "NCESDist" TEXT NULL,
         -- <description>7-digit NCES school-district identifier — a National Center for Education Statistics code where the first two digits indicate the state and the last five identify the district.</description>
         -- <example>'0691051'</example>
-    NCESSchool TEXT NULL,
+    "NCESSchool" TEXT NULL,
         -- <description>NCES school identification number — a five-digit school ID that, when combined with NCESDist, produces the unique 12‑digit NCES identifier for the school.</description>
         -- <example>'10546'</example>
-    StatusType TEXT NOT NULL,
+    "StatusType" TEXT NOT NULL,
         -- <description>Operational status of the district or school, indicating whether the entity is active, closed, merged, or pending.</description>
         -- <values>{'Active', 'Closed', 'Merged', 'Pending'}</values>
-    County TEXT NOT NULL,
+    "County" TEXT NOT NULL,
         -- <description>County name — the county in which the school is located (used for geographic or administrative grouping).</description>
         -- <example>'Alameda'</example>
-    District TEXT NOT NULL,
+    "District" TEXT NOT NULL,
         -- <description>School district name — the official name of the school district that administers or oversees the school (e.g., Winship‑Robbins, Paso Robles Joint Union High, Firebaugh‑Las Deltas Unified).</description>
         -- <example>'Alameda County Office of Education'</example>
-    School TEXT NULL,
+    "School" TEXT NULL,
         -- <description>School name — the official public name of the school as recorded in the state dataset (for example, 'Big Bear Elementary', 'Roseland Charter').</description>
         -- <example>'FAME Public Charter'</example>
-    Street TEXT NULL,
+    "Street" TEXT NULL,
         -- <description>Street address of the school’s physical location; may be empty for closed or retired schools.</description>
         -- <example>'313 West Winton Avenue'</example>
-    StreetAbr TEXT NULL,
+    "StreetAbr" TEXT NULL,
         -- <description>Abbreviated street address for the school’s physical location (e.g., '313 West Winton Ave.'). Some records—particularly closed or retired schools—may be missing this value.</description>
         -- <example>'313 West Winton Ave.'</example>
-    City TEXT NULL,
+    "City" TEXT NULL,
         -- <description>City of the school's physical location (name of the city where the school is located; e.g., Rancho Santa Fe, Duarte, Pleasanton).</description>
         -- <example>'Hayward'</example>
-    Zip TEXT NULL,
+    "Zip" TEXT NULL,
         -- <description>School ZIP code (postal code) for the school's address, typically a 5-digit or 9-digit ZIP+4 value (e.g., 95626-9217).</description>
         -- <example>'94544-1136'</example>
-    State TEXT NULL,
+    "State" TEXT NULL,
         -- <description>State in which the school is located.</description>
         -- <values>{'CA'}</values>
-    MailStreet TEXT NULL,
+    "MailStreet" TEXT NULL,
         -- <description>Unabbreviated mailing street address for the school’s mailing location (full street line, e.g., house number, street name, suite).</description>
         -- <example>'313 West Winton Avenue'</example>
-    MailStrAbr TEXT NULL,
+    "MailStrAbr" TEXT NULL,
         -- <description>Abbreviated mailing street address for the school’s mailing location — when a mailing street is not provided this field is populated from StreetAbr.</description>
         -- <example>'313 West Winton Ave.'</example>
-    MailCity TEXT NULL,
+    "MailCity" TEXT NULL,
         -- <description>Mailing city for the school’s mailing address — when a separate mailing city is not provided this field is populated from the school’s City value; many records do not have a distinct mailing city.</description>
         -- <example>'Hayward'</example>
-    MailZip TEXT NULL,
+    "MailZip" TEXT NULL,
         -- <description>Mailing-address ZIP code (may include 9‑digit ZIP+4); if a school did not provide a mailing ZIP, this field was filled from the primary Zip column.</description>
         -- <example>'94544-1136'</example>
-    MailState TEXT NULL,
+    "MailState" TEXT NULL,
         -- <description>Mailing state for the school's mailing address; if MailState is blank, it has been populated with the school's State value for convenience.</description>
         -- <values>{'CA'}</values>
-    Phone TEXT NULL,
+    "Phone" TEXT NULL,
         -- <description>School main phone number (primary contact), stored as free-form text — may include digits, spaces, parentheses, hyphens and extensions; sometimes blank for closed or unreported schools.</description>
         -- <example>'(510) 887-0152'</example>
-    Ext TEXT NULL,
+    "Ext" TEXT NULL,
         -- <description>Phone extension for the school's main contact — internal office extension paired with the Phone number.</description>
         -- <example>'130'</example>
-    Website TEXT NULL,
+    "Website" TEXT NULL,
         -- <description>Website URL for the school, district, or administrative authority (when provided).</description>
         -- <example>'www.acoe.org'</example>
-    OpenDate DATE NULL,
+    "OpenDate" DATE NULL,
         -- <description>School open date — the calendar date the school first opened (may be NULL). Example values: 1962-07-01, 2015-08-20.</description>
         -- <example>'2005-08-29'</example>
-    ClosedDate DATE NULL,
+    "ClosedDate" DATE NULL,
         -- <description>School closure date — the date the school closed (NULL if the school is still open).</description>
         -- <example>'2015-07-31'</example>
-    Charter INTEGER NULL,
+    "Charter" INTEGER NULL,
         -- <description>Charter school indicator — marks whether the school is a charter (coded 1 = charter; 0 or NULL = not a charter or not provided).</description>
         -- <example>1</example>
-    CharterNum TEXT NULL,
+    "CharterNum" TEXT NULL,
         -- <description>Charter school number — the four‑digit identifier assigned to a charter school (e.g., 1766).</description>
         -- <example>'0728'</example>
-    FundingType TEXT NULL,
+    "FundingType" TEXT NULL,
         -- <description>Charter school funding model for the school — indicates, when applicable, how a charter school is funded under California’s charter funding system (may be null for non‑charter schools).</description>
         -- <values>{'Directly funded', 'Locally funded', 'Not in CS funding model'}</values>
-    DOC TEXT NOT NULL,
+    "DOC" TEXT NOT NULL,
         -- <description>District ownership code — a short code that identifies the category of the school's administrative authority (used to classify the administrative owner of a district or school). Paired with DOCType for the human‑readable category name.</description>
         -- <values>{'00', '02', '03', '31', '34', '42', '52', '54', '56', '58', '98', '99'}</values>
-    DOCType TEXT NOT NULL,
+    "DOCType" TEXT NOT NULL,
         -- <description>District ownership type — textual label describing the District Ownership Code (DOC), indicating the administrative authority category for the school or district.</description>
         -- <values>{'Administration Only', 'Community College District', 'County Office of Education (COE)', 'Elementary School District', 'High School District', 'Joint Powers Authority (JPA)', 'Non-School Locations', 'Regional Occupation Center/Program (ROC/P)', 'State Board of Education', 'State Special Schools', 'Statewide Benefit Charter', 'Unified School District'}</values>
-    SOC TEXT NULL,
+    "SOC" TEXT NULL,
         -- <description>School ownership code identifying the school's category — a short code used to classify the type/ownership of the school (maps to categories such as preschool, elementary, intermediate/middle, high school, K–12, special education, youth authority facilities, and other county/district program types).</description>
         -- <values>{'08', '09', '10', '11', '13', '14', '15', '31', '60', '61', '62', '63', '64', '65', '66', '67', '68', '69', '70', '98'}</values>
-    SOCType TEXT NULL,
+    "SOCType" TEXT NULL,
         -- <description>School ownership/type label — the human-readable description of the school's ownership or operational category that corresponds to the SOC code, used to describe the kind of school (e.g., elementary, high school, county community, state special school).</description>
         -- <values>{'Adult Education Centers', 'Alternative Schools of Choice', 'Continuation High Schools', 'County Community', 'District Community Day Schools', 'Elemen Schools In 1 School Dist. (Public)', 'Elementary Schools (Public)', 'High Schools (Public)', 'High Schools In 1 School Dist. (Public)', 'Intermediate/Middle Schools (Public)', 'Junior High Schools (Public)', 'Juvenile Court Schools', 'K-12 Schools (Public)', 'Opportunity Schools', 'Other County Or District Programs', 'Preschool', 'ROC/ROP', 'Special Education Schools (Public)', 'State Special Schools', 'Youth Authority Facilities'}</values>
-    EdOpsCode TEXT NULL,
+    "EdOpsCode" TEXT NULL,
         -- <description>Education-option code — a short code that identifies the type of educational option or program a school offers (see EdOpsName for the full descriptive name).</description>
         -- <values>{'ALTSOC', 'COMM', 'COMMDAY', 'CON', 'HOMHOS', 'JUV', 'OPP', 'ROP', 'SPEC', 'SPECON', 'SSS', 'TRAD', 'YTH'}</values>
-    EdOpsName TEXT NULL,
+    "EdOpsName" TEXT NULL,
         -- <description>Educational option name — the long-form label describing the educational option or program the school offers (a descriptive name for the EdOpsCode).</description>
         -- <values>{'Alternative School of Choice', 'Community Day School', 'Continuation School', 'County Community School', 'District Special Education Consortia School', 'Home and Hospital', 'Juvenile Court School', 'Opportunity School', 'ROP', 'Special Education School', 'State Special School', 'Traditional', 'Youth Authority School'}</values>
-    EILCode TEXT NULL,
+    "EILCode" TEXT NULL,
         -- <description>Educational instruction level code — short code indicating the institution’s instruction level (the grade-span category the school serves).</description>
         -- <values>{'A', 'ELEM', 'ELEMHIGH', 'HS', 'INTMIDJR', 'PS', 'UG'}</values>
-    EILName TEXT NULL,
+    "EILName" TEXT NULL,
         -- <description>Educational instruction level name — long-form label describing the grade range the institution serves.</description>
         -- <values>{'Adult', 'Elementary', 'Elementary-High Combination', 'High School', 'Intermediate/Middle/Junior High', 'Preschool', 'Ungraded'}</values>
-    GSoffered TEXT NULL,
+    "GSoffered" TEXT NULL,
         -- <description>Grade span offered — the lowest and highest grades a school or administrative authority provides or supports; may differ from the grade span actually served (e.g., 'K-12').</description>
         -- <example>'K-12'</example>
-    GSserved TEXT NULL,
+    "GSserved" TEXT NULL,
         -- <description>Grade span served — the lowest through highest grade levels with enrolled students, as reported in the certified CALPADS Fall 1 collection; reflects only K–12 enrollment and may differ from the grade span offered.</description>
         -- <example>'K-12'</example>
-    Virtual TEXT NULL,
+    "Virtual" TEXT NULL,
         -- <description>Type of virtual instruction offered by the school — indicates whether instruction is provided virtually (students and teachers separated by time and/or location, interacting via computers or telecommunications).</description>
         -- <values>{'F', 'N', 'P'}</values>
-    Magnet INTEGER NULL,
+    "Magnet" INTEGER NULL,
         -- <description>Magnet school indicator — identifies whether the school is a magnet school or offers a magnet program.</description>
         -- <example>0</example>
-    Latitude REAL NULL,
+    "Latitude" REAL NULL,
         -- <description>School geographic latitude in decimal degrees (positive = north), used with Longitude to geolocate the school.</description>
         -- <example>37.658</example>
-    Longitude REAL NULL,
+    "Longitude" REAL NULL,
         -- <description>Longitude of the school's geographic location (degrees east of the Prime Meridian; negative values indicate locations west of Greenwich).</description>
         -- <example>-122.097</example>
-    AdmFName1 TEXT NULL,
+    "AdmFName1" TEXT NULL,
         -- <description>Administrator's first name — the superintendent's or principal's first name; provided only for active or pending districts/schools when administrator contact info is available.</description>
         -- <example>'L Karen'</example>
-    AdmLName1 TEXT NULL,
+    "AdmLName1" TEXT NULL,
         -- <description>Administrator last name for the school's primary administrator (superintendent or principal); typically populated only for active or pending schools.</description>
         -- <example>'Monroe'</example>
-    AdmEmail1 TEXT NULL,
+    "AdmEmail1" TEXT NULL,
         -- <description>Administrator's email address for the school's primary administrator (superintendent or principal); typically provided only for active or pending schools and may be null for closed or unreported records.</description>
         -- <example>'lkmonroe@acoe.org'</example>
-    AdmFName2 TEXT NULL,
+    "AdmFName2" TEXT NULL,
         -- <description>Second administrator's first name — the given name of the school's second listed administrator (may duplicate AdmFName1).</description>
         -- <example>'Sau-Lim (Lance)'</example>
-    AdmLName2 TEXT NULL,
+    "AdmLName2" TEXT NULL,
         -- <description>Administrator last name (second contact) — the family/surname of the school's second listed administrator (pairs with AdmFName2).</description>
         -- <example>'Tsang'</example>
-    AdmEmail2 TEXT NULL,
+    "AdmEmail2" TEXT NULL,
         -- <description>Email address of the school's second-listed administrator (secondary contact).</description>
         -- <example>'stsang@unityhigh.org'</example>
-    LastUpdate DATE NOT NULL
+    "LastUpdate" DATE NOT NULL
         -- <description>Record last-update date — the date when this schools table record was most recently updated.</description>
         -- <example>'2015-06-23'</example>
 );

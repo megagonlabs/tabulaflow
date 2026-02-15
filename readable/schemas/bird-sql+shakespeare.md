@@ -2,7 +2,8 @@
 -- Database: shakespeare
 
 /*
-Schema: NULLTable: chapters
+Schema: NULL
+Table: chapters
 Rows: 945
 Sample rows:
 | id    | Act   | Scene   | Description           | work_id   |
@@ -15,22 +16,23 @@ Sample rows:
 | ...   | ...   | ...     | ...                   | ...       |
 */
 CREATE TABLE chapters (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>18704</example>
-    Act INTEGER NOT NULL,
+    "Act" INTEGER NOT NULL,
         -- <example>1</example>
-    Scene INTEGER NOT NULL,
+    "Scene" INTEGER NOT NULL,
         -- <example>1</example>
-    Description TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
         -- <example>'DUKE ORSINO’s palace.'</example>
-    work_id INTEGER NOT NULL,
+    "work_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> works.id</fk>
-    FOREIGN KEY (work_id) REFERENCES works(id)
+        -- <fk> -> works."id"</fk>
+    FOREIGN KEY ("work_id") REFERENCES works("id")
 );
 
 /*
-Schema: NULLTable: characters
+Schema: NULL
+Table: characters
 Rows: 1266
 Sample rows:
 | id   | CharName          | Abbrev            | Description   |
@@ -43,18 +45,19 @@ Sample rows:
 | ...  | ...               | ...               | ...           |
 */
 CREATE TABLE characters (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    CharName TEXT NOT NULL,
+    "CharName" TEXT NOT NULL,
         -- <example>'First Apparition'</example>
-    Abbrev TEXT NOT NULL,
+    "Abbrev" TEXT NOT NULL,
         -- <example>'First Apparition'</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <example>''</example>
 );
 
 /*
-Schema: NULLTable: paragraphs
+Schema: NULL
+Table: paragraphs
 Rows: 35126
 Sample rows:
 | id     | ParagraphNum   | PlainText                                                        | character_id   | chapter_id   |
@@ -71,24 +74,25 @@ That it alone is high fantastical.                                              
 | ...    | ...            | ...                                                              | ...            | ...          |
 */
 CREATE TABLE paragraphs (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>630863</example>
-    ParagraphNum INTEGER NOT NULL,
+    "ParagraphNum" INTEGER NOT NULL,
         -- <example>3</example>
-    PlainText TEXT NOT NULL,
+    "PlainText" TEXT NOT NULL,
         -- <example>'[Enter DUKE ORSINO, CURIO, and other Lords; Musicians attending]'</example>
-    character_id INTEGER NOT NULL,
+    "character_id" INTEGER NOT NULL,
         -- <example>1261</example>
-        -- <fk> -> characters.id</fk>
-    chapter_id INTEGER NOT NULL,
+        -- <fk> -> characters."id"</fk>
+    "chapter_id" INTEGER NOT NULL,
         -- <example>18704</example>
-        -- <fk> -> chapters.id</fk>
-    FOREIGN KEY (chapter_id) REFERENCES chapters(id),
-    FOREIGN KEY (character_id) REFERENCES characters(id)
+        -- <fk> -> chapters."id"</fk>
+    FOREIGN KEY ("chapter_id") REFERENCES chapters("id"),
+    FOREIGN KEY ("character_id") REFERENCES characters("id")
 );
 
 /*
-Schema: NULLTable: works
+Schema: NULL
+Table: works
 Rows: 43
 Sample rows:
 | id   | Title                     | LongTitle                       | Date   | GenreType   |
@@ -101,15 +105,15 @@ Sample rows:
 | ...  | ...                       | ...                             | ...    | ...         |
 */
 CREATE TABLE works (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Title TEXT NOT NULL,
+    "Title" TEXT NOT NULL,
         -- <example>'Twelfth Night'</example>
-    LongTitle TEXT NOT NULL,
+    "LongTitle" TEXT NOT NULL,
         -- <example>'Twelfth Night, Or What You Will'</example>
-    Date INTEGER NOT NULL,
+    "Date" INTEGER NOT NULL,
         -- <example>1599</example>
-    GenreType TEXT NOT NULL
+    "GenreType" TEXT NOT NULL
         -- <values>{'Comedy', 'History', 'Poem', 'Sonnet', 'Tragedy'}</values>
 );
 ```

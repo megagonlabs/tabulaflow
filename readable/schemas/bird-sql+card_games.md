@@ -2,7 +2,8 @@
 -- Database: card_games
 
 /*
-Schema: NULLTable: cards
+Schema: NULL
+Table: cards
 Rows: 56822
 Sample rows:
 | id   | artist            | asciiName   | availability   | borderColor   | cardKingdomFoilId   | cardKingdomId   | colorIdentity   | colorIndicator   | colors   | convertedManaCost   | duelDeck   | edhrecRank   | faceConvertedManaCost   | faceName   | flavorName   | flavorText                                                                      | frameEffects   | frameVersion   | hand   | hasAlternativeDeckLimit   | hasContentWarning   | hasFoil   | hasNonFoil   | isAlternative   | isFullArt   | isOnlineOnly   | isOversized   | isPromo   | isReprint   | isReserved   | isStarter   | isStorySpotlight   | isTextless   | isTimeshifted   | keywords     | layout   | leadershipSkills   | life   | loyalty   | manaCost   | mcmId   | mcmMetaId   | mtgArenaId   | mtgjsonV4Id                          | mtgoFoilId   | mtgoId   | multiverseId   | name              | number   | originalReleaseDate   | originalText                                                                         | originalType            | otherFaceIds   | power   | printings                                             | promoTypes   | purchaseUrls                                                                                                                                                                                                | rarity   | scryfallId                           | scryfallIllustrationId               | scryfallOracleId                     | setCode   | side   | subtypes     | supertypes   | tcgplayerProductId   | text                                                                                 | toughness   | type                    | types    | uuid                                 | variations                           | watermark   |
@@ -23,158 +24,159 @@ Draw a card.                                                                    
 | ...  | ...               | ...         | ...            | ...           | ...                 | ...             | ...             | ...              | ...      | ...                 | ...        | ...          | ...                     | ...        | ...          | ...                                                                             | ...            | ...            | ...    | ...                       | ...                 | ...       | ...          | ...             | ...         | ...            | ...           | ...       | ...         | ...          | ...         | ...                | ...          | ...             | ...          | ...      | ...                | ...    | ...       | ...        | ...     | ...         | ...          | ...                                  | ...          | ...      | ...            | ...               | ...      | ...                   | ...                                                                                  | ...                     | ...            | ...     | ...                                                   | ...          | ...                                                                                                                                                                                                         | ...      | ...                                  | ...                                  | ...                                  | ...       | ...    | ...          | ...          | ...                  | ...                                                                                  | ...         | ...                     | ...      | ...                                  | ...                                  | ...         |
 */
 CREATE TABLE cards (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>41138</example>
-    artist TEXT NULL,
+    "artist" TEXT NULL,
         -- <example>'Pete Venters'</example>
-    asciiName TEXT NULL,
+    "asciiName" TEXT NULL,
         -- <example>'El-Hajjaj'</example>
-    availability TEXT NULL,
+    "availability" TEXT NULL,
         -- <values>{'arena', 'arena,mtgo', 'arena,mtgo,paper', 'arena,paper', 'dreamcast', 'mtgo', 'mtgo,paper', 'paper', 'shandalar'}</values>
-    borderColor TEXT NOT NULL,
+    "borderColor" TEXT NOT NULL,
         -- <values>{'black', 'borderless', 'gold', 'silver', 'white'}</values>
-    cardKingdomFoilId TEXT NULL,
+    "cardKingdomFoilId" TEXT NULL,
         -- <example>'123094'</example>
-    cardKingdomId TEXT NULL,
+    "cardKingdomId" TEXT NULL,
         -- <example>'122719'</example>
-    colorIdentity TEXT NULL,
+    "colorIdentity" TEXT NULL,
         -- <example>'W'</example>
-    colorIndicator TEXT NULL,
+    "colorIndicator" TEXT NULL,
         -- <values>{'B', 'B,G', 'B,R,U', 'G', 'G,R', 'G,R,W', 'R', 'U', 'W'}</values>
-    colors TEXT NULL,
+    "colors" TEXT NULL,
         -- <example>'W'</example>
-    convertedManaCost REAL NOT NULL,
+    "convertedManaCost" REAL NOT NULL,
         -- <example>7.000</example>
-    duelDeck TEXT NULL,
+    "duelDeck" TEXT NULL,
         -- <values>{'a', 'b'}</values>
-    edhrecRank INTEGER NULL,
+    "edhrecRank" INTEGER NULL,
         -- <example>15650</example>
-    faceConvertedManaCost REAL NULL,
+    "faceConvertedManaCost" REAL NULL,
         -- <example>4.000</example>
-    faceName TEXT NULL,
+    "faceName" TEXT NULL,
         -- <example>'Dusk'</example>
-    flavorName TEXT NULL,
+    "flavorName" TEXT NULL,
         -- <example>'Godzilla, King of the Monsters'</example>
-    flavorText TEXT NULL,
+    "flavorText" TEXT NULL,
         -- <example>'Every tear shed is a drop of immortality.'</example>
-    frameEffects TEXT NULL,
+    "frameEffects" TEXT NULL,
         -- <example>'legendary'</example>
-    frameVersion TEXT NOT NULL,
+    "frameVersion" TEXT NOT NULL,
         -- <values>{'1993', '1997', '2003', '2015', 'future'}</values>
-    hand TEXT NULL,
+    "hand" TEXT NULL,
         -- <values>{'-1', '-2', '-3', '-4', '0', '1', '2', '3'}</values>
-    hasAlternativeDeckLimit INTEGER NOT NULL,
+    "hasAlternativeDeckLimit" INTEGER NOT NULL,
         -- <example>0</example>
-    hasContentWarning INTEGER NOT NULL,
+    "hasContentWarning" INTEGER NOT NULL,
         -- <example>0</example>
-    hasFoil INTEGER NOT NULL,
+    "hasFoil" INTEGER NOT NULL,
         -- <example>0</example>
-    hasNonFoil INTEGER NOT NULL,
+    "hasNonFoil" INTEGER NOT NULL,
         -- <example>1</example>
-    isAlternative INTEGER NOT NULL,
+    "isAlternative" INTEGER NOT NULL,
         -- <example>0</example>
-    isFullArt INTEGER NOT NULL,
+    "isFullArt" INTEGER NOT NULL,
         -- <example>0</example>
-    isOnlineOnly INTEGER NOT NULL,
+    "isOnlineOnly" INTEGER NOT NULL,
         -- <example>0</example>
-    isOversized INTEGER NOT NULL,
+    "isOversized" INTEGER NOT NULL,
         -- <example>0</example>
-    isPromo INTEGER NOT NULL,
+    "isPromo" INTEGER NOT NULL,
         -- <example>0</example>
-    isReprint INTEGER NOT NULL,
+    "isReprint" INTEGER NOT NULL,
         -- <example>1</example>
-    isReserved INTEGER NOT NULL,
+    "isReserved" INTEGER NOT NULL,
         -- <example>0</example>
-    isStarter INTEGER NOT NULL,
+    "isStarter" INTEGER NOT NULL,
         -- <example>0</example>
-    isStorySpotlight INTEGER NOT NULL,
+    "isStorySpotlight" INTEGER NOT NULL,
         -- <example>0</example>
-    isTextless INTEGER NOT NULL,
+    "isTextless" INTEGER NOT NULL,
         -- <example>0</example>
-    isTimeshifted INTEGER NOT NULL,
+    "isTimeshifted" INTEGER NOT NULL,
         -- <example>0</example>
-    keywords TEXT NULL,
+    "keywords" TEXT NULL,
         -- <example>'First strike'</example>
-    layout TEXT NOT NULL,
+    "layout" TEXT NOT NULL,
         -- <values>{'adventure', 'aftermath', 'augment', 'flip', 'host', 'leveler', 'meld', 'modal_dfc', 'normal', 'planar', 'saga', 'scheme', 'split', 'transform', 'vanguard'}</values>
-    leadershipSkills TEXT NULL,
+    "leadershipSkills" TEXT NULL,
         -- <values>{'{'brawl': False, 'commander': False, 'oathbreaker': True}', '{'brawl': False, 'commander': True, 'oathbreaker': False}', '{'brawl': False, 'commander': True, 'oathbreaker': True}', '{'brawl': True, 'commander': False, 'oathbreaker': True}', '{'brawl': True, 'commander': True, 'oathbreaker': False}'}</values>
-    life TEXT NULL,
+    "life" TEXT NULL,
         -- <example>'-5'</example>
-    loyalty TEXT NULL,
+    "loyalty" TEXT NULL,
         -- <values>{'*', '0', '1d4+1', '2', '20', '3', '4', '5', '6', '7', 'X'}</values>
-    manaCost TEXT NULL,
+    "manaCost" TEXT NULL,
         -- <example>'{5}{W}{W}'</example>
-    mcmId TEXT NULL,
+    "mcmId" TEXT NULL,
         -- <example>'16165'</example>
-    mcmMetaId TEXT NULL,
+    "mcmMetaId" TEXT NULL,
         -- <example>'156'</example>
-    mtgArenaId TEXT NULL,
+    "mtgArenaId" TEXT NULL,
         -- <example>'74983'</example>
-    mtgjsonV4Id TEXT NOT NULL,
+    "mtgjsonV4Id" TEXT NOT NULL,
         -- <example>'ad41be73-582f-58ed-abd4-a88c1f616ac3'</example>
-    mtgoFoilId TEXT NULL,
+    "mtgoFoilId" TEXT NULL,
         -- <example>'27501'</example>
-    mtgoId TEXT NULL,
+    "mtgoId" TEXT NULL,
         -- <example>'27500'</example>
-    multiverseId TEXT NULL,
+    "multiverseId" TEXT NULL,
         -- <example>'130550'</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Ancestor's Chosen'</example>
-    number TEXT NOT NULL,
+    "number" TEXT NOT NULL,
         -- <example>'1'</example>
-    originalReleaseDate TEXT NULL,
+    "originalReleaseDate" TEXT NULL,
         -- <example>'2012/12/1'</example>
-    originalText TEXT NULL,
+    "originalText" TEXT NULL,
         -- <example>'First strike (This creature deals combat damage be..., you gain 1 life for each card in your graveyard.'</example>
-    originalType TEXT NULL,
+    "originalType" TEXT NULL,
         -- <example>'Creature - Human Cleric'</example>
-    otherFaceIds TEXT NULL,
+    "otherFaceIds" TEXT NULL,
         -- <example>'87f0062a-8321-5c16-960e-a12ce1df5839'</example>
-    power TEXT NULL,
+    "power" TEXT NULL,
         -- <example>'4'</example>
-    printings TEXT NOT NULL,
+    "printings" TEXT NOT NULL,
         -- <example>'10E,JUD,UMA'</example>
-    promoTypes TEXT NULL,
+    "promoTypes" TEXT NULL,
         -- <example>'boxtopper,boosterfun'</example>
-    purchaseUrls TEXT NULL,
+    "purchaseUrls" TEXT NULL,
         -- <example>'{'cardKingdom': 'https://mtgjson.com/links/9fb51af...er': 'https://mtgjson.com/links/4843cea124a0d515'}'</example>
-    rarity TEXT NOT NULL,
+    "rarity" TEXT NOT NULL,
         -- <values>{'common', 'mythic', 'rare', 'uncommon'}</values>
-    scryfallId TEXT NOT NULL,
+    "scryfallId" TEXT NOT NULL,
         -- <example>'7a5cd03c-4227-4551-aa4b-7d119f0468b5'</example>
-    scryfallIllustrationId TEXT NULL,
+    "scryfallIllustrationId" TEXT NULL,
         -- <example>'be2f7173-c8b7-4172-a388-9b2c6b3c16e5'</example>
-    scryfallOracleId TEXT NOT NULL,
+    "scryfallOracleId" TEXT NOT NULL,
         -- <example>'fc2ccab7-cab1-4463-b73d-898070136d74'</example>
-    setCode TEXT NOT NULL,
+    "setCode" TEXT NOT NULL,
         -- <example>'10E'</example>
-    side TEXT NULL,
+    "side" TEXT NULL,
         -- <values>{'a', 'b', 'c', 'd', 'e'}</values>
-    subtypes TEXT NULL,
+    "subtypes" TEXT NULL,
         -- <example>'Human,Cleric'</example>
-    supertypes TEXT NULL,
+    "supertypes" TEXT NULL,
         -- <values>{'Basic', 'Basic,Snow', 'Host', 'Legendary', 'Legendary,Snow', 'Ongoing', 'Snow', 'World'}</values>
-    tcgplayerProductId TEXT NULL,
+    "tcgplayerProductId" TEXT NULL,
         -- <example>'15032'</example>
-    text TEXT NULL,
+    "text" TEXT NULL,
         -- <example>'First strike (This creature deals combat damage be..., you gain 1 life for each card in your graveyard.'</example>
-    toughness TEXT NULL,
+    "toughness" TEXT NULL,
         -- <example>'4'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <example>'Creature — Human Cleric'</example>
-    types TEXT NOT NULL,
+    "types" TEXT NOT NULL,
         -- <example>'Creature'</example>
-    uuid TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
         -- <example>'5f8287b1-5bb6-5f4c-ad17-316a40d5bb0c'</example>
-    variations TEXT NULL,
+    "variations" TEXT NULL,
         -- <example>'b7c19924-b4bf-56fc-aa73-f586e940bd42'</example>
-    watermark TEXT NULL
+    "watermark" TEXT NULL
         -- <example>'set (HOU)'</example>
 );
 
 /*
-Schema: NULLTable: foreign_data
+Schema: NULL
+Table: foreign_data
 Rows: 229186
 Sample rows:
 | id   | flavorText                                                  | language   | multiverseid   | name                     | text                                                                                                                                                                                                        | type                            | uuid                                 |
@@ -191,28 +193,29 @@ Q...l'Élu de l'Ancêtre arrive en jeu, vous gagnez 1 point de vie pour chaque c
 | ...  | ...                                                         | ...        | ...            | ...                      | ...                                                                                                                                                                                                         | ...                             | ...                                  |
 */
 CREATE TABLE foreign_data (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    flavorText TEXT NOT NULL,
+    "flavorText" TEXT NOT NULL,
         -- <example>'„Es ist der Wille aller, und meine Hand, die ihn ausführt."'</example>
-    language TEXT NOT NULL,
+    "language" TEXT NOT NULL,
         -- <values>{'Ancient Greek', 'Arabic', 'Chinese Simplified', 'Chinese Traditional', 'French', 'German', 'Hebrew', 'Italian', 'Japanese', 'Korean', 'Latin', 'Phyrexian', 'Portuguese (Brazil)', 'Russian', 'Sanskrit', 'Spanish'}</values>
-    multiverseid INTEGER NULL,
+    "multiverseid" INTEGER NULL,
         -- <example>148411</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Ausgewählter der Ahnfrau'</example>
-    text TEXT NOT NULL,
+    "text" TEXT NOT NULL,
         -- <example>'Erstschlag (Diese Kreatur fügt Kampfschaden vor Kr...ebenspunkt für jede Karte in deinem Friedhof dazu.'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <example>'Kreatur — Mensch, Kleriker'</example>
-    uuid TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
         -- <example>'5f8287b1-5bb6-5f4c-ad17-316a40d5bb0c'</example>
-        -- <fk> -> cards.uuid</fk>
-    FOREIGN KEY (uuid) REFERENCES cards(uuid)
+        -- <fk> -> cards."uuid"</fk>
+    FOREIGN KEY ("uuid") REFERENCES cards("uuid")
 );
 
 /*
-Schema: NULLTable: legalities
+Schema: NULL
+Table: legalities
 Rows: 427907
 Sample rows:
 | id   | format    | status   | uuid                                 |
@@ -225,20 +228,21 @@ Sample rows:
 | ...  | ...       | ...      | ...                                  |
 */
 CREATE TABLE legalities (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    format TEXT NOT NULL,
+    "format" TEXT NOT NULL,
         -- <values>{'brawl', 'commander', 'duel', 'future', 'gladiator', 'historic', 'legacy', 'modern', 'oldschool', 'pauper', 'penny', 'pioneer', 'premodern', 'standard', 'vintage'}</values>
-    status TEXT NOT NULL,
+    "status" TEXT NOT NULL,
         -- <values>{'Banned', 'Legal', 'Restricted'}</values>
-    uuid TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
         -- <example>'5f8287b1-5bb6-5f4c-ad17-316a40d5bb0c'</example>
-        -- <fk> -> cards.uuid</fk>
-    FOREIGN KEY (uuid) REFERENCES cards(uuid)
+        -- <fk> -> cards."uuid"</fk>
+    FOREIGN KEY ("uuid") REFERENCES cards("uuid")
 );
 
 /*
-Schema: NULLTable: rulings
+Schema: NULL
+Table: rulings
 Rows: 87769
 Sample rows:
 | id   | date       | text                                                                                                                                                               | uuid                                 |
@@ -251,20 +255,21 @@ Sample rows:
 | ...  | ...        | ...                                                                                                                                                                | ...                                  |
 */
 CREATE TABLE rulings (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    date DATE NOT NULL,
+    "date" DATE NOT NULL,
         -- <example>'2007-07-15'</example>
-    text TEXT NOT NULL,
+    "text" TEXT NOT NULL,
         -- <example>'You draw the card when Bandage resolves, not when the damage is actually prevented.'</example>
-    uuid TEXT NOT NULL,
+    "uuid" TEXT NOT NULL,
         -- <example>'6d268c95-c176-5766-9a46-c14f739aba1c'</example>
-        -- <fk> -> cards.uuid</fk>
-    FOREIGN KEY (uuid) REFERENCES cards(uuid)
+        -- <fk> -> cards."uuid"</fk>
+    FOREIGN KEY ("uuid") REFERENCES cards("uuid")
 );
 
 /*
-Schema: NULLTable: set_translations
+Schema: NULL
+Table: set_translations
 Rows: 1210
 Sample rows:
 | id   | language            | setCode   | translation              |
@@ -277,20 +282,21 @@ Sample rows:
 | ...  | ...                 | ...       | ...                      |
 */
 CREATE TABLE set_translations (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    language TEXT NOT NULL,
+    "language" TEXT NOT NULL,
         -- <values>{'Chinese Simplified', 'Chinese Traditional', 'French', 'German', 'Italian', 'Japanese', 'Korean', 'Portuguese (Brazil)', 'Russian', 'Spanish'}</values>
-    setCode TEXT NOT NULL,
+    "setCode" TEXT NOT NULL,
         -- <example>'10E'</example>
-        -- <fk> -> sets.code</fk>
-    translation TEXT NULL,
+        -- <fk> -> sets."code"</fk>
+    "translation" TEXT NULL,
         -- <example>'核心系列第十版'</example>
-    FOREIGN KEY (setCode) REFERENCES sets(code)
+    FOREIGN KEY ("setCode") REFERENCES sets("code")
 );
 
 /*
-Schema: NULLTable: sets
+Schema: NULL
+Table: sets
 Rows: 551
 Sample rows:
 | id   | baseSetSize   | block    | booster                                                                                                                                                                                                     | code   | isFoilOnly   | isForeignOnly   | isNonFoilOnly   | isOnlineOnly   | isPartialPreview   | keyruneCode   | mcmId   | mcmIdExtras   | mcmName        | mtgoCode   | name                                | parentCode   | releaseDate   | tcgplayerGroupId   | totalSetSize   | type    |
@@ -303,47 +309,47 @@ Sample rows:
 | ...  | ...           | ...      | ...                                                                                                                                                                                                         | ...    | ...          | ...             | ...             | ...            | ...                | ...           | ...     | ...           | ...            | ...        | ...                                 | ...          | ...           | ...                | ...            | ...     |
 */
 CREATE TABLE sets (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    baseSetSize INTEGER NOT NULL,
+    "baseSetSize" INTEGER NOT NULL,
         -- <example>383</example>
-    block TEXT NULL,
+    "block" TEXT NULL,
         -- <example>'Core Set'</example>
-    booster TEXT NULL,
+    "booster" TEXT NULL,
         -- <example>'{'default': {'boosters': [{'contents': {'basic': 1... 318987}, {'contents': {'basic': 1, 'common': 10, '</example>
-    code TEXT NOT NULL,
+    "code" TEXT NOT NULL,
         -- <example>'10E'</example>
-    isFoilOnly INTEGER NOT NULL,
+    "isFoilOnly" INTEGER NOT NULL,
         -- <example>0</example>
-    isForeignOnly INTEGER NOT NULL,
+    "isForeignOnly" INTEGER NOT NULL,
         -- <example>0</example>
-    isNonFoilOnly INTEGER NOT NULL,
+    "isNonFoilOnly" INTEGER NOT NULL,
         -- <example>0</example>
-    isOnlineOnly INTEGER NOT NULL,
+    "isOnlineOnly" INTEGER NOT NULL,
         -- <example>0</example>
-    isPartialPreview INTEGER NOT NULL,
+    "isPartialPreview" INTEGER NOT NULL,
         -- <example>0</example>
-    keyruneCode TEXT NOT NULL,
+    "keyruneCode" TEXT NOT NULL,
         -- <example>'10E'</example>
-    mcmId INTEGER NULL,
+    "mcmId" INTEGER NULL,
         -- <example>74</example>
-    mcmIdExtras INTEGER NULL,
+    "mcmIdExtras" INTEGER NULL,
         -- <example>3209</example>
-    mcmName TEXT NULL,
+    "mcmName" TEXT NULL,
         -- <example>'Tenth Edition'</example>
-    mtgoCode TEXT NULL,
+    "mtgoCode" TEXT NULL,
         -- <example>'10E'</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Tenth Edition'</example>
-    parentCode TEXT NULL,
+    "parentCode" TEXT NULL,
         -- <example>'JMP'</example>
-    releaseDate DATE NOT NULL,
+    "releaseDate" DATE NOT NULL,
         -- <example>'2007-07-13'</example>
-    tcgplayerGroupId INTEGER NULL,
+    "tcgplayerGroupId" INTEGER NULL,
         -- <example>1</example>
-    totalSetSize INTEGER NOT NULL,
+    "totalSetSize" INTEGER NOT NULL,
         -- <example>508</example>
-    type TEXT NOT NULL
+    "type" TEXT NOT NULL
         -- <example>'core'</example>
 );
 ```

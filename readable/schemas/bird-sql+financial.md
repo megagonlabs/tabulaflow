@@ -2,7 +2,8 @@
 -- Database: financial
 
 /*
-Schema: NULLTable: account
+Schema: NULL
+Table: account
 Rows: 4500
 Sample rows:
 | account_id   | district_id   | frequency        | date       |
@@ -15,20 +16,21 @@ Sample rows:
 | ...          | ...           | ...              | ...        |
 */
 CREATE TABLE account (
-    account_id INTEGER NOT NULL PRIMARY KEY,
+    "account_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    district_id INTEGER NOT NULL,
+    "district_id" INTEGER NOT NULL,
         -- <example>18</example>
-        -- <fk> -> district.district_id</fk>
-    frequency TEXT NOT NULL,
+        -- <fk> -> district."district_id"</fk>
+    "frequency" TEXT NOT NULL,
         -- <values>{'POPLATEK MESICNE', 'POPLATEK PO OBRATU', 'POPLATEK TYDNE'}</values>
-    date DATE NOT NULL,
+    "date" DATE NOT NULL,
         -- <example>'1995-03-24'</example>
-    FOREIGN KEY (district_id) REFERENCES district(district_id)
+    FOREIGN KEY ("district_id") REFERENCES district("district_id")
 );
 
 /*
-Schema: NULLTable: card
+Schema: NULL
+Table: card
 Rows: 892
 Sample rows:
 | card_id   | disp_id   | type    | issued     |
@@ -41,20 +43,21 @@ Sample rows:
 | ...       | ...       | ...     | ...        |
 */
 CREATE TABLE card (
-    card_id INTEGER NOT NULL PRIMARY KEY,
+    "card_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    disp_id INTEGER NOT NULL,
+    "disp_id" INTEGER NOT NULL,
         -- <example>9</example>
-        -- <fk> -> disp.disp_id</fk>
-    type TEXT NOT NULL,
+        -- <fk> -> disp."disp_id"</fk>
+    "type" TEXT NOT NULL,
         -- <values>{'classic', 'gold', 'junior'}</values>
-    issued DATE NOT NULL,
+    "issued" DATE NOT NULL,
         -- <example>'1998-10-16'</example>
-    FOREIGN KEY (disp_id) REFERENCES disp(disp_id)
+    FOREIGN KEY ("disp_id") REFERENCES disp("disp_id")
 );
 
 /*
-Schema: NULLTable: client
+Schema: NULL
+Table: client
 Rows: 5369
 Sample rows:
 | client_id   | gender   | birth_date   | district_id   |
@@ -67,20 +70,21 @@ Sample rows:
 | ...         | ...      | ...          | ...           |
 */
 CREATE TABLE client (
-    client_id INTEGER NOT NULL PRIMARY KEY,
+    "client_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    gender TEXT NOT NULL,
+    "gender" TEXT NOT NULL,
         -- <values>{'F', 'M'}</values>
-    birth_date DATE NOT NULL,
+    "birth_date" DATE NOT NULL,
         -- <example>'1970-12-13'</example>
-    district_id INTEGER NOT NULL,
+    "district_id" INTEGER NOT NULL,
         -- <example>18</example>
-        -- <fk> -> district.district_id</fk>
-    FOREIGN KEY (district_id) REFERENCES district(district_id)
+        -- <fk> -> district."district_id"</fk>
+    FOREIGN KEY ("district_id") REFERENCES district("district_id")
 );
 
 /*
-Schema: NULLTable: disp
+Schema: NULL
+Table: disp
 Rows: 5369
 Sample rows:
 | disp_id   | client_id   | account_id   | type      |
@@ -93,22 +97,23 @@ Sample rows:
 | ...       | ...         | ...          | ...       |
 */
 CREATE TABLE disp (
-    disp_id INTEGER NOT NULL PRIMARY KEY,
+    "disp_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    client_id INTEGER NOT NULL,
+    "client_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> client.client_id</fk>
-    account_id INTEGER NOT NULL,
+        -- <fk> -> client."client_id"</fk>
+    "account_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> account.account_id</fk>
-    type TEXT NOT NULL,
+        -- <fk> -> account."account_id"</fk>
+    "type" TEXT NOT NULL,
         -- <values>{'DISPONENT', 'OWNER'}</values>
-    FOREIGN KEY (account_id) REFERENCES account(account_id),
-    FOREIGN KEY (client_id) REFERENCES client(client_id)
+    FOREIGN KEY ("account_id") REFERENCES account("account_id"),
+    FOREIGN KEY ("client_id") REFERENCES client("client_id")
 );
 
 /*
-Schema: NULLTable: district
+Schema: NULL
+Table: district
 Rows: 77
 Sample rows:
 | district_id   | A2          | A3              | A4      | A5   | A6   | A7   | A8   | A9   | A10   | A11   | A12   | A13   | A14   | A15   | A16   |
@@ -121,42 +126,43 @@ Sample rows:
 | ...           | ...         | ...             | ...     | ...  | ...  | ...  | ...  | ...  | ...   | ...   | ...   | ...   | ...   | ...   | ...   |
 */
 CREATE TABLE district (
-    district_id INTEGER NOT NULL PRIMARY KEY,
+    "district_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    A2 TEXT NOT NULL,
+    "A2" TEXT NOT NULL,
         -- <example>'Hl.m. Praha'</example>
-    A3 TEXT NOT NULL,
+    "A3" TEXT NOT NULL,
         -- <values>{'Prague', 'central Bohemia', 'east Bohemia', 'north Bohemia', 'north Moravia', 'south Bohemia', 'south Moravia', 'west Bohemia'}</values>
-    A4 TEXT NOT NULL,
+    "A4" TEXT NOT NULL,
         -- <example>'1204953'</example>
-    A5 TEXT NOT NULL,
+    "A5" TEXT NOT NULL,
         -- <example>'0'</example>
-    A6 TEXT NOT NULL,
+    "A6" TEXT NOT NULL,
         -- <example>'0'</example>
-    A7 TEXT NOT NULL,
+    "A7" TEXT NOT NULL,
         -- <example>'0'</example>
-    A8 INTEGER NOT NULL,
+    "A8" INTEGER NOT NULL,
         -- <example>1</example>
-    A9 INTEGER NOT NULL,
+    "A9" INTEGER NOT NULL,
         -- <example>1</example>
-    A10 REAL NOT NULL,
+    "A10" REAL NOT NULL,
         -- <example>100.000</example>
-    A11 INTEGER NOT NULL,
+    "A11" INTEGER NOT NULL,
         -- <example>12541</example>
-    A12 REAL NULL,
+    "A12" REAL NULL,
         -- <example>0.200</example>
-    A13 REAL NOT NULL,
+    "A13" REAL NOT NULL,
         -- <example>0.430</example>
-    A14 INTEGER NOT NULL,
+    "A14" INTEGER NOT NULL,
         -- <example>167</example>
-    A15 INTEGER NULL,
+    "A15" INTEGER NULL,
         -- <example>85677</example>
-    A16 INTEGER NOT NULL
+    "A16" INTEGER NOT NULL
         -- <example>99107</example>
 );
 
 /*
-Schema: NULLTable: loan
+Schema: NULL
+Table: loan
 Rows: 682
 Sample rows:
 | loan_id   | account_id   | date       | amount   | duration   | payments   | status   |
@@ -169,26 +175,27 @@ Sample rows:
 | ...       | ...          | ...        | ...      | ...        | ...        | ...      |
 */
 CREATE TABLE loan (
-    loan_id INTEGER NOT NULL PRIMARY KEY,
+    "loan_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>4959</example>
-    account_id INTEGER NOT NULL,
+    "account_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> account.account_id</fk>
-    date DATE NOT NULL,
+        -- <fk> -> account."account_id"</fk>
+    "date" DATE NOT NULL,
         -- <example>'1994-01-05'</example>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <example>80952</example>
-    duration INTEGER NOT NULL,
+    "duration" INTEGER NOT NULL,
         -- <example>24</example>
-    payments REAL NOT NULL,
+    "payments" REAL NOT NULL,
         -- <example>3373.000</example>
-    status TEXT NOT NULL,
+    "status" TEXT NOT NULL,
         -- <values>{'A', 'B', 'C', 'D'}</values>
-    FOREIGN KEY (account_id) REFERENCES account(account_id)
+    FOREIGN KEY ("account_id") REFERENCES account("account_id")
 );
 
 /*
-Schema: NULLTable: order
+Schema: NULL
+Table: order
 Rows: 6471
 Sample rows:
 | order_id   | account_id   | bank_to   | account_to   | amount   | k_symbol   |
@@ -201,24 +208,25 @@ Sample rows:
 | ...        | ...          | ...       | ...          | ...      | ...        |
 */
 CREATE TABLE order (
-    order_id INTEGER NOT NULL PRIMARY KEY,
+    "order_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>29401</example>
-    account_id INTEGER NOT NULL,
+    "account_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> account.account_id</fk>
-    bank_to TEXT NOT NULL,
+        -- <fk> -> account."account_id"</fk>
+    "bank_to" TEXT NOT NULL,
         -- <values>{'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}</values>
-    account_to INTEGER NOT NULL,
+    "account_to" INTEGER NOT NULL,
         -- <example>87144583</example>
-    amount REAL NOT NULL,
+    "amount" REAL NOT NULL,
         -- <example>2452.000</example>
-    k_symbol TEXT NOT NULL,
+    "k_symbol" TEXT NOT NULL,
         -- <values>{'', 'LEASING', 'POJISTNE', 'SIPO', 'UVER'}</values>
-    FOREIGN KEY (account_id) REFERENCES account(account_id)
+    FOREIGN KEY ("account_id") REFERENCES account("account_id")
 );
 
 /*
-Schema: NULLTable: trans
+Schema: NULL
+Table: trans
 Rows: 1056320
 Sample rows:
 | trans_id   | account_id   | date       | type   | operation     | amount   | balance   | k_symbol   | bank   | account    |
@@ -231,27 +239,27 @@ Sample rows:
 | ...        | ...          | ...        | ...    | ...           | ...      | ...       | ...        | ...    | ...        |
 */
 CREATE TABLE trans (
-    trans_id INTEGER NOT NULL PRIMARY KEY,
+    "trans_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    account_id INTEGER NOT NULL,
+    "account_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> account.account_id</fk>
-    date DATE NOT NULL,
+        -- <fk> -> account."account_id"</fk>
+    "date" DATE NOT NULL,
         -- <example>'1995-03-24'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <values>{'PRIJEM', 'VYBER', 'VYDAJ'}</values>
-    operation TEXT NULL,
+    "operation" TEXT NULL,
         -- <values>{'PREVOD NA UCET', 'PREVOD Z UCTU', 'VKLAD', 'VYBER KARTOU', 'VYBER'}</values>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <example>1000</example>
-    balance INTEGER NOT NULL,
+    "balance" INTEGER NOT NULL,
         -- <example>1000</example>
-    k_symbol TEXT NULL,
+    "k_symbol" TEXT NULL,
         -- <values>{' ', 'DUCHOD', 'POJISTNE', 'SANKC. UROK', 'SIPO', 'SLUZBY', 'UROK', 'UVER'}</values>
-    bank TEXT NULL,
+    "bank" TEXT NULL,
         -- <values>{'AB', 'CD', 'EF', 'GH', 'IJ', 'KL', 'MN', 'OP', 'QR', 'ST', 'UV', 'WX', 'YZ'}</values>
-    account INTEGER NULL,
+    "account" INTEGER NULL,
         -- <example>41403269</example>
-    FOREIGN KEY (account_id) REFERENCES account(account_id)
+    FOREIGN KEY ("account_id") REFERENCES account("account_id")
 );
 ```

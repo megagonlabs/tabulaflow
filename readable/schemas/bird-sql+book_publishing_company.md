@@ -2,7 +2,8 @@
 -- Database: book_publishing_company
 
 /*
-Schema: NULLTable: authors
+Schema: NULL
+Table: authors
 Rows: 23
 Sample rows:
 | au_id       | au_lname   | au_fname   | phone        | address              | city       | state   | zip   | contract   |
@@ -15,28 +16,29 @@ Sample rows:
 | ...         | ...        | ...        | ...          | ...                  | ...        | ...     | ...   | ...        |
 */
 CREATE TABLE authors (
-    au_id TEXT NOT NULL PRIMARY KEY,
+    "au_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'172-32-1176'</example>
-    au_lname TEXT NOT NULL,
+    "au_lname" TEXT NOT NULL,
         -- <example>'White'</example>
-    au_fname TEXT NOT NULL,
+    "au_fname" TEXT NOT NULL,
         -- <example>'Johnson'</example>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'408 496-7223'</example>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'10932 Bigge Rd.'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Menlo Park'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <values>{'CA', 'IN', 'KS', 'MD', 'MI', 'OR', 'TN', 'UT'}</values>
-    zip TEXT NOT NULL,
+    "zip" TEXT NOT NULL,
         -- <example>'94025'</example>
-    contract TEXT NOT NULL
+    "contract" TEXT NOT NULL
         -- <values>{'0'}</values>
 );
 
 /*
-Schema: NULLTable: discounts
+Schema: NULL
+Table: discounts
 Rows: 3
 All rows:
 | discounttype      | stor_id   | lowqty   | highqty   |   discount |
@@ -46,22 +48,23 @@ All rows:
 | Customer Discount | 8042      | [NULL]   | [NULL]    |        5   |
 */
 CREATE TABLE discounts (
-    discounttype TEXT NOT NULL,
+    "discounttype" TEXT NOT NULL,
         -- <values>{'Customer Discount', 'Initial Customer', 'Volume Discount'}</values>
-    stor_id TEXT NULL,
+    "stor_id" TEXT NULL,
         -- <values>{'8042'}</values>
-        -- <fk> -> stores.stor_id</fk>
-    lowqty INTEGER NULL,
+        -- <fk> -> stores."stor_id"</fk>
+    "lowqty" INTEGER NULL,
         -- <example>100</example>
-    highqty INTEGER NULL,
+    "highqty" INTEGER NULL,
         -- <example>1000</example>
-    discount REAL NOT NULL,
+    "discount" REAL NOT NULL,
         -- <example>10.500</example>
-    FOREIGN KEY (stor_id) REFERENCES stores(stor_id)
+    FOREIGN KEY ("stor_id") REFERENCES stores("stor_id")
 );
 
 /*
-Schema: NULLTable: employee
+Schema: NULL
+Table: employee
 Rows: 43
 Sample rows:
 | emp_id    | fname   | minit   | lname     | job_id   | job_lvl   | pub_id   | hire_date             |
@@ -74,30 +77,31 @@ Sample rows:
 | ...       | ...     | ...     | ...       | ...      | ...       | ...      | ...                   |
 */
 CREATE TABLE employee (
-    emp_id TEXT NOT NULL PRIMARY KEY,
+    "emp_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'A-C71970F'</example>
-    fname TEXT NOT NULL,
+    "fname" TEXT NOT NULL,
         -- <example>'Aria'</example>
-    minit TEXT NOT NULL,
+    "minit" TEXT NOT NULL,
         -- <example>''</example>
-    lname TEXT NOT NULL,
+    "lname" TEXT NOT NULL,
         -- <example>'Cruz'</example>
-    job_id INTEGER NOT NULL,
+    "job_id" INTEGER NOT NULL,
         -- <example>10</example>
-        -- <fk> -> jobs.job_id</fk>
-    job_lvl INTEGER NOT NULL,
+        -- <fk> -> jobs."job_id"</fk>
+    "job_lvl" INTEGER NOT NULL,
         -- <example>87</example>
-    pub_id TEXT NOT NULL,
+    "pub_id" TEXT NOT NULL,
         -- <values>{'0736', '0877', '1389', '1622', '1756', '9901', '9952', '9999'}</values>
-        -- <fk> -> publishers.pub_id</fk>
-    hire_date DATETIME NOT NULL,
+        -- <fk> -> publishers."pub_id"</fk>
+    "hire_date" DATETIME NOT NULL,
         -- <example>'1991-10-26 00:00:00.0'</example>
-    FOREIGN KEY (job_id) REFERENCES jobs(job_id),
-    FOREIGN KEY (pub_id) REFERENCES publishers(pub_id)
+    FOREIGN KEY ("job_id") REFERENCES jobs("job_id"),
+    FOREIGN KEY ("pub_id") REFERENCES publishers("pub_id")
 );
 
 /*
-Schema: NULLTable: jobs
+Schema: NULL
+Table: jobs
 Rows: 14
 Sample rows:
 | job_id   | job_desc                     | min_lvl   | max_lvl   |
@@ -110,18 +114,19 @@ Sample rows:
 | ...      | ...                          | ...       | ...       |
 */
 CREATE TABLE jobs (
-    job_id INTEGER NOT NULL PRIMARY KEY,
+    "job_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    job_desc TEXT NOT NULL,
+    "job_desc" TEXT NOT NULL,
         -- <example>'New Hire - Job not specified'</example>
-    min_lvl INTEGER NOT NULL,
+    "min_lvl" INTEGER NOT NULL,
         -- <example>10</example>
-    max_lvl INTEGER NOT NULL
+    "max_lvl" INTEGER NOT NULL
         -- <example>10</example>
 );
 
 /*
-Schema: NULLTable: pub_info
+Schema: NULL
+Table: pub_info
 Rows: 7
 All rows:
 |   pub_id | logo                                                                                                                                                                                                        | pr_info                                                                                                                                                                                                     |
@@ -135,18 +140,19 @@ All rows:
 |     9999 | 0x474946383961A9002400B30F00000000800000008000808000000080800080008080808080C0C0C0FF000000FF00FFFF00...B5588BE5CCA5B1BDA377B99E3CBE9EDA31944A951ADF7DB15263A1429B37BB7E429D8EC4D754B87164078F2B87012002003B | This is sample text data for Lucerne Publishing, publisher 9999 in the pubs database. Lucerne publis...rne Publishing, publisher 9999 in the pubs database. Lucerne publishing is located in Paris, France. |
 */
 CREATE TABLE pub_info (
-    pub_id TEXT NOT NULL PRIMARY KEY,
+    "pub_id" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'0877', '1389', '1622', '1756', '9901', '9952', '9999'}</values>
-        -- <fk> -> publishers.pub_id</fk>
-    logo BLOB NOT NULL,
+        -- <fk> -> publishers."pub_id"</fk>
+    "logo" BLOB NOT NULL,
         -- <example>'0x4749463839618B002F00B30F000000008000000080008080...294917DC473035E0B9E3183F9A3BB6F7ABDE608B018800003B'</example>
-    pr_info TEXT NOT NULL,
+    "pr_info" TEXT NOT NULL,
         -- <values>{'This is sample text data for Algodata Infosystems,...ta Infosystems is located in Berkeley, California.', 'This is sample text data for Binnet & Hardley, pub...e. Binnet & Hardley is located in Washington, D.C.', 'This is sample text data for Five Lakes Publishing... Lakes Publishing is located in Chicago, Illinois.', 'This is sample text data for GGG&G, publisher 9901...bs database. GGG&G is located in München, Germany.', 'This is sample text data for Lucerne Publishing, p...e. Lucerne publishing is located in Paris, France.', 'This is sample text data for Ramona Publishers, pu...se. Ramona Publishers is located in Dallas, Texas.', 'This is sample text data for Scootney Books, publi...otney Books is located in New York City, New York.'}</values>
-    FOREIGN KEY (pub_id) REFERENCES publishers(pub_id)
+    FOREIGN KEY ("pub_id") REFERENCES publishers("pub_id")
 );
 
 /*
-Schema: NULLTable: publishers
+Schema: NULL
+Table: publishers
 Rows: 8
 All rows:
 |   pub_id | pub_name              | city       | state   | country   |
@@ -161,20 +167,21 @@ All rows:
 |     9999 | Lucerne Publishing    | Paris      | [NULL]  | France    |
 */
 CREATE TABLE publishers (
-    pub_id TEXT NOT NULL PRIMARY KEY,
+    "pub_id" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'0736', '0877', '1389', '1622', '1756', '9901', '9952', '9999'}</values>
-    pub_name TEXT NOT NULL,
+    "pub_name" TEXT NOT NULL,
         -- <values>{'Algodata Infosystems', 'Binnet & Hardley', 'Five Lakes Publishing', 'GGG&G', 'Lucerne Publishing', 'New Moon Books', 'Ramona Publishers', 'Scootney Books'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Berkeley', 'Boston', 'Chicago', 'Dallas', 'Mnchen', 'New York', 'Paris', 'Washington'}</values>
-    state TEXT NULL,
+    "state" TEXT NULL,
         -- <values>{'CA', 'DC', 'IL', 'MA', 'NY', 'TX'}</values>
-    country TEXT NOT NULL
+    "country" TEXT NOT NULL
         -- <values>{'France', 'Germany', 'USA'}</values>
 );
 
 /*
-Schema: NULLTable: roysched
+Schema: NULL
+Table: roysched
 Rows: 86
 Sample rows:
 | title_id   | lorange   | hirange   | royalty   |
@@ -187,20 +194,21 @@ Sample rows:
 | ...        | ...       | ...       | ...       |
 */
 CREATE TABLE roysched (
-    title_id TEXT NOT NULL,
+    "title_id" TEXT NOT NULL,
         -- <example>'BU1032'</example>
-        -- <fk> -> titles.title_id</fk>
-    lorange INTEGER NOT NULL,
+        -- <fk> -> titles."title_id"</fk>
+    "lorange" INTEGER NOT NULL,
         -- <example>0</example>
-    hirange INTEGER NOT NULL,
+    "hirange" INTEGER NOT NULL,
         -- <example>5000</example>
-    royalty INTEGER NOT NULL,
+    "royalty" INTEGER NOT NULL,
         -- <example>10</example>
-    FOREIGN KEY (title_id) REFERENCES titles(title_id)
+    FOREIGN KEY ("title_id") REFERENCES titles("title_id")
 );
 
 /*
-Schema: NULLTable: sales
+Schema: NULL
+Table: sales
 Rows: 21
 Sample rows:
 | stor_id   | ord_num   | ord_date              | qty   | payterms   | title_id   |
@@ -213,27 +221,28 @@ Sample rows:
 | ...       | ...       | ...                   | ...   | ...        | ...        |
 */
 CREATE TABLE sales (
-    stor_id TEXT NOT NULL,
+    "stor_id" TEXT NOT NULL,
         -- <values>{'6380', '7066', '7067', '7131', '7896', '8042'}</values>
-        -- <fk> -> stores.stor_id</fk>
-    ord_num TEXT NOT NULL,
+        -- <fk> -> stores."stor_id"</fk>
+    "ord_num" TEXT NOT NULL,
         -- <example>'6871'</example>
-    ord_date DATETIME NOT NULL,
+    "ord_date" DATETIME NOT NULL,
         -- <example>'1994-09-14 00:00:00.0'</example>
-    qty INTEGER NOT NULL,
+    "qty" INTEGER NOT NULL,
         -- <example>5</example>
-    payterms TEXT NOT NULL,
+    "payterms" TEXT NOT NULL,
         -- <values>{'Net 30', 'Net 60', 'ON invoice'}</values>
-    title_id TEXT NOT NULL,
+    "title_id" TEXT NOT NULL,
         -- <example>'BU1032'</example>
-        -- <fk> -> titles.title_id</fk>
-    PRIMARY KEY (stor_id, ord_num, title_id),
-    FOREIGN KEY (stor_id) REFERENCES stores(stor_id),
-    FOREIGN KEY (title_id) REFERENCES titles(title_id)
+        -- <fk> -> titles."title_id"</fk>
+    PRIMARY KEY ("stor_id", "ord_num", "title_id"),
+    FOREIGN KEY ("stor_id") REFERENCES stores("stor_id"),
+    FOREIGN KEY ("title_id") REFERENCES titles("title_id")
 );
 
 /*
-Schema: NULLTable: stores
+Schema: NULL
+Table: stores
 Rows: 6
 All rows:
 |   stor_id | stor_name                            | stor_address        | city      | state   |   zip |
@@ -246,22 +255,23 @@ All rows:
 |      8042 | Bookbeat                             | 679 Carson St.      | Portland  | OR      | 89076 |
 */
 CREATE TABLE stores (
-    stor_id TEXT NOT NULL PRIMARY KEY,
+    "stor_id" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'6380', '7066', '7067', '7131', '7896', '8042'}</values>
-    stor_name TEXT NOT NULL,
+    "stor_name" TEXT NOT NULL,
         -- <values>{'Barnum's', 'Bookbeat', 'Doc-U-Mat: Quality Laundry and Books', 'Eric the Read Books', 'Fricative Bookshop', 'News & Brews'}</values>
-    stor_address TEXT NOT NULL,
+    "stor_address" TEXT NOT NULL,
         -- <values>{'24-A Avogadro Way', '567 Pasadena Ave.', '577 First St.', '679 Carson St.', '788 Catamaugus Ave.', '89 Madison St.'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Fremont', 'Los Gatos', 'Portland', 'Remulade', 'Seattle', 'Tustin'}</values>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <values>{'CA', 'OR', 'WA'}</values>
-    zip TEXT NOT NULL
+    "zip" TEXT NOT NULL
         -- <values>{'89076', '90019', '92789', '96745', '98014', '98056'}</values>
 );
 
 /*
-Schema: NULLTable: titleauthor
+Schema: NULL
+Table: titleauthor
 Rows: 25
 Sample rows:
 | au_id       | title_id   | au_ord   | royaltyper   |
@@ -274,23 +284,24 @@ Sample rows:
 | ...         | ...        | ...      | ...          |
 */
 CREATE TABLE titleauthor (
-    au_id TEXT NOT NULL,
+    "au_id" TEXT NOT NULL,
         -- <example>'172-32-1176'</example>
-        -- <fk> -> authors.au_id</fk>
-    title_id TEXT NOT NULL,
+        -- <fk> -> authors."au_id"</fk>
+    "title_id" TEXT NOT NULL,
         -- <example>'PS3333'</example>
-        -- <fk> -> titles.title_id</fk>
-    au_ord INTEGER NOT NULL,
+        -- <fk> -> titles."title_id"</fk>
+    "au_ord" INTEGER NOT NULL,
         -- <example>1</example>
-    royaltyper INTEGER NOT NULL,
+    "royaltyper" INTEGER NOT NULL,
         -- <example>100</example>
-    PRIMARY KEY (au_id, title_id),
-    FOREIGN KEY (au_id) REFERENCES authors(au_id),
-    FOREIGN KEY (title_id) REFERENCES titles(title_id)
+    PRIMARY KEY ("au_id", "title_id"),
+    FOREIGN KEY ("au_id") REFERENCES authors("au_id"),
+    FOREIGN KEY ("title_id") REFERENCES titles("title_id")
 );
 
 /*
-Schema: NULLTable: titles
+Schema: NULL
+Table: titles
 Rows: 18
 Sample rows:
 | title_id   | title                                                | type     | pub_id   | price   | advance   | royalty   | ytd_sales   | notes                                                                                                                   | pubdate               |
@@ -303,27 +314,27 @@ Sample rows:
 | ...        | ...                                                  | ...      | ...      | ...     | ...       | ...       | ...         | ...                                                                                                                     | ...                   |
 */
 CREATE TABLE titles (
-    title_id TEXT NOT NULL PRIMARY KEY,
+    "title_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'BU1032'</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'The Busy Executive's Database Guide'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <values>{'UNDECIDED', 'business', 'mod_cook', 'popular_comp', 'psychology', 'trad_cook'}</values>
-    pub_id TEXT NOT NULL,
+    "pub_id" TEXT NOT NULL,
         -- <values>{'0736', '0877', '1389'}</values>
-        -- <fk> -> publishers.pub_id</fk>
-    price REAL NULL,
+        -- <fk> -> publishers."pub_id"</fk>
+    "price" REAL NULL,
         -- <example>19.990</example>
-    advance REAL NULL,
+    "advance" REAL NULL,
         -- <example>5000.000</example>
-    royalty INTEGER NULL,
+    "royalty" INTEGER NULL,
         -- <example>10</example>
-    ytd_sales INTEGER NULL,
+    "ytd_sales" INTEGER NULL,
         -- <example>4095</example>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <example>'An overview of available database systems with emp...asis on common business applications. Illustrated.'</example>
-    pubdate DATETIME NOT NULL,
+    "pubdate" DATETIME NOT NULL,
         -- <example>'1991-06-12 00:00:00.0'</example>
-    FOREIGN KEY (pub_id) REFERENCES publishers(pub_id)
+    FOREIGN KEY ("pub_id") REFERENCES publishers("pub_id")
 );
 ```

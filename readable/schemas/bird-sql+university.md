@@ -2,7 +2,8 @@
 -- Database: university
 
 /*
-Schema: NULLTable: country
+Schema: NULL
+Table: country
 Rows: 74
 Sample rows:
 | id   | country_name   |
@@ -15,14 +16,15 @@ Sample rows:
 | ...  | ...            |
 */
 CREATE TABLE country (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    country_name TEXT NOT NULL
+    "country_name" TEXT NOT NULL
         -- <example>'Argentina'</example>
 );
 
 /*
-Schema: NULLTable: ranking_criteria
+Schema: NULL
+Table: ranking_criteria
 Rows: 21
 Sample rows:
 | id   | ranking_system_id   | criteria_name   |
@@ -35,18 +37,19 @@ Sample rows:
 | ...  | ...                 | ...             |
 */
 CREATE TABLE ranking_criteria (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ranking_system_id INTEGER NOT NULL,
+    "ranking_system_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> ranking_system.id</fk>
-    criteria_name TEXT NOT NULL,
+        -- <fk> -> ranking_system."id"</fk>
+    "criteria_name" TEXT NOT NULL,
         -- <example>'Teaching'</example>
-    FOREIGN KEY (ranking_system_id) REFERENCES ranking_system(id)
+    FOREIGN KEY ("ranking_system_id") REFERENCES ranking_system("id")
 );
 
 /*
-Schema: NULLTable: ranking_system
+Schema: NULL
+Table: ranking_system
 Rows: 3
 All rows:
 |   id | system_name                                     |
@@ -56,14 +59,15 @@ All rows:
 |    3 | Center for World University Rankings            |
 */
 CREATE TABLE ranking_system (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    system_name TEXT NOT NULL
+    "system_name" TEXT NOT NULL
         -- <values>{'Center for World University Rankings', 'Shanghai Ranking', 'Times Higher Education World University Ranking'}</values>
 );
 
 /*
-Schema: NULLTable: university
+Schema: NULL
+Table: university
 Rows: 1247
 Sample rows:
 | id   | country_id   | university_name                       |
@@ -76,18 +80,19 @@ Sample rows:
 | ...  | ...          | ...                                   |
 */
 CREATE TABLE university (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    country_id INTEGER NOT NULL,
+    "country_id" INTEGER NOT NULL,
         -- <example>73</example>
-        -- <fk> -> country.id</fk>
-    university_name TEXT NOT NULL,
+        -- <fk> -> country."id"</fk>
+    "university_name" TEXT NOT NULL,
         -- <example>'Harvard University'</example>
-    FOREIGN KEY (country_id) REFERENCES country(id)
+    FOREIGN KEY ("country_id") REFERENCES country("id")
 );
 
 /*
-Schema: NULLTable: university_ranking_year
+Schema: NULL
+Table: university_ranking_year
 Rows: 29612
 Sample rows:
 | university_id   | ranking_criteria_id   | year   | score   |
@@ -100,22 +105,23 @@ Sample rows:
 | ...             | ...                   | ...    | ...     |
 */
 CREATE TABLE university_ranking_year (
-    university_id INTEGER NOT NULL,
+    "university_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> university.id</fk>
-    ranking_criteria_id INTEGER NOT NULL,
+        -- <fk> -> university."id"</fk>
+    "ranking_criteria_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> ranking_criteria.id</fk>
-    year INTEGER NOT NULL,
+        -- <fk> -> ranking_criteria."id"</fk>
+    "year" INTEGER NOT NULL,
         -- <example>2011</example>
-    score INTEGER NULL,
+    "score" INTEGER NULL,
         -- <example>100</example>
-    FOREIGN KEY (ranking_criteria_id) REFERENCES ranking_criteria(id),
-    FOREIGN KEY (university_id) REFERENCES university(id)
+    FOREIGN KEY ("ranking_criteria_id") REFERENCES ranking_criteria("id"),
+    FOREIGN KEY ("university_id") REFERENCES university("id")
 );
 
 /*
-Schema: NULLTable: university_year
+Schema: NULL
+Table: university_year
 Rows: 1085
 Sample rows:
 | university_id   | year   | num_students   | student_staff_ratio   | pct_international_students   | pct_female_students   |
@@ -128,19 +134,19 @@ Sample rows:
 | ...             | ...    | ...            | ...                   | ...                          | ...                   |
 */
 CREATE TABLE university_year (
-    university_id INTEGER NOT NULL,
+    "university_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> university.id</fk>
-    year INTEGER NOT NULL,
+        -- <fk> -> university."id"</fk>
+    "year" INTEGER NOT NULL,
         -- <example>2011</example>
-    num_students INTEGER NOT NULL,
+    "num_students" INTEGER NOT NULL,
         -- <example>20152</example>
-    student_staff_ratio REAL NOT NULL,
+    "student_staff_ratio" REAL NOT NULL,
         -- <example>8.900</example>
-    pct_international_students INTEGER NOT NULL,
+    "pct_international_students" INTEGER NOT NULL,
         -- <example>25</example>
-    pct_female_students INTEGER NULL,
+    "pct_female_students" INTEGER NULL,
         -- <example>33</example>
-    FOREIGN KEY (university_id) REFERENCES university(id)
+    FOREIGN KEY ("university_id") REFERENCES university("id")
 );
 ```

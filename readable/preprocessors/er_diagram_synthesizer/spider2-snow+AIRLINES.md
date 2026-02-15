@@ -1,57 +1,57 @@
 ```mermaid
 erDiagram
     Flight {
-        table airlines__flights "Core flight details: identifiers, schedule, actual times, status, aircraft_code, departure_airport, arrival_airport."
+        table AIRLINES__FLIGHTS "Core flight schedule and operational timestamps, including references to aircraft (aircraft_code) and airports (departure_airport, arrival_airport)."
     }
     Airport {
-        table airlines__airports_data "Master data for airports including name, city, coordinates, and timezone."
+        table AIRLINES__AIRPORTS_DATA "Airport master data keyed by airport_code with names (localized), city, coordinates, and timezone."
     }
-    AircraftType {
-        table airlines__aircrafts_data "Aircraft model master data: code, localized model name, and range."
+    AircraftModel {
+        table AIRLINES__AIRCRAFTS_DATA "Aircraft type master data keyed by aircraft_code with model (localized) and range."
     }
     AircraftSeat {
-        table airlines__seats "Seat map per aircraft type: seat_no and fare_conditions (cabin class)."
+        table AIRLINES__SEATS "Per-aircraft_code seat map with seat_no and fare_conditions."
     }
     Booking {
-        table airlines__bookings "Booking header details: book_ref, book_date, total_amount."
+        table AIRLINES__BOOKINGS "Core booking header with book_ref, book_date, and total_amount."
     }
     Ticket {
-        table airlines__tickets "Ticket header: ticket_no, book_ref, passenger_id."
+        table AIRLINES__TICKETS "Ticket records keyed by ticket_no, linked to a booking (book_ref) and carrying passenger_id."
     }
-    TicketSegment {
-        table airlines__ticket_flights "Purchased segment details (fare_conditions, amount) keyed by (ticket_no, flight_id)."
-        table airlines__boarding_passes "Check-in/boarding assignment (seat_no, boarding_no) keyed by (ticket_no, flight_id); vertical extension of ticket_flights."
+    TicketedSegment {
+        table AIRLINES__TICKET_FLIGHTS "Core segment details (ticket_no + flight_id), fare_conditions, and amount."
+        table AIRLINES__BOARDING_PASSES "Boarding/seat assignment extension for the same (ticket_no + flight_id): boarding_no and seat_no."
     }
 
-    Flight ||--o{ Airport : "FlightDepartsFromAirport"
-    %% Each flight departs from exactly one origin airport; an airport can be the origin for many flights.
-    %% SQL join path: `FROM airlines.flights f JOIN airlines.airports_data a ON a.airport_code = f.departure_airport`
+    Flight }|--o| Airport : "FlightDepartsFromAirport"
+    %% Each flight departs from exactly one airport; an airport can be the origin for many flights.
+    %% SQL join path: `FROM AIRLINES.FLIGHTS f JOIN AIRLINES.AIRPORTS_DATA a ON a.airport_code = f.departure_airport`
 
-    Flight ||--o{ Airport : "FlightArrivesAtAirport"
-    %% Each flight arrives at exactly one destination airport; an airport can be the destination for many flights.
-    %% SQL join path: `FROM airlines.flights f JOIN airlines.airports_data a ON a.airport_code = f.arrival_airport`
+    Flight }|--o| Airport : "FlightArrivesAtAirport"
+    %% Each flight arrives at exactly one airport; an airport can be the destination for many flights.
+    %% SQL join path: `FROM AIRLINES.FLIGHTS f JOIN AIRLINES.AIRPORTS_DATA a ON a.airport_code = f.arrival_airport`
 
-    Flight ||--o{ AircraftType : "FlightUsesAircraftType"
-    %% Each flight is operated with exactly one aircraft type; an aircraft type can operate many flights.
-    %% SQL join path: `FROM airlines.flights f JOIN airlines.aircrafts_data a ON a.aircraft_code = f.aircraft_code`
+    Flight }|--o| AircraftModel : "FlightUsesAircraftModel"
+    %% Each flight uses one aircraft model; an aircraft model can be used by many flights.
+    %% SQL join path: `FROM AIRLINES.FLIGHTS f JOIN AIRLINES.AIRCRAFTS_DATA m ON m.aircraft_code = f.aircraft_code`
 
-    AircraftType }o--|| AircraftSeat : "AircraftTypeHasSeats"
-    %% An aircraft type defines many seat positions and cabin classes; each seat belongs to exactly one aircraft type.
-    %% SQL join path: `FROM airlines.aircrafts_data a JOIN airlines.seats s ON s.aircraft_code = a.aircraft_code`
+    AircraftModel }o--|| AircraftSeat : "AircraftModelHasSeats"
+    %% An aircraft model is configured with many seat definitions; each seat belongs to exactly one model.
+    %% SQL join path: `FROM AIRLINES.AIRCRAFTS_DATA m JOIN AIRLINES.SEATS s ON s.aircraft_code = m.aircraft_code`
 
-    Booking }o--|| Ticket : "BookingHasTickets"
-    %% A booking may contain multiple tickets; each ticket belongs to exactly one booking.
-    %% SQL join path: `FROM airlines.bookings b JOIN airlines.tickets t ON t.book_ref = b.book_ref`
+    Booking }|--|| Ticket : "BookingHasTickets"
+    %% A booking contains one or more tickets; each ticket belongs to exactly one booking.
+    %% SQL join path: `FROM AIRLINES.BOOKINGS b JOIN AIRLINES.TICKETS t ON t.book_ref = b.book_ref`
 
-    Ticket }|--|| TicketSegment : "TicketHasSegments"
-    %% A ticket comprises one or more ticketed flight segments; each segment is for exactly one ticket.
-    %% SQL join path: `FROM airlines.tickets t JOIN airlines.ticket_flights tf ON tf.ticket_no = t.ticket_no`
+    Ticket }|--|| TicketedSegment : "TicketIncludesSegments"
+    %% A ticket consists of one or more ticketed flight segments; each segment belongs to exactly one ticket.
+    %% SQL join path: `FROM AIRLINES.TICKETS t JOIN AIRLINES.TICKET_FLIGHTS tf ON tf.ticket_no = t.ticket_no LEFT JOIN AIRLINES.BOARDING_PASSES bp ON bp.ticket_no = tf.ticket_no AND bp.flight_id = tf.flight_id`
 
-    Flight }o--|| TicketSegment : "FlightHasTicketSegments"
-    %% A flight can have many ticketed segments; each ticketed segment is for exactly one flight.
-    %% SQL join path: `FROM airlines.flights f JOIN airlines.ticket_flights tf ON tf.flight_id = f.flight_id`
+    Flight }o--|| TicketedSegment : "FlightHasSegments"
+    %% A flight can have many ticketed segments sold on it; each ticketed segment is for exactly one flight.
+    %% SQL join path: `FROM AIRLINES.FLIGHTS f JOIN AIRLINES.TICKET_FLIGHTS tf ON tf.flight_id = f.flight_id LEFT JOIN AIRLINES.BOARDING_PASSES bp ON bp.flight_id = tf.flight_id AND bp.ticket_no = tf.ticket_no`
 
-    TicketSegment }o--o| AircraftSeat : "TicketSegmentAssignedSeat"
-    %% A ticketed segment may have a checked-in seat assignment that must exist in the seat map of the operating aircraft type for that flight.
-    %% SQL join path: `FROM airlines.ticket_flights tf LEFT JOIN airlines.boarding_passes bp   ON bp.ticket_no = tf.ticket_no AND bp.flight_id = tf.flight_id JOIN airlines.flights f   ON f.flight_id = tf.flight_id JOIN airlines.seats s   ON s.aircraft_code = f.aircraft_code AND s.seat_no = bp.seat_no`
+    TicketedSegment |o--o{ AircraftSeat : "TicketedSegmentAssignedSeat"
+    %% A ticketed segment may have a specific seat assigned at boarding; a seat can be assigned across many segments over time.
+    %% SQL join path: `FROM AIRLINES.TICKET_FLIGHTS tf LEFT JOIN AIRLINES.BOARDING_PASSES bp ON bp.ticket_no = tf.ticket_no AND bp.flight_id = tf.flight_id JOIN AIRLINES.FLIGHTS f ON f.flight_id = tf.flight_id JOIN AIRLINES.SEATS s ON s.aircraft_code = f.aircraft_code AND s.seat_no = bp.seat_no`
 ```

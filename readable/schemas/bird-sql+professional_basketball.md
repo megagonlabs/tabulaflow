@@ -2,7 +2,8 @@
 -- Database: professional_basketball
 
 /*
-Schema: NULLTable: awards_coaches
+Schema: NULL
+Table: awards_coaches
 Rows: 61
 Sample rows:
 | id   | year   | coachID   | award                 | lgID   | note   |
@@ -15,25 +16,26 @@ Sample rows:
 | ...  | ...    | ...       | ...                   | ...    | ...    |
 */
 CREATE TABLE awards_coaches (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1962</example>
         -- <fk>composite</fk>
-    coachID TEXT NOT NULL,
+    "coachID" TEXT NOT NULL,
         -- <example>'gallaha01'</example>
         -- <fk>composite</fk>
-    award TEXT NOT NULL,
+    "award" TEXT NOT NULL,
         -- <values>{'ABA Coach of the Year', 'NBA Coach of the Year'}</values>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'NBA'}</values>
-    note TEXT NULL,
+    "note" TEXT NULL,
         -- <values>{'tie'}</values>
-    FOREIGN KEY (coachID, year) REFERENCES coaches(coachID, year)
+    FOREIGN KEY ("coachID", "year") REFERENCES coaches("coachID", "year")
 );
 
 /*
-Schema: NULLTable: awards_players
+Schema: NULL
+Table: awards_players
 Rows: 1719
 Sample rows:
 | playerID   | award                     | year   | lgID   | note   | pos    |
@@ -46,25 +48,26 @@ Sample rows:
 | ...        | ...                       | ...    | ...    | ...    | ...    |
 */
 CREATE TABLE awards_players (
-    playerID TEXT NOT NULL,
+    "playerID" TEXT NOT NULL,
         -- <example>'abdulka01'</example>
-        -- <fk> -> players.playerID</fk>
-    award TEXT NOT NULL,
+        -- <fk> -> players."playerID"</fk>
+    "award" TEXT NOT NULL,
         -- <example>'All-Defensive Second Team'</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1969</example>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'ABL1', 'NBA', 'NBL'}</values>
-    note TEXT NULL,
+    "note" TEXT NULL,
         -- <values>{'tie'}</values>
-    pos TEXT NULL,
+    "pos" TEXT NULL,
         -- <values>{'C', 'F', 'F/C', 'F/G', 'G'}</values>
-    PRIMARY KEY (playerID, award, year),
-    FOREIGN KEY (playerID) REFERENCES players(playerID)
+    PRIMARY KEY ("playerID", "award", "year"),
+    FOREIGN KEY ("playerID") REFERENCES players("playerID")
 );
 
 /*
-Schema: NULLTable: coaches
+Schema: NULL
+Table: coaches
 Rows: 1689
 Sample rows:
 | coachID   | year   | tmID   | lgID   | stint   | won   | lost   | post_wins   | post_losses   |
@@ -77,32 +80,33 @@ Sample rows:
 | ...       | ...    | ...    | ...    | ...     | ...   | ...    | ...         | ...           |
 */
 CREATE TABLE coaches (
-    coachID TEXT NOT NULL,
+    "coachID" TEXT NOT NULL,
         -- <example>'adelmri01'</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1988</example>
         -- <fk>composite</fk>
-    tmID TEXT NOT NULL,
+    "tmID" TEXT NOT NULL,
         -- <example>'POR'</example>
         -- <fk>composite</fk>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'ABL1', 'NBA', 'NPBL', 'PBLA'}</values>
-    stint INTEGER NOT NULL,
+    "stint" INTEGER NOT NULL,
         -- <example>2</example>
-    won INTEGER NULL,
+    "won" INTEGER NULL,
         -- <example>14</example>
-    lost INTEGER NULL,
+    "lost" INTEGER NULL,
         -- <example>21</example>
-    post_wins INTEGER NULL,
+    "post_wins" INTEGER NULL,
         -- <example>0</example>
-    post_losses INTEGER NULL,
+    "post_losses" INTEGER NULL,
         -- <example>3</example>
-    PRIMARY KEY (coachID, year, tmID, stint),
-    FOREIGN KEY (tmID, year) REFERENCES teams(tmID, year)
+    PRIMARY KEY ("coachID", "year", "tmID", "stint"),
+    FOREIGN KEY ("tmID", "year") REFERENCES teams("tmID", "year")
 );
 
 /*
-Schema: NULLTable: draft
+Schema: NULL
+Table: draft
 Rows: 8621
 Sample rows:
 | id   | draftYear   | draftRound   | draftSelection   | draftOverall   | tmID   | firstName   | lastName   | suffixName   | playerID   | draftFrom      | lgID   |
@@ -115,37 +119,38 @@ Sample rows:
 | ...  | ...         | ...          | ...              | ...            | ...    | ...         | ...        | ...          | ...        | ...            | ...    |
 */
 CREATE TABLE draft (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    draftYear INTEGER NOT NULL,
+    "draftYear" INTEGER NOT NULL,
         -- <example>1967</example>
         -- <fk>composite</fk>
-    draftRound INTEGER NOT NULL,
+    "draftRound" INTEGER NOT NULL,
         -- <example>0</example>
-    draftSelection INTEGER NOT NULL,
+    "draftSelection" INTEGER NOT NULL,
         -- <example>0</example>
-    draftOverall INTEGER NOT NULL,
+    "draftOverall" INTEGER NOT NULL,
         -- <example>0</example>
-    tmID TEXT NOT NULL,
+    "tmID" TEXT NOT NULL,
         -- <example>'ANA'</example>
         -- <fk>composite</fk>
-    firstName TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
         -- <example>'Darrell'</example>
-    lastName TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
         -- <example>'Hardy'</example>
-    suffixName TEXT NULL,
+    "suffixName" TEXT NULL,
         -- <values>{'Jr.'}</values>
-    playerID TEXT NULL,
+    "playerID" TEXT NULL,
         -- <example>'hardyda01'</example>
-    draftFrom TEXT NULL,
+    "draftFrom" TEXT NULL,
         -- <example>'Baylor'</example>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'NBA'}</values>
-    FOREIGN KEY (tmID, draftYear) REFERENCES teams(tmID, year)
+    FOREIGN KEY ("tmID", "draftYear") REFERENCES teams("tmID", "year")
 );
 
 /*
-Schema: NULLTable: player_allstar
+Schema: NULL
+Table: player_allstar
 Rows: 1608
 Sample rows:
 | playerID   | last_name    | first_name   | season_id   | conference   | league_id   | games_played   | minutes   | points   | o_rebounds   | d_rebounds   | rebounds   | assists   | steals   | blocks   | turnovers   | personal_fouls   | fg_attempted   | fg_made   | ft_attempted   | ft_made   | three_attempted   | three_made   |
@@ -158,59 +163,60 @@ Sample rows:
 | ...        | ...          | ...          | ...         | ...          | ...         | ...            | ...       | ...      | ...          | ...          | ...        | ...       | ...      | ...      | ...         | ...              | ...            | ...       | ...            | ...       | ...               | ...          |
 */
 CREATE TABLE player_allstar (
-    playerID TEXT NOT NULL,
+    "playerID" TEXT NOT NULL,
         -- <example>'abdulka01'</example>
-        -- <fk> -> players.playerID</fk>
-    last_name TEXT NOT NULL,
+        -- <fk> -> players."playerID"</fk>
+    "last_name" TEXT NOT NULL,
         -- <example>'Abdul-Jabbar'</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Kareem'</example>
-    season_id INTEGER NOT NULL,
+    "season_id" INTEGER NOT NULL,
         -- <example>1969</example>
-    conference TEXT NOT NULL,
+    "conference" TEXT NOT NULL,
         -- <values>{'Allstars', 'Denver', 'East', 'Weset', 'West'}</values>
-    league_id TEXT NOT NULL,
+    "league_id" TEXT NOT NULL,
         -- <values>{'ABA', 'NBA'}</values>
-    games_played INTEGER NOT NULL,
+    "games_played" INTEGER NOT NULL,
         -- <example>1</example>
-    minutes INTEGER NOT NULL,
+    "minutes" INTEGER NOT NULL,
         -- <example>18</example>
-    points INTEGER NULL,
+    "points" INTEGER NULL,
         -- <example>10</example>
-    o_rebounds INTEGER NULL,
+    "o_rebounds" INTEGER NULL,
         -- <example>1</example>
-    d_rebounds INTEGER NULL,
+    "d_rebounds" INTEGER NULL,
         -- <example>2</example>
-    rebounds INTEGER NULL,
+    "rebounds" INTEGER NULL,
         -- <example>11</example>
-    assists INTEGER NULL,
+    "assists" INTEGER NULL,
         -- <example>4</example>
-    steals INTEGER NULL,
+    "steals" INTEGER NULL,
         -- <example>3</example>
-    blocks INTEGER NULL,
+    "blocks" INTEGER NULL,
         -- <example>2</example>
-    turnovers INTEGER NULL,
+    "turnovers" INTEGER NULL,
         -- <example>1</example>
-    personal_fouls INTEGER NULL,
+    "personal_fouls" INTEGER NULL,
         -- <example>3</example>
-    fg_attempted INTEGER NULL,
+    "fg_attempted" INTEGER NULL,
         -- <example>8</example>
-    fg_made INTEGER NULL,
+    "fg_made" INTEGER NULL,
         -- <example>4</example>
-    ft_attempted INTEGER NULL,
+    "ft_attempted" INTEGER NULL,
         -- <example>2</example>
-    ft_made INTEGER NULL,
+    "ft_made" INTEGER NULL,
         -- <example>2</example>
-    three_attempted INTEGER NULL,
+    "three_attempted" INTEGER NULL,
         -- <example>0</example>
-    three_made INTEGER NULL,
+    "three_made" INTEGER NULL,
         -- <example>0</example>
-    PRIMARY KEY (playerID, season_id),
-    FOREIGN KEY (playerID) REFERENCES players(playerID)
+    PRIMARY KEY ("playerID", "season_id"),
+    FOREIGN KEY ("playerID") REFERENCES players("playerID")
 );
 
 /*
-Schema: NULLTable: players
+Schema: NULL
+Table: players
 Rows: 5062
 Sample rows:
 | playerID   | useFirst   | firstName   | middleName   | lastName     | nameGiven   | fullGivenName                 | nameSuffix   | nameNick   | pos   | firstseason   | lastseason   | height   | weight   | college         | collegeOther      | birthDate   | birthCity      | birthState   | birthCountry   | highSchool            | hsCity                | hsState   | hsCountry   | deathDate   | race   |
@@ -223,62 +229,63 @@ Sample rows:
 | ...        | ...        | ...         | ...          | ...          | ...         | ...                           | ...          | ...        | ...   | ...           | ...          | ...      | ...      | ...             | ...               | ...         | ...            | ...          | ...            | ...                   | ...                   | ...       | ...         | ...         | ...    |
 */
 CREATE TABLE players (
-    playerID TEXT NOT NULL PRIMARY KEY,
+    "playerID" TEXT NOT NULL PRIMARY KEY,
         -- <example>'abdelal01'</example>
-    useFirst TEXT NULL,
+    "useFirst" TEXT NULL,
         -- <example>'Alaa'</example>
-    firstName TEXT NULL,
+    "firstName" TEXT NULL,
         -- <example>'Alaa'</example>
-    middleName TEXT NULL,
+    "middleName" TEXT NULL,
         -- <example>'Shareef'</example>
-    lastName TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
         -- <example>'Abdelnaby'</example>
-    nameGiven TEXT NULL,
+    "nameGiven" TEXT NULL,
         -- <values>{'Dave', 'Ed', 'Jim', 'Mike', 'Mort', 'Robert', 'Thomas', 'Willie', 'nameGiven'}</values>
-    fullGivenName TEXT NULL,
+    "fullGivenName" TEXT NULL,
         -- <example>'Ferdinand Lewis Alcindor, Jr.'</example>
-    nameSuffix TEXT NULL,
+    "nameSuffix" TEXT NULL,
         -- <values>{'II', 'III', 'IV', 'Jr.', 'Sr.', 'nameSuffix'}</values>
-    nameNick TEXT NULL,
+    "nameNick" TEXT NULL,
         -- <example>'Lew, Cap'</example>
-    pos TEXT NULL,
+    "pos" TEXT NULL,
         -- <values>{' G', 'C', 'C-F', 'C-F-G', 'C-G', 'F', 'F-C', 'F-C-G', 'F-G', 'F-G-C', 'G', 'G-F', 'G-F-C', 'pos'}</values>
-    firstseason INTEGER NULL,
+    "firstseason" INTEGER NULL,
         -- <example>0</example>
-    lastseason INTEGER NULL,
+    "lastseason" INTEGER NULL,
         -- <example>0</example>
-    height REAL NULL,
+    "height" REAL NULL,
         -- <example>82.000</example>
-    weight INTEGER NULL,
+    "weight" INTEGER NULL,
         -- <example>240</example>
-    college TEXT NULL,
+    "college" TEXT NULL,
         -- <example>'Duke'</example>
-    collegeOther TEXT NULL,
+    "collegeOther" TEXT NULL,
         -- <example>'Santa Monica City'</example>
-    birthDate DATE NULL,
+    "birthDate" DATE NULL,
         -- <example>'1968-06-24'</example>
-    birthCity TEXT NULL,
+    "birthCity" TEXT NULL,
         -- <example>'Cairo'</example>
-    birthState TEXT NULL,
+    "birthState" TEXT NULL,
         -- <example>'NY'</example>
-    birthCountry TEXT NULL,
+    "birthCountry" TEXT NULL,
         -- <example>'EGY'</example>
-    highSchool TEXT NULL,
+    "highSchool" TEXT NULL,
         -- <example>'Bloomfield Senior'</example>
-    hsCity TEXT NULL,
+    "hsCity" TEXT NULL,
         -- <example>'Bloomfield'</example>
-    hsState TEXT NULL,
+    "hsState" TEXT NULL,
         -- <example>'NJ'</example>
-    hsCountry TEXT NULL,
+    "hsCountry" TEXT NULL,
         -- <example>'USA'</example>
-    deathDate DATE NOT NULL,
+    "deathDate" DATE NOT NULL,
         -- <example>'0000-00-00'</example>
-    race TEXT NULL
+    "race" TEXT NULL
         -- <values>{'1', 'B', 'O', 'W', 'r'}</values>
 );
 
 /*
-Schema: NULLTable: players_teams
+Schema: NULL
+Table: players_teams
 Rows: 23751
 Sample rows:
 | id   | playerID   | year   | stint   | tmID   | lgID   | GP   | GS   | minutes   | points   | oRebounds   | dRebounds   | rebounds   | assists   | steals   | blocks   | turnovers   | PF   | fgAttempted   | fgMade   | ftAttempted   | ftMade   | threeAttempted   | threeMade   | PostGP   | PostGS   | PostMinutes   | PostPoints   | PostoRebounds   | PostdRebounds   | PostRebounds   | PostAssists   | PostSteals   | PostBlocks   | PostTurnovers   | PostPF   | PostfgAttempted   | PostfgMade   | PostftAttempted   | PostftMade   | PostthreeAttempted   | PostthreeMade   | note   |
@@ -291,101 +298,102 @@ Sample rows:
 | ...  | ...        | ...    | ...     | ...    | ...    | ...  | ...  | ...       | ...      | ...         | ...         | ...        | ...       | ...      | ...      | ...         | ...  | ...           | ...      | ...           | ...      | ...              | ...         | ...      | ...      | ...           | ...          | ...             | ...             | ...            | ...           | ...          | ...          | ...             | ...      | ...               | ...          | ...               | ...          | ...                  | ...             | ...    |
 */
 CREATE TABLE players_teams (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    playerID TEXT NOT NULL,
+    "playerID" TEXT NOT NULL,
         -- <example>'abdelal01'</example>
-        -- <fk> -> players.playerID</fk>
-    year INTEGER NOT NULL,
+        -- <fk> -> players."playerID"</fk>
+    "year" INTEGER NOT NULL,
         -- <example>1990</example>
         -- <fk>composite</fk>
-    stint INTEGER NOT NULL,
+    "stint" INTEGER NOT NULL,
         -- <example>1</example>
-    tmID TEXT NOT NULL,
+    "tmID" TEXT NOT NULL,
         -- <example>'POR'</example>
         -- <fk>composite</fk>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'ABL1', 'NBA', 'NBL', 'NPBL', 'PBLA'}</values>
-    GP INTEGER NOT NULL,
+    "GP" INTEGER NOT NULL,
         -- <example>43</example>
-    GS INTEGER NOT NULL,
+    "GS" INTEGER NOT NULL,
         -- <example>0</example>
-    minutes INTEGER NOT NULL,
+    "minutes" INTEGER NOT NULL,
         -- <example>290</example>
-    points INTEGER NOT NULL,
+    "points" INTEGER NOT NULL,
         -- <example>135</example>
-    oRebounds INTEGER NOT NULL,
+    "oRebounds" INTEGER NOT NULL,
         -- <example>27</example>
-    dRebounds INTEGER NOT NULL,
+    "dRebounds" INTEGER NOT NULL,
         -- <example>62</example>
-    rebounds INTEGER NOT NULL,
+    "rebounds" INTEGER NOT NULL,
         -- <example>89</example>
-    assists INTEGER NOT NULL,
+    "assists" INTEGER NOT NULL,
         -- <example>12</example>
-    steals INTEGER NOT NULL,
+    "steals" INTEGER NOT NULL,
         -- <example>4</example>
-    blocks INTEGER NOT NULL,
+    "blocks" INTEGER NOT NULL,
         -- <example>12</example>
-    turnovers INTEGER NOT NULL,
+    "turnovers" INTEGER NOT NULL,
         -- <example>22</example>
-    PF INTEGER NOT NULL,
+    "PF" INTEGER NOT NULL,
         -- <example>39</example>
-    fgAttempted INTEGER NOT NULL,
+    "fgAttempted" INTEGER NOT NULL,
         -- <example>116</example>
-    fgMade INTEGER NOT NULL,
+    "fgMade" INTEGER NOT NULL,
         -- <example>55</example>
-    ftAttempted INTEGER NOT NULL,
+    "ftAttempted" INTEGER NOT NULL,
         -- <example>44</example>
-    ftMade INTEGER NOT NULL,
+    "ftMade" INTEGER NOT NULL,
         -- <example>25</example>
-    threeAttempted INTEGER NOT NULL,
+    "threeAttempted" INTEGER NOT NULL,
         -- <example>0</example>
-    threeMade INTEGER NOT NULL,
+    "threeMade" INTEGER NOT NULL,
         -- <example>0</example>
-    PostGP INTEGER NOT NULL,
+    "PostGP" INTEGER NOT NULL,
         -- <example>5</example>
-    PostGS INTEGER NOT NULL,
+    "PostGS" INTEGER NOT NULL,
         -- <example>0</example>
-    PostMinutes INTEGER NOT NULL,
+    "PostMinutes" INTEGER NOT NULL,
         -- <example>13</example>
-    PostPoints INTEGER NOT NULL,
+    "PostPoints" INTEGER NOT NULL,
         -- <example>4</example>
-    PostoRebounds INTEGER NOT NULL,
+    "PostoRebounds" INTEGER NOT NULL,
         -- <example>1</example>
-    PostdRebounds INTEGER NOT NULL,
+    "PostdRebounds" INTEGER NOT NULL,
         -- <example>2</example>
-    PostRebounds INTEGER NOT NULL,
+    "PostRebounds" INTEGER NOT NULL,
         -- <example>3</example>
-    PostAssists INTEGER NOT NULL,
+    "PostAssists" INTEGER NOT NULL,
         -- <example>0</example>
-    PostSteals INTEGER NOT NULL,
+    "PostSteals" INTEGER NOT NULL,
         -- <example>0</example>
-    PostBlocks INTEGER NOT NULL,
+    "PostBlocks" INTEGER NOT NULL,
         -- <example>0</example>
-    PostTurnovers INTEGER NOT NULL,
+    "PostTurnovers" INTEGER NOT NULL,
         -- <example>0</example>
-    PostPF INTEGER NOT NULL,
+    "PostPF" INTEGER NOT NULL,
         -- <example>0</example>
-    PostfgAttempted INTEGER NOT NULL,
+    "PostfgAttempted" INTEGER NOT NULL,
         -- <example>6</example>
-    PostfgMade INTEGER NOT NULL,
+    "PostfgMade" INTEGER NOT NULL,
         -- <example>2</example>
-    PostftAttempted INTEGER NOT NULL,
+    "PostftAttempted" INTEGER NOT NULL,
         -- <example>0</example>
-    PostftMade INTEGER NOT NULL,
+    "PostftMade" INTEGER NOT NULL,
         -- <example>0</example>
-    PostthreeAttempted INTEGER NOT NULL,
+    "PostthreeAttempted" INTEGER NOT NULL,
         -- <example>0</example>
-    PostthreeMade INTEGER NOT NULL,
+    "PostthreeMade" INTEGER NOT NULL,
         -- <example>0</example>
-    note TEXT NULL,
+    "note" TEXT NULL,
         -- <values>{'C'}</values>
-    FOREIGN KEY (tmID, year) REFERENCES teams(tmID, year),
-    FOREIGN KEY (playerID) REFERENCES players(playerID)
+    FOREIGN KEY ("tmID", "year") REFERENCES teams("tmID", "year"),
+    FOREIGN KEY ("playerID") REFERENCES players("playerID")
 );
 
 /*
-Schema: NULLTable: series_post
+Schema: NULL
+Table: series_post
 Rows: 775
 Sample rows:
 | id   | year   | round   | series   | tmIDWinner   | lgIDWinner   | tmIDLoser   | lgIDLoser   | W   | L   |
@@ -398,36 +406,37 @@ Sample rows:
 | ...  | ...    | ...     | ...      | ...          | ...          | ...         | ...         | ... | ... |
 */
 CREATE TABLE series_post (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1946</example>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
-    round TEXT NOT NULL,
+    "round" TEXT NOT NULL,
         -- <example>'F'</example>
-    series TEXT NOT NULL,
+    "series" TEXT NOT NULL,
         -- <example>'O'</example>
-    tmIDWinner TEXT NOT NULL,
+    "tmIDWinner" TEXT NOT NULL,
         -- <example>'PHW'</example>
         -- <fk>composite</fk>
-    lgIDWinner TEXT NOT NULL,
+    "lgIDWinner" TEXT NOT NULL,
         -- <values>{'ABA', 'NBA'}</values>
-    tmIDLoser TEXT NULL,
+    "tmIDLoser" TEXT NULL,
         -- <example>'CHS'</example>
         -- <fk>composite</fk>
-    lgIDLoser TEXT NOT NULL,
+    "lgIDLoser" TEXT NOT NULL,
         -- <values>{'ABA', 'NBA'}</values>
-    W INTEGER NOT NULL,
+    "W" INTEGER NOT NULL,
         -- <example>4</example>
-    L INTEGER NOT NULL,
+    "L" INTEGER NOT NULL,
         -- <example>1</example>
-    FOREIGN KEY (tmIDWinner, year) REFERENCES teams(tmID, year),
-    FOREIGN KEY (tmIDLoser, year) REFERENCES teams(tmID, year)
+    FOREIGN KEY ("tmIDWinner", "year") REFERENCES teams("tmID", "year"),
+    FOREIGN KEY ("tmIDLoser", "year") REFERENCES teams("tmID", "year")
 );
 
 /*
-Schema: NULLTable: teams
+Schema: NULL
+Table: teams
 Rows: 1536
 Sample rows:
 | year   | lgID   | tmID   | franchID   | confID   | divID   | rank   | confRank   | playoff   | name                                        | o_fgm   | o_ftm   | o_pts   | d_pts   | homeWon   | homeLost   | awayWon   | awayLost   | won   | lost   | games   | arena   |
@@ -440,50 +449,50 @@ Sample rows:
 | ...    | ...    | ...    | ...        | ...      | ...     | ...    | ...        | ...       | ...                                         | ...     | ...     | ...     | ...     | ...       | ...        | ...       | ...        | ...   | ...    | ...     | ...     |
 */
 CREATE TABLE teams (
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1937</example>
-    lgID TEXT NOT NULL,
+    "lgID" TEXT NOT NULL,
         -- <values>{'ABA', 'ABL1', 'NBA', 'NBL', 'NPBL', 'PBLA'}</values>
-    tmID TEXT NOT NULL,
+    "tmID" TEXT NOT NULL,
         -- <example>'AFS'</example>
-    franchID TEXT NOT NULL,
+    "franchID" TEXT NOT NULL,
         -- <example>'AFS'</example>
-    confID TEXT NULL,
+    "confID" TEXT NULL,
         -- <values>{'EC', 'WC'}</values>
-    divID TEXT NULL,
+    "divID" TEXT NULL,
         -- <values>{'AT', 'CD', 'EA', 'ED', 'MW', 'NO', 'NW', 'PC', 'SE', 'SO', 'SW', 'WD', 'WE'}</values>
-    rank INTEGER NOT NULL,
+    "rank" INTEGER NOT NULL,
         -- <example>1</example>
-    confRank INTEGER NOT NULL,
+    "confRank" INTEGER NOT NULL,
         -- <example>0</example>
-    playoff TEXT NULL,
+    "playoff" TEXT NULL,
         -- <values>{'AC', 'C1', 'CF', 'CS', 'D1', 'DF', 'DR', 'DS', 'DT', 'F', 'LC', 'NC', 'R1', 'SF', 'WC'}</values>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Akron Firestone Non-Skids'</example>
-    o_fgm INTEGER NOT NULL,
+    "o_fgm" INTEGER NOT NULL,
         -- <example>249</example>
-    o_ftm INTEGER NOT NULL,
+    "o_ftm" INTEGER NOT NULL,
         -- <example>183</example>
-    o_pts INTEGER NOT NULL,
+    "o_pts" INTEGER NOT NULL,
         -- <example>681</example>
-    d_pts INTEGER NOT NULL,
+    "d_pts" INTEGER NOT NULL,
         -- <example>578</example>
-    homeWon INTEGER NOT NULL,
+    "homeWon" INTEGER NOT NULL,
         -- <example>8</example>
-    homeLost INTEGER NOT NULL,
+    "homeLost" INTEGER NOT NULL,
         -- <example>1</example>
-    awayWon INTEGER NOT NULL,
+    "awayWon" INTEGER NOT NULL,
         -- <example>5</example>
-    awayLost INTEGER NOT NULL,
+    "awayLost" INTEGER NOT NULL,
         -- <example>3</example>
-    won INTEGER NOT NULL,
+    "won" INTEGER NOT NULL,
         -- <example>14</example>
-    lost INTEGER NOT NULL,
+    "lost" INTEGER NOT NULL,
         -- <example>4</example>
-    games INTEGER NOT NULL,
+    "games" INTEGER NOT NULL,
         -- <example>18</example>
-    arena TEXT NULL,
+    "arena" TEXT NULL,
         -- <example>'Boston Garden'</example>
-    PRIMARY KEY (year, tmID)
+    PRIMARY KEY ("year", "tmID")
 );
 ```

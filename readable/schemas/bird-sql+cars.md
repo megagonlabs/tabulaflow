@@ -2,7 +2,8 @@
 -- Database: cars
 
 /*
-Schema: NULLTable: country
+Schema: NULL
+Table: country
 Rows: 3
 All rows:
 |   origin | country   |
@@ -12,14 +13,15 @@ All rows:
 |        3 | Japan     |
 */
 CREATE TABLE country (
-    origin INTEGER NOT NULL PRIMARY KEY,
+    "origin" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    country TEXT NOT NULL
+    "country" TEXT NOT NULL
         -- <values>{'Europe', 'Japan', 'USA'}</values>
 );
 
 /*
-Schema: NULLTable: data
+Schema: NULL
+Table: data
 Rows: 398
 Sample rows:
 | ID   | mpg   | cylinders   | displacement   | horsepower   | weight   | acceleration   | model   | car_name                  |
@@ -32,30 +34,31 @@ Sample rows:
 | ...  | ...   | ...         | ...            | ...          | ...      | ...            | ...     | ...                       |
 */
 CREATE TABLE data (
-    ID INTEGER NOT NULL PRIMARY KEY,
+    "ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-        -- <fk> -> price.ID</fk>
-    mpg REAL NOT NULL,
+        -- <fk> -> price."ID"</fk>
+    "mpg" REAL NOT NULL,
         -- <example>18.000</example>
-    cylinders INTEGER NOT NULL,
+    "cylinders" INTEGER NOT NULL,
         -- <example>8</example>
-    displacement REAL NOT NULL,
+    "displacement" REAL NOT NULL,
         -- <example>307.000</example>
-    horsepower INTEGER NOT NULL,
+    "horsepower" INTEGER NOT NULL,
         -- <example>130</example>
-    weight INTEGER NOT NULL,
+    "weight" INTEGER NOT NULL,
         -- <example>3504</example>
-    acceleration REAL NOT NULL,
+    "acceleration" REAL NOT NULL,
         -- <example>12.000</example>
-    model INTEGER NOT NULL,
+    "model" INTEGER NOT NULL,
         -- <example>70</example>
-    car_name TEXT NOT NULL,
+    "car_name" TEXT NOT NULL,
         -- <example>'chevrolet chevelle malibu'</example>
-    FOREIGN KEY (ID) REFERENCES price(ID)
+    FOREIGN KEY ("ID") REFERENCES price("ID")
 );
 
 /*
-Schema: NULLTable: price
+Schema: NULL
+Table: price
 Rows: 398
 Sample rows:
 | ID   | price       |
@@ -68,14 +71,15 @@ Sample rows:
 | ...  | ...         |
 */
 CREATE TABLE price (
-    ID INTEGER NOT NULL PRIMARY KEY,
+    "ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    price REAL NOT NULL
+    "price" REAL NOT NULL
         -- <example>25561.591</example>
 );
 
 /*
-Schema: NULLTable: production
+Schema: NULL
+Table: production
 Rows: 692
 Sample rows:
 | ID   | model_year   | country   |
@@ -88,18 +92,18 @@ Sample rows:
 | ...  | ...          | ...       |
 */
 CREATE TABLE production (
-    ID INTEGER NOT NULL,
+    "ID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> data.ID</fk>
-        -- <fk> -> price.ID</fk>
-    model_year INTEGER NOT NULL,
+        -- <fk> -> data."ID"</fk>
+        -- <fk> -> price."ID"</fk>
+    "model_year" INTEGER NOT NULL,
         -- <example>1970</example>
-    country INTEGER NOT NULL,
+    "country" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> country.origin</fk>
-    PRIMARY KEY (ID, model_year),
-    FOREIGN KEY (country) REFERENCES country(origin),
-    FOREIGN KEY (ID) REFERENCES data(ID),
-    FOREIGN KEY (ID) REFERENCES price(ID)
+        -- <fk> -> country."origin"</fk>
+    PRIMARY KEY ("ID", "model_year"),
+    FOREIGN KEY ("country") REFERENCES country("origin"),
+    FOREIGN KEY ("ID") REFERENCES data("ID"),
+    FOREIGN KEY ("ID") REFERENCES price("ID")
 );
 ```

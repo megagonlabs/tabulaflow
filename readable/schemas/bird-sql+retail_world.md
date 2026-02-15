@@ -2,7 +2,8 @@
 -- Database: retail_world
 
 /*
-Schema: NULLTable: Categories
+Schema: NULL
+Table: Categories
 Rows: 8
 All rows:
 |   CategoryID | CategoryName   | Description                                                |
@@ -17,16 +18,17 @@ All rows:
 |            8 | Seafood        | Seaweed and fish                                           |
 */
 CREATE TABLE Categories (
-    CategoryID INTEGER NOT NULL PRIMARY KEY,
+    "CategoryID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    CategoryName TEXT NOT NULL,
+    "CategoryName" TEXT NOT NULL,
         -- <values>{'Beverages', 'Condiments', 'Confections', 'Dairy Products', 'Grains/Cereals', 'Meat/Poultry', 'Produce', 'Seafood'}</values>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <values>{'Breads, crackers, pasta, and cereal', 'Cheeses', 'Desserts, candies, and sweet breads', 'Dried fruit and bean curd', 'Prepared meats', 'Seaweed and fish', 'Soft drinks, coffees, teas, beers, and ales', 'Sweet and savory sauces, relishes, spreads, and seasonings'}</values>
 );
 
 /*
-Schema: NULLTable: Customers
+Schema: NULL
+Table: Customers
 Rows: 91
 Sample rows:
 | CustomerID   | CustomerName                       | ContactName        | Address                       | City        | PostalCode   | Country   |
@@ -39,24 +41,25 @@ Sample rows:
 | ...          | ...                                | ...                | ...                           | ...         | ...          | ...       |
 */
 CREATE TABLE Customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    CustomerName TEXT NOT NULL,
+    "CustomerName" TEXT NOT NULL,
         -- <example>'Alfreds Futterkiste'</example>
-    ContactName TEXT NOT NULL,
+    "ContactName" TEXT NOT NULL,
         -- <example>'Maria Anders'</example>
-    Address TEXT NOT NULL,
+    "Address" TEXT NOT NULL,
         -- <example>'Obere Str. 57'</example>
-    City TEXT NOT NULL,
+    "City" TEXT NOT NULL,
         -- <example>'Berlin'</example>
-    PostalCode TEXT NOT NULL,
+    "PostalCode" TEXT NOT NULL,
         -- <example>'12209'</example>
-    Country TEXT NOT NULL
+    "Country" TEXT NOT NULL
         -- <example>'Germany'</example>
 );
 
 /*
-Schema: NULLTable: Employees
+Schema: NULL
+Table: Employees
 Rows: 10
 All rows:
 |   EmployeeID | LastName   | FirstName   | BirthDate   | Photo       | Notes                                                                                                                                                                                                       |
@@ -73,22 +76,23 @@ All rows:
 |           10 | West       | Adam        | 1928-09-19  | EmpID10.pic | An old chum.                                                                                                                                                                                                |
 */
 CREATE TABLE Employees (
-    EmployeeID INTEGER NOT NULL PRIMARY KEY,
+    "EmployeeID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    LastName TEXT NOT NULL,
+    "LastName" TEXT NOT NULL,
         -- <values>{'Buchanan', 'Callahan', 'Davolio', 'Dodsworth', 'Fuller', 'King', 'Leverling', 'Peacock', 'Suyama', 'West'}</values>
-    FirstName TEXT NOT NULL,
+    "FirstName" TEXT NOT NULL,
         -- <values>{'Adam', 'Andrew', 'Anne', 'Janet', 'Laura', 'Margaret', 'Michael', 'Nancy', 'Robert', 'Steven'}</values>
-    BirthDate DATE NOT NULL,
+    "BirthDate" DATE NOT NULL,
         -- <example>'1968-12-08'</example>
-    Photo TEXT NOT NULL,
+    "Photo" TEXT NOT NULL,
         -- <values>{'EmpID1.pic', 'EmpID10.pic', 'EmpID2.pic', 'EmpID3.pic', 'EmpID4.pic', 'EmpID5.pic', 'EmpID6.pic', 'EmpID7.pic', 'EmpID8.pic', 'EmpID9.pic'}</values>
-    Notes TEXT NOT NULL
+    "Notes" TEXT NOT NULL
         -- <values>{'An old chum.', 'Andrew received his BTS commercial and a Ph.D. in ...mmerce, and the Pacific Rim Importers Association.', 'Anne has a BA degree in English from St. Lawrence College. She is fluent in French and German.', 'Education includes a BA in psychology from Colorad...Nancy is a member of 'Toastmasters International'.', 'Janet has a BS degree in chemistry from Boston Col...ssociate and was promoted to sales representative.', 'Laura received a BA in psychology from the Univers...e in business French. She reads and writes French.', 'Margaret holds a BA in English literature from Con...before returning to her permanent post in Seattle.', 'Michael is a graduate of Sussex University (MA, ec...an read and write French, Portuguese, and Spanish.', 'Robert King served in the Peace Corps and traveled... Europe', he was transferred to the London office.', 'Steven Buchanan graduated from St. Andrews Univers...ational Sales Management'. He is fluent in French.'}</values>
 );
 
 /*
-Schema: NULLTable: OrderDetails
+Schema: NULL
+Table: OrderDetails
 Rows: 518
 Sample rows:
 | OrderDetailID   | OrderID   | ProductID   | Quantity   |
@@ -101,22 +105,23 @@ Sample rows:
 | ...             | ...       | ...         | ...        |
 */
 CREATE TABLE OrderDetails (
-    OrderDetailID INTEGER NOT NULL PRIMARY KEY,
+    "OrderDetailID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    OrderID INTEGER NOT NULL,
+    "OrderID" INTEGER NOT NULL,
         -- <example>10248</example>
-        -- <fk> -> Orders.OrderID</fk>
-    ProductID INTEGER NOT NULL,
+        -- <fk> -> Orders."OrderID"</fk>
+    "ProductID" INTEGER NOT NULL,
         -- <example>11</example>
-        -- <fk> -> Products.ProductID</fk>
-    Quantity INTEGER NOT NULL,
+        -- <fk> -> Products."ProductID"</fk>
+    "Quantity" INTEGER NOT NULL,
         -- <example>12</example>
-    FOREIGN KEY (OrderID) REFERENCES Orders(OrderID),
-    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+    FOREIGN KEY ("OrderID") REFERENCES Orders("OrderID"),
+    FOREIGN KEY ("ProductID") REFERENCES Products("ProductID")
 );
 
 /*
-Schema: NULLTable: Orders
+Schema: NULL
+Table: Orders
 Rows: 196
 Sample rows:
 | OrderID   | CustomerID   | EmployeeID   | OrderDate   | ShipperID   |
@@ -129,26 +134,27 @@ Sample rows:
 | ...       | ...          | ...          | ...         | ...         |
 */
 CREATE TABLE Orders (
-    OrderID INTEGER NOT NULL PRIMARY KEY,
+    "OrderID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>10248</example>
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>90</example>
-        -- <fk> -> Customers.CustomerID</fk>
-    EmployeeID INTEGER NOT NULL,
+        -- <fk> -> Customers."CustomerID"</fk>
+    "EmployeeID" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> Employees.EmployeeID</fk>
-    OrderDate DATETIME NOT NULL,
+        -- <fk> -> Employees."EmployeeID"</fk>
+    "OrderDate" DATETIME NOT NULL,
         -- <example>'1996-07-04'</example>
-    ShipperID INTEGER NOT NULL,
+    "ShipperID" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> Shippers.ShipperID</fk>
-    FOREIGN KEY (EmployeeID) REFERENCES Employees(EmployeeID),
-    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
-    FOREIGN KEY (ShipperID) REFERENCES Shippers(ShipperID)
+        -- <fk> -> Shippers."ShipperID"</fk>
+    FOREIGN KEY ("EmployeeID") REFERENCES Employees("EmployeeID"),
+    FOREIGN KEY ("CustomerID") REFERENCES Customers("CustomerID"),
+    FOREIGN KEY ("ShipperID") REFERENCES Shippers("ShipperID")
 );
 
 /*
-Schema: NULLTable: Products
+Schema: NULL
+Table: Products
 Rows: 77
 Sample rows:
 | ProductID   | ProductName                  | SupplierID   | CategoryID   | Unit                | Price   |
@@ -161,26 +167,27 @@ Sample rows:
 | ...         | ...                          | ...          | ...          | ...                 | ...     |
 */
 CREATE TABLE Products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ProductName TEXT NOT NULL,
+    "ProductName" TEXT NOT NULL,
         -- <example>'Chais'</example>
-    SupplierID INTEGER NOT NULL,
+    "SupplierID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Suppliers.SupplierID</fk>
-    CategoryID INTEGER NOT NULL,
+        -- <fk> -> Suppliers."SupplierID"</fk>
+    "CategoryID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Categories.CategoryID</fk>
-    Unit TEXT NOT NULL,
+        -- <fk> -> Categories."CategoryID"</fk>
+    "Unit" TEXT NOT NULL,
         -- <example>'10 boxes x 20 bags'</example>
-    Price REAL NOT NULL,
+    "Price" REAL NOT NULL,
         -- <example>18.000</example>
-    FOREIGN KEY (CategoryID) REFERENCES Categories(CategoryID),
-    FOREIGN KEY (SupplierID) REFERENCES Suppliers(SupplierID)
+    FOREIGN KEY ("CategoryID") REFERENCES Categories("CategoryID"),
+    FOREIGN KEY ("SupplierID") REFERENCES Suppliers("SupplierID")
 );
 
 /*
-Schema: NULLTable: Shippers
+Schema: NULL
+Table: Shippers
 Rows: 3
 All rows:
 |   ShipperID | ShipperName      | Phone          |
@@ -190,16 +197,17 @@ All rows:
 |           3 | Federal Shipping | (503) 555-9931 |
 */
 CREATE TABLE Shippers (
-    ShipperID INTEGER NOT NULL PRIMARY KEY,
+    "ShipperID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ShipperName TEXT NOT NULL,
+    "ShipperName" TEXT NOT NULL,
         -- <values>{'Federal Shipping', 'Speedy Express', 'United Package'}</values>
-    Phone TEXT NOT NULL
+    "Phone" TEXT NOT NULL
         -- <values>{'(503) 555-3199', '(503) 555-9831', '(503) 555-9931'}</values>
 );
 
 /*
-Schema: NULLTable: Suppliers
+Schema: NULL
+Table: Suppliers
 Rows: 29
 Sample rows:
 | SupplierID   | SupplierName                       | ContactName                | Address                   | City        | PostalCode   | Country   | Phone          |
@@ -212,21 +220,21 @@ Sample rows:
 | ...          | ...                                | ...                        | ...                       | ...         | ...          | ...       | ...            |
 */
 CREATE TABLE Suppliers (
-    SupplierID INTEGER NOT NULL PRIMARY KEY,
+    "SupplierID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    SupplierName TEXT NOT NULL,
+    "SupplierName" TEXT NOT NULL,
         -- <example>'Exotic Liquid'</example>
-    ContactName TEXT NOT NULL,
+    "ContactName" TEXT NOT NULL,
         -- <example>'Charlotte Cooper'</example>
-    Address TEXT NOT NULL,
+    "Address" TEXT NOT NULL,
         -- <example>'49 Gilbert St.'</example>
-    City TEXT NOT NULL,
+    "City" TEXT NOT NULL,
         -- <example>'Londona'</example>
-    PostalCode TEXT NOT NULL,
+    "PostalCode" TEXT NOT NULL,
         -- <example>'EC1 4SD'</example>
-    Country TEXT NOT NULL,
+    "Country" TEXT NOT NULL,
         -- <example>'UK'</example>
-    Phone TEXT NOT NULL
+    "Phone" TEXT NOT NULL
         -- <example>'(171) 555-2222'</example>
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: law_episode
 
 /*
-Schema: NULLTable: Award
+Schema: NULL
+Table: Award
 Rows: 22
 Sample rows:
 | award_id   | organization                 | year   | award_category   | award                                                | series        | episode_id   | person_id   | role   | result   |
@@ -15,34 +16,35 @@ Sample rows:
 | ...        | ...                          | ...    | ...              | ...                                                  | ...           | ...          | ...         | ...    | ...      |
 */
 CREATE TABLE Award (
-    award_id INTEGER NOT NULL PRIMARY KEY,
+    "award_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>258</example>
-    organization TEXT NOT NULL,
+    "organization" TEXT NOT NULL,
         -- <values>{'American Bar Association Silver Gavel Awards for Media and the Arts', 'Edgar Allan Poe Awards', 'International Monitor Awards', 'Primetime Emmy Awards'}</values>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1999</example>
-    award_category TEXT NOT NULL,
+    "award_category" TEXT NOT NULL,
         -- <values>{'Edgar', 'Monitor', 'Primetime Emmy', 'Silver Gavel Award'}</values>
-    award TEXT NOT NULL,
+    "award" TEXT NOT NULL,
         -- <values>{'Best Television Episode', 'Film Originated Television Series - Best Achievement', 'Outstanding Costume Design for a Series', 'Outstanding Directing for a Drama Series', 'Outstanding Guest Actress in a Drama Series', 'Outstanding Sound Mixing for a Drama Series', 'Television'}</values>
-    series TEXT NOT NULL,
+    "series" TEXT NOT NULL,
         -- <values>{'Law and Order'}</values>
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <values>{'tt0629149', 'tt0629228', 'tt0629248', 'tt0629291', 'tt0629397', 'tt0629398', 'tt0629422'}</values>
-        -- <fk> -> Episode.episode_id</fk>
-    person_id TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "person_id" TEXT NOT NULL,
         -- <example>'nm0937725'</example>
-        -- <fk> -> Person.person_id</fk>
-    role TEXT NULL,
+        -- <fk> -> Person."person_id"</fk>
+    "role" TEXT NULL,
         -- <values>{'Katrina Ludlow', 'director', 'production mixer', 're-recording mixer', 'story', 'teleplay', 'teleplay, story', 'writer'}</values>
-    result TEXT NOT NULL,
+    "result" TEXT NOT NULL,
         -- <values>{'Nominee', 'Winner'}</values>
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id),
-    FOREIGN KEY (person_id) REFERENCES Person(person_id)
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id"),
+    FOREIGN KEY ("person_id") REFERENCES Person("person_id")
 );
 
 /*
-Schema: NULLTable: Credit
+Schema: NULL
+Table: Credit
 Rows: 2231
 Sample rows:
 | episode_id   | person_id   | category        | role                                      | credited   |
@@ -55,25 +57,26 @@ Sample rows:
 | ...          | ...         | ...             | ...                                       | ...        |
 */
 CREATE TABLE Credit (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <example>'tt0629146'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    person_id TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "person_id" TEXT NOT NULL,
         -- <example>'nm0000973'</example>
-        -- <fk> -> Person.person_id</fk>
-    category TEXT NOT NULL,
+        -- <fk> -> Person."person_id"</fk>
+    "category" TEXT NOT NULL,
         -- <values>{'Additional Crew', 'Art Department', 'Camera and Electrical Department', 'Cast', 'Casting Department', 'Costume and Wardrobe Department', 'Directed by', 'Editorial Department', 'Film Editing by', 'General', 'Location Management', 'Makeup Department', 'Music Department', 'Produced by', 'Production Management', 'Script and Continuity Department', 'Sound Department', 'Stunts', 'Transportation Department', 'Writing Credits'}</values>
-    role TEXT NOT NULL,
+    "role" TEXT NOT NULL,
         -- <example>'technical advisor'</example>
-    credited TEXT NOT NULL,
+    "credited" TEXT NOT NULL,
         -- <values>{'false', 'true'}</values>
-    PRIMARY KEY (episode_id, person_id),
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id),
-    FOREIGN KEY (person_id) REFERENCES Person(person_id)
+    PRIMARY KEY ("episode_id", "person_id"),
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id"),
+    FOREIGN KEY ("person_id") REFERENCES Person("person_id")
 );
 
 /*
-Schema: NULLTable: Episode
+Schema: NULL
+Table: Episode
 Rows: 24
 Sample rows:
 | episode_id   | series        | season   | episode   | number_in_series   | title     | summary                                                                                                                                                                                                     | air_date   | episode_image                                                                                                                                        | rating   | votes   |
@@ -86,32 +89,33 @@ Sample rows:
 | ...          | ...           | ...      | ...       | ...                | ...       | ...                                                                                                                                                                                                         | ...        | ...                                                                                                                                                  | ...      | ...     |
 */
 CREATE TABLE Episode (
-    episode_id TEXT NOT NULL PRIMARY KEY,
+    "episode_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'tt0629146'</example>
-    series TEXT NOT NULL,
+    "series" TEXT NOT NULL,
         -- <values>{'Law and Order'}</values>
-    season INTEGER NOT NULL,
+    "season" INTEGER NOT NULL,
         -- <example>9</example>
-    episode INTEGER NOT NULL,
+    "episode" INTEGER NOT NULL,
         -- <example>1</example>
-    number_in_series INTEGER NOT NULL,
+    "number_in_series" INTEGER NOT NULL,
         -- <example>182</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'Cherished'</example>
-    summary TEXT NOT NULL,
+    "summary" TEXT NOT NULL,
         -- <example>'New assistant DA Abbie Carmichael aggressively inv...cy, gravely ill children, and an unethical doctor.'</example>
-    air_date DATE NOT NULL,
+    "air_date" DATE NOT NULL,
         -- <example>'1998-09-23'</example>
-    episode_image TEXT NOT NULL,
+    "episode_image" TEXT NOT NULL,
         -- <example>'https://m.media-amazon.com/images/M/MV5BODFmZmI2YT...deQXVyMjMzNzMxMTA@._V1_UY126_CR7,0,224,126_AL_.jpg'</example>
-    rating REAL NOT NULL,
+    "rating" REAL NOT NULL,
         -- <example>7.900</example>
-    votes INTEGER NOT NULL
+    "votes" INTEGER NOT NULL
         -- <example>203</example>
 );
 
 /*
-Schema: NULLTable: Keyword
+Schema: NULL
+Table: Keyword
 Rows: 33
 Sample rows:
 | episode_id   | keyword               |
@@ -124,17 +128,18 @@ Sample rows:
 | ...          | ...                   |
 */
 CREATE TABLE Keyword (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <values>{'tt0629239', 'tt0629397', 'tt0629420'}</values>
-        -- <fk> -> Episode.episode_id</fk>
-    keyword TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "keyword" TEXT NOT NULL,
         -- <example>'nun'</example>
-    PRIMARY KEY (episode_id, keyword),
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+    PRIMARY KEY ("episode_id", "keyword"),
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id")
 );
 
 /*
-Schema: NULLTable: Person
+Schema: NULL
+Table: Person
 Rows: 800
 Sample rows:
 | person_id   | name               | birthdate   | birth_name            | birth_place   | birth_region   | birth_country   | height_meters   | nickname   |
@@ -147,28 +152,29 @@ Sample rows:
 | ...         | ...                | ...         | ...                   | ...           | ...            | ...             | ...             | ...        |
 */
 CREATE TABLE Person (
-    person_id TEXT NOT NULL PRIMARY KEY,
+    "person_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'nm0000210'</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Julia Roberts'</example>
-    birthdate DATE NULL,
+    "birthdate" DATE NULL,
         -- <example>'1967-10-28'</example>
-    birth_name TEXT NULL,
+    "birth_name" TEXT NULL,
         -- <example>'Julia Fiona Roberts'</example>
-    birth_place TEXT NULL,
+    "birth_place" TEXT NULL,
         -- <example>'Smyrna'</example>
-    birth_region TEXT NULL,
+    "birth_region" TEXT NULL,
         -- <example>'Georgia'</example>
-    birth_country TEXT NULL,
+    "birth_country" TEXT NULL,
         -- <example>'USA'</example>
-    height_meters REAL NULL,
+    "height_meters" REAL NULL,
         -- <example>1.730</example>
-    nickname TEXT NULL
+    "nickname" TEXT NULL
         -- <example>'Jules'</example>
 );
 
 /*
-Schema: NULLTable: Vote
+Schema: NULL
+Table: Vote
 Rows: 240
 Sample rows:
 | episode_id   | stars   | votes   | percent   |
@@ -181,15 +187,15 @@ Sample rows:
 | ...          | ...     | ...     | ...       |
 */
 CREATE TABLE Vote (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <example>'tt0629204'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    stars INTEGER NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "stars" INTEGER NOT NULL,
         -- <example>10</example>
-    votes INTEGER NOT NULL,
+    "votes" INTEGER NOT NULL,
         -- <example>36</example>
-    percent REAL NOT NULL,
+    "percent" REAL NOT NULL,
         -- <example>17.700</example>
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id")
 );
 ```

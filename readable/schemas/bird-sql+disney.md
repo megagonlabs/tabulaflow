@@ -2,7 +2,8 @@
 -- Database: disney
 
 /*
-Schema: NULLTable: characters
+Schema: NULL
+Table: characters
 Rows: 56
 Sample rows:
 | movie_title                     | release_date   | hero       | villian    | song                         |
@@ -15,22 +16,23 @@ Sample rows:
 | ...                             | ...            | ...        | ...        | ...                          |
 */
 CREATE TABLE characters (
-    movie_title TEXT NOT NULL PRIMARY KEY,
+    "movie_title" TEXT NOT NULL PRIMARY KEY,
         -- <example>'Aladdin'</example>
-    release_date TEXT NOT NULL,
+    "release_date" TEXT NOT NULL,
         -- <example>'21-Dec-37'</example>
-    hero TEXT NULL,
+    "hero" TEXT NULL,
         -- <example>'Snow White'</example>
-        -- <fk> -> "voice-actors".character</fk>
-    villian TEXT NULL,
+        -- <fk> -> "voice-actors"."character"</fk>
+    "villian" TEXT NULL,
         -- <example>'Evil Queen'</example>
-    song TEXT NULL,
+    "song" TEXT NULL,
         -- <example>'Some Day My Prince Will Come'</example>
-    FOREIGN KEY (hero) REFERENCES "voice-actors"(character)
+    FOREIGN KEY ("hero") REFERENCES "voice-actors"("character")
 );
 
 /*
-Schema: NULLTable: director
+Schema: NULL
+Table: director
 Rows: 56
 Sample rows:
 | name                            | director       |
@@ -43,16 +45,17 @@ Sample rows:
 | ...                             | ...            |
 */
 CREATE TABLE director (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'101 Dalmatians'</example>
-        -- <fk> -> characters.movie_title</fk>
-    director TEXT NOT NULL,
+        -- <fk> -> characters."movie_title"</fk>
+    "director" TEXT NOT NULL,
         -- <example>'David Hand'</example>
-    FOREIGN KEY (name) REFERENCES characters(movie_title)
+    FOREIGN KEY ("name") REFERENCES characters("movie_title")
 );
 
 /*
-Schema: NULLTable: movies_total_gross
+Schema: NULL
+Table: movies_total_gross
 Rows: 579
 Sample rows:
 | movie_title                     | release_date   | genre     | MPAA_rating   | total_gross   | inflation_adjusted_gross   |
@@ -65,25 +68,26 @@ Sample rows:
 | ...                             | ...            | ...       | ...           | ...           | ...                        |
 */
 CREATE TABLE movies_total_gross (
-    movie_title TEXT NOT NULL,
+    "movie_title" TEXT NOT NULL,
         -- <example>'101 Dalmatians'</example>
-        -- <fk> -> characters.movie_title</fk>
-    release_date TEXT NOT NULL,
+        -- <fk> -> characters."movie_title"</fk>
+    "release_date" TEXT NOT NULL,
         -- <example>'Jan 25, 1961'</example>
-    genre TEXT NOT NULL,
+    "genre" TEXT NOT NULL,
         -- <example>'Musical'</example>
-    MPAA_rating TEXT NOT NULL,
+    "MPAA_rating" TEXT NOT NULL,
         -- <values>{'', 'G', 'Not Rated', 'PG', 'PG-13', 'R'}</values>
-    total_gross TEXT NOT NULL,
+    "total_gross" TEXT NOT NULL,
         -- <example>'$184,925,485'</example>
-    inflation_adjusted_gross TEXT NOT NULL,
+    "inflation_adjusted_gross" TEXT NOT NULL,
         -- <example>'$5,228,953,251'</example>
-    PRIMARY KEY (movie_title, release_date),
-    FOREIGN KEY (movie_title) REFERENCES characters(movie_title)
+    PRIMARY KEY ("movie_title", "release_date"),
+    FOREIGN KEY ("movie_title") REFERENCES characters("movie_title")
 );
 
 /*
-Schema: NULLTable: revenue
+Schema: NULL
+Table: revenue
 Rows: 26
 Sample rows:
 | Year   | Studio Entertainment[NI 1]   | Disney Consumer Products[NI 2]   | Disney Interactive[NI 3][Rev 1]   | Walt Disney Parks and Resorts   | Disney Media Networks   | Total   |
@@ -96,7 +100,7 @@ Sample rows:
 | ...    | ...                          | ...                              | ...                               | ...                             | ...                     | ...     |
 */
 CREATE TABLE revenue (
-    Year INTEGER NOT NULL PRIMARY KEY,
+    "Year" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1991</example>
     "Studio Entertainment[NI 1]" REAL NULL,
         -- <example>2593.000</example>
@@ -108,12 +112,13 @@ CREATE TABLE revenue (
         -- <example>2794.000</example>
     "Disney Media Networks" TEXT NULL,
         -- <example>'359'</example>
-    Total INTEGER NOT NULL
+    "Total" INTEGER NOT NULL
         -- <example>6111</example>
 );
 
 /*
-Schema: NULLTable: "voice-actors"
+Schema: NULL
+Table: "voice-actors"
 Rows: 922
 Sample rows:
 | character      | voice-actor     | movie                       |
@@ -126,13 +131,13 @@ Sample rows:
 | ...            | ...             | ...                         |
 */
 CREATE TABLE "voice-actors" (
-    character TEXT NOT NULL PRIMARY KEY,
+    "character" TEXT NOT NULL PRIMARY KEY,
         -- <example>'Abby Mallard'</example>
     "voice-actor" TEXT NOT NULL,
         -- <example>'Joan Cusack'</example>
-    movie TEXT NOT NULL,
+    "movie" TEXT NOT NULL,
         -- <example>'Chicken Little'</example>
-        -- <fk> -> characters.movie_title</fk>
-    FOREIGN KEY (movie) REFERENCES characters(movie_title)
+        -- <fk> -> characters."movie_title"</fk>
+    FOREIGN KEY ("movie") REFERENCES characters("movie_title")
 );
 ```

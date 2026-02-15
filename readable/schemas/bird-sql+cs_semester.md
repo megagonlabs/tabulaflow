@@ -2,7 +2,8 @@
 -- Database: cs_semester
 
 /*
-Schema: NULLTable: RA
+Schema: NULL
+Table: RA
 Rows: 35
 Sample rows:
 | student_id   | capability   | prof_id   | salary   |
@@ -15,23 +16,24 @@ Sample rows:
 | ...          | ...          | ...       | ...      |
 */
 CREATE TABLE RA (
-    student_id INTEGER NOT NULL,
+    "student_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> student.student_id</fk>
-    capability INTEGER NOT NULL,
+        -- <fk> -> student."student_id"</fk>
+    "capability" INTEGER NOT NULL,
         -- <example>2</example>
-    prof_id INTEGER NOT NULL,
+    "prof_id" INTEGER NOT NULL,
         -- <example>7</example>
-        -- <fk> -> prof.prof_id</fk>
-    salary TEXT NOT NULL,
+        -- <fk> -> prof."prof_id"</fk>
+    "salary" TEXT NOT NULL,
         -- <values>{'free', 'high', 'low', 'med'}</values>
-    PRIMARY KEY (student_id, prof_id),
-    FOREIGN KEY (prof_id) REFERENCES prof(prof_id),
-    FOREIGN KEY (student_id) REFERENCES student(student_id)
+    PRIMARY KEY ("student_id", "prof_id"),
+    FOREIGN KEY ("prof_id") REFERENCES prof("prof_id"),
+    FOREIGN KEY ("student_id") REFERENCES student("student_id")
 );
 
 /*
-Schema: NULLTable: course
+Schema: NULL
+Table: course
 Rows: 13
 Sample rows:
 | course_id   | name                        | credit   | diff   |
@@ -44,18 +46,19 @@ Sample rows:
 | ...         | ...                         | ...      | ...    |
 */
 CREATE TABLE course (
-    course_id INTEGER NOT NULL PRIMARY KEY,
+    "course_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Machine Learning Theory'</example>
-    credit INTEGER NOT NULL,
+    "credit" INTEGER NOT NULL,
         -- <example>3</example>
-    diff INTEGER NOT NULL
+    "diff" INTEGER NOT NULL
         -- <example>3</example>
 );
 
 /*
-Schema: NULLTable: prof
+Schema: NULL
+Table: prof
 Rows: 10
 All rows:
 |   prof_id | gender   | first_name   | last_name   | email                     |   popularity |   teachingability | graduate_from                         |
@@ -72,26 +75,27 @@ All rows:
 |        10 | Male     | Hattie       | Smythin     | hsmythin9@hku.hk          |            2 |                 5 | Mount Aloysius College                |
 */
 CREATE TABLE prof (
-    prof_id INTEGER NOT NULL PRIMARY KEY,
+    "prof_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    gender TEXT NOT NULL,
+    "gender" TEXT NOT NULL,
         -- <values>{'Female', 'Male'}</values>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <values>{'Bernhard', 'Hattie', 'Mateo', 'Merwyn', 'Millie', 'Nathaniel', 'Ogdon', 'Rosamond', 'Sauveur', 'Zhihua'}</values>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <values>{'Conkay', 'Cunningham', 'Ewenson', 'Medmore', 'Molen', 'Pigford', 'Skyme', 'Smythin', 'Zhou', 'Zywicki'}</values>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <values>{'bmolen4@hku.hk', 'hsmythin9@hku.hk', 'mconkay3@ucla.edu', 'mcunningham6@stanford.edu', 'mmedmore8@hku.hk', 'npigford0@hku.hk', 'ozywicki2@hku.hk', 'rewenson7@hku.hk', 'sskyme5@columbia.edu', 'zzhihua@hku.hk'}</values>
-    popularity INTEGER NOT NULL,
+    "popularity" INTEGER NOT NULL,
         -- <example>3</example>
-    teachingability INTEGER NOT NULL,
+    "teachingability" INTEGER NOT NULL,
         -- <example>5</example>
-    graduate_from TEXT NOT NULL
+    "graduate_from" TEXT NOT NULL
         -- <values>{'Beijing Polytechnic University', 'Carnegie Mellon University', 'ETH Zurich', 'Massachusetts Institute of Technology', 'Miyazaki Municipal University', 'Mount Aloysius College', 'Princeton University', 'University of Boston', 'University of Pennsylvania', 'University of Washington'}</values>
 );
 
 /*
-Schema: NULLTable: registration
+Schema: NULL
+Table: registration
 Rows: 101
 Sample rows:
 | course_id   | student_id   | grade   | sat   |
@@ -104,23 +108,24 @@ Sample rows:
 | ...         | ...          | ...     | ...   |
 */
 CREATE TABLE registration (
-    course_id INTEGER NOT NULL,
+    "course_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> course.course_id</fk>
-    student_id INTEGER NOT NULL,
+        -- <fk> -> course."course_id"</fk>
+    "student_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> student.student_id</fk>
-    grade TEXT NULL,
+        -- <fk> -> student."student_id"</fk>
+    "grade" TEXT NULL,
         -- <values>{'A', 'B', 'C', 'D'}</values>
-    sat INTEGER NOT NULL,
+    "sat" INTEGER NOT NULL,
         -- <example>5</example>
-    PRIMARY KEY (course_id, student_id),
-    FOREIGN KEY (course_id) REFERENCES course(course_id),
-    FOREIGN KEY (student_id) REFERENCES student(student_id)
+    PRIMARY KEY ("course_id", "student_id"),
+    FOREIGN KEY ("course_id") REFERENCES course("course_id"),
+    FOREIGN KEY ("student_id") REFERENCES student("student_id")
 );
 
 /*
-Schema: NULLTable: student
+Schema: NULL
+Table: student
 Rows: 38
 Sample rows:
 | student_id   | f_name   | l_name    | phone_number   | email                  | intelligence   | gpa   | type   |
@@ -133,21 +138,21 @@ Sample rows:
 | ...          | ...      | ...       | ...            | ...                    | ...            | ...   | ...    |
 */
 CREATE TABLE student (
-    student_id INTEGER NOT NULL PRIMARY KEY,
+    "student_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    f_name TEXT NOT NULL,
+    "f_name" TEXT NOT NULL,
         -- <example>'Kerry'</example>
-    l_name TEXT NOT NULL,
+    "l_name" TEXT NOT NULL,
         -- <example>'Pryor'</example>
-    phone_number TEXT NOT NULL,
+    "phone_number" TEXT NOT NULL,
         -- <example>'(243) 6836472'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <example>'kpryor0@hku.hk'</example>
-    intelligence INTEGER NOT NULL,
+    "intelligence" INTEGER NOT NULL,
         -- <example>5</example>
-    gpa REAL NOT NULL,
+    "gpa" REAL NOT NULL,
         -- <example>2.400</example>
-    type TEXT NOT NULL
+    "type" TEXT NOT NULL
         -- <values>{'RPG', 'TPG', 'UG'}</values>
 );
 ```

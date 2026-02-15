@@ -2,7 +2,8 @@
 -- Database: beer_factory
 
 /*
-Schema: NULLTable: customers
+Schema: NULL
+Table: customers
 Rows: 554
 Sample rows:
 | CustomerID   | First     | Last    | StreetAddress        | City       | State   | ZipCode   | Email                   | PhoneNumber    | FirstPurchaseDate   | SubscribedToEmailList   | Gender   |
@@ -15,34 +16,35 @@ Sample rows:
 | ...          | ...       | ...     | ...                  | ...        | ...     | ...       | ...                     | ...            | ...                 | ...                     | ...      |
 */
 CREATE TABLE customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>101811</example>
-    First TEXT NOT NULL,
+    "First" TEXT NOT NULL,
         -- <example>'Kenneth'</example>
-    Last TEXT NOT NULL,
+    "Last" TEXT NOT NULL,
         -- <example>'Walton'</example>
-    StreetAddress TEXT NOT NULL,
+    "StreetAddress" TEXT NOT NULL,
         -- <example>'6715 Commonwealth Dr'</example>
-    City TEXT NOT NULL,
+    "City" TEXT NOT NULL,
         -- <example>'Sacramento'</example>
-    State TEXT NOT NULL,
+    "State" TEXT NOT NULL,
         -- <values>{'CA'}</values>
-    ZipCode INTEGER NOT NULL,
+    "ZipCode" INTEGER NOT NULL,
         -- <example>94256</example>
-    Email TEXT NOT NULL,
+    "Email" TEXT NOT NULL,
         -- <example>'walton.k76@fastmail.com'</example>
-    PhoneNumber TEXT NOT NULL,
+    "PhoneNumber" TEXT NOT NULL,
         -- <example>'(916) 918-1561'</example>
-    FirstPurchaseDate DATE NOT NULL,
+    "FirstPurchaseDate" DATE NOT NULL,
         -- <example>'2013-05-30'</example>
-    SubscribedToEmailList TEXT NOT NULL,
+    "SubscribedToEmailList" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    Gender TEXT NOT NULL
+    "Gender" TEXT NOT NULL
         -- <values>{'F', 'M'}</values>
 );
 
 /*
-Schema: NULLTable: geolocation
+Schema: NULL
+Table: geolocation
 Rows: 3
 All rows:
 |   LocationID |   Latitude |   Longitude |
@@ -52,18 +54,19 @@ All rows:
 |            2 |  38.559615 |  -121.42243 |
 */
 CREATE TABLE geolocation (
-    LocationID INTEGER NOT NULL PRIMARY KEY,
+    "LocationID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-        -- <fk> -> location.LocationID</fk>
-    Latitude REAL NOT NULL,
+        -- <fk> -> location."LocationID"</fk>
+    "Latitude" REAL NOT NULL,
         -- <example>0.000</example>
-    Longitude REAL NOT NULL,
+    "Longitude" REAL NOT NULL,
         -- <example>0.000</example>
-    FOREIGN KEY (LocationID) REFERENCES location(LocationID)
+    FOREIGN KEY ("LocationID") REFERENCES location("LocationID")
 );
 
 /*
-Schema: NULLTable: location
+Schema: NULL
+Table: location
 Rows: 3
 All rows:
 |   LocationID | LocationName                       | StreetAddress   | City       | State   | ZipCode   |
@@ -73,24 +76,25 @@ All rows:
 |            2 | Sac State Union                    | 6000 J St       | Sacramento | CA      | 95819.0   |
 */
 CREATE TABLE location (
-    LocationID INTEGER NOT NULL PRIMARY KEY,
+    "LocationID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-        -- <fk> -> geolocation.LocationID</fk>
-    LocationName TEXT NOT NULL,
+        -- <fk> -> geolocation."LocationID"</fk>
+    "LocationName" TEXT NOT NULL,
         -- <values>{'LOST', 'Sac State American River Courtyard', 'Sac State Union'}</values>
-    StreetAddress TEXT NULL,
+    "StreetAddress" TEXT NULL,
         -- <values>{'6000 J St'}</values>
-    City TEXT NULL,
+    "City" TEXT NULL,
         -- <values>{'Sacramento'}</values>
-    State TEXT NULL,
+    "State" TEXT NULL,
         -- <values>{'CA'}</values>
-    ZipCode INTEGER NULL,
+    "ZipCode" INTEGER NULL,
         -- <example>95819</example>
-    FOREIGN KEY (LocationID) REFERENCES geolocation(LocationID)
+    FOREIGN KEY ("LocationID") REFERENCES geolocation("LocationID")
 );
 
 /*
-Schema: NULLTable: rootbeer
+Schema: NULL
+Table: rootbeer
 Rows: 6430
 Sample rows:
 | RootBeerID   | BrandID   | ContainerType   | LocationID   | PurchaseDate   |
@@ -103,26 +107,27 @@ Sample rows:
 | ...          | ...       | ...             | ...          | ...            |
 */
 CREATE TABLE rootbeer (
-    RootBeerID INTEGER NOT NULL PRIMARY KEY,
+    "RootBeerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>100000</example>
-    BrandID INTEGER NOT NULL,
+    "BrandID" INTEGER NOT NULL,
         -- <example>10001</example>
-        -- <fk> -> rootbeerbrand.BrandID</fk>
-    ContainerType TEXT NOT NULL,
+        -- <fk> -> rootbeerbrand."BrandID"</fk>
+    "ContainerType" TEXT NOT NULL,
         -- <values>{'Bottle', 'Can'}</values>
-    LocationID INTEGER NOT NULL,
+    "LocationID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> geolocation.LocationID</fk>
-        -- <fk> -> location.LocationID</fk>
-    PurchaseDate DATE NOT NULL,
+        -- <fk> -> geolocation."LocationID"</fk>
+        -- <fk> -> location."LocationID"</fk>
+    "PurchaseDate" DATE NOT NULL,
         -- <example>'2015-07-03'</example>
-    FOREIGN KEY (LocationID) REFERENCES geolocation(LocationID),
-    FOREIGN KEY (LocationID) REFERENCES location(LocationID),
-    FOREIGN KEY (BrandID) REFERENCES rootbeerbrand(BrandID)
+    FOREIGN KEY ("LocationID") REFERENCES geolocation("LocationID"),
+    FOREIGN KEY ("LocationID") REFERENCES location("LocationID"),
+    FOREIGN KEY ("BrandID") REFERENCES rootbeerbrand("BrandID")
 );
 
 /*
-Schema: NULLTable: rootbeerbrand
+Schema: NULL
+Table: rootbeerbrand
 Rows: 24
 Sample rows:
 | BrandID   | BrandName     | FirstBrewedYear   | BreweryName             | City         | State   | Country       | Description                                                                                                                                                                                                 | CaneSugar   | CornSyrup   | Honey   | ArtificialSweetener   | Caffeinated   | Alcoholic   | AvailableInCans   | AvailableInBottles   | AvailableInKegs   | Website                                           | FacebookPage   | Twitter   | WholesaleCost   | CurrentRetailPrice   |
@@ -136,54 +141,55 @@ the finest elixirs and mixers in New England                                    
 | ...       | ...           | ...               | ...                     | ...          | ...     | ...           | ...                                                                                                                                                                                                         | ...         | ...         | ...     | ...                   | ...           | ...         | ...               | ...                  | ...               | ...                                               | ...            | ...       | ...             | ...                  |
 */
 CREATE TABLE rootbeerbrand (
-    BrandID INTEGER NOT NULL PRIMARY KEY,
+    "BrandID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>10001</example>
-    BrandName TEXT NOT NULL,
+    "BrandName" TEXT NOT NULL,
         -- <example>'A&W'</example>
-    FirstBrewedYear INTEGER NOT NULL,
+    "FirstBrewedYear" INTEGER NOT NULL,
         -- <example>1919</example>
-    BreweryName TEXT NOT NULL,
+    "BreweryName" TEXT NOT NULL,
         -- <example>'Dr Pepper Snapple Group'</example>
-    City TEXT NULL,
+    "City" TEXT NULL,
         -- <example>'Lodi'</example>
-    State TEXT NULL,
+    "State" TEXT NULL,
         -- <example>'CA'</example>
-    Country TEXT NOT NULL,
+    "Country" TEXT NOT NULL,
         -- <values>{'Australia', 'United States'}</values>
-    Description TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
         -- <example>'After setting up the first A&W Root Beer stand in ...ore root beer stands all across the United States.'</example>
-    CaneSugar TEXT NOT NULL,
+    "CaneSugar" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    CornSyrup TEXT NOT NULL,
+    "CornSyrup" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    Honey TEXT NOT NULL,
+    "Honey" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    ArtificialSweetener TEXT NOT NULL,
+    "ArtificialSweetener" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    Caffeinated TEXT NOT NULL,
+    "Caffeinated" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    Alcoholic TEXT NOT NULL,
+    "Alcoholic" TEXT NOT NULL,
         -- <values>{'FALSE'}</values>
-    AvailableInCans TEXT NOT NULL,
+    "AvailableInCans" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    AvailableInBottles TEXT NOT NULL,
+    "AvailableInBottles" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    AvailableInKegs TEXT NOT NULL,
+    "AvailableInKegs" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    Website TEXT NULL,
+    "Website" TEXT NULL,
         -- <example>'http://www.rootbeer.com/'</example>
-    FacebookPage TEXT NULL,
+    "FacebookPage" TEXT NULL,
         -- <values>{'https://www.facebook.com/1919rootbeer', 'https://www.facebook.com/Dads-Old-Fashioned-Root-Beer-and-Cream-Soda-117159998301204/', 'https://www.facebook.com/Dog-N-Suds-Bottled-Root-Beer-117372294947833/', 'https://www.facebook.com/Gales-Root-Beer-207365072632626/', 'https://www.facebook.com/MugRootBeer/', 'https://www.facebook.com/fitzsrootbeer'}</values>
-    Twitter TEXT NULL,
+    "Twitter" TEXT NULL,
         -- <values>{'https://twitter.com/1919rootbeer', 'https://twitter.com/ilovedads'}</values>
-    WholesaleCost REAL NOT NULL,
+    "WholesaleCost" REAL NOT NULL,
         -- <example>0.420</example>
-    CurrentRetailPrice REAL NOT NULL
+    "CurrentRetailPrice" REAL NOT NULL
         -- <example>1.000</example>
 );
 
 /*
-Schema: NULLTable: rootbeerreview
+Schema: NULL
+Table: rootbeerreview
 Rows: 713
 Sample rows:
 | CustomerID   | BrandID   | StarRating   | ReviewDate   | Review   |
@@ -196,25 +202,26 @@ Sample rows:
 | ...          | ...       | ...          | ...          | ...      |
 */
 CREATE TABLE rootbeerreview (
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>101811</example>
-        -- <fk> -> customers.CustomerID</fk>
-    BrandID INTEGER NOT NULL,
+        -- <fk> -> customers."CustomerID"</fk>
+    "BrandID" INTEGER NOT NULL,
         -- <example>10012</example>
-        -- <fk> -> rootbeerbrand.BrandID</fk>
-    StarRating INTEGER NOT NULL,
+        -- <fk> -> rootbeerbrand."BrandID"</fk>
+    "StarRating" INTEGER NOT NULL,
         -- <example>5</example>
-    ReviewDate DATE NOT NULL,
+    "ReviewDate" DATE NOT NULL,
         -- <example>'2013-07-15'</example>
-    Review TEXT NULL,
+    "Review" TEXT NULL,
         -- <example>'You could have done better Sactown.'</example>
-    PRIMARY KEY (CustomerID, BrandID),
-    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID),
-    FOREIGN KEY (BrandID) REFERENCES rootbeerbrand(BrandID)
+    PRIMARY KEY ("CustomerID", "BrandID"),
+    FOREIGN KEY ("CustomerID") REFERENCES customers("CustomerID"),
+    FOREIGN KEY ("BrandID") REFERENCES rootbeerbrand("BrandID")
 );
 
 /*
-Schema: NULLTable: transaction
+Schema: NULL
+Table: transaction
 Rows: 6312
 Sample rows:
 | TransactionID   | CreditCardNumber   | CustomerID   | TransactionDate   | CreditCardType   | LocationID   | RootBeerID   | PurchasePrice   |
@@ -227,27 +234,27 @@ Sample rows:
 | ...             | ...                | ...          | ...               | ...              | ...          | ...          | ...             |
 */
 CREATE TABLE transaction (
-    TransactionID INTEGER NOT NULL PRIMARY KEY,
+    "TransactionID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>100000</example>
-    CreditCardNumber INTEGER NOT NULL,
+    "CreditCardNumber" INTEGER NOT NULL,
         -- <example>6011583832864739</example>
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>864896</example>
-        -- <fk> -> customers.CustomerID</fk>
-    TransactionDate DATE NOT NULL,
+        -- <fk> -> customers."CustomerID"</fk>
+    "TransactionDate" DATE NOT NULL,
         -- <example>'2014-07-07'</example>
-    CreditCardType TEXT NOT NULL,
+    "CreditCardType" TEXT NOT NULL,
         -- <values>{'American Express', 'Discover', 'MasterCard', 'Visa'}</values>
-    LocationID INTEGER NOT NULL,
+    "LocationID" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> location.LocationID</fk>
-    RootBeerID INTEGER NOT NULL,
+        -- <fk> -> location."LocationID"</fk>
+    "RootBeerID" INTEGER NOT NULL,
         -- <example>105661</example>
-        -- <fk> -> rootbeer.RootBeerID</fk>
-    PurchasePrice REAL NOT NULL,
+        -- <fk> -> rootbeer."RootBeerID"</fk>
+    "PurchasePrice" REAL NOT NULL,
         -- <example>3.000</example>
-    FOREIGN KEY (CustomerID) REFERENCES customers(CustomerID),
-    FOREIGN KEY (LocationID) REFERENCES location(LocationID),
-    FOREIGN KEY (RootBeerID) REFERENCES rootbeer(RootBeerID)
+    FOREIGN KEY ("CustomerID") REFERENCES customers("CustomerID"),
+    FOREIGN KEY ("LocationID") REFERENCES location("LocationID"),
+    FOREIGN KEY ("RootBeerID") REFERENCES rootbeer("RootBeerID")
 );
 ```

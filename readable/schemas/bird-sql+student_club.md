@@ -2,7 +2,8 @@
 -- Database: student_club
 
 /*
-Schema: NULLTable: attendance
+Schema: NULL
+Table: attendance
 Rows: 326
 Sample rows:
 | link_to_event     | link_to_member    |
@@ -15,19 +16,20 @@ Sample rows:
 | ...               | ...               |
 */
 CREATE TABLE attendance (
-    link_to_event TEXT NOT NULL,
+    "link_to_event" TEXT NOT NULL,
         -- <example>'rec2N69DMcrqN9PJC'</example>
-        -- <fk> -> event.event_id</fk>
-    link_to_member TEXT NOT NULL,
+        -- <fk> -> event."event_id"</fk>
+    "link_to_member" TEXT NOT NULL,
         -- <example>'recD078PnS3x2doBe'</example>
-        -- <fk> -> member.member_id</fk>
-    PRIMARY KEY (link_to_event, link_to_member),
-    FOREIGN KEY (link_to_event) REFERENCES event(event_id),
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> member."member_id"</fk>
+    PRIMARY KEY ("link_to_event", "link_to_member"),
+    FOREIGN KEY ("link_to_event") REFERENCES event("event_id"),
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: budget
+Schema: NULL
+Table: budget
 Rows: 52
 Sample rows:
 | budget_id         | category      | spent   | remaining          | amount   | event_status   | link_to_event     |
@@ -40,26 +42,27 @@ Sample rows:
 | ...               | ...           | ...     | ...                | ...      | ...            | ...               |
 */
 CREATE TABLE budget (
-    budget_id TEXT NOT NULL PRIMARY KEY,
+    "budget_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec0QmEc3cSQFQ6V2'</example>
-    category TEXT NOT NULL,
+    "category" TEXT NOT NULL,
         -- <values>{'Advertisement', 'Club T-Shirts', 'Food', 'Parking', 'Speaker Gifts'}</values>
-    spent REAL NOT NULL,
+    "spent" REAL NOT NULL,
         -- <example>67.810</example>
-    remaining REAL NOT NULL,
+    "remaining" REAL NOT NULL,
         -- <example>7.190</example>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <example>75</example>
-    event_status TEXT NOT NULL,
+    "event_status" TEXT NOT NULL,
         -- <values>{'Closed', 'Open', 'Planning'}</values>
-    link_to_event TEXT NOT NULL,
+    "link_to_event" TEXT NOT NULL,
         -- <example>'recI43CzsZ0Q625ma'</example>
-        -- <fk> -> event.event_id</fk>
-    FOREIGN KEY (link_to_event) REFERENCES event(event_id)
+        -- <fk> -> event."event_id"</fk>
+    FOREIGN KEY ("link_to_event") REFERENCES event("event_id")
 );
 
 /*
-Schema: NULLTable: event
+Schema: NULL
+Table: event
 Rows: 42
 Sample rows:
 | event_id          | event_name                 | event_date          | type     | notes                                                         | location                       | status   |
@@ -72,24 +75,25 @@ Sample rows:
 | ...               | ...                        | ...                 | ...      | ...                                                           | ...                            | ...      |
 */
 CREATE TABLE event (
-    event_id TEXT NOT NULL PRIMARY KEY,
+    "event_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec0Si5cQ4rJRVzd6'</example>
-    event_name TEXT NOT NULL,
+    "event_name" TEXT NOT NULL,
         -- <example>'March Meeting'</example>
-    event_date TEXT NOT NULL,
+    "event_date" TEXT NOT NULL,
         -- <example>'2020-03-10T12:00:00'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <values>{'Budget', 'Community Service', 'Election', 'Game', 'Guest Speaker', 'Meeting', 'Registration', 'Social'}</values>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <example>'All active members can vote for new officers between 4pm-8pm.'</example>
-    location TEXT NULL,
+    "location" TEXT NULL,
         -- <example>'MU 215'</example>
-    status TEXT NOT NULL
+    "status" TEXT NOT NULL
         -- <values>{'Closed', 'Open', 'Planning'}</values>
 );
 
 /*
-Schema: NULLTable: expense
+Schema: NULL
+Table: expense
 Rows: 32
 Sample rows:
 | expense_id        | expense_description   | expense_date   | cost   | approved   | link_to_member    | link_to_budget    |
@@ -102,28 +106,29 @@ Sample rows:
 | ...               | ...                   | ...            | ...    | ...        | ...               | ...               |
 */
 CREATE TABLE expense (
-    expense_id TEXT NOT NULL PRIMARY KEY,
+    "expense_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec017x6R3hQqkLAo'</example>
-    expense_description TEXT NOT NULL,
+    "expense_description" TEXT NOT NULL,
         -- <example>'Post Cards, Posters'</example>
-    expense_date TEXT NOT NULL,
+    "expense_date" TEXT NOT NULL,
         -- <example>'2019-08-20'</example>
-    cost REAL NOT NULL,
+    "cost" REAL NOT NULL,
         -- <example>122.060</example>
-    approved TEXT NULL,
+    "approved" TEXT NULL,
         -- <values>{'true'}</values>
-    link_to_member TEXT NOT NULL,
+    "link_to_member" TEXT NOT NULL,
         -- <values>{'rec4BLdZHS2Blfp4v', 'recD078PnS3x2doBe', 'recro8T1MPMwRadVH'}</values>
-        -- <fk> -> member.member_id</fk>
-    link_to_budget TEXT NOT NULL,
+        -- <fk> -> member."member_id"</fk>
+    "link_to_budget" TEXT NOT NULL,
         -- <example>'recvKTAWAFKkVNnXQ'</example>
-        -- <fk> -> budget.budget_id</fk>
-    FOREIGN KEY (link_to_budget) REFERENCES budget(budget_id),
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> budget."budget_id"</fk>
+    FOREIGN KEY ("link_to_budget") REFERENCES budget("budget_id"),
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: income
+Schema: NULL
+Table: income
 Rows: 36
 Sample rows:
 | income_id         | date_received   | amount   | source   | notes   | link_to_member    |
@@ -136,24 +141,25 @@ Sample rows:
 | ...               | ...             | ...      | ...      | ...     | ...               |
 */
 CREATE TABLE income (
-    income_id TEXT NOT NULL PRIMARY KEY,
+    "income_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec0s9ZrO15zhzUeE'</example>
-    date_received TEXT NOT NULL,
+    "date_received" TEXT NOT NULL,
         -- <example>'2019-10-17'</example>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <example>50</example>
-    source TEXT NOT NULL,
+    "source" TEXT NOT NULL,
         -- <values>{'Dues', 'Fundraising', 'School Appropration', 'Sponsorship'}</values>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <values>{'Ad revenue for use on flyers used to advertise upcoming events.', 'Annual funding from Student Government.', 'Secured donations to help pay for speaker gifts.'}</values>
-    link_to_member TEXT NULL,
+    "link_to_member" TEXT NULL,
         -- <example>'reccW7q1KkhSKZsea'</example>
-        -- <fk> -> member.member_id</fk>
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> member."member_id"</fk>
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: major
+Schema: NULL
+Table: major
 Rows: 113
 Sample rows:
 | major_id          | major_name                             | department                                           | college                                     |
@@ -166,18 +172,19 @@ Sample rows:
 | ...               | ...                                    | ...                                                  | ...                                         |
 */
 CREATE TABLE major (
-    major_id TEXT NOT NULL PRIMARY KEY,
+    "major_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec06DF6vZ1CyPKpc'</example>
-    major_name TEXT NOT NULL,
+    "major_name" TEXT NOT NULL,
         -- <example>'Outdoor Product Design and Development'</example>
-    department TEXT NOT NULL,
+    "department" TEXT NOT NULL,
         -- <example>'School of Applied Sciences, Technology and Education'</example>
-    college TEXT NOT NULL
+    "college" TEXT NOT NULL
         -- <values>{'College of Agriculture and Applied Sciences', 'College of Education & Human Services', 'College of Engineering', 'College of Humanities and Social Sciences', 'College of Natural Resources', 'College of Science', 'College of the Arts', 'School of Business'}</values>
 );
 
 /*
-Schema: NULLTable: member
+Schema: NULL
+Table: member
 Rows: 33
 Sample rows:
 | member_id         | first_name   | last_name   | email                  | position   | t_shirt_size   | phone          | zip   | link_to_major     |
@@ -190,32 +197,33 @@ Sample rows:
 | ...               | ...          | ...         | ...                    | ...        | ...            | ...            | ...   | ...               |
 */
 CREATE TABLE member (
-    member_id TEXT NOT NULL PRIMARY KEY,
+    "member_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'rec1x5zBFIqoOuPW8'</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Angela'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <example>'Sanders'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <example>'angela.sanders@lpu.edu'</example>
-    position TEXT NOT NULL,
+    "position" TEXT NOT NULL,
         -- <values>{'Inactive', 'Member', 'President', 'Secretary', 'Treasurer', 'Vice President'}</values>
-    t_shirt_size TEXT NOT NULL,
+    "t_shirt_size" TEXT NOT NULL,
         -- <values>{'Large', 'Medium', 'Small', 'X-Large'}</values>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'(651) 928-4507'</example>
-    zip INTEGER NOT NULL,
+    "zip" INTEGER NOT NULL,
         -- <example>55108</example>
-        -- <fk> -> zip_code.zip_code</fk>
-    link_to_major TEXT NULL,
+        -- <fk> -> zip_code."zip_code"</fk>
+    "link_to_major" TEXT NULL,
         -- <example>'recxK3MHQFbR9J5uO'</example>
-        -- <fk> -> major.major_id</fk>
-    FOREIGN KEY (link_to_major) REFERENCES major(major_id),
-    FOREIGN KEY (zip) REFERENCES zip_code(zip_code)
+        -- <fk> -> major."major_id"</fk>
+    FOREIGN KEY ("link_to_major") REFERENCES major("major_id"),
+    FOREIGN KEY ("zip") REFERENCES zip_code("zip_code")
 );
 
 /*
-Schema: NULLTable: zip_code
+Schema: NULL
+Table: zip_code
 Rows: 41877
 Sample rows:
 | zip_code   | type     | city       | county              | state       | short_state   |
@@ -228,17 +236,17 @@ Sample rows:
 | ...        | ...      | ...        | ...                 | ...         | ...           |
 */
 CREATE TABLE zip_code (
-    zip_code INTEGER NOT NULL PRIMARY KEY,
+    "zip_code" INTEGER NOT NULL PRIMARY KEY,
         -- <example>501</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <values>{'PO Box', 'Standard', 'Unique'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Holtsville'</example>
-    county TEXT NULL,
+    "county" TEXT NULL,
         -- <example>'Suffolk County'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'New York'</example>
-    short_state TEXT NOT NULL
+    "short_state" TEXT NOT NULL
         -- <example>'NY'</example>
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: music_tracker
 
 /*
-Schema: NULLTable: tags
+Schema: NULL
+Table: tags
 Rows: 161283
 Sample rows:
 | index   | id   | tag      |
@@ -15,18 +16,19 @@ Sample rows:
 | ...     | ...  | ...      |
 */
 CREATE TABLE tags (
-    index INTEGER NOT NULL PRIMARY KEY,
+    "index" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    id INTEGER NOT NULL,
+    "id" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> torrents.id</fk>
-    tag TEXT NOT NULL,
+        -- <fk> -> torrents."id"</fk>
+    "tag" TEXT NOT NULL,
         -- <example>'1970s'</example>
-    FOREIGN KEY (id) REFERENCES torrents(id)
+    FOREIGN KEY ("id") REFERENCES torrents("id")
 );
 
 /*
-Schema: NULLTable: torrents
+Schema: NULL
+Table: torrents
 Rows: 75719
 Sample rows:
 | groupName                      | totalSnatched   | artist                               | groupYear   | releaseType   | groupId   | id   |
@@ -39,19 +41,19 @@ Sample rows:
 | ...                            | ...             | ...                                  | ...         | ...           | ...       | ...  |
 */
 CREATE TABLE torrents (
-    groupName TEXT NOT NULL,
+    "groupName" TEXT NOT NULL,
         -- <example>'superappin&#39;'</example>
-    totalSnatched INTEGER NOT NULL,
+    "totalSnatched" INTEGER NOT NULL,
         -- <example>239</example>
-    artist TEXT NOT NULL,
+    "artist" TEXT NOT NULL,
         -- <example>'grandmaster flash & the furious five'</example>
-    groupYear INTEGER NOT NULL,
+    "groupYear" INTEGER NOT NULL,
         -- <example>1979</example>
-    releaseType TEXT NOT NULL,
+    "releaseType" TEXT NOT NULL,
         -- <values>{'album', 'anthology', 'bootleg', 'compilation', 'concert recording', 'demo', 'dj mix', 'ep', 'interview', 'live album', 'mixtape', 'remix', 'single', 'soundtrack', 'unknown'}</values>
-    groupId INTEGER NOT NULL,
+    "groupId" INTEGER NOT NULL,
         -- <example>720949</example>
-    id INTEGER NOT NULL PRIMARY KEY
+    "id" INTEGER NOT NULL PRIMARY KEY
         -- <example>0</example>
 );
 ```

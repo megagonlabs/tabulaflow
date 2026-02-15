@@ -2,7 +2,8 @@
 -- Database: talkingdata
 
 /*
-Schema: NULLTable: app_all
+Schema: NULL
+Table: app_all
 Rows: 113211
 Sample rows:
 | app_id               |
@@ -15,12 +16,13 @@ Sample rows:
 | ...                  |
 */
 CREATE TABLE app_all (
-    app_id INTEGER NOT NULL PRIMARY KEY
+    "app_id" INTEGER NOT NULL PRIMARY KEY
         -- <example>-9223281467940916832</example>
 );
 
 /*
-Schema: NULLTable: app_events
+Schema: NULL
+Table: app_events
 Rows: 32473067
 Sample rows:
 | event_id   | app_id               | is_installed   | is_active   |
@@ -33,21 +35,22 @@ Sample rows:
 | ...        | ...                  | ...            | ...         |
 */
 CREATE TABLE app_events (
-    event_id INTEGER NOT NULL,
+    "event_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> events.event_id</fk>
-    app_id INTEGER NOT NULL,
+        -- <fk> -> events."event_id"</fk>
+    "app_id" INTEGER NOT NULL,
         -- <example>-8942695423876075857</example>
-    is_installed INTEGER NOT NULL,
+    "is_installed" INTEGER NOT NULL,
         -- <example>1</example>
-    is_active INTEGER NOT NULL,
+    "is_active" INTEGER NOT NULL,
         -- <example>0</example>
-    PRIMARY KEY (event_id, app_id),
-    FOREIGN KEY (event_id) REFERENCES events(event_id)
+    PRIMARY KEY ("event_id", "app_id"),
+    FOREIGN KEY ("event_id") REFERENCES events("event_id")
 );
 
 /*
-Schema: NULLTable: app_events_relevant
+Schema: NULL
+Table: app_events_relevant
 Rows: 3701900
 Sample rows:
 | event_id   | app_id               | is_installed   | is_active   |
@@ -60,23 +63,24 @@ Sample rows:
 | ...        | ...                  | ...            | ...         |
 */
 CREATE TABLE app_events_relevant (
-    event_id INTEGER NOT NULL,
+    "event_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> events_relevant.event_id</fk>
-    app_id INTEGER NOT NULL,
+        -- <fk> -> events_relevant."event_id"</fk>
+    "app_id" INTEGER NOT NULL,
         -- <example>-8942695423876075857</example>
-        -- <fk> -> app_all.app_id</fk>
-    is_installed INTEGER NOT NULL,
+        -- <fk> -> app_all."app_id"</fk>
+    "is_installed" INTEGER NOT NULL,
         -- <example>1</example>
-    is_active INTEGER NOT NULL,
+    "is_active" INTEGER NOT NULL,
         -- <example>0</example>
-    PRIMARY KEY (event_id, app_id),
-    FOREIGN KEY (app_id) REFERENCES app_all(app_id),
-    FOREIGN KEY (event_id) REFERENCES events_relevant(event_id)
+    PRIMARY KEY ("event_id", "app_id"),
+    FOREIGN KEY ("app_id") REFERENCES app_all("app_id"),
+    FOREIGN KEY ("event_id") REFERENCES events_relevant("event_id")
 );
 
 /*
-Schema: NULLTable: app_labels
+Schema: NULL
+Table: app_labels
 Rows: 459943
 Sample rows:
 | app_id               | label_id   |
@@ -89,18 +93,19 @@ Sample rows:
 | ...                  | ...        |
 */
 CREATE TABLE app_labels (
-    app_id INTEGER NOT NULL,
+    "app_id" INTEGER NOT NULL,
         -- <example>7324884708820027918</example>
-        -- <fk> -> app_all.app_id</fk>
-    label_id INTEGER NOT NULL,
+        -- <fk> -> app_all."app_id"</fk>
+    "label_id" INTEGER NOT NULL,
         -- <example>251</example>
-        -- <fk> -> label_categories.label_id</fk>
-    FOREIGN KEY (app_id) REFERENCES app_all(app_id),
-    FOREIGN KEY (label_id) REFERENCES label_categories(label_id)
+        -- <fk> -> label_categories."label_id"</fk>
+    FOREIGN KEY ("app_id") REFERENCES app_all("app_id"),
+    FOREIGN KEY ("label_id") REFERENCES label_categories("label_id")
 );
 
 /*
-Schema: NULLTable: events
+Schema: NULL
+Table: events
 Rows: 3252950
 Sample rows:
 | event_id   | device_id            | timestamp             | longitude   | latitude   |
@@ -113,20 +118,21 @@ Sample rows:
 | ...        | ...                  | ...                   | ...         | ...        |
 */
 CREATE TABLE events (
-    event_id INTEGER NOT NULL PRIMARY KEY,
+    "event_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    device_id INTEGER NOT NULL,
+    "device_id" INTEGER NOT NULL,
         -- <example>29182687948017175</example>
-    timestamp DATETIME NOT NULL,
+    "timestamp" DATETIME NOT NULL,
         -- <example>'2016-05-01 00:55:25.0'</example>
-    longitude REAL NOT NULL,
+    "longitude" REAL NOT NULL,
         -- <example>121.000</example>
-    latitude REAL NOT NULL
+    "latitude" REAL NOT NULL
         -- <example>31.000</example>
 );
 
 /*
-Schema: NULLTable: events_relevant
+Schema: NULL
+Table: events_relevant
 Rows: 167389
 Sample rows:
 | event_id   | device_id   | timestamp            | longitude   | latitude   |
@@ -139,21 +145,22 @@ Sample rows:
 | ...        | ...         | ...                  | ...         | ...        |
 */
 CREATE TABLE events_relevant (
-    event_id INTEGER NOT NULL PRIMARY KEY,
+    "event_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    device_id INTEGER NULL,
-        -- <fk> -> gender_age.device_id</fk>
-    timestamp DATETIME NOT NULL,
+    "device_id" INTEGER NULL,
+        -- <fk> -> gender_age."device_id"</fk>
+    "timestamp" DATETIME NOT NULL,
         -- <example>-8942695423876075857</example>
-    longitude REAL NOT NULL,
+    "longitude" REAL NOT NULL,
         -- <example>1.000</example>
-    latitude REAL NOT NULL,
+    "latitude" REAL NOT NULL,
         -- <example>0.000</example>
-    FOREIGN KEY (device_id) REFERENCES gender_age(device_id)
+    FOREIGN KEY ("device_id") REFERENCES gender_age("device_id")
 );
 
 /*
-Schema: NULLTable: gender_age
+Schema: NULL
+Table: gender_age
 Rows: 186697
 Sample rows:
 | device_id            | gender   | age    | group   |
@@ -166,20 +173,21 @@ Sample rows:
 | ...                  | ...      | ...    | ...     |
 */
 CREATE TABLE gender_age (
-    device_id INTEGER NOT NULL PRIMARY KEY,
+    "device_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>-9221086586254644858</example>
-        -- <fk> -> phone_brand_device_model2.device_id</fk>
-    gender TEXT NULL,
+        -- <fk> -> phone_brand_device_model2."device_id"</fk>
+    "gender" TEXT NULL,
         -- <values>{'F', 'M'}</values>
-    age INTEGER NULL,
+    "age" INTEGER NULL,
         -- <example>29</example>
-    group TEXT NULL,
+    "group" TEXT NULL,
         -- <values>{'F23-', 'F24-26', 'F27-28', 'F29-32', 'F33-42', 'F43+', 'M22-', 'M23-26', 'M27-28', 'M29-31', 'M32-38', 'M39+'}</values>
-    FOREIGN KEY (device_id) REFERENCES phone_brand_device_model2(device_id)
+    FOREIGN KEY ("device_id") REFERENCES phone_brand_device_model2("device_id")
 );
 
 /*
-Schema: NULLTable: gender_age_test
+Schema: NULL
+Table: gender_age_test
 Rows: 112071
 Sample rows:
 | device_id            |
@@ -192,12 +200,13 @@ Sample rows:
 | ...                  |
 */
 CREATE TABLE gender_age_test (
-    device_id INTEGER NOT NULL PRIMARY KEY
+    "device_id" INTEGER NOT NULL PRIMARY KEY
         -- <example>-9223321966609553846</example>
 );
 
 /*
-Schema: NULLTable: gender_age_train
+Schema: NULL
+Table: gender_age_train
 Rows: 74645
 Sample rows:
 | device_id            | gender   | age   | group   |
@@ -210,18 +219,19 @@ Sample rows:
 | ...                  | ...      | ...   | ...     |
 */
 CREATE TABLE gender_age_train (
-    device_id INTEGER NOT NULL PRIMARY KEY,
+    "device_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>-9223067244542181226</example>
-    gender TEXT NOT NULL,
+    "gender" TEXT NOT NULL,
         -- <values>{'F', 'M'}</values>
-    age INTEGER NOT NULL,
+    "age" INTEGER NOT NULL,
         -- <example>24</example>
-    group TEXT NOT NULL
+    "group" TEXT NOT NULL
         -- <values>{'F23-', 'F24-26', 'F27-28', 'F29-32', 'F33-42', 'F43+', 'M22-', 'M23-26', 'M27-28', 'M29-31', 'M32-38', 'M39+'}</values>
 );
 
 /*
-Schema: NULLTable: label_categories
+Schema: NULL
+Table: label_categories
 Rows: 930
 Sample rows:
 | label_id   | category          |
@@ -234,14 +244,15 @@ Sample rows:
 | ...        | ...               |
 */
 CREATE TABLE label_categories (
-    label_id INTEGER NOT NULL PRIMARY KEY,
+    "label_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    category TEXT NULL
+    "category" TEXT NULL
         -- <example>'game-game type'</example>
 );
 
 /*
-Schema: NULLTable: phone_brand_device_model2
+Schema: NULL
+Table: phone_brand_device_model2
 Rows: 89200
 Sample rows:
 | device_id            | phone_brand   | device_model   |
@@ -254,17 +265,18 @@ Sample rows:
 | ...                  | ...           | ...            |
 */
 CREATE TABLE phone_brand_device_model2 (
-    device_id INTEGER NOT NULL,
+    "device_id" INTEGER NOT NULL,
         -- <example>-9223321966609553846</example>
-    phone_brand TEXT NOT NULL,
+    "phone_brand" TEXT NOT NULL,
         -- <example>'小米'</example>
-    device_model TEXT NOT NULL,
+    "device_model" TEXT NOT NULL,
         -- <example>'红米note'</example>
-    PRIMARY KEY (device_id, phone_brand, device_model)
+    PRIMARY KEY ("device_id", "phone_brand", "device_model")
 );
 
 /*
-Schema: NULLTable: sample_submission
+Schema: NULL
+Table: sample_submission
 Rows: 13700
 Sample rows:
 | device_id            | F23-   | F24-26   | F27-28   | F29-32   | F33-42   | F43+   | M22-   | M23-26   | M27-28   | M29-31   | M32-38   | M39+   |
@@ -277,7 +289,7 @@ Sample rows:
 | ...                  | ...    | ...      | ...      | ...      | ...      | ...    | ...    | ...      | ...      | ...      | ...      | ...    |
 */
 CREATE TABLE sample_submission (
-    device_id INTEGER NOT NULL PRIMARY KEY,
+    "device_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>-9223321966609553846</example>
     "F23-" REAL NOT NULL,
         -- <example>0.083</example>

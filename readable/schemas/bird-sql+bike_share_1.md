@@ -2,7 +2,8 @@
 -- Database: bike_share_1
 
 /*
-Schema: NULLTable: station
+Schema: NULL
+Table: station
 Rows: 70
 Sample rows:
 | id   | name                              | lat                | long                | dock_count   | city     | installation_date   |
@@ -15,24 +16,25 @@ Sample rows:
 | ...  | ...                               | ...                | ...                 | ...          | ...      | ...                 |
 */
 CREATE TABLE station (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'San Jose Diridon Caltrain Station'</example>
-    lat REAL NOT NULL,
+    "lat" REAL NOT NULL,
         -- <example>37.330</example>
-    long REAL NOT NULL,
+    "long" REAL NOT NULL,
         -- <example>-121.902</example>
-    dock_count INTEGER NOT NULL,
+    "dock_count" INTEGER NOT NULL,
         -- <example>27</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Mountain View', 'Palo Alto', 'Redwood City', 'San Francisco', 'San Jose'}</values>
-    installation_date TEXT NOT NULL
+    "installation_date" TEXT NOT NULL
         -- <example>'8/6/2013'</example>
 );
 
 /*
-Schema: NULLTable: status
+Schema: NULL
+Table: status
 Rows: 71984434
 Sample rows:
 | station_id   | bikes_available   | docks_available   | time                |
@@ -45,18 +47,19 @@ Sample rows:
 | ...          | ...               | ...               | ...                 |
 */
 CREATE TABLE status (
-    station_id INTEGER NOT NULL,
+    "station_id" INTEGER NOT NULL,
         -- <example>2</example>
-    bikes_available INTEGER NOT NULL,
+    "bikes_available" INTEGER NOT NULL,
         -- <example>2</example>
-    docks_available INTEGER NOT NULL,
+    "docks_available" INTEGER NOT NULL,
         -- <example>25</example>
-    time TEXT NOT NULL
+    "time" TEXT NOT NULL
         -- <example>'2013/08/29 12:06:01'</example>
 );
 
 /*
-Schema: NULLTable: trip
+Schema: NULL
+Table: trip
 Rows: 658901
 Sample rows:
 | id   | duration   | start_date     | start_station_name       | start_station_id   | end_date       | end_station_name                        | end_station_id   | bike_id   | subscription_type   | zip_code   |
@@ -69,32 +72,33 @@ Sample rows:
 | ...  | ...        | ...            | ...                      | ...                | ...            | ...                                     | ...              | ...       | ...                 | ...        |
 */
 CREATE TABLE trip (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>4069</example>
-    duration INTEGER NOT NULL,
+    "duration" INTEGER NOT NULL,
         -- <example>174</example>
-    start_date TEXT NOT NULL,
+    "start_date" TEXT NOT NULL,
         -- <example>'8/29/2013 9:08'</example>
-    start_station_name TEXT NOT NULL,
+    "start_station_name" TEXT NOT NULL,
         -- <example>'2nd at South Park'</example>
-    start_station_id INTEGER NOT NULL,
+    "start_station_id" INTEGER NOT NULL,
         -- <example>64</example>
-    end_date TEXT NOT NULL,
+    "end_date" TEXT NOT NULL,
         -- <example>'8/29/2013 9:11'</example>
-    end_station_name TEXT NOT NULL,
+    "end_station_name" TEXT NOT NULL,
         -- <example>'2nd at South Park'</example>
-    end_station_id INTEGER NOT NULL,
+    "end_station_id" INTEGER NOT NULL,
         -- <example>64</example>
-    bike_id INTEGER NOT NULL,
+    "bike_id" INTEGER NOT NULL,
         -- <example>288</example>
-    subscription_type TEXT NOT NULL,
+    "subscription_type" TEXT NOT NULL,
         -- <values>{'Customer', 'Subscriber'}</values>
-    zip_code INTEGER NULL
+    "zip_code" INTEGER NULL
         -- <example>94114</example>
 );
 
 /*
-Schema: NULLTable: weather
+Schema: NULL
+Table: weather
 Rows: 3665
 Sample rows:
 | date      | max_temperature_f   | mean_temperature_f   | min_temperature_f   | max_dew_point_f   | mean_dew_point_f   | min_dew_point_f   | max_humidity   | mean_humidity   | min_humidity   | max_sea_level_pressure_inches   | mean_sea_level_pressure_inches   | min_sea_level_pressure_inches   | max_visibility_miles   | mean_visibility_miles   | min_visibility_miles   | max_wind_Speed_mph   | mean_wind_speed_mph   | max_gust_speed_mph   | precipitation_inches   | cloud_cover   | events   | wind_dir_degrees   | zip_code   |
@@ -107,53 +111,53 @@ Sample rows:
 | ...       | ...                 | ...                  | ...                 | ...               | ...                | ...               | ...            | ...             | ...            | ...                             | ...                              | ...                             | ...                    | ...                     | ...                    | ...                  | ...                   | ...                  | ...                    | ...           | ...      | ...                | ...        |
 */
 CREATE TABLE weather (
-    date TEXT NOT NULL,
+    "date" TEXT NOT NULL,
         -- <example>'8/29/2013'</example>
-    max_temperature_f INTEGER NULL,
+    "max_temperature_f" INTEGER NULL,
         -- <example>74</example>
-    mean_temperature_f INTEGER NULL,
+    "mean_temperature_f" INTEGER NULL,
         -- <example>68</example>
-    min_temperature_f INTEGER NULL,
+    "min_temperature_f" INTEGER NULL,
         -- <example>61</example>
-    max_dew_point_f INTEGER NULL,
+    "max_dew_point_f" INTEGER NULL,
         -- <example>61</example>
-    mean_dew_point_f INTEGER NULL,
+    "mean_dew_point_f" INTEGER NULL,
         -- <example>58</example>
-    min_dew_point_f INTEGER NULL,
+    "min_dew_point_f" INTEGER NULL,
         -- <example>56</example>
-    max_humidity INTEGER NULL,
+    "max_humidity" INTEGER NULL,
         -- <example>93</example>
-    mean_humidity INTEGER NULL,
+    "mean_humidity" INTEGER NULL,
         -- <example>75</example>
-    min_humidity INTEGER NULL,
+    "min_humidity" INTEGER NULL,
         -- <example>57</example>
-    max_sea_level_pressure_inches REAL NULL,
+    "max_sea_level_pressure_inches" REAL NULL,
         -- <example>30.070</example>
-    mean_sea_level_pressure_inches REAL NULL,
+    "mean_sea_level_pressure_inches" REAL NULL,
         -- <example>30.020</example>
-    min_sea_level_pressure_inches REAL NULL,
+    "min_sea_level_pressure_inches" REAL NULL,
         -- <example>29.970</example>
-    max_visibility_miles INTEGER NULL,
+    "max_visibility_miles" INTEGER NULL,
         -- <example>10</example>
-    mean_visibility_miles INTEGER NULL,
+    "mean_visibility_miles" INTEGER NULL,
         -- <example>10</example>
-    min_visibility_miles INTEGER NULL,
+    "min_visibility_miles" INTEGER NULL,
         -- <example>10</example>
-    max_wind_Speed_mph INTEGER NULL,
+    "max_wind_Speed_mph" INTEGER NULL,
         -- <example>23</example>
-    mean_wind_speed_mph INTEGER NULL,
+    "mean_wind_speed_mph" INTEGER NULL,
         -- <example>11</example>
-    max_gust_speed_mph INTEGER NULL,
+    "max_gust_speed_mph" INTEGER NULL,
         -- <example>28</example>
-    precipitation_inches TEXT NOT NULL,
+    "precipitation_inches" TEXT NOT NULL,
         -- <example>'0'</example>
-    cloud_cover INTEGER NULL,
+    "cloud_cover" INTEGER NULL,
         -- <example>4</example>
-    events TEXT NOT NULL,
+    "events" TEXT NOT NULL,
         -- <values>{'', 'Fog', 'Fog-Rain', 'Rain', 'Rain-Thunderstorm', 'rain'}</values>
-    wind_dir_degrees INTEGER NULL,
+    "wind_dir_degrees" INTEGER NULL,
         -- <example>286</example>
-    zip_code TEXT NOT NULL
+    "zip_code" TEXT NOT NULL
         -- <values>{'94041', '94063', '94107', '94301', '95113'}</values>
 );
 ```

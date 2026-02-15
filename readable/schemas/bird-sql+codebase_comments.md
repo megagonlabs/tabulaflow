@@ -2,7 +2,8 @@
 -- Database: codebase_comments
 
 /*
-Schema: NULLTable: Method
+Schema: NULL
+Table: Method
 Rows: 3508215
 Sample rows:
 | Id   | Name                                     | FullComment                                    | Summary                                                                                                                | ApiCalls                                                                                                                                                                                                    | CommentIsXml   | SampledAt          | SolutionId   | Lang   | NameTokenized                        |
@@ -26,30 +27,31 @@ Sample rows:
 | ...  | ...                                      | ...                                            | ...                                                                                                                    | ...                                                                                                                                                                                                         | ...            | ...                | ...          | ...    | ...                                  |
 */
 CREATE TABLE Method (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'HtmlSharp.HtmlParser.Feed'</example>
-    FullComment TEXT NOT NULL,
+    "FullComment" TEXT NOT NULL,
         -- <example>'Feeds data into the parser'</example>
-    Summary TEXT NULL,
+    "Summary" TEXT NULL,
         -- <example>'Converts the query expression into text that corre...and that would be executed.  Useful for debugging.'</example>
-    ApiCalls TEXT NOT NULL,
+    "ApiCalls" TEXT NOT NULL,
         -- <example>'System.String.IsNullOrEmpty HtmlSharp.HtmlParser.G...arp.HtmlParser.EndData HtmlSharp.HtmlParser.PopTag'</example>
-    CommentIsXml INTEGER NOT NULL,
+    "CommentIsXml" INTEGER NOT NULL,
         -- <example>0</example>
-    SampledAt INTEGER NOT NULL,
+    "SampledAt" INTEGER NOT NULL,
         -- <example>636430963695654788</example>
-    SolutionId INTEGER NOT NULL,
+    "SolutionId" INTEGER NOT NULL,
         -- <example>1</example>
-    Lang TEXT NULL,
+    "Lang" TEXT NULL,
         -- <example>'en'</example>
-    NameTokenized TEXT NOT NULL
+    "NameTokenized" TEXT NOT NULL
         -- <example>'html parser feed'</example>
 );
 
 /*
-Schema: NULLTable: MethodParameter
+Schema: NULL
+Table: MethodParameter
 Rows: 5132027
 Sample rows:
 | Id   | MethodId   | Type                               | Name         |
@@ -62,18 +64,19 @@ Sample rows:
 | ...  | ...        | ...                                | ...          |
 */
 CREATE TABLE MethodParameter (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    MethodId TEXT NOT NULL,
+    "MethodId" TEXT NOT NULL,
         -- <example>'1'</example>
-    Type TEXT NOT NULL,
+    "Type" TEXT NOT NULL,
         -- <example>'System.String'</example>
-    Name TEXT NOT NULL
+    "Name" TEXT NOT NULL
         -- <example>'data'</example>
 );
 
 /*
-Schema: NULLTable: Repo
+Schema: NULL
+Table: Repo
 Rows: 140990
 Sample rows:
 | Id   | Url                                                   | Stars   | Forks   | Watchers   | ProcessedTime      |
@@ -86,22 +89,23 @@ Sample rows:
 | ...  | ...                                                   | ...     | ...     | ...        | ...                |
 */
 CREATE TABLE Repo (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Url TEXT NOT NULL,
+    "Url" TEXT NOT NULL,
         -- <example>'https://github.com/wallerdev/htmlsharp.git'</example>
-    Stars INTEGER NOT NULL,
+    "Stars" INTEGER NOT NULL,
         -- <example>14</example>
-    Forks INTEGER NOT NULL,
+    "Forks" INTEGER NOT NULL,
         -- <example>2</example>
-    Watchers INTEGER NOT NULL,
+    "Watchers" INTEGER NOT NULL,
         -- <example>14</example>
-    ProcessedTime INTEGER NOT NULL
+    "ProcessedTime" INTEGER NOT NULL
         -- <example>636430963247108053</example>
 );
 
 /*
-Schema: NULLTable: Solution
+Schema: NULL
+Table: Solution
 Rows: 338087
 Sample rows:
 | Id   | RepoId   | Path                                             | ProcessedTime      | WasCompiled   |
@@ -114,15 +118,15 @@ Sample rows:
 | ...  | ...      | ...                                              | ...                | ...           |
 */
 CREATE TABLE Solution (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    RepoId INTEGER NOT NULL,
+    "RepoId" INTEGER NOT NULL,
         -- <example>1</example>
-    Path TEXT NOT NULL,
+    "Path" TEXT NOT NULL,
         -- <example>'wallerdev_htmlsharp\HtmlSharp.sln'</example>
-    ProcessedTime INTEGER NOT NULL,
+    "ProcessedTime" INTEGER NOT NULL,
         -- <example>636430963695642191</example>
-    WasCompiled INTEGER NOT NULL
+    "WasCompiled" INTEGER NOT NULL
         -- <example>1</example>
 );
 ```

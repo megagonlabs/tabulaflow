@@ -2,7 +2,8 @@
 -- Database: toxicology
 
 /*
-Schema: NULLTable: atom
+Schema: NULL
+Table: atom
 Rows: 12333
 Sample rows:
 | atom_id   | molecule_id   | element   |
@@ -15,18 +16,19 @@ Sample rows:
 | ...       | ...           | ...       |
 */
 CREATE TABLE atom (
-    atom_id TEXT NOT NULL PRIMARY KEY,
+    "atom_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'TR000_1'</example>
-    molecule_id TEXT NOT NULL,
+    "molecule_id" TEXT NOT NULL,
         -- <example>'TR000'</example>
-        -- <fk> -> molecule.molecule_id</fk>
-    element TEXT NOT NULL,
+        -- <fk> -> molecule."molecule_id"</fk>
+    "element" TEXT NOT NULL,
         -- <example>'cl'</example>
-    FOREIGN KEY (molecule_id) REFERENCES molecule(molecule_id)
+    FOREIGN KEY ("molecule_id") REFERENCES molecule("molecule_id")
 );
 
 /*
-Schema: NULLTable: bond
+Schema: NULL
+Table: bond
 Rows: 12379
 Sample rows:
 | bond_id     | molecule_id   | bond_type   |
@@ -39,18 +41,19 @@ Sample rows:
 | ...         | ...           | ...         |
 */
 CREATE TABLE bond (
-    bond_id TEXT NOT NULL PRIMARY KEY,
+    "bond_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'TR000_1_2'</example>
-    molecule_id TEXT NOT NULL,
+    "molecule_id" TEXT NOT NULL,
         -- <example>'TR000'</example>
-        -- <fk> -> molecule.molecule_id</fk>
-    bond_type TEXT NULL,
+        -- <fk> -> molecule."molecule_id"</fk>
+    "bond_type" TEXT NULL,
         -- <values>{'#', '-', '='}</values>
-    FOREIGN KEY (molecule_id) REFERENCES molecule(molecule_id)
+    FOREIGN KEY ("molecule_id") REFERENCES molecule("molecule_id")
 );
 
 /*
-Schema: NULLTable: connected
+Schema: NULL
+Table: connected
 Rows: 24758
 Sample rows:
 | atom_id   | atom_id2   | bond_id   |
@@ -63,23 +66,24 @@ Sample rows:
 | ...       | ...        | ...       |
 */
 CREATE TABLE connected (
-    atom_id TEXT NOT NULL,
+    "atom_id" TEXT NOT NULL,
         -- <example>'TR000_1'</example>
-        -- <fk> -> atom.atom_id</fk>
-    atom_id2 TEXT NOT NULL,
+        -- <fk> -> atom."atom_id"</fk>
+    "atom_id2" TEXT NOT NULL,
         -- <example>'TR000_2'</example>
-        -- <fk> -> atom.atom_id</fk>
-    bond_id TEXT NOT NULL,
+        -- <fk> -> atom."atom_id"</fk>
+    "bond_id" TEXT NOT NULL,
         -- <example>'TR000_1_2'</example>
-        -- <fk> -> bond.bond_id</fk>
-    PRIMARY KEY (atom_id, atom_id2),
-    FOREIGN KEY (bond_id) REFERENCES bond(bond_id),
-    FOREIGN KEY (atom_id2) REFERENCES atom(atom_id),
-    FOREIGN KEY (atom_id) REFERENCES atom(atom_id)
+        -- <fk> -> bond."bond_id"</fk>
+    PRIMARY KEY ("atom_id", "atom_id2"),
+    FOREIGN KEY ("bond_id") REFERENCES bond("bond_id"),
+    FOREIGN KEY ("atom_id2") REFERENCES atom("atom_id"),
+    FOREIGN KEY ("atom_id") REFERENCES atom("atom_id")
 );
 
 /*
-Schema: NULLTable: molecule
+Schema: NULL
+Table: molecule
 Rows: 343
 Sample rows:
 | molecule_id   | label   |
@@ -92,9 +96,9 @@ Sample rows:
 | ...           | ...     |
 */
 CREATE TABLE molecule (
-    molecule_id TEXT NOT NULL PRIMARY KEY,
+    "molecule_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'TR000'</example>
-    label TEXT NOT NULL
+    "label" TEXT NOT NULL
         -- <values>{'+', '-'}</values>
 );
 ```

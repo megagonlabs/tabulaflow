@@ -2,7 +2,8 @@
 -- Database: superhero
 
 /*
-Schema: NULLTable: alignment
+Schema: NULL
+Table: alignment
 Rows: 4
 All rows:
 |   id | alignment   |
@@ -13,14 +14,15 @@ All rows:
 |    4 | N/A         |
 */
 CREATE TABLE alignment (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    alignment TEXT NOT NULL
+    "alignment" TEXT NOT NULL
         -- <values>{'Bad', 'Good', 'N/A', 'Neutral'}</values>
 );
 
 /*
-Schema: NULLTable: attribute
+Schema: NULL
+Table: attribute
 Rows: 6
 All rows:
 |   id | attribute_name   |
@@ -33,14 +35,15 @@ All rows:
 |    6 | Combat           |
 */
 CREATE TABLE attribute (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    attribute_name TEXT NOT NULL
+    "attribute_name" TEXT NOT NULL
         -- <values>{'Combat', 'Durability', 'Intelligence', 'Power', 'Speed', 'Strength'}</values>
 );
 
 /*
-Schema: NULLTable: colour
+Schema: NULL
+Table: colour
 Rows: 35
 Sample rows:
 | id   | colour     |
@@ -53,14 +56,15 @@ Sample rows:
 | ...  | ...        |
 */
 CREATE TABLE colour (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    colour TEXT NOT NULL
+    "colour" TEXT NOT NULL
         -- <example>'No Colour'</example>
 );
 
 /*
-Schema: NULLTable: gender
+Schema: NULL
+Table: gender
 Rows: 3
 All rows:
 |   id | gender   |
@@ -70,14 +74,15 @@ All rows:
 |    3 | N/A      |
 */
 CREATE TABLE gender (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    gender TEXT NOT NULL
+    "gender" TEXT NOT NULL
         -- <values>{'Female', 'Male', 'N/A'}</values>
 );
 
 /*
-Schema: NULLTable: hero_attribute
+Schema: NULL
+Table: hero_attribute
 Rows: 3738
 Sample rows:
 | hero_id   | attribute_id   | attribute_value   |
@@ -90,20 +95,21 @@ Sample rows:
 | ...       | ...            | ...               |
 */
 CREATE TABLE hero_attribute (
-    hero_id INTEGER NOT NULL,
+    "hero_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> superhero.id</fk>
-    attribute_id INTEGER NOT NULL,
+        -- <fk> -> superhero."id"</fk>
+    "attribute_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> attribute.id</fk>
-    attribute_value INTEGER NOT NULL,
+        -- <fk> -> attribute."id"</fk>
+    "attribute_value" INTEGER NOT NULL,
         -- <example>80</example>
-    FOREIGN KEY (attribute_id) REFERENCES attribute(id),
-    FOREIGN KEY (hero_id) REFERENCES superhero(id)
+    FOREIGN KEY ("attribute_id") REFERENCES attribute("id"),
+    FOREIGN KEY ("hero_id") REFERENCES superhero("id")
 );
 
 /*
-Schema: NULLTable: hero_power
+Schema: NULL
+Table: hero_power
 Rows: 5825
 Sample rows:
 | hero_id   | power_id   |
@@ -116,18 +122,19 @@ Sample rows:
 | ...       | ...        |
 */
 CREATE TABLE hero_power (
-    hero_id INTEGER NOT NULL,
+    "hero_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> superhero.id</fk>
-    power_id INTEGER NOT NULL,
+        -- <fk> -> superhero."id"</fk>
+    "power_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> superpower.id</fk>
-    FOREIGN KEY (hero_id) REFERENCES superhero(id),
-    FOREIGN KEY (power_id) REFERENCES superpower(id)
+        -- <fk> -> superpower."id"</fk>
+    FOREIGN KEY ("hero_id") REFERENCES superhero("id"),
+    FOREIGN KEY ("power_id") REFERENCES superpower("id")
 );
 
 /*
-Schema: NULLTable: publisher
+Schema: NULL
+Table: publisher
 Rows: 25
 Sample rows:
 | id   | publisher_name    |
@@ -140,14 +147,15 @@ Sample rows:
 | ...  | ...               |
 */
 CREATE TABLE publisher (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    publisher_name TEXT NOT NULL
+    "publisher_name" TEXT NOT NULL
         -- <example>''</example>
 );
 
 /*
-Schema: NULLTable: race
+Schema: NULL
+Table: race
 Rows: 61
 Sample rows:
 | id   | race    |
@@ -160,14 +168,15 @@ Sample rows:
 | ...  | ...     |
 */
 CREATE TABLE race (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    race TEXT NOT NULL
+    "race" TEXT NOT NULL
         -- <example>'-'</example>
 );
 
 /*
-Schema: NULLTable: superhero
+Schema: NULL
+Table: superhero
 Rows: 750
 Sample rows:
 | id   | superhero_name   | full_name              | gender_id   | eye_colour_id   | hair_colour_id   | skin_colour_id   | race_id   | publisher_id   | alignment_id   | height_cm   | weight_kg   |
@@ -180,48 +189,49 @@ Sample rows:
 | ...  | ...              | ...                    | ...         | ...             | ...              | ...              | ...       | ...            | ...            | ...         | ...         |
 */
 CREATE TABLE superhero (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    superhero_name TEXT NOT NULL,
+    "superhero_name" TEXT NOT NULL,
         -- <example>'3-D Man'</example>
-    full_name TEXT NULL,
+    "full_name" TEXT NULL,
         -- <example>'Charles Chandler'</example>
-    gender_id INTEGER NOT NULL,
+    "gender_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> gender.id</fk>
-    eye_colour_id INTEGER NOT NULL,
+        -- <fk> -> gender."id"</fk>
+    "eye_colour_id" INTEGER NOT NULL,
         -- <example>9</example>
-        -- <fk> -> colour.id</fk>
-    hair_colour_id INTEGER NOT NULL,
+        -- <fk> -> colour."id"</fk>
+    "hair_colour_id" INTEGER NOT NULL,
         -- <example>13</example>
-        -- <fk> -> colour.id</fk>
-    skin_colour_id INTEGER NOT NULL,
+        -- <fk> -> colour."id"</fk>
+    "skin_colour_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> colour.id</fk>
-    race_id INTEGER NULL,
+        -- <fk> -> colour."id"</fk>
+    "race_id" INTEGER NULL,
         -- <example>1</example>
-        -- <fk> -> race.id</fk>
-    publisher_id INTEGER NULL,
+        -- <fk> -> race."id"</fk>
+    "publisher_id" INTEGER NULL,
         -- <example>13</example>
-        -- <fk> -> publisher.id</fk>
-    alignment_id INTEGER NULL,
+        -- <fk> -> publisher."id"</fk>
+    "alignment_id" INTEGER NULL,
         -- <example>1</example>
-        -- <fk> -> alignment.id</fk>
-    height_cm INTEGER NULL,
+        -- <fk> -> alignment."id"</fk>
+    "height_cm" INTEGER NULL,
         -- <example>188</example>
-    weight_kg INTEGER NULL,
+    "weight_kg" INTEGER NULL,
         -- <example>90</example>
-    FOREIGN KEY (alignment_id) REFERENCES alignment(id),
-    FOREIGN KEY (eye_colour_id) REFERENCES colour(id),
-    FOREIGN KEY (gender_id) REFERENCES gender(id),
-    FOREIGN KEY (hair_colour_id) REFERENCES colour(id),
-    FOREIGN KEY (publisher_id) REFERENCES publisher(id),
-    FOREIGN KEY (race_id) REFERENCES race(id),
-    FOREIGN KEY (skin_colour_id) REFERENCES colour(id)
+    FOREIGN KEY ("alignment_id") REFERENCES alignment("id"),
+    FOREIGN KEY ("eye_colour_id") REFERENCES colour("id"),
+    FOREIGN KEY ("gender_id") REFERENCES gender("id"),
+    FOREIGN KEY ("hair_colour_id") REFERENCES colour("id"),
+    FOREIGN KEY ("publisher_id") REFERENCES publisher("id"),
+    FOREIGN KEY ("race_id") REFERENCES race("id"),
+    FOREIGN KEY ("skin_colour_id") REFERENCES colour("id")
 );
 
 /*
-Schema: NULLTable: superpower
+Schema: NULL
+Table: superpower
 Rows: 167
 Sample rows:
 | id   | power_name            |
@@ -234,9 +244,9 @@ Sample rows:
 | ...  | ...                   |
 */
 CREATE TABLE superpower (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    power_name TEXT NOT NULL
+    "power_name" TEXT NOT NULL
         -- <example>'Agility'</example>
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: movies_4
 
 /*
-Schema: NULLTable: country
+Schema: NULL
+Table: country
 Rows: 88
 Sample rows:
 | country_id   | country_iso_code   | country_name         |
@@ -15,16 +16,17 @@ Sample rows:
 | ...          | ...                | ...                  |
 */
 CREATE TABLE country (
-    country_id INTEGER NOT NULL PRIMARY KEY,
+    "country_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>128</example>
-    country_iso_code TEXT NOT NULL,
+    "country_iso_code" TEXT NOT NULL,
         -- <example>'AE'</example>
-    country_name TEXT NOT NULL
+    "country_name" TEXT NOT NULL
         -- <example>'United Arab Emirates'</example>
 );
 
 /*
-Schema: NULLTable: department
+Schema: NULL
+Table: department
 Rows: 12
 Sample rows:
 | department_id   | department_name   |
@@ -37,14 +39,15 @@ Sample rows:
 | ...             | ...               |
 */
 CREATE TABLE department (
-    department_id INTEGER NOT NULL PRIMARY KEY,
+    "department_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    department_name TEXT NOT NULL
+    "department_name" TEXT NOT NULL
         -- <example>'Camera'</example>
 );
 
 /*
-Schema: NULLTable: gender
+Schema: NULL
+Table: gender
 Rows: 3
 All rows:
 |   gender_id | gender      |
@@ -54,14 +57,15 @@ All rows:
 |           2 | Male        |
 */
 CREATE TABLE gender (
-    gender_id INTEGER NOT NULL PRIMARY KEY,
+    "gender_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    gender TEXT NOT NULL
+    "gender" TEXT NOT NULL
         -- <values>{'Female', 'Male', 'Unspecified'}</values>
 );
 
 /*
-Schema: NULLTable: genre
+Schema: NULL
+Table: genre
 Rows: 20
 Sample rows:
 | genre_id   | genre_name   |
@@ -74,14 +78,15 @@ Sample rows:
 | ...        | ...          |
 */
 CREATE TABLE genre (
-    genre_id INTEGER NOT NULL PRIMARY KEY,
+    "genre_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>12</example>
-    genre_name TEXT NOT NULL
+    "genre_name" TEXT NOT NULL
         -- <example>'Adventure'</example>
 );
 
 /*
-Schema: NULLTable: keyword
+Schema: NULL
+Table: keyword
 Rows: 9794
 Sample rows:
 | keyword_id   | keyword_name     |
@@ -94,14 +99,15 @@ Sample rows:
 | ...          | ...              |
 */
 CREATE TABLE keyword (
-    keyword_id INTEGER NOT NULL PRIMARY KEY,
+    "keyword_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>30</example>
-    keyword_name TEXT NOT NULL
+    "keyword_name" TEXT NOT NULL
         -- <example>'individual'</example>
 );
 
 /*
-Schema: NULLTable: language
+Schema: NULL
+Table: language
 Rows: 88
 Sample rows:
 | language_id   | language_code   | language_name   |
@@ -114,16 +120,17 @@ Sample rows:
 | ...           | ...             | ...             |
 */
 CREATE TABLE language (
-    language_id INTEGER NOT NULL PRIMARY KEY,
+    "language_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>24574</example>
-    language_code TEXT NOT NULL,
+    "language_code" TEXT NOT NULL,
         -- <example>'en'</example>
-    language_name TEXT NOT NULL
+    "language_name" TEXT NOT NULL
         -- <example>'English'</example>
 );
 
 /*
-Schema: NULLTable: language_role
+Schema: NULL
+Table: language_role
 Rows: 2
 All rows:
 |   role_id | language_role   |
@@ -132,14 +139,15 @@ All rows:
 |         2 | Spoken          |
 */
 CREATE TABLE language_role (
-    role_id INTEGER NOT NULL PRIMARY KEY,
+    "role_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    language_role TEXT NOT NULL
+    "language_role" TEXT NOT NULL
         -- <values>{'Original', 'Spoken'}</values>
 );
 
 /*
-Schema: NULLTable: movie
+Schema: NULL
+Table: movie
 Rows: 4627
 Sample rows:
 | movie_id   | title           | budget   | homepage                                                      | overview                                                                                                                                                                                                    | popularity   | release_date   | revenue   | runtime   | movie_status   | tagline                                                                                                                                                     | vote_average   | vote_count   |
@@ -152,36 +160,37 @@ Sample rows:
 | ...        | ...             | ...      | ...                                                           | ...                                                                                                                                                                                                         | ...          | ...            | ...       | ...       | ...            | ...                                                                                                                                                         | ...            | ...          |
 */
 CREATE TABLE movie (
-    movie_id INTEGER NOT NULL PRIMARY KEY,
+    "movie_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>5</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'Four Rooms'</example>
-    budget INTEGER NOT NULL,
+    "budget" INTEGER NOT NULL,
         -- <example>4000000</example>
-    homepage TEXT NOT NULL,
+    "homepage" TEXT NOT NULL,
         -- <example>''</example>
-    overview TEXT NOT NULL,
+    "overview" TEXT NOT NULL,
         -- <example>'It's Ted the Bellhop's first night on the job...an...rving up one unbelievable happening after another.'</example>
-    popularity REAL NOT NULL,
+    "popularity" REAL NOT NULL,
         -- <example>22.876</example>
-    release_date DATE NOT NULL,
+    "release_date" DATE NOT NULL,
         -- <example>'1995-12-09'</example>
-    revenue INTEGER NOT NULL,
+    "revenue" INTEGER NOT NULL,
         -- <example>4300000</example>
-    runtime INTEGER NOT NULL,
+    "runtime" INTEGER NOT NULL,
         -- <example>98</example>
-    movie_status TEXT NOT NULL,
+    "movie_status" TEXT NOT NULL,
         -- <values>{'Post Production', 'Released', 'Rumored'}</values>
-    tagline TEXT NOT NULL,
+    "tagline" TEXT NOT NULL,
         -- <example>'Twelve outrageous guests. Four scandalous requests...o's in for the wildest New year's Eve of his life.'</example>
-    vote_average REAL NOT NULL,
+    "vote_average" REAL NOT NULL,
         -- <example>6.500</example>
-    vote_count INTEGER NOT NULL
+    "vote_count" INTEGER NOT NULL
         -- <example>530</example>
 );
 
 /*
-Schema: NULLTable: movie_cast
+Schema: NULL
+Table: movie_cast
 Rows: 59083
 Sample rows:
 | movie_id   | person_id   | character_name                | gender_id   | cast_order   |
@@ -194,26 +203,27 @@ Sample rows:
 | ...        | ...         | ...                           | ...         | ...          |
 */
 CREATE TABLE movie_cast (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>285</example>
-        -- <fk> -> movie.movie_id</fk>
-    person_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "person_id" INTEGER NOT NULL,
         -- <example>85</example>
-        -- <fk> -> person.person_id</fk>
-    character_name TEXT NOT NULL,
+        -- <fk> -> person."person_id"</fk>
+    "character_name" TEXT NOT NULL,
         -- <example>'Captain Jack Sparrow'</example>
-    gender_id INTEGER NOT NULL,
+    "gender_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> gender.gender_id</fk>
-    cast_order INTEGER NOT NULL,
+        -- <fk> -> gender."gender_id"</fk>
+    "cast_order" INTEGER NOT NULL,
         -- <example>0</example>
-    FOREIGN KEY (gender_id) REFERENCES gender(gender_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id),
-    FOREIGN KEY (person_id) REFERENCES person(person_id)
+    FOREIGN KEY ("gender_id") REFERENCES gender("gender_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id"),
+    FOREIGN KEY ("person_id") REFERENCES person("person_id")
 );
 
 /*
-Schema: NULLTable: movie_company
+Schema: NULL
+Table: movie_company
 Rows: 13677
 Sample rows:
 | movie_id   | company_id   |
@@ -226,18 +236,19 @@ Sample rows:
 | ...        | ...          |
 */
 CREATE TABLE movie_company (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> movie.movie_id</fk>
-    company_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "company_id" INTEGER NOT NULL,
         -- <example>14</example>
-        -- <fk> -> production_company.company_id</fk>
-    FOREIGN KEY (company_id) REFERENCES production_company(company_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id)
+        -- <fk> -> production_company."company_id"</fk>
+    FOREIGN KEY ("company_id") REFERENCES production_company("company_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id")
 );
 
 /*
-Schema: NULLTable: movie_crew
+Schema: NULL
+Table: movie_crew
 Rows: 129581
 Sample rows:
 | movie_id   | person_id   | department_id   | job                     |
@@ -250,24 +261,25 @@ Sample rows:
 | ...        | ...         | ...             | ...                     |
 */
 CREATE TABLE movie_crew (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>285</example>
-        -- <fk> -> movie.movie_id</fk>
-    person_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "person_id" INTEGER NOT NULL,
         -- <example>120</example>
-        -- <fk> -> person.person_id</fk>
-    department_id INTEGER NOT NULL,
+        -- <fk> -> person."person_id"</fk>
+    "department_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> department.department_id</fk>
-    job TEXT NOT NULL,
+        -- <fk> -> department."department_id"</fk>
+    "job" TEXT NOT NULL,
         -- <example>'Director of Photography'</example>
-    FOREIGN KEY (department_id) REFERENCES department(department_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id),
-    FOREIGN KEY (person_id) REFERENCES person(person_id)
+    FOREIGN KEY ("department_id") REFERENCES department("department_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id"),
+    FOREIGN KEY ("person_id") REFERENCES person("person_id")
 );
 
 /*
-Schema: NULLTable: movie_genres
+Schema: NULL
+Table: movie_genres
 Rows: 12160
 Sample rows:
 | movie_id   | genre_id   |
@@ -280,18 +292,19 @@ Sample rows:
 | ...        | ...        |
 */
 CREATE TABLE movie_genres (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> movie.movie_id</fk>
-    genre_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "genre_id" INTEGER NOT NULL,
         -- <example>35</example>
-        -- <fk> -> genre.genre_id</fk>
-    FOREIGN KEY (genre_id) REFERENCES genre(genre_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id)
+        -- <fk> -> genre."genre_id"</fk>
+    FOREIGN KEY ("genre_id") REFERENCES genre("genre_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id")
 );
 
 /*
-Schema: NULLTable: movie_keywords
+Schema: NULL
+Table: movie_keywords
 Rows: 36162
 Sample rows:
 | movie_id   | keyword_id   |
@@ -304,18 +317,19 @@ Sample rows:
 | ...        | ...          |
 */
 CREATE TABLE movie_keywords (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> movie.movie_id</fk>
-    keyword_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "keyword_id" INTEGER NOT NULL,
         -- <example>612</example>
-        -- <fk> -> keyword.keyword_id</fk>
-    FOREIGN KEY (keyword_id) REFERENCES keyword(keyword_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id)
+        -- <fk> -> keyword."keyword_id"</fk>
+    FOREIGN KEY ("keyword_id") REFERENCES keyword("keyword_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id")
 );
 
 /*
-Schema: NULLTable: movie_languages
+Schema: NULL
+Table: movie_languages
 Rows: 11740
 Sample rows:
 | movie_id   | language_id   | language_role_id   |
@@ -328,22 +342,23 @@ Sample rows:
 | ...        | ...           | ...                |
 */
 CREATE TABLE movie_languages (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> movie.movie_id</fk>
-    language_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "language_id" INTEGER NOT NULL,
         -- <example>24574</example>
-        -- <fk> -> language.language_id</fk>
-    language_role_id INTEGER NOT NULL,
+        -- <fk> -> language."language_id"</fk>
+    "language_role_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> language_role.role_id</fk>
-    FOREIGN KEY (language_id) REFERENCES language(language_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id),
-    FOREIGN KEY (language_role_id) REFERENCES language_role(role_id)
+        -- <fk> -> language_role."role_id"</fk>
+    FOREIGN KEY ("language_id") REFERENCES language("language_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id"),
+    FOREIGN KEY ("language_role_id") REFERENCES language_role("role_id")
 );
 
 /*
-Schema: NULLTable: person
+Schema: NULL
+Table: person
 Rows: 104838
 Sample rows:
 | person_id   | person_name   |
@@ -356,14 +371,15 @@ Sample rows:
 | ...         | ...           |
 */
 CREATE TABLE person (
-    person_id INTEGER NOT NULL PRIMARY KEY,
+    "person_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    person_name TEXT NOT NULL
+    "person_name" TEXT NOT NULL
         -- <example>'George Lucas'</example>
 );
 
 /*
-Schema: NULLTable: production_company
+Schema: NULL
+Table: production_company
 Rows: 5047
 Sample rows:
 | company_id   | company_name            |
@@ -376,14 +392,15 @@ Sample rows:
 | ...          | ...                     |
 */
 CREATE TABLE production_company (
-    company_id INTEGER NOT NULL PRIMARY KEY,
+    "company_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    company_name TEXT NOT NULL
+    "company_name" TEXT NOT NULL
         -- <example>'Lucasfilm'</example>
 );
 
 /*
-Schema: NULLTable: production_country
+Schema: NULL
+Table: production_country
 Rows: 6436
 Sample rows:
 | movie_id   | country_id   |
@@ -396,13 +413,13 @@ Sample rows:
 | ...        | ...          |
 */
 CREATE TABLE production_country (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> movie.movie_id</fk>
-    country_id INTEGER NOT NULL,
+        -- <fk> -> movie."movie_id"</fk>
+    "country_id" INTEGER NOT NULL,
         -- <example>214</example>
-        -- <fk> -> country.country_id</fk>
-    FOREIGN KEY (country_id) REFERENCES country(country_id),
-    FOREIGN KEY (movie_id) REFERENCES movie(movie_id)
+        -- <fk> -> country."country_id"</fk>
+    FOREIGN KEY ("country_id") REFERENCES country("country_id"),
+    FOREIGN KEY ("movie_id") REFERENCES movie("movie_id")
 );
 ```

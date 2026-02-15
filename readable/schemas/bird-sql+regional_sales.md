@@ -2,7 +2,8 @@
 -- Database: regional_sales
 
 /*
-Schema: NULLTable: Customers
+Schema: NULL
+Table: Customers
 Rows: 50
 Sample rows:
 | CustomerID   | Customer Names   |
@@ -15,14 +16,15 @@ Sample rows:
 | ...          | ...              |
 */
 CREATE TABLE Customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
     "Customer Names" TEXT NOT NULL
         -- <example>'Avon Corp'</example>
 );
 
 /*
-Schema: NULLTable: Products
+Schema: NULL
+Table: Products
 Rows: 47
 Sample rows:
 | ProductID   | Product Name       |
@@ -35,14 +37,15 @@ Sample rows:
 | ...         | ...                |
 */
 CREATE TABLE Products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
     "Product Name" TEXT NOT NULL
         -- <example>'Cookware'</example>
 );
 
 /*
-Schema: NULLTable: Regions
+Schema: NULL
+Table: Regions
 Rows: 48
 Sample rows:
 | StateCode   | State      | Region   |
@@ -55,16 +58,17 @@ Sample rows:
 | ...         | ...        | ...      |
 */
 CREATE TABLE Regions (
-    StateCode TEXT NOT NULL PRIMARY KEY,
+    "StateCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AL'</example>
-    State TEXT NOT NULL,
+    "State" TEXT NOT NULL,
         -- <example>'Alabama'</example>
-    Region TEXT NOT NULL
+    "Region" TEXT NOT NULL
         -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
 );
 
 /*
-Schema: NULLTable: "Sales Orders"
+Schema: NULL
+Table: "Sales Orders"
 Rows: 7991
 Sample rows:
 | OrderNumber   | Sales Channel   | WarehouseCode   | ProcuredDate   | OrderDate   | ShipDate   | DeliveryDate   | CurrencyCode   | _SalesTeamID   | _CustomerID   | _StoreID   | _ProductID   | Order Quantity   | Discount Applied   | Unit Price   | Unit Cost   |
@@ -77,34 +81,34 @@ Sample rows:
 | ...           | ...             | ...             | ...            | ...         | ...        | ...            | ...            | ...            | ...           | ...        | ...          | ...              | ...                | ...          | ...         |
 */
 CREATE TABLE "Sales Orders" (
-    OrderNumber TEXT NOT NULL PRIMARY KEY,
+    "OrderNumber" TEXT NOT NULL PRIMARY KEY,
         -- <example>'SO - 0001000'</example>
     "Sales Channel" TEXT NOT NULL,
         -- <values>{'Distributor', 'In-Store', 'Online', 'Wholesale'}</values>
-    WarehouseCode TEXT NOT NULL,
+    "WarehouseCode" TEXT NOT NULL,
         -- <values>{'WARE-MKL1006', 'WARE-NBV1002', 'WARE-NMK1003', 'WARE-PUJ1005', 'WARE-UHY1004', 'WARE-XYS1001'}</values>
-    ProcuredDate TEXT NOT NULL,
+    "ProcuredDate" TEXT NOT NULL,
         -- <values>{'10/27/18', '12/1/19', '12/31/17', '2/4/19', '3/10/20', '4/10/18', '5/15/19', '6/18/20', '7/19/18', '8/23/19', '9/26/20'}</values>
-    OrderDate TEXT NOT NULL,
+    "OrderDate" TEXT NOT NULL,
         -- <example>'5/31/18'</example>
-    ShipDate TEXT NOT NULL,
+    "ShipDate" TEXT NOT NULL,
         -- <example>'6/14/18'</example>
-    DeliveryDate TEXT NOT NULL,
+    "DeliveryDate" TEXT NOT NULL,
         -- <example>'6/19/18'</example>
-    CurrencyCode TEXT NOT NULL,
+    "CurrencyCode" TEXT NOT NULL,
         -- <values>{'USD'}</values>
-    _SalesTeamID INTEGER NOT NULL,
+    "_SalesTeamID" INTEGER NOT NULL,
         -- <example>6</example>
-        -- <fk> -> "Sales Team".SalesTeamID</fk>
-    _CustomerID INTEGER NOT NULL,
+        -- <fk> -> "Sales Team"."SalesTeamID"</fk>
+    "_CustomerID" INTEGER NOT NULL,
         -- <example>15</example>
-        -- <fk> -> Customers.CustomerID</fk>
-    _StoreID INTEGER NOT NULL,
+        -- <fk> -> Customers."CustomerID"</fk>
+    "_StoreID" INTEGER NOT NULL,
         -- <example>259</example>
-        -- <fk> -> "Store Locations".StoreID</fk>
-    _ProductID INTEGER NOT NULL,
+        -- <fk> -> "Store Locations"."StoreID"</fk>
+    "_ProductID" INTEGER NOT NULL,
         -- <example>12</example>
-        -- <fk> -> Products.ProductID</fk>
+        -- <fk> -> Products."ProductID"</fk>
     "Order Quantity" INTEGER NOT NULL,
         -- <example>5</example>
     "Discount Applied" REAL NOT NULL,
@@ -113,14 +117,15 @@ CREATE TABLE "Sales Orders" (
         -- <example>'1,963.10'</example>
     "Unit Cost" TEXT NOT NULL,
         -- <example>'1,001.18'</example>
-    FOREIGN KEY (_ProductID) REFERENCES Products(ProductID),
-    FOREIGN KEY (_StoreID) REFERENCES "Store Locations"(StoreID),
-    FOREIGN KEY (_CustomerID) REFERENCES Customers(CustomerID),
-    FOREIGN KEY (_SalesTeamID) REFERENCES "Sales Team"(SalesTeamID)
+    FOREIGN KEY ("_ProductID") REFERENCES Products("ProductID"),
+    FOREIGN KEY ("_StoreID") REFERENCES "Store Locations"("StoreID"),
+    FOREIGN KEY ("_CustomerID") REFERENCES Customers("CustomerID"),
+    FOREIGN KEY ("_SalesTeamID") REFERENCES "Sales Team"("SalesTeamID")
 );
 
 /*
-Schema: NULLTable: "Sales Team"
+Schema: NULL
+Table: "Sales Team"
 Rows: 28
 Sample rows:
 | SalesTeamID   | Sales Team      | Region    |
@@ -133,16 +138,17 @@ Sample rows:
 | ...           | ...             | ...       |
 */
 CREATE TABLE "Sales Team" (
-    SalesTeamID INTEGER NOT NULL PRIMARY KEY,
+    "SalesTeamID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
     "Sales Team" TEXT NOT NULL,
         -- <example>'Adam Hernandez'</example>
-    Region TEXT NOT NULL
+    "Region" TEXT NOT NULL
         -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
 );
 
 /*
-Schema: NULLTable: "Store Locations"
+Schema: NULL
+Table: "Store Locations"
 Rows: 367
 Sample rows:
 | StoreID   | City Name   | County                          | StateCode   | State    | Type   | Latitude   | Longitude   | AreaCode   | Population   | Household Income   | Median Income   | Land Area   | Water Area   | Time Zone       |
@@ -155,26 +161,26 @@ Sample rows:
 | ...       | ...         | ...                             | ...         | ...      | ...    | ...        | ...         | ...        | ...          | ...                | ...             | ...         | ...          | ...             |
 */
 CREATE TABLE "Store Locations" (
-    StoreID INTEGER NOT NULL PRIMARY KEY,
+    "StoreID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
     "City Name" TEXT NOT NULL,
         -- <example>'Birmingham'</example>
-    County TEXT NOT NULL,
+    "County" TEXT NOT NULL,
         -- <example>'Shelby County/Jefferson County'</example>
-    StateCode TEXT NOT NULL,
+    "StateCode" TEXT NOT NULL,
         -- <example>'AL'</example>
-        -- <fk> -> Regions.StateCode</fk>
-    State TEXT NOT NULL,
+        -- <fk> -> Regions."StateCode"</fk>
+    "State" TEXT NOT NULL,
         -- <example>'Alabama'</example>
-    Type TEXT NOT NULL,
+    "Type" TEXT NOT NULL,
         -- <values>{'Borough', 'CDP', 'City', 'Consolidated Government', 'Metropolitan Government', 'Other', 'Town', 'Township', 'Unified Government', 'Urban County '}</values>
-    Latitude REAL NOT NULL,
+    "Latitude" REAL NOT NULL,
         -- <example>33.527</example>
-    Longitude REAL NOT NULL,
+    "Longitude" REAL NOT NULL,
         -- <example>-86.799</example>
-    AreaCode INTEGER NOT NULL,
+    "AreaCode" INTEGER NOT NULL,
         -- <example>205</example>
-    Population INTEGER NOT NULL,
+    "Population" INTEGER NOT NULL,
         -- <example>212461</example>
     "Household Income" INTEGER NOT NULL,
         -- <example>89972</example>
@@ -186,6 +192,6 @@ CREATE TABLE "Store Locations" (
         -- <example>6591013</example>
     "Time Zone" TEXT NOT NULL,
         -- <values>{'America/Boise', 'America/Chicago', 'America/Denver', 'America/Detroit', 'America/Indiana/Indianapolis', 'America/Los Angeles', 'America/New York', 'America/Phoenix', 'Pacific/Honolulu'}</values>
-    FOREIGN KEY (StateCode) REFERENCES Regions(StateCode)
+    FOREIGN KEY ("StateCode") REFERENCES Regions("StateCode")
 );
 ```

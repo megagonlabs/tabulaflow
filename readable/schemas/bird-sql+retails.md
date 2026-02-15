@@ -2,7 +2,8 @@
 -- Database: retails
 
 /*
-Schema: NULLTable: customer
+Schema: NULL
+Table: customer
 Rows: 150000
 Sample rows:
 | c_custkey   | c_mktsegment   | c_nationkey   | c_name             | c_address              | c_phone      | c_acctbal   | c_comment                                                                     |
@@ -15,28 +16,29 @@ Sample rows:
 | ...         | ...            | ...           | ...                | ...                    | ...          | ...         | ...                                                                           |
 */
 CREATE TABLE customer (
-    c_custkey INTEGER NOT NULL PRIMARY KEY,
+    "c_custkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    c_mktsegment TEXT NOT NULL,
+    "c_mktsegment" TEXT NOT NULL,
         -- <values>{'AUTOMOBILE', 'BUILDING', 'FURNITURE', 'HOUSEHOLD', 'MACHINERY'}</values>
-    c_nationkey INTEGER NOT NULL,
+    "c_nationkey" INTEGER NOT NULL,
         -- <example>8</example>
-        -- <fk> -> nation.n_nationkey</fk>
-    c_name TEXT NOT NULL,
+        -- <fk> -> nation."n_nationkey"</fk>
+    "c_name" TEXT NOT NULL,
         -- <example>'Customer#000000001'</example>
-    c_address TEXT NOT NULL,
+    "c_address" TEXT NOT NULL,
         -- <example>'KwX3hMHjZ6'</example>
-    c_phone TEXT NOT NULL,
+    "c_phone" TEXT NOT NULL,
         -- <example>'937-241-3198'</example>
-    c_acctbal REAL NOT NULL,
+    "c_acctbal" REAL NOT NULL,
         -- <example>3560.030</example>
-    c_comment TEXT NOT NULL,
+    "c_comment" TEXT NOT NULL,
         -- <example>'ironic excuses detect slyly silent requests. requests according to the exc'</example>
-    FOREIGN KEY (c_nationkey) REFERENCES nation(n_nationkey)
+    FOREIGN KEY ("c_nationkey") REFERENCES nation("n_nationkey")
 );
 
 /*
-Schema: NULLTable: lineitem
+Schema: NULL
+Table: lineitem
 Rows: 4423659
 Sample rows:
 | l_shipdate   | l_orderkey   | l_discount   | l_extendedprice   | l_suppkey   | l_quantity   | l_returnflag   | l_partkey   | l_linestatus   | l_tax   | l_commitdate   | l_receiptdate   | l_shipmode   | l_linenumber   | l_shipinstruct    | l_comment                             |
@@ -49,48 +51,49 @@ Sample rows:
 | ...          | ...          | ...          | ...               | ...         | ...          | ...            | ...         | ...            | ...     | ...            | ...             | ...          | ...            | ...               | ...                                   |
 */
 CREATE TABLE lineitem (
-    l_shipdate DATE NOT NULL,
+    "l_shipdate" DATE NOT NULL,
         -- <example>'1995-08-16'</example>
-    l_orderkey INTEGER NOT NULL,
+    "l_orderkey" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> orders.o_orderkey</fk>
-    l_discount REAL NOT NULL,
+        -- <fk> -> orders."o_orderkey"</fk>
+    "l_discount" REAL NOT NULL,
         -- <example>0.100</example>
-    l_extendedprice REAL NOT NULL,
+    "l_extendedprice" REAL NOT NULL,
         -- <example>58303.080</example>
-    l_suppkey INTEGER NOT NULL,
+    "l_suppkey" INTEGER NOT NULL,
         -- <example>6296</example>
         -- <fk>composite</fk>
-    l_quantity INTEGER NOT NULL,
+    "l_quantity" INTEGER NOT NULL,
         -- <example>33</example>
-    l_returnflag TEXT NOT NULL,
+    "l_returnflag" TEXT NOT NULL,
         -- <values>{'A', 'N', 'R'}</values>
-    l_partkey INTEGER NOT NULL,
+    "l_partkey" INTEGER NOT NULL,
         -- <example>98768</example>
         -- <fk>composite</fk>
-    l_linestatus TEXT NOT NULL,
+    "l_linestatus" TEXT NOT NULL,
         -- <values>{'F', 'O'}</values>
-    l_tax REAL NOT NULL,
+    "l_tax" REAL NOT NULL,
         -- <example>0.060</example>
-    l_commitdate DATE NOT NULL,
+    "l_commitdate" DATE NOT NULL,
         -- <example>'1995-07-12'</example>
-    l_receiptdate DATE NOT NULL,
+    "l_receiptdate" DATE NOT NULL,
         -- <example>'1995-09-14'</example>
-    l_shipmode TEXT NOT NULL,
+    "l_shipmode" TEXT NOT NULL,
         -- <values>{'AIR', 'FOB', 'MAIL', 'RAIL', 'REG AIR', 'SHIP', 'TRUCK'}</values>
-    l_linenumber INTEGER NOT NULL,
+    "l_linenumber" INTEGER NOT NULL,
         -- <example>1</example>
-    l_shipinstruct TEXT NOT NULL,
+    "l_shipinstruct" TEXT NOT NULL,
         -- <values>{'COLLECT COD', 'DELIVER IN PERSON', 'NONE', 'TAKE BACK RETURN'}</values>
-    l_comment TEXT NOT NULL,
+    "l_comment" TEXT NOT NULL,
         -- <example>'carefully bo'</example>
-    PRIMARY KEY (l_orderkey, l_linenumber),
-    FOREIGN KEY (l_orderkey) REFERENCES orders(o_orderkey),
-    FOREIGN KEY (l_partkey, l_suppkey) REFERENCES partsupp(ps_partkey, ps_suppkey)
+    PRIMARY KEY ("l_orderkey", "l_linenumber"),
+    FOREIGN KEY ("l_orderkey") REFERENCES orders("o_orderkey"),
+    FOREIGN KEY ("l_partkey", "l_suppkey") REFERENCES partsupp("ps_partkey", "ps_suppkey")
 );
 
 /*
-Schema: NULLTable: nation
+Schema: NULL
+Table: nation
 Rows: 25
 Sample rows:
 | n_nationkey   | n_name    | n_regionkey   | n_comment                                                                                                        |
@@ -103,20 +106,21 @@ Sample rows:
 | ...           | ...       | ...           | ...                                                                                                              |
 */
 CREATE TABLE nation (
-    n_nationkey INTEGER NOT NULL PRIMARY KEY,
+    "n_nationkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    n_name TEXT NOT NULL,
+    "n_name" TEXT NOT NULL,
         -- <example>'ALGERIA'</example>
-    n_regionkey INTEGER NOT NULL,
+    "n_regionkey" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> region.r_regionkey</fk>
-    n_comment TEXT NOT NULL,
+        -- <fk> -> region."r_regionkey"</fk>
+    "n_comment" TEXT NOT NULL,
         -- <example>'slyly express pinto beans cajole idly. deposits us...hely unusual packages? fluffily final accounts x-r'</example>
-    FOREIGN KEY (n_regionkey) REFERENCES region(r_regionkey)
+    FOREIGN KEY ("n_regionkey") REFERENCES region("r_regionkey")
 );
 
 /*
-Schema: NULLTable: orders
+Schema: NULL
+Table: orders
 Rows: 1500000
 Sample rows:
 | o_orderdate   | o_orderkey   | o_custkey   | o_orderpriority   | o_shippriority   | o_clerk         | o_orderstatus   | o_totalprice   | o_comment                                                           |
@@ -129,30 +133,31 @@ Sample rows:
 | ...           | ...          | ...         | ...               | ...              | ...             | ...             | ...            | ...                                                                 |
 */
 CREATE TABLE orders (
-    o_orderdate DATE NOT NULL,
+    "o_orderdate" DATE NOT NULL,
         -- <example>'1995-04-19'</example>
-    o_orderkey INTEGER NOT NULL PRIMARY KEY,
+    "o_orderkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    o_custkey INTEGER NOT NULL,
+    "o_custkey" INTEGER NOT NULL,
         -- <example>73100</example>
-        -- <fk> -> customer.c_custkey</fk>
-    o_orderpriority TEXT NOT NULL,
+        -- <fk> -> customer."c_custkey"</fk>
+    "o_orderpriority" TEXT NOT NULL,
         -- <values>{'1-URGENT', '2-HIGH', '3-MEDIUM', '4-NOT SPECIFIED', '5-LOW'}</values>
-    o_shippriority INTEGER NOT NULL,
+    "o_shippriority" INTEGER NOT NULL,
         -- <example>0</example>
-    o_clerk TEXT NOT NULL,
+    "o_clerk" TEXT NOT NULL,
         -- <example>'Clerk#000000916'</example>
-    o_orderstatus TEXT NOT NULL,
+    "o_orderstatus" TEXT NOT NULL,
         -- <values>{'F', 'O', 'P'}</values>
-    o_totalprice REAL NOT NULL,
+    "o_totalprice" REAL NOT NULL,
         -- <example>203198.560</example>
-    o_comment TEXT NOT NULL,
+    "o_comment" TEXT NOT NULL,
         -- <example>'final packages sleep blithely packa'</example>
-    FOREIGN KEY (o_custkey) REFERENCES customer(c_custkey)
+    FOREIGN KEY ("o_custkey") REFERENCES customer("c_custkey")
 );
 
 /*
-Schema: NULLTable: part
+Schema: NULL
+Table: part
 Rows: 200000
 Sample rows:
 | p_partkey   | p_type                   | p_size   | p_brand   | p_name                             | p_container   | p_mfgr         | p_retailprice   | p_comment              |
@@ -165,28 +170,29 @@ Sample rows:
 | ...         | ...                      | ...      | ...       | ...                                | ...           | ...            | ...             | ...                    |
 */
 CREATE TABLE part (
-    p_partkey INTEGER NOT NULL PRIMARY KEY,
+    "p_partkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    p_type TEXT NOT NULL,
+    "p_type" TEXT NOT NULL,
         -- <example>'LARGE PLATED TIN'</example>
-    p_size INTEGER NOT NULL,
+    "p_size" INTEGER NOT NULL,
         -- <example>31</example>
-    p_brand TEXT NOT NULL,
+    "p_brand" TEXT NOT NULL,
         -- <example>'Brand#43'</example>
-    p_name TEXT NOT NULL,
+    "p_name" TEXT NOT NULL,
         -- <example>'burlywood plum powder puff mint'</example>
-    p_container TEXT NOT NULL,
+    "p_container" TEXT NOT NULL,
         -- <example>'LG BAG'</example>
-    p_mfgr TEXT NOT NULL,
+    "p_mfgr" TEXT NOT NULL,
         -- <values>{'Manufacturer#1', 'Manufacturer#2', 'Manufacturer#3', 'Manufacturer#4', 'Manufacturer#5'}</values>
-    p_retailprice REAL NOT NULL,
+    "p_retailprice" REAL NOT NULL,
         -- <example>901.000</example>
-    p_comment TEXT NOT NULL
+    "p_comment" TEXT NOT NULL
         -- <example>'blithely busy reque'</example>
 );
 
 /*
-Schema: NULLTable: partsupp
+Schema: NULL
+Table: partsupp
 Rows: 800000
 Sample rows:
 | ps_partkey   | ps_suppkey   | ps_supplycost   | ps_availqty   | ps_comment                                                                                                                                                            |
@@ -199,25 +205,26 @@ Sample rows:
 | ...          | ...          | ...             | ...           | ...                                                                                                                                                                   |
 */
 CREATE TABLE partsupp (
-    ps_partkey INTEGER NOT NULL,
+    "ps_partkey" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> part.p_partkey</fk>
-    ps_suppkey INTEGER NOT NULL,
+        -- <fk> -> part."p_partkey"</fk>
+    "ps_suppkey" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> supplier.s_suppkey</fk>
-    ps_supplycost REAL NOT NULL,
+        -- <fk> -> supplier."s_suppkey"</fk>
+    "ps_supplycost" REAL NOT NULL,
         -- <example>400.750</example>
-    ps_availqty INTEGER NOT NULL,
+    "ps_availqty" INTEGER NOT NULL,
         -- <example>1111</example>
-    ps_comment TEXT NOT NULL,
+    "ps_comment" TEXT NOT NULL,
         -- <example>'carefully ironic deposits use against the carefull... accounts. slyly silent platelets nag quickly even'</example>
-    PRIMARY KEY (ps_partkey, ps_suppkey),
-    FOREIGN KEY (ps_partkey) REFERENCES part(p_partkey),
-    FOREIGN KEY (ps_suppkey) REFERENCES supplier(s_suppkey)
+    PRIMARY KEY ("ps_partkey", "ps_suppkey"),
+    FOREIGN KEY ("ps_partkey") REFERENCES part("p_partkey"),
+    FOREIGN KEY ("ps_suppkey") REFERENCES supplier("s_suppkey")
 );
 
 /*
-Schema: NULLTable: region
+Schema: NULL
+Table: region
 Rows: 5
 All rows:
 |   r_regionkey | r_name      | r_comment                                                                                         |
@@ -229,16 +236,17 @@ All rows:
 |             4 | MIDDLE EAST | furiously express accounts wake sly                                                               |
 */
 CREATE TABLE region (
-    r_regionkey INTEGER NOT NULL PRIMARY KEY,
+    "r_regionkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    r_name TEXT NOT NULL,
+    "r_name" TEXT NOT NULL,
         -- <values>{'AFRICA', 'AMERICA', 'ASIA', 'EUROPE', 'MIDDLE EAST'}</values>
-    r_comment TEXT NOT NULL
+    "r_comment" TEXT NOT NULL
         -- <values>{'accounts cajole carefully according to the carefully exp', 'asymptotes sublate after the r', 'furiously express accounts wake sly', 'requests affix quickly final tithes. blithely even packages above the a', 'slyly even theodolites are carefully ironic pinto beans. platelets above the unusual accounts aff'}</values>
 );
 
 /*
-Schema: NULLTable: supplier
+Schema: NULL
+Table: supplier
 Rows: 10000
 Sample rows:
 | s_suppkey   | s_nationkey   | s_comment                                                                          | s_name             | s_address                       | s_phone      | s_acctbal   |
@@ -251,21 +259,21 @@ Sample rows:
 | ...         | ...           | ...                                                                                | ...                | ...                             | ...          | ...         |
 */
 CREATE TABLE supplier (
-    s_suppkey INTEGER NOT NULL PRIMARY KEY,
+    "s_suppkey" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    s_nationkey INTEGER NOT NULL,
+    "s_nationkey" INTEGER NOT NULL,
         -- <example>13</example>
-        -- <fk> -> nation.n_nationkey</fk>
-    s_comment TEXT NOT NULL,
+        -- <fk> -> nation."n_nationkey"</fk>
+    "s_comment" TEXT NOT NULL,
         -- <example>'blithely final pearls are. instructions thra'</example>
-    s_name TEXT NOT NULL,
+    "s_name" TEXT NOT NULL,
         -- <example>'Supplier#000000001'</example>
-    s_address TEXT NOT NULL,
+    "s_address" TEXT NOT NULL,
         -- <example>',wWs4pnykQOFl8mgVCU8EZMXqZs1w'</example>
-    s_phone TEXT NOT NULL,
+    "s_phone" TEXT NOT NULL,
         -- <example>'800-807-9579'</example>
-    s_acctbal REAL NOT NULL,
+    "s_acctbal" REAL NOT NULL,
         -- <example>3082.860</example>
-    FOREIGN KEY (s_nationkey) REFERENCES nation(n_nationkey)
+    FOREIGN KEY ("s_nationkey") REFERENCES nation("n_nationkey")
 );
 ```

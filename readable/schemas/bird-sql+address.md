@@ -2,7 +2,8 @@
 -- Database: address
 
 /*
-Schema: NULLTable: CBSA
+Schema: NULL
+Table: CBSA
 Rows: 465
 Sample rows:
 | CBSA   | CBSA_name                   | CBSA_type   |
@@ -15,16 +16,17 @@ Sample rows:
 | ...    | ...                         | ...         |
 */
 CREATE TABLE CBSA (
-    CBSA INTEGER NOT NULL PRIMARY KEY,
+    "CBSA" INTEGER NOT NULL PRIMARY KEY,
         -- <example>10300</example>
-    CBSA_name TEXT NOT NULL,
+    "CBSA_name" TEXT NOT NULL,
         -- <example>'Adrian, MI'</example>
-    CBSA_type TEXT NOT NULL
+    "CBSA_type" TEXT NOT NULL
         -- <values>{'Metro', 'Micro'}</values>
 );
 
 /*
-Schema: NULLTable: alias
+Schema: NULL
+Table: alias
 Rows: 41701
 Sample rows:
 | zip_code   | alias      |
@@ -37,16 +39,17 @@ Sample rows:
 | ...        | ...        |
 */
 CREATE TABLE alias (
-    zip_code INTEGER NOT NULL PRIMARY KEY,
+    "zip_code" INTEGER NOT NULL PRIMARY KEY,
         -- <example>501</example>
-        -- <fk> -> zip_data.zip_code</fk>
-    alias TEXT NOT NULL,
+        -- <fk> -> zip_data."zip_code"</fk>
+    "alias" TEXT NOT NULL,
         -- <example>'Holtsville'</example>
-    FOREIGN KEY (zip_code) REFERENCES zip_data(zip_code)
+    FOREIGN KEY ("zip_code") REFERENCES zip_data("zip_code")
 );
 
 /*
-Schema: NULLTable: area_code
+Schema: NULL
+Table: area_code
 Rows: 53796
 Sample rows:
 | zip_code   | area_code   |
@@ -59,17 +62,18 @@ Sample rows:
 | ...        | ...         |
 */
 CREATE TABLE area_code (
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>501</example>
-        -- <fk> -> zip_data.zip_code</fk>
-    area_code INTEGER NOT NULL,
+        -- <fk> -> zip_data."zip_code"</fk>
+    "area_code" INTEGER NOT NULL,
         -- <example>631</example>
-    PRIMARY KEY (zip_code, area_code),
-    FOREIGN KEY (zip_code) REFERENCES zip_data(zip_code)
+    PRIMARY KEY ("zip_code", "area_code"),
+    FOREIGN KEY ("zip_code") REFERENCES zip_data("zip_code")
 );
 
 /*
-Schema: NULLTable: avoid
+Schema: NULL
+Table: avoid
 Rows: 24114
 Sample rows:
 | zip_code   | bad_alias                |
@@ -82,17 +86,18 @@ Sample rows:
 | ...        | ...                      |
 */
 CREATE TABLE avoid (
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>501</example>
-        -- <fk> -> zip_data.zip_code</fk>
-    bad_alias TEXT NOT NULL,
+        -- <fk> -> zip_data."zip_code"</fk>
+    "bad_alias" TEXT NOT NULL,
         -- <example>'Internal Revenue Service'</example>
-    PRIMARY KEY (zip_code, bad_alias),
-    FOREIGN KEY (zip_code) REFERENCES zip_data(zip_code)
+    PRIMARY KEY ("zip_code", "bad_alias"),
+    FOREIGN KEY ("zip_code") REFERENCES zip_data("zip_code")
 );
 
 /*
-Schema: NULLTable: congress
+Schema: NULL
+Table: congress
 Rows: 540
 Sample rows:
 | cognress_rep_id   | first_name   | last_name   | CID       | party      | state   | abbreviation   | House                  | District   | land_area   |
@@ -105,32 +110,33 @@ Sample rows:
 | ...               | ...          | ...         | ...       | ...        | ...     | ...            | ...                    | ...        | ...         |
 */
 CREATE TABLE congress (
-    cognress_rep_id TEXT NOT NULL PRIMARY KEY,
+    "cognress_rep_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AK'</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Young'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <example>'Don'</example>
-    CID TEXT NOT NULL,
+    "CID" TEXT NOT NULL,
         -- <example>'N00008091'</example>
-    party TEXT NOT NULL,
+    "party" TEXT NOT NULL,
         -- <values>{'Democrat', 'Independent', 'Republican'}</values>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'Alaska'</example>
-    abbreviation TEXT NOT NULL,
+    "abbreviation" TEXT NOT NULL,
         -- <example>'AK'</example>
-        -- <fk> -> state.abbreviation</fk>
-    House TEXT NOT NULL,
+        -- <fk> -> state."abbreviation"</fk>
+    "House" TEXT NOT NULL,
         -- <values>{'House of Repsentatives', 'Senate'}</values>
-    District INTEGER NULL,
+    "District" INTEGER NULL,
         -- <example>1</example>
-    land_area REAL NOT NULL,
+    "land_area" REAL NOT NULL,
         -- <example>571951.260</example>
-    FOREIGN KEY (abbreviation) REFERENCES state(abbreviation)
+    FOREIGN KEY ("abbreviation") REFERENCES state("abbreviation")
 );
 
 /*
-Schema: NULLTable: country
+Schema: NULL
+Table: country
 Rows: 51001
 Sample rows:
 | zip_code   | county    | state   |
@@ -143,21 +149,22 @@ Sample rows:
 | ...        | ...       | ...     |
 */
 CREATE TABLE country (
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>501</example>
-        -- <fk> -> zip_data.zip_code</fk>
-    county TEXT NOT NULL,
+        -- <fk> -> zip_data."zip_code"</fk>
+    "county" TEXT NOT NULL,
         -- <example>'SUFFOLK'</example>
-    state TEXT NULL,
+    "state" TEXT NULL,
         -- <example>'NY'</example>
-        -- <fk> -> state.abbreviation</fk>
-    PRIMARY KEY (zip_code, county),
-    FOREIGN KEY (zip_code) REFERENCES zip_data(zip_code),
-    FOREIGN KEY (state) REFERENCES state(abbreviation)
+        -- <fk> -> state."abbreviation"</fk>
+    PRIMARY KEY ("zip_code", "county"),
+    FOREIGN KEY ("zip_code") REFERENCES zip_data("zip_code"),
+    FOREIGN KEY ("state") REFERENCES state("abbreviation")
 );
 
 /*
-Schema: NULLTable: state
+Schema: NULL
+Table: state
 Rows: 62
 Sample rows:
 | abbreviation   | name                  |
@@ -170,14 +177,15 @@ Sample rows:
 | ...            | ...                   |
 */
 CREATE TABLE state (
-    abbreviation TEXT NOT NULL PRIMARY KEY,
+    "abbreviation" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AA'</example>
-    name TEXT NOT NULL
+    "name" TEXT NOT NULL
         -- <example>'Armed Forces Americas'</example>
 );
 
 /*
-Schema: NULLTable: zip_congress
+Schema: NULL
+Table: zip_congress
 Rows: 45231
 Sample rows:
 | zip_code   | district   |
@@ -190,19 +198,20 @@ Sample rows:
 | ...        | ...        |
 */
 CREATE TABLE zip_congress (
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>501</example>
-        -- <fk> -> zip_data.zip_code</fk>
-    district TEXT NOT NULL,
+        -- <fk> -> zip_data."zip_code"</fk>
+    "district" TEXT NOT NULL,
         -- <example>'NY-1'</example>
-        -- <fk> -> congress.cognress_rep_id</fk>
-    PRIMARY KEY (zip_code, district),
-    FOREIGN KEY (district) REFERENCES congress(cognress_rep_id),
-    FOREIGN KEY (zip_code) REFERENCES zip_data(zip_code)
+        -- <fk> -> congress."cognress_rep_id"</fk>
+    PRIMARY KEY ("zip_code", "district"),
+    FOREIGN KEY ("district") REFERENCES congress("cognress_rep_id"),
+    FOREIGN KEY ("zip_code") REFERENCES zip_data("zip_code")
 );
 
 /*
-Schema: NULLTable: zip_data
+Schema: NULL
+Table: zip_data
 Rows: 41563
 Sample rows:
 | zip_code   | city       | state   | multi_county   | type               | organization         | time_zone   | daylight_savings   | latitude   | longitude   | elevation   | state_fips   | county_fips   | region    | division        | population_2020   | population_2010   | households   | avg_house_value   | avg_income_per_household   | persons_per_household   | white_population   | black_population   | hispanic_population   | asian_population   | american_indian_population   | hawaiian_population   | other_population   | male_population   | female_population   | median_age   | male_median_age   | female_median_age   | residential_mailboxes   | business_mailboxes   | total_delivery_receptacles   | businesses   | 1st_quarter_payroll   | annual_payroll   | employees   | water_area   | land_area   | single_family_delivery_units   | multi_family_delivery_units   | total_beneficiaries   | retired_workers   | disabled_workers   | parents_and_widowed   | spouses   | children   | over_65   | monthly_benefits_all   | monthly_benefits_retired_workers   | monthly_benefits_widowed   | CBSA    |
@@ -215,119 +224,119 @@ Sample rows:
 | ...        | ...        | ...     | ...            | ...                | ...                  | ...         | ...                | ...        | ...         | ...         | ...          | ...           | ...       | ...             | ...               | ...               | ...          | ...               | ...                        | ...                     | ...                | ...                | ...                   | ...                | ...                          | ...                   | ...                | ...               | ...                 | ...          | ...               | ...                 | ...                     | ...                  | ...                          | ...          | ...                   | ...              | ...         | ...          | ...         | ...                            | ...                           | ...                   | ...               | ...                | ...                   | ...       | ...        | ...       | ...                    | ...                                | ...                        | ...     |
 */
 CREATE TABLE zip_data (
-    zip_code INTEGER NOT NULL PRIMARY KEY,
+    "zip_code" INTEGER NOT NULL PRIMARY KEY,
         -- <example>501</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Holtsville'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'NY'</example>
-        -- <fk> -> state.abbreviation</fk>
-    multi_county TEXT NOT NULL,
+        -- <fk> -> state."abbreviation"</fk>
+    "multi_county" TEXT NOT NULL,
         -- <values>{'No', 'Yes'}</values>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <values>{'APO/FPO Military', 'Branch', 'Branch-Unique', 'Community Post Office ', 'Non Postal Community Name', 'Non Postal Community Name-Unique', 'P.O. Box Only', 'Post Office', 'Unique Post Office'}</values>
-    organization TEXT NULL,
+    "organization" TEXT NULL,
         -- <example>'I R S Service Center'</example>
-    time_zone TEXT NULL,
+    "time_zone" TEXT NULL,
         -- <values>{'Alaska', 'American Samoa', 'Atlantic', 'Central', 'Eastern', 'Guam', 'Hawaii-Aleutian Islands', 'Marshall Islands', 'Micronesia', 'Mountain', 'Pacific', 'Palau'}</values>
-    daylight_savings TEXT NOT NULL,
+    "daylight_savings" TEXT NOT NULL,
         -- <values>{'No', 'Yes'}</values>
-    latitude REAL NULL,
+    "latitude" REAL NULL,
         -- <example>40.818</example>
-    longitude REAL NULL,
+    "longitude" REAL NULL,
         -- <example>-73.045</example>
-    elevation INTEGER NULL,
+    "elevation" INTEGER NULL,
         -- <example>25</example>
-    state_fips INTEGER NULL,
+    "state_fips" INTEGER NULL,
         -- <example>36</example>
-    county_fips INTEGER NULL,
+    "county_fips" INTEGER NULL,
         -- <example>103</example>
-    region TEXT NULL,
+    "region" TEXT NULL,
         -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
-    division TEXT NULL,
+    "division" TEXT NULL,
         -- <values>{'East North Central', 'East South Central', 'Middle Atlantic', 'Mountain', 'New England', 'Pacific', 'South Atlantic', 'West North Central', 'West South Central'}</values>
-    population_2020 INTEGER NULL,
+    "population_2020" INTEGER NULL,
         -- <example>0</example>
-    population_2010 INTEGER NULL,
+    "population_2010" INTEGER NULL,
         -- <example>0</example>
-    households INTEGER NULL,
+    "households" INTEGER NULL,
         -- <example>0</example>
-    avg_house_value INTEGER NULL,
+    "avg_house_value" INTEGER NULL,
         -- <example>0</example>
-    avg_income_per_household INTEGER NULL,
+    "avg_income_per_household" INTEGER NULL,
         -- <example>0</example>
-    persons_per_household REAL NULL,
+    "persons_per_household" REAL NULL,
         -- <example>0.000</example>
-    white_population INTEGER NULL,
+    "white_population" INTEGER NULL,
         -- <example>0</example>
-    black_population INTEGER NULL,
+    "black_population" INTEGER NULL,
         -- <example>0</example>
-    hispanic_population INTEGER NULL,
+    "hispanic_population" INTEGER NULL,
         -- <example>0</example>
-    asian_population INTEGER NULL,
+    "asian_population" INTEGER NULL,
         -- <example>0</example>
-    american_indian_population INTEGER NULL,
+    "american_indian_population" INTEGER NULL,
         -- <example>0</example>
-    hawaiian_population INTEGER NULL,
+    "hawaiian_population" INTEGER NULL,
         -- <example>0</example>
-    other_population INTEGER NULL,
+    "other_population" INTEGER NULL,
         -- <example>0</example>
-    male_population INTEGER NULL,
+    "male_population" INTEGER NULL,
         -- <example>0</example>
-    female_population INTEGER NULL,
+    "female_population" INTEGER NULL,
         -- <example>0</example>
-    median_age REAL NULL,
+    "median_age" REAL NULL,
         -- <example>0.000</example>
-    male_median_age REAL NULL,
+    "male_median_age" REAL NULL,
         -- <example>0.000</example>
-    female_median_age REAL NULL,
+    "female_median_age" REAL NULL,
         -- <example>0.000</example>
-    residential_mailboxes INTEGER NULL,
+    "residential_mailboxes" INTEGER NULL,
         -- <example>0</example>
-    business_mailboxes INTEGER NULL,
+    "business_mailboxes" INTEGER NULL,
         -- <example>1</example>
-    total_delivery_receptacles INTEGER NULL,
+    "total_delivery_receptacles" INTEGER NULL,
         -- <example>1</example>
-    businesses INTEGER NULL,
+    "businesses" INTEGER NULL,
         -- <example>2</example>
     "1st_quarter_payroll" INTEGER NULL,
         -- <example>0</example>
-    annual_payroll INTEGER NULL,
+    "annual_payroll" INTEGER NULL,
         -- <example>0</example>
-    employees INTEGER NULL,
+    "employees" INTEGER NULL,
         -- <example>0</example>
-    water_area REAL NULL,
+    "water_area" REAL NULL,
         -- <example>0.000</example>
-    land_area REAL NULL,
+    "land_area" REAL NULL,
         -- <example>0.000</example>
-    single_family_delivery_units INTEGER NULL,
+    "single_family_delivery_units" INTEGER NULL,
         -- <example>0</example>
-    multi_family_delivery_units INTEGER NULL,
+    "multi_family_delivery_units" INTEGER NULL,
         -- <example>0</example>
-    total_beneficiaries INTEGER NULL,
+    "total_beneficiaries" INTEGER NULL,
         -- <example>0</example>
-    retired_workers INTEGER NULL,
+    "retired_workers" INTEGER NULL,
         -- <example>0</example>
-    disabled_workers INTEGER NULL,
+    "disabled_workers" INTEGER NULL,
         -- <example>0</example>
-    parents_and_widowed INTEGER NULL,
+    "parents_and_widowed" INTEGER NULL,
         -- <example>0</example>
-    spouses INTEGER NULL,
+    "spouses" INTEGER NULL,
         -- <example>0</example>
-    children INTEGER NULL,
+    "children" INTEGER NULL,
         -- <example>0</example>
-    over_65 INTEGER NULL,
+    "over_65" INTEGER NULL,
         -- <example>0</example>
-    monthly_benefits_all INTEGER NULL,
+    "monthly_benefits_all" INTEGER NULL,
         -- <example>0</example>
-    monthly_benefits_retired_workers INTEGER NULL,
+    "monthly_benefits_retired_workers" INTEGER NULL,
         -- <example>0</example>
-    monthly_benefits_widowed INTEGER NULL,
+    "monthly_benefits_widowed" INTEGER NULL,
         -- <example>0</example>
-    CBSA INTEGER NULL,
+    "CBSA" INTEGER NULL,
         -- <example>35620</example>
-        -- <fk> -> CBSA.CBSA</fk>
-    FOREIGN KEY (state) REFERENCES state(abbreviation),
-    FOREIGN KEY (CBSA) REFERENCES CBSA(CBSA)
+        -- <fk> -> CBSA."CBSA"</fk>
+    FOREIGN KEY ("state") REFERENCES state("abbreviation"),
+    FOREIGN KEY ("CBSA") REFERENCES CBSA("CBSA")
 );
 ```

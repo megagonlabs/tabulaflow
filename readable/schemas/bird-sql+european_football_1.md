@@ -2,7 +2,8 @@
 -- Database: european_football_1
 
 /*
-Schema: NULLTable: divisions
+Schema: NULL
+Table: divisions
 Rows: 21
 Sample rows:
 | division   | name             | country     |
@@ -15,16 +16,17 @@ Sample rows:
 | ...        | ...              | ...         |
 */
 CREATE TABLE divisions (
-    division TEXT NOT NULL PRIMARY KEY,
+    "division" TEXT NOT NULL PRIMARY KEY,
         -- <example>'B1'</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Division 1A'</example>
-    country TEXT NOT NULL
+    "country" TEXT NOT NULL
         -- <example>'Belgium'</example>
 );
 
 /*
-Schema: NULLTable: matchs
+Schema: NULL
+Table: matchs
 Rows: 123404
 Sample rows:
 | Div   | Date       | HomeTeam    | AwayTeam      | FTHG   | FTAG   | FTR   | season   |
@@ -37,23 +39,23 @@ Sample rows:
 | ...   | ...        | ...         | ...           | ...    | ...    | ...   | ...      |
 */
 CREATE TABLE matchs (
-    Div TEXT NOT NULL,
+    "Div" TEXT NOT NULL,
         -- <example>'B1'</example>
-        -- <fk> -> divisions.division</fk>
-    Date DATE NOT NULL,
+        -- <fk> -> divisions."division"</fk>
+    "Date" DATE NOT NULL,
         -- <example>'2020-08-08'</example>
-    HomeTeam TEXT NOT NULL,
+    "HomeTeam" TEXT NOT NULL,
         -- <example>'Club Brugge'</example>
-    AwayTeam TEXT NOT NULL,
+    "AwayTeam" TEXT NOT NULL,
         -- <example>'Charleroi'</example>
-    FTHG INTEGER NOT NULL,
+    "FTHG" INTEGER NOT NULL,
         -- <example>0</example>
-    FTAG INTEGER NOT NULL,
+    "FTAG" INTEGER NOT NULL,
         -- <example>1</example>
-    FTR TEXT NOT NULL,
+    "FTR" TEXT NOT NULL,
         -- <values>{'A', 'D', 'H'}</values>
-    season INTEGER NOT NULL,
+    "season" INTEGER NOT NULL,
         -- <example>2021</example>
-    FOREIGN KEY (Div) REFERENCES divisions(division)
+    FOREIGN KEY ("Div") REFERENCES divisions("division")
 );
 ```

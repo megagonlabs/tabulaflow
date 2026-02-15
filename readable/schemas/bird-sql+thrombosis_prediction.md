@@ -2,7 +2,8 @@
 -- Database: thrombosis_prediction
 
 /*
-Schema: NULLTable: Examination
+Schema: NULL
+Table: Examination
 Rows: 806
 Sample rows:
 | ID     | Examination Date   | aCL IgG   | aCL IgM   | ANA   | ANA Pattern   | aCL IgA   | Diagnosis         | KCT    | RVVT   | LAC    | Symptoms   | Thrombosis   |
@@ -15,38 +16,39 @@ Sample rows:
 | ...    | ...                | ...       | ...       | ...   | ...           | ...       | ...               | ...    | ...    | ...    | ...        | ...          |
 */
 CREATE TABLE Examination (
-    ID INTEGER NULL,
+    "ID" INTEGER NULL,
         -- <example>14872</example>
-        -- <fk> -> Patient.ID</fk>
+        -- <fk> -> Patient."ID"</fk>
     "Examination Date" DATE NULL,
         -- <example>'1997-05-27'</example>
     "aCL IgG" REAL NOT NULL,
         -- <example>1.300</example>
     "aCL IgM" REAL NOT NULL,
         -- <example>1.600</example>
-    ANA INTEGER NULL,
+    "ANA" INTEGER NULL,
         -- <example>256</example>
     "ANA Pattern" TEXT NULL,
         -- <example>'P'</example>
     "aCL IgA" INTEGER NOT NULL,
         -- <example>0</example>
-    Diagnosis TEXT NULL,
+    "Diagnosis" TEXT NULL,
         -- <example>'MCTD, AMI'</example>
-    KCT TEXT NULL,
+    "KCT" TEXT NULL,
         -- <values>{'+', '-'}</values>
-    RVVT TEXT NULL,
+    "RVVT" TEXT NULL,
         -- <values>{'+', '-'}</values>
-    LAC TEXT NULL,
+    "LAC" TEXT NULL,
         -- <values>{'+', '-'}</values>
-    Symptoms TEXT NULL,
+    "Symptoms" TEXT NULL,
         -- <example>'AMI'</example>
-    Thrombosis INTEGER NOT NULL,
+    "Thrombosis" INTEGER NOT NULL,
         -- <example>1</example>
-    FOREIGN KEY (ID) REFERENCES Patient(ID)
+    FOREIGN KEY ("ID") REFERENCES Patient("ID")
 );
 
 /*
-Schema: NULLTable: Laboratory
+Schema: NULL
+Table: Laboratory
 Rows: 13908
 Sample rows:
 | ID    | Date       | GOT    | GPT    | LDH    | ALP    | TP     | ALB    | UA     | UN     | CRE    | T-BIL   | T-CHO   | TG     | CPK    | GLU    | WBC   | RBC   | HGB   | HCT   | PLT   | PT     | APTT   | FG     | PIC    | TAT    | TAT2   | U-PRO   | IGG    | IGA    | IGM    | CRP    | RA     | RF     | C3     | C4     | RNP    | SM     | SC170   | SSA    | SSB    | CENTROMEA   | DNA    | DNA-II   |
@@ -59,100 +61,101 @@ Sample rows:
 | ...   | ...        | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...     | ...    | ...    | ...    | ...   | ...   | ...   | ...   | ...   | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...    | ...     | ...    | ...    | ...         | ...    | ...      |
 */
 CREATE TABLE Laboratory (
-    ID INTEGER NOT NULL,
+    "ID" INTEGER NOT NULL,
         -- <example>27654</example>
-        -- <fk> -> Patient.ID</fk>
-    Date DATE NOT NULL,
+        -- <fk> -> Patient."ID"</fk>
+    "Date" DATE NOT NULL,
         -- <example>'1991-09-11'</example>
-    GOT INTEGER NULL,
+    "GOT" INTEGER NULL,
         -- <example>34</example>
-    GPT INTEGER NULL,
+    "GPT" INTEGER NULL,
         -- <example>36</example>
-    LDH INTEGER NULL,
+    "LDH" INTEGER NULL,
         -- <example>567</example>
-    ALP INTEGER NULL,
+    "ALP" INTEGER NULL,
         -- <example>166</example>
-    TP REAL NULL,
+    "TP" REAL NULL,
         -- <example>4.500</example>
-    ALB REAL NULL,
+    "ALB" REAL NULL,
         -- <example>3.300</example>
-    UA REAL NULL,
+    "UA" REAL NULL,
         -- <example>3.800</example>
-    UN INTEGER NULL,
+    "UN" INTEGER NULL,
         -- <example>29</example>
-    CRE REAL NULL,
+    "CRE" REAL NULL,
         -- <example>0.800</example>
     "T-BIL" REAL NULL,
         -- <example>0.300</example>
     "T-CHO" INTEGER NULL,
         -- <example>165</example>
-    TG INTEGER NULL,
+    "TG" INTEGER NULL,
         -- <example>185</example>
-    CPK INTEGER NULL,
+    "CPK" INTEGER NULL,
         -- <example>9</example>
-    GLU INTEGER NULL,
+    "GLU" INTEGER NULL,
         -- <example>88</example>
-    WBC REAL NULL,
+    "WBC" REAL NULL,
         -- <example>5.000</example>
-    RBC REAL NULL,
+    "RBC" REAL NULL,
         -- <example>2.600</example>
-    HGB REAL NULL,
+    "HGB" REAL NULL,
         -- <example>6.400</example>
-    HCT REAL NULL,
+    "HCT" REAL NULL,
         -- <example>20.300</example>
-    PLT INTEGER NULL,
+    "PLT" INTEGER NULL,
         -- <example>227</example>
-    PT REAL NULL,
+    "PT" REAL NULL,
         -- <example>11.300</example>
-    APTT INTEGER NULL,
+    "APTT" INTEGER NULL,
         -- <example>108</example>
-    FG REAL NULL,
+    "FG" REAL NULL,
         -- <example>27.000</example>
-    PIC INTEGER NULL,
+    "PIC" INTEGER NULL,
         -- <example>320</example>
-    TAT INTEGER NULL,
+    "TAT" INTEGER NULL,
         -- <example>77</example>
-    TAT2 INTEGER NULL,
+    "TAT2" INTEGER NULL,
         -- <example>113</example>
     "U-PRO" TEXT NULL,
         -- <values>{'%%', '+1(30)', '+2(100)', '-', '-15', '0', '1', '100', '2', '3', '30', '300', '4', '>=1000', '>=300', 'TR'}</values>
-    IGG INTEGER NULL,
+    "IGG" INTEGER NULL,
         -- <example>339</example>
-    IGA INTEGER NULL,
+    "IGA" INTEGER NULL,
         -- <example>145</example>
-    IGM INTEGER NULL,
+    "IGM" INTEGER NULL,
         -- <example>46</example>
-    CRP TEXT NULL,
+    "CRP" TEXT NULL,
         -- <example>'0.6'</example>
-    RA TEXT NULL,
+    "RA" TEXT NULL,
         -- <values>{'+', '+-', '-', '2+', '7-'}</values>
-    RF TEXT NULL,
+    "RF" TEXT NULL,
         -- <example>'<20.5'</example>
-    C3 INTEGER NULL,
+    "C3" INTEGER NULL,
         -- <example>30</example>
-    C4 INTEGER NULL,
+    "C4" INTEGER NULL,
         -- <example>14</example>
-    RNP TEXT NULL,
+    "RNP" TEXT NULL,
         -- <values>{'0', '1', '15', '16', '256', '4', '64', 'negative'}</values>
-    SM TEXT NULL,
+    "SM" TEXT NULL,
         -- <values>{'0', '1', '2', '8', 'negative'}</values>
-    SC170 TEXT NULL,
+    "SC170" TEXT NULL,
         -- <values>{'0', '1', '16', '4', 'negative'}</values>
-    SSA TEXT NULL,
+    "SSA" TEXT NULL,
         -- <values>{'0', '1', '16', '256', '4', '64', 'negative'}</values>
-    SSB TEXT NULL,
+    "SSB" TEXT NULL,
         -- <values>{'0', '1', '2', '32', '8', 'negative'}</values>
-    CENTROMEA TEXT NULL,
+    "CENTROMEA" TEXT NULL,
         -- <values>{'0', 'negative'}</values>
-    DNA TEXT NULL,
+    "DNA" TEXT NULL,
         -- <example>'41.9'</example>
     "DNA-II" INTEGER NULL,
-    PRIMARY KEY (ID, Date),
-    FOREIGN KEY (ID) REFERENCES Patient(ID)
+    PRIMARY KEY ("ID", "Date"),
+    FOREIGN KEY ("ID") REFERENCES Patient("ID")
 );
 
 /*
-Schema: NULLTable: Patient
+Schema: NULL
+Table: Patient
 Rows: 1238
 Sample rows:
 | ID    | SEX   | Birthday   | Description   | First Date   | Admission   | Diagnosis    |
@@ -165,19 +168,19 @@ Sample rows:
 | ...   | ...   | ...        | ...           | ...          | ...         | ...          |
 */
 CREATE TABLE Patient (
-    ID INTEGER NOT NULL PRIMARY KEY,
+    "ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2110</example>
-    SEX TEXT NOT NULL,
+    "SEX" TEXT NOT NULL,
         -- <values>{'', 'F', 'M'}</values>
-    Birthday DATE NULL,
+    "Birthday" DATE NULL,
         -- <example>'1934-02-13'</example>
-    Description DATE NULL,
+    "Description" DATE NULL,
         -- <example>'1994-02-14'</example>
     "First Date" DATE NULL,
         -- <example>'1993-02-10'</example>
-    Admission TEXT NOT NULL,
+    "Admission" TEXT NOT NULL,
         -- <values>{'', '+', '+(', '-'}</values>
-    Diagnosis TEXT NOT NULL
+    "Diagnosis" TEXT NOT NULL
         -- <example>'RA susp.'</example>
 );
 ```

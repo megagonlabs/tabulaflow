@@ -2,7 +2,8 @@
 -- Database: chicago_crime
 
 /*
-Schema: NULLTable: Community_Area
+Schema: NULL
+Table: Community_Area
 Rows: 77
 Sample rows:
 | community_area_no   | community_area_name   | side      | population   |
@@ -15,18 +16,19 @@ Sample rows:
 | ...                 | ...                   | ...       | ...          |
 */
 CREATE TABLE Community_Area (
-    community_area_no INTEGER NOT NULL PRIMARY KEY,
+    "community_area_no" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    community_area_name TEXT NOT NULL,
+    "community_area_name" TEXT NOT NULL,
         -- <example>'Rogers Park'</example>
-    side TEXT NOT NULL,
+    "side" TEXT NOT NULL,
         -- <values>{'Central', 'Far North ', 'Far Southeast ', 'Far Southwest ', 'North ', 'Northwest ', 'South ', 'Southwest ', 'West '}</values>
-    population TEXT NOT NULL
+    "population" TEXT NOT NULL
         -- <example>'54,991'</example>
 );
 
 /*
-Schema: NULLTable: Crime
+Schema: NULL
+Table: Crime
 Rows: 268002
 Sample rows:
 | report_no   | case_number   | date           | block                    | iucr_no   | location_description   | arrest   | domestic   | beat   | district_no   | ward_no   | community_area_no   | fbi_code_no   | latitude    | longitude    |
@@ -39,50 +41,51 @@ Sample rows:
 | ...         | ...           | ...            | ...                      | ...       | ...                    | ...      | ...        | ...    | ...           | ...       | ...                 | ...           | ...         | ...          |
 */
 CREATE TABLE Crime (
-    report_no INTEGER NOT NULL PRIMARY KEY,
+    "report_no" INTEGER NOT NULL PRIMARY KEY,
         -- <example>23757</example>
-    case_number TEXT NOT NULL,
+    "case_number" TEXT NOT NULL,
         -- <example>'JB100159'</example>
-    date TEXT NOT NULL,
+    "date" TEXT NOT NULL,
         -- <example>'1/1/2018 2:46'</example>
-    block TEXT NOT NULL,
+    "block" TEXT NOT NULL,
         -- <example>'039XX W CORNELIA AVE'</example>
-    iucr_no TEXT NOT NULL,
+    "iucr_no" TEXT NOT NULL,
         -- <example>'110'</example>
-        -- <fk> -> IUCR.iucr_no</fk>
-    location_description TEXT NULL,
+        -- <fk> -> IUCR."iucr_no"</fk>
+    "location_description" TEXT NULL,
         -- <example>'AUTO'</example>
-    arrest TEXT NOT NULL,
+    "arrest" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    domestic TEXT NOT NULL,
+    "domestic" TEXT NOT NULL,
         -- <values>{'FALSE', 'TRUE'}</values>
-    beat INTEGER NOT NULL,
+    "beat" INTEGER NOT NULL,
         -- <example>1732</example>
-    district_no INTEGER NOT NULL,
+    "district_no" INTEGER NOT NULL,
         -- <example>17</example>
-        -- <fk> -> District.district_no</fk>
-    ward_no INTEGER NULL,
+        -- <fk> -> District."district_no"</fk>
+    "ward_no" INTEGER NULL,
         -- <example>30</example>
-        -- <fk> -> Ward.ward_no</fk>
-    community_area_no INTEGER NOT NULL,
+        -- <fk> -> Ward."ward_no"</fk>
+    "community_area_no" INTEGER NOT NULL,
         -- <example>21</example>
-        -- <fk> -> Community_Area.community_area_no</fk>
-    fbi_code_no TEXT NOT NULL,
+        -- <fk> -> Community_Area."community_area_no"</fk>
+    "fbi_code_no" TEXT NOT NULL,
         -- <example>'01A'</example>
-        -- <fk> -> FBI_Code.fbi_code_no</fk>
-    latitude TEXT NULL,
+        -- <fk> -> FBI_Code."fbi_code_no"</fk>
+    "latitude" TEXT NULL,
         -- <example>'41.94456125'</example>
-    longitude TEXT NULL,
+    "longitude" TEXT NULL,
         -- <example>'-87.72668181'</example>
-    FOREIGN KEY (ward_no) REFERENCES Ward(ward_no),
-    FOREIGN KEY (iucr_no) REFERENCES IUCR(iucr_no),
-    FOREIGN KEY (district_no) REFERENCES District(district_no),
-    FOREIGN KEY (community_area_no) REFERENCES Community_Area(community_area_no),
-    FOREIGN KEY (fbi_code_no) REFERENCES FBI_Code(fbi_code_no)
+    FOREIGN KEY ("ward_no") REFERENCES Ward("ward_no"),
+    FOREIGN KEY ("iucr_no") REFERENCES IUCR("iucr_no"),
+    FOREIGN KEY ("district_no") REFERENCES District("district_no"),
+    FOREIGN KEY ("community_area_no") REFERENCES Community_Area("community_area_no"),
+    FOREIGN KEY ("fbi_code_no") REFERENCES FBI_Code("fbi_code_no")
 );
 
 /*
-Schema: NULLTable: District
+Schema: NULL
+Table: District
 Rows: 22
 Sample rows:
 | district_no   | district_name   | address                      | zip_code   | commander         | email                              | phone        | fax          | tty          | twitter       |
@@ -95,30 +98,31 @@ Sample rows:
 | ...           | ...             | ...                          | ...        | ...               | ...                                | ...          | ...          | ...          | ...           |
 */
 CREATE TABLE District (
-    district_no INTEGER NOT NULL PRIMARY KEY,
+    "district_no" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    district_name TEXT NOT NULL,
+    "district_name" TEXT NOT NULL,
         -- <example>'Central'</example>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'1718 South State Street'</example>
-    zip_code INTEGER NOT NULL,
+    "zip_code" INTEGER NOT NULL,
         -- <example>60616</example>
-    commander TEXT NOT NULL,
+    "commander" TEXT NOT NULL,
         -- <example>'Jake M. Alderden'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <example>' CAPS001District@chicagopolice.org'</example>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'312-745-4290'</example>
-    fax TEXT NOT NULL,
+    "fax" TEXT NOT NULL,
         -- <example>'312-745-3694'</example>
-    tty TEXT NULL,
+    "tty" TEXT NULL,
         -- <example>'312-745-3693'</example>
-    twitter TEXT NOT NULL
+    "twitter" TEXT NOT NULL
         -- <example>' ChicagoCAPS01'</example>
 );
 
 /*
-Schema: NULLTable: FBI_Code
+Schema: NULL
+Table: FBI_Code
 Rows: 26
 Sample rows:
 | fbi_code_no   | title                     | description                                                                                                                                                                                                 | crime_against   |
@@ -131,18 +135,19 @@ Sample rows:
 | ...           | ...                       | ...                                                                                                                                                                                                         | ...             |
 */
 CREATE TABLE FBI_Code (
-    fbi_code_no TEXT NOT NULL PRIMARY KEY,
+    "fbi_code_no" TEXT NOT NULL PRIMARY KEY,
         -- <example>'01A'</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'Homicide 1st & 2nd Degree'</example>
-    description TEXT NOT NULL,
+    "description" TEXT NOT NULL,
         -- <example>'The killing of one human being by another.'</example>
-    crime_against TEXT NOT NULL
+    "crime_against" TEXT NOT NULL
         -- <values>{'Persons and Society', 'Persons', 'Property', 'Society'}</values>
 );
 
 /*
-Schema: NULLTable: IUCR
+Schema: NULL
+Table: IUCR
 Rows: 401
 Sample rows:
 | iucr_no   | primary_description   | secondary_description    | index_code   |
@@ -155,18 +160,19 @@ Sample rows:
 | ...       | ...                   | ...                      | ...          |
 */
 CREATE TABLE IUCR (
-    iucr_no TEXT NOT NULL PRIMARY KEY,
+    "iucr_no" TEXT NOT NULL PRIMARY KEY,
         -- <example>'031A'</example>
-    primary_description TEXT NOT NULL,
+    "primary_description" TEXT NOT NULL,
         -- <example>'HOMICIDE'</example>
-    secondary_description TEXT NOT NULL,
+    "secondary_description" TEXT NOT NULL,
         -- <example>'FIRST DEGREE MURDER'</example>
-    index_code TEXT NOT NULL
+    "index_code" TEXT NOT NULL
         -- <values>{'I', 'N'}</values>
 );
 
 /*
-Schema: NULLTable: Neighborhood
+Schema: NULL
+Table: Neighborhood
 Rows: 246
 Sample rows:
 | neighborhood_name   | community_area_no   |
@@ -179,16 +185,17 @@ Sample rows:
 | ...                 | ...                 |
 */
 CREATE TABLE Neighborhood (
-    neighborhood_name TEXT NOT NULL PRIMARY KEY,
+    "neighborhood_name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'Albany Park'</example>
-    community_area_no INTEGER NOT NULL,
+    "community_area_no" INTEGER NOT NULL,
         -- <example>14</example>
-        -- <fk> -> Community_Area.community_area_no</fk>
-    FOREIGN KEY (community_area_no) REFERENCES Community_Area(community_area_no)
+        -- <fk> -> Community_Area."community_area_no"</fk>
+    FOREIGN KEY ("community_area_no") REFERENCES Community_Area("community_area_no")
 );
 
 /*
-Schema: NULLTable: Ward
+Schema: NULL
+Table: Ward
 Rows: 50
 Sample rows:
 | ward_no   | alderman_first_name   | alderman_last_name   | alderman_name_suffix   | ward_office_address    | ward_office_zip   | ward_email               | ward_office_phone   | ward_office_fax   | city_hall_office_room   | city_hall_office_phone   | city_hall_office_fax   | Population   |
@@ -201,31 +208,31 @@ Sample rows:
 | ...       | ...                   | ...                  | ...                    | ...                    | ...               | ...                      | ...                 | ...               | ...                     | ...                      | ...                    | ...          |
 */
 CREATE TABLE Ward (
-    ward_no INTEGER NOT NULL PRIMARY KEY,
+    "ward_no" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    alderman_first_name TEXT NOT NULL,
+    "alderman_first_name" TEXT NOT NULL,
         -- <example>'Daniel'</example>
-    alderman_last_name TEXT NOT NULL,
+    "alderman_last_name" TEXT NOT NULL,
         -- <example>'La Spata'</example>
-    alderman_name_suffix TEXT NULL,
+    "alderman_name_suffix" TEXT NULL,
         -- <values>{'Jr.'}</values>
-    ward_office_address TEXT NULL,
+    "ward_office_address" TEXT NULL,
         -- <example>'1958 N. Milwaukee Ave.'</example>
-    ward_office_zip TEXT NULL,
+    "ward_office_zip" TEXT NULL,
         -- <example>'60647'</example>
-    ward_email TEXT NULL,
+    "ward_email" TEXT NULL,
         -- <example>'info@the1stward.com'</example>
-    ward_office_phone TEXT NULL,
+    "ward_office_phone" TEXT NULL,
         -- <example>'872.206.2685'</example>
-    ward_office_fax TEXT NULL,
+    "ward_office_fax" TEXT NULL,
         -- <example>'312.448.8829'</example>
-    city_hall_office_room INTEGER NOT NULL,
+    "city_hall_office_room" INTEGER NOT NULL,
         -- <example>200</example>
-    city_hall_office_phone TEXT NULL,
+    "city_hall_office_phone" TEXT NULL,
         -- <example>'312.744.6836'</example>
-    city_hall_office_fax TEXT NULL,
+    "city_hall_office_fax" TEXT NULL,
         -- <example>'312.744.6712'</example>
-    Population INTEGER NOT NULL
+    "Population" INTEGER NOT NULL
         -- <example>56149</example>
 );
 ```

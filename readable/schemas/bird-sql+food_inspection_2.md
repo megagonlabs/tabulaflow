@@ -2,7 +2,8 @@
 -- Database: food_inspection_2
 
 /*
-Schema: NULLTable: employee
+Schema: NULL
+Table: employee
 Rows: 75
 Sample rows:
 | employee_id   | first_name   | last_name   | address               | city    | state   | zip   | phone          | title      | salary   | supervisor   |
@@ -15,34 +16,35 @@ Sample rows:
 | ...           | ...          | ...         | ...                   | ...     | ...     | ...   | ...            | ...        | ...      | ...          |
 */
 CREATE TABLE employee (
-    employee_id INTEGER NOT NULL PRIMARY KEY,
+    "employee_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>103705</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Anastasia'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <example>'Hansen'</example>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'6023 S Elizabeth St'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Chicago', 'Hoffman Estates', 'Park Forest'}</values>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <values>{'IL'}</values>
-    zip INTEGER NOT NULL,
+    "zip" INTEGER NOT NULL,
         -- <example>60636</example>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'(773) 424-8729'</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <values>{'Division Manager', 'Sanitarian', 'Supervisor'}</values>
-    salary INTEGER NOT NULL,
+    "salary" INTEGER NOT NULL,
         -- <example>79300</example>
-    supervisor INTEGER NOT NULL,
+    "supervisor" INTEGER NOT NULL,
         -- <example>177316</example>
-        -- <fk> -> employee.employee_id</fk>
-    FOREIGN KEY (supervisor) REFERENCES employee(employee_id)
+        -- <fk> -> employee."employee_id"</fk>
+    FOREIGN KEY ("supervisor") REFERENCES employee("employee_id")
 );
 
 /*
-Schema: NULLTable: establishment
+Schema: NULL
+Table: establishment
 Rows: 31642
 Sample rows:
 | license_no   | dba_name                               | aka_name   | facility_type   | risk_level   | address            | city    | state   | zip   | latitude         | longitude         | ward   |
@@ -55,34 +57,35 @@ Sample rows:
 | ...          | ...                                    | ...        | ...             | ...          | ...                | ...     | ...     | ...   | ...              | ...               | ...    |
 */
 CREATE TABLE establishment (
-    license_no INTEGER NOT NULL PRIMARY KEY,
+    "license_no" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    dba_name TEXT NOT NULL,
+    "dba_name" TEXT NOT NULL,
         -- <example>'HARVEST CRUSADES MINISTRIES'</example>
-    aka_name TEXT NULL,
+    "aka_name" TEXT NULL,
         -- <example>'COSI'</example>
-    facility_type TEXT NULL,
+    "facility_type" TEXT NULL,
         -- <example>'Special Event'</example>
-    risk_level INTEGER NULL,
+    "risk_level" INTEGER NULL,
         -- <example>2</example>
-    address TEXT NOT NULL,
+    "address" TEXT NOT NULL,
         -- <example>'118 N CENTRAL AVE '</example>
-    city TEXT NULL,
+    "city" TEXT NULL,
         -- <values>{'ALSIP  ', 'BERWYN ', 'BURNHAM', 'CHICAGO', 'CHicago', 'CICERO ', 'Chicago', 'GLENCOE', 'JUSTICE', 'LOMBARD', 'MAYWOOD', 'Maywood', 'SKOKIE ', 'SUMMIT ', 'WORTH  ', 'chicago'}</values>
-    state TEXT NULL,
+    "state" TEXT NULL,
         -- <values>{'IL'}</values>
-    zip INTEGER NULL,
+    "zip" INTEGER NULL,
         -- <example>60644</example>
-    latitude REAL NULL,
+    "latitude" REAL NULL,
         -- <example>41.883</example>
-    longitude REAL NULL,
+    "longitude" REAL NULL,
         -- <example>-87.765</example>
-    ward INTEGER NULL
+    "ward" INTEGER NULL
         -- <example>29</example>
 );
 
 /*
-Schema: NULLTable: inspection
+Schema: NULL
+Table: inspection
 Rows: 143870
 Sample rows:
 | inspection_id   | inspection_date   | inspection_type       | results   | employee_id   | license_no   | followup_to   |
@@ -95,30 +98,31 @@ Sample rows:
 | ...             | ...               | ...                   | ...       | ...           | ...          | ...           |
 */
 CREATE TABLE inspection (
-    inspection_id INTEGER NOT NULL PRIMARY KEY,
+    "inspection_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>44247</example>
-    inspection_date DATE NOT NULL,
+    "inspection_date" DATE NOT NULL,
         -- <example>'2010-01-05'</example>
-    inspection_type TEXT NULL,
+    "inspection_type" TEXT NULL,
         -- <example>'Complaint'</example>
-    results TEXT NOT NULL,
+    "results" TEXT NOT NULL,
         -- <values>{'Business Not Located', 'Fail', 'No Entry', 'Not Ready', 'Out of Business', 'Pass w/ Conditions', 'Pass'}</values>
-    employee_id INTEGER NOT NULL,
+    "employee_id" INTEGER NOT NULL,
         -- <example>141319</example>
-        -- <fk> -> employee.employee_id</fk>
-    license_no INTEGER NOT NULL,
+        -- <fk> -> employee."employee_id"</fk>
+    "license_no" INTEGER NOT NULL,
         -- <example>1222441</example>
-        -- <fk> -> establishment.license_no</fk>
-    followup_to INTEGER NULL,
+        -- <fk> -> establishment."license_no"</fk>
+    "followup_to" INTEGER NULL,
         -- <example>67871</example>
-        -- <fk> -> inspection.inspection_id</fk>
-    FOREIGN KEY (employee_id) REFERENCES employee(employee_id),
-    FOREIGN KEY (license_no) REFERENCES establishment(license_no),
-    FOREIGN KEY (followup_to) REFERENCES inspection(inspection_id)
+        -- <fk> -> inspection."inspection_id"</fk>
+    FOREIGN KEY ("employee_id") REFERENCES employee("employee_id"),
+    FOREIGN KEY ("license_no") REFERENCES establishment("license_no"),
+    FOREIGN KEY ("followup_to") REFERENCES inspection("inspection_id")
 );
 
 /*
-Schema: NULLTable: inspection_point
+Schema: NULL
+Table: inspection_point
 Rows: 46
 Sample rows:
 | point_id   | Description                                                                                              | category        | code               | fine   | point_level   |
@@ -131,22 +135,23 @@ Sample rows:
 | ...        | ...                                                                                                      | ...             | ...                | ...    | ...           |
 */
 CREATE TABLE inspection_point (
-    point_id INTEGER NOT NULL PRIMARY KEY,
+    "point_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Description TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
         -- <example>'Source sound condition, no spoilage, foods properly labeled, shellfish tags in place'</example>
-    category TEXT NOT NULL,
+    "category" TEXT NOT NULL,
         -- <example>'Food Protection'</example>
-    code TEXT NOT NULL,
+    "code" TEXT NOT NULL,
         -- <example>'7-38-005 (B) (B-2)'</example>
-    fine INTEGER NOT NULL,
+    "fine" INTEGER NOT NULL,
         -- <example>500</example>
-    point_level TEXT NOT NULL
+    "point_level" TEXT NOT NULL
         -- <values>{'Critical', 'Minor   ', 'Serious '}</values>
 );
 
 /*
-Schema: NULLTable: violation
+Schema: NULL
+Table: violation
 Rows: 525709
 Sample rows:
 | inspection_id   | point_id   | fine   | inspector_comment                                                                                                                                                                                           |
@@ -159,18 +164,18 @@ Sample rows:
 | ...             | ...        | ...    | ...                                                                                                                                                                                                         |
 */
 CREATE TABLE violation (
-    inspection_id INTEGER NOT NULL,
+    "inspection_id" INTEGER NOT NULL,
         -- <example>44247</example>
-        -- <fk> -> inspection.inspection_id</fk>
-    point_id INTEGER NOT NULL,
+        -- <fk> -> inspection."inspection_id"</fk>
+    "point_id" INTEGER NOT NULL,
         -- <example>30</example>
-        -- <fk> -> inspection_point.point_id</fk>
-    fine INTEGER NOT NULL,
+        -- <fk> -> inspection_point."point_id"</fk>
+    "fine" INTEGER NOT NULL,
         -- <example>100</example>
-    inspector_comment TEXT NULL,
+    "inspector_comment" TEXT NULL,
         -- <example>'All food not stored in the original container shal...AND DATE.  MUST LABEL AND DATE ALL PREPARED FOODS.'</example>
-    PRIMARY KEY (inspection_id, point_id),
-    FOREIGN KEY (inspection_id) REFERENCES inspection(inspection_id),
-    FOREIGN KEY (point_id) REFERENCES inspection_point(point_id)
+    PRIMARY KEY ("inspection_id", "point_id"),
+    FOREIGN KEY ("inspection_id") REFERENCES inspection("inspection_id"),
+    FOREIGN KEY ("point_id") REFERENCES inspection_point("point_id")
 );
 ```

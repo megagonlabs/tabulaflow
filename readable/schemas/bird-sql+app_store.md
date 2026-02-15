@@ -2,7 +2,8 @@
 -- Database: app_store
 
 /*
-Schema: NULLTable: playstore
+Schema: NULL
+Table: playstore
 Rows: 10840
 Sample rows:
 | App                                                | Category       | Rating   | Reviews   | Size   | Installs    | Type   | Price   | Content Rating   | Genres                    |
@@ -15,30 +16,31 @@ Sample rows:
 | ...                                                | ...            | ...      | ...       | ...    | ...         | ...    | ...     | ...              | ...                       |
 */
 CREATE TABLE playstore (
-    App TEXT NOT NULL,
+    "App" TEXT NOT NULL,
         -- <example>'Photo Editor & Candy Camera & Grid & ScrapBook'</example>
-    Category TEXT NOT NULL,
+    "Category" TEXT NOT NULL,
         -- <example>'ART_AND_DESIGN'</example>
-    Rating REAL NULL,
+    "Rating" REAL NULL,
         -- <example>4.100</example>
-    Reviews INTEGER NOT NULL,
+    "Reviews" INTEGER NOT NULL,
         -- <example>159</example>
-    Size TEXT NOT NULL,
+    "Size" TEXT NOT NULL,
         -- <example>'19M'</example>
-    Installs TEXT NOT NULL,
+    "Installs" TEXT NOT NULL,
         -- <example>'10,000+'</example>
-    Type TEXT NOT NULL,
+    "Type" TEXT NOT NULL,
         -- <values>{'Free', 'NaN', 'Paid'}</values>
-    Price TEXT NOT NULL,
+    "Price" TEXT NOT NULL,
         -- <example>'0'</example>
     "Content Rating" TEXT NOT NULL,
         -- <values>{'Adults only 18+', 'Everyone 10+', 'Everyone', 'Mature 17+', 'Teen', 'Unrated'}</values>
-    Genres TEXT NOT NULL
+    "Genres" TEXT NOT NULL
         -- <example>'Art & Design'</example>
 );
 
 /*
-Schema: NULLTable: user_reviews
+Schema: NULL
+Table: user_reviews
 Rows: 64286
 Sample rows:
 | App                   | Translated_Review                                                                                                          | Sentiment   | Sentiment_Polarity   | Sentiment_Subjectivity   |
@@ -51,17 +53,17 @@ Sample rows:
 | ...                   | ...                                                                                                                        | ...         | ...                  | ...                      |
 */
 CREATE TABLE user_reviews (
-    App TEXT NOT NULL,
+    "App" TEXT NOT NULL,
         -- <example>'10 Best Foods for You'</example>
-        -- <fk> -> playstore.App</fk>
-    Translated_Review TEXT NULL,
+        -- <fk> -> playstore."App"</fk>
+    "Translated_Review" TEXT NULL,
         -- <example>'I like eat delicious food. That's I'm cooking food... Foods" helps lot, also "Best Before (Shelf Life)"'</example>
-    Sentiment TEXT NOT NULL,
+    "Sentiment" TEXT NOT NULL,
         -- <values>{'Negative', 'Neutral', 'Positive', 'nan'}</values>
-    Sentiment_Polarity TEXT NOT NULL,
+    "Sentiment_Polarity" TEXT NOT NULL,
         -- <example>'1.0'</example>
-    Sentiment_Subjectivity TEXT NOT NULL,
+    "Sentiment_Subjectivity" TEXT NOT NULL,
         -- <example>'0.5333333333333333'</example>
-    FOREIGN KEY (App) REFERENCES playstore(App)
+    FOREIGN KEY ("App") REFERENCES playstore("App")
 );
 ```

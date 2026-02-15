@@ -2,7 +2,8 @@
 -- Database: AIRLINES
 
 /*
-Schema: airlinesTable: aircrafts_data
+Schema: AIRLINES
+Table: AIRCRAFTS_DATA
 Rows: 9
 All rows:
 | aircraft_code   | model                                                      |   range |
@@ -17,17 +18,18 @@ All rows:
 | CN1             | {"en": "Cessna 208 Caravan", "ru": "Сессна 208 Караван"}   |    1200 |
 | CR2             | {"en": "Bombardier CRJ-200", "ru": "Бомбардье CRJ-200"}    |    2700 |
 */
-CREATE TABLE airlines.aircrafts_data (
-    aircraft_code VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.AIRCRAFTS_DATA (
+    "aircraft_code" VARCHAR NOT NULL,
         -- <values>{'319', '320', '321', '733', '763', '773', 'CN1', 'CR2', 'SU9'}</values>
-    model VARCHAR NOT NULL,
+    "model" VARCHAR NOT NULL,
         -- <values>{'{"en": "Airbus A319-100", "ru": "Аэробус A319-100"}', '{"en": "Airbus A320-200", "ru": "Аэробус A320-200"}', '{"en": "Airbus A321-200", "ru": "Аэробус A321-200"}', '{"en": "Boeing 737-300", "ru": "Боинг 737-300"}', '{"en": "Boeing 767-300", "ru": "Боинг 767-300"}', '{"en": "Boeing 777-300", "ru": "Боинг 777-300"}', '{"en": "Bombardier CRJ-200", "ru": "Бомбардье CRJ-200"}', '{"en": "Cessna 208 Caravan", "ru": "Сессна 208 Караван"}', '{"en": "Sukhoi Superjet-100", "ru": "Сухой Суперджет-100"}'}</values>
-    range DECIMAL NOT NULL
+    "range" DECIMAL NOT NULL
         -- <example>11100</example>
 );
 
 /*
-Schema: airlinesTable: airports_data
+Schema: AIRLINES
+Table: AIRPORTS_DATA
 Rows: 104
 Sample rows:
 | airport_code   | airport_name                                               | city                                                      | coordinates                               | timezone         |
@@ -39,21 +41,22 @@ Sample rows:
 | UUS            | {"en": "Yuzhno-Sakhalinsk Airport", "ru": "Хомутово"}      | {"en": "Yuzhno-Sakhalinsk", "ru": "Южно-Сахалинск"}       | (142.718002319335938,46.8886985778808594) | Asia/Sakhalin    |
 | ...            | ...                                                        | ...                                                       | ...                                       | ...              |
 */
-CREATE TABLE airlines.airports_data (
-    airport_code VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.AIRPORTS_DATA (
+    "airport_code" VARCHAR NOT NULL,
         -- <example>'MJZ'</example>
-    airport_name VARCHAR NOT NULL,
+    "airport_name" VARCHAR NOT NULL,
         -- <example>'{"en": "Stavropol Shpakovskoye Airport", "ru": "Ставрополь"}'</example>
-    city VARCHAR NOT NULL,
+    "city" VARCHAR NOT NULL,
         -- <example>'{"en": "Samara", "ru": "Самара"}'</example>
-    coordinates VARCHAR NOT NULL,
+    "coordinates" VARCHAR NOT NULL,
         -- <example>'(114.03900146484375,62.534698486328125)'</example>
-    timezone VARCHAR NOT NULL
+    "timezone" VARCHAR NOT NULL
         -- <example>'Asia/Sakhalin'</example>
 );
 
 /*
-Schema: airlinesTable: boarding_passes
+Schema: AIRLINES
+Table: BOARDING_PASSES
 Rows: 579686
 Sample rows:
 | ticket_no     | flight_id   | boarding_no   | seat_no   |
@@ -65,19 +68,20 @@ Sample rows:
 | 0005435212357 | 30625       | 5             | 11A       |
 | ...           | ...         | ...           | ...       |
 */
-CREATE TABLE airlines.boarding_passes (
-    ticket_no VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.BOARDING_PASSES (
+    "ticket_no" VARCHAR NOT NULL,
         -- <example>'0005435212381'</example>
-    flight_id DECIMAL NOT NULL,
+    "flight_id" DECIMAL NOT NULL,
         -- <example>30625</example>
-    boarding_no DECIMAL NOT NULL,
+    "boarding_no" DECIMAL NOT NULL,
         -- <example>1</example>
-    seat_no VARCHAR NOT NULL
+    "seat_no" VARCHAR NOT NULL
         -- <example>'11A'</example>
 );
 
 /*
-Schema: airlinesTable: bookings
+Schema: AIRLINES
+Table: BOOKINGS
 Rows: 262788
 Sample rows:
 | book_ref   | book_date              | total_amount   |
@@ -89,17 +93,18 @@ Sample rows:
 | 0002D8     | 2017-08-07 21:40:00+03 | 23600          |
 | ...        | ...                    | ...            |
 */
-CREATE TABLE airlines.bookings (
-    book_ref VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.BOOKINGS (
+    "book_ref" VARCHAR NOT NULL,
         -- <example>'00000F'</example>
-    book_date VARCHAR NOT NULL,
+    "book_date" VARCHAR NOT NULL,
         -- <example>'2017-08-09 02:14:00+03'</example>
-    total_amount DECIMAL NOT NULL
+    "total_amount" DECIMAL NOT NULL
         -- <example>265700</example>
 );
 
 /*
-Schema: airlinesTable: flights
+Schema: AIRLINES
+Table: FLIGHTS
 Rows: 33121
 Sample rows:
 | flight_id   | flight_no   | scheduled_departure    | scheduled_arrival      | departure_airport   | arrival_airport   | status    | aircraft_code   | actual_departure   | actual_arrival   |
@@ -111,31 +116,32 @@ Sample rows:
 | 6938        | PG0461      | 2017-09-04 12:25:00+03 | 2017-09-04 13:20:00+03 | SVO                 | ULV               | Scheduled | SU9             | \N                 | \N               |
 | ...         | ...         | ...                    | ...                    | ...                 | ...               | ...       | ...             | ...                | ...              |
 */
-CREATE TABLE airlines.flights (
-    flight_id DECIMAL NOT NULL,
+CREATE TABLE AIRLINES.FLIGHTS (
+    "flight_id" DECIMAL NOT NULL,
         -- <example>1185</example>
-    flight_no VARCHAR NOT NULL,
+    "flight_no" VARCHAR NOT NULL,
         -- <example>'PG0529'</example>
-    scheduled_departure VARCHAR NOT NULL,
+    "scheduled_departure" VARCHAR NOT NULL,
         -- <example>'2017-09-04 12:25:00+03'</example>
-    scheduled_arrival VARCHAR NOT NULL,
+    "scheduled_arrival" VARCHAR NOT NULL,
         -- <example>'2017-09-12 11:20:00+03'</example>
-    departure_airport VARCHAR NOT NULL,
+    "departure_airport" VARCHAR NOT NULL,
         -- <example>'SVX'</example>
-    arrival_airport VARCHAR NOT NULL,
+    "arrival_airport" VARCHAR NOT NULL,
         -- <example>'BTK'</example>
-    status VARCHAR NOT NULL,
+    "status" VARCHAR NOT NULL,
         -- <values>{'Arrived', 'Cancelled', 'Delayed', 'Departed', 'On Time', 'Scheduled'}</values>
-    aircraft_code VARCHAR NOT NULL,
+    "aircraft_code" VARCHAR NOT NULL,
         -- <values>{'319', '321', '733', '763', '773', 'CN1', 'CR2', 'SU9'}</values>
-    actual_departure VARCHAR NOT NULL,
+    "actual_departure" VARCHAR NOT NULL,
         -- <example>'2017-08-06 09:39:00+03'</example>
-    actual_arrival VARCHAR NOT NULL
+    "actual_arrival" VARCHAR NOT NULL
         -- <example>'2017-08-05 10:34:00+03'</example>
 );
 
 /*
-Schema: airlinesTable: seats
+Schema: AIRLINES
+Table: SEATS
 Rows: 1339
 Sample rows:
 | aircraft_code   | seat_no   | fare_conditions   |
@@ -147,17 +153,18 @@ Sample rows:
 | 319             | 3A        | Business          |
 | ...             | ...       | ...               |
 */
-CREATE TABLE airlines.seats (
-    aircraft_code VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.SEATS (
+    "aircraft_code" VARCHAR NOT NULL,
         -- <values>{'319', '320', '321', '733', '763', '773', 'CN1', 'CR2', 'SU9'}</values>
-    seat_no VARCHAR NOT NULL,
+    "seat_no" VARCHAR NOT NULL,
         -- <example>'2C'</example>
-    fare_conditions VARCHAR NOT NULL
+    "fare_conditions" VARCHAR NOT NULL
         -- <values>{'Business', 'Comfort', 'Economy'}</values>
 );
 
 /*
-Schema: airlinesTable: tickets
+Schema: AIRLINES
+Table: TICKETS
 Rows: 366733
 Sample rows:
 | ticket_no     | book_ref   | passenger_id   |
@@ -169,17 +176,18 @@ Sample rows:
 | 0005432000991 | F313DD     | 6615 976589    |
 | ...           | ...        | ...            |
 */
-CREATE TABLE airlines.tickets (
-    ticket_no VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.TICKETS (
+    "ticket_no" VARCHAR NOT NULL,
         -- <example>'0005432000992'</example>
-    book_ref VARCHAR NOT NULL,
+    "book_ref" VARCHAR NOT NULL,
         -- <example>'4B75D1'</example>
-    passenger_id VARCHAR NOT NULL
+    "passenger_id" VARCHAR NOT NULL
         -- <example>'6615 976589'</example>
 );
 
 /*
-Schema: airlinesTable: ticket_flights
+Schema: AIRLINES
+Table: TICKET_FLIGHTS
 Rows: 1045726
 Sample rows:
 | ticket_no     | flight_id   | fare_conditions   | amount   |
@@ -191,14 +199,14 @@ Sample rows:
 | 0005432211370 | 30625       | Business          | 42100    |
 | ...           | ...         | ...               | ...      |
 */
-CREATE TABLE airlines.ticket_flights (
-    ticket_no VARCHAR NOT NULL,
+CREATE TABLE AIRLINES.TICKET_FLIGHTS (
+    "ticket_no" VARCHAR NOT NULL,
         -- <example>'0005435212381'</example>
-    flight_id DECIMAL NOT NULL,
+    "flight_id" DECIMAL NOT NULL,
         -- <example>30625</example>
-    fare_conditions VARCHAR NOT NULL,
+    "fare_conditions" VARCHAR NOT NULL,
         -- <values>{'Business', 'Comfort', 'Economy'}</values>
-    amount DECIMAL NOT NULL
+    "amount" DECIMAL NOT NULL
         -- <example>42100</example>
 );
 ```

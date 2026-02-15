@@ -2,7 +2,8 @@
 -- Database: simpson_episodes
 
 /*
-Schema: NULLTable: Award
+Schema: NULL
+Table: Award
 Rows: 75
 Sample rows:
 | award_id   | organization          | year   | award_category   | award                                                             | person           | role               | episode_id   | season   | song   | result   |
@@ -15,34 +16,35 @@ Sample rows:
 | ...        | ...                   | ...    | ...              | ...                                                               | ...              | ...                | ...          | ...      | ...    | ...      |
 */
 CREATE TABLE Award (
-    award_id INTEGER NOT NULL PRIMARY KEY,
+    "award_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>325</example>
-    organization TEXT NOT NULL,
+    "organization" TEXT NOT NULL,
         -- <example>'Primetime Emmy Awards'</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>2009</example>
-    award_category TEXT NOT NULL,
+    "award_category" TEXT NOT NULL,
         -- <example>'Primetime Emmy'</example>
-    award TEXT NOT NULL,
+    "award" TEXT NOT NULL,
         -- <example>'Outstanding Voice-Over Performance'</example>
-    person TEXT NULL,
+    "person" TEXT NULL,
         -- <example>'Dan Castellaneta'</example>
-        -- <fk> -> Person.name</fk>
-    role TEXT NULL,
+        -- <fk> -> Person."name"</fk>
+    "role" TEXT NULL,
         -- <example>'executive producer'</example>
-    episode_id TEXT NULL,
+    "episode_id" TEXT NULL,
         -- <example>'S20-E18'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    season TEXT NULL,
-    song TEXT NULL,
-    result TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "season" TEXT NULL,
+    "song" TEXT NULL,
+    "result" TEXT NOT NULL,
         -- <values>{'Nominee', 'Winner'}</values>
-    FOREIGN KEY (person) REFERENCES Person(name),
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+    FOREIGN KEY ("person") REFERENCES Person("name"),
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id")
 );
 
 /*
-Schema: NULLTable: Character_Award
+Schema: NULL
+Table: Character_Award
 Rows: 12
 Sample rows:
 | award_id   | character     |
@@ -55,16 +57,17 @@ Sample rows:
 | ...        | ...           |
 */
 CREATE TABLE Character_Award (
-    award_id INTEGER NOT NULL,
+    "award_id" INTEGER NOT NULL,
         -- <example>325</example>
-        -- <fk> -> Award.award_id</fk>
-    character TEXT NOT NULL,
+        -- <fk> -> Award."award_id"</fk>
+    "character" TEXT NOT NULL,
         -- <values>{'Homer Simpson', 'Kent Brockman', 'Lenny', 'Moe Szyslak', 'Mr. Burns', 'Smithers'}</values>
-    FOREIGN KEY (award_id) REFERENCES Award(award_id)
+    FOREIGN KEY ("award_id") REFERENCES Award("award_id")
 );
 
 /*
-Schema: NULLTable: Credit
+Schema: NULL
+Table: Credit
 Rows: 4557
 Sample rows:
 | episode_id   | category             | person         | role             | credited   |
@@ -77,24 +80,25 @@ Sample rows:
 | ...          | ...                  | ...            | ...              | ...        |
 */
 CREATE TABLE Credit (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <example>'S20-E10'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    category TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "category" TEXT NOT NULL,
         -- <values>{'Animation Department', 'Art Department', 'Cast', 'Casting Department', 'Directed by', 'Editorial Department', 'General', 'Music Department', 'Other crew', 'Produced by', 'Production Management', 'Script and Continuity Department', 'Second Unit Director or Assistant Director', 'Sound Department', 'Thanks', 'Visual Effects by', 'Writing Credits'}</values>
-    person TEXT NOT NULL,
+    "person" TEXT NOT NULL,
         -- <example>'Bonita Pietila'</example>
-        -- <fk> -> Person.name</fk>
-    role TEXT NOT NULL,
+        -- <fk> -> Person."name"</fk>
+    "role" TEXT NOT NULL,
         -- <example>'casting'</example>
-    credited TEXT NOT NULL,
+    "credited" TEXT NOT NULL,
         -- <values>{'false', 'true'}</values>
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id),
-    FOREIGN KEY (person) REFERENCES Person(name)
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id"),
+    FOREIGN KEY ("person") REFERENCES Person("name")
 );
 
 /*
-Schema: NULLTable: Episode
+Schema: NULL
+Table: Episode
 Rows: 21
 Sample rows:
 | episode_id   | season   | episode   | number_in_series   | title                          | summary                                                                                                                                                                   | air_date   | episode_image                                                                                                        | rating   | votes   |
@@ -107,30 +111,31 @@ Sample rows:
 | ...          | ...      | ...       | ...                | ...                            | ...                                                                                                                                                                       | ...        | ...                                                                                                                  | ...      | ...     |
 */
 CREATE TABLE Episode (
-    episode_id TEXT NOT NULL PRIMARY KEY,
+    "episode_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'S20-E1'</example>
-    season INTEGER NOT NULL,
+    "season" INTEGER NOT NULL,
         -- <example>20</example>
-    episode INTEGER NOT NULL,
+    "episode" INTEGER NOT NULL,
         -- <example>1</example>
-    number_in_series INTEGER NOT NULL,
+    "number_in_series" INTEGER NOT NULL,
         -- <example>421</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'Sex, Pies and Idiot Scrapes'</example>
-    summary TEXT NOT NULL,
+    "summary" TEXT NOT NULL,
         -- <example>'Homer and Ned go into business together as bounty ...unters, and Marge takes a job at an erotic bakery.'</example>
-    air_date TEXT NOT NULL,
+    "air_date" TEXT NOT NULL,
         -- <example>'2008-09-28'</example>
-    episode_image TEXT NOT NULL,
+    "episode_image" TEXT NOT NULL,
         -- <example>'https://m.media-amazon.com/images/M/MV5BMTYwMzk2Nj...FtZTgwMzA2MDQ2MjE@._V1_UX224_CR0,0,224,126_AL_.jpg'</example>
-    rating REAL NOT NULL,
+    "rating" REAL NOT NULL,
         -- <example>7.200</example>
-    votes INTEGER NOT NULL
+    "votes" INTEGER NOT NULL
         -- <example>1192</example>
 );
 
 /*
-Schema: NULLTable: Keyword
+Schema: NULL
+Table: Keyword
 Rows: 307
 Sample rows:
 | episode_id   | keyword           |
@@ -143,17 +148,18 @@ Sample rows:
 | ...          | ...               |
 */
 CREATE TABLE Keyword (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <example>'S20-E1'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    keyword TEXT NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "keyword" TEXT NOT NULL,
         -- <example>'1930s to 2020s'</example>
-    PRIMARY KEY (episode_id, keyword),
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+    PRIMARY KEY ("episode_id", "keyword"),
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id")
 );
 
 /*
-Schema: NULLTable: Person
+Schema: NULL
+Table: Person
 Rows: 369
 Sample rows:
 | name             | birthdate   | birth_name              | birth_place   | birth_region   | birth_country   | height_meters   | nickname   |
@@ -166,26 +172,27 @@ Sample rows:
 | ...              | ...         | ...                     | ...           | ...            | ...             | ...             | ...        |
 */
 CREATE TABLE Person (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'Adam Greeley'</example>
-    birthdate TEXT NULL,
+    "birthdate" TEXT NULL,
         -- <example>'1963-05-04'</example>
-    birth_name TEXT NULL,
+    "birth_name" TEXT NULL,
         -- <example>'Marc Edward Wilmore'</example>
-    birth_place TEXT NULL,
+    "birth_place" TEXT NULL,
         -- <example>'USA'</example>
-    birth_region TEXT NULL,
+    "birth_region" TEXT NULL,
         -- <example>'California'</example>
-    birth_country TEXT NULL,
+    "birth_country" TEXT NULL,
         -- <values>{'Canada', 'Czechoslovakia', 'France', 'Iran', 'Ireland', 'North Korea', 'Philippines', 'UK', 'USA'}</values>
-    height_meters REAL NULL,
+    "height_meters" REAL NULL,
         -- <example>1.850</example>
-    nickname TEXT NULL
+    "nickname" TEXT NULL
         -- <example>'Jim'</example>
 );
 
 /*
-Schema: NULLTable: Vote
+Schema: NULL
+Table: Vote
 Rows: 210
 Sample rows:
 | episode_id   | stars   | votes   | percent   |
@@ -198,15 +205,15 @@ Sample rows:
 | ...          | ...     | ...     | ...       |
 */
 CREATE TABLE Vote (
-    episode_id TEXT NOT NULL,
+    "episode_id" TEXT NOT NULL,
         -- <example>'S20-E1'</example>
-        -- <fk> -> Episode.episode_id</fk>
-    stars INTEGER NOT NULL,
+        -- <fk> -> Episode."episode_id"</fk>
+    "stars" INTEGER NOT NULL,
         -- <example>2</example>
-    votes INTEGER NOT NULL,
+    "votes" INTEGER NOT NULL,
         -- <example>16</example>
-    percent REAL NOT NULL,
+    "percent" REAL NOT NULL,
         -- <example>1.300</example>
-    FOREIGN KEY (episode_id) REFERENCES Episode(episode_id)
+    FOREIGN KEY ("episode_id") REFERENCES Episode("episode_id")
 );
 ```

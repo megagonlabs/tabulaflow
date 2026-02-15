@@ -2,7 +2,8 @@
 -- Database: retail_complains
 
 /*
-Schema: NULLTable: callcenterlogs
+Schema: NULL
+Table: callcenterlogs
 Rows: 3999
 Sample rows:
 | Date received   | Complaint ID   | rand client   | phonefinal   | vru+line   | call_id   | priority   | type   | outcome   | server   | ser_start   | ser_exit   | ser_time   |
@@ -21,32 +22,33 @@ CREATE TABLE callcenterlogs (
         -- <example>'CR0000072'</example>
     "rand client" TEXT NULL,
         -- <example>'C00004587'</example>
-        -- <fk> -> client.client_id</fk>
-    phonefinal TEXT NOT NULL,
+        -- <fk> -> client."client_id"</fk>
+    "phonefinal" TEXT NOT NULL,
         -- <example>'977-806-9726'</example>
     "vru+line" TEXT NULL,
         -- <example>'AA0103'</example>
-    call_id INTEGER NULL,
+    "call_id" INTEGER NULL,
         -- <example>34536</example>
-    priority INTEGER NULL,
+    "priority" INTEGER NULL,
         -- <example>0</example>
-    type TEXT NULL,
+    "type" TEXT NULL,
         -- <values>{'IN', 'NE', 'NW', 'PE', 'PS', 'TT'}</values>
-    outcome TEXT NULL,
+    "outcome" TEXT NULL,
         -- <values>{'AGENT', 'HANG', 'PHANTOM'}</values>
-    server TEXT NULL,
+    "server" TEXT NULL,
         -- <example>'MICHAL'</example>
-    ser_start TEXT NOT NULL,
+    "ser_start" TEXT NOT NULL,
         -- <example>'13:34:11'</example>
-    ser_exit TEXT NOT NULL,
+    "ser_exit" TEXT NOT NULL,
         -- <example>'13:40:23'</example>
-    ser_time TEXT NOT NULL,
+    "ser_time" TEXT NOT NULL,
         -- <example>'00:06:12'</example>
-    FOREIGN KEY ("rand client") REFERENCES client(client_id)
+    FOREIGN KEY ("rand client") REFERENCES client("client_id")
 );
 
 /*
-Schema: NULLTable: client
+Schema: NULL
+Table: client
 Rows: 5369
 Sample rows:
 | client_id   | sex    | day   | month   | year   | age   | social      | first   | middle     | last     | phone        | email                      | address_1              | address_2   | city          | state   | zipcode   | district_id   |
@@ -59,48 +61,49 @@ Sample rows:
 | ...         | ...    | ...   | ...     | ...    | ...   | ...         | ...     | ...        | ...      | ...          | ...                        | ...                    | ...         | ...           | ...     | ...       | ...           |
 */
 CREATE TABLE client (
-    client_id TEXT NOT NULL PRIMARY KEY,
+    "client_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'C00000001'</example>
-    sex TEXT NOT NULL,
+    "sex" TEXT NOT NULL,
         -- <values>{'Female', 'Male'}</values>
-    day INTEGER NOT NULL,
+    "day" INTEGER NOT NULL,
         -- <example>13</example>
-    month INTEGER NOT NULL,
+    "month" INTEGER NOT NULL,
         -- <example>12</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>1990</example>
-    age INTEGER NOT NULL,
+    "age" INTEGER NOT NULL,
         -- <example>29</example>
-    social TEXT NOT NULL,
+    "social" TEXT NOT NULL,
         -- <example>'926-93-2157'</example>
-    first TEXT NOT NULL,
+    "first" TEXT NOT NULL,
         -- <example>'Emma'</example>
-    middle TEXT NOT NULL,
+    "middle" TEXT NOT NULL,
         -- <example>'Avaya'</example>
-    last TEXT NOT NULL,
+    "last" TEXT NOT NULL,
         -- <example>'Smith'</example>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'367-171-6840'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <example>'emma.smith@gmail.com'</example>
-    address_1 TEXT NOT NULL,
+    "address_1" TEXT NOT NULL,
         -- <example>'387 Wellington Ave.'</example>
-    address_2 TEXT NULL,
+    "address_2" TEXT NULL,
         -- <example>'Unit 1'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Albuquerque'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <example>'NM'</example>
-    zipcode INTEGER NOT NULL,
+    "zipcode" INTEGER NOT NULL,
         -- <example>47246</example>
-    district_id INTEGER NOT NULL,
+    "district_id" INTEGER NOT NULL,
         -- <example>18</example>
-        -- <fk> -> district.district_id</fk>
-    FOREIGN KEY (district_id) REFERENCES district(district_id)
+        -- <fk> -> district."district_id"</fk>
+    FOREIGN KEY ("district_id") REFERENCES district("district_id")
 );
 
 /*
-Schema: NULLTable: district
+Schema: NULL
+Table: district
 Rows: 77
 Sample rows:
 | district_id   | city          | state_abbrev   | division           |
@@ -113,20 +116,21 @@ Sample rows:
 | ...           | ...           | ...            | ...                |
 */
 CREATE TABLE district (
-    district_id INTEGER NOT NULL PRIMARY KEY,
+    "district_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'New York City'</example>
-    state_abbrev TEXT NOT NULL,
+    "state_abbrev" TEXT NOT NULL,
         -- <example>'NY'</example>
-        -- <fk> -> state.StateCode</fk>
-    division TEXT NOT NULL,
+        -- <fk> -> state."StateCode"</fk>
+    "division" TEXT NOT NULL,
         -- <values>{'East North Central', 'East South Central', 'Middle Atlantic', 'Mountain', 'New England', 'Pacific', 'South Atlantic', 'West North Central', 'West South Central'}</values>
-    FOREIGN KEY (state_abbrev) REFERENCES state(StateCode)
+    FOREIGN KEY ("state_abbrev") REFERENCES state("StateCode")
 );
 
 /*
-Schema: NULLTable: events
+Schema: NULL
+Table: events
 Rows: 23419
 Sample rows:
 | Date received   | Product                 | Sub-product      | Issue                                   | Sub-issue   | Consumer complaint narrative   | Tags   | Consumer consent provided?   | Submitted via   | Date sent to company   | Company response to consumer   | Timely response?   | Consumer disputed?   | Complaint ID   | Client_ID   |
@@ -141,16 +145,16 @@ Sample rows:
 CREATE TABLE events (
     "Date received" DATE NOT NULL,
         -- <example>'2014-07-03'</example>
-    Product TEXT NOT NULL,
+    "Product" TEXT NOT NULL,
         -- <values>{'Bank account or service', 'Credit card'}</values>
     "Sub-product" TEXT NULL,
         -- <values>{'(CD) Certificate of deposit', 'Cashing a check without an account', 'Checking account', 'Other bank product/service', 'Savings account'}</values>
-    Issue TEXT NOT NULL,
+    "Issue" TEXT NOT NULL,
         -- <example>'Deposits and withdrawals'</example>
     "Sub-issue" TEXT NULL,
     "Consumer complaint narrative" TEXT NULL,
         -- <example>'Deposited a XXXX check into my account, BOFA is te...e gas and I am XXXX miles from home in a new state'</example>
-    Tags TEXT NULL,
+    "Tags" TEXT NULL,
         -- <values>{'Older American', 'Older American, Servicemember', 'Servicemember'}</values>
     "Consumer consent provided?" TEXT NULL,
         -- <values>{'Consent not provided', 'Consent provided', 'N/A', 'Other'}</values>
@@ -167,16 +171,17 @@ CREATE TABLE events (
     "Complaint ID" TEXT NOT NULL,
         -- <example>'CR0000072'</example>
         -- <fk> -> callcenterlogs."Complaint ID"</fk>
-    Client_ID TEXT NOT NULL,
+    "Client_ID" TEXT NOT NULL,
         -- <example>'C00003714'</example>
-        -- <fk> -> client.client_id</fk>
-    PRIMARY KEY ("Complaint ID", Client_ID),
+        -- <fk> -> client."client_id"</fk>
+    PRIMARY KEY ("Complaint ID", "Client_ID"),
     FOREIGN KEY ("Complaint ID") REFERENCES callcenterlogs("Complaint ID"),
-    FOREIGN KEY (Client_ID) REFERENCES client(client_id)
+    FOREIGN KEY ("Client_ID") REFERENCES client("client_id")
 );
 
 /*
-Schema: NULLTable: reviews
+Schema: NULL
+Table: reviews
 Rows: 377
 Sample rows:
 | Date       | Stars   | Reviews                                                                                                                                                                                                     | Product                 | district_id   |
@@ -189,22 +194,23 @@ Sample rows:
 | ...        | ...     | ...                                                                                                                                                                                                         | ...                     | ...           |
 */
 CREATE TABLE reviews (
-    Date DATE NOT NULL PRIMARY KEY,
+    "Date" DATE NOT NULL PRIMARY KEY,
         -- <example>'2013-02-04'</example>
-    Stars INTEGER NOT NULL,
+    "Stars" INTEGER NOT NULL,
         -- <example>5</example>
-    Reviews TEXT NULL,
+    "Reviews" TEXT NULL,
         -- <example>'Great job, Eagle National! Each person was profess...through our refinance process smoothly. Thank you!'</example>
-    Product TEXT NOT NULL,
+    "Product" TEXT NOT NULL,
         -- <values>{'Eagle Capital', 'Eagle National Bank', 'Eagle National Mortgage'}</values>
-    district_id INTEGER NOT NULL,
+    "district_id" INTEGER NOT NULL,
         -- <example>65</example>
-        -- <fk> -> district.district_id</fk>
-    FOREIGN KEY (district_id) REFERENCES district(district_id)
+        -- <fk> -> district."district_id"</fk>
+    FOREIGN KEY ("district_id") REFERENCES district("district_id")
 );
 
 /*
-Schema: NULLTable: state
+Schema: NULL
+Table: state
 Rows: 48
 Sample rows:
 | StateCode   | State      | Region   |
@@ -217,11 +223,11 @@ Sample rows:
 | ...         | ...        | ...      |
 */
 CREATE TABLE state (
-    StateCode TEXT NOT NULL PRIMARY KEY,
+    "StateCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AL'</example>
-    State TEXT NOT NULL,
+    "State" TEXT NOT NULL,
         -- <example>'Alabama'</example>
-    Region TEXT NOT NULL
+    "Region" TEXT NOT NULL
         -- <values>{'Midwest', 'Northeast', 'South', 'West'}</values>
 );
 ```

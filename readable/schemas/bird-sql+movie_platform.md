@@ -2,7 +2,8 @@
 -- Database: movie_platform
 
 /*
-Schema: NULLTable: lists
+Schema: NULL
+Table: lists
 Rows: 79565
 Sample rows:
 | user_id   | list_id   | list_title                          | list_movie_number   | list_update_timestamp_utc   | list_creation_timestamp_utc   | list_followers   | list_url                                                  | list_comments   | list_description                                                                                          | list_cover_image_url                                                   | list_first_image_url                                                  | list_second_image_url                                                 | list_third_image_url                                                  |
@@ -19,41 +20,42 @@ Sample rows:
 | ...       | ...       | ...                                 | ...                 | ...                         | ...                           | ...              | ...                                                       | ...             | ...                                                                                                       | ...                                                                    | ...                                                                   | ...                                                                   | ...                                                                   |
 */
 CREATE TABLE lists (
-    user_id INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
         -- <example>88260493</example>
-        -- <fk> -> lists_users.user_id</fk>
-    list_id INTEGER NOT NULL PRIMARY KEY,
+        -- <fk> -> lists_users."user_id"</fk>
+    "list_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    list_title TEXT NOT NULL,
+    "list_title" TEXT NOT NULL,
         -- <example>'Films that made your kid sister cry'</example>
-    list_movie_number INTEGER NOT NULL,
+    "list_movie_number" INTEGER NOT NULL,
         -- <example>5</example>
-    list_update_timestamp_utc TEXT NOT NULL,
+    "list_update_timestamp_utc" TEXT NOT NULL,
         -- <example>'2019-01-24 19:16:18'</example>
-    list_creation_timestamp_utc TEXT NOT NULL,
+    "list_creation_timestamp_utc" TEXT NOT NULL,
         -- <example>'2009-11-11 00:02:21'</example>
-    list_followers INTEGER NOT NULL,
+    "list_followers" INTEGER NOT NULL,
         -- <example>5</example>
-    list_url TEXT NOT NULL,
+    "list_url" TEXT NOT NULL,
         -- <example>'http://mubi.com/lists/films-that-made-your-kid-sister-cry'</example>
-    list_comments INTEGER NOT NULL,
+    "list_comments" INTEGER NOT NULL,
         -- <example>3</example>
-    list_description TEXT NULL,
+    "list_description" TEXT NULL,
         -- <example>'<p>Don’t be such a baby!!</p>
 <p><strong>bold</strong></p>'</example>
-    list_cover_image_url TEXT NULL,
+    "list_cover_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/film/3822/image-w1280.jpg?1445914994'</example>
-    list_first_image_url TEXT NULL,
+    "list_first_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/film/3822/image-w320.jpg?1445914994'</example>
-    list_second_image_url TEXT NULL,
+    "list_second_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/film/506/image-w320.jpg?1543838422'</example>
-    list_third_image_url TEXT NULL,
+    "list_third_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/film/485/image-w320.jpg?1575331204'</example>
-    FOREIGN KEY (user_id) REFERENCES lists_users(user_id)
+    FOREIGN KEY ("user_id") REFERENCES lists_users("user_id")
 );
 
 /*
-Schema: NULLTable: lists_users
+Schema: NULL
+Table: lists_users
 Rows: 80311
 Sample rows:
 | user_id   | list_id   | list_update_date_utc   | list_creation_date_utc   | user_trialist   | user_subscriber   | user_avatar_image_url                                                      | user_cover_image_url   | user_eligible_for_trial   | user_has_payment_method   |
@@ -66,35 +68,36 @@ Sample rows:
 | ...       | ...       | ...                    | ...                      | ...             | ...               | ...                                                                        | ...                    | ...                       | ...                       |
 */
 CREATE TABLE lists_users (
-    user_id INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
         -- <example>2385</example>
-        -- <fk> -> lists.user_id</fk>
-    list_id INTEGER NOT NULL,
+        -- <fk> -> lists."user_id"</fk>
+    "list_id" INTEGER NOT NULL,
         -- <example>192287</example>
-        -- <fk> -> lists.list_id</fk>
-    list_update_date_utc TEXT NOT NULL,
+        -- <fk> -> lists."list_id"</fk>
+    "list_update_date_utc" TEXT NOT NULL,
         -- <example>'2019-11-26'</example>
-    list_creation_date_utc TEXT NOT NULL,
+    "list_creation_date_utc" TEXT NOT NULL,
         -- <example>'2009-12-18'</example>
-    user_trialist INTEGER NOT NULL,
+    "user_trialist" INTEGER NOT NULL,
         -- <example>1</example>
-    user_subscriber INTEGER NOT NULL,
+    "user_subscriber" INTEGER NOT NULL,
         -- <example>1</example>
-    user_avatar_image_url TEXT NOT NULL,
+    "user_avatar_image_url" TEXT NOT NULL,
         -- <example>'https://assets.mubicdn.net/images/avatars/74983/images-w150.jpg?1523895214'</example>
-    user_cover_image_url TEXT NULL,
+    "user_cover_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/cover_images/12788/images-small.jpg?1406887796'</example>
-    user_eligible_for_trial TEXT NOT NULL,
+    "user_eligible_for_trial" TEXT NOT NULL,
         -- <values>{'0', '1'}</values>
-    user_has_payment_method TEXT NOT NULL,
+    "user_has_payment_method" TEXT NOT NULL,
         -- <values>{'0', '1'}</values>
-    PRIMARY KEY (user_id, list_id),
-    FOREIGN KEY (list_id) REFERENCES lists(list_id),
-    FOREIGN KEY (user_id) REFERENCES lists(user_id)
+    PRIMARY KEY ("user_id", "list_id"),
+    FOREIGN KEY ("list_id") REFERENCES lists("list_id"),
+    FOREIGN KEY ("user_id") REFERENCES lists("user_id")
 );
 
 /*
-Schema: NULLTable: movies
+Schema: NULL
+Table: movies
 Rows: 226087
 Sample rows:
 | movie_id   | movie_title                 | movie_release_year   | movie_url                                         | movie_title_language   | movie_popularity   | movie_image_url                                                                  | director_id   | director_name                  | director_url                                                             |
@@ -107,30 +110,31 @@ Sample rows:
 | ...        | ...                         | ...                  | ...                                               | ...                    | ...                | ...                                                                              | ...           | ...                            | ...                                                                      |
 */
 CREATE TABLE movies (
-    movie_id INTEGER NOT NULL PRIMARY KEY,
+    "movie_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    movie_title TEXT NOT NULL,
+    "movie_title" TEXT NOT NULL,
         -- <example>'La Antena'</example>
-    movie_release_year INTEGER NULL,
+    "movie_release_year" INTEGER NULL,
         -- <example>2007</example>
-    movie_url TEXT NOT NULL,
+    "movie_url" TEXT NOT NULL,
         -- <example>'http://mubi.com/films/la-antena'</example>
-    movie_title_language TEXT NOT NULL,
+    "movie_title_language" TEXT NOT NULL,
         -- <values>{'en'}</values>
-    movie_popularity INTEGER NOT NULL,
+    "movie_popularity" INTEGER NOT NULL,
         -- <example>105</example>
-    movie_image_url TEXT NULL,
+    "movie_image_url" TEXT NULL,
         -- <example>'https://images.mubicdn.net/images/film/1/cache-7927-1581389497/image-w1280.jpg'</example>
-    director_id TEXT NOT NULL,
+    "director_id" TEXT NOT NULL,
         -- <example>'131'</example>
-    director_name TEXT NULL,
+    "director_name" TEXT NULL,
         -- <example>'Esteban Sapir'</example>
-    director_url TEXT NOT NULL
+    "director_url" TEXT NOT NULL
         -- <example>'http://mubi.com/cast/esteban-sapir'</example>
 );
 
 /*
-Schema: NULLTable: ratings
+Schema: NULL
+Table: ratings
 Rows: 15517252
 Sample rows:
 | movie_id   | rating_id   | rating_url                                                              | rating_score   | rating_timestamp_utc   | critic                                                                                                                                                                                                      | critic_likes   | critic_comments   | user_id   | user_trialist   | user_subscriber   | user_eligible_for_trial   | user_has_payment_method   |
@@ -143,44 +147,45 @@ Sample rows:
 | ...        | ...         | ...                                                                     | ...            | ...                    | ...                                                                                                                                                                                                         | ...            | ...               | ...       | ...             | ...               | ...                       | ...                       |
 */
 CREATE TABLE ratings (
-    movie_id INTEGER NOT NULL,
+    "movie_id" INTEGER NOT NULL,
         -- <example>1066</example>
-        -- <fk> -> movies.movie_id</fk>
-    rating_id INTEGER NOT NULL,
+        -- <fk> -> movies."movie_id"</fk>
+    "rating_id" INTEGER NOT NULL,
         -- <example>15610495</example>
-        -- <fk> -> ratings.rating_id</fk>
-    rating_url TEXT NOT NULL,
+        -- <fk> -> ratings."rating_id"</fk>
+    "rating_url" TEXT NOT NULL,
         -- <example>'http://mubi.com/films/pavee-lackeen-the-traveller-girl/ratings/15610495'</example>
-    rating_score INTEGER NULL,
+    "rating_score" INTEGER NULL,
         -- <example>3</example>
-    rating_timestamp_utc TEXT NOT NULL,
+    "rating_timestamp_utc" TEXT NOT NULL,
         -- <example>'2017-06-10 12:38:33'</example>
-    critic TEXT NULL,
+    "critic" TEXT NULL,
         -- <example>'I am a bit disappointed by this documentary film I...king. Otherwise it is O.K. and rather interesting.'</example>
-    critic_likes INTEGER NOT NULL,
+    "critic_likes" INTEGER NOT NULL,
         -- <example>0</example>
-    critic_comments INTEGER NOT NULL,
+    "critic_comments" INTEGER NOT NULL,
         -- <example>0</example>
-    user_id INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
         -- <example>41579158</example>
-        -- <fk> -> lists_users.user_id</fk>
-        -- <fk> -> ratings_users.user_id</fk>
-    user_trialist INTEGER NULL,
+        -- <fk> -> lists_users."user_id"</fk>
+        -- <fk> -> ratings_users."user_id"</fk>
+    "user_trialist" INTEGER NULL,
         -- <example>0</example>
-    user_subscriber INTEGER NULL,
+    "user_subscriber" INTEGER NULL,
         -- <example>0</example>
-    user_eligible_for_trial INTEGER NULL,
+    "user_eligible_for_trial" INTEGER NULL,
         -- <example>1</example>
-    user_has_payment_method INTEGER NULL,
+    "user_has_payment_method" INTEGER NULL,
         -- <example>0</example>
-    FOREIGN KEY (movie_id) REFERENCES movies(movie_id),
-    FOREIGN KEY (user_id) REFERENCES lists_users(user_id),
-    FOREIGN KEY (rating_id) REFERENCES ratings(rating_id),
-    FOREIGN KEY (user_id) REFERENCES ratings_users(user_id)
+    FOREIGN KEY ("movie_id") REFERENCES movies("movie_id"),
+    FOREIGN KEY ("user_id") REFERENCES lists_users("user_id"),
+    FOREIGN KEY ("rating_id") REFERENCES ratings("rating_id"),
+    FOREIGN KEY ("user_id") REFERENCES ratings_users("user_id")
 );
 
 /*
-Schema: NULLTable: ratings_users
+Schema: NULL
+Table: ratings_users
 Rows: 4297641
 Sample rows:
 | user_id   | rating_date_utc   | user_trialist   | user_subscriber   | user_avatar_image_url                                                                                      | user_cover_image_url   | user_eligible_for_trial   | user_has_payment_method   |
@@ -193,23 +198,23 @@ Sample rows:
 | ...       | ...               | ...             | ...               | ...                                                                                                        | ...                    | ...                       | ...                       |
 */
 CREATE TABLE ratings_users (
-    user_id INTEGER NOT NULL,
+    "user_id" INTEGER NOT NULL,
         -- <example>41579158</example>
-        -- <fk> -> lists_users.user_id</fk>
-    rating_date_utc TEXT NOT NULL,
+        -- <fk> -> lists_users."user_id"</fk>
+    "rating_date_utc" TEXT NOT NULL,
         -- <example>'2017-06-10'</example>
-    user_trialist INTEGER NULL,
+    "user_trialist" INTEGER NULL,
         -- <example>0</example>
-    user_subscriber INTEGER NULL,
+    "user_subscriber" INTEGER NULL,
         -- <example>0</example>
-    user_avatar_image_url TEXT NULL,
+    "user_avatar_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/avatars/74283/images-w150.jpg?1523895155'</example>
-    user_cover_image_url TEXT NULL,
+    "user_cover_image_url" TEXT NULL,
         -- <example>'https://assets.mubicdn.net/images/cover_images/37844/images-small.png?1444549039'</example>
-    user_eligible_for_trial INTEGER NULL,
+    "user_eligible_for_trial" INTEGER NULL,
         -- <example>1</example>
-    user_has_payment_method INTEGER NULL,
+    "user_has_payment_method" INTEGER NULL,
         -- <example>0</example>
-    FOREIGN KEY (user_id) REFERENCES lists_users(user_id)
+    FOREIGN KEY ("user_id") REFERENCES lists_users("user_id")
 );
 ```

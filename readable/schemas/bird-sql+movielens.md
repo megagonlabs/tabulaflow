@@ -2,7 +2,8 @@
 -- Database: movielens
 
 /*
-Schema: NULLTable: actors
+Schema: NULL
+Table: actors
 Rows: 98690
 Sample rows:
 | actorid   | a_gender   | a_quality   |
@@ -15,16 +16,17 @@ Sample rows:
 | ...       | ...        | ...         |
 */
 CREATE TABLE actors (
-    actorid INTEGER NOT NULL PRIMARY KEY,
+    "actorid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>4</example>
-    a_gender TEXT NOT NULL,
+    "a_gender" TEXT NOT NULL,
         -- <values>{'F', 'M'}</values>
-    a_quality INTEGER NOT NULL
+    "a_quality" INTEGER NOT NULL
         -- <example>4</example>
 );
 
 /*
-Schema: NULLTable: directors
+Schema: NULL
+Table: directors
 Rows: 2201
 Sample rows:
 | directorid   | d_quality   | avg_revenue   |
@@ -37,16 +39,17 @@ Sample rows:
 | ...          | ...         | ...           |
 */
 CREATE TABLE directors (
-    directorid INTEGER NOT NULL PRIMARY KEY,
+    "directorid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>7387</example>
-    d_quality INTEGER NOT NULL,
+    "d_quality" INTEGER NOT NULL,
         -- <example>0</example>
-    avg_revenue INTEGER NOT NULL
+    "avg_revenue" INTEGER NOT NULL
         -- <example>0</example>
 );
 
 /*
-Schema: NULLTable: movies
+Schema: NULL
+Table: movies
 Rows: 3832
 Sample rows:
 | movieid   | year   | isEnglish   | country   | runningtime   |
@@ -59,20 +62,21 @@ Sample rows:
 | ...       | ...    | ...         | ...       | ...           |
 */
 CREATE TABLE movies (
-    movieid INTEGER NOT NULL PRIMARY KEY,
+    "movieid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1672052</example>
-    year INTEGER NOT NULL,
+    "year" INTEGER NOT NULL,
         -- <example>3</example>
-    isEnglish TEXT NOT NULL,
+    "isEnglish" TEXT NOT NULL,
         -- <values>{'F', 'T'}</values>
-    country TEXT NOT NULL,
+    "country" TEXT NOT NULL,
         -- <values>{'France', 'UK', 'USA', 'other'}</values>
-    runningtime INTEGER NOT NULL
+    "runningtime" INTEGER NOT NULL
         -- <example>2</example>
 );
 
 /*
-Schema: NULLTable: movies2actors
+Schema: NULL
+Table: movies2actors
 Rows: 138349
 Sample rows:
 | movieid   | actorid   | cast_num   |
@@ -85,21 +89,22 @@ Sample rows:
 | ...       | ...       | ...        |
 */
 CREATE TABLE movies2actors (
-    movieid INTEGER NOT NULL,
+    "movieid" INTEGER NOT NULL,
         -- <example>1672052</example>
-        -- <fk> -> movies.movieid</fk>
-    actorid INTEGER NOT NULL,
+        -- <fk> -> movies."movieid"</fk>
+    "actorid" INTEGER NOT NULL,
         -- <example>88796</example>
-        -- <fk> -> actors.actorid</fk>
-    cast_num INTEGER NOT NULL,
+        -- <fk> -> actors."actorid"</fk>
+    "cast_num" INTEGER NOT NULL,
         -- <example>0</example>
-    PRIMARY KEY (movieid, actorid),
-    FOREIGN KEY (actorid) REFERENCES actors(actorid),
-    FOREIGN KEY (movieid) REFERENCES movies(movieid)
+    PRIMARY KEY ("movieid", "actorid"),
+    FOREIGN KEY ("actorid") REFERENCES actors("actorid"),
+    FOREIGN KEY ("movieid") REFERENCES movies("movieid")
 );
 
 /*
-Schema: NULLTable: movies2directors
+Schema: NULL
+Table: movies2directors
 Rows: 4141
 Sample rows:
 | movieid   | directorid   | genre   |
@@ -112,21 +117,22 @@ Sample rows:
 | ...       | ...          | ...     |
 */
 CREATE TABLE movies2directors (
-    movieid INTEGER NOT NULL,
+    "movieid" INTEGER NOT NULL,
         -- <example>1672052</example>
-        -- <fk> -> movies.movieid</fk>
-    directorid INTEGER NOT NULL,
+        -- <fk> -> movies."movieid"</fk>
+    "directorid" INTEGER NOT NULL,
         -- <example>22397</example>
-        -- <fk> -> directors.directorid</fk>
-    genre TEXT NOT NULL,
+        -- <fk> -> directors."directorid"</fk>
+    "genre" TEXT NOT NULL,
         -- <values>{'Action', 'Adventure', 'Animation', 'Comedy', 'Crime', 'Documentary', 'Drama', 'Horror', 'Other'}</values>
-    PRIMARY KEY (movieid, directorid),
-    FOREIGN KEY (directorid) REFERENCES directors(directorid),
-    FOREIGN KEY (movieid) REFERENCES movies(movieid)
+    PRIMARY KEY ("movieid", "directorid"),
+    FOREIGN KEY ("directorid") REFERENCES directors("directorid"),
+    FOREIGN KEY ("movieid") REFERENCES movies("movieid")
 );
 
 /*
-Schema: NULLTable: u2base
+Schema: NULL
+Table: u2base
 Rows: 996159
 Sample rows:
 | userid   | movieid   | rating   |
@@ -139,21 +145,22 @@ Sample rows:
 | ...      | ...       | ...      |
 */
 CREATE TABLE u2base (
-    userid INTEGER NOT NULL,
+    "userid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> users.userid</fk>
-    movieid INTEGER NOT NULL,
+        -- <fk> -> users."userid"</fk>
+    "movieid" INTEGER NOT NULL,
         -- <example>1684486</example>
-        -- <fk> -> movies.movieid</fk>
-    rating TEXT NOT NULL,
+        -- <fk> -> movies."movieid"</fk>
+    "rating" TEXT NOT NULL,
         -- <values>{'1', '2', '3', '4', '5'}</values>
-    PRIMARY KEY (userid, movieid),
-    FOREIGN KEY (movieid) REFERENCES movies(movieid),
-    FOREIGN KEY (userid) REFERENCES users(userid)
+    PRIMARY KEY ("userid", "movieid"),
+    FOREIGN KEY ("movieid") REFERENCES movies("movieid"),
+    FOREIGN KEY ("userid") REFERENCES users("userid")
 );
 
 /*
-Schema: NULLTable: users
+Schema: NULL
+Table: users
 Rows: 6039
 Sample rows:
 | userid   | age   | u_gender   | occupation   |
@@ -166,13 +173,13 @@ Sample rows:
 | ...      | ...   | ...        | ...          |
 */
 CREATE TABLE users (
-    userid INTEGER NOT NULL PRIMARY KEY,
+    "userid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    age TEXT NOT NULL,
+    "age" TEXT NOT NULL,
         -- <values>{'1', '18', '25', '35', '45', '50', '56'}</values>
-    u_gender TEXT NOT NULL,
+    "u_gender" TEXT NOT NULL,
         -- <values>{'F', 'M'}</values>
-    occupation TEXT NOT NULL
+    "occupation" TEXT NOT NULL
         -- <values>{'1', '2', '3', '4', '5'}</values>
 );
 ```

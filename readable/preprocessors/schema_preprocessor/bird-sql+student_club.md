@@ -2,7 +2,8 @@
 -- Database: student_club
 
 /*
-Schema: NULLTable: attendance
+Schema: NULL
+Table: attendance
 Rows: 326
 Sample rows:
 | link_to_event     | link_to_member    |
@@ -15,21 +16,22 @@ Sample rows:
 | ...               | ...               |
 */
 CREATE TABLE attendance (
-    link_to_event TEXT NOT NULL,
+    "link_to_event" TEXT NOT NULL,
         -- <description>Event identifier for the attended event.</description>
         -- <example>'rec2N69DMcrqN9PJC'</example>
-        -- <fk> -> event.event_id</fk>
-    link_to_member TEXT NOT NULL,
+        -- <fk> -> event."event_id"</fk>
+    "link_to_member" TEXT NOT NULL,
         -- <description>Attending member identifier — the unique id of the member who attended the event.</description>
         -- <example>'recD078PnS3x2doBe'</example>
-        -- <fk> -> member.member_id</fk>
-    PRIMARY KEY (link_to_event, link_to_member),
-    FOREIGN KEY (link_to_event) REFERENCES event(event_id),
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> member."member_id"</fk>
+    PRIMARY KEY ("link_to_event", "link_to_member"),
+    FOREIGN KEY ("link_to_event") REFERENCES event("event_id"),
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: budget
+Schema: NULL
+Table: budget
 Rows: 52
 Sample rows:
 | budget_id         | category      | spent   | remaining          | amount   | event_status   | link_to_event     |
@@ -42,33 +44,34 @@ Sample rows:
 | ...               | ...           | ...     | ...                | ...      | ...            | ...               |
 */
 CREATE TABLE budget (
-    budget_id TEXT NOT NULL PRIMARY KEY,
+    "budget_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Budget entry identifier — the unique primary-key identifier for a record in the Budget table. Example values include rectLnkwVg4AIgY0R and recN9yY7okNrFps0Y.</description>
         -- <example>'rec0QmEc3cSQFQ6V2'</example>
-    category TEXT NOT NULL,
+    "category" TEXT NOT NULL,
         -- <description>Budget line category indicating the area or purpose the budgeted funds apply to (used to group budget entries by spending purpose).</description>
         -- <values>{'Advertisement', 'Club T-Shirts', 'Food', 'Parking', 'Speaker Gifts'}</values>
-    spent REAL NOT NULL,
+    "spent" REAL NOT NULL,
         -- <description>Amount already spent for this budget line (dollars); typically the sum of related Expense.cost records.</description>
         -- <example>67.810</example>
-    remaining REAL NOT NULL,
+    "remaining" REAL NOT NULL,
         -- <description>Remaining budget for the line item — the amount still available (budgeted minus spent); negative values indicate the budget has been exceeded.</description>
         -- <example>7.190</example>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <description>Budgeted amount for the category and event — the planned dollar allocation (typically equals spent + remaining).</description>
         -- <example>75</example>
-    event_status TEXT NOT NULL,
+    "event_status" TEXT NOT NULL,
         -- <description>Event status for the budget line, indicating whether the linked event is Closed, Open, or Planning; when Closed or Planning the budget's spent and remaining amounts are final and won't change, while Open means spent/remaining may change as new expenses are recorded.</description>
         -- <values>{'Closed', 'Open', 'Planning'}</values>
-    link_to_event TEXT NOT NULL,
+    "link_to_event" TEXT NOT NULL,
         -- <description>Event identifier linking this budget line to its Event record (references event.event_id).</description>
         -- <example>'recI43CzsZ0Q625ma'</example>
-        -- <fk> -> event.event_id</fk>
-    FOREIGN KEY (link_to_event) REFERENCES event(event_id)
+        -- <fk> -> event."event_id"</fk>
+    FOREIGN KEY ("link_to_event") REFERENCES event("event_id")
 );
 
 /*
-Schema: NULLTable: event
+Schema: NULL
+Table: event
 Rows: 42
 Sample rows:
 | event_id          | event_name                 | event_date          | type     | notes                                                         | location                       | status   |
@@ -81,31 +84,32 @@ Sample rows:
 | ...               | ...                        | ...                 | ...      | ...                                                           | ...                            | ...      |
 */
 CREATE TABLE event (
-    event_id TEXT NOT NULL PRIMARY KEY,
+    "event_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Unique event identifier used to link an event to related records (for example, attendance and budget entries).</description>
         -- <example>'rec0Si5cQ4rJRVzd6'</example>
-    event_name TEXT NOT NULL,
+    "event_name" TEXT NOT NULL,
         -- <description>Event name — the human-readable title of the event used for display, listing, and identification (for example, “March Meeting” or “Guest Speaker”).</description>
         -- <example>'March Meeting'</example>
-    event_date TEXT NOT NULL,
+    "event_date" TEXT NOT NULL,
         -- <description>Event date and time — the scheduled or actual timestamp for when the event occurs (e.g., 2020-03-10T12:00:00).</description>
         -- <example>'2020-03-10T12:00:00'</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <description>Event category indicating the kind of event (used to classify and filter events).</description>
         -- <values>{'Budget', 'Community Service', 'Election', 'Game', 'Guest Speaker', 'Meeting', 'Registration', 'Social'}</values>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <description>Notes about the event — a free-text field for additional details, instructions, or context for the event (e.g., 'All active members can vote for new officers between 4pm-8pm.').</description>
         -- <example>'All active members can vote for new officers between 4pm-8pm.'</example>
-    location TEXT NULL,
+    "location" TEXT NULL,
         -- <description>Event location (venue name or street address of where the event is/was scheduled to be held).</description>
         -- <example>'MU 215'</example>
-    status TEXT NOT NULL
+    "status" TEXT NOT NULL
         -- <description>Event lifecycle status indicating the current stage of an event (planned, active/in‑progress, or completed).</description>
         -- <values>{'Closed', 'Open', 'Planning'}</values>
 );
 
 /*
-Schema: NULLTable: expense
+Schema: NULL
+Table: expense
 Rows: 32
 Sample rows:
 | expense_id        | expense_description   | expense_date   | cost   | approved   | link_to_member    | link_to_budget    |
@@ -118,35 +122,36 @@ Sample rows:
 | ...               | ...                   | ...            | ...    | ...        | ...               | ...               |
 */
 CREATE TABLE expense (
-    expense_id TEXT NOT NULL PRIMARY KEY,
+    "expense_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Unique identifier for an expense record in the Expense table (primary key used to reference individual expenses).</description>
         -- <example>'rec017x6R3hQqkLAo'</example>
-    expense_description TEXT NOT NULL,
+    "expense_description" TEXT NOT NULL,
         -- <description>Expense description — free-text label describing the purpose or items purchased for the expense (e.g., 'Post Cards, Posters', 'Pizza', 'Parking').</description>
         -- <example>'Post Cards, Posters'</example>
-    expense_date TEXT NOT NULL,
+    "expense_date" TEXT NOT NULL,
         -- <description>Expense date — the calendar date the expense was incurred (expected format: YYYY-MM-DD).</description>
         -- <example>'2019-08-20'</example>
-    cost REAL NOT NULL,
+    "cost" REAL NOT NULL,
         -- <description>Expense amount (dollars) — the monetary value recorded for the individual expense entry.</description>
         -- <example>122.060</example>
-    approved TEXT NULL,
+    "approved" TEXT NULL,
         -- <description>Expense approval flag indicating whether an expense was approved. Dataset metadata shows only 'true' values, so the column may be effectively constant and not informative.</description>
         -- <values>{'true'}</values>
-    link_to_member TEXT NOT NULL,
+    "link_to_member" TEXT NOT NULL,
         -- <description>Member identifier for the person who incurred or submitted the expense.</description>
         -- <values>{'rec4BLdZHS2Blfp4v', 'recD078PnS3x2doBe', 'recro8T1MPMwRadVH'}</values>
-        -- <fk> -> member.member_id</fk>
-    link_to_budget TEXT NOT NULL,
+        -- <fk> -> member."member_id"</fk>
+    "link_to_budget" TEXT NOT NULL,
         -- <description>Budget record identifier linking this expense to the corresponding budget line for the event and category.</description>
         -- <example>'recvKTAWAFKkVNnXQ'</example>
-        -- <fk> -> budget.budget_id</fk>
-    FOREIGN KEY (link_to_budget) REFERENCES budget(budget_id),
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> budget."budget_id"</fk>
+    FOREIGN KEY ("link_to_budget") REFERENCES budget("budget_id"),
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: income
+Schema: NULL
+Table: income
 Rows: 36
 Sample rows:
 | income_id         | date_received   | amount   | source   | notes   | link_to_member    |
@@ -159,30 +164,31 @@ Sample rows:
 | ...               | ...             | ...      | ...      | ...     | ...               |
 */
 CREATE TABLE income (
-    income_id TEXT NOT NULL PRIMARY KEY,
+    "income_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Income record identifier — an Airtable-style record ID used to uniquely reference an income entry (e.g., recOo362sJrXFv2az).</description>
         -- <example>'rec0s9ZrO15zhzUeE'</example>
-    date_received TEXT NOT NULL,
+    "date_received" TEXT NOT NULL,
         -- <description>Receipt date of funds for the income record (the date the funds were received, formatted as YYYY-MM-DD).</description>
         -- <example>'2019-10-17'</example>
-    amount INTEGER NOT NULL,
+    "amount" INTEGER NOT NULL,
         -- <description>Income amount received for the record (dollars).</description>
         -- <example>50</example>
-    source TEXT NOT NULL,
+    "source" TEXT NOT NULL,
         -- <description>Source of funds for the income record; common values include Dues, Fundraising, School Appropriation, and Sponsorship.</description>
         -- <values>{'Dues', 'Fundraising', 'School Appropration', 'Sponsorship'}</values>
-    notes TEXT NULL,
+    "notes" TEXT NULL,
         -- <description>Free-text notes about an income record, used to capture any additional details or context for the received funds (optional). Examples: “Annual funding from Student Government”, “Ad revenue for flyers used to advertise events”, “Secured donations to help pay for speaker gifts.”</description>
         -- <values>{'Ad revenue for use on flyers used to advertise upcoming events.', 'Annual funding from Student Government.', 'Secured donations to help pay for speaker gifts.'}</values>
-    link_to_member TEXT NULL,
+    "link_to_member" TEXT NULL,
         -- <description>Member reference for the income record — identifies the member who provided or is associated with the funds (foreign key to member.member_id).</description>
         -- <example>'reccW7q1KkhSKZsea'</example>
-        -- <fk> -> member.member_id</fk>
-    FOREIGN KEY (link_to_member) REFERENCES member(member_id)
+        -- <fk> -> member."member_id"</fk>
+    FOREIGN KEY ("link_to_member") REFERENCES member("member_id")
 );
 
 /*
-Schema: NULLTable: major
+Schema: NULL
+Table: major
 Rows: 113
 Sample rows:
 | major_id          | major_name                             | department                                           | college                                     |
@@ -195,22 +201,23 @@ Sample rows:
 | ...               | ...                                    | ...                                                  | ...                                         |
 */
 CREATE TABLE major (
-    major_id TEXT NOT NULL PRIMARY KEY,
+    "major_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Unique identifier for a major, used as the table's primary key and for referencing majors from other tables.</description>
         -- <example>'rec06DF6vZ1CyPKpc'</example>
-    major_name TEXT NOT NULL,
+    "major_name" TEXT NOT NULL,
         -- <description>Major name — the official name of the academic major or program (e.g., "Computer Engineering", "Environmental and Natural Resource Economics").</description>
         -- <example>'Outdoor Product Design and Development'</example>
-    department TEXT NOT NULL,
+    "department" TEXT NOT NULL,
         -- <description>Academic department that offers the major.</description>
         -- <example>'School of Applied Sciences, Technology and Education'</example>
-    college TEXT NOT NULL
+    "college" TEXT NOT NULL
         -- <description>College that houses the department offering the major, i.e., the academic college affiliation for the major.</description>
         -- <values>{'College of Agriculture and Applied Sciences', 'College of Education & Human Services', 'College of Engineering', 'College of Humanities and Social Sciences', 'College of Natural Resources', 'College of Science', 'College of the Arts', 'School of Business'}</values>
 );
 
 /*
-Schema: NULLTable: member
+Schema: NULL
+Table: member
 Rows: 33
 Sample rows:
 | member_id         | first_name   | last_name   | email                  | position   | t_shirt_size   | phone          | zip   | link_to_major     |
@@ -223,41 +230,42 @@ Sample rows:
 | ...               | ...          | ...         | ...                    | ...        | ...            | ...            | ...   | ...               |
 */
 CREATE TABLE member (
-    member_id TEXT NOT NULL PRIMARY KEY,
+    "member_id" TEXT NOT NULL PRIMARY KEY,
         -- <description>Member identifier — a unique text ID assigned to each member, used to reference that member in related tables (e.g., attendance, expense, income).</description>
         -- <example>'rec1x5zBFIqoOuPW8'</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <description>Member's first name — the member's given name used for display and contact purposes.</description>
         -- <example>'Angela'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <description>Member last name (surname); the family name used with first_name to form the member's full name (e.g., Hilton, Mason, Mccray).</description>
         -- <example>'Sanders'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <description>Member email address — the primary contact email for the club member.</description>
         -- <example>'angela.sanders@lpu.edu'</example>
-    position TEXT NOT NULL,
+    "position" TEXT NOT NULL,
         -- <description>Member role — the office or membership status held within the club (e.g., officer, regular member, inactive).</description>
         -- <values>{'Inactive', 'Member', 'President', 'Secretary', 'Treasurer', 'Vice President'}</values>
-    t_shirt_size TEXT NOT NULL,
+    "t_shirt_size" TEXT NOT NULL,
         -- <description>Preferred T-shirt size for the member, recorded for ordering shirts and other apparel.</description>
         -- <values>{'Large', 'Medium', 'Small', 'X-Large'}</values>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <description>Member contact phone number — the primary telephone number used to reach the member; formatting may vary (e.g., 475-555-3802, (651) 928-4507).</description>
         -- <example>'(651) 928-4507'</example>
-    zip INTEGER NOT NULL,
+    "zip" INTEGER NOT NULL,
         -- <description>Member home ZIP code (links to zip_code.zip_code).</description>
         -- <example>55108</example>
-        -- <fk> -> zip_code.zip_code</fk>
-    link_to_major TEXT NULL,
+        -- <fk> -> zip_code."zip_code"</fk>
+    "link_to_major" TEXT NULL,
         -- <description>Member major reference (identifier of the member's academic major).</description>
         -- <example>'recxK3MHQFbR9J5uO'</example>
-        -- <fk> -> major.major_id</fk>
-    FOREIGN KEY (link_to_major) REFERENCES major(major_id),
-    FOREIGN KEY (zip) REFERENCES zip_code(zip_code)
+        -- <fk> -> major."major_id"</fk>
+    FOREIGN KEY ("link_to_major") REFERENCES major("major_id"),
+    FOREIGN KEY ("zip") REFERENCES zip_code("zip_code")
 );
 
 /*
-Schema: NULLTable: zip_code
+Schema: NULL
+Table: zip_code
 Rows: 41877
 Sample rows:
 | zip_code   | type     | city       | county              | state       | short_state   |
@@ -270,22 +278,22 @@ Sample rows:
 | ...        | ...      | ...        | ...                 | ...         | ...           |
 */
 CREATE TABLE zip_code (
-    zip_code INTEGER NOT NULL PRIMARY KEY,
+    "zip_code" INTEGER NOT NULL PRIMARY KEY,
         -- <description>U.S. ZIP code — the five-digit postal code that identifies the post office serving the location.</description>
         -- <example>501</example>
-    type TEXT NOT NULL,
+    "type" TEXT NOT NULL,
         -- <description>ZIP code classification indicating whether the ZIP is assigned to a single organization, covers a standard geographic delivery area, or represents a PO Box–only code.</description>
         -- <values>{'PO Box', 'Standard', 'Unique'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <description>City associated with the ZIP code — the primary municipality for that ZIP.</description>
         -- <example>'Holtsville'</example>
-    county TEXT NULL,
+    "county" TEXT NULL,
         -- <description>County of the ZIP code (e.g., Huron County, Osage County).</description>
         -- <example>'Suffolk County'</example>
-    state TEXT NOT NULL,
+    "state" TEXT NOT NULL,
         -- <description>State name for the ZIP code's location.</description>
         -- <example>'New York'</example>
-    short_state TEXT NOT NULL
+    "short_state" TEXT NOT NULL
         -- <description>U.S. state postal abbreviation — the two-letter USPS code for the state associated with the ZIP code (e.g., NY, CA).</description>
         -- <example>'NY'</example>
 );

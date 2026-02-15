@@ -2,7 +2,8 @@
 -- Database: student_loan
 
 /*
-Schema: NULLTable: bool
+Schema: NULL
+Table: bool
 Rows: 2
 All rows:
 | name   |
@@ -11,12 +12,13 @@ All rows:
 | pos    |
 */
 CREATE TABLE bool (
-    name TEXT NOT NULL PRIMARY KEY
+    "name" TEXT NOT NULL PRIMARY KEY
         -- <values>{'neg', 'pos'}</values>
 );
 
 /*
-Schema: NULLTable: disabled
+Schema: NULL
+Table: disabled
 Rows: 95
 Sample rows:
 | name       |
@@ -29,14 +31,15 @@ Sample rows:
 | ...        |
 */
 CREATE TABLE disabled (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student114'</example>
-        -- <fk> -> person.name</fk>
-    FOREIGN KEY (name) REFERENCES person(name)
+        -- <fk> -> person."name"</fk>
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: enlist
+Schema: NULL
+Table: enlist
 Rows: 306
 Sample rows:
 | name       | organ           |
@@ -49,16 +52,17 @@ Sample rows:
 | ...        | ...             |
 */
 CREATE TABLE enlist (
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'student40'</example>
-        -- <fk> -> person.name</fk>
-    organ TEXT NOT NULL,
+        -- <fk> -> person."name"</fk>
+    "organ" TEXT NOT NULL,
         -- <values>{'air_force', 'army', 'fire_department', 'foreign_legion', 'marines', 'navy', 'peace_corps'}</values>
-    FOREIGN KEY (name) REFERENCES person(name)
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: enrolled
+Schema: NULL
+Table: enrolled
 Rows: 1194
 Sample rows:
 | name       | school   | month   |
@@ -71,19 +75,20 @@ Sample rows:
 | ...        | ...      | ...     |
 */
 CREATE TABLE enrolled (
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'student1'</example>
-        -- <fk> -> person.name</fk>
-    school TEXT NOT NULL,
+        -- <fk> -> person."name"</fk>
+    "school" TEXT NOT NULL,
         -- <values>{'occ', 'smc', 'ucb', 'uci', 'ucla', 'ucsd'}</values>
-    month INTEGER NOT NULL,
+    "month" INTEGER NOT NULL,
         -- <example>1</example>
-    PRIMARY KEY (name, school),
-    FOREIGN KEY (name) REFERENCES person(name)
+    PRIMARY KEY ("name", "school"),
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: filed_for_bankrupcy
+Schema: NULL
+Table: filed_for_bankrupcy
 Rows: 96
 Sample rows:
 | name       |
@@ -96,14 +101,15 @@ Sample rows:
 | ...        |
 */
 CREATE TABLE filed_for_bankrupcy (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student122'</example>
-        -- <fk> -> person.name</fk>
-    FOREIGN KEY (name) REFERENCES person(name)
+        -- <fk> -> person."name"</fk>
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: longest_absense_from_school
+Schema: NULL
+Table: longest_absense_from_school
 Rows: 1000
 Sample rows:
 | name       | month   |
@@ -116,16 +122,17 @@ Sample rows:
 | ...        | ...     |
 */
 CREATE TABLE longest_absense_from_school (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student1'</example>
-        -- <fk> -> person.name</fk>
-    month INTEGER NOT NULL,
+        -- <fk> -> person."name"</fk>
+    "month" INTEGER NOT NULL,
         -- <example>0</example>
-    FOREIGN KEY (name) REFERENCES person(name)
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: male
+Schema: NULL
+Table: male
 Rows: 497
 Sample rows:
 | name       |
@@ -138,14 +145,15 @@ Sample rows:
 | ...        |
 */
 CREATE TABLE male (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student1'</example>
-        -- <fk> -> person.name</fk>
-    FOREIGN KEY (name) REFERENCES person(name)
+        -- <fk> -> person."name"</fk>
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 
 /*
-Schema: NULLTable: no_payment_due
+Schema: NULL
+Table: no_payment_due
 Rows: 1000
 Sample rows:
 | name       | bool   |
@@ -158,18 +166,19 @@ Sample rows:
 | ...        | ...    |
 */
 CREATE TABLE no_payment_due (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student1'</example>
-        -- <fk> -> person.name</fk>
-    bool TEXT NOT NULL,
+        -- <fk> -> person."name"</fk>
+    "bool" TEXT NOT NULL,
         -- <values>{'neg', 'pos'}</values>
-        -- <fk> -> bool.name</fk>
-    FOREIGN KEY (name) REFERENCES person(name),
-    FOREIGN KEY (bool) REFERENCES bool(name)
+        -- <fk> -> bool."name"</fk>
+    FOREIGN KEY ("name") REFERENCES person("name"),
+    FOREIGN KEY ("bool") REFERENCES bool("name")
 );
 
 /*
-Schema: NULLTable: person
+Schema: NULL
+Table: person
 Rows: 1000
 Sample rows:
 | name        |
@@ -182,12 +191,13 @@ Sample rows:
 | ...         |
 */
 CREATE TABLE person (
-    name TEXT NOT NULL PRIMARY KEY
+    "name" TEXT NOT NULL PRIMARY KEY
         -- <example>'student1'</example>
 );
 
 /*
-Schema: NULLTable: unemployed
+Schema: NULL
+Table: unemployed
 Rows: 98
 Sample rows:
 | name        |
@@ -200,9 +210,9 @@ Sample rows:
 | ...         |
 */
 CREATE TABLE unemployed (
-    name TEXT NOT NULL PRIMARY KEY,
+    "name" TEXT NOT NULL PRIMARY KEY,
         -- <example>'student1000'</example>
-        -- <fk> -> person.name</fk>
-    FOREIGN KEY (name) REFERENCES person(name)
+        -- <fk> -> person."name"</fk>
+    FOREIGN KEY ("name") REFERENCES person("name")
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: world
 
 /*
-Schema: NULLTable: City
+Schema: NULL
+Table: City
 Rows: 4079
 Sample rows:
 | ID   | Name           | CountryCode   | District      | Population   |
@@ -15,22 +16,23 @@ Sample rows:
 | ...  | ...            | ...           | ...           | ...          |
 */
 CREATE TABLE City (
-    ID INTEGER NOT NULL PRIMARY KEY,
+    "ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Kabul'</example>
-    CountryCode TEXT NOT NULL,
+    "CountryCode" TEXT NOT NULL,
         -- <example>'AFG'</example>
-        -- <fk> -> Country.Code</fk>
-    District TEXT NOT NULL,
+        -- <fk> -> Country."Code"</fk>
+    "District" TEXT NOT NULL,
         -- <example>'Kabol'</example>
-    Population INTEGER NOT NULL,
+    "Population" INTEGER NOT NULL,
         -- <example>1780000</example>
-    FOREIGN KEY (CountryCode) REFERENCES Country(Code)
+    FOREIGN KEY ("CountryCode") REFERENCES Country("Code")
 );
 
 /*
-Schema: NULLTable: Country
+Schema: NULL
+Table: Country
 Rows: 239
 Sample rows:
 | Code   | Name        | Continent     | Region                    | SurfaceArea   | IndepYear   | Population   | LifeExpectancy   | GNP    | GNPOld   | LocalName             | GovernmentForm                               | HeadOfState             | Capital   | Code2   |
@@ -43,40 +45,41 @@ Sample rows:
 | ...    | ...         | ...           | ...                       | ...           | ...         | ...          | ...              | ...    | ...      | ...                   | ...                                          | ...                     | ...       | ...     |
 */
 CREATE TABLE Country (
-    Code TEXT NOT NULL PRIMARY KEY,
+    "Code" TEXT NOT NULL PRIMARY KEY,
         -- <example>'ABW'</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Aruba'</example>
-    Continent TEXT NOT NULL,
+    "Continent" TEXT NOT NULL,
         -- <values>{'Africa', 'Antarctica', 'Asia', 'Europe', 'North America', 'Oceania', 'South America'}</values>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <example>'Caribbean'</example>
-    SurfaceArea REAL NOT NULL,
+    "SurfaceArea" REAL NOT NULL,
         -- <example>193.000</example>
-    IndepYear INTEGER NULL,
+    "IndepYear" INTEGER NULL,
         -- <example>1919</example>
-    Population INTEGER NOT NULL,
+    "Population" INTEGER NOT NULL,
         -- <example>103000</example>
-    LifeExpectancy REAL NULL,
+    "LifeExpectancy" REAL NULL,
         -- <example>78.400</example>
-    GNP REAL NOT NULL,
+    "GNP" REAL NOT NULL,
         -- <example>828.000</example>
-    GNPOld REAL NULL,
+    "GNPOld" REAL NULL,
         -- <example>793.000</example>
-    LocalName TEXT NOT NULL,
+    "LocalName" TEXT NOT NULL,
         -- <example>'Aruba'</example>
-    GovernmentForm TEXT NOT NULL,
+    "GovernmentForm" TEXT NOT NULL,
         -- <example>'Nonmetropolitan Territory of The Netherlands'</example>
-    HeadOfState TEXT NULL,
+    "HeadOfState" TEXT NULL,
         -- <example>'Beatrix'</example>
-    Capital INTEGER NULL,
+    "Capital" INTEGER NULL,
         -- <example>129</example>
-    Code2 TEXT NOT NULL
+    "Code2" TEXT NOT NULL
         -- <example>'AW'</example>
 );
 
 /*
-Schema: NULLTable: CountryLanguage
+Schema: NULL
+Table: CountryLanguage
 Rows: 984
 Sample rows:
 | CountryCode   | Language   | IsOfficial   | Percentage   |
@@ -89,16 +92,16 @@ Sample rows:
 | ...           | ...        | ...          | ...          |
 */
 CREATE TABLE CountryLanguage (
-    CountryCode TEXT NOT NULL,
+    "CountryCode" TEXT NOT NULL,
         -- <example>'ABW'</example>
-        -- <fk> -> Country.Code</fk>
-    Language TEXT NOT NULL,
+        -- <fk> -> Country."Code"</fk>
+    "Language" TEXT NOT NULL,
         -- <example>'Dutch'</example>
-    IsOfficial TEXT NOT NULL,
+    "IsOfficial" TEXT NOT NULL,
         -- <values>{'F', 'T'}</values>
-    Percentage REAL NOT NULL,
+    "Percentage" REAL NOT NULL,
         -- <example>5.300</example>
-    PRIMARY KEY (CountryCode, Language),
-    FOREIGN KEY (CountryCode) REFERENCES Country(Code)
+    PRIMARY KEY ("CountryCode", "Language"),
+    FOREIGN KEY ("CountryCode") REFERENCES Country("Code")
 );
 ```

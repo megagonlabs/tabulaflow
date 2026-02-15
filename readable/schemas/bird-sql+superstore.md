@@ -2,7 +2,8 @@
 -- Database: superstore
 
 /*
-Schema: NULLTable: central_superstore
+Schema: NULL
+Table: central_superstore
 Rows: 4646
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -28,27 +29,28 @@ CREATE TABLE central_superstore (
     "Customer ID" TEXT NOT NULL,
         -- <example>'DP-13000'</example>
         -- <fk>composite</fk>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'Central'}</values>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
     "Product ID" TEXT NOT NULL,
         -- <example>'OFF-PA-10000174'</example>
         -- <fk>composite</fk>
-    Sales REAL NOT NULL,
+    "Sales" REAL NOT NULL,
         -- <example>16.448</example>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>2</example>
-    Discount REAL NOT NULL,
+    "Discount" REAL NOT NULL,
         -- <example>0.200</example>
-    Profit REAL NOT NULL,
+    "Profit" REAL NOT NULL,
         -- <example>5.551</example>
-    FOREIGN KEY ("Customer ID", Region) REFERENCES people("Customer ID", Region),
-    FOREIGN KEY ("Product ID", Region) REFERENCES product("Product ID", Region)
+    FOREIGN KEY ("Customer ID", "Region") REFERENCES people("Customer ID", "Region"),
+    FOREIGN KEY ("Product ID", "Region") REFERENCES product("Product ID", "Region")
 );
 
 /*
-Schema: NULLTable: east_superstore
+Schema: NULL
+Table: east_superstore
 Rows: 5696
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -74,27 +76,28 @@ CREATE TABLE east_superstore (
     "Customer ID" TEXT NOT NULL,
         -- <example>'MB-18085'</example>
         -- <fk>composite</fk>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'East'}</values>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
     "Product ID" TEXT NOT NULL,
         -- <example>'OFF-AR-10003478'</example>
         -- <fk>composite</fk>
-    Sales REAL NOT NULL,
+    "Sales" REAL NOT NULL,
         -- <example>19.536</example>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>3</example>
-    Discount REAL NOT NULL,
+    "Discount" REAL NOT NULL,
         -- <example>0.200</example>
-    Profit REAL NOT NULL,
+    "Profit" REAL NOT NULL,
         -- <example>4.884</example>
-    FOREIGN KEY ("Customer ID", Region) REFERENCES people("Customer ID", Region),
-    FOREIGN KEY ("Product ID", Region) REFERENCES product("Product ID", Region)
+    FOREIGN KEY ("Customer ID", "Region") REFERENCES people("Customer ID", "Region"),
+    FOREIGN KEY ("Product ID", "Region") REFERENCES product("Product ID", "Region")
 );
 
 /*
-Schema: NULLTable: people
+Schema: NULL
+Table: people
 Rows: 2501
 Sample rows:
 | Customer ID   | Customer Name   | Segment   | Country       | City          | State    | Postal Code   | Region   |
@@ -111,23 +114,24 @@ CREATE TABLE people (
         -- <example>'AA-10315'</example>
     "Customer Name" TEXT NOT NULL,
         -- <example>'Alex Avila'</example>
-    Segment TEXT NOT NULL,
+    "Segment" TEXT NOT NULL,
         -- <values>{'Consumer', 'Corporate', 'Home Office'}</values>
-    Country TEXT NOT NULL,
+    "Country" TEXT NOT NULL,
         -- <values>{'United States'}</values>
-    City TEXT NOT NULL,
+    "City" TEXT NOT NULL,
         -- <example>'Round Rock'</example>
-    State TEXT NOT NULL,
+    "State" TEXT NOT NULL,
         -- <example>'Texas'</example>
     "Postal Code" INTEGER NOT NULL,
         -- <example>78664</example>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'Central', 'East', 'South', 'West'}</values>
-    PRIMARY KEY ("Customer ID", Region)
+    PRIMARY KEY ("Customer ID", "Region")
 );
 
 /*
-Schema: NULLTable: product
+Schema: NULL
+Table: product
 Rows: 5298
 Sample rows:
 | Product ID      | Product Name                                                   | Category   | Sub-Category   | Region   |
@@ -144,17 +148,18 @@ CREATE TABLE product (
         -- <example>'FUR-BO-10000112'</example>
     "Product Name" TEXT NOT NULL,
         -- <example>'Sauder Camden County Barrister Bookcase, Planked Cherry Finish'</example>
-    Category TEXT NOT NULL,
+    "Category" TEXT NOT NULL,
         -- <values>{'Furniture', 'Office Supplies', 'Technology'}</values>
     "Sub-Category" TEXT NOT NULL,
         -- <values>{'Accessories', 'Appliances', 'Art', 'Binders', 'Bookcases', 'Chairs', 'Copiers', 'Envelopes', 'Fasteners', 'Furnishings', 'Labels', 'Machines', 'Paper', 'Phones', 'Storage', 'Supplies', 'Tables'}</values>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'Central', 'East', 'South', 'West'}</values>
-    PRIMARY KEY ("Product ID", Region)
+    PRIMARY KEY ("Product ID", "Region")
 );
 
 /*
-Schema: NULLTable: south_superstore
+Schema: NULL
+Table: south_superstore
 Rows: 3240
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -180,27 +185,28 @@ CREATE TABLE south_superstore (
     "Customer ID" TEXT NOT NULL,
         -- <example>'JO-15145'</example>
         -- <fk>composite</fk>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'South'}</values>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
     "Product ID" TEXT NOT NULL,
         -- <example>'OFF-AR-10002399'</example>
         -- <fk>composite</fk>
-    Sales REAL NOT NULL,
+    "Sales" REAL NOT NULL,
         -- <example>12.780</example>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>3</example>
-    Discount REAL NOT NULL,
+    "Discount" REAL NOT NULL,
         -- <example>0.000</example>
-    Profit REAL NOT NULL,
+    "Profit" REAL NOT NULL,
         -- <example>5.240</example>
-    FOREIGN KEY ("Customer ID", Region) REFERENCES people("Customer ID", Region),
-    FOREIGN KEY ("Product ID", Region) REFERENCES product("Product ID", Region)
+    FOREIGN KEY ("Customer ID", "Region") REFERENCES people("Customer ID", "Region"),
+    FOREIGN KEY ("Product ID", "Region") REFERENCES product("Product ID", "Region")
 );
 
 /*
-Schema: NULLTable: west_superstore
+Schema: NULL
+Table: west_superstore
 Rows: 6406
 Sample rows:
 | Row ID   | Order ID       | Order Date   | Ship Date   | Ship Mode      | Customer ID   | Region   | Product ID      | Sales   | Quantity   | Discount   | Profit   |
@@ -226,22 +232,22 @@ CREATE TABLE west_superstore (
     "Customer ID" TEXT NOT NULL,
         -- <example>'LS-17230'</example>
         -- <fk>composite</fk>
-    Region TEXT NOT NULL,
+    "Region" TEXT NOT NULL,
         -- <values>{'West'}</values>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
     "Product ID" TEXT NOT NULL,
         -- <example>'OFF-PA-10002005'</example>
         -- <fk>composite</fk>
-    Sales REAL NOT NULL,
+    "Sales" REAL NOT NULL,
         -- <example>19.440</example>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>3</example>
-    Discount REAL NOT NULL,
+    "Discount" REAL NOT NULL,
         -- <example>0.000</example>
-    Profit REAL NOT NULL,
+    "Profit" REAL NOT NULL,
         -- <example>9.331</example>
-    FOREIGN KEY ("Customer ID", Region) REFERENCES people("Customer ID", Region),
-    FOREIGN KEY ("Product ID", Region) REFERENCES product("Product ID", Region)
+    FOREIGN KEY ("Customer ID", "Region") REFERENCES people("Customer ID", "Region"),
+    FOREIGN KEY ("Product ID", "Region") REFERENCES product("Product ID", "Region")
 );
 ```

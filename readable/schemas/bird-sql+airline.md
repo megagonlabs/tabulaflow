@@ -2,7 +2,8 @@
 -- Database: airline
 
 /*
-Schema: NULLTable: "Air Carriers"
+Schema: NULL
+Table: "Air Carriers"
 Rows: 1656
 Sample rows:
 | Code   | Description                     |
@@ -15,14 +16,15 @@ Sample rows:
 | ...    | ...                             |
 */
 CREATE TABLE "Air Carriers" (
-    Code INTEGER NOT NULL PRIMARY KEY,
+    "Code" INTEGER NOT NULL PRIMARY KEY,
         -- <example>19031</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <example>'Mackey International Inc.: MAC'</example>
 );
 
 /*
-Schema: NULLTable: Airlines
+Schema: NULL
+Table: Airlines
 Rows: 701352
 Sample rows:
 | FL_DATE   | OP_CARRIER_AIRLINE_ID   | TAIL_NUM   | OP_CARRIER_FL_NUM   | ORIGIN_AIRPORT_ID   | ORIGIN_AIRPORT_SEQ_ID   | ORIGIN_CITY_MARKET_ID   | ORIGIN   | DEST_AIRPORT_ID   | DEST_AIRPORT_SEQ_ID   | DEST_CITY_MARKET_ID   | DEST   | CRS_DEP_TIME   | DEP_TIME   | DEP_DELAY   | DEP_DELAY_NEW   | ARR_TIME   | ARR_DELAY   | ARR_DELAY_NEW   | CANCELLED   | CANCELLATION_CODE   | CRS_ELAPSED_TIME   | ACTUAL_ELAPSED_TIME   | CARRIER_DELAY   | WEATHER_DELAY   | NAS_DELAY   | SECURITY_DELAY   | LATE_AIRCRAFT_DELAY   |
@@ -35,72 +37,73 @@ Sample rows:
 | ...       | ...                     | ...        | ...                 | ...                 | ...                     | ...                     | ...      | ...               | ...                   | ...                   | ...    | ...            | ...        | ...         | ...             | ...        | ...         | ...             | ...         | ...                 | ...                | ...                   | ...             | ...             | ...         | ...              | ...                   |
 */
 CREATE TABLE Airlines (
-    FL_DATE TEXT NOT NULL,
+    "FL_DATE" TEXT NOT NULL,
         -- <example>'2018/8/1'</example>
-    OP_CARRIER_AIRLINE_ID INTEGER NOT NULL,
+    "OP_CARRIER_AIRLINE_ID" INTEGER NOT NULL,
         -- <example>19805</example>
-        -- <fk> -> "Air Carriers".Code</fk>
-    TAIL_NUM TEXT NULL,
+        -- <fk> -> "Air Carriers"."Code"</fk>
+    "TAIL_NUM" TEXT NULL,
         -- <example>'N956AN'</example>
-    OP_CARRIER_FL_NUM INTEGER NOT NULL,
+    "OP_CARRIER_FL_NUM" INTEGER NOT NULL,
         -- <example>1587</example>
-    ORIGIN_AIRPORT_ID INTEGER NOT NULL,
+    "ORIGIN_AIRPORT_ID" INTEGER NOT NULL,
         -- <example>12478</example>
-    ORIGIN_AIRPORT_SEQ_ID INTEGER NOT NULL,
+    "ORIGIN_AIRPORT_SEQ_ID" INTEGER NOT NULL,
         -- <example>1247805</example>
-    ORIGIN_CITY_MARKET_ID INTEGER NOT NULL,
+    "ORIGIN_CITY_MARKET_ID" INTEGER NOT NULL,
         -- <example>31703</example>
-    ORIGIN TEXT NOT NULL,
+    "ORIGIN" TEXT NOT NULL,
         -- <example>'JFK'</example>
-        -- <fk> -> Airports.Code</fk>
-    DEST_AIRPORT_ID INTEGER NOT NULL,
+        -- <fk> -> Airports."Code"</fk>
+    "DEST_AIRPORT_ID" INTEGER NOT NULL,
         -- <example>14107</example>
-    DEST_AIRPORT_SEQ_ID INTEGER NOT NULL,
+    "DEST_AIRPORT_SEQ_ID" INTEGER NOT NULL,
         -- <example>1410702</example>
-    DEST_CITY_MARKET_ID INTEGER NOT NULL,
+    "DEST_CITY_MARKET_ID" INTEGER NOT NULL,
         -- <example>30466</example>
-    DEST TEXT NOT NULL,
+    "DEST" TEXT NOT NULL,
         -- <example>'PHX'</example>
-        -- <fk> -> Airports.Code</fk>
-    CRS_DEP_TIME INTEGER NOT NULL,
+        -- <fk> -> Airports."Code"</fk>
+    "CRS_DEP_TIME" INTEGER NOT NULL,
         -- <example>1640</example>
-    DEP_TIME INTEGER NULL,
+    "DEP_TIME" INTEGER NULL,
         -- <example>1649</example>
-    DEP_DELAY INTEGER NULL,
+    "DEP_DELAY" INTEGER NULL,
         -- <example>9</example>
-    DEP_DELAY_NEW INTEGER NULL,
+    "DEP_DELAY_NEW" INTEGER NULL,
         -- <example>9</example>
-    ARR_TIME INTEGER NULL,
+    "ARR_TIME" INTEGER NULL,
         -- <example>2006</example>
-    ARR_DELAY INTEGER NULL,
+    "ARR_DELAY" INTEGER NULL,
         -- <example>44</example>
-    ARR_DELAY_NEW INTEGER NULL,
+    "ARR_DELAY_NEW" INTEGER NULL,
         -- <example>44</example>
-    CANCELLED INTEGER NOT NULL,
+    "CANCELLED" INTEGER NOT NULL,
         -- <example>0</example>
-    CANCELLATION_CODE TEXT NULL,
+    "CANCELLATION_CODE" TEXT NULL,
         -- <values>{'A', 'B', 'C'}</values>
-    CRS_ELAPSED_TIME INTEGER NOT NULL,
+    "CRS_ELAPSED_TIME" INTEGER NOT NULL,
         -- <example>342</example>
-    ACTUAL_ELAPSED_TIME INTEGER NULL,
+    "ACTUAL_ELAPSED_TIME" INTEGER NULL,
         -- <example>377</example>
-    CARRIER_DELAY INTEGER NULL,
+    "CARRIER_DELAY" INTEGER NULL,
         -- <example>9</example>
-    WEATHER_DELAY INTEGER NULL,
+    "WEATHER_DELAY" INTEGER NULL,
         -- <example>0</example>
-    NAS_DELAY INTEGER NULL,
+    "NAS_DELAY" INTEGER NULL,
         -- <example>35</example>
-    SECURITY_DELAY INTEGER NULL,
+    "SECURITY_DELAY" INTEGER NULL,
         -- <example>0</example>
-    LATE_AIRCRAFT_DELAY INTEGER NULL,
+    "LATE_AIRCRAFT_DELAY" INTEGER NULL,
         -- <example>0</example>
-    FOREIGN KEY (ORIGIN) REFERENCES Airports(Code),
-    FOREIGN KEY (DEST) REFERENCES Airports(Code),
-    FOREIGN KEY (OP_CARRIER_AIRLINE_ID) REFERENCES "Air Carriers"(Code)
+    FOREIGN KEY ("ORIGIN") REFERENCES Airports("Code"),
+    FOREIGN KEY ("DEST") REFERENCES Airports("Code"),
+    FOREIGN KEY ("OP_CARRIER_AIRLINE_ID") REFERENCES "Air Carriers"("Code")
 );
 
 /*
-Schema: NULLTable: Airports
+Schema: NULL
+Table: Airports
 Rows: 6510
 Sample rows:
 | Code   | Description                                   |
@@ -113,9 +116,9 @@ Sample rows:
 | ...    | ...                                           |
 */
 CREATE TABLE Airports (
-    Code TEXT NOT NULL PRIMARY KEY,
+    "Code" TEXT NOT NULL PRIMARY KEY,
         -- <example>'01A'</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <example>'Afognak Lake, AK: Afognak Lake Airport'</example>
 );
 ```

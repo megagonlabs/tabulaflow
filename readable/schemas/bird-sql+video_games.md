@@ -2,7 +2,8 @@
 -- Database: video_games
 
 /*
-Schema: NULLTable: game
+Schema: NULL
+Table: game
 Rows: 11317
 Sample rows:
 | id   | genre_id   | game_name                                                          |
@@ -15,18 +16,19 @@ Sample rows:
 | ...  | ...        | ...                                                                |
 */
 CREATE TABLE game (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>44</example>
-    genre_id INTEGER NOT NULL,
+    "genre_id" INTEGER NOT NULL,
         -- <example>4</example>
-        -- <fk> -> genre.id</fk>
-    game_name TEXT NOT NULL,
+        -- <fk> -> genre."id"</fk>
+    "game_name" TEXT NOT NULL,
         -- <example>'2 Games in 1: Sonic Advance & ChuChu Rocket!'</example>
-    FOREIGN KEY (genre_id) REFERENCES genre(id)
+    FOREIGN KEY ("genre_id") REFERENCES genre("id")
 );
 
 /*
-Schema: NULLTable: game_platform
+Schema: NULL
+Table: game_platform
 Rows: 16326
 Sample rows:
 | id   | game_publisher_id   | platform_id   | release_year   |
@@ -39,22 +41,23 @@ Sample rows:
 | ...  | ...                 | ...           | ...            |
 */
 CREATE TABLE game_platform (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    game_publisher_id INTEGER NOT NULL,
+    "game_publisher_id" INTEGER NOT NULL,
         -- <example>8564</example>
-        -- <fk> -> game_publisher.id</fk>
-    platform_id INTEGER NOT NULL,
+        -- <fk> -> game_publisher."id"</fk>
+    "platform_id" INTEGER NOT NULL,
         -- <example>4</example>
-        -- <fk> -> platform.id</fk>
-    release_year INTEGER NOT NULL,
+        -- <fk> -> platform."id"</fk>
+    "release_year" INTEGER NOT NULL,
         -- <example>2007</example>
-    FOREIGN KEY (game_publisher_id) REFERENCES game_publisher(id),
-    FOREIGN KEY (platform_id) REFERENCES platform(id)
+    FOREIGN KEY ("game_publisher_id") REFERENCES game_publisher("id"),
+    FOREIGN KEY ("platform_id") REFERENCES platform("id")
 );
 
 /*
-Schema: NULLTable: game_publisher
+Schema: NULL
+Table: game_publisher
 Rows: 11732
 Sample rows:
 | id   | game_id   | publisher_id   |
@@ -67,20 +70,21 @@ Sample rows:
 | ...  | ...       | ...            |
 */
 CREATE TABLE game_publisher (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    game_id INTEGER NOT NULL,
+    "game_id" INTEGER NOT NULL,
         -- <example>10866</example>
-        -- <fk> -> game.id</fk>
-    publisher_id INTEGER NOT NULL,
+        -- <fk> -> game."id"</fk>
+    "publisher_id" INTEGER NOT NULL,
         -- <example>369</example>
-        -- <fk> -> publisher.id</fk>
-    FOREIGN KEY (game_id) REFERENCES game(id),
-    FOREIGN KEY (publisher_id) REFERENCES publisher(id)
+        -- <fk> -> publisher."id"</fk>
+    FOREIGN KEY ("game_id") REFERENCES game("id"),
+    FOREIGN KEY ("publisher_id") REFERENCES publisher("id")
 );
 
 /*
-Schema: NULLTable: genre
+Schema: NULL
+Table: genre
 Rows: 12
 Sample rows:
 | id   | genre_name   |
@@ -93,14 +97,15 @@ Sample rows:
 | ...  | ...          |
 */
 CREATE TABLE genre (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    genre_name TEXT NOT NULL
+    "genre_name" TEXT NOT NULL
         -- <example>'Action'</example>
 );
 
 /*
-Schema: NULLTable: platform
+Schema: NULL
+Table: platform
 Rows: 31
 Sample rows:
 | id   | platform_name   |
@@ -113,14 +118,15 @@ Sample rows:
 | ...  | ...             |
 */
 CREATE TABLE platform (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    platform_name TEXT NOT NULL
+    "platform_name" TEXT NOT NULL
         -- <example>'Wii'</example>
 );
 
 /*
-Schema: NULLTable: publisher
+Schema: NULL
+Table: publisher
 Rows: 577
 Sample rows:
 | id   | publisher_name               |
@@ -133,14 +139,15 @@ Sample rows:
 | ...  | ...                          |
 */
 CREATE TABLE publisher (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    publisher_name TEXT NOT NULL
+    "publisher_name" TEXT NOT NULL
         -- <example>'10TACLE Studios'</example>
 );
 
 /*
-Schema: NULLTable: region
+Schema: NULL
+Table: region
 Rows: 4
 All rows:
 |   id | region_name   |
@@ -151,14 +158,15 @@ All rows:
 |    4 | Other         |
 */
 CREATE TABLE region (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    region_name TEXT NOT NULL
+    "region_name" TEXT NOT NULL
         -- <values>{'Europe', 'Japan', 'North America', 'Other'}</values>
 );
 
 /*
-Schema: NULLTable: region_sales
+Schema: NULL
+Table: region_sales
 Rows: 65320
 Sample rows:
 | region_id   | game_platform_id   | num_sales   |
@@ -171,15 +179,15 @@ Sample rows:
 | ...         | ...                | ...         |
 */
 CREATE TABLE region_sales (
-    region_id INTEGER NOT NULL,
+    "region_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> region.id</fk>
-    game_platform_id INTEGER NOT NULL,
+        -- <fk> -> region."id"</fk>
+    "game_platform_id" INTEGER NOT NULL,
         -- <example>50</example>
-        -- <fk> -> game_platform.id</fk>
-    num_sales REAL NOT NULL,
+        -- <fk> -> game_platform."id"</fk>
+    "num_sales" REAL NOT NULL,
         -- <example>3.500</example>
-    FOREIGN KEY (game_platform_id) REFERENCES game_platform(id),
-    FOREIGN KEY (region_id) REFERENCES region(id)
+    FOREIGN KEY ("game_platform_id") REFERENCES game_platform("id"),
+    FOREIGN KEY ("region_id") REFERENCES region("id")
 );
 ```

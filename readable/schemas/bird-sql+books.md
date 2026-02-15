@@ -2,7 +2,8 @@
 -- Database: books
 
 /*
-Schema: NULLTable: address
+Schema: NULL
+Table: address
 Rows: 1000
 Sample rows:
 | address_id   | street_number   | street_name         | city         | country_id   |
@@ -15,22 +16,23 @@ Sample rows:
 | ...          | ...             | ...                 | ...          | ...          |
 */
 CREATE TABLE address (
-    address_id INTEGER NOT NULL PRIMARY KEY,
+    "address_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    street_number TEXT NOT NULL,
+    "street_number" TEXT NOT NULL,
         -- <example>'57'</example>
-    street_name TEXT NOT NULL,
+    "street_name" TEXT NOT NULL,
         -- <example>'Glacier Hill Avenue'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Torbat-e Jām'</example>
-    country_id INTEGER NOT NULL,
+    "country_id" INTEGER NOT NULL,
         -- <example>95</example>
-        -- <fk> -> country.country_id</fk>
-    FOREIGN KEY (country_id) REFERENCES country(country_id)
+        -- <fk> -> country."country_id"</fk>
+    FOREIGN KEY ("country_id") REFERENCES country("country_id")
 );
 
 /*
-Schema: NULLTable: address_status
+Schema: NULL
+Table: address_status
 Rows: 2
 All rows:
 |   status_id | address_status   |
@@ -39,14 +41,15 @@ All rows:
 |           2 | Inactive         |
 */
 CREATE TABLE address_status (
-    status_id INTEGER NOT NULL PRIMARY KEY,
+    "status_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    address_status TEXT NOT NULL
+    "address_status" TEXT NOT NULL
         -- <values>{'Active', 'Inactive'}</values>
 );
 
 /*
-Schema: NULLTable: author
+Schema: NULL
+Table: author
 Rows: 9235
 Sample rows:
 | author_id   | author_name          |
@@ -59,14 +62,15 @@ Sample rows:
 | ...         | ...                  |
 */
 CREATE TABLE author (
-    author_id INTEGER NOT NULL PRIMARY KEY,
+    "author_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    author_name TEXT NOT NULL
+    "author_name" TEXT NOT NULL
         -- <example>'A. Bartlett Giamatti'</example>
 );
 
 /*
-Schema: NULLTable: book
+Schema: NULL
+Table: book
 Rows: 11127
 Sample rows:
 | book_id   | title                                                                      | isbn13      | language_id   | num_pages   | publication_date   | publisher_id   |
@@ -79,28 +83,29 @@ Sample rows:
 | ...       | ...                                                                        | ...         | ...           | ...         | ...                | ...            |
 */
 CREATE TABLE book (
-    book_id INTEGER NOT NULL PRIMARY KEY,
+    "book_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'The World's First Love: Mary  Mother of God'</example>
-    isbn13 TEXT NOT NULL,
+    "isbn13" TEXT NOT NULL,
         -- <example>'8987059752'</example>
-    language_id INTEGER NOT NULL,
+    "language_id" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> book_language.language_id</fk>
-    num_pages INTEGER NOT NULL,
+        -- <fk> -> book_language."language_id"</fk>
+    "num_pages" INTEGER NOT NULL,
         -- <example>276</example>
-    publication_date DATE NOT NULL,
+    "publication_date" DATE NOT NULL,
         -- <example>'1996-09-01'</example>
-    publisher_id INTEGER NOT NULL,
+    "publisher_id" INTEGER NOT NULL,
         -- <example>1010</example>
-        -- <fk> -> publisher.publisher_id</fk>
-    FOREIGN KEY (language_id) REFERENCES book_language(language_id),
-    FOREIGN KEY (publisher_id) REFERENCES publisher(publisher_id)
+        -- <fk> -> publisher."publisher_id"</fk>
+    FOREIGN KEY ("language_id") REFERENCES book_language("language_id"),
+    FOREIGN KEY ("publisher_id") REFERENCES publisher("publisher_id")
 );
 
 /*
-Schema: NULLTable: book_author
+Schema: NULL
+Table: book_author
 Rows: 17642
 Sample rows:
 | book_id   | author_id   |
@@ -113,19 +118,20 @@ Sample rows:
 | ...       | ...         |
 */
 CREATE TABLE book_author (
-    book_id INTEGER NOT NULL,
+    "book_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> book.book_id</fk>
-    author_id INTEGER NOT NULL,
+        -- <fk> -> book."book_id"</fk>
+    "author_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> author.author_id</fk>
-    PRIMARY KEY (book_id, author_id),
-    FOREIGN KEY (author_id) REFERENCES author(author_id),
-    FOREIGN KEY (book_id) REFERENCES book(book_id)
+        -- <fk> -> author."author_id"</fk>
+    PRIMARY KEY ("book_id", "author_id"),
+    FOREIGN KEY ("author_id") REFERENCES author("author_id"),
+    FOREIGN KEY ("book_id") REFERENCES book("book_id")
 );
 
 /*
-Schema: NULLTable: book_language
+Schema: NULL
+Table: book_language
 Rows: 27
 Sample rows:
 | language_id   | language_code   | language_name         |
@@ -138,16 +144,17 @@ Sample rows:
 | ...           | ...             | ...                   |
 */
 CREATE TABLE book_language (
-    language_id INTEGER NOT NULL PRIMARY KEY,
+    "language_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    language_code TEXT NOT NULL,
+    "language_code" TEXT NOT NULL,
         -- <example>'eng'</example>
-    language_name TEXT NOT NULL
+    "language_name" TEXT NOT NULL
         -- <example>'English'</example>
 );
 
 /*
-Schema: NULLTable: country
+Schema: NULL
+Table: country
 Rows: 232
 Sample rows:
 | country_id   | country_name         |
@@ -160,14 +167,15 @@ Sample rows:
 | ...          | ...                  |
 */
 CREATE TABLE country (
-    country_id INTEGER NOT NULL PRIMARY KEY,
+    "country_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    country_name TEXT NOT NULL
+    "country_name" TEXT NOT NULL
         -- <example>'Afghanistan'</example>
 );
 
 /*
-Schema: NULLTable: cust_order
+Schema: NULL
+Table: cust_order
 Rows: 7550
 Sample rows:
 | order_id   | order_date          | customer_id   | shipping_method_id   | dest_address_id   |
@@ -180,26 +188,27 @@ Sample rows:
 | ...        | ...                 | ...           | ...                  | ...               |
 */
 CREATE TABLE cust_order (
-    order_id INTEGER NOT NULL PRIMARY KEY,
+    "order_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    order_date DATETIME NOT NULL,
+    "order_date" DATETIME NOT NULL,
         -- <example>'2021-07-14 10:47:19'</example>
-    customer_id INTEGER NOT NULL,
+    "customer_id" INTEGER NOT NULL,
         -- <example>387</example>
-        -- <fk> -> customer.customer_id</fk>
-    shipping_method_id INTEGER NOT NULL,
+        -- <fk> -> customer."customer_id"</fk>
+    "shipping_method_id" INTEGER NOT NULL,
         -- <example>4</example>
-        -- <fk> -> shipping_method.method_id</fk>
-    dest_address_id INTEGER NOT NULL,
+        -- <fk> -> shipping_method."method_id"</fk>
+    "dest_address_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> address.address_id</fk>
-    FOREIGN KEY (dest_address_id) REFERENCES address(address_id),
-    FOREIGN KEY (shipping_method_id) REFERENCES shipping_method(method_id),
-    FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
+        -- <fk> -> address."address_id"</fk>
+    FOREIGN KEY ("dest_address_id") REFERENCES address("address_id"),
+    FOREIGN KEY ("shipping_method_id") REFERENCES shipping_method("method_id"),
+    FOREIGN KEY ("customer_id") REFERENCES customer("customer_id")
 );
 
 /*
-Schema: NULLTable: customer
+Schema: NULL
+Table: customer
 Rows: 2000
 Sample rows:
 | customer_id   | first_name   | last_name   | email                  |
@@ -212,18 +221,19 @@ Sample rows:
 | ...           | ...          | ...         | ...                    |
 */
 CREATE TABLE customer (
-    customer_id INTEGER NOT NULL PRIMARY KEY,
+    "customer_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    first_name TEXT NOT NULL,
+    "first_name" TEXT NOT NULL,
         -- <example>'Ursola'</example>
-    last_name TEXT NOT NULL,
+    "last_name" TEXT NOT NULL,
         -- <example>'Purdy'</example>
-    email TEXT NOT NULL
+    "email" TEXT NOT NULL
         -- <example>'upurdy0@cdbaby.com'</example>
 );
 
 /*
-Schema: NULLTable: customer_address
+Schema: NULL
+Table: customer_address
 Rows: 3350
 Sample rows:
 | customer_id   | address_id   | status_id   |
@@ -236,21 +246,22 @@ Sample rows:
 | ...           | ...          | ...         |
 */
 CREATE TABLE customer_address (
-    customer_id INTEGER NOT NULL,
+    "customer_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> customer.customer_id</fk>
-    address_id INTEGER NOT NULL,
+        -- <fk> -> customer."customer_id"</fk>
+    "address_id" INTEGER NOT NULL,
         -- <example>606</example>
-        -- <fk> -> address.address_id</fk>
-    status_id INTEGER NOT NULL,
+        -- <fk> -> address."address_id"</fk>
+    "status_id" INTEGER NOT NULL,
         -- <example>1</example>
-    PRIMARY KEY (customer_id, address_id),
-    FOREIGN KEY (address_id) REFERENCES address(address_id),
-    FOREIGN KEY (customer_id) REFERENCES customer(customer_id)
+    PRIMARY KEY ("customer_id", "address_id"),
+    FOREIGN KEY ("address_id") REFERENCES address("address_id"),
+    FOREIGN KEY ("customer_id") REFERENCES customer("customer_id")
 );
 
 /*
-Schema: NULLTable: order_history
+Schema: NULL
+Table: order_history
 Rows: 22348
 Sample rows:
 | history_id   | order_id   | status_id   | status_date         |
@@ -263,22 +274,23 @@ Sample rows:
 | ...          | ...        | ...         | ...                 |
 */
 CREATE TABLE order_history (
-    history_id INTEGER NOT NULL PRIMARY KEY,
+    "history_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    order_id INTEGER NOT NULL,
+    "order_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> cust_order.order_id</fk>
-    status_id INTEGER NOT NULL,
+        -- <fk> -> cust_order."order_id"</fk>
+    "status_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> order_status.status_id</fk>
-    status_date DATETIME NOT NULL,
+        -- <fk> -> order_status."status_id"</fk>
+    "status_date" DATETIME NOT NULL,
         -- <example>'2021-07-14 17:04:28'</example>
-    FOREIGN KEY (status_id) REFERENCES order_status(status_id),
-    FOREIGN KEY (order_id) REFERENCES cust_order(order_id)
+    FOREIGN KEY ("status_id") REFERENCES order_status("status_id"),
+    FOREIGN KEY ("order_id") REFERENCES cust_order("order_id")
 );
 
 /*
-Schema: NULLTable: order_line
+Schema: NULL
+Table: order_line
 Rows: 7550
 Sample rows:
 | line_id   | order_id   | book_id   | price   |
@@ -291,22 +303,23 @@ Sample rows:
 | ...       | ...        | ...       | ...     |
 */
 CREATE TABLE order_line (
-    line_id INTEGER NOT NULL PRIMARY KEY,
+    "line_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1024</example>
-    order_id INTEGER NOT NULL,
+    "order_id" INTEGER NOT NULL,
         -- <example>2051</example>
-        -- <fk> -> cust_order.order_id</fk>
-    book_id INTEGER NOT NULL,
+        -- <fk> -> cust_order."order_id"</fk>
+    "book_id" INTEGER NOT NULL,
         -- <example>10720</example>
-        -- <fk> -> book.book_id</fk>
-    price REAL NOT NULL,
+        -- <fk> -> book."book_id"</fk>
+    "price" REAL NOT NULL,
         -- <example>3.190</example>
-    FOREIGN KEY (book_id) REFERENCES book(book_id),
-    FOREIGN KEY (order_id) REFERENCES cust_order(order_id)
+    FOREIGN KEY ("book_id") REFERENCES book("book_id"),
+    FOREIGN KEY ("order_id") REFERENCES cust_order("order_id")
 );
 
 /*
-Schema: NULLTable: order_status
+Schema: NULL
+Table: order_status
 Rows: 6
 All rows:
 |   status_id | status_value         |
@@ -319,14 +332,15 @@ All rows:
 |           6 | Returned             |
 */
 CREATE TABLE order_status (
-    status_id INTEGER NOT NULL PRIMARY KEY,
+    "status_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    status_value TEXT NOT NULL
+    "status_value" TEXT NOT NULL
         -- <values>{'Cancelled', 'Delivered', 'Delivery In Progress', 'Order Received', 'Pending Delivery', 'Returned'}</values>
 );
 
 /*
-Schema: NULLTable: publisher
+Schema: NULL
+Table: publisher
 Rows: 2264
 Sample rows:
 | publisher_id   | publisher_name                |
@@ -339,14 +353,15 @@ Sample rows:
 | ...            | ...                           |
 */
 CREATE TABLE publisher (
-    publisher_id INTEGER NOT NULL PRIMARY KEY,
+    "publisher_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    publisher_name TEXT NOT NULL
+    "publisher_name" TEXT NOT NULL
         -- <example>'10/18'</example>
 );
 
 /*
-Schema: NULLTable: shipping_method
+Schema: NULL
+Table: shipping_method
 Rows: 4
 All rows:
 |   method_id | method_name   |   cost |
@@ -357,11 +372,11 @@ All rows:
 |           4 | International |   24.5 |
 */
 CREATE TABLE shipping_method (
-    method_id INTEGER NOT NULL PRIMARY KEY,
+    "method_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    method_name TEXT NOT NULL,
+    "method_name" TEXT NOT NULL,
         -- <values>{'Express', 'International', 'Priority', 'Standard'}</values>
-    cost REAL NOT NULL
+    "cost" REAL NOT NULL
         -- <example>5.900</example>
 );
 ```

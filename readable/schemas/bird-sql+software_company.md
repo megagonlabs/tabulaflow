@@ -2,7 +2,8 @@
 -- Database: software_company
 
 /*
-Schema: NULLTable: Customers
+Schema: NULL
+Table: Customers
 Rows: 360000
 Sample rows:
 | ID   | SEX    | MARITAL_STATUS     | GEOID   | EDUCATIONNUM   | OCCUPATION        | age   |
@@ -15,26 +16,27 @@ Sample rows:
 | ...  | ...    | ...                | ...     | ...            | ...               | ...   |
 */
 CREATE TABLE Customers (
-    ID INTEGER NOT NULL PRIMARY KEY,
+    "ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    SEX TEXT NOT NULL,
+    "SEX" TEXT NOT NULL,
         -- <values>{'Female', 'Male'}</values>
-    MARITAL_STATUS TEXT NOT NULL,
+    "MARITAL_STATUS" TEXT NOT NULL,
         -- <values>{'Divorced', 'Married-civ-spouse', 'Never-married', 'Other', 'Widowed'}</values>
-    GEOID INTEGER NOT NULL,
+    "GEOID" INTEGER NOT NULL,
         -- <example>61</example>
-        -- <fk> -> Demog.GEOID</fk>
-    EDUCATIONNUM INTEGER NOT NULL,
+        -- <fk> -> Demog."GEOID"</fk>
+    "EDUCATIONNUM" INTEGER NOT NULL,
         -- <example>7</example>
-    OCCUPATION TEXT NOT NULL,
+    "OCCUPATION" TEXT NOT NULL,
         -- <values>{'Adm-clerical', 'Craft-repair', 'Exec-managerial', 'Farming-fishing', 'Handlers-cleaners', 'Machine-op-inspct', 'Other-service', 'Prof-specialty', 'Sales'}</values>
-    age INTEGER NOT NULL,
+    "age" INTEGER NOT NULL,
         -- <example>62</example>
-    FOREIGN KEY (GEOID) REFERENCES Demog(GEOID)
+    FOREIGN KEY ("GEOID") REFERENCES Demog("GEOID")
 );
 
 /*
-Schema: NULLTable: Demog
+Schema: NULL
+Table: Demog
 Rows: 200
 Sample rows:
 | GEOID   | INHABITANTS_K   | INCOME_K   | A_VAR1   | A_VAR2   | A_VAR3   | A_VAR4   | A_VAR5   | A_VAR6   | A_VAR7   | A_VAR8   | A_VAR9   | A_VAR10   | A_VAR11   | A_VAR12   | A_VAR13   | A_VAR14   | A_VAR15   | A_VAR16   | A_VAR17   | A_VAR18   |
@@ -47,52 +49,53 @@ Sample rows:
 | ...     | ...             | ...        | ...      | ...      | ...      | ...      | ...      | ...      | ...      | ...      | ...      | ...       | ...       | ...       | ...       | ...       | ...       | ...       | ...       | ...       |
 */
 CREATE TABLE Demog (
-    GEOID INTEGER NOT NULL PRIMARY KEY,
+    "GEOID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    INHABITANTS_K REAL NOT NULL,
+    "INHABITANTS_K" REAL NOT NULL,
         -- <example>30.046</example>
-    INCOME_K REAL NOT NULL,
+    "INCOME_K" REAL NOT NULL,
         -- <example>2631.470</example>
-    A_VAR1 REAL NOT NULL,
+    "A_VAR1" REAL NOT NULL,
         -- <example>6.084</example>
-    A_VAR2 REAL NOT NULL,
+    "A_VAR2" REAL NOT NULL,
         -- <example>5.790</example>
-    A_VAR3 REAL NOT NULL,
+    "A_VAR3" REAL NOT NULL,
         -- <example>8.595</example>
-    A_VAR4 REAL NOT NULL,
+    "A_VAR4" REAL NOT NULL,
         -- <example>3.935</example>
-    A_VAR5 REAL NOT NULL,
+    "A_VAR5" REAL NOT NULL,
         -- <example>6.362</example>
-    A_VAR6 REAL NOT NULL,
+    "A_VAR6" REAL NOT NULL,
         -- <example>8.626</example>
-    A_VAR7 REAL NOT NULL,
+    "A_VAR7" REAL NOT NULL,
         -- <example>4.624</example>
-    A_VAR8 REAL NOT NULL,
+    "A_VAR8" REAL NOT NULL,
         -- <example>8.324</example>
-    A_VAR9 REAL NOT NULL,
+    "A_VAR9" REAL NOT NULL,
         -- <example>5.233</example>
-    A_VAR10 REAL NOT NULL,
+    "A_VAR10" REAL NOT NULL,
         -- <example>6.232</example>
-    A_VAR11 REAL NOT NULL,
+    "A_VAR11" REAL NOT NULL,
         -- <example>5.205</example>
-    A_VAR12 REAL NOT NULL,
+    "A_VAR12" REAL NOT NULL,
         -- <example>8.231</example>
-    A_VAR13 REAL NOT NULL,
+    "A_VAR13" REAL NOT NULL,
         -- <example>6.746</example>
-    A_VAR14 REAL NOT NULL,
+    "A_VAR14" REAL NOT NULL,
         -- <example>8.679</example>
-    A_VAR15 REAL NOT NULL,
+    "A_VAR15" REAL NOT NULL,
         -- <example>5.292</example>
-    A_VAR16 REAL NOT NULL,
+    "A_VAR16" REAL NOT NULL,
         -- <example>3.500</example>
-    A_VAR17 REAL NOT NULL,
+    "A_VAR17" REAL NOT NULL,
         -- <example>5.512</example>
-    A_VAR18 REAL NOT NULL
+    "A_VAR18" REAL NOT NULL
         -- <example>5.783</example>
 );
 
 /*
-Schema: NULLTable: Mailings1_2
+Schema: NULL
+Table: Mailings1_2
 Rows: 60000
 Sample rows:
 | REFID   | REF_DATE              | RESPONSE   |
@@ -105,18 +108,19 @@ Sample rows:
 | ...     | ...                   | ...        |
 */
 CREATE TABLE Mailings1_2 (
-    REFID INTEGER NOT NULL PRIMARY KEY,
+    "REFID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-        -- <fk> -> Customers.ID</fk>
-    REF_DATE DATETIME NOT NULL,
+        -- <fk> -> Customers."ID"</fk>
+    "REF_DATE" DATETIME NOT NULL,
         -- <example>'2007-02-01 12:00:00.0'</example>
-    RESPONSE TEXT NOT NULL,
+    "RESPONSE" TEXT NOT NULL,
         -- <values>{'false', 'true'}</values>
-    FOREIGN KEY (REFID) REFERENCES Customers(ID)
+    FOREIGN KEY ("REFID") REFERENCES Customers("ID")
 );
 
 /*
-Schema: NULLTable: Sales
+Schema: NULL
+Table: Sales
 Rows: 3420829
 Sample rows:
 | EVENTID   | REFID   | EVENT_DATE            | AMOUNT   |
@@ -129,20 +133,21 @@ Sample rows:
 | ...       | ...     | ...                   | ...      |
 */
 CREATE TABLE Sales (
-    EVENTID INTEGER NOT NULL PRIMARY KEY,
+    "EVENTID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    REFID INTEGER NOT NULL,
+    "REFID" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> Customers.ID</fk>
-    EVENT_DATE DATETIME NOT NULL,
+        -- <fk> -> Customers."ID"</fk>
+    "EVENT_DATE" DATETIME NOT NULL,
         -- <example>'2006-12-21 12:00:00.0'</example>
-    AMOUNT REAL NOT NULL,
+    "AMOUNT" REAL NOT NULL,
         -- <example>17.907</example>
-    FOREIGN KEY (REFID) REFERENCES Customers(ID)
+    FOREIGN KEY ("REFID") REFERENCES Customers("ID")
 );
 
 /*
-Schema: NULLTable: mailings3
+Schema: NULL
+Table: mailings3
 Rows: 300000
 Sample rows:
 | REFID   | REF_DATE              | RESPONSE   |
@@ -155,11 +160,11 @@ Sample rows:
 | ...     | ...                   | ...        |
 */
 CREATE TABLE mailings3 (
-    REFID INTEGER NOT NULL PRIMARY KEY,
+    "REFID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>60000</example>
-    REF_DATE DATETIME NOT NULL,
+    "REF_DATE" DATETIME NOT NULL,
         -- <example>'2007-07-01 12:00:00.0'</example>
-    RESPONSE TEXT NOT NULL
+    "RESPONSE" TEXT NOT NULL
         -- <values>{'false', 'true'}</values>
 );
 ```

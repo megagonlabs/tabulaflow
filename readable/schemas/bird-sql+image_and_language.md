@@ -2,7 +2,8 @@
 -- Database: image_and_language
 
 /*
-Schema: NULLTable: ATT_CLASSES
+Schema: NULL
+Table: ATT_CLASSES
 Rows: 699
 Sample rows:
 | ATT_CLASS_ID   | ATT_CLASS   |
@@ -15,14 +16,15 @@ Sample rows:
 | ...            | ...         |
 */
 CREATE TABLE ATT_CLASSES (
-    ATT_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
+    "ATT_CLASS_ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    ATT_CLASS TEXT NOT NULL
+    "ATT_CLASS" TEXT NOT NULL
         -- <example>'building s'</example>
 );
 
 /*
-Schema: NULLTable: IMG_OBJ
+Schema: NULL
+Table: IMG_OBJ
 Rows: 1750617
 Sample rows:
 | IMG_ID   | OBJ_SAMPLE_ID   | OBJ_CLASS_ID   | X   | Y   | W   | H   |
@@ -35,27 +37,28 @@ Sample rows:
 | ...      | ...             | ...            | ... | ... | ... | ... |
 */
 CREATE TABLE IMG_OBJ (
-    IMG_ID INTEGER NOT NULL,
+    "IMG_ID" INTEGER NOT NULL,
         -- <example>1</example>
-    OBJ_SAMPLE_ID INTEGER NOT NULL,
+    "OBJ_SAMPLE_ID" INTEGER NOT NULL,
         -- <example>1</example>
-    OBJ_CLASS_ID INTEGER NOT NULL,
+    "OBJ_CLASS_ID" INTEGER NOT NULL,
         -- <example>298</example>
-        -- <fk> -> OBJ_CLASSES.OBJ_CLASS_ID</fk>
-    X INTEGER NOT NULL,
+        -- <fk> -> OBJ_CLASSES."OBJ_CLASS_ID"</fk>
+    "X" INTEGER NOT NULL,
         -- <example>0</example>
-    Y INTEGER NOT NULL,
+    "Y" INTEGER NOT NULL,
         -- <example>0</example>
-    W INTEGER NOT NULL,
+    "W" INTEGER NOT NULL,
         -- <example>799</example>
-    H INTEGER NOT NULL,
+    "H" INTEGER NOT NULL,
         -- <example>557</example>
-    PRIMARY KEY (IMG_ID, OBJ_SAMPLE_ID),
-    FOREIGN KEY (OBJ_CLASS_ID) REFERENCES OBJ_CLASSES(OBJ_CLASS_ID)
+    PRIMARY KEY ("IMG_ID", "OBJ_SAMPLE_ID"),
+    FOREIGN KEY ("OBJ_CLASS_ID") REFERENCES OBJ_CLASSES("OBJ_CLASS_ID")
 );
 
 /*
-Schema: NULLTable: IMG_OBJ_ATT
+Schema: NULL
+Table: IMG_OBJ_ATT
 Rows: 1074674
 Sample rows:
 | IMG_ID   | ATT_CLASS_ID   | OBJ_SAMPLE_ID   |
@@ -68,22 +71,23 @@ Sample rows:
 | ...      | ...            | ...             |
 */
 CREATE TABLE IMG_OBJ_ATT (
-    IMG_ID INTEGER NOT NULL,
+    "IMG_ID" INTEGER NOT NULL,
         -- <example>1</example>
         -- <fk>composite</fk>
-    ATT_CLASS_ID INTEGER NOT NULL,
+    "ATT_CLASS_ID" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> ATT_CLASSES.ATT_CLASS_ID</fk>
-    OBJ_SAMPLE_ID INTEGER NOT NULL,
+        -- <fk> -> ATT_CLASSES."ATT_CLASS_ID"</fk>
+    "OBJ_SAMPLE_ID" INTEGER NOT NULL,
         -- <example>21</example>
         -- <fk>composite</fk>
-    PRIMARY KEY (IMG_ID, ATT_CLASS_ID, OBJ_SAMPLE_ID),
-    FOREIGN KEY (ATT_CLASS_ID) REFERENCES ATT_CLASSES(ATT_CLASS_ID),
-    FOREIGN KEY (IMG_ID, OBJ_SAMPLE_ID) REFERENCES IMG_OBJ(IMG_ID, OBJ_SAMPLE_ID)
+    PRIMARY KEY ("IMG_ID", "ATT_CLASS_ID", "OBJ_SAMPLE_ID"),
+    FOREIGN KEY ("ATT_CLASS_ID") REFERENCES ATT_CLASSES("ATT_CLASS_ID"),
+    FOREIGN KEY ("IMG_ID", "OBJ_SAMPLE_ID") REFERENCES IMG_OBJ("IMG_ID", "OBJ_SAMPLE_ID")
 );
 
 /*
-Schema: NULLTable: IMG_REL
+Schema: NULL
+Table: IMG_REL
 Rows: 763159
 Sample rows:
 | IMG_ID   | PRED_CLASS_ID   | OBJ1_SAMPLE_ID   | OBJ2_SAMPLE_ID   |
@@ -96,27 +100,28 @@ Sample rows:
 | ...      | ...             | ...              | ...              |
 */
 CREATE TABLE IMG_REL (
-    IMG_ID INTEGER NOT NULL,
+    "IMG_ID" INTEGER NOT NULL,
         -- <example>1</example>
         -- <fk>composite</fk>
         -- <fk>composite</fk>
-    PRED_CLASS_ID INTEGER NOT NULL,
+    "PRED_CLASS_ID" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> PRED_CLASSES.PRED_CLASS_ID</fk>
-    OBJ1_SAMPLE_ID INTEGER NOT NULL,
+        -- <fk> -> PRED_CLASSES."PRED_CLASS_ID"</fk>
+    "OBJ1_SAMPLE_ID" INTEGER NOT NULL,
         -- <example>13</example>
         -- <fk>composite</fk>
-    OBJ2_SAMPLE_ID INTEGER NOT NULL,
+    "OBJ2_SAMPLE_ID" INTEGER NOT NULL,
         -- <example>1</example>
         -- <fk>composite</fk>
-    PRIMARY KEY (IMG_ID, PRED_CLASS_ID, OBJ1_SAMPLE_ID, OBJ2_SAMPLE_ID),
-    FOREIGN KEY (PRED_CLASS_ID) REFERENCES PRED_CLASSES(PRED_CLASS_ID),
-    FOREIGN KEY (IMG_ID, OBJ1_SAMPLE_ID) REFERENCES IMG_OBJ(IMG_ID, OBJ_SAMPLE_ID),
-    FOREIGN KEY (IMG_ID, OBJ2_SAMPLE_ID) REFERENCES IMG_OBJ(IMG_ID, OBJ_SAMPLE_ID)
+    PRIMARY KEY ("IMG_ID", "PRED_CLASS_ID", "OBJ1_SAMPLE_ID", "OBJ2_SAMPLE_ID"),
+    FOREIGN KEY ("PRED_CLASS_ID") REFERENCES PRED_CLASSES("PRED_CLASS_ID"),
+    FOREIGN KEY ("IMG_ID", "OBJ1_SAMPLE_ID") REFERENCES IMG_OBJ("IMG_ID", "OBJ_SAMPLE_ID"),
+    FOREIGN KEY ("IMG_ID", "OBJ2_SAMPLE_ID") REFERENCES IMG_OBJ("IMG_ID", "OBJ_SAMPLE_ID")
 );
 
 /*
-Schema: NULLTable: OBJ_CLASSES
+Schema: NULL
+Table: OBJ_CLASSES
 Rows: 300
 Sample rows:
 | OBJ_CLASS_ID   | OBJ_CLASS   |
@@ -129,14 +134,15 @@ Sample rows:
 | ...            | ...         |
 */
 CREATE TABLE OBJ_CLASSES (
-    OBJ_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
+    "OBJ_CLASS_ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    OBJ_CLASS TEXT NOT NULL
+    "OBJ_CLASS" TEXT NOT NULL
         -- <example>'awning'</example>
 );
 
 /*
-Schema: NULLTable: PRED_CLASSES
+Schema: NULL
+Table: PRED_CLASSES
 Rows: 150
 Sample rows:
 | PRED_CLASS_ID   | PRED_CLASS   |
@@ -149,9 +155,9 @@ Sample rows:
 | ...             | ...          |
 */
 CREATE TABLE PRED_CLASSES (
-    PRED_CLASS_ID INTEGER NOT NULL PRIMARY KEY,
+    "PRED_CLASS_ID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    PRED_CLASS TEXT NOT NULL
+    "PRED_CLASS" TEXT NOT NULL
         -- <example>'playing on'</example>
 );
 ```

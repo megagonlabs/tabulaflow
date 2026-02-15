@@ -2,7 +2,8 @@
 -- Database: car_retails
 
 /*
-Schema: NULLTable: customers
+Schema: NULL
+Table: customers
 Rows: 122
 Sample rows:
 | customerNumber   | customerName               | contactLastName   | contactFirstName   | phone        | addressLine1                 | addressLine2   | city      | state    | postalCode   | country   | salesRepEmployeeNumber   | creditLimit   |
@@ -15,38 +16,39 @@ Sample rows:
 | ...              | ...                        | ...               | ...                | ...          | ...                          | ...            | ...       | ...      | ...          | ...       | ...                      | ...           |
 */
 CREATE TABLE customers (
-    customerNumber INTEGER NOT NULL PRIMARY KEY,
+    "customerNumber" INTEGER NOT NULL PRIMARY KEY,
         -- <example>103</example>
-    customerName TEXT NOT NULL,
+    "customerName" TEXT NOT NULL,
         -- <example>'Atelier graphique'</example>
-    contactLastName TEXT NOT NULL,
+    "contactLastName" TEXT NOT NULL,
         -- <example>'Schmitt'</example>
-    contactFirstName TEXT NOT NULL,
+    "contactFirstName" TEXT NOT NULL,
         -- <example>'Carine '</example>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <example>'40.32.2555'</example>
-    addressLine1 TEXT NOT NULL,
+    "addressLine1" TEXT NOT NULL,
         -- <example>'54, rue Royale'</example>
-    addressLine2 TEXT NULL,
+    "addressLine2" TEXT NULL,
         -- <example>'Level 3'</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Nantes'</example>
-    state TEXT NULL,
+    "state" TEXT NULL,
         -- <example>'NV'</example>
-    postalCode TEXT NULL,
+    "postalCode" TEXT NULL,
         -- <example>'44000'</example>
-    country TEXT NOT NULL,
+    "country" TEXT NOT NULL,
         -- <example>'France'</example>
-    salesRepEmployeeNumber INTEGER NULL,
+    "salesRepEmployeeNumber" INTEGER NULL,
         -- <example>1370</example>
-        -- <fk> -> employees.employeeNumber</fk>
-    creditLimit REAL NOT NULL,
+        -- <fk> -> employees."employeeNumber"</fk>
+    "creditLimit" REAL NOT NULL,
         -- <example>21000.000</example>
-    FOREIGN KEY (salesRepEmployeeNumber) REFERENCES employees(employeeNumber)
+    FOREIGN KEY ("salesRepEmployeeNumber") REFERENCES employees("employeeNumber")
 );
 
 /*
-Schema: NULLTable: employees
+Schema: NULL
+Table: employees
 Rows: 23
 Sample rows:
 | employeeNumber   | lastName   | firstName   | extension   | email                           | officeCode   | reportsTo   | jobTitle             |
@@ -59,30 +61,31 @@ Sample rows:
 | ...              | ...        | ...         | ...         | ...                             | ...          | ...         | ...                  |
 */
 CREATE TABLE employees (
-    employeeNumber INTEGER NOT NULL PRIMARY KEY,
+    "employeeNumber" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1002</example>
-    lastName TEXT NOT NULL,
+    "lastName" TEXT NOT NULL,
         -- <example>'Murphy'</example>
-    firstName TEXT NOT NULL,
+    "firstName" TEXT NOT NULL,
         -- <example>'Diane'</example>
-    extension TEXT NOT NULL,
+    "extension" TEXT NOT NULL,
         -- <example>'x5800'</example>
-    email TEXT NOT NULL,
+    "email" TEXT NOT NULL,
         -- <example>'dmurphy@classicmodelcars.com'</example>
-    officeCode TEXT NOT NULL,
+    "officeCode" TEXT NOT NULL,
         -- <values>{'1', '2', '3', '4', '5', '6', '7'}</values>
-        -- <fk> -> offices.officeCode</fk>
-    reportsTo INTEGER NULL,
+        -- <fk> -> offices."officeCode"</fk>
+    "reportsTo" INTEGER NULL,
         -- <example>1002</example>
-        -- <fk> -> employees.employeeNumber</fk>
-    jobTitle TEXT NOT NULL,
+        -- <fk> -> employees."employeeNumber"</fk>
+    "jobTitle" TEXT NOT NULL,
         -- <values>{'President', 'Sale Manager (EMEA)', 'Sales Manager (APAC)', 'Sales Manager (NA)', 'Sales Rep', 'VP Marketing', 'VP Sales'}</values>
-    FOREIGN KEY (officeCode) REFERENCES offices(officeCode),
-    FOREIGN KEY (reportsTo) REFERENCES employees(employeeNumber)
+    FOREIGN KEY ("officeCode") REFERENCES offices("officeCode"),
+    FOREIGN KEY ("reportsTo") REFERENCES employees("employeeNumber")
 );
 
 /*
-Schema: NULLTable: offices
+Schema: NULL
+Table: offices
 Rows: 7
 All rows:
 |   officeCode | city          | phone            | addressLine1             | addressLine2   | state      | country   | postalCode   | territory   |
@@ -96,28 +99,29 @@ All rows:
 |            7 | London        | +44 20 7877 2041 | 25 Old Broad Street      | Level 7        | [NULL]     | UK        | EC2N 1HN     | EMEA        |
 */
 CREATE TABLE offices (
-    officeCode TEXT NOT NULL PRIMARY KEY,
+    "officeCode" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'1', '2', '3', '4', '5', '6', '7'}</values>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <values>{'Boston', 'London', 'NYC', 'Paris', 'San Francisco', 'Sydney', 'Tokyo'}</values>
-    phone TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
         -- <values>{'+1 212 555 3000', '+1 215 837 0825', '+1 650 219 4782', '+33 14 723 4404', '+44 20 7877 2041', '+61 2 9264 2451', '+81 33 224 5000'}</values>
-    addressLine1 TEXT NOT NULL,
+    "addressLine1" TEXT NOT NULL,
         -- <values>{'100 Market Street', '1550 Court Place', '25 Old Broad Street', '4-1 Kioicho', '43 Rue Jouffroy D'abbans', '5-11 Wentworth Avenue', '523 East 53rd Street'}</values>
-    addressLine2 TEXT NULL,
+    "addressLine2" TEXT NULL,
         -- <values>{'Floor #2', 'Level 7', 'Suite 102', 'Suite 300', 'apt. 5A'}</values>
-    state TEXT NULL,
+    "state" TEXT NULL,
         -- <values>{'CA', 'Chiyoda-Ku', 'MA', 'NY'}</values>
-    country TEXT NOT NULL,
+    "country" TEXT NOT NULL,
         -- <values>{'Australia', 'France', 'Japan', 'UK', 'USA'}</values>
-    postalCode TEXT NOT NULL,
+    "postalCode" TEXT NOT NULL,
         -- <values>{'02107', '10022', '102-8578', '75017', '94080', 'EC2N 1HN', 'NSW 2010'}</values>
-    territory TEXT NOT NULL
+    "territory" TEXT NOT NULL
         -- <values>{'APAC', 'EMEA', 'Japan', 'NA'}</values>
 );
 
 /*
-Schema: NULLTable: orderdetails
+Schema: NULL
+Table: orderdetails
 Rows: 2996
 Sample rows:
 | orderNumber   | productCode   | quantityOrdered   | priceEach   | orderLineNumber   |
@@ -130,25 +134,26 @@ Sample rows:
 | ...           | ...           | ...               | ...         | ...               |
 */
 CREATE TABLE orderdetails (
-    orderNumber INTEGER NOT NULL,
+    "orderNumber" INTEGER NOT NULL,
         -- <example>10100</example>
-        -- <fk> -> orders.orderNumber</fk>
-    productCode TEXT NOT NULL,
+        -- <fk> -> orders."orderNumber"</fk>
+    "productCode" TEXT NOT NULL,
         -- <example>'S18_1749'</example>
-        -- <fk> -> products.productCode</fk>
-    quantityOrdered INTEGER NOT NULL,
+        -- <fk> -> products."productCode"</fk>
+    "quantityOrdered" INTEGER NOT NULL,
         -- <example>30</example>
-    priceEach REAL NOT NULL,
+    "priceEach" REAL NOT NULL,
         -- <example>136.000</example>
-    orderLineNumber INTEGER NOT NULL,
+    "orderLineNumber" INTEGER NOT NULL,
         -- <example>3</example>
-    PRIMARY KEY (orderNumber, productCode),
-    FOREIGN KEY (productCode) REFERENCES products(productCode),
-    FOREIGN KEY (orderNumber) REFERENCES orders(orderNumber)
+    PRIMARY KEY ("orderNumber", "productCode"),
+    FOREIGN KEY ("productCode") REFERENCES products("productCode"),
+    FOREIGN KEY ("orderNumber") REFERENCES orders("orderNumber")
 );
 
 /*
-Schema: NULLTable: orders
+Schema: NULL
+Table: orders
 Rows: 326
 Sample rows:
 | orderNumber   | orderDate   | requiredDate   | shippedDate   | status   | comments               | customerNumber   |
@@ -161,26 +166,27 @@ Sample rows:
 | ...           | ...         | ...            | ...           | ...      | ...                    | ...              |
 */
 CREATE TABLE orders (
-    orderNumber INTEGER NOT NULL PRIMARY KEY,
+    "orderNumber" INTEGER NOT NULL PRIMARY KEY,
         -- <example>10100</example>
-    orderDate DATE NOT NULL,
+    "orderDate" DATE NOT NULL,
         -- <example>'2003-01-06'</example>
-    requiredDate DATE NOT NULL,
+    "requiredDate" DATE NOT NULL,
         -- <example>'2003-01-13'</example>
-    shippedDate DATE NULL,
+    "shippedDate" DATE NULL,
         -- <example>'2003-01-10'</example>
-    status TEXT NOT NULL,
+    "status" TEXT NOT NULL,
         -- <values>{'Cancelled', 'Disputed', 'In Process', 'On Hold', 'Resolved', 'Shipped'}</values>
-    comments TEXT NULL,
+    "comments" TEXT NULL,
         -- <example>'Check on availability.'</example>
-    customerNumber INTEGER NOT NULL,
+    "customerNumber" INTEGER NOT NULL,
         -- <example>363</example>
-        -- <fk> -> customers.customerNumber</fk>
-    FOREIGN KEY (customerNumber) REFERENCES customers(customerNumber)
+        -- <fk> -> customers."customerNumber"</fk>
+    FOREIGN KEY ("customerNumber") REFERENCES customers("customerNumber")
 );
 
 /*
-Schema: NULLTable: payments
+Schema: NULL
+Table: payments
 Rows: 273
 Sample rows:
 | customerNumber   | checkNumber   | paymentDate   | amount   |
@@ -193,21 +199,22 @@ Sample rows:
 | ...              | ...           | ...           | ...      |
 */
 CREATE TABLE payments (
-    customerNumber INTEGER NOT NULL,
+    "customerNumber" INTEGER NOT NULL,
         -- <example>103</example>
-        -- <fk> -> customers.customerNumber</fk>
-    checkNumber TEXT NOT NULL,
+        -- <fk> -> customers."customerNumber"</fk>
+    "checkNumber" TEXT NOT NULL,
         -- <example>'HQ336336'</example>
-    paymentDate DATE NOT NULL,
+    "paymentDate" DATE NOT NULL,
         -- <example>'2004-10-19'</example>
-    amount REAL NOT NULL,
+    "amount" REAL NOT NULL,
         -- <example>6066.780</example>
-    PRIMARY KEY (customerNumber, checkNumber),
-    FOREIGN KEY (customerNumber) REFERENCES customers(customerNumber)
+    PRIMARY KEY ("customerNumber", "checkNumber"),
+    FOREIGN KEY ("customerNumber") REFERENCES customers("customerNumber")
 );
 
 /*
-Schema: NULLTable: productlines
+Schema: NULL
+Table: productlines
 Rows: 7
 All rows:
 | productLine      | textDescription                                                                                                                                                                                             | htmlDescription   | image   |
@@ -221,16 +228,17 @@ All rows:
 | Vintage Cars     | Our Vintage Car models realistically portray automobiles produced from the early 1900s through the 1... and wood. Most of the replicas are in the 1:18 and 1:24 scale sizes, which provide the optimum in d | [NULL]            | [NULL]  |
 */
 CREATE TABLE productlines (
-    productLine TEXT NOT NULL PRIMARY KEY,
+    "productLine" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'Classic Cars', 'Motorcycles', 'Planes', 'Ships', 'Trains', 'Trucks and Buses', 'Vintage Cars'}</values>
-    textDescription TEXT NOT NULL,
+    "textDescription" TEXT NOT NULL,
         -- <values>{'Attention car enthusiasts: Make your wildest car o...this category. These replicas feature superb atten', 'Model trains are a rewarding hobby for enthusiasts...t within this category. The interactive aspect of ', 'Our Vintage Car models realistically portray autom...d 1:24 scale sizes, which provide the optimum in d', 'Our motorcycles are state of the art replicas of c...ng wheels, working kickstand, front suspension, ge', 'The Truck and Bus models are realistic replicas of...on and several out-of-production vehicles. Materia', 'The perfect holiday or anniversary gift for execut... assembled and ready for display in the home or of', 'Unique, diecast airplane and helicopter replicas s...et engines and propellers, retractable wheels, and'}</values>
-    htmlDescription TEXT NULL,
-    image BLOB NULL
+    "htmlDescription" TEXT NULL,
+    "image" BLOB NULL
 );
 
 /*
-Schema: NULLTable: products
+Schema: NULL
+Table: products
 Rows: 110
 Sample rows:
 | productCode   | productName                           | productLine   | productScale   | productVendor            | productDescription                                                                                                                                                                                          | quantityInStock   | buyPrice   | MSRP   |
@@ -243,25 +251,25 @@ Sample rows:
 | ...           | ...                                   | ...           | ...            | ...                      | ...                                                                                                                                                                                                         | ...               | ...        | ...    |
 */
 CREATE TABLE products (
-    productCode TEXT NOT NULL PRIMARY KEY,
+    "productCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'S10_1678'</example>
-    productName TEXT NOT NULL,
+    "productName" TEXT NOT NULL,
         -- <example>'1969 Harley Davidson Ultimate Chopper'</example>
-    productLine TEXT NOT NULL,
+    "productLine" TEXT NOT NULL,
         -- <values>{'Classic Cars', 'Motorcycles', 'Planes', 'Ships', 'Trains', 'Trucks and Buses', 'Vintage Cars'}</values>
-        -- <fk> -> productlines.productLine</fk>
-    productScale TEXT NOT NULL,
+        -- <fk> -> productlines."productLine"</fk>
+    "productScale" TEXT NOT NULL,
         -- <values>{'1:10', '1:12', '1:18', '1:24', '1:32', '1:50', '1:700', '1:72'}</values>
-    productVendor TEXT NOT NULL,
+    "productVendor" TEXT NOT NULL,
         -- <example>'Min Lin Diecast'</example>
-    productDescription TEXT NOT NULL,
+    "productDescription" TEXT NOT NULL,
         -- <example>'This replica features working kickstand, front sus...cise scale and require special care and attention.'</example>
-    quantityInStock INTEGER NOT NULL,
+    "quantityInStock" INTEGER NOT NULL,
         -- <example>7933</example>
-    buyPrice REAL NOT NULL,
+    "buyPrice" REAL NOT NULL,
         -- <example>48.810</example>
-    MSRP REAL NOT NULL,
+    "MSRP" REAL NOT NULL,
         -- <example>95.700</example>
-    FOREIGN KEY (productLine) REFERENCES productlines(productLine)
+    FOREIGN KEY ("productLine") REFERENCES productlines("productLine")
 );
 ```

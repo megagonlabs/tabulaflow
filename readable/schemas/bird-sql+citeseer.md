@@ -2,7 +2,8 @@
 -- Database: citeseer
 
 /*
-Schema: NULLTable: cites
+Schema: NULL
+Table: cites
 Rows: 4732
 Sample rows:
 | cited_paper_id   | citing_paper_id        |
@@ -15,15 +16,16 @@ Sample rows:
 | ...              | ...                    |
 */
 CREATE TABLE cites (
-    cited_paper_id TEXT NOT NULL,
+    "cited_paper_id" TEXT NOT NULL,
         -- <example>'100157'</example>
-    citing_paper_id TEXT NOT NULL,
+    "citing_paper_id" TEXT NOT NULL,
         -- <example>'100157'</example>
-    PRIMARY KEY (cited_paper_id, citing_paper_id)
+    PRIMARY KEY ("cited_paper_id", "citing_paper_id")
 );
 
 /*
-Schema: NULLTable: content
+Schema: NULL
+Table: content
 Rows: 105165
 Sample rows:
 | paper_id   | word_cited_id   |
@@ -36,17 +38,18 @@ Sample rows:
 | ...        | ...             |
 */
 CREATE TABLE content (
-    paper_id TEXT NOT NULL,
+    "paper_id" TEXT NOT NULL,
         -- <example>'100157'</example>
-        -- <fk> -> paper.paper_id</fk>
-    word_cited_id TEXT NOT NULL,
+        -- <fk> -> paper."paper_id"</fk>
+    "word_cited_id" TEXT NOT NULL,
         -- <example>'word1163'</example>
-    PRIMARY KEY (paper_id, word_cited_id),
-    FOREIGN KEY (paper_id) REFERENCES paper(paper_id)
+    PRIMARY KEY ("paper_id", "word_cited_id"),
+    FOREIGN KEY ("paper_id") REFERENCES paper("paper_id")
 );
 
 /*
-Schema: NULLTable: paper
+Schema: NULL
+Table: paper
 Rows: 3312
 Sample rows:
 | paper_id   | class_label   |
@@ -59,9 +62,9 @@ Sample rows:
 | ...        | ...           |
 */
 CREATE TABLE paper (
-    paper_id TEXT NOT NULL PRIMARY KEY,
+    "paper_id" TEXT NOT NULL PRIMARY KEY,
         -- <example>'100157'</example>
-    class_label TEXT NOT NULL
+    "class_label" TEXT NOT NULL
         -- <values>{'AI', 'Agents', 'DB', 'HCI', 'IR', 'ML'}</values>
 );
 ```

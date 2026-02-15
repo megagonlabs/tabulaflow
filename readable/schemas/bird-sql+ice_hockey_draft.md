@@ -2,7 +2,8 @@
 -- Database: ice_hockey_draft
 
 /*
-Schema: NULLTable: PlayerInfo
+Schema: NULL
+Table: PlayerInfo
 Rows: 2171
 Sample rows:
 | ELITEID   | PlayerName       | birthdate   | birthyear   | birthmonth   | birthday   | birthplace     | nation   | height   | weight   | position_info   | shoots   | draftyear   | draftround   | overall   | overallby             | CSS_rank   | sum_7yr_GP   | sum_7yr_TOI   | GP_greater_than_0   |
@@ -15,54 +16,55 @@ Sample rows:
 | ...       | ...              | ...         | ...         | ...          | ...        | ...            | ...      | ...      | ...      | ...             | ...      | ...         | ...          | ...       | ...                   | ...        | ...          | ...           | ...                 |
 */
 CREATE TABLE PlayerInfo (
-    ELITEID INTEGER NOT NULL PRIMARY KEY,
+    "ELITEID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>9</example>
-    PlayerName TEXT NOT NULL,
+    "PlayerName" TEXT NOT NULL,
         -- <example>'David Bornhammar'</example>
-    birthdate TEXT NOT NULL,
+    "birthdate" TEXT NOT NULL,
         -- <example>'1981-06-15'</example>
-    birthyear DATE NOT NULL,
+    "birthyear" DATE NOT NULL,
         -- <example>1981</example>
-    birthmonth INTEGER NOT NULL,
+    "birthmonth" INTEGER NOT NULL,
         -- <example>6</example>
-    birthday INTEGER NOT NULL,
+    "birthday" INTEGER NOT NULL,
         -- <example>15</example>
-    birthplace TEXT NOT NULL,
+    "birthplace" TEXT NOT NULL,
         -- <example>'Lidingo, SWE'</example>
-    nation TEXT NOT NULL,
+    "nation" TEXT NOT NULL,
         -- <example>'Sweden'</example>
-    height INTEGER NOT NULL,
+    "height" INTEGER NOT NULL,
         -- <example>73</example>
-        -- <fk> -> height_info.height_id</fk>
-    weight INTEGER NOT NULL,
+        -- <fk> -> height_info."height_id"</fk>
+    "weight" INTEGER NOT NULL,
         -- <example>198</example>
-        -- <fk> -> weight_info.weight_id</fk>
-    position_info TEXT NOT NULL,
+        -- <fk> -> weight_info."weight_id"</fk>
+    "position_info" TEXT NOT NULL,
         -- <example>'D'</example>
-    shoots TEXT NOT NULL,
+    "shoots" TEXT NOT NULL,
         -- <values>{'-', 'L', 'R'}</values>
-    draftyear INTEGER NOT NULL,
+    "draftyear" INTEGER NOT NULL,
         -- <example>1999</example>
-    draftround INTEGER NOT NULL,
+    "draftround" INTEGER NOT NULL,
         -- <example>7</example>
-    overall INTEGER NOT NULL,
+    "overall" INTEGER NOT NULL,
         -- <example>192</example>
-    overallby TEXT NOT NULL,
+    "overallby" TEXT NOT NULL,
         -- <example>'Washington Capitals'</example>
-    CSS_rank INTEGER NOT NULL,
+    "CSS_rank" INTEGER NOT NULL,
         -- <example>192</example>
-    sum_7yr_GP INTEGER NOT NULL,
+    "sum_7yr_GP" INTEGER NOT NULL,
         -- <example>0</example>
-    sum_7yr_TOI INTEGER NOT NULL,
+    "sum_7yr_TOI" INTEGER NOT NULL,
         -- <example>0</example>
-    GP_greater_than_0 TEXT NOT NULL,
+    "GP_greater_than_0" TEXT NOT NULL,
         -- <values>{'no', 'yes'}</values>
-    FOREIGN KEY (height) REFERENCES height_info(height_id),
-    FOREIGN KEY (weight) REFERENCES weight_info(weight_id)
+    FOREIGN KEY ("height") REFERENCES height_info("height_id"),
+    FOREIGN KEY ("weight") REFERENCES weight_info("weight_id")
 );
 
 /*
-Schema: NULLTable: SeasonStatus
+Schema: NULL
+Table: SeasonStatus
 Rows: 5485
 Sample rows:
 | ELITEID   | SEASON    | TEAM             | LEAGUE   | GAMETYPE       | GP   | G   | A   | P   | PIM   | PLUSMINUS   |
@@ -75,34 +77,35 @@ Sample rows:
 | ...       | ...       | ...              | ...      | ...            | ...  | ... | ... | ... | ...   | ...         |
 */
 CREATE TABLE SeasonStatus (
-    ELITEID INTEGER NOT NULL,
+    "ELITEID" INTEGER NOT NULL,
         -- <example>3667</example>
-        -- <fk> -> PlayerInfo.ELITEID</fk>
-    SEASON TEXT NOT NULL,
+        -- <fk> -> PlayerInfo."ELITEID"</fk>
+    "SEASON" TEXT NOT NULL,
         -- <values>{'1997-1998', '1998-1999', '1999-2000', '2000-2001', '2001-2002', '2003-2004', '2004-2005', '2005-2006', '2006-2007', '2007-2008'}</values>
-    TEAM TEXT NOT NULL,
+    "TEAM" TEXT NOT NULL,
         -- <example>'Rimouski Oceanic'</example>
-    LEAGUE TEXT NOT NULL,
+    "LEAGUE" TEXT NOT NULL,
         -- <example>'QMJHL'</example>
-    GAMETYPE TEXT NOT NULL,
+    "GAMETYPE" TEXT NOT NULL,
         -- <values>{'Playoffs', 'Regular Season'}</values>
-    GP INTEGER NOT NULL,
+    "GP" INTEGER NOT NULL,
         -- <example>58</example>
-    G INTEGER NOT NULL,
+    "G" INTEGER NOT NULL,
         -- <example>44</example>
-    A INTEGER NOT NULL,
+    "A" INTEGER NOT NULL,
         -- <example>71</example>
-    P INTEGER NOT NULL,
+    "P" INTEGER NOT NULL,
         -- <example>115</example>
-    PIM INTEGER NOT NULL,
+    "PIM" INTEGER NOT NULL,
         -- <example>117</example>
-    PLUSMINUS INTEGER NOT NULL,
+    "PLUSMINUS" INTEGER NOT NULL,
         -- <example>27</example>
-    FOREIGN KEY (ELITEID) REFERENCES PlayerInfo(ELITEID)
+    FOREIGN KEY ("ELITEID") REFERENCES PlayerInfo("ELITEID")
 );
 
 /*
-Schema: NULLTable: height_info
+Schema: NULL
+Table: height_info
 Rows: 16
 Sample rows:
 | height_id   | height_in_cm   | height_in_inch   |
@@ -115,16 +118,17 @@ Sample rows:
 | ...         | ...            | ...              |
 */
 CREATE TABLE height_info (
-    height_id INTEGER NOT NULL PRIMARY KEY,
+    "height_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>65</example>
-    height_in_cm INTEGER NOT NULL,
+    "height_in_cm" INTEGER NOT NULL,
         -- <example>165</example>
-    height_in_inch TEXT NOT NULL
+    "height_in_inch" TEXT NOT NULL
         -- <example>'5'5"'</example>
 );
 
 /*
-Schema: NULLTable: weight_info
+Schema: NULL
+Table: weight_info
 Rows: 46
 Sample rows:
 | weight_id   | weight_in_kg   | weight_in_lbs   |
@@ -137,11 +141,11 @@ Sample rows:
 | ...         | ...            | ...             |
 */
 CREATE TABLE weight_info (
-    weight_id INTEGER NOT NULL PRIMARY KEY,
+    "weight_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>154</example>
-    weight_in_kg INTEGER NOT NULL,
+    "weight_in_kg" INTEGER NOT NULL,
         -- <example>70</example>
-    weight_in_lbs INTEGER NOT NULL
+    "weight_in_lbs" INTEGER NOT NULL
         -- <example>154</example>
 );
 ```

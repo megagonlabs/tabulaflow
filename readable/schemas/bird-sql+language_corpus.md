@@ -2,7 +2,8 @@
 -- Database: language_corpus
 
 /*
-Schema: NULLTable: biwords
+Schema: NULL
+Table: biwords
 Rows: 21587486
 Sample rows:
 | lid   | w1st   | w2nd   | occurrences   |
@@ -15,25 +16,26 @@ Sample rows:
 | ...   | ...    | ...    | ...           |
 */
 CREATE TABLE biwords (
-    lid INTEGER NOT NULL,
+    "lid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> langs.lid</fk>
-    w1st INTEGER NOT NULL,
+        -- <fk> -> langs."lid"</fk>
+    "w1st" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> words.wid</fk>
-    w2nd INTEGER NOT NULL,
+        -- <fk> -> words."wid"</fk>
+    "w2nd" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> words.wid</fk>
-    occurrences INTEGER NOT NULL,
+        -- <fk> -> words."wid"</fk>
+    "occurrences" INTEGER NOT NULL,
         -- <example>4</example>
-    PRIMARY KEY (lid, w1st, w2nd),
-    FOREIGN KEY (w2nd) REFERENCES words(wid),
-    FOREIGN KEY (w1st) REFERENCES words(wid),
-    FOREIGN KEY (lid) REFERENCES langs(lid)
+    PRIMARY KEY ("lid", "w1st", "w2nd"),
+    FOREIGN KEY ("w2nd") REFERENCES words("wid"),
+    FOREIGN KEY ("w1st") REFERENCES words("wid"),
+    FOREIGN KEY ("lid") REFERENCES langs("lid")
 );
 
 /*
-Schema: NULLTable: langs
+Schema: NULL
+Table: langs
 Rows: 1
 All rows:
 |   lid | lang   | locale   |   pages |   words |
@@ -41,20 +43,21 @@ All rows:
 |     1 | ca     | ca_ES    | 1129144 | 2764996 |
 */
 CREATE TABLE langs (
-    lid INTEGER NOT NULL PRIMARY KEY,
+    "lid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    lang TEXT NOT NULL,
+    "lang" TEXT NOT NULL,
         -- <values>{'ca'}</values>
-    locale TEXT NOT NULL,
+    "locale" TEXT NOT NULL,
         -- <values>{'ca_ES'}</values>
-    pages INTEGER NOT NULL,
+    "pages" INTEGER NOT NULL,
         -- <example>1129144</example>
-    words INTEGER NOT NULL
+    "words" INTEGER NOT NULL
         -- <example>2764996</example>
 );
 
 /*
-Schema: NULLTable: langs_words
+Schema: NULL
+Table: langs_words
 Rows: 2764996
 Sample rows:
 | lid   | wid   | occurrences   |
@@ -67,21 +70,22 @@ Sample rows:
 | ...   | ...   | ...           |
 */
 CREATE TABLE langs_words (
-    lid INTEGER NOT NULL,
+    "lid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> langs.lid</fk>
-    wid INTEGER NOT NULL,
+        -- <fk> -> langs."lid"</fk>
+    "wid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> words.wid</fk>
-    occurrences INTEGER NOT NULL,
+        -- <fk> -> words."wid"</fk>
+    "occurrences" INTEGER NOT NULL,
         -- <example>242</example>
-    PRIMARY KEY (lid, wid),
-    FOREIGN KEY (wid) REFERENCES words(wid),
-    FOREIGN KEY (lid) REFERENCES langs(lid)
+    PRIMARY KEY ("lid", "wid"),
+    FOREIGN KEY ("wid") REFERENCES words("wid"),
+    FOREIGN KEY ("lid") REFERENCES langs("lid")
 );
 
 /*
-Schema: NULLTable: pages
+Schema: NULL
+Table: pages
 Rows: 1129144
 Sample rows:
 | pid   | lid   | page   | revision   | title    | words   |
@@ -94,24 +98,25 @@ Sample rows:
 | ...   | ...   | ...    | ...        | ...      | ...     |
 */
 CREATE TABLE pages (
-    pid INTEGER NOT NULL PRIMARY KEY,
+    "pid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    lid INTEGER NOT NULL,
+    "lid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> langs.lid</fk>
-    page INTEGER NOT NULL,
+        -- <fk> -> langs."lid"</fk>
+    "page" INTEGER NOT NULL,
         -- <example>1</example>
-    revision INTEGER NOT NULL,
+    "revision" INTEGER NOT NULL,
         -- <example>28236978</example>
-    title TEXT NOT NULL,
+    "title" TEXT NOT NULL,
         -- <example>'Àbac'</example>
-    words INTEGER NOT NULL,
+    "words" INTEGER NOT NULL,
         -- <example>1081</example>
-    FOREIGN KEY (lid) REFERENCES langs(lid)
+    FOREIGN KEY ("lid") REFERENCES langs("lid")
 );
 
 /*
-Schema: NULLTable: pages_words
+Schema: NULL
+Table: pages_words
 Rows: 129131916
 Sample rows:
 | pid   | wid   | occurrences   |
@@ -124,21 +129,22 @@ Sample rows:
 | ...   | ...   | ...           |
 */
 CREATE TABLE pages_words (
-    pid INTEGER NOT NULL,
+    "pid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> pages.pid</fk>
-    wid INTEGER NOT NULL,
+        -- <fk> -> pages."pid"</fk>
+    "wid" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> words.wid</fk>
-    occurrences INTEGER NOT NULL,
+        -- <fk> -> words."wid"</fk>
+    "occurrences" INTEGER NOT NULL,
         -- <example>30</example>
-    PRIMARY KEY (pid, wid),
-    FOREIGN KEY (wid) REFERENCES words(wid),
-    FOREIGN KEY (pid) REFERENCES pages(pid)
+    PRIMARY KEY ("pid", "wid"),
+    FOREIGN KEY ("wid") REFERENCES words("wid"),
+    FOREIGN KEY ("pid") REFERENCES pages("pid")
 );
 
 /*
-Schema: NULLTable: words
+Schema: NULL
+Table: words
 Rows: 2764996
 Sample rows:
 | wid   | word   | occurrences   |
@@ -151,11 +157,11 @@ Sample rows:
 | ...   | ...    | ...           |
 */
 CREATE TABLE words (
-    wid INTEGER NOT NULL PRIMARY KEY,
+    "wid" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2148990</example>
-    word TEXT NOT NULL,
+    "word" TEXT NOT NULL,
         -- <example>'+,2'</example>
-    occurrences INTEGER NOT NULL
+    "occurrences" INTEGER NOT NULL
         -- <example>242</example>
 );
 ```

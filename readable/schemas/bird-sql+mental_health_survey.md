@@ -2,7 +2,8 @@
 -- Database: mental_health_survey
 
 /*
-Schema: NULLTable: Answer
+Schema: NULL
+Table: Answer
 Rows: 234640
 Sample rows:
 | AnswerText   | SurveyID   | UserID   | QuestionID   |
@@ -15,23 +16,24 @@ Sample rows:
 | ...          | ...        | ...      | ...          |
 */
 CREATE TABLE Answer (
-    AnswerText TEXT NOT NULL,
+    "AnswerText" TEXT NOT NULL,
         -- <example>'37'</example>
-    SurveyID INTEGER NOT NULL,
+    "SurveyID" INTEGER NOT NULL,
         -- <example>2014</example>
-        -- <fk> -> Survey.SurveyID</fk>
-    UserID INTEGER NOT NULL,
+        -- <fk> -> Survey."SurveyID"</fk>
+    "UserID" INTEGER NOT NULL,
         -- <example>1</example>
-    QuestionID INTEGER NOT NULL,
+    "QuestionID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Question.questionid</fk>
-    PRIMARY KEY (UserID, QuestionID),
-    FOREIGN KEY (QuestionID) REFERENCES Question(questionid),
-    FOREIGN KEY (SurveyID) REFERENCES Survey(SurveyID)
+        -- <fk> -> Question."questionid"</fk>
+    PRIMARY KEY ("UserID", "QuestionID"),
+    FOREIGN KEY ("QuestionID") REFERENCES Question("questionid"),
+    FOREIGN KEY ("SurveyID") REFERENCES Survey("SurveyID")
 );
 
 /*
-Schema: NULLTable: Question
+Schema: NULL
+Table: Question
 Rows: 105
 Sample rows:
 | questiontext                                                               | questionid   |
@@ -44,14 +46,15 @@ Sample rows:
 | ...                                                                        | ...          |
 */
 CREATE TABLE Question (
-    questiontext TEXT NOT NULL,
+    "questiontext" TEXT NOT NULL,
         -- <example>'What is your age?'</example>
-    questionid INTEGER NOT NULL PRIMARY KEY
+    "questionid" INTEGER NOT NULL PRIMARY KEY
         -- <example>1</example>
 );
 
 /*
-Schema: NULLTable: Survey
+Schema: NULL
+Table: Survey
 Rows: 5
 All rows:
 |   SurveyID | Description                   |
@@ -63,9 +66,9 @@ All rows:
 |       2019 | mental health survey for 2019 |
 */
 CREATE TABLE Survey (
-    SurveyID INTEGER NOT NULL PRIMARY KEY,
+    "SurveyID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2014</example>
-    Description TEXT NOT NULL
+    "Description" TEXT NOT NULL
         -- <values>{'mental health survey for 2014', 'mental health survey for 2016', 'mental health survey for 2017', 'mental health survey for 2018', 'mental health survey for 2019'}</values>
 );
 ```

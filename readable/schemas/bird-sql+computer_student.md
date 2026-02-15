@@ -2,7 +2,8 @@
 -- Database: computer_student
 
 /*
-Schema: NULLTable: advisedBy
+Schema: NULL
+Table: advisedBy
 Rows: 113
 Sample rows:
 | p_id   | p_id_dummy   |
@@ -15,18 +16,19 @@ Sample rows:
 | ...    | ...          |
 */
 CREATE TABLE advisedBy (
-    p_id INTEGER NOT NULL,
+    "p_id" INTEGER NOT NULL,
         -- <example>6</example>
         -- <fk>composite</fk>
-    p_id_dummy INTEGER NOT NULL,
+    "p_id_dummy" INTEGER NOT NULL,
         -- <example>5</example>
         -- <fk>composite</fk>
-    PRIMARY KEY (p_id, p_id_dummy),
-    FOREIGN KEY (p_id, p_id_dummy) REFERENCES person(p_id, p_id)
+    PRIMARY KEY ("p_id", "p_id_dummy"),
+    FOREIGN KEY ("p_id", "p_id_dummy") REFERENCES person("p_id", "p_id")
 );
 
 /*
-Schema: NULLTable: course
+Schema: NULL
+Table: course
 Rows: 132
 Sample rows:
 | course_id   | courseLevel   |
@@ -39,14 +41,15 @@ Sample rows:
 | ...         | ...           |
 */
 CREATE TABLE course (
-    course_id INTEGER NOT NULL PRIMARY KEY,
+    "course_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    courseLevel TEXT NOT NULL
+    "courseLevel" TEXT NOT NULL
         -- <values>{'Level_300', 'Level_400', 'Level_500'}</values>
 );
 
 /*
-Schema: NULLTable: person
+Schema: NULL
+Table: person
 Rows: 278
 Sample rows:
 | p_id   | professor   | student   | hasPosition   | inPhase    | yearsInProgram   |
@@ -59,22 +62,23 @@ Sample rows:
 | ...    | ...         | ...       | ...           | ...        | ...              |
 */
 CREATE TABLE person (
-    p_id INTEGER NOT NULL PRIMARY KEY,
+    "p_id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>3</example>
-    professor INTEGER NOT NULL,
+    "professor" INTEGER NOT NULL,
         -- <example>0</example>
-    student INTEGER NOT NULL,
+    "student" INTEGER NOT NULL,
         -- <example>1</example>
-    hasPosition TEXT NOT NULL,
+    "hasPosition" TEXT NOT NULL,
         -- <values>{'0', 'Faculty', 'Faculty_adj', 'Faculty_aff', 'Faculty_eme'}</values>
-    inPhase TEXT NOT NULL,
+    "inPhase" TEXT NOT NULL,
         -- <values>{'0', 'Post_Generals', 'Post_Quals', 'Pre_Quals'}</values>
-    yearsInProgram TEXT NOT NULL
+    "yearsInProgram" TEXT NOT NULL
         -- <example>'0'</example>
 );
 
 /*
-Schema: NULLTable: taughtBy
+Schema: NULL
+Table: taughtBy
 Rows: 189
 Sample rows:
 | course_id   | p_id   |
@@ -87,14 +91,14 @@ Sample rows:
 | ...         | ...    |
 */
 CREATE TABLE taughtBy (
-    course_id INTEGER NOT NULL,
+    "course_id" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> course.course_id</fk>
-    p_id INTEGER NOT NULL,
+        -- <fk> -> course."course_id"</fk>
+    "p_id" INTEGER NOT NULL,
         -- <example>40</example>
-        -- <fk> -> person.p_id</fk>
-    PRIMARY KEY (course_id, p_id),
-    FOREIGN KEY (p_id) REFERENCES person(p_id),
-    FOREIGN KEY (course_id) REFERENCES course(course_id)
+        -- <fk> -> person."p_id"</fk>
+    PRIMARY KEY ("course_id", "p_id"),
+    FOREIGN KEY ("p_id") REFERENCES person("p_id"),
+    FOREIGN KEY ("course_id") REFERENCES course("course_id")
 );
 ```

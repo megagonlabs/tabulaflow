@@ -2,7 +2,8 @@
 -- Database: authors
 
 /*
-Schema: NULLTable: Author
+Schema: NULL
+Table: Author
 Rows: 247030
 Sample rows:
 | Id   | Name              | Affiliation                               |
@@ -15,16 +16,17 @@ Sample rows:
 | ...  | ...               | ...                                       |
 */
 CREATE TABLE Author (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>9</example>
-    Name TEXT NULL,
+    "Name" TEXT NULL,
         -- <example>'Ernest Jordan'</example>
-    Affiliation TEXT NULL
+    "Affiliation" TEXT NULL
         -- <example>'Cavendish Laboratory|Cambridge University'</example>
 );
 
 /*
-Schema: NULLTable: Conference
+Schema: NULL
+Table: Conference
 Rows: 4545
 Sample rows:
 | Id   | ShortName   | FullName                                                             | HomePage                                                        |
@@ -37,18 +39,19 @@ Sample rows:
 | ...  | ...         | ...                                                                  | ...                                                             |
 */
 CREATE TABLE Conference (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ShortName TEXT NOT NULL,
+    "ShortName" TEXT NOT NULL,
         -- <example>'IADIS'</example>
-    FullName TEXT NOT NULL,
+    "FullName" TEXT NOT NULL,
         -- <example>'International Association for Development of the Information Society'</example>
-    HomePage TEXT NOT NULL
+    "HomePage" TEXT NOT NULL
         -- <example>''</example>
 );
 
 /*
-Schema: NULLTable: Journal
+Schema: NULL
+Table: Journal
 Rows: 15151
 Sample rows:
 | Id   | ShortName   | FullName                                                                  | HomePage                                          |
@@ -61,18 +64,19 @@ Sample rows:
 | ...  | ...         | ...                                                                       | ...                                               |
 */
 CREATE TABLE Journal (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ShortName TEXT NOT NULL,
+    "ShortName" TEXT NOT NULL,
         -- <example>'ICOM'</example>
-    FullName TEXT NOT NULL,
+    "FullName" TEXT NOT NULL,
         -- <example>'Zeitschrift Für Interaktive Und Kooperative Medien'</example>
-    HomePage TEXT NOT NULL
+    "HomePage" TEXT NOT NULL
         -- <example>'http://www.i-com-media.de'</example>
 );
 
 /*
-Schema: NULLTable: Paper
+Schema: NULL
+Table: Paper
 Rows: 2254920
 Sample rows:
 | Id   | Title                                                                                   | Year   | ConferenceId   | JournalId   | Keyword                                                        |
@@ -85,26 +89,27 @@ Sample rows:
 | ...  | ...                                                                                     | ...    | ...            | ...         | ...                                                            |
 */
 CREATE TABLE Paper (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Title TEXT NULL,
+    "Title" TEXT NULL,
         -- <example>'Stitching videos streamed by mobile phones in real-time'</example>
-    Year INTEGER NOT NULL,
+    "Year" INTEGER NOT NULL,
         -- <example>2009</example>
-    ConferenceId INTEGER NOT NULL,
+    "ConferenceId" INTEGER NOT NULL,
         -- <example>167</example>
-        -- <fk> -> Conference.Id</fk>
-    JournalId INTEGER NOT NULL,
+        -- <fk> -> Conference."Id"</fk>
+    "JournalId" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> Journal.Id</fk>
-    Keyword TEXT NULL,
+        -- <fk> -> Journal."Id"</fk>
+    "Keyword" TEXT NULL,
         -- <example>'mobile video capturing|real-time|video stitching'</example>
-    FOREIGN KEY (ConferenceId) REFERENCES Conference(Id),
-    FOREIGN KEY (JournalId) REFERENCES Journal(Id)
+    FOREIGN KEY ("ConferenceId") REFERENCES Conference("Id"),
+    FOREIGN KEY ("JournalId") REFERENCES Journal("Id")
 );
 
 /*
-Schema: NULLTable: PaperAuthor
+Schema: NULL
+Table: PaperAuthor
 Rows: 2315574
 Sample rows:
 | PaperId   | AuthorId   | Name                | Affiliation                                           |
@@ -117,17 +122,17 @@ Sample rows:
 | ...       | ...        | ...                 | ...                                                   |
 */
 CREATE TABLE PaperAuthor (
-    PaperId INTEGER NOT NULL,
+    "PaperId" INTEGER NOT NULL,
         -- <example>4</example>
-        -- <fk> -> Paper.Id</fk>
-    AuthorId INTEGER NOT NULL,
+        -- <fk> -> Paper."Id"</fk>
+    "AuthorId" INTEGER NOT NULL,
         -- <example>1456512</example>
-        -- <fk> -> Author.Id</fk>
-    Name TEXT NULL,
+        -- <fk> -> Author."Id"</fk>
+    "Name" TEXT NULL,
         -- <example>'ADAM G. JONES'</example>
-    Affiliation TEXT NULL,
+    "Affiliation" TEXT NULL,
         -- <example>'Kyushu University 812 Fukuoka Japan 812 Fukuoka Japan'</example>
-    FOREIGN KEY (PaperId) REFERENCES Paper(Id),
-    FOREIGN KEY (AuthorId) REFERENCES Author(Id)
+    FOREIGN KEY ("PaperId") REFERENCES Paper("Id"),
+    FOREIGN KEY ("AuthorId") REFERENCES Author("Id")
 );
 ```

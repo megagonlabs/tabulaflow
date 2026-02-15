@@ -2,7 +2,8 @@
 -- Database: codebase_community
 
 /*
-Schema: NULLTable: badges
+Schema: NULL
+Table: badges
 Rows: 79851
 Sample rows:
 | Id   | UserId   | Name    | Date                  |
@@ -15,20 +16,21 @@ Sample rows:
 | ...  | ...      | ...     | ...                   |
 */
 CREATE TABLE badges (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    UserId INTEGER NOT NULL,
+    "UserId" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> users.Id</fk>
-    Name TEXT NOT NULL,
+        -- <fk> -> users."Id"</fk>
+    "Name" TEXT NOT NULL,
         -- <example>'Teacher'</example>
-    Date DATETIME NOT NULL,
+    "Date" DATETIME NOT NULL,
         -- <example>'2010-07-19 19:39:07.0'</example>
-    FOREIGN KEY (UserId) REFERENCES users(Id)
+    FOREIGN KEY ("UserId") REFERENCES users("Id")
 );
 
 /*
-Schema: NULLTable: comments
+Schema: NULL
+Table: comments
 Rows: 174285
 Sample rows:
 | Id   | PostId   | Score   | Text                                                                                                                          | CreationDate          | UserId   | UserDisplayName   |
@@ -41,28 +43,29 @@ Sample rows:
 | ...  | ...      | ...     | ...                                                                                                                           | ...                   | ...      | ...               |
 */
 CREATE TABLE comments (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    PostId INTEGER NOT NULL,
+    "PostId" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> posts.Id</fk>
-    Score INTEGER NOT NULL,
+        -- <fk> -> posts."Id"</fk>
+    "Score" INTEGER NOT NULL,
         -- <example>5</example>
-    Text TEXT NOT NULL,
+    "Text" TEXT NOT NULL,
         -- <example>'Could be a poster child fo argumentative and subjective.  At the least, need to define 'valuable'.'</example>
-    CreationDate DATETIME NOT NULL,
+    "CreationDate" DATETIME NOT NULL,
         -- <example>'2010-07-19 19:15:52.0'</example>
-    UserId INTEGER NULL,
+    "UserId" INTEGER NULL,
         -- <example>13</example>
-        -- <fk> -> users.Id</fk>
-    UserDisplayName TEXT NULL,
+        -- <fk> -> users."Id"</fk>
+    "UserDisplayName" TEXT NULL,
         -- <example>'user28'</example>
-    FOREIGN KEY (PostId) REFERENCES posts(Id),
-    FOREIGN KEY (UserId) REFERENCES users(Id)
+    FOREIGN KEY ("PostId") REFERENCES posts("Id"),
+    FOREIGN KEY ("UserId") REFERENCES users("Id")
 );
 
 /*
-Schema: NULLTable: postHistory
+Schema: NULL
+Table: postHistory
 Rows: 303155
 Sample rows:
 | Id   | PostHistoryTypeId   | PostId   | RevisionGUID                         | CreationDate          | UserId   | Text                                                                                                                                       | Comment   | UserDisplayName   |
@@ -75,32 +78,33 @@ Sample rows:
 | ...  | ...                 | ...      | ...                                  | ...                   | ...      | ...                                                                                                                                        | ...       | ...               |
 */
 CREATE TABLE postHistory (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    PostHistoryTypeId INTEGER NOT NULL,
+    "PostHistoryTypeId" INTEGER NOT NULL,
         -- <example>2</example>
-    PostId INTEGER NOT NULL,
+    "PostId" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> posts.Id</fk>
-    RevisionGUID TEXT NOT NULL,
+        -- <fk> -> posts."Id"</fk>
+    "RevisionGUID" TEXT NOT NULL,
         -- <example>'e58bf7fd-e60f-4c58-a6e4-dfc91cf98a69'</example>
-    CreationDate DATETIME NOT NULL,
+    "CreationDate" DATETIME NOT NULL,
         -- <example>'2010-07-19 19:12:12.0'</example>
-    UserId INTEGER NULL,
+    "UserId" INTEGER NULL,
         -- <example>8</example>
-        -- <fk> -> users.Id</fk>
-    Text TEXT NOT NULL,
+        -- <fk> -> users."Id"</fk>
+    "Text" TEXT NOT NULL,
         -- <example>'How should I elicit prior distributions from experts when fitting a Bayesian model?'</example>
-    Comment TEXT NOT NULL,
+    "Comment" TEXT NOT NULL,
         -- <example>''</example>
-    UserDisplayName TEXT NOT NULL,
+    "UserDisplayName" TEXT NOT NULL,
         -- <example>''</example>
-    FOREIGN KEY (PostId) REFERENCES posts(Id),
-    FOREIGN KEY (UserId) REFERENCES users(Id)
+    FOREIGN KEY ("PostId") REFERENCES posts("Id"),
+    FOREIGN KEY ("UserId") REFERENCES users("Id")
 );
 
 /*
-Schema: NULLTable: postLinks
+Schema: NULL
+Table: postLinks
 Rows: 11102
 Sample rows:
 | Id   | CreationDate          | PostId   | RelatedPostId   | LinkTypeId   |
@@ -113,24 +117,25 @@ Sample rows:
 | ...  | ...                   | ...      | ...             | ...          |
 */
 CREATE TABLE postLinks (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>108</example>
-    CreationDate DATETIME NOT NULL,
+    "CreationDate" DATETIME NOT NULL,
         -- <example>'2010-07-21 14:47:33.0'</example>
-    PostId INTEGER NOT NULL,
+    "PostId" INTEGER NOT NULL,
         -- <example>395</example>
-        -- <fk> -> posts.Id</fk>
-    RelatedPostId INTEGER NOT NULL,
+        -- <fk> -> posts."Id"</fk>
+    "RelatedPostId" INTEGER NOT NULL,
         -- <example>173</example>
-        -- <fk> -> posts.Id</fk>
-    LinkTypeId INTEGER NOT NULL,
+        -- <fk> -> posts."Id"</fk>
+    "LinkTypeId" INTEGER NOT NULL,
         -- <example>1</example>
-    FOREIGN KEY (PostId) REFERENCES posts(Id),
-    FOREIGN KEY (RelatedPostId) REFERENCES posts(Id)
+    FOREIGN KEY ("PostId") REFERENCES posts("Id"),
+    FOREIGN KEY ("RelatedPostId") REFERENCES posts("Id")
 );
 
 /*
-Schema: NULLTable: posts
+Schema: NULL
+Table: posts
 Rows: 91966
 Sample rows:
 | Id   | PostTypeId   | AcceptedAnswerId   | CreaionDate           | Score   | ViewCount   | Body                                                                                                                                                                                                       | OwnerUserId   | LasActivityDate       | Title                                                             | Tags                                      | AnswerCount   | CommentCount   | FavoriteCount   | LastEditorUserId   | LastEditDate          | CommunityOwnedDate    | ParentId   | ClosedDate   | OwnerDisplayName   | LastEditorDisplayName   |
@@ -150,59 +155,60 @@ Sample rows:
 | ...  | ...          | ...                | ...                   | ...     | ...         | ...                                                                                                                                                                                                        | ...           | ...                   | ...                                                               | ...                                       | ...           | ...            | ...             | ...                | ...                   | ...                   | ...        | ...          | ...                | ...                     |
 */
 CREATE TABLE posts (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    PostTypeId INTEGER NOT NULL,
+    "PostTypeId" INTEGER NOT NULL,
         -- <example>1</example>
-    AcceptedAnswerId INTEGER NULL,
+    "AcceptedAnswerId" INTEGER NULL,
         -- <example>15</example>
-    CreaionDate DATETIME NOT NULL,
+    "CreaionDate" DATETIME NOT NULL,
         -- <example>'2010-07-19 19:12:12.0'</example>
-    Score INTEGER NOT NULL,
+    "Score" INTEGER NOT NULL,
         -- <example>23</example>
-    ViewCount INTEGER NULL,
+    "ViewCount" INTEGER NULL,
         -- <example>1278</example>
-    Body TEXT NULL,
+    "Body" TEXT NULL,
         -- <example>'<p>How should I elicit prior distributions from experts when fitting a Bayesian model?</p>
 '</example>
-    OwnerUserId INTEGER NULL,
+    "OwnerUserId" INTEGER NULL,
         -- <example>8</example>
-        -- <fk> -> users.Id</fk>
-    LasActivityDate DATETIME NOT NULL,
+        -- <fk> -> users."Id"</fk>
+    "LasActivityDate" DATETIME NOT NULL,
         -- <example>'2010-09-15 21:08:26.0'</example>
-    Title TEXT NULL,
+    "Title" TEXT NULL,
         -- <example>'Eliciting priors from experts'</example>
-    Tags TEXT NULL,
+    "Tags" TEXT NULL,
         -- <example>'<bayesian><prior><elicitation>'</example>
-    AnswerCount INTEGER NULL,
+    "AnswerCount" INTEGER NULL,
         -- <example>5</example>
-    CommentCount INTEGER NOT NULL,
+    "CommentCount" INTEGER NOT NULL,
         -- <example>1</example>
-    FavoriteCount INTEGER NULL,
+    "FavoriteCount" INTEGER NULL,
         -- <example>14</example>
-    LastEditorUserId INTEGER NULL,
+    "LastEditorUserId" INTEGER NULL,
         -- <example>88</example>
-        -- <fk> -> users.Id</fk>
-    LastEditDate DATETIME NULL,
+        -- <fk> -> users."Id"</fk>
+    "LastEditDate" DATETIME NULL,
         -- <example>'2010-08-07 17:56:44.0'</example>
-    CommunityOwnedDate DATETIME NULL,
+    "CommunityOwnedDate" DATETIME NULL,
         -- <example>'2010-07-19 19:13:28.0'</example>
-    ParentId INTEGER NULL,
+    "ParentId" INTEGER NULL,
         -- <example>3</example>
-        -- <fk> -> posts.Id</fk>
-    ClosedDate DATETIME NULL,
+        -- <fk> -> posts."Id"</fk>
+    "ClosedDate" DATETIME NULL,
         -- <example>'2010-07-19 20:19:46.0'</example>
-    OwnerDisplayName TEXT NULL,
+    "OwnerDisplayName" TEXT NULL,
         -- <example>'user28'</example>
-    LastEditorDisplayName TEXT NULL,
+    "LastEditorDisplayName" TEXT NULL,
         -- <example>'user28'</example>
-    FOREIGN KEY (LastEditorUserId) REFERENCES users(Id),
-    FOREIGN KEY (OwnerUserId) REFERENCES users(Id),
-    FOREIGN KEY (ParentId) REFERENCES posts(Id)
+    FOREIGN KEY ("LastEditorUserId") REFERENCES users("Id"),
+    FOREIGN KEY ("OwnerUserId") REFERENCES users("Id"),
+    FOREIGN KEY ("ParentId") REFERENCES posts("Id")
 );
 
 /*
-Schema: NULLTable: tags
+Schema: NULL
+Table: tags
 Rows: 1032
 Sample rows:
 | Id   | TagName     | Count   | ExcerptPostId   | WikiPostId   |
@@ -215,22 +221,23 @@ Sample rows:
 | ...  | ...         | ...     | ...             | ...          |
 */
 CREATE TABLE tags (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    TagName TEXT NOT NULL,
+    "TagName" TEXT NOT NULL,
         -- <example>'bayesian'</example>
-    Count INTEGER NOT NULL,
+    "Count" INTEGER NOT NULL,
         -- <example>1342</example>
-    ExcerptPostId INTEGER NULL,
+    "ExcerptPostId" INTEGER NULL,
         -- <example>20258</example>
-        -- <fk> -> posts.Id</fk>
-    WikiPostId INTEGER NULL,
+        -- <fk> -> posts."Id"</fk>
+    "WikiPostId" INTEGER NULL,
         -- <example>20257</example>
-    FOREIGN KEY (ExcerptPostId) REFERENCES posts(Id)
+    FOREIGN KEY ("ExcerptPostId") REFERENCES posts("Id")
 );
 
 /*
-Schema: NULLTable: users
+Schema: NULL
+Table: users
 Rows: 40325
 Sample rows:
 | Id   | Reputation   | CreationDate          | DisplayName   | LastAccessDate        | WebsiteUrl                     | Location           | AboutMe   | Views   | UpVotes   | DownVotes   | AccountId   | Age    | ProfileImageUrl                    |
@@ -254,42 +261,43 @@ Sample rows:
 | ...  | ...          | ...                   | ...           | ...                   | ...                            | ...                | ...       | ...     | ...       | ...         | ...         | ...    | ...                                |
 */
 CREATE TABLE users (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>-1</example>
-    Reputation INTEGER NOT NULL,
+    "Reputation" INTEGER NOT NULL,
         -- <example>1</example>
-    CreationDate DATETIME NOT NULL,
+    "CreationDate" DATETIME NOT NULL,
         -- <example>'2010-07-19 06:55:26.0'</example>
-    DisplayName TEXT NOT NULL,
+    "DisplayName" TEXT NOT NULL,
         -- <example>'Community'</example>
-    LastAccessDate DATETIME NOT NULL,
+    "LastAccessDate" DATETIME NOT NULL,
         -- <example>'2010-07-19 06:55:26.0'</example>
-    WebsiteUrl TEXT NULL,
+    "WebsiteUrl" TEXT NULL,
         -- <example>'http://meta.stackexchange.com/'</example>
-    Location TEXT NULL,
+    "Location" TEXT NULL,
         -- <example>'on the server farm'</example>
-    AboutMe TEXT NULL,
+    "AboutMe" TEXT NULL,
         -- <example>'<p>Hi, I'm not really a person.</p>
 
 <p>I'm a back.../92006">Remove abandoned questions</a></li>
 </ul>
 '</example>
-    Views INTEGER NOT NULL,
+    "Views" INTEGER NOT NULL,
         -- <example>0</example>
-    UpVotes INTEGER NOT NULL,
+    "UpVotes" INTEGER NOT NULL,
         -- <example>5007</example>
-    DownVotes INTEGER NOT NULL,
+    "DownVotes" INTEGER NOT NULL,
         -- <example>1920</example>
-    AccountId INTEGER NOT NULL,
+    "AccountId" INTEGER NOT NULL,
         -- <example>-1</example>
-    Age INTEGER NULL,
+    "Age" INTEGER NULL,
         -- <example>37</example>
-    ProfileImageUrl TEXT NULL
+    "ProfileImageUrl" TEXT NULL
         -- <example>'http://i.stack.imgur.com/d1oHX.jpg'</example>
 );
 
 /*
-Schema: NULLTable: votes
+Schema: NULL
+Table: votes
 Rows: 38930
 Sample rows:
 | Id   | PostId   | VoteTypeId   | CreationDate   | UserId   | BountyAmount   |
@@ -302,21 +310,21 @@ Sample rows:
 | ...  | ...      | ...          | ...            | ...      | ...            |
 */
 CREATE TABLE votes (
-    Id INTEGER NOT NULL PRIMARY KEY,
+    "Id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    PostId INTEGER NOT NULL,
+    "PostId" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> posts.Id</fk>
-    VoteTypeId INTEGER NOT NULL,
+        -- <fk> -> posts."Id"</fk>
+    "VoteTypeId" INTEGER NOT NULL,
         -- <example>2</example>
-    CreationDate DATE NOT NULL,
+    "CreationDate" DATE NOT NULL,
         -- <example>'2010-07-19'</example>
-    UserId INTEGER NULL,
+    "UserId" INTEGER NULL,
         -- <example>58</example>
-        -- <fk> -> users.Id</fk>
-    BountyAmount INTEGER NULL,
+        -- <fk> -> users."Id"</fk>
+    "BountyAmount" INTEGER NULL,
         -- <example>50</example>
-    FOREIGN KEY (PostId) REFERENCES posts(Id),
-    FOREIGN KEY (UserId) REFERENCES users(Id)
+    FOREIGN KEY ("PostId") REFERENCES posts("Id"),
+    FOREIGN KEY ("UserId") REFERENCES users("Id")
 );
 ```

@@ -2,7 +2,8 @@
 -- Database: sales
 
 /*
-Schema: NULLTable: Customers
+Schema: NULL
+Table: Customers
 Rows: 19759
 Sample rows:
 | CustomerID   | FirstName   | MiddleInitial   | LastName   |
@@ -15,18 +16,19 @@ Sample rows:
 | ...          | ...         | ...             | ...        |
 */
 CREATE TABLE Customers (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    FirstName TEXT NOT NULL,
+    "FirstName" TEXT NOT NULL,
         -- <example>'Aaron'</example>
-    MiddleInitial TEXT NULL,
+    "MiddleInitial" TEXT NULL,
         -- <example>'A'</example>
-    LastName TEXT NOT NULL
+    "LastName" TEXT NOT NULL
         -- <example>'Alexander'</example>
 );
 
 /*
-Schema: NULLTable: Employees
+Schema: NULL
+Table: Employees
 Rows: 22
 Sample rows:
 | EmployeeID   | FirstName   | MiddleInitial   | LastName       |
@@ -39,18 +41,19 @@ Sample rows:
 | ...          | ...         | ...             | ...            |
 */
 CREATE TABLE Employees (
-    EmployeeID INTEGER NOT NULL PRIMARY KEY,
+    "EmployeeID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    FirstName TEXT NOT NULL,
+    "FirstName" TEXT NOT NULL,
         -- <example>'Abraham'</example>
-    MiddleInitial TEXT NOT NULL,
+    "MiddleInitial" TEXT NOT NULL,
         -- <example>'e'</example>
-    LastName TEXT NOT NULL
+    "LastName" TEXT NOT NULL
         -- <example>'Bennet'</example>
 );
 
 /*
-Schema: NULLTable: Products
+Schema: NULL
+Table: Products
 Rows: 504
 Sample rows:
 | ProductID   | Name                  | Price   |
@@ -63,16 +66,17 @@ Sample rows:
 | ...         | ...                   | ...     |
 */
 CREATE TABLE Products (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Adjustable Race'</example>
-    Price REAL NOT NULL
+    "Price" REAL NOT NULL
         -- <example>1.600</example>
 );
 
 /*
-Schema: NULLTable: Sales
+Schema: NULL
+Table: Sales
 Rows: 6715221
 Sample rows:
 | SalesID   | SalesPersonID   | CustomerID   | ProductID   | Quantity   |
@@ -85,21 +89,21 @@ Sample rows:
 | ...       | ...             | ...          | ...         | ...        |
 */
 CREATE TABLE Sales (
-    SalesID INTEGER NOT NULL PRIMARY KEY,
+    "SalesID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    SalesPersonID INTEGER NOT NULL,
+    "SalesPersonID" INTEGER NOT NULL,
         -- <example>17</example>
-        -- <fk> -> Employees.EmployeeID</fk>
-    CustomerID INTEGER NOT NULL,
+        -- <fk> -> Employees."EmployeeID"</fk>
+    "CustomerID" INTEGER NOT NULL,
         -- <example>10482</example>
-        -- <fk> -> Customers.CustomerID</fk>
-    ProductID INTEGER NOT NULL,
+        -- <fk> -> Customers."CustomerID"</fk>
+    "ProductID" INTEGER NOT NULL,
         -- <example>500</example>
-        -- <fk> -> Products.ProductID</fk>
-    Quantity INTEGER NOT NULL,
+        -- <fk> -> Products."ProductID"</fk>
+    "Quantity" INTEGER NOT NULL,
         -- <example>500</example>
-    FOREIGN KEY (SalesPersonID) REFERENCES Employees(EmployeeID),
-    FOREIGN KEY (CustomerID) REFERENCES Customers(CustomerID),
-    FOREIGN KEY (ProductID) REFERENCES Products(ProductID)
+    FOREIGN KEY ("SalesPersonID") REFERENCES Employees("EmployeeID"),
+    FOREIGN KEY ("CustomerID") REFERENCES Customers("CustomerID"),
+    FOREIGN KEY ("ProductID") REFERENCES Products("ProductID")
 );
 ```

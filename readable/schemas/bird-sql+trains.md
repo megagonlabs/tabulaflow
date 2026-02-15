@@ -2,7 +2,8 @@
 -- Database: trains
 
 /*
-Schema: NULLTable: cars
+Schema: NULL
+Table: cars
 Rows: 63
 Sample rows:
 | id   | train_id   | position   | shape     | len   | sides      | roof   | wheels   | load_shape   | load_num   |
@@ -15,32 +16,33 @@ Sample rows:
 | ...  | ...        | ...        | ...       | ...   | ...        | ...    | ...      | ...          | ...        |
 */
 CREATE TABLE cars (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    train_id INTEGER NOT NULL,
+    "train_id" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> trains.id</fk>
-    position INTEGER NOT NULL,
+        -- <fk> -> trains."id"</fk>
+    "position" INTEGER NOT NULL,
         -- <example>1</example>
-    shape TEXT NOT NULL,
+    "shape" TEXT NOT NULL,
         -- <values>{'bucket', 'ellipse', 'hexagon', 'rectangle', 'u_shaped'}</values>
-    len TEXT NOT NULL,
+    "len" TEXT NOT NULL,
         -- <values>{'long', 'short'}</values>
-    sides TEXT NOT NULL,
+    "sides" TEXT NOT NULL,
         -- <values>{'double', 'not_double'}</values>
-    roof TEXT NOT NULL,
+    "roof" TEXT NOT NULL,
         -- <values>{'arc', 'flat', 'jagged', 'none', 'peaked'}</values>
-    wheels INTEGER NOT NULL,
+    "wheels" INTEGER NOT NULL,
         -- <example>2</example>
-    load_shape TEXT NOT NULL,
+    "load_shape" TEXT NOT NULL,
         -- <values>{'circle', 'diamond', 'hexagon', 'rectangle', 'triangle'}</values>
-    load_num INTEGER NOT NULL,
+    "load_num" INTEGER NOT NULL,
         -- <example>1</example>
-    FOREIGN KEY (train_id) REFERENCES trains(id)
+    FOREIGN KEY ("train_id") REFERENCES trains("id")
 );
 
 /*
-Schema: NULLTable: trains
+Schema: NULL
+Table: trains
 Rows: 20
 Sample rows:
 | id   | direction   |
@@ -53,9 +55,9 @@ Sample rows:
 | ...  | ...         |
 */
 CREATE TABLE trains (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    direction TEXT NOT NULL
+    "direction" TEXT NOT NULL
         -- <values>{'east', 'west'}</values>
 );
 ```

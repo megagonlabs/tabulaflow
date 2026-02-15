@@ -2,7 +2,8 @@
 -- Database: works_cycles
 
 /*
-Schema: NULLTable: Address
+Schema: NULL
+Table: Address
 Rows: 19614
 Sample rows:
 | AddressID   | AddressLine1         | AddressLine2   | City    | StateProvinceID   | PostalCode   | SpatialLocation                                      | rowguid                              | ModifiedDate          |
@@ -15,30 +16,31 @@ Sample rows:
 | ...         | ...                  | ...            | ...     | ...               | ...          | ...                                                  | ...                                  | ...                   |
 */
 CREATE TABLE Address (
-    AddressID INTEGER NOT NULL PRIMARY KEY,
+    "AddressID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>18089</example>
-    AddressLine1 TEXT NOT NULL,
+    "AddressLine1" TEXT NOT NULL,
         -- <example>'#500-75 O'Connor Street'</example>
-    AddressLine2 TEXT NULL,
+    "AddressLine2" TEXT NULL,
         -- <example>'Space 55'</example>
-    City TEXT NOT NULL,
+    "City" TEXT NOT NULL,
         -- <example>'Ottawa'</example>
-    StateProvinceID INTEGER NOT NULL,
+    "StateProvinceID" INTEGER NOT NULL,
         -- <example>57</example>
-        -- <fk> -> StateProvince.StateProvinceID</fk>
-    PostalCode TEXT NOT NULL,
+        -- <fk> -> StateProvince."StateProvinceID"</fk>
+    "PostalCode" TEXT NOT NULL,
         -- <example>'K4B 1S2'</example>
-    SpatialLocation TEXT NOT NULL,
+    "SpatialLocation" TEXT NOT NULL,
         -- <example>'0x00000000010100000067A89189898A5EC0AE8BFC28BCE44740'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00093F9C-0487-4723-B376-D90FF565AD6F'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2007-12-04 00:00:00.0'</example>
-    FOREIGN KEY (StateProvinceID) REFERENCES StateProvince(StateProvinceID)
+    FOREIGN KEY ("StateProvinceID") REFERENCES StateProvince("StateProvinceID")
 );
 
 /*
-Schema: NULLTable: AddressType
+Schema: NULL
+Table: AddressType
 Rows: 6
 All rows:
 |   AddressTypeID | Name        | rowguid                              | ModifiedDate          |
@@ -51,18 +53,19 @@ All rows:
 |               6 | Archive     | A67F238A-5BA2-444B-966C-0467ED9C427F | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE AddressType (
-    AddressTypeID INTEGER NOT NULL PRIMARY KEY,
+    "AddressTypeID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>4</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Archive', 'Billing', 'Home', 'Main Office', 'Primary', 'Shipping'}</values>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <values>{'24CB3088-4345-47C4-86C5-17B535133D1E', '41BC2FF6-F0FC-475F-8EB9-CEC0805AA0F2', '8EEEC28C-07A2-4FB9-AD0A-42D4A0BBC575', 'A67F238A-5BA2-444B-966C-0467ED9C427F', 'B29DA3F8-19A3-47DA-9DAA-15C84F4A83A5', 'B84F78B1-4EFE-4A0E-8CB7-70E9F112F886'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: BillOfMaterials
+Schema: NULL
+Table: BillOfMaterials
 Rows: 2679
 Sample rows:
 | BillOfMaterialsID   | ProductAssemblyID   | ComponentID   | StartDate             | EndDate   | UnitMeasureCode   | BOMLevel   | PerAssemblyQty   | ModifiedDate          |
@@ -75,34 +78,35 @@ Sample rows:
 | ...                 | ...                 | ...           | ...                   | ...       | ...               | ...        | ...              | ...                   |
 */
 CREATE TABLE BillOfMaterials (
-    BillOfMaterialsID INTEGER NOT NULL PRIMARY KEY,
+    "BillOfMaterialsID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>893</example>
-    ProductAssemblyID INTEGER NULL,
+    "ProductAssemblyID" INTEGER NULL,
         -- <example>3</example>
-        -- <fk> -> Product.ProductID</fk>
-    ComponentID INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "ComponentID" INTEGER NOT NULL,
         -- <example>749</example>
-        -- <fk> -> Product.ProductID</fk>
-    StartDate DATETIME NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "StartDate" DATETIME NOT NULL,
         -- <example>'2010-05-26 00:00:00.0'</example>
-    EndDate DATETIME NULL,
+    "EndDate" DATETIME NULL,
         -- <example>'2010-05-03 00:00:00.0'</example>
-    UnitMeasureCode TEXT NOT NULL,
+    "UnitMeasureCode" TEXT NOT NULL,
         -- <values>{'EA', 'IN', 'OZ'}</values>
-        -- <fk> -> UnitMeasure.UnitMeasureCode</fk>
-    BOMLevel INTEGER NOT NULL,
+        -- <fk> -> UnitMeasure."UnitMeasureCode"</fk>
+    "BOMLevel" INTEGER NOT NULL,
         -- <example>2</example>
-    PerAssemblyQty REAL NOT NULL,
+    "PerAssemblyQty" REAL NOT NULL,
         -- <example>1.000</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2010-02-18 00:00:00.0'</example>
-    FOREIGN KEY (UnitMeasureCode) REFERENCES UnitMeasure(UnitMeasureCode),
-    FOREIGN KEY (ComponentID) REFERENCES Product(ProductID),
-    FOREIGN KEY (ProductAssemblyID) REFERENCES Product(ProductID)
+    FOREIGN KEY ("UnitMeasureCode") REFERENCES UnitMeasure("UnitMeasureCode"),
+    FOREIGN KEY ("ComponentID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("ProductAssemblyID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: BusinessEntity
+Schema: NULL
+Table: BusinessEntity
 Rows: 20777
 Sample rows:
 | BusinessEntityID   | rowguid                              | ModifiedDate          |
@@ -115,16 +119,17 @@ Sample rows:
 | ...                | ...                                  | ...                   |
 */
 CREATE TABLE BusinessEntity (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>8722</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00021813-91EF-4A97-9682-0D2AC8C9EA97'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2017-12-13 13:20:24.0'</example>
 );
 
 /*
-Schema: NULLTable: BusinessEntityAddress
+Schema: NULL
+Table: BusinessEntityAddress
 Rows: 19614
 Sample rows:
 | BusinessEntityID   | AddressID   | AddressTypeID   | rowguid                              | ModifiedDate          |
@@ -137,27 +142,28 @@ Sample rows:
 | ...                | ...         | ...             | ...                                  | ...                   |
 */
 CREATE TABLE BusinessEntityAddress (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> BusinessEntity.BusinessEntityID</fk>
-    AddressID INTEGER NOT NULL,
+        -- <fk> -> BusinessEntity."BusinessEntityID"</fk>
+    "AddressID" INTEGER NOT NULL,
         -- <example>249</example>
-        -- <fk> -> Address.AddressID</fk>
-    AddressTypeID INTEGER NOT NULL,
+        -- <fk> -> Address."AddressID"</fk>
+    "AddressTypeID" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> AddressType.AddressTypeID</fk>
-    rowguid TEXT NOT NULL,
+        -- <fk> -> AddressType."AddressTypeID"</fk>
+    "rowguid" TEXT NOT NULL,
         -- <example>'00013363-E32F-4615-9439-AFF156D480AE'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-09-12 11:15:06.0'</example>
-    PRIMARY KEY (BusinessEntityID, AddressID, AddressTypeID),
-    FOREIGN KEY (AddressID) REFERENCES Address(AddressID),
-    FOREIGN KEY (AddressTypeID) REFERENCES AddressType(AddressTypeID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES BusinessEntity(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "AddressID", "AddressTypeID"),
+    FOREIGN KEY ("AddressID") REFERENCES Address("AddressID"),
+    FOREIGN KEY ("AddressTypeID") REFERENCES AddressType("AddressTypeID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES BusinessEntity("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: BusinessEntityContact
+Schema: NULL
+Table: BusinessEntityContact
 Rows: 909
 Sample rows:
 | BusinessEntityID   | PersonID   | ContactTypeID   | rowguid                              | ModifiedDate          |
@@ -170,27 +176,28 @@ Sample rows:
 | ...                | ...        | ...             | ...                                  | ...                   |
 */
 CREATE TABLE BusinessEntityContact (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>292</example>
-        -- <fk> -> BusinessEntity.BusinessEntityID</fk>
-    PersonID INTEGER NOT NULL,
+        -- <fk> -> BusinessEntity."BusinessEntityID"</fk>
+    "PersonID" INTEGER NOT NULL,
         -- <example>291</example>
-        -- <fk> -> Person.BusinessEntityID</fk>
-    ContactTypeID INTEGER NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "ContactTypeID" INTEGER NOT NULL,
         -- <example>11</example>
-        -- <fk> -> ContactType.ContactTypeID</fk>
-    rowguid TEXT NOT NULL,
+        -- <fk> -> ContactType."ContactTypeID"</fk>
+    "rowguid" TEXT NOT NULL,
         -- <example>'0022434C-E325-47B0-92A0-7302FFA5046F'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2017-12-13 13:21:02.0'</example>
-    PRIMARY KEY (BusinessEntityID, PersonID, ContactTypeID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES BusinessEntity(BusinessEntityID),
-    FOREIGN KEY (ContactTypeID) REFERENCES ContactType(ContactTypeID),
-    FOREIGN KEY (PersonID) REFERENCES Person(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "PersonID", "ContactTypeID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES BusinessEntity("BusinessEntityID"),
+    FOREIGN KEY ("ContactTypeID") REFERENCES ContactType("ContactTypeID"),
+    FOREIGN KEY ("PersonID") REFERENCES Person("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: ContactType
+Schema: NULL
+Table: ContactType
 Rows: 20
 Sample rows:
 | ContactTypeID   | Name                           | ModifiedDate          |
@@ -203,16 +210,17 @@ Sample rows:
 | ...             | ...                            | ...                   |
 */
 CREATE TABLE ContactType (
-    ContactTypeID INTEGER NOT NULL PRIMARY KEY,
+    "ContactTypeID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Accounting Manager'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: CountryRegion
+Schema: NULL
+Table: CountryRegion
 Rows: 239
 Sample rows:
 | CountryRegionCode   | Name                 | ModifiedDate          |
@@ -225,16 +233,17 @@ Sample rows:
 | ...                 | ...                  | ...                   |
 */
 CREATE TABLE CountryRegion (
-    CountryRegionCode TEXT NOT NULL PRIMARY KEY,
+    "CountryRegionCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AD'</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Afghanistan'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'ModifiedDate'</example>
 );
 
 /*
-Schema: NULLTable: CountryRegionCurrency
+Schema: NULL
+Table: CountryRegionCurrency
 Rows: 109
 Sample rows:
 | CountryRegionCode   | CurrencyCode   | ModifiedDate          |
@@ -247,21 +256,22 @@ Sample rows:
 | ...                 | ...            | ...                   |
 */
 CREATE TABLE CountryRegionCurrency (
-    CountryRegionCode TEXT NOT NULL,
+    "CountryRegionCode" TEXT NOT NULL,
         -- <example>'AE'</example>
-        -- <fk> -> CountryRegion.CountryRegionCode</fk>
-    CurrencyCode TEXT NOT NULL,
+        -- <fk> -> CountryRegion."CountryRegionCode"</fk>
+    "CurrencyCode" TEXT NOT NULL,
         -- <example>'AED'</example>
-        -- <fk> -> Currency.CurrencyCode</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> Currency."CurrencyCode"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-02-08 10:17:21.0'</example>
-    PRIMARY KEY (CountryRegionCode, CurrencyCode),
-    FOREIGN KEY (CountryRegionCode) REFERENCES CountryRegion(CountryRegionCode),
-    FOREIGN KEY (CurrencyCode) REFERENCES Currency(CurrencyCode)
+    PRIMARY KEY ("CountryRegionCode", "CurrencyCode"),
+    FOREIGN KEY ("CountryRegionCode") REFERENCES CountryRegion("CountryRegionCode"),
+    FOREIGN KEY ("CurrencyCode") REFERENCES Currency("CurrencyCode")
 );
 
 /*
-Schema: NULLTable: CreditCard
+Schema: NULL
+Table: CreditCard
 Rows: 19118
 Sample rows:
 | CreditCardID   | CardType      | CardNumber     | ExpMonth   | ExpYear   | ModifiedDate          |
@@ -274,22 +284,23 @@ Sample rows:
 | ...            | ...           | ...            | ...        | ...       | ...                   |
 */
 CREATE TABLE CreditCard (
-    CreditCardID INTEGER NOT NULL PRIMARY KEY,
+    "CreditCardID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>11935</example>
-    CardType TEXT NOT NULL,
+    "CardType" TEXT NOT NULL,
         -- <values>{'ColonialVoice', 'Distinguish', 'SuperiorCard', 'Vista'}</values>
-    CardNumber TEXT NOT NULL,
+    "CardNumber" TEXT NOT NULL,
         -- <example>'11111000471254'</example>
-    ExpMonth INTEGER NOT NULL,
+    "ExpMonth" INTEGER NOT NULL,
         -- <example>11</example>
-    ExpYear INTEGER NOT NULL,
+    "ExpYear" INTEGER NOT NULL,
         -- <example>2006</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2013-07-29 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Culture
+Schema: NULL
+Table: Culture
 Rows: 8
 All rows:
 | CultureID   | Name                                   | ModifiedDate          |
@@ -304,16 +315,17 @@ All rows:
 | zh-cht      | Chinese                                | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE Culture (
-    CultureID TEXT NOT NULL PRIMARY KEY,
+    "CultureID" TEXT NOT NULL PRIMARY KEY,
         -- <values>{'', 'ar', 'en', 'es', 'fr', 'he', 'th', 'zh-cht'}</values>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Arabic', 'Chinese', 'English', 'French', 'Hebrew', 'Invariant Language (Invariant Country)', 'Spanish', 'Thai'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Currency
+Schema: NULL
+Table: Currency
 Rows: 105
 Sample rows:
 | CurrencyCode   | Name                          | ModifiedDate          |
@@ -326,16 +338,17 @@ Sample rows:
 | ...            | ...                           | ...                   |
 */
 CREATE TABLE Currency (
-    CurrencyCode TEXT NOT NULL PRIMARY KEY,
+    "CurrencyCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'AED'</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Afghani'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: CurrencyRate
+Schema: NULL
+Table: CurrencyRate
 Rows: 13532
 Sample rows:
 | CurrencyRateID   | CurrencyRateDate      | FromCurrencyCode   | ToCurrencyCode   | AverageRate   | EndOfDayRate   | ModifiedDate          |
@@ -348,48 +361,50 @@ Sample rows:
 | ...              | ...                   | ...                | ...              | ...           | ...            | ...                   |
 */
 CREATE TABLE CurrencyRate (
-    CurrencyRateID INTEGER NOT NULL PRIMARY KEY,
+    "CurrencyRateID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    CurrencyRateDate DATETIME NOT NULL,
+    "CurrencyRateDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    FromCurrencyCode TEXT NOT NULL,
+    "FromCurrencyCode" TEXT NOT NULL,
         -- <values>{'USD'}</values>
-        -- <fk> -> Currency.CurrencyCode</fk>
-    ToCurrencyCode TEXT NOT NULL,
+        -- <fk> -> Currency."CurrencyCode"</fk>
+    "ToCurrencyCode" TEXT NOT NULL,
         -- <values>{'ARS', 'AUD', 'BRL', 'CAD', 'CNY', 'DEM', 'EUR', 'FRF', 'GBP', 'JPY', 'MXN', 'SAR', 'USD', 'VEB'}</values>
-        -- <fk> -> Currency.CurrencyCode</fk>
-    AverageRate REAL NOT NULL,
+        -- <fk> -> Currency."CurrencyCode"</fk>
+    "AverageRate" REAL NOT NULL,
         -- <example>1.000</example>
-    EndOfDayRate REAL NOT NULL,
+    "EndOfDayRate" REAL NOT NULL,
         -- <example>1.000</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    FOREIGN KEY (ToCurrencyCode) REFERENCES Currency(CurrencyCode),
-    FOREIGN KEY (FromCurrencyCode) REFERENCES Currency(CurrencyCode)
+    FOREIGN KEY ("ToCurrencyCode") REFERENCES Currency("CurrencyCode"),
+    FOREIGN KEY ("FromCurrencyCode") REFERENCES Currency("CurrencyCode")
 );
 
 /*
-Schema: NULLTable: Customer
+Schema: NULL
+Table: Customer
 Rows: 0
 */
 CREATE TABLE Customer (
-    CustomerID INTEGER NOT NULL PRIMARY KEY,
-    PersonID INTEGER NOT NULL,
-        -- <fk> -> Person.BusinessEntityID</fk>
-    StoreID INTEGER NOT NULL,
-        -- <fk> -> Store.BusinessEntityID</fk>
-    TerritoryID INTEGER NOT NULL,
-        -- <fk> -> SalesTerritory.TerritoryID</fk>
-    AccountNumber TEXT NOT NULL,
-    rowguid TEXT NOT NULL,
-    ModifiedDate DATETIME NOT NULL,
-    FOREIGN KEY (PersonID) REFERENCES Person(BusinessEntityID),
-    FOREIGN KEY (TerritoryID) REFERENCES SalesTerritory(TerritoryID),
-    FOREIGN KEY (StoreID) REFERENCES Store(BusinessEntityID)
+    "CustomerID" INTEGER NOT NULL PRIMARY KEY,
+    "PersonID" INTEGER NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "StoreID" INTEGER NOT NULL,
+        -- <fk> -> Store."BusinessEntityID"</fk>
+    "TerritoryID" INTEGER NOT NULL,
+        -- <fk> -> SalesTerritory."TerritoryID"</fk>
+    "AccountNumber" TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
+    FOREIGN KEY ("PersonID") REFERENCES Person("BusinessEntityID"),
+    FOREIGN KEY ("TerritoryID") REFERENCES SalesTerritory("TerritoryID"),
+    FOREIGN KEY ("StoreID") REFERENCES Store("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: Department
+Schema: NULL
+Table: Department
 Rows: 16
 Sample rows:
 | DepartmentID   | Name        | GroupName                | ModifiedDate          |
@@ -402,18 +417,19 @@ Sample rows:
 | ...            | ...         | ...                      | ...                   |
 */
 CREATE TABLE Department (
-    DepartmentID INTEGER NOT NULL PRIMARY KEY,
+    "DepartmentID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>12</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Document Control'</example>
-    GroupName TEXT NOT NULL,
+    "GroupName" TEXT NOT NULL,
         -- <values>{'Executive General and Administration', 'Inventory Management', 'Manufacturing', 'Quality Assurance', 'Research and Development', 'Sales and Marketing'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Document
+Schema: NULL
+Table: Document
 Rows: 13
 Sample rows:
 | DocumentNode   | DocumentLevel   | Title                         | Owner   | FolderFlag   | FileName                          | FileExtension   | Revision   | ChangeNumber   | Status   | DocumentSummary                                                                                                                                                                                           | Document                                                                                                                                                                                                    | rowguid                              | ModifiedDate          |
@@ -426,28 +442,28 @@ Sample rows:
 | ...            | ...             | ...                           | ...     | ...          | ...                               | ...             | ...        | ...            | ...      | ...                                                                                                                                                                                                       | ...                                                                                                                                                                                                         | ...                                  | ...                   |
 */
 CREATE TABLE Document (
-    DocumentNode TEXT NOT NULL PRIMARY KEY,
+    "DocumentNode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'/'</example>
-    DocumentLevel INTEGER NOT NULL,
+    "DocumentLevel" INTEGER NOT NULL,
         -- <example>0</example>
-    Title TEXT NOT NULL,
+    "Title" TEXT NOT NULL,
         -- <example>'Documents'</example>
-    Owner INTEGER NOT NULL,
+    "Owner" INTEGER NOT NULL,
         -- <example>217</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    FolderFlag INTEGER NOT NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "FolderFlag" INTEGER NOT NULL,
         -- <example>1</example>
-    FileName TEXT NOT NULL,
+    "FileName" TEXT NOT NULL,
         -- <example>'Documents'</example>
-    FileExtension TEXT NOT NULL,
+    "FileExtension" TEXT NOT NULL,
         -- <values>{'', '.doc'}</values>
-    Revision TEXT NOT NULL,
+    "Revision" TEXT NOT NULL,
         -- <values>{'0', '1', '2', '3', '4', '8'}</values>
-    ChangeNumber INTEGER NOT NULL,
+    "ChangeNumber" INTEGER NOT NULL,
         -- <example>0</example>
-    Status INTEGER NOT NULL,
+    "Status" INTEGER NOT NULL,
         -- <example>2</example>
-    DocumentSummary TEXT NULL,
+    "DocumentSummary" TEXT NULL,
         -- <values>{'Detailed instructions for replacing pedals with Ad... parts when replacing worn or broken components. 
 ', 'Guidelines and recommendations for lubricating the...quency at which oil or grease should be applied. 
 ', 'It is important that you maintain your bicycle and... adjusting the tightness of the suspension fork.
@@ -457,17 +473,18 @@ CREATE TABLE Document (
 ', 'Worn or damaged seats can be easily replaced follo...parts when replacing worn or broken components. 
 
 '}</values>
-    Document BLOB NULL,
+    "Document" BLOB NULL,
         -- <example>'0xD0CF11E0A1B11AE100000000000000000000000000000000...00000000000000000000000000000000000000000000000000'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'26A266F1-1D23-40E2-AF48-6AB8D954FE37'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2017-12-13 13:58:03.0'</example>
-    FOREIGN KEY (Owner) REFERENCES Employee(BusinessEntityID)
+    FOREIGN KEY ("Owner") REFERENCES Employee("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: EmailAddress
+Schema: NULL
+Table: EmailAddress
 Rows: 19972
 Sample rows:
 | BusinessEntityID   | EmailAddressID   | EmailAddress                 | rowguid                              | ModifiedDate          |
@@ -480,23 +497,24 @@ Sample rows:
 | ...                | ...              | ...                          | ...                                  | ...                   |
 */
 CREATE TABLE EmailAddress (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Person.BusinessEntityID</fk>
-    EmailAddressID INTEGER NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "EmailAddressID" INTEGER NOT NULL,
         -- <example>1</example>
-    EmailAddress TEXT NOT NULL,
+    "EmailAddress" TEXT NOT NULL,
         -- <example>'ken0@adventure-works.com'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'8A1901E4-671B-431A-871C-EADB2942E9EE'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2009-01-07 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, EmailAddressID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES Person(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "EmailAddressID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Person("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: Employee
+Schema: NULL
+Table: Employee
 Rows: 290
 Sample rows:
 | BusinessEntityID   | NationalIDNumber   | LoginID                  | OrganizationNode   | OrganizationLevel   | JobTitle                      | BirthDate   | MaritalStatus   | Gender   | HireDate   | SalariedFlag   | VacationHours   | SickLeaveHours   | CurrentFlag   | rowguid                              | ModifiedDate          |
@@ -509,44 +527,45 @@ Sample rows:
 | ...                | ...                | ...                      | ...                | ...                 | ...                           | ...         | ...             | ...      | ...        | ...            | ...             | ...              | ...           | ...                                  | ...                   |
 */
 CREATE TABLE Employee (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>151</example>
-        -- <fk> -> Person.BusinessEntityID</fk>
-    NationalIDNumber TEXT NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "NationalIDNumber" TEXT NOT NULL,
         -- <example>'10708100'</example>
-    LoginID TEXT NOT NULL,
+    "LoginID" TEXT NOT NULL,
         -- <example>'adventure-works\alan0'</example>
-    OrganizationNode TEXT NULL,
+    "OrganizationNode" TEXT NULL,
         -- <example>'/1/'</example>
-    OrganizationLevel INTEGER NULL,
+    "OrganizationLevel" INTEGER NULL,
         -- <example>1</example>
-    JobTitle TEXT NOT NULL,
+    "JobTitle" TEXT NOT NULL,
         -- <example>'Chief Executive Officer'</example>
-    BirthDate DATE NOT NULL,
+    "BirthDate" DATE NOT NULL,
         -- <example>'1969-01-29'</example>
-    MaritalStatus TEXT NOT NULL,
+    "MaritalStatus" TEXT NOT NULL,
         -- <values>{'M', 'S'}</values>
-    Gender TEXT NOT NULL,
+    "Gender" TEXT NOT NULL,
         -- <values>{'F', 'M'}</values>
-    HireDate DATE NOT NULL,
+    "HireDate" DATE NOT NULL,
         -- <example>'2009-01-14'</example>
-    SalariedFlag INTEGER NOT NULL,
+    "SalariedFlag" INTEGER NOT NULL,
         -- <example>1</example>
-    VacationHours INTEGER NOT NULL,
+    "VacationHours" INTEGER NOT NULL,
         -- <example>99</example>
-    SickLeaveHours INTEGER NOT NULL,
+    "SickLeaveHours" INTEGER NOT NULL,
         -- <example>69</example>
-    CurrentFlag INTEGER NOT NULL,
+    "CurrentFlag" INTEGER NOT NULL,
         -- <example>1</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00027A8C-C2F8-4A31-ABA8-8A203638B8F1'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-06-30 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES Person(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Person("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: EmployeeDepartmentHistory
+Schema: NULL
+Table: EmployeeDepartmentHistory
 Rows: 296
 Sample rows:
 | BusinessEntityID   | DepartmentID   | ShiftID   | StartDate   | EndDate    | ModifiedDate          |
@@ -559,29 +578,30 @@ Sample rows:
 | ...                | ...            | ...       | ...         | ...        | ...                   |
 */
 CREATE TABLE EmployeeDepartmentHistory (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    DepartmentID INTEGER NOT NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "DepartmentID" INTEGER NOT NULL,
         -- <example>16</example>
-        -- <fk> -> Department.DepartmentID</fk>
-    ShiftID INTEGER NOT NULL,
+        -- <fk> -> Department."DepartmentID"</fk>
+    "ShiftID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Shift.ShiftID</fk>
-    StartDate DATE NOT NULL,
+        -- <fk> -> Shift."ShiftID"</fk>
+    "StartDate" DATE NOT NULL,
         -- <example>'2009-01-14'</example>
-    EndDate DATE NULL,
+    "EndDate" DATE NULL,
         -- <example>'2010-05-30'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2009-01-13 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, DepartmentID, ShiftID, StartDate),
-    FOREIGN KEY (ShiftID) REFERENCES Shift(ShiftID),
-    FOREIGN KEY (DepartmentID) REFERENCES Department(DepartmentID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES Employee(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "DepartmentID", "ShiftID", "StartDate"),
+    FOREIGN KEY ("ShiftID") REFERENCES Shift("ShiftID"),
+    FOREIGN KEY ("DepartmentID") REFERENCES Department("DepartmentID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Employee("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: EmployeePayHistory
+Schema: NULL
+Table: EmployeePayHistory
 Rows: 316
 Sample rows:
 | BusinessEntityID   | RateChangeDate        | Rate    | PayFrequency   | ModifiedDate          |
@@ -594,23 +614,24 @@ Sample rows:
 | ...                | ...                   | ...     | ...            | ...                   |
 */
 CREATE TABLE EmployeePayHistory (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    RateChangeDate DATETIME NOT NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "RateChangeDate" DATETIME NOT NULL,
         -- <example>'2009-01-14 00:00:00.0'</example>
-    Rate REAL NOT NULL,
+    "Rate" REAL NOT NULL,
         -- <example>125.500</example>
-    PayFrequency INTEGER NOT NULL,
+    "PayFrequency" INTEGER NOT NULL,
         -- <example>2</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-06-30 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, RateChangeDate),
-    FOREIGN KEY (BusinessEntityID) REFERENCES Employee(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "RateChangeDate"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Employee("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: JobCandidate
+Schema: NULL
+Table: JobCandidate
 Rows: 12
 Sample rows:
 | JobCandidateID   | BusinessEntityID   | Resume                                                                                                                                                                                                      | ModifiedDate          |
@@ -623,20 +644,21 @@ Sample rows:
 | ...              | ...                | ...                                                                                                                                                                                                         | ...                   |
 */
 CREATE TABLE JobCandidate (
-    JobCandidateID INTEGER NOT NULL PRIMARY KEY,
+    "JobCandidateID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    BusinessEntityID INTEGER NULL,
+    "BusinessEntityID" INTEGER NULL,
         -- <example>274</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    Resume TEXT NOT NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "Resume" TEXT NOT NULL,
         -- <example>'<ns:Resume xmlns:ns="http://schemas.microsoft.com/...ttp://www.Wingtiptoys.com</ns:WebSite></ns:Resume>'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2007-06-23 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES Employee(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Employee("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: Location
+Schema: NULL
+Table: Location
 Rows: 14
 Sample rows:
 | LocationID   | Name              | CostRate   | Availability   | ModifiedDate          |
@@ -649,20 +671,21 @@ Sample rows:
 | ...          | ...               | ...        | ...            | ...                   |
 */
 CREATE TABLE Location (
-    LocationID INTEGER NOT NULL PRIMARY KEY,
+    "LocationID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>30</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Debur and Polish'</example>
-    CostRate REAL NOT NULL,
+    "CostRate" REAL NOT NULL,
         -- <example>0.000</example>
-    Availability REAL NOT NULL,
+    "Availability" REAL NOT NULL,
         -- <example>0.000</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Password
+Schema: NULL
+Table: Password
 Rows: 19972
 Sample rows:
 | BusinessEntityID   | PasswordHash                                 | PasswordSalt   | rowguid                              | ModifiedDate          |
@@ -675,22 +698,23 @@ Sample rows:
 | ...                | ...                                          | ...            | ...                                  | ...                   |
 */
 CREATE TABLE Password (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-        -- <fk> -> Person.BusinessEntityID</fk>
-    PasswordHash TEXT NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "PasswordHash" TEXT NOT NULL,
         -- <example>'pbFwXWE99vobT6g+vPWFy93NtUU/orrIWafF01hccfM='</example>
-    PasswordSalt TEXT NOT NULL,
+    "PasswordSalt" TEXT NOT NULL,
         -- <example>'bE3XiWw='</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'329EACBE-C883-4F48-B8B6-17AA4627EFFF'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2009-01-07 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES Person(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Person("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: Person
+Schema: NULL
+Table: Person
 Rows: 19972
 Sample rows:
 | BusinessEntityID   | PersonType   | NameStyle   | Title   | FirstName   | MiddleName   | LastName   | Suffix   | EmailPromotion   | AdditionalContactInfo   | Demographics                                                                                                                                                        | rowguid                              | ModifiedDate          |
@@ -703,38 +727,39 @@ Sample rows:
 | ...                | ...          | ...         | ...     | ...         | ...          | ...        | ...      | ...              | ...                     | ...                                                                                                                                                                 | ...                                  | ...                   |
 */
 CREATE TABLE Person (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>14617</example>
-        -- <fk> -> BusinessEntity.BusinessEntityID</fk>
-    PersonType TEXT NOT NULL,
+        -- <fk> -> BusinessEntity."BusinessEntityID"</fk>
+    "PersonType" TEXT NOT NULL,
         -- <values>{'EM', 'GC', 'IN', 'SC', 'SP', 'VC'}</values>
-    NameStyle INTEGER NOT NULL,
+    "NameStyle" INTEGER NOT NULL,
         -- <example>0</example>
-    Title TEXT NULL,
+    "Title" TEXT NULL,
         -- <values>{'Mr.', 'Mrs.', 'Ms', 'Ms.', 'Sr.', 'Sra.'}</values>
-    FirstName TEXT NOT NULL,
+    "FirstName" TEXT NOT NULL,
         -- <example>'Ken'</example>
-    MiddleName TEXT NULL,
+    "MiddleName" TEXT NULL,
         -- <example>'J'</example>
-    LastName TEXT NOT NULL,
+    "LastName" TEXT NOT NULL,
         -- <example>'Sánchez'</example>
-    Suffix TEXT NULL,
+    "Suffix" TEXT NULL,
         -- <values>{'II', 'III', 'IV', 'Jr.', 'PhD', 'Sr.'}</values>
-    EmailPromotion INTEGER NOT NULL,
+    "EmailPromotion" INTEGER NOT NULL,
         -- <example>0</example>
-    AdditionalContactInfo TEXT NULL,
+    "AdditionalContactInfo" TEXT NULL,
         -- <values>{'<AdditionalContactInfo xmlns="http://schemas.micro...</act:number></act:mobile></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...</act:number></act:mobile></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...icing.</crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...is up.</crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...obile></crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...obile></crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...odels.</crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...reach.</crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...sales.</crm:ContactRecord></AdditionalContactInfo>', '<AdditionalContactInfo xmlns="http://schemas.micro...tract.</crm:ContactRecord></AdditionalContactInfo>'}</values>
-    Demographics TEXT NOT NULL,
+    "Demographics" TEXT NOT NULL,
         -- <example>'<IndividualSurvey xmlns="http://schemas.microsoft....urchaseYTD>0</TotalPurchaseYTD></IndividualSurvey>'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'000191EF-7424-4A5F-AB19-0852B1F0B78D'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2009-01-07 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES BusinessEntity(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES BusinessEntity("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: PersonCreditCard
+Schema: NULL
+Table: PersonCreditCard
 Rows: 19118
 Sample rows:
 | BusinessEntityID   | CreditCardID   | ModifiedDate          |
@@ -747,21 +772,22 @@ Sample rows:
 | ...                | ...            | ...                   |
 */
 CREATE TABLE PersonCreditCard (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>293</example>
-        -- <fk> -> Person.BusinessEntityID</fk>
-    CreditCardID INTEGER NOT NULL,
+        -- <fk> -> Person."BusinessEntityID"</fk>
+    "CreditCardID" INTEGER NOT NULL,
         -- <example>17038</example>
-        -- <fk> -> CreditCard.CreditCardID</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> CreditCard."CreditCardID"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-07-31 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, CreditCardID),
-    FOREIGN KEY (CreditCardID) REFERENCES CreditCard(CreditCardID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES Person(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "CreditCardID"),
+    FOREIGN KEY ("CreditCardID") REFERENCES CreditCard("CreditCardID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Person("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: PhoneNumberType
+Schema: NULL
+Table: PhoneNumberType
 Rows: 3
 All rows:
 |   PhoneNumberTypeID | Name   | ModifiedDate          |
@@ -771,16 +797,17 @@ All rows:
 |                   3 | Work   | 2017-12-13 13:19:22.0 |
 */
 CREATE TABLE PhoneNumberType (
-    PhoneNumberTypeID INTEGER NOT NULL PRIMARY KEY,
+    "PhoneNumberTypeID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Cell', 'Home', 'Work'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2017-12-13 13:19:22.0'</example>
 );
 
 /*
-Schema: NULLTable: Product
+Schema: NULL
+Table: Product
 Rows: 504
 Sample rows:
 | ProductID   | Name                  | ProductNumber   | MakeFlag   | FinishedGoodsFlag   | Color   | SafetyStockLevel   | ReorderPoint   | StandardCost   | ListPrice   | Size   | SizeUnitMeasureCode   | WeightUnitMeasureCode   | Weight   | DaysToManufacture   | ProductLine   | Class   | Style   | ProductSubcategoryID   | ProductModelID   | SellStartDate         | SellEndDate   | DiscontinuedDate   | rowguid                              | ModifiedDate          |
@@ -793,67 +820,68 @@ Sample rows:
 | ...         | ...                   | ...             | ...        | ...                 | ...     | ...                | ...            | ...            | ...         | ...    | ...                   | ...                     | ...      | ...                 | ...           | ...     | ...     | ...                    | ...              | ...                   | ...           | ...                | ...                                  | ...                   |
 */
 CREATE TABLE Product (
-    ProductID INTEGER NOT NULL PRIMARY KEY,
+    "ProductID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>921</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'AWC Logo Cap'</example>
-    ProductNumber TEXT NOT NULL,
+    "ProductNumber" TEXT NOT NULL,
         -- <example>'AR-5381'</example>
-    MakeFlag INTEGER NOT NULL,
+    "MakeFlag" INTEGER NOT NULL,
         -- <example>0</example>
-    FinishedGoodsFlag INTEGER NOT NULL,
+    "FinishedGoodsFlag" INTEGER NOT NULL,
         -- <example>0</example>
-    Color TEXT NULL,
+    "Color" TEXT NULL,
         -- <values>{'Black', 'Blue', 'Grey', 'Multi', 'Red', 'Silver', 'Silver/Black', 'White', 'Yellow'}</values>
-    SafetyStockLevel INTEGER NOT NULL,
+    "SafetyStockLevel" INTEGER NOT NULL,
         -- <example>1000</example>
-    ReorderPoint INTEGER NOT NULL,
+    "ReorderPoint" INTEGER NOT NULL,
         -- <example>750</example>
-    StandardCost REAL NOT NULL,
+    "StandardCost" REAL NOT NULL,
         -- <example>0.000</example>
-    ListPrice REAL NOT NULL,
+    "ListPrice" REAL NOT NULL,
         -- <example>0.000</example>
-    Size TEXT NULL,
+    "Size" TEXT NULL,
         -- <example>'58'</example>
-    SizeUnitMeasureCode TEXT NULL,
+    "SizeUnitMeasureCode" TEXT NULL,
         -- <values>{'CM'}</values>
-        -- <fk> -> UnitMeasure.UnitMeasureCode</fk>
-    WeightUnitMeasureCode TEXT NULL,
+        -- <fk> -> UnitMeasure."UnitMeasureCode"</fk>
+    "WeightUnitMeasureCode" TEXT NULL,
         -- <values>{'G', 'LB'}</values>
-        -- <fk> -> UnitMeasure.UnitMeasureCode</fk>
-    Weight REAL NULL,
+        -- <fk> -> UnitMeasure."UnitMeasureCode"</fk>
+    "Weight" REAL NULL,
         -- <example>435.000</example>
-    DaysToManufacture INTEGER NOT NULL,
+    "DaysToManufacture" INTEGER NOT NULL,
         -- <example>0</example>
-    ProductLine TEXT NULL,
+    "ProductLine" TEXT NULL,
         -- <values>{'M', 'R', 'S', 'T'}</values>
-    Class TEXT NULL,
+    "Class" TEXT NULL,
         -- <values>{'H', 'L', 'M'}</values>
-    Style TEXT NULL,
+    "Style" TEXT NULL,
         -- <values>{'M', 'U', 'W'}</values>
-    ProductSubcategoryID INTEGER NULL,
+    "ProductSubcategoryID" INTEGER NULL,
         -- <example>14</example>
-        -- <fk> -> ProductSubcategory.ProductSubcategoryID</fk>
-    ProductModelID INTEGER NULL,
+        -- <fk> -> ProductSubcategory."ProductSubcategoryID"</fk>
+    "ProductModelID" INTEGER NULL,
         -- <example>6</example>
-        -- <fk> -> ProductModel.ProductModelID</fk>
-    SellStartDate DATETIME NOT NULL,
+        -- <fk> -> ProductModel."ProductModelID"</fk>
+    "SellStartDate" DATETIME NOT NULL,
         -- <example>'2008-04-30 00:00:00.0'</example>
-    SellEndDate DATETIME NULL,
+    "SellEndDate" DATETIME NULL,
         -- <example>'2012-05-29 00:00:00.0'</example>
-    DiscontinuedDate DATETIME NULL,
-    rowguid TEXT NOT NULL,
+    "DiscontinuedDate" DATETIME NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'01A8C3FC-ED52-458E-A634-D5B6E2ACCFED'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-02-08 10:01:36.0'</example>
-    FOREIGN KEY (ProductModelID) REFERENCES ProductModel(ProductModelID),
-    FOREIGN KEY (ProductSubcategoryID) REFERENCES ProductSubcategory(ProductSubcategoryID),
-    FOREIGN KEY (WeightUnitMeasureCode) REFERENCES UnitMeasure(UnitMeasureCode),
-    FOREIGN KEY (SizeUnitMeasureCode) REFERENCES UnitMeasure(UnitMeasureCode)
+    FOREIGN KEY ("ProductModelID") REFERENCES ProductModel("ProductModelID"),
+    FOREIGN KEY ("ProductSubcategoryID") REFERENCES ProductSubcategory("ProductSubcategoryID"),
+    FOREIGN KEY ("WeightUnitMeasureCode") REFERENCES UnitMeasure("UnitMeasureCode"),
+    FOREIGN KEY ("SizeUnitMeasureCode") REFERENCES UnitMeasure("UnitMeasureCode")
 );
 
 /*
-Schema: NULLTable: ProductCategory
+Schema: NULL
+Table: ProductCategory
 Rows: 4
 All rows:
 |   ProductCategoryID | Name        | rowguid                              | ModifiedDate          |
@@ -864,18 +892,19 @@ All rows:
 |                   4 | Accessories | 2BE3BE36-D9A2-4EEE-B593-ED895D97C2A6 | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE ProductCategory (
-    ProductCategoryID INTEGER NOT NULL PRIMARY KEY,
+    "ProductCategoryID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>3</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Accessories', 'Bikes', 'Clothing', 'Components'}</values>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <values>{'10A7C342-CA82-48D4-8A38-46A2EB089B74', '2BE3BE36-D9A2-4EEE-B593-ED895D97C2A6', 'C657828D-D808-4ABA-91A3-AF2CE02300E9', 'CFBDA25C-DF71-47A7-B81B-64EE161AA37C'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ProductCostHistory
+Schema: NULL
+Table: ProductCostHistory
 Rows: 395
 Sample rows:
 | ProductID   | StartDate             | EndDate               | StandardCost   | ModifiedDate          |
@@ -888,23 +917,24 @@ Sample rows:
 | ...         | ...                   | ...                   | ...            | ...                   |
 */
 CREATE TABLE ProductCostHistory (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>707</example>
-        -- <fk> -> Product.ProductID</fk>
-    StartDate DATE NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "StartDate" DATE NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    EndDate DATE NULL,
+    "EndDate" DATE NULL,
         -- <example>'2012-05-29 00:00:00.0'</example>
-    StandardCost REAL NOT NULL,
+    "StandardCost" REAL NOT NULL,
         -- <example>12.028</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2012-05-29 00:00:00.0'</example>
-    PRIMARY KEY (ProductID, StartDate),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    PRIMARY KEY ("ProductID", "StartDate"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: ProductDescription
+Schema: NULL
+Table: ProductDescription
 Rows: 762
 Sample rows:
 | ProductDescriptionID   | Description                                                                                                                                             | rowguid                              | ModifiedDate          |
@@ -917,18 +947,19 @@ Sample rows:
 | ...                    | ...                                                                                                                                                     | ...                                  | ...                   |
 */
 CREATE TABLE ProductDescription (
-    ProductDescriptionID INTEGER NOT NULL PRIMARY KEY,
+    "ProductDescriptionID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1954</example>
-    Description TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
         -- <example>'Chromoly steel.'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00FFDFAC-0207-4DF0-8051-7D3C884816F3'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2013-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ProductDocument
+Schema: NULL
+Table: ProductDocument
 Rows: 32
 Sample rows:
 | ProductID   | DocumentNode   | ModifiedDate          |
@@ -941,21 +972,22 @@ Sample rows:
 | ...         | ...            | ...                   |
 */
 CREATE TABLE ProductDocument (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>317</example>
-        -- <fk> -> Product.ProductID</fk>
-    DocumentNode TEXT NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "DocumentNode" TEXT NOT NULL,
         -- <values>{'/1/1/', '/2/1/', '/3/1/', '/3/2/', '/3/3/', '/3/4/'}</values>
-        -- <fk> -> Document.DocumentNode</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> Document."DocumentNode"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-12-29 13:51:58.0'</example>
-    PRIMARY KEY (ProductID, DocumentNode),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID),
-    FOREIGN KEY (DocumentNode) REFERENCES Document(DocumentNode)
+    PRIMARY KEY ("ProductID", "DocumentNode"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("DocumentNode") REFERENCES Document("DocumentNode")
 );
 
 /*
-Schema: NULLTable: ProductInventory
+Schema: NULL
+Table: ProductInventory
 Rows: 1069
 Sample rows:
 | ProductID   | LocationID   | Shelf   | Bin   | Quantity   | rowguid                              | ModifiedDate          |
@@ -968,29 +1000,30 @@ Sample rows:
 | ...         | ...          | ...     | ...   | ...        | ...                                  | ...                   |
 */
 CREATE TABLE ProductInventory (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Product.ProductID</fk>
-    LocationID INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "LocationID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Location.LocationID</fk>
-    Shelf TEXT NOT NULL,
+        -- <fk> -> Location."LocationID"</fk>
+    "Shelf" TEXT NOT NULL,
         -- <example>'A'</example>
-    Bin INTEGER NOT NULL,
+    "Bin" INTEGER NOT NULL,
         -- <example>1</example>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>408</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'47A24246-6C43-48EB-968F-025738A8A410'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-08-08 00:00:00.0'</example>
-    PRIMARY KEY (ProductID, LocationID),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID),
-    FOREIGN KEY (LocationID) REFERENCES Location(LocationID)
+    PRIMARY KEY ("ProductID", "LocationID"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("LocationID") REFERENCES Location("LocationID")
 );
 
 /*
-Schema: NULLTable: ProductListPriceHistory
+Schema: NULL
+Table: ProductListPriceHistory
 Rows: 395
 Sample rows:
 | ProductID   | StartDate             | EndDate               | ListPrice   | ModifiedDate          |
@@ -1003,23 +1036,24 @@ Sample rows:
 | ...         | ...                   | ...                   | ...         | ...                   |
 */
 CREATE TABLE ProductListPriceHistory (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>707</example>
-        -- <fk> -> Product.ProductID</fk>
-    StartDate DATE NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "StartDate" DATE NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    EndDate DATE NULL,
+    "EndDate" DATE NULL,
         -- <example>'2012-05-29 00:00:00.0'</example>
-    ListPrice REAL NOT NULL,
+    "ListPrice" REAL NOT NULL,
         -- <example>33.644</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2012-05-29 00:00:00.0'</example>
-    PRIMARY KEY (ProductID, StartDate),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    PRIMARY KEY ("ProductID", "StartDate"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: ProductModel
+Schema: NULL
+Table: ProductModel
 Rows: 128
 Sample rows:
 | ProductModelID   | Name               | CatalogDescription   | Instructions   | rowguid                              | ModifiedDate          |
@@ -1032,27 +1066,28 @@ Sample rows:
 | ...              | ...                | ...                  | ...            | ...                                  | ...                   |
 */
 CREATE TABLE ProductModel (
-    ProductModelID INTEGER NOT NULL PRIMARY KEY,
+    "ProductModelID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>82</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'All-Purpose Bike Stand'</example>
-    CatalogDescription TEXT NULL,
+    "CatalogDescription" TEXT NULL,
         -- <values>{'<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>', '<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>', '<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>', '<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>', '<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>', '<?xml-stylesheet href="ProductDescription.xsl" typ...ience></p1:Specifications></p1:ProductDescription>'}</values>
-    Instructions TEXT NULL,
+    "Instructions" TEXT NULL,
         -- <values>{'<root xmlns="http://schemas.microsoft.com/sqlserve...cs>.
                     </step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...cs>.
                     </step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...cs>.
                     </step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...cs>.
                     </step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...cs>.
                     </step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...flate the tube to 35 PSI.</step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...lustration <diag>7</diag></step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...p><step>Move to shipping.</step></Location></root>', '<root xmlns="http://schemas.microsoft.com/sqlserve...p><step>Move to shipping.</step></Location></root>'}</values>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00CE9171-8944-4D49-BA37-485C1D122F5C'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2013-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ProductModelProductDescriptionCulture
+Schema: NULL
+Table: ProductModelProductDescriptionCulture
 Rows: 762
 Sample rows:
 | ProductModelID   | ProductDescriptionID   | CultureID   | ModifiedDate          |
@@ -1065,25 +1100,26 @@ Sample rows:
 | ...              | ...                    | ...         | ...                   |
 */
 CREATE TABLE ProductModelProductDescriptionCulture (
-    ProductModelID INTEGER NOT NULL,
+    "ProductModelID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> ProductModel.ProductModelID</fk>
-    ProductDescriptionID INTEGER NOT NULL,
+        -- <fk> -> ProductModel."ProductModelID"</fk>
+    "ProductDescriptionID" INTEGER NOT NULL,
         -- <example>1199</example>
-        -- <fk> -> ProductDescription.ProductDescriptionID</fk>
-    CultureID TEXT NOT NULL,
+        -- <fk> -> ProductDescription."ProductDescriptionID"</fk>
+    "CultureID" TEXT NOT NULL,
         -- <values>{'ar', 'en', 'fr', 'he', 'th', 'zh-cht'}</values>
-        -- <fk> -> Culture.CultureID</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> Culture."CultureID"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-04-30 00:00:00.0'</example>
-    PRIMARY KEY (ProductModelID, ProductDescriptionID, CultureID),
-    FOREIGN KEY (ProductModelID) REFERENCES ProductModel(ProductModelID),
-    FOREIGN KEY (ProductDescriptionID) REFERENCES ProductDescription(ProductDescriptionID),
-    FOREIGN KEY (CultureID) REFERENCES Culture(CultureID)
+    PRIMARY KEY ("ProductModelID", "ProductDescriptionID", "CultureID"),
+    FOREIGN KEY ("ProductModelID") REFERENCES ProductModel("ProductModelID"),
+    FOREIGN KEY ("ProductDescriptionID") REFERENCES ProductDescription("ProductDescriptionID"),
+    FOREIGN KEY ("CultureID") REFERENCES Culture("CultureID")
 );
 
 /*
-Schema: NULLTable: ProductPhoto
+Schema: NULL
+Table: ProductPhoto
 Rows: 100
 Sample rows:
 | ProductPhotoID   | ThumbNailPhoto                                                                                                                                                                                              | ThumbnailPhotoFileName    | LargePhoto                                                                                                                                                                                                  | LargePhotoFileName        | ModifiedDate          |
@@ -1096,22 +1132,23 @@ Sample rows:
 | ...              | ...                                                                                                                                                                                                         | ...                       | ...                                                                                                                                                                                                         | ...                       | ...                   |
 */
 CREATE TABLE ProductPhoto (
-    ProductPhotoID INTEGER NOT NULL PRIMARY KEY,
+    "ProductPhotoID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>69</example>
-    ThumbNailPhoto BLOB NOT NULL,
+    "ThumbNailPhoto" BLOB NOT NULL,
         -- <example>'0x47494638396150003100F70000E3E3FCA6ACB3F5F6FE303D...B10653A210B9C00FDA2026E4C00F1299108D3811010100003B'</example>
-    ThumbnailPhotoFileName TEXT NOT NULL,
+    "ThumbnailPhotoFileName" TEXT NOT NULL,
         -- <example>'racer02_black_f_small.gif'</example>
-    LargePhoto BLOB NOT NULL,
+    "LargePhoto" BLOB NOT NULL,
         -- <example>'0x474946383961F0009500F70000D3D3FEE2E3FE86878ADBDC...2ECA61C0785440D755E992B335FC5561171648172B2000003B'</example>
-    LargePhotoFileName TEXT NOT NULL,
+    "LargePhotoFileName" TEXT NOT NULL,
         -- <example>'racer02_black_f_large.gif'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ProductProductPhoto
+Schema: NULL
+Table: ProductProductPhoto
 Rows: 504
 Sample rows:
 | ProductID   | ProductPhotoID   | Primary   | ModifiedDate          |
@@ -1124,23 +1161,24 @@ Sample rows:
 | ...         | ...              | ...       | ...                   |
 */
 CREATE TABLE ProductProductPhoto (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Product.ProductID</fk>
-    ProductPhotoID INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "ProductPhotoID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> ProductPhoto.ProductPhotoID</fk>
-    Primary INTEGER NOT NULL,
+        -- <fk> -> ProductPhoto."ProductPhotoID"</fk>
+    "Primary" INTEGER NOT NULL,
         -- <example>1</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2008-03-31 00:00:00.0'</example>
-    PRIMARY KEY (ProductID, ProductPhotoID),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID),
-    FOREIGN KEY (ProductPhotoID) REFERENCES ProductPhoto(ProductPhotoID)
+    PRIMARY KEY ("ProductID", "ProductPhotoID"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("ProductPhotoID") REFERENCES ProductPhoto("ProductPhotoID")
 );
 
 /*
-Schema: NULLTable: ProductReview
+Schema: NULL
+Table: ProductReview
 Rows: 4
 All rows:
 |   ProductReviewID |   ProductID | ReviewerName   | ReviewDate            | EmailAddress                     |   Rating | Comments                                                                                                                                                                                                    | ModifiedDate          |
@@ -1156,30 +1194,31 @@ ways I can adjust the pedals, or is it just a learning curve thing?             
 |                 4 |         798 | Laura Norman   | 2013-11-15 00:00:00.0 | laura@treyresearch.net           |        5 | The Road-550-W from Adventure Works Cycles is everything it's advertised to be. Finally, a quality b...trol and comfort in one neat package. The top tube is shorter, the suspension is weight-tuned and th | 2013-11-15 00:00:00.0 |
 */
 CREATE TABLE ProductReview (
-    ProductReviewID INTEGER NOT NULL PRIMARY KEY,
+    "ProductReviewID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>709</example>
-        -- <fk> -> Product.ProductID</fk>
-    ReviewerName TEXT NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "ReviewerName" TEXT NOT NULL,
         -- <values>{'David', 'Jill', 'John Smith', 'Laura Norman'}</values>
-    ReviewDate DATETIME NOT NULL,
+    "ReviewDate" DATETIME NOT NULL,
         -- <example>'2013-09-18 00:00:00.0'</example>
-    EmailAddress TEXT NOT NULL,
+    "EmailAddress" TEXT NOT NULL,
         -- <values>{'david@graphicdesigninstitute.com', 'jill@margiestravel.com', 'john@fourthcoffee.com', 'laura@treyresearch.net'}</values>
-    Rating INTEGER NOT NULL,
+    "Rating" INTEGER NOT NULL,
         -- <example>5</example>
-    Comments TEXT NOT NULL,
+    "Comments" TEXT NOT NULL,
         -- <values>{'A little on the heavy side, but overall the entry/.... I would like 
 them even better if there was a we', 'I can't believe I'm singing the praises of a pair ...feet all day. 
 The reinforced toe is nearly bullet', 'Maybe it's just because I'm new to mountain biking... the pedals, or is it just a learning curve thing?', 'The Road-550-W from Adventure Works Cycles is ever... is shorter, the suspension is weight-tuned and th'}</values>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-09-18 00:00:00.0'</example>
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: ProductSubcategory
+Schema: NULL
+Table: ProductSubcategory
 Rows: 37
 Sample rows:
 | ProductSubcategoryID   | ProductCategoryID   | Name            | rowguid                              | ModifiedDate          |
@@ -1192,22 +1231,23 @@ Sample rows:
 | ...                    | ...                 | ...             | ...                                  | ...                   |
 */
 CREATE TABLE ProductSubcategory (
-    ProductSubcategoryID INTEGER NOT NULL PRIMARY KEY,
+    "ProductSubcategoryID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    ProductCategoryID INTEGER NOT NULL,
+    "ProductCategoryID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> ProductCategory.ProductCategoryID</fk>
-    Name TEXT NOT NULL,
+        -- <fk> -> ProductCategory."ProductCategoryID"</fk>
+    "Name" TEXT NOT NULL,
         -- <example>'Bib-Shorts'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'000310C0-BCC8-42C4-B0C3-45AE611AF06B'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2008-04-30 00:00:00.0'</example>
-    FOREIGN KEY (ProductCategoryID) REFERENCES ProductCategory(ProductCategoryID)
+    FOREIGN KEY ("ProductCategoryID") REFERENCES ProductCategory("ProductCategoryID")
 );
 
 /*
-Schema: NULLTable: ProductVendor
+Schema: NULL
+Table: ProductVendor
 Rows: 460
 Sample rows:
 | ProductID   | BusinessEntityID   | AverageLeadTime   | StandardPrice   | LastReceiptCost   | LastReceiptDate       | MinOrderQty   | MaxOrderQty   | OnOrderQty   | UnitMeasureCode   | ModifiedDate          |
@@ -1220,39 +1260,40 @@ Sample rows:
 | ...         | ...                | ...               | ...             | ...               | ...                   | ...           | ...           | ...          | ...               | ...                   |
 */
 CREATE TABLE ProductVendor (
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Product.ProductID</fk>
-    BusinessEntityID INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>1580</example>
-        -- <fk> -> Vendor.BusinessEntityID</fk>
-    AverageLeadTime INTEGER NOT NULL,
+        -- <fk> -> Vendor."BusinessEntityID"</fk>
+    "AverageLeadTime" INTEGER NOT NULL,
         -- <example>17</example>
-    StandardPrice REAL NOT NULL,
+    "StandardPrice" REAL NOT NULL,
         -- <example>47.870</example>
-    LastReceiptCost REAL NOT NULL,
+    "LastReceiptCost" REAL NOT NULL,
         -- <example>50.264</example>
-    LastReceiptDate DATETIME NOT NULL,
+    "LastReceiptDate" DATETIME NOT NULL,
         -- <example>'2011-08-29 00:00:00.0'</example>
-    MinOrderQty INTEGER NOT NULL,
+    "MinOrderQty" INTEGER NOT NULL,
         -- <example>1</example>
-    MaxOrderQty INTEGER NOT NULL,
+    "MaxOrderQty" INTEGER NOT NULL,
         -- <example>5</example>
-    OnOrderQty INTEGER NULL,
+    "OnOrderQty" INTEGER NULL,
         -- <example>3</example>
-    UnitMeasureCode TEXT NOT NULL,
+    "UnitMeasureCode" TEXT NOT NULL,
         -- <values>{'CAN', 'CS', 'CTN', 'DZ', 'EA', 'GAL', 'PAK'}</values>
-        -- <fk> -> UnitMeasure.UnitMeasureCode</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> UnitMeasure."UnitMeasureCode"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-08-29 00:00:00.0'</example>
-    PRIMARY KEY (ProductID, BusinessEntityID),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID),
-    FOREIGN KEY (BusinessEntityID) REFERENCES Vendor(BusinessEntityID),
-    FOREIGN KEY (UnitMeasureCode) REFERENCES UnitMeasure(UnitMeasureCode)
+    PRIMARY KEY ("ProductID", "BusinessEntityID"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Vendor("BusinessEntityID"),
+    FOREIGN KEY ("UnitMeasureCode") REFERENCES UnitMeasure("UnitMeasureCode")
 );
 
 /*
-Schema: NULLTable: PurchaseOrderDetail
+Schema: NULL
+Table: PurchaseOrderDetail
 Rows: 8845
 Sample rows:
 | PurchaseOrderID   | PurchaseOrderDetailID   | DueDate               | OrderQty   | ProductID   | UnitPrice   | LineTotal   | ReceivedQty   | RejectedQty   | StockedQty   | ModifiedDate          |
@@ -1265,36 +1306,37 @@ Sample rows:
 | ...               | ...                     | ...                   | ...        | ...         | ...         | ...         | ...           | ...           | ...          | ...                   |
 */
 CREATE TABLE PurchaseOrderDetail (
-    PurchaseOrderID INTEGER NOT NULL,
+    "PurchaseOrderID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> PurchaseOrderHeader.PurchaseOrderID</fk>
-    PurchaseOrderDetailID INTEGER NOT NULL PRIMARY KEY,
+        -- <fk> -> PurchaseOrderHeader."PurchaseOrderID"</fk>
+    "PurchaseOrderDetailID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    DueDate DATETIME NOT NULL,
+    "DueDate" DATETIME NOT NULL,
         -- <example>'2011-04-30 00:00:00.0'</example>
-    OrderQty INTEGER NOT NULL,
+    "OrderQty" INTEGER NOT NULL,
         -- <example>4</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> Product.ProductID</fk>
-    UnitPrice REAL NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "UnitPrice" REAL NOT NULL,
         -- <example>50.000</example>
-    LineTotal REAL NOT NULL,
+    "LineTotal" REAL NOT NULL,
         -- <example>201.000</example>
-    ReceivedQty REAL NOT NULL,
+    "ReceivedQty" REAL NOT NULL,
         -- <example>3.000</example>
-    RejectedQty REAL NOT NULL,
+    "RejectedQty" REAL NOT NULL,
         -- <example>0.000</example>
-    StockedQty REAL NOT NULL,
+    "StockedQty" REAL NOT NULL,
         -- <example>3.000</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-04-23 00:00:00.0'</example>
-    FOREIGN KEY (PurchaseOrderID) REFERENCES PurchaseOrderHeader(PurchaseOrderID),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    FOREIGN KEY ("PurchaseOrderID") REFERENCES PurchaseOrderHeader("PurchaseOrderID"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: PurchaseOrderHeader
+Schema: NULL
+Table: PurchaseOrderHeader
 Rows: 4012
 Sample rows:
 | PurchaseOrderID   | RevisionNumber   | Status   | EmployeeID   | VendorID   | ShipMethodID   | OrderDate             | ShipDate              | SubTotal   | TaxAmt   | Freight   | TotalDue   | ModifiedDate          |
@@ -1307,42 +1349,43 @@ Sample rows:
 | ...               | ...              | ...      | ...          | ...        | ...            | ...                   | ...                   | ...        | ...      | ...       | ...        | ...                   |
 */
 CREATE TABLE PurchaseOrderHeader (
-    PurchaseOrderID INTEGER NOT NULL PRIMARY KEY,
+    "PurchaseOrderID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    RevisionNumber INTEGER NOT NULL,
+    "RevisionNumber" INTEGER NOT NULL,
         -- <example>4</example>
-    Status INTEGER NOT NULL,
+    "Status" INTEGER NOT NULL,
         -- <example>4</example>
-    EmployeeID INTEGER NOT NULL,
+    "EmployeeID" INTEGER NOT NULL,
         -- <example>258</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    VendorID INTEGER NOT NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "VendorID" INTEGER NOT NULL,
         -- <example>1580</example>
-        -- <fk> -> Vendor.BusinessEntityID</fk>
-    ShipMethodID INTEGER NOT NULL,
+        -- <fk> -> Vendor."BusinessEntityID"</fk>
+    "ShipMethodID" INTEGER NOT NULL,
         -- <example>3</example>
-        -- <fk> -> ShipMethod.ShipMethodID</fk>
-    OrderDate DATETIME NOT NULL,
+        -- <fk> -> ShipMethod."ShipMethodID"</fk>
+    "OrderDate" DATETIME NOT NULL,
         -- <example>'2011-04-16 00:00:00.0'</example>
-    ShipDate DATETIME NOT NULL,
+    "ShipDate" DATETIME NOT NULL,
         -- <example>'2011-04-25 00:00:00.0'</example>
-    SubTotal REAL NOT NULL,
+    "SubTotal" REAL NOT NULL,
         -- <example>201.040</example>
-    TaxAmt REAL NOT NULL,
+    "TaxAmt" REAL NOT NULL,
         -- <example>16.083</example>
-    Freight REAL NOT NULL,
+    "Freight" REAL NOT NULL,
         -- <example>5.026</example>
-    TotalDue REAL NOT NULL,
+    "TotalDue" REAL NOT NULL,
         -- <example>222.149</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-04-25 00:00:00.0'</example>
-    FOREIGN KEY (EmployeeID) REFERENCES Employee(BusinessEntityID),
-    FOREIGN KEY (VendorID) REFERENCES Vendor(BusinessEntityID),
-    FOREIGN KEY (ShipMethodID) REFERENCES ShipMethod(ShipMethodID)
+    FOREIGN KEY ("EmployeeID") REFERENCES Employee("BusinessEntityID"),
+    FOREIGN KEY ("VendorID") REFERENCES Vendor("BusinessEntityID"),
+    FOREIGN KEY ("ShipMethodID") REFERENCES ShipMethod("ShipMethodID")
 );
 
 /*
-Schema: NULLTable: SalesOrderDetail
+Schema: NULL
+Table: SalesOrderDetail
 Rows: 121317
 Sample rows:
 | SalesOrderID   | SalesOrderDetailID   | CarrierTrackingNumber   | OrderQty   | ProductID   | SpecialOfferID   | UnitPrice   | UnitPriceDiscount   | LineTotal   | rowguid                              | ModifiedDate          |
@@ -1355,37 +1398,38 @@ Sample rows:
 | ...            | ...                  | ...                     | ...        | ...         | ...              | ...         | ...                 | ...         | ...                                  | ...                   |
 */
 CREATE TABLE SalesOrderDetail (
-    SalesOrderID INTEGER NOT NULL,
+    "SalesOrderID" INTEGER NOT NULL,
         -- <example>43659</example>
-        -- <fk> -> SalesOrderHeader.SalesOrderID</fk>
-    SalesOrderDetailID INTEGER NOT NULL PRIMARY KEY,
+        -- <fk> -> SalesOrderHeader."SalesOrderID"</fk>
+    "SalesOrderDetailID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>54351</example>
-    CarrierTrackingNumber TEXT NULL,
+    "CarrierTrackingNumber" TEXT NULL,
         -- <example>'4911-403C-98'</example>
-    OrderQty INTEGER NOT NULL,
+    "OrderQty" INTEGER NOT NULL,
         -- <example>1</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>776</example>
         -- <fk>composite</fk>
-    SpecialOfferID INTEGER NOT NULL,
+    "SpecialOfferID" INTEGER NOT NULL,
         -- <example>1</example>
         -- <fk>composite</fk>
-    UnitPrice REAL NOT NULL,
+    "UnitPrice" REAL NOT NULL,
         -- <example>2025.000</example>
-    UnitPriceDiscount REAL NOT NULL,
+    "UnitPriceDiscount" REAL NOT NULL,
         -- <example>0.000</example>
-    LineTotal REAL NOT NULL,
+    "LineTotal" REAL NOT NULL,
         -- <example>2025.000</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'0000C99C-2B71-4885-B976-C1CCAE896EF2'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    FOREIGN KEY (SalesOrderID) REFERENCES SalesOrderHeader(SalesOrderID),
-    FOREIGN KEY (SpecialOfferID, ProductID) REFERENCES SpecialOfferProduct(SpecialOfferID, ProductID)
+    FOREIGN KEY ("SalesOrderID") REFERENCES SalesOrderHeader("SalesOrderID"),
+    FOREIGN KEY ("SpecialOfferID", "ProductID") REFERENCES SpecialOfferProduct("SpecialOfferID", "ProductID")
 );
 
 /*
-Schema: NULLTable: SalesOrderHeader
+Schema: NULL
+Table: SalesOrderHeader
 Rows: 31465
 Sample rows:
 | SalesOrderID   | RevisionNumber   | OrderDate             | DueDate               | ShipDate              | Status   | OnlineOrderFlag   | SalesOrderNumber   | PurchaseOrderNumber   | AccountNumber   | CustomerID   | SalesPersonID   | TerritoryID   | BillToAddressID   | ShipToAddressID   | ShipMethodID   | CreditCardID   | CreditCardApprovalCode   | CurrencyRateID   | SubTotal   | TaxAmt    | Freight   | TotalDue   | Comment   | rowguid                              | ModifiedDate          |
@@ -1398,77 +1442,78 @@ Sample rows:
 | ...            | ...              | ...                   | ...                   | ...                   | ...      | ...               | ...                | ...                   | ...             | ...          | ...             | ...           | ...               | ...               | ...            | ...            | ...                      | ...              | ...        | ...       | ...       | ...        | ...       | ...                                  | ...                   |
 */
 CREATE TABLE SalesOrderHeader (
-    SalesOrderID INTEGER NOT NULL PRIMARY KEY,
+    "SalesOrderID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>71821</example>
-    RevisionNumber INTEGER NOT NULL,
+    "RevisionNumber" INTEGER NOT NULL,
         -- <example>8</example>
-    OrderDate DATETIME NOT NULL,
+    "OrderDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    DueDate DATETIME NOT NULL,
+    "DueDate" DATETIME NOT NULL,
         -- <example>'2011-06-12 00:00:00.0'</example>
-    ShipDate DATETIME NOT NULL,
+    "ShipDate" DATETIME NOT NULL,
         -- <example>'2011-06-07 00:00:00.0'</example>
-    Status INTEGER NOT NULL,
+    "Status" INTEGER NOT NULL,
         -- <example>5</example>
-    OnlineOrderFlag INTEGER NOT NULL,
+    "OnlineOrderFlag" INTEGER NOT NULL,
         -- <example>0</example>
-    SalesOrderNumber TEXT NOT NULL,
+    "SalesOrderNumber" TEXT NOT NULL,
         -- <example>'SO43659'</example>
-    PurchaseOrderNumber TEXT NULL,
+    "PurchaseOrderNumber" TEXT NULL,
         -- <example>'PO522145787'</example>
-    AccountNumber TEXT NOT NULL,
+    "AccountNumber" TEXT NOT NULL,
         -- <example>'10-4020-000676'</example>
-    CustomerID INTEGER NOT NULL,
+    "CustomerID" INTEGER NOT NULL,
         -- <example>29825</example>
-        -- <fk> -> Customer.CustomerID</fk>
-    SalesPersonID INTEGER NULL,
+        -- <fk> -> Customer."CustomerID"</fk>
+    "SalesPersonID" INTEGER NULL,
         -- <example>279</example>
-        -- <fk> -> SalesPerson.BusinessEntityID</fk>
-    TerritoryID INTEGER NOT NULL,
+        -- <fk> -> SalesPerson."BusinessEntityID"</fk>
+    "TerritoryID" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> SalesTerritory.TerritoryID</fk>
-    BillToAddressID INTEGER NOT NULL,
+        -- <fk> -> SalesTerritory."TerritoryID"</fk>
+    "BillToAddressID" INTEGER NOT NULL,
         -- <example>985</example>
-        -- <fk> -> Address.AddressID</fk>
-    ShipToAddressID INTEGER NOT NULL,
+        -- <fk> -> Address."AddressID"</fk>
+    "ShipToAddressID" INTEGER NOT NULL,
         -- <example>985</example>
-        -- <fk> -> Address.AddressID</fk>
-    ShipMethodID INTEGER NOT NULL,
+        -- <fk> -> Address."AddressID"</fk>
+    "ShipMethodID" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> Address.AddressID</fk>
-    CreditCardID INTEGER NULL,
+        -- <fk> -> Address."AddressID"</fk>
+    "CreditCardID" INTEGER NULL,
         -- <example>16281</example>
-        -- <fk> -> CreditCard.CreditCardID</fk>
-    CreditCardApprovalCode TEXT NULL,
+        -- <fk> -> CreditCard."CreditCardID"</fk>
+    "CreditCardApprovalCode" TEXT NULL,
         -- <example>'105041Vi84182'</example>
-    CurrencyRateID INTEGER NULL,
+    "CurrencyRateID" INTEGER NULL,
         -- <example>4</example>
-        -- <fk> -> CurrencyRate.CurrencyRateID</fk>
-    SubTotal REAL NOT NULL,
+        -- <fk> -> CurrencyRate."CurrencyRateID"</fk>
+    "SubTotal" REAL NOT NULL,
         -- <example>20565.621</example>
-    TaxAmt REAL NOT NULL,
+    "TaxAmt" REAL NOT NULL,
         -- <example>1971.515</example>
-    Freight REAL NOT NULL,
+    "Freight" REAL NOT NULL,
         -- <example>616.098</example>
-    TotalDue REAL NOT NULL,
+    "TotalDue" REAL NOT NULL,
         -- <example>23153.234</example>
-    Comment TEXT NULL,
-    rowguid TEXT NOT NULL,
+    "Comment" TEXT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'0000DE87-AB3F-4920-AC46-C404834241A0'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-06-07 00:00:00.0'</example>
-    FOREIGN KEY (CurrencyRateID) REFERENCES CurrencyRate(CurrencyRateID),
-    FOREIGN KEY (CreditCardID) REFERENCES CreditCard(CreditCardID),
-    FOREIGN KEY (ShipMethodID) REFERENCES Address(AddressID),
-    FOREIGN KEY (ShipToAddressID) REFERENCES Address(AddressID),
-    FOREIGN KEY (BillToAddressID) REFERENCES Address(AddressID),
-    FOREIGN KEY (TerritoryID) REFERENCES SalesTerritory(TerritoryID),
-    FOREIGN KEY (SalesPersonID) REFERENCES SalesPerson(BusinessEntityID),
-    FOREIGN KEY (CustomerID) REFERENCES Customer(CustomerID)
+    FOREIGN KEY ("CurrencyRateID") REFERENCES CurrencyRate("CurrencyRateID"),
+    FOREIGN KEY ("CreditCardID") REFERENCES CreditCard("CreditCardID"),
+    FOREIGN KEY ("ShipMethodID") REFERENCES Address("AddressID"),
+    FOREIGN KEY ("ShipToAddressID") REFERENCES Address("AddressID"),
+    FOREIGN KEY ("BillToAddressID") REFERENCES Address("AddressID"),
+    FOREIGN KEY ("TerritoryID") REFERENCES SalesTerritory("TerritoryID"),
+    FOREIGN KEY ("SalesPersonID") REFERENCES SalesPerson("BusinessEntityID"),
+    FOREIGN KEY ("CustomerID") REFERENCES Customer("CustomerID")
 );
 
 /*
-Schema: NULLTable: SalesOrderHeaderSalesReason
+Schema: NULL
+Table: SalesOrderHeaderSalesReason
 Rows: 27647
 Sample rows:
 | SalesOrderID   | SalesReasonID   | ModifiedDate          |
@@ -1481,21 +1526,22 @@ Sample rows:
 | ...            | ...             | ...                   |
 */
 CREATE TABLE SalesOrderHeaderSalesReason (
-    SalesOrderID INTEGER NOT NULL,
+    "SalesOrderID" INTEGER NOT NULL,
         -- <example>43697</example>
-        -- <fk> -> SalesOrderHeader.SalesOrderID</fk>
-    SalesReasonID INTEGER NOT NULL,
+        -- <fk> -> SalesOrderHeader."SalesOrderID"</fk>
+    "SalesReasonID" INTEGER NOT NULL,
         -- <example>5</example>
-        -- <fk> -> SalesReason.SalesReasonID</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> SalesReason."SalesReasonID"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    PRIMARY KEY (SalesOrderID, SalesReasonID),
-    FOREIGN KEY (SalesOrderID) REFERENCES SalesOrderHeader(SalesOrderID),
-    FOREIGN KEY (SalesReasonID) REFERENCES SalesReason(SalesReasonID)
+    PRIMARY KEY ("SalesOrderID", "SalesReasonID"),
+    FOREIGN KEY ("SalesOrderID") REFERENCES SalesOrderHeader("SalesOrderID"),
+    FOREIGN KEY ("SalesReasonID") REFERENCES SalesReason("SalesReasonID")
 );
 
 /*
-Schema: NULLTable: SalesPerson
+Schema: NULL
+Table: SalesPerson
 Rows: 17
 Sample rows:
 | BusinessEntityID   | TerritoryID   | SalesQuota   | Bonus   | CommissionPct   | SalesYTD     | SalesLastYear   | rowguid                              | ModifiedDate          |
@@ -1508,32 +1554,33 @@ Sample rows:
 | ...                | ...           | ...          | ...     | ...             | ...          | ...             | ...                                  | ...                   |
 */
 CREATE TABLE SalesPerson (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>287</example>
-        -- <fk> -> Employee.BusinessEntityID</fk>
-    TerritoryID INTEGER NULL,
+        -- <fk> -> Employee."BusinessEntityID"</fk>
+    "TerritoryID" INTEGER NULL,
         -- <example>2</example>
-        -- <fk> -> SalesTerritory.TerritoryID</fk>
-    SalesQuota REAL NULL,
+        -- <fk> -> SalesTerritory."TerritoryID"</fk>
+    "SalesQuota" REAL NULL,
         -- <example>300000.000</example>
-    Bonus REAL NOT NULL,
+    "Bonus" REAL NOT NULL,
         -- <example>0.000</example>
-    CommissionPct REAL NOT NULL,
+    "CommissionPct" REAL NOT NULL,
         -- <example>0.000</example>
-    SalesYTD REAL NOT NULL,
+    "SalesYTD" REAL NOT NULL,
         -- <example>559697.564</example>
-    SalesLastYear REAL NOT NULL,
+    "SalesLastYear" REAL NOT NULL,
         -- <example>0.000</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'1DD1F689-DF74-4149-8600-59555EEF154B'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2010-12-28 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES Employee(BusinessEntityID),
-    FOREIGN KEY (TerritoryID) REFERENCES SalesTerritory(TerritoryID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES Employee("BusinessEntityID"),
+    FOREIGN KEY ("TerritoryID") REFERENCES SalesTerritory("TerritoryID")
 );
 
 /*
-Schema: NULLTable: SalesPersonQuotaHistory
+Schema: NULL
+Table: SalesPersonQuotaHistory
 Rows: 163
 Sample rows:
 | BusinessEntityID   | QuotaDate             | SalesQuota   | rowguid                              | ModifiedDate          |
@@ -1546,23 +1593,24 @@ Sample rows:
 | ...                | ...                   | ...          | ...                                  | ...                   |
 */
 CREATE TABLE SalesPersonQuotaHistory (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>274</example>
-        -- <fk> -> SalesPerson.BusinessEntityID</fk>
-    QuotaDate DATETIME NOT NULL,
+        -- <fk> -> SalesPerson."BusinessEntityID"</fk>
+    "QuotaDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    SalesQuota REAL NOT NULL,
+    "SalesQuota" REAL NOT NULL,
         -- <example>28000.000</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'00F2F9F8-5158-4436-B134-7E0C462289E5'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-04-16 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, QuotaDate),
-    FOREIGN KEY (BusinessEntityID) REFERENCES SalesPerson(BusinessEntityID)
+    PRIMARY KEY ("BusinessEntityID", "QuotaDate"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES SalesPerson("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: SalesReason
+Schema: NULL
+Table: SalesReason
 Rows: 10
 All rows:
 |   SalesReasonID | Name                      | ReasonType   | ModifiedDate          |
@@ -1579,18 +1627,19 @@ All rows:
 |              10 | Other                     | Other        | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE SalesReason (
-    SalesReasonID INTEGER NOT NULL PRIMARY KEY,
+    "SalesReasonID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Demo Event', 'Magazine Advertisement', 'Manufacturer', 'On Promotion', 'Other', 'Price', 'Quality', 'Review', 'Sponsorship', 'Television  Advertisement'}</values>
-    ReasonType TEXT NOT NULL,
+    "ReasonType" TEXT NOT NULL,
         -- <values>{'Marketing', 'Other', 'Promotion'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: SalesTaxRate
+Schema: NULL
+Table: SalesTaxRate
 Rows: 29
 Sample rows:
 | SalesTaxRateID   | StateProvinceID   | TaxType   | TaxRate   | Name                                  | rowguid                              | ModifiedDate          |
@@ -1603,26 +1652,27 @@ Sample rows:
 | ...              | ...               | ...       | ...       | ...                                   | ...                                  | ...                   |
 */
 CREATE TABLE SalesTaxRate (
-    SalesTaxRateID INTEGER NOT NULL PRIMARY KEY,
+    "SalesTaxRateID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    StateProvinceID INTEGER NOT NULL,
+    "StateProvinceID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> StateProvince.StateProvinceID</fk>
-    TaxType INTEGER NOT NULL,
+        -- <fk> -> StateProvince."StateProvinceID"</fk>
+    "TaxType" INTEGER NOT NULL,
         -- <example>1</example>
-    TaxRate REAL NOT NULL,
+    "TaxRate" REAL NOT NULL,
         -- <example>14.000</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Canadian GST + Alberta Provincial Tax'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'05C4FFDB-4F84-4CDF-ABE5-FDF3216EA74E'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2008-04-30 00:00:00.0'</example>
-    FOREIGN KEY (StateProvinceID) REFERENCES StateProvince(StateProvinceID)
+    FOREIGN KEY ("StateProvinceID") REFERENCES StateProvince("StateProvinceID")
 );
 
 /*
-Schema: NULLTable: SalesTerritory
+Schema: NULL
+Table: SalesTerritory
 Rows: 10
 All rows:
 |   TerritoryID | Name           | CountryRegionCode   | Group         |   SalesYTD |   SalesLastYear |   CostYTD |   CostLastYear | rowguid                              | ModifiedDate          |
@@ -1639,32 +1689,33 @@ All rows:
 |            10 | United Kingdom | GB                  | Europe        |  5012905.4 |       1635823.4 |         0 |              0 | 05FC7E1F-2DEA-414E-9ECD-09D150516FB5 | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE SalesTerritory (
-    TerritoryID INTEGER NOT NULL PRIMARY KEY,
+    "TerritoryID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Australia', 'Canada', 'Central', 'France', 'Germany', 'Northeast', 'Northwest', 'Southeast', 'Southwest', 'United Kingdom'}</values>
-    CountryRegionCode TEXT NOT NULL,
+    "CountryRegionCode" TEXT NOT NULL,
         -- <values>{'AU', 'CA', 'DE', 'FR', 'GB', 'US'}</values>
-        -- <fk> -> CountryRegion.CountryRegionCode</fk>
-    Group TEXT NOT NULL,
+        -- <fk> -> CountryRegion."CountryRegionCode"</fk>
+    "Group" TEXT NOT NULL,
         -- <values>{'Europe', 'North America', 'Pacific'}</values>
-    SalesYTD REAL NOT NULL,
+    "SalesYTD" REAL NOT NULL,
         -- <example>7887186.788</example>
-    SalesLastYear REAL NOT NULL,
+    "SalesLastYear" REAL NOT NULL,
         -- <example>3298694.494</example>
-    CostYTD REAL NOT NULL,
+    "CostYTD" REAL NOT NULL,
         -- <example>0.000</example>
-    CostLastYear REAL NOT NULL,
+    "CostLastYear" REAL NOT NULL,
         -- <example>0.000</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <values>{'00FB7309-96CC-49E2-8363-0A1BA72486F2', '05FC7E1F-2DEA-414E-9ECD-09D150516FB5', '06B4AF8A-1639-476E-9266-110461D66B00', '43689A10-E30B-497F-B0DE-11DE20267FF7', '602E612E-DFE9-41D9-B894-27E489747885', '6D2450DB-8159-414F-A917-E73EE91C38A9', '6DC4165A-5E4C-42D2-809D-4344E0AC75E7', 'BF806804-9B4C-4B07-9D19-706F2E689552', 'DC3E9EA0-7950-4431-9428-99DBCBC33865', 'DF6E7FD8-1A8D-468C-B103-ED8ADDB452C1'}</values>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2008-04-30 00:00:00.0'</example>
-    FOREIGN KEY (CountryRegionCode) REFERENCES CountryRegion(CountryRegionCode)
+    FOREIGN KEY ("CountryRegionCode") REFERENCES CountryRegion("CountryRegionCode")
 );
 
 /*
-Schema: NULLTable: SalesTerritoryHistory
+Schema: NULL
+Table: SalesTerritoryHistory
 Rows: 17
 Sample rows:
 | BusinessEntityID   | TerritoryID   | StartDate             | EndDate               | rowguid                              | ModifiedDate          |
@@ -1677,27 +1728,28 @@ Sample rows:
 | ...                | ...           | ...                   | ...                   | ...                                  | ...                   |
 */
 CREATE TABLE SalesTerritoryHistory (
-    BusinessEntityID INTEGER NOT NULL,
+    "BusinessEntityID" INTEGER NOT NULL,
         -- <example>275</example>
-        -- <fk> -> SalesPerson.BusinessEntityID</fk>
-    TerritoryID INTEGER NOT NULL,
+        -- <fk> -> SalesPerson."BusinessEntityID"</fk>
+    "TerritoryID" INTEGER NOT NULL,
         -- <example>2</example>
-        -- <fk> -> SalesTerritory.TerritoryID</fk>
-    StartDate DATETIME NOT NULL,
+        -- <fk> -> SalesTerritory."TerritoryID"</fk>
+    "StartDate" DATETIME NOT NULL,
         -- <example>'2011-05-31 00:00:00.0'</example>
-    EndDate DATETIME NULL,
+    "EndDate" DATETIME NULL,
         -- <example>'2012-11-29 00:00:00.0'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'009F7660-44A6-4ADF-BD4B-A5D1B79993F5'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2012-11-22 00:00:00.0'</example>
-    PRIMARY KEY (BusinessEntityID, TerritoryID, StartDate),
-    FOREIGN KEY (BusinessEntityID) REFERENCES SalesPerson(BusinessEntityID),
-    FOREIGN KEY (TerritoryID) REFERENCES SalesTerritory(TerritoryID)
+    PRIMARY KEY ("BusinessEntityID", "TerritoryID", "StartDate"),
+    FOREIGN KEY ("BusinessEntityID") REFERENCES SalesPerson("BusinessEntityID"),
+    FOREIGN KEY ("TerritoryID") REFERENCES SalesTerritory("TerritoryID")
 );
 
 /*
-Schema: NULLTable: ScrapReason
+Schema: NULL
+Table: ScrapReason
 Rows: 16
 Sample rows:
 | ScrapReasonID   | Name                          | ModifiedDate          |
@@ -1710,16 +1762,17 @@ Sample rows:
 | ...             | ...                           | ...                   |
 */
 CREATE TABLE ScrapReason (
-    ScrapReasonID INTEGER NOT NULL PRIMARY KEY,
+    "ScrapReasonID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Brake assembly not as ordered'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Shift
+Schema: NULL
+Table: Shift
 Rows: 3
 All rows:
 |   ShiftID | Name    | StartTime   | EndTime   | ModifiedDate          |
@@ -1729,20 +1782,21 @@ All rows:
 |         3 | Night   | 23:00:00    | 07:00:00  | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE Shift (
-    ShiftID INTEGER NOT NULL PRIMARY KEY,
+    "ShiftID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'Day', 'Evening', 'Night'}</values>
-    StartTime TEXT NOT NULL,
+    "StartTime" TEXT NOT NULL,
         -- <values>{'07:00:00', '15:00:00', '23:00:00'}</values>
-    EndTime TEXT NOT NULL,
+    "EndTime" TEXT NOT NULL,
         -- <values>{'07:00:00', '15:00:00', '23:00:00'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ShipMethod
+Schema: NULL
+Table: ShipMethod
 Rows: 5
 All rows:
 |   ShipMethodID | Name               |   ShipBase |   ShipRate | rowguid                              | ModifiedDate          |
@@ -1754,22 +1808,23 @@ All rows:
 |              5 | CARGO TRANSPORT 5  |       8.99 |       1.49 | B166019A-B134-4E76-B957-2B0490C610ED | 2008-04-30 00:00:00.0 |
 */
 CREATE TABLE ShipMethod (
-    ShipMethodID INTEGER NOT NULL PRIMARY KEY,
+    "ShipMethodID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>4</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <values>{'CARGO TRANSPORT 5', 'OVERNIGHT J-FAST', 'OVERSEAS - DELUXE', 'XRQ - TRUCK GROUND', 'ZY - EXPRESS'}</values>
-    ShipBase REAL NOT NULL,
+    "ShipBase" REAL NOT NULL,
         -- <example>3.950</example>
-    ShipRate REAL NOT NULL,
+    "ShipRate" REAL NOT NULL,
         -- <example>0.990</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <values>{'107E8356-E7A8-463D-B60C-079FFF467F3F', '22F4E461-28CF-4ACE-A980-F686CF112EC8', '3455079B-F773-4DC6-8F1E-2A58649C4AB8', '6BE756D9-D7BE-4463-8F2C-AE60C710D606', 'B166019A-B134-4E76-B957-2B0490C610ED'}</values>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: ShoppingCartItem
+Schema: NULL
+Table: ShoppingCartItem
 Rows: 3
 All rows:
 |   ShoppingCartItemID |   ShoppingCartID |   Quantity |   ProductID | DateCreated           | ModifiedDate          |
@@ -1779,24 +1834,25 @@ All rows:
 |                    5 |            20621 |          7 |         874 | 2013-11-09 17:54:07.0 | 2013-11-09 17:54:07.0 |
 */
 CREATE TABLE ShoppingCartItem (
-    ShoppingCartItemID INTEGER NOT NULL PRIMARY KEY,
+    "ShoppingCartItemID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2</example>
-    ShoppingCartID TEXT NOT NULL,
+    "ShoppingCartID" TEXT NOT NULL,
         -- <values>{'14951', '20621'}</values>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>3</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>862</example>
-        -- <fk> -> Product.ProductID</fk>
-    DateCreated DATETIME NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "DateCreated" DATETIME NOT NULL,
         -- <example>'2013-11-09 17:54:07.0'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-11-09 17:54:07.0'</example>
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: SpecialOffer
+Schema: NULL
+Table: SpecialOffer
 Rows: 16
 Sample rows:
 | SpecialOfferID   | Description              | DiscountPct   | Type            | Category    | StartDate             | EndDate               | MinQty   | MaxQty   | rowguid                              | ModifiedDate          |
@@ -1809,32 +1865,33 @@ Sample rows:
 | ...              | ...                      | ...           | ...             | ...         | ...                   | ...                   | ...      | ...      | ...                                  | ...                   |
 */
 CREATE TABLE SpecialOffer (
-    SpecialOfferID INTEGER NOT NULL PRIMARY KEY,
+    "SpecialOfferID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    Description TEXT NOT NULL,
+    "Description" TEXT NOT NULL,
         -- <example>'No Discount'</example>
-    DiscountPct REAL NOT NULL,
+    "DiscountPct" REAL NOT NULL,
         -- <example>0.000</example>
-    Type TEXT NOT NULL,
+    "Type" TEXT NOT NULL,
         -- <values>{'Discontinued Product', 'Excess Inventory', 'New Product', 'No Discount', 'Seasonal Discount', 'Volume Discount'}</values>
-    Category TEXT NOT NULL,
+    "Category" TEXT NOT NULL,
         -- <values>{'Customer', 'No Discount', 'Reseller'}</values>
-    StartDate DATETIME NOT NULL,
+    "StartDate" DATETIME NOT NULL,
         -- <example>'2011-05-01 00:00:00.0'</example>
-    EndDate DATETIME NOT NULL,
+    "EndDate" DATETIME NOT NULL,
         -- <example>'2014-11-30 00:00:00.0'</example>
-    MinQty INTEGER NOT NULL,
+    "MinQty" INTEGER NOT NULL,
         -- <example>0</example>
-    MaxQty INTEGER NULL,
+    "MaxQty" INTEGER NULL,
         -- <example>14</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'0290C4F5-191F-4337-AB6B-0A2DDE03CBF9'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2011-04-01 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: SpecialOfferProduct
+Schema: NULL
+Table: SpecialOfferProduct
 Rows: 538
 Sample rows:
 | SpecialOfferID   | ProductID   | rowguid                              | ModifiedDate          |
@@ -1847,23 +1904,24 @@ Sample rows:
 | ...              | ...         | ...                                  | ...                   |
 */
 CREATE TABLE SpecialOfferProduct (
-    SpecialOfferID INTEGER NOT NULL,
+    "SpecialOfferID" INTEGER NOT NULL,
         -- <example>1</example>
-        -- <fk> -> SpecialOffer.SpecialOfferID</fk>
-    ProductID INTEGER NOT NULL,
+        -- <fk> -> SpecialOffer."SpecialOfferID"</fk>
+    "ProductID" INTEGER NOT NULL,
         -- <example>680</example>
-        -- <fk> -> Product.ProductID</fk>
-    rowguid TEXT NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "rowguid" TEXT NOT NULL,
         -- <example>'0020931C-087C-42F8-B441-EBE3D3B5F51E'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-04-01 00:00:00.0'</example>
-    PRIMARY KEY (SpecialOfferID, ProductID),
-    FOREIGN KEY (SpecialOfferID) REFERENCES SpecialOffer(SpecialOfferID),
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    PRIMARY KEY ("SpecialOfferID", "ProductID"),
+    FOREIGN KEY ("SpecialOfferID") REFERENCES SpecialOffer("SpecialOfferID"),
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: StateProvince
+Schema: NULL
+Table: StateProvince
 Rows: 181
 Sample rows:
 | StateProvinceID   | StateProvinceCode   | CountryRegionCode   | IsOnlyStateProvinceFlag   | Name           | TerritoryID   | rowguid                              | ModifiedDate          |
@@ -1876,30 +1934,31 @@ Sample rows:
 | ...               | ...                 | ...                 | ...                       | ...            | ...           | ...                                  | ...                   |
 */
 CREATE TABLE StateProvince (
-    StateProvinceID INTEGER NOT NULL PRIMARY KEY,
+    "StateProvinceID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>103</example>
-    StateProvinceCode TEXT NOT NULL,
+    "StateProvinceCode" TEXT NOT NULL,
         -- <example>'01'</example>
-    CountryRegionCode TEXT NOT NULL,
+    "CountryRegionCode" TEXT NOT NULL,
         -- <example>'FR'</example>
-        -- <fk> -> CountryRegion.CountryRegionCode</fk>
-    IsOnlyStateProvinceFlag INTEGER NOT NULL,
+        -- <fk> -> CountryRegion."CountryRegionCode"</fk>
+    "IsOnlyStateProvinceFlag" INTEGER NOT NULL,
         -- <example>0</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Ain'</example>
-    TerritoryID INTEGER NOT NULL,
+    "TerritoryID" INTEGER NOT NULL,
         -- <example>6</example>
-        -- <fk> -> SalesTerritory.TerritoryID</fk>
-    rowguid TEXT NOT NULL,
+        -- <fk> -> SalesTerritory."TerritoryID"</fk>
+    "rowguid" TEXT NOT NULL,
         -- <example>'00723E00-C976-401D-A92B-E582DF3D6E01'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-02-08 10:17:21.0'</example>
-    FOREIGN KEY (TerritoryID) REFERENCES SalesTerritory(TerritoryID),
-    FOREIGN KEY (CountryRegionCode) REFERENCES CountryRegion(CountryRegionCode)
+    FOREIGN KEY ("TerritoryID") REFERENCES SalesTerritory("TerritoryID"),
+    FOREIGN KEY ("CountryRegionCode") REFERENCES CountryRegion("CountryRegionCode")
 );
 
 /*
-Schema: NULLTable: Store
+Schema: NULL
+Table: Store
 Rows: 701
 Sample rows:
 | BusinessEntityID   | Name                           | SalesPersonID   | Demographics                                                                                                                                                                                                | rowguid                              | ModifiedDate          |
@@ -1912,26 +1971,27 @@ Sample rows:
 | ...                | ...                            | ...             | ...                                                                                                                                                                                                         | ...                                  | ...                   |
 */
 CREATE TABLE Store (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>630</example>
-        -- <fk> -> BusinessEntity.BusinessEntityID</fk>
-    Name TEXT NOT NULL,
+        -- <fk> -> BusinessEntity."BusinessEntityID"</fk>
+    "Name" TEXT NOT NULL,
         -- <example>'Next-Door Bike Store'</example>
-    SalesPersonID INTEGER NOT NULL,
+    "SalesPersonID" INTEGER NOT NULL,
         -- <example>279</example>
-        -- <fk> -> SalesPerson.BusinessEntityID</fk>
-    Demographics TEXT NOT NULL,
+        -- <fk> -> SalesPerson."BusinessEntityID"</fk>
+    "Demographics" TEXT NOT NULL,
         -- <example>'<StoreSurvey xmlns="http://schemas.microsoft.com/s...NumberEmployees>13</NumberEmployees></StoreSurvey>'</example>
-    rowguid TEXT NOT NULL,
+    "rowguid" TEXT NOT NULL,
         -- <example>'004EA91C-FCD4-4973-87EF-9059C6E20BB5'</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2014-09-12 11:15:07.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES BusinessEntity(BusinessEntityID),
-    FOREIGN KEY (SalesPersonID) REFERENCES SalesPerson(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES BusinessEntity("BusinessEntityID"),
+    FOREIGN KEY ("SalesPersonID") REFERENCES SalesPerson("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: TransactionHistory
+Schema: NULL
+Table: TransactionHistory
 Rows: 113443
 Sample rows:
 | TransactionID   | ProductID   | ReferenceOrderID   | ReferenceOrderLineID   | TransactionDate       | TransactionType   | Quantity   | ActualCost   | ModifiedDate          |
@@ -1944,30 +2004,31 @@ Sample rows:
 | ...             | ...         | ...                | ...                    | ...                   | ...               | ...        | ...          | ...                   |
 */
 CREATE TABLE TransactionHistory (
-    TransactionID INTEGER NOT NULL PRIMARY KEY,
+    "TransactionID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>100000</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>784</example>
-        -- <fk> -> Product.ProductID</fk>
-    ReferenceOrderID INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "ReferenceOrderID" INTEGER NOT NULL,
         -- <example>41590</example>
-    ReferenceOrderLineID INTEGER NOT NULL,
+    "ReferenceOrderLineID" INTEGER NOT NULL,
         -- <example>0</example>
-    TransactionDate DATETIME NOT NULL,
+    "TransactionDate" DATETIME NOT NULL,
         -- <example>'2013-07-31 00:00:00.0'</example>
-    TransactionType TEXT NOT NULL,
+    "TransactionType" TEXT NOT NULL,
         -- <values>{'P', 'S', 'W'}</values>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>2</example>
-    ActualCost REAL NOT NULL,
+    "ActualCost" REAL NOT NULL,
         -- <example>0.000</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2013-07-31 00:00:00.0'</example>
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID)
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID")
 );
 
 /*
-Schema: NULLTable: TransactionHistoryArchive
+Schema: NULL
+Table: TransactionHistoryArchive
 Rows: 89253
 Sample rows:
 | TransactionID   | ProductID   | ReferenceOrderID   | ReferenceOrderLineID   | TransactionDate       | TransactionType   | Quantity   | ActualCost   | ModifiedDate          |
@@ -1980,28 +2041,29 @@ Sample rows:
 | ...             | ...         | ...                | ...                    | ...                   | ...               | ...        | ...          | ...                   |
 */
 CREATE TABLE TransactionHistoryArchive (
-    TransactionID INTEGER NOT NULL PRIMARY KEY,
+    "TransactionID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>1</example>
-    ReferenceOrderID INTEGER NOT NULL,
+    "ReferenceOrderID" INTEGER NOT NULL,
         -- <example>1</example>
-    ReferenceOrderLineID INTEGER NOT NULL,
+    "ReferenceOrderLineID" INTEGER NOT NULL,
         -- <example>1</example>
-    TransactionDate DATETIME NOT NULL,
+    "TransactionDate" DATETIME NOT NULL,
         -- <example>'2011-04-16 00:00:00.0'</example>
-    TransactionType TEXT NOT NULL,
+    "TransactionType" TEXT NOT NULL,
         -- <values>{'P', 'S', 'W'}</values>
-    Quantity INTEGER NOT NULL,
+    "Quantity" INTEGER NOT NULL,
         -- <example>4</example>
-    ActualCost REAL NOT NULL,
+    "ActualCost" REAL NOT NULL,
         -- <example>50.000</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2011-04-16 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: UnitMeasure
+Schema: NULL
+Table: UnitMeasure
 Rows: 38
 Sample rows:
 | UnitMeasureCode   | Name     | ModifiedDate          |
@@ -2014,16 +2076,17 @@ Sample rows:
 | ...               | ...      | ...                   |
 */
 CREATE TABLE UnitMeasure (
-    UnitMeasureCode TEXT NOT NULL PRIMARY KEY,
+    "UnitMeasureCode" TEXT NOT NULL PRIMARY KEY,
         -- <example>'BOX'</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Bottle'</example>
-    ModifiedDate DATETIME NOT NULL
+    "ModifiedDate" DATETIME NOT NULL
         -- <example>'2008-04-30 00:00:00.0'</example>
 );
 
 /*
-Schema: NULLTable: Vendor
+Schema: NULL
+Table: Vendor
 Rows: 104
 Sample rows:
 | BusinessEntityID   | AccountNumber   | Name                    | CreditRating   | PreferredVendorStatus   | ActiveFlag   | PurchasingWebServiceURL   | ModifiedDate          |
@@ -2036,28 +2099,29 @@ Sample rows:
 | ...                | ...             | ...                     | ...            | ...                     | ...          | ...                       | ...                   |
 */
 CREATE TABLE Vendor (
-    BusinessEntityID INTEGER NOT NULL PRIMARY KEY,
+    "BusinessEntityID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1596</example>
-        -- <fk> -> BusinessEntity.BusinessEntityID</fk>
-    AccountNumber TEXT NOT NULL,
+        -- <fk> -> BusinessEntity."BusinessEntityID"</fk>
+    "AccountNumber" TEXT NOT NULL,
         -- <example>'ADATUM0001'</example>
-    Name TEXT NOT NULL,
+    "Name" TEXT NOT NULL,
         -- <example>'Australia Bike Retailer'</example>
-    CreditRating INTEGER NOT NULL,
+    "CreditRating" INTEGER NOT NULL,
         -- <example>1</example>
-    PreferredVendorStatus INTEGER NOT NULL,
+    "PreferredVendorStatus" INTEGER NOT NULL,
         -- <example>1</example>
-    ActiveFlag INTEGER NOT NULL,
+    "ActiveFlag" INTEGER NOT NULL,
         -- <example>1</example>
-    PurchasingWebServiceURL TEXT NULL,
+    "PurchasingWebServiceURL" TEXT NULL,
         -- <values>{'www.adatum.com/', 'www.litwareinc.com/', 'www.northwindtraders.com/', 'www.proseware.com/', 'www.treyresearch.net/', 'www.wideworldimporters.com/'}</values>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-12-23 00:00:00.0'</example>
-    FOREIGN KEY (BusinessEntityID) REFERENCES BusinessEntity(BusinessEntityID)
+    FOREIGN KEY ("BusinessEntityID") REFERENCES BusinessEntity("BusinessEntityID")
 );
 
 /*
-Schema: NULLTable: WorkOrder
+Schema: NULL
+Table: WorkOrder
 Rows: 72591
 Sample rows:
 | WorkOrderID   | ProductID   | OrderQty   | StockedQty   | ScrappedQty   | StartDate             | EndDate               | DueDate               | ScrapReasonID   | ModifiedDate          |
@@ -2070,34 +2134,35 @@ Sample rows:
 | ...           | ...         | ...        | ...          | ...           | ...                   | ...                   | ...                   | ...             | ...                   |
 */
 CREATE TABLE WorkOrder (
-    WorkOrderID INTEGER NOT NULL PRIMARY KEY,
+    "WorkOrderID" INTEGER NOT NULL PRIMARY KEY,
         -- <example>1</example>
-    ProductID INTEGER NOT NULL,
+    "ProductID" INTEGER NOT NULL,
         -- <example>722</example>
-        -- <fk> -> Product.ProductID</fk>
-    OrderQty INTEGER NOT NULL,
+        -- <fk> -> Product."ProductID"</fk>
+    "OrderQty" INTEGER NOT NULL,
         -- <example>8</example>
-    StockedQty INTEGER NOT NULL,
+    "StockedQty" INTEGER NOT NULL,
         -- <example>8</example>
-    ScrappedQty INTEGER NOT NULL,
+    "ScrappedQty" INTEGER NOT NULL,
         -- <example>0</example>
-    StartDate DATETIME NOT NULL,
+    "StartDate" DATETIME NOT NULL,
         -- <example>'2011-06-03 00:00:00.0'</example>
-    EndDate DATETIME NOT NULL,
+    "EndDate" DATETIME NOT NULL,
         -- <example>'2011-06-13 00:00:00.0'</example>
-    DueDate DATETIME NOT NULL,
+    "DueDate" DATETIME NOT NULL,
         -- <example>'2011-06-14 00:00:00.0'</example>
-    ScrapReasonID INTEGER NULL,
+    "ScrapReasonID" INTEGER NULL,
         -- <example>7</example>
-        -- <fk> -> ScrapReason.ScrapReasonID</fk>
-    ModifiedDate DATETIME NOT NULL,
+        -- <fk> -> ScrapReason."ScrapReasonID"</fk>
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-06-13 00:00:00.0'</example>
-    FOREIGN KEY (ProductID) REFERENCES Product(ProductID),
-    FOREIGN KEY (ScrapReasonID) REFERENCES ScrapReason(ScrapReasonID)
+    FOREIGN KEY ("ProductID") REFERENCES Product("ProductID"),
+    FOREIGN KEY ("ScrapReasonID") REFERENCES ScrapReason("ScrapReasonID")
 );
 
 /*
-Schema: NULLTable: WorkOrderRouting
+Schema: NULL
+Table: WorkOrderRouting
 Rows: 67131
 Sample rows:
 | WorkOrderID   | ProductID   | OperationSequence   | LocationID   | ScheduledStartDate    | ScheduledEndDate      | ActualStartDate       | ActualEndDate         | ActualResourceHrs   | PlannedCost   | ActualCost   | ModifiedDate          |
@@ -2110,34 +2175,34 @@ Sample rows:
 | ...           | ...         | ...                 | ...          | ...                   | ...                   | ...                   | ...                   | ...                 | ...           | ...          | ...                   |
 */
 CREATE TABLE WorkOrderRouting (
-    WorkOrderID INTEGER NOT NULL,
+    "WorkOrderID" INTEGER NOT NULL,
         -- <example>13</example>
-        -- <fk> -> WorkOrder.WorkOrderID</fk>
-    ProductID INTEGER NOT NULL,
+        -- <fk> -> WorkOrder."WorkOrderID"</fk>
+    "ProductID" INTEGER NOT NULL,
         -- <example>747</example>
-    OperationSequence INTEGER NOT NULL,
+    "OperationSequence" INTEGER NOT NULL,
         -- <example>1</example>
-    LocationID INTEGER NOT NULL,
+    "LocationID" INTEGER NOT NULL,
         -- <example>10</example>
-        -- <fk> -> Location.LocationID</fk>
-    ScheduledStartDate DATETIME NOT NULL,
+        -- <fk> -> Location."LocationID"</fk>
+    "ScheduledStartDate" DATETIME NOT NULL,
         -- <example>'2011-06-03 00:00:00.0'</example>
-    ScheduledEndDate DATETIME NOT NULL,
+    "ScheduledEndDate" DATETIME NOT NULL,
         -- <example>'2011-06-14 00:00:00.0'</example>
-    ActualStartDate DATETIME NOT NULL,
+    "ActualStartDate" DATETIME NOT NULL,
         -- <example>'2011-06-03 00:00:00.0'</example>
-    ActualEndDate DATETIME NOT NULL,
+    "ActualEndDate" DATETIME NOT NULL,
         -- <example>'2011-06-19 00:00:00.0'</example>
-    ActualResourceHrs REAL NOT NULL,
+    "ActualResourceHrs" REAL NOT NULL,
         -- <example>4.100</example>
-    PlannedCost REAL NOT NULL,
+    "PlannedCost" REAL NOT NULL,
         -- <example>92.250</example>
-    ActualCost REAL NOT NULL,
+    "ActualCost" REAL NOT NULL,
         -- <example>92.250</example>
-    ModifiedDate DATETIME NOT NULL,
+    "ModifiedDate" DATETIME NOT NULL,
         -- <example>'2011-06-19 00:00:00.0'</example>
-    PRIMARY KEY (WorkOrderID, ProductID, OperationSequence),
-    FOREIGN KEY (WorkOrderID) REFERENCES WorkOrder(WorkOrderID),
-    FOREIGN KEY (LocationID) REFERENCES Location(LocationID)
+    PRIMARY KEY ("WorkOrderID", "ProductID", "OperationSequence"),
+    FOREIGN KEY ("WorkOrderID") REFERENCES WorkOrder("WorkOrderID"),
+    FOREIGN KEY ("LocationID") REFERENCES Location("LocationID")
 );
 ```

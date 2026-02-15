@@ -2,7 +2,8 @@
 -- Database: craftbeer
 
 /*
-Schema: NULLTable: beers
+Schema: NULL
+Table: beers
 Rows: 2410
 Sample rows:
 | id   | brewery_id   | abv   | ibu   | name                     | style                          | ounces   |
@@ -15,26 +16,27 @@ Sample rows:
 | ...  | ...          | ...   | ...   | ...                      | ...                            | ...      |
 */
 CREATE TABLE beers (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>2687</example>
-    brewery_id INTEGER NOT NULL,
+    "brewery_id" INTEGER NOT NULL,
         -- <example>0</example>
-        -- <fk> -> breweries.id</fk>
-    abv REAL NULL,
+        -- <fk> -> breweries."id"</fk>
+    "abv" REAL NULL,
         -- <example>0.065</example>
-    ibu REAL NULL,
+    "ibu" REAL NULL,
         -- <example>65.000</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'Dale's Pale Ale'</example>
-    style TEXT NULL,
+    "style" TEXT NULL,
         -- <example>'American Pale Ale (APA)'</example>
-    ounces REAL NOT NULL,
+    "ounces" REAL NOT NULL,
         -- <example>12.000</example>
-    FOREIGN KEY (brewery_id) REFERENCES breweries(id)
+    FOREIGN KEY ("brewery_id") REFERENCES breweries("id")
 );
 
 /*
-Schema: NULLTable: breweries
+Schema: NULL
+Table: breweries
 Rows: 558
 Sample rows:
 | id   | name                      | city          | state   |
@@ -47,13 +49,13 @@ Sample rows:
 | ...  | ...                       | ...           | ...     |
 */
 CREATE TABLE breweries (
-    id INTEGER NOT NULL PRIMARY KEY,
+    "id" INTEGER NOT NULL PRIMARY KEY,
         -- <example>0</example>
-    name TEXT NOT NULL,
+    "name" TEXT NOT NULL,
         -- <example>'NorthGate Brewing '</example>
-    city TEXT NOT NULL,
+    "city" TEXT NOT NULL,
         -- <example>'Minneapolis'</example>
-    state TEXT NOT NULL
+    "state" TEXT NOT NULL
         -- <example>'MN'</example>
 );
 ```
