@@ -648,11 +648,18 @@ Feb 11
     - bird-sql_dev_20240627_227
     - bird-sql_dev_20240627_255
 
-Feb 12
+Feb 12 - 14
 - [x] Exp 207: bird_sql_ex at 0.6734!
-- [ ] Spider 2.0
+- [x] Spider 2.0
+  - [x] Preprocessing - disable column profiler and foreign key predictor
+  - [x] Rename evidence to document, include document in prompt
+- [x] Fix schema linking
+- [x] Fix extract_all_source_columns, disable passing schema
+- [x] Fix name casing in sql_conn.py and column quoting in schema formatting
+
 
 - [ ] Update schema preprocessor - fix gas station price
+- [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
 - [ ] Test GPT-5, gemini-3-flash/pro
 - [ ] Model ensemble
 - [ ] Caching for embedding models
