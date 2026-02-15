@@ -282,8 +282,10 @@ async def build_column_async(
         num_unique = 0
         examples = []
 
+    actual_col_name = str(t_eng.engine.dialect.denormalize_name(column["name"]))
+
     return SQLColumnSchema(
-        name=column["name"],
+        name=actual_col_name,
         dtype=dtype,
         nullable=column["nullable"],
         null_ratio=null_ratio,
@@ -329,14 +331,27 @@ async def build_table_async(
     # Sample rows from the table
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
+    # Denormalize names to get the actual stored identifiers (e.g. UPPERCASE for Snowflake/Oracle)
+    dialect = t_eng.engine.dialect
+    actual_table_name = dialect.denormalize_name(table_name)
+    actual_schema_name = dialect.denormalize_name(schema_name) if schema_name is not None else None
+
     return SQLTableSchema(
-        name=table_name,
-        schema_name=schema_name,
+        name=actual_table_name,
+        schema_name=actual_schema_name,
         is_view=is_view,
         columns=columns,
-        primary_key=primary_key,
+        primary_key=[str(dialect.denormalize_name(c)) for c in primary_key],
         num_rows=num_rows,
-        foreign_keys=foreign_keys,
+        foreign_keys=[
+            fk.model_copy(update={
+                "columns": [str(dialect.denormalize_name(c)) for c in fk.columns],
+                "foreign_schema_name": dialect.denormalize_name(fk.foreign_schema_name) if fk.foreign_schema_name is not None else None,
+                "foreign_table": str(dialect.denormalize_name(fk.foreign_table)),
+                "foreign_columns": [str(dialect.denormalize_name(c)) for c in fk.foreign_columns],
+            })
+            for fk in foreign_keys
+        ],
         sampled_df=sampled_df,
     )
 
