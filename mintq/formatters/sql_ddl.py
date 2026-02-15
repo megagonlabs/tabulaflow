@@ -77,7 +77,7 @@ class SQLDDLSchemaFormatter:
         table_name = self.format_table_name(table)
         title = ""
         title += f"Schema: {self._quote_if_needed(table.schema_name)}"
-        title += f"Table: {self._quote_if_needed(table.name)}"
+        title += f"\nTable: {self._quote_if_needed(table.name)}"
         if table.name_description:
             title += f" ({table.name_description})"
         info_parts = [title]
