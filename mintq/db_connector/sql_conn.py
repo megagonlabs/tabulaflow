@@ -302,6 +302,13 @@ async def build_table_async(
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
 
     async_inspector = AsyncInspector(t_eng)
+    dialect = t_eng.engine.dialect
+
+    def _denorm(name: str | None) -> str | None:
+        """Denormalize a normalized identifier back to its actual stored form as a plain str."""
+        if name is None:
+            return None
+        return str(dialect.denormalize_name(name))
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
@@ -312,16 +319,16 @@ async def build_table_async(
 
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
     for col in primary_key:
-        name2col[col].primary_key_type = "single" if len(primary_key) == 1 else "composite"
+        name2col[_denorm(col)].primary_key_type = "single" if len(primary_key) == 1 else "composite"
 
     foreign_keys = []
     for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
         foreign_keys.append(
             ForeignKeySchema(
-                columns=fk["constrained_columns"],
-                foreign_schema_name=fk["referred_schema"],
-                foreign_table=fk["referred_table"],
-                foreign_columns=fk["referred_columns"],
+                columns=[_denorm(c) for c in fk["constrained_columns"]],
+                foreign_schema_name=_denorm(fk["referred_schema"]),
+                foreign_table=_denorm(fk["referred_table"]),
+                foreign_columns=[_denorm(c) for c in fk["referred_columns"]],
             )
         )
     for fk in foreign_keys:
@@ -331,27 +338,14 @@ async def build_table_async(
     # Sample rows from the table
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
-    # Denormalize names to get the actual stored identifiers (e.g. UPPERCASE for Snowflake/Oracle)
-    dialect = t_eng.engine.dialect
-    actual_table_name = dialect.denormalize_name(table_name)
-    actual_schema_name = dialect.denormalize_name(schema_name) if schema_name is not None else None
-
     return SQLTableSchema(
-        name=actual_table_name,
-        schema_name=actual_schema_name,
+        name=_denorm(table_name),
+        schema_name=_denorm(schema_name),
         is_view=is_view,
         columns=columns,
-        primary_key=[str(dialect.denormalize_name(c)) for c in primary_key],
+        primary_key=[_denorm(c) for c in primary_key],
         num_rows=num_rows,
-        foreign_keys=[
-            fk.model_copy(update={
-                "columns": [str(dialect.denormalize_name(c)) for c in fk.columns],
-                "foreign_schema_name": dialect.denormalize_name(fk.foreign_schema_name) if fk.foreign_schema_name is not None else None,
-                "foreign_table": str(dialect.denormalize_name(fk.foreign_table)),
-                "foreign_columns": [str(dialect.denormalize_name(c)) for c in fk.foreign_columns],
-            })
-            for fk in foreign_keys
-        ],
+        foreign_keys=foreign_keys,
         sampled_df=sampled_df,
     )
 
