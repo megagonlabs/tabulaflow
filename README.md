@@ -679,6 +679,7 @@ Feb 12 - 14
 - [ ] Spider 2.0 custom data
 - [ ] Incorporate changes from blue-delibird (e.g. lock per event loop)
 - [ ] ARCS
+  - [ ] "lengthen over-specified questions" in intro (emphasize that questions in existing benchmarks are too long)
   - [ ] Section on ease of use in paper and website
   - [ ] Rationale for multiple resolution sampling - prevent LLM from guessing
   - [ ] Data sheet
