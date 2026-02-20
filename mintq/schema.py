@@ -726,7 +726,7 @@ class CSVSummaryRow(BaseModel):
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
-    language: SQLDialect | NonSQLLanguage
+    language: SQLDialect | NonSQLLanguage | str
     db: str
     question: str
     question_instructions: str | None = None
@@ -831,7 +831,7 @@ class AmbigNL2QTask(BaseModel):
     qid: str
     task_type: Literal["ambig"] = "ambig"
     has_intended_resolution: bool
-    language: SQLDialect
+    language: SQLDialect | NonSQLLanguage | str
     db: str
     question: str
     dataset_instructions: str | None = None
