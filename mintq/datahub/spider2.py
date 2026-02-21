@@ -20,6 +20,15 @@ TABLE_GROUP_REGEXES = {
     ],
 }
 
+EVAL_STANDARD_PATCHES = {
+    "sf_bq236": {
+        "condition_cols": [[0, 4], [0], [0]],
+    },
+    "sf_bq060": {
+        "condition_cols": [[1], [3], [2], [1], [1]],
+    },
+}
+
 
 @dataset_registry.register
 class Spider2SnowDatasetLoader:
@@ -78,6 +87,8 @@ class Spider2SnowDatasetLoader:
             for line in f:
                 item = json.loads(line)
                 qid = item.pop("instance_id")
+                if qid in EVAL_STANDARD_PATCHES:
+                    item.update(EVAL_STANDARD_PATCHES[qid])
                 eval_standard[qid] = item
 
         tasks = []
@@ -115,10 +126,19 @@ class Spider2SnowDatasetLoader:
                 if not condition_cols or not isinstance(condition_cols[0], list):
                     condition_cols = [condition_cols for _ in range(len(gold_exec_results))]
 
+                if len(condition_cols) != len(gold_exec_results):
+                    raise ValueError(
+                        f"Length of condition_cols and number of CSV files do not match for {item['instance_id']}"
+                    )
+
                 # Only keep the required columns in the df
                 filtered_gold_exec_results = []
                 for df, cols in zip(gold_exec_results, condition_cols):
                     if cols:
+                        if any(c > len(df.columns) for c in cols):
+                            raise ValueError(
+                                f"A column index in condition_cols is out of range for {item['instance_id']}"
+                            )
                         filtered_gold_exec_results.append(df.iloc[:, cols])
                     else:
                         filtered_gold_exec_results.append(df)
@@ -207,6 +227,7 @@ class Spider2SnowDatasetLoader:
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
         tasks = await self.get_tasks_async(split, databases)
+        exit(0)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
         db_connectors = await self.get_db_connectors_async(split, databases)
