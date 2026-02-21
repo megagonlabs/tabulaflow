@@ -624,31 +624,21 @@ class GoldQuery(BaseModel):
     parameter_values: dict[str, Any] = Field(default_factory=dict)
     """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
     exec_result: ExecResult | None = None
-    other_exec_results: list[ExecResult] = Field(default_factory=list)
-    """Some queries have multiple exec results (usually caused by argmax with ties), which is common in Spider2"""
     required_columns: list[int] | None = None
     """Columns that must be present in the result, None means all columns must be present"""
     required_sorted: bool = False
     """True if row order matters"""
+    alternative_results: list[ExecResult] = Field(default_factory=list)
+    """Alternative correct results, used in spider2-snow"""
     extra_info: dict[str, Any] = Field(default_factory=dict)
-
-    @property
-    def all_exec_results(self) -> list[ExecResult]:
-        return ([self.exec_result] if self.exec_result is not None else []) + self.other_exec_results
 
     def to_directory(self, directory: str) -> None:
         os.makedirs(directory, exist_ok=True)
         if self.exec_result is not None and self.exec_result.df is not None:
             self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
-        for i, exec_result in enumerate(self.other_exec_results):
+        for i, exec_result in enumerate(self.alternative_results):
             if exec_result.df is not None:
-                exec_result.df.to_csv(os.path.join(directory, f"{self.id}_other_{i}.csv"), index=False)
-
-    def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"query", "exec_result", "other_exec_results"})
-        res = f"/*\n{header}\n*/\n{self.query}"
-        res += "".join(f"\n{exec_result.to_readable()}" for exec_result in self.all_exec_results)
-        return f"----- START OF GOLD QUERY `{self.id}` -----\n{res}\n----- END OF GOLD QUERY -----"
+                exec_result.df.to_csv(os.path.join(directory, f"{self.id}_alternative_{i}.csv"), index=False)
 
     def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
@@ -657,9 +647,11 @@ class GoldQuery(BaseModel):
             lines.append("\n```sql")
             lines.append(self.query)
             lines.append("```")
-        for i, exec_result in enumerate(self.all_exec_results):
-            label = "Execution Result" if i == 0 else f"Alt Execution Result {i}"
-            lines.append(f"\n**{label}:**\n")
+        if self.exec_result is not None:
+            lines.append("\n**Execution Result:**\n")
+            lines.append(self.exec_result.to_markdown())
+        for i, exec_result in enumerate(self.alternative_results):
+            lines.append(f"\n**Alt Result {i}:**\n")
             lines.append(exec_result.to_markdown())
         return "\n".join(lines)
 
@@ -1280,10 +1272,8 @@ def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = 
         question_instructions=getattr(task, "question_instructions", None),
         gold_query=gold_query.query if gold_query else None,
         pred_query=pred_query.query if pred_query else None,
-        gold_exec_result="\n".join([exec_result.to_readable() for exec_result in gold_query.all_exec_results])
-        if gold_query
-        else None,
-        pred_exec_result=pred_query.exec_result.to_readable() if pred_query and pred_query.exec_result else None,
+        gold_exec_result=gold_query.exec_result.to_markdown() if gold_query and gold_query.exec_result else None,
+        pred_exec_result=pred_query.exec_result.to_markdown() if pred_query and pred_query.exec_result else None,
         metrics={m: getattr(task, "eval_metrics", {}).get(m) for m in eval_metrics},
     )
 

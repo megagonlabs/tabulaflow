@@ -92,9 +92,14 @@ class Spider2Ex:
             return 0.0
 
         pred_df = pred_query.exec_result.df  # type: ignore
-        gold_dfs = [exec_result.df for exec_result in gold_query.all_exec_results if exec_result.df is not None]
 
-        condition_cols = gold_query.required_columns or []
+        gold_dfs = [gold_query.exec_result.df]
+        condition_cols = [gold_query.required_columns or []]
+        for alt_result in gold_query.alternative_results:
+            gold_dfs.append(alt_result.df)
+            # The condition_cols is already applied for alternative_results during dataset loading (see mintq/datahub/spider2.py)
+            condition_cols.append([])
+
         ignore_order = not gold_query.required_sorted
 
         if not gold_dfs:

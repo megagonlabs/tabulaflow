@@ -112,6 +112,17 @@ class Spider2SnowDatasetLoader:
                         gold_exec_results.append(pd.read_csv(f))
 
                 condition_cols = eval_standard[item["instance_id"]].get("condition_cols", [])
+                if not condition_cols or not isinstance(condition_cols[0], list):
+                    condition_cols = [condition_cols for _ in range(len(gold_exec_results))]
+
+                # Only keep the required columns in the df
+                filtered_gold_exec_results = []
+                for df, cols in zip(gold_exec_results, condition_cols):
+                    if cols:
+                        filtered_gold_exec_results.append(df.iloc[:, cols])
+                    else:
+                        filtered_gold_exec_results.append(df)
+
                 ignore_order = eval_standard[item["instance_id"]].get("ignore_order", False)
 
                 tasks.append(
@@ -123,9 +134,9 @@ class Spider2SnowDatasetLoader:
                         document=document,
                         gold_query=GoldQuery(
                             query=gold_sql,
-                            exec_result=ExecResult(df=gold_exec_results[0]),
-                            other_exec_results=[ExecResult(df=df) for df in gold_exec_results[1:]],
-                            required_columns=condition_cols or None,
+                            exec_result=ExecResult(df=filtered_gold_exec_results[0]),
+                            alternative_results=[ExecResult(df=df) for df in filtered_gold_exec_results[1:]],
+                            required_columns=None,
                             required_sorted=not ignore_order,
                         ),
                     )

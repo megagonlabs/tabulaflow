@@ -41,12 +41,17 @@ class FoundOne:
         pred_df = pred_query.exec_result.df  # type: ignore
 
         for gold_query in task.gold_queries:
-            gold_dfs = [exec_result.df for exec_result in gold_query.all_exec_results if exec_result.df is not None]
-            for gold_df in gold_dfs:
+            if self.simple_ex._compare_df(
+                pred_df,
+                gold_query.exec_result.df,
+                required_columns=gold_query.required_columns,
+                required_sorted=gold_query.required_sorted,
+            ):
+                return 1.0
+            for alt_result in gold_query.alternative_results:
                 if self.simple_ex._compare_df(
                     pred_df,
-                    gold_df,
-                    required_columns=gold_query.required_columns,
+                    alt_result.df,
                     required_sorted=gold_query.required_sorted,
                 ):
                     return 1.0
