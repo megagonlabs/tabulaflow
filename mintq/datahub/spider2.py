@@ -10,6 +10,16 @@ from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
 
+# Avoid repeatitive construction of tables with the same schema to speed up schema loading
+TABLE_GROUP_REGEXES = {
+    "GITHUB_REPOS_DATE": [
+        # _YYYY, _YYYYMM, _YYYYMMDD
+        r"_\d{4}$",
+        r"_\d{6}$",
+        r"_\d{8}$",
+    ],
+}
+
 
 @dataset_registry.register
 class Spider2SnowDatasetLoader:
@@ -150,6 +160,7 @@ class Spider2SnowDatasetLoader:
                 f"{base_url}/{name}",
                 max_concurrency_per_db=2,
                 connect_args=connect_args,
+                table_group_regexes=TABLE_GROUP_REGEXES.get(name, []),
             )
             schemas.append(db_conn.schema)
 

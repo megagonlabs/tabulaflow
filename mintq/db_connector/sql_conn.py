@@ -1,3 +1,5 @@
+import copy
+import re
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
 import collections
@@ -174,7 +176,9 @@ class AsyncInspector:
         return _stub_async
 
 
-async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: ThrottledEngine) -> SQLSchema:
+async def load_schema_with_cache_async(
+    global_id: str, db_name: str, t_eng: ThrottledEngine, table_group_regexes: list[str | re.Pattern] = []
+) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
@@ -196,7 +200,7 @@ async def load_schema_with_cache_async(global_id: str, db_name: str, t_eng: Thro
 
         dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
-        schema = await build_schema_async(t_eng, db_name, dbms_supports_schema)
+        schema = await build_schema_async(t_eng, db_name, dbms_supports_schema, table_group_regexes)
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
         else:
@@ -350,7 +354,30 @@ async def build_table_async(
     )
 
 
-async def build_schema_async(t_eng: ThrottledEngine, db_name: str, dbms_supports_schema: bool) -> SQLSchema:
+def group_table_names(table_names: list[str], table_group_regexes: list[str | re.Pattern] = []) -> list[list[str]]:
+    if not table_group_regexes:
+        return [[t] for t in table_names]
+
+    groups = []
+    remaining = table_names
+    for regex in table_group_regexes:
+        if isinstance(regex, str):
+            regex = re.compile(regex)
+        matched = [table_name for table_name in remaining if regex.match(table_name)]
+        if matched:
+            groups.append(matched)
+            matched_set = set(matched)
+            remaining = [table_name for table_name in remaining if table_name not in matched_set]
+
+    for t in remaining:
+        groups.append([t])
+
+    return groups
+
+
+async def build_schema_async(
+    t_eng: ThrottledEngine, db_name: str, dbms_supports_schema: bool, table_group_regexes: list[str | re.Pattern] = []
+) -> SQLSchema:
     async_inspector = AsyncInspector(t_eng)
 
     if not dbms_supports_schema:
@@ -359,19 +386,31 @@ async def build_schema_async(t_eng: ThrottledEngine, db_name: str, dbms_supports
         schema_names = await async_inspector.get_schema_names()
 
     tasks = []
+    all_groups = []
+
     for schema_name in schema_names:
         if schema_name and schema_name.lower() == "information_schema":
             continue
 
-        for table_name in await async_inspector.get_table_names(schema=schema_name):
-            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name, is_view=False)))
+        table_names = await async_inspector.get_table_names(schema=schema_name)
+        groups = group_table_names(table_names, table_group_regexes)
+        for group in groups:
+            tasks.append(asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=False)))
+            all_groups.append(group)
 
-        for table_name in await async_inspector.get_view_names(
-            schema=schema_name
-        ):  # does not include materialized views
-            tasks.append(asyncio.create_task(build_table_async(t_eng, table_name, schema_name, is_view=True)))
+        view_names = await async_inspector.get_view_names(schema=schema_name)  # does not include materialized views
+        groups = group_table_names(view_names, table_group_regexes)
+        for group in groups:
+            tasks.append(asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=True)))
+            all_groups.append(group)
 
-    tables = await asyncio.gather(*tasks)
+    tables = []
+    task_results = await asyncio.gather(*tasks)
+    for group, table in zip(all_groups, task_results):
+        for t in group:
+            table = copy.deepcopy(table)
+            table.name = t
+            tables.append(table)
 
     return SQLSchema(name=db_name, tables=tables)
 
@@ -392,6 +431,7 @@ class SQLConnector:
         max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
         schema: SQLSchema | None = None,
+        table_group_regexes: list[str | re.Pattern] = [],
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
@@ -402,7 +442,7 @@ class SQLConnector:
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
-            schema = await load_schema_with_cache_async(global_id, db_name, t_eng)
+            schema = await load_schema_with_cache_async(global_id, db_name, t_eng, table_group_regexes)
         return cls(global_id, schema, t_eng)
 
     async def run_query_async(
