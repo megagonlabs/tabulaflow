@@ -44,7 +44,7 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer"])
+    parser.add_argument("--preprocessors", nargs="*", default=["schema_preprocessor", "er_diagram_synthesizer"])
 
     # dataset
     parser.add_argument("--dataset", default="bird-sql")
