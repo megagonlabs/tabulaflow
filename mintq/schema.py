@@ -319,45 +319,6 @@ class Trajectory(BaseModel):
                 raise ValueError(f"Unknown message type: {msg.kind}")
         return cls.model_validate(trajectory.model_dump())
 
-    def to_readable(self) -> str:
-        formatted = []
-        for msg in self.messages:
-            if msg.role == "system":
-                formatted.append(f'<message role="system">\n{msg.content}\n</message>')
-            elif msg.role == "user":
-                formatted.append(f'<message role="user">\n{msg.content}\n</message>')
-            elif msg.role == "assistant":
-                s = '<message role="assistant">\n'
-                if msg.thinking:
-                    s += f"<thinking>\n{msg.thinking}\n</thinking>\n"
-                if msg.content:
-                    try:
-                        content = json.loads(msg.content)
-                        content = json.dumps(content, indent=2)
-                    except Exception:
-                        content = msg.content
-                    s += f"{content}\n"
-                for tool_call in msg.tool_calls:
-                    s += f'<function name="{tool_call.name}">\n'
-                    if tool_call.arguments is None:
-                        s += "ARGUMENTS IS NOT A VALID JSON STRING\n"
-                    else:
-                        for key, value in tool_call.arguments.items():
-                            if isinstance(value, (list, dict)):
-                                value = json.dumps(value, indent=2)
-                            else:
-                                value = str(value)
-                            s += f'<arg name="{key}">'
-                            s += f"\n{value}\n" if "\n" in value else value
-                            s += "</arg>\n"
-                        s += "</function>\n"
-                s += "</message>"
-                formatted.append(s)
-            elif msg.role == "tool":
-                formatted.append(f'<message role="tool">\n{msg.response}\n</message>')
-        res = "<trajectory>\n" + "\n\n\n".join(formatted) + "\n</trajectory>"
-        return f"----- START OF TRAJECTORY `{self.id}` -----\n{res}\n----- END OF TRAJECTORY -----"
-
     def to_markdown(self) -> str:
         lines = [f"### Trajectory `{self.id}`"]
 
@@ -586,20 +547,6 @@ class ExecResult(BaseModel):
             raise ValueError("ExecResult must have either df or error, but not both")
         return self
 
-    def to_readable(self) -> str:
-        if self.df is None:
-            res = f"(query failed: {self.error})"
-        else:
-            df = self.df
-            if len(df) > 10:
-                df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
-                lines = df.to_string(index=False).split("\n")
-                assert len(lines) == 11
-                res = "\n".join(lines[:6] + ["... TRUNCATED ..."] + lines[6:])
-            else:
-                res = df.to_string(index=False)
-        return f"/* EXEC RESULT\n{res}\n*/"
-
     def to_markdown(self) -> str:
         if self.df is None:
             return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
@@ -671,13 +618,6 @@ class PredQuery(BaseModel):
         if self.exec_result is not None and self.exec_result.df is not None:
             self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
 
-    def to_readable(self) -> str:
-        header = self.model_dump_json(indent=2, exclude={"query", "exec_result"})
-        res = f"/*\n{header}\n*/\n{self.query}"
-        if self.exec_result is not None:
-            res += f"\n{self.exec_result.to_readable()}"
-        return f"----- START OF PRED QUERY `{self.id}` -----\n{res}\n----- END OF PRED QUERY -----"
-
     def to_markdown(self, heading_level: int = 2) -> str:
         h = "#" * heading_level
         lines = [f"{h} Pred Query"]
@@ -732,9 +672,6 @@ class SimpleNL2QTask(BaseModel):
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
 
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
-
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
 
@@ -759,9 +696,6 @@ class SimpleNL2QTaskOutput(SimpleNL2QTask):
 
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
-
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
 
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
@@ -856,9 +790,6 @@ class AmbigNL2QTask(BaseModel):
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
 
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
-
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
 
@@ -933,9 +864,6 @@ class SimpleAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
 
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
-
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
 
@@ -1005,9 +933,6 @@ class FlatAmbigNL2QTaskOutput(AmbigNL2QTask):
 
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
-
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
 
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
@@ -1087,9 +1012,6 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
     def to_directory(self, directory: str) -> None:
         return _task_to_directory(self, directory)
 
-    def to_readable(self) -> str:
-        return _task_to_readable(self)
-
     def to_markdown(self, heading_level: int = 1) -> str:
         return _task_to_markdown(self, heading_level)
 
@@ -1119,8 +1041,6 @@ def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str
     if len(ids) != len(set(ids)):
         logger.warning(f"Trajectory IDs are not unique: {ids}, some trajectories will be overwritten")
     for tr in trajectories:
-        with open(os.path.join(directory, f"{tr.id}.xml"), "w") as f:
-            f.write(tr.to_readable())
         with open(os.path.join(directory, f"{tr.id}.md"), "w") as f:
             f.write(tr.to_markdown())
 
@@ -1135,31 +1055,11 @@ def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
             for q in queries:
                 if q is not None:
                     q.to_directory(os.path.join(directory, f"{prefix}_csv"))
-    with open(os.path.join(directory, "task_readable.sql"), "w") as f:
-        f.write(task.to_readable())
     with open(os.path.join(directory, "task_readable.md"), "w") as f:
         f.write(task.to_markdown())
     trajectory = getattr(task, "trajectory", None)
     if trajectory is not None:
         _save_trajectories(trajectory, os.path.join(directory, "trajectory"))
-
-
-def _task_to_readable(task: NL2QTask | NL2QTaskOutput) -> str:
-    query_fields = _get_query_fields(task, GoldQuery)
-    query_fields += _get_query_fields(task, PredQuery)
-    header = task.model_dump_json(indent=2, exclude=set(["document", "trajectory", "extra_pred_info"] + query_fields))
-    res = f"/*\n{header}\n*/"
-    document = getattr(task, "document", None)
-    if document is not None:
-        res += f"\n\n\n----- START OF DOCUMENT -----\n/*\n{document}\n*/\n----- END OF DOCUMENT -----"
-    for field in query_fields:
-        queries = getattr(task, field)
-        if not isinstance(queries, list):
-            queries = [queries]
-        for q in queries:
-            if q is not None:
-                res += f"\n\n\n{q.to_readable()}"
-    return res
 
 
 def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -> str:
