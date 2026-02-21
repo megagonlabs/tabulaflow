@@ -657,6 +657,8 @@ Feb 12 - 14
 - [x] Fix extract_all_source_columns, disable passing schema
 - [x] Fix name casing in sql_conn.py and column quoting in schema formatting
 
+Feb 20
+- [ ] Large schema github_repos_date
 
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
