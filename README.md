@@ -658,7 +658,12 @@ Feb 12 - 14
 - [x] Fix name casing in sql_conn.py and column quoting in schema formatting
 
 Feb 20
-- [ ] Large schema github_repos_date
+- [x] table_group_regexes
+- [x] other_exec_results -> alternative_results
+- [x] Patch spider2-snow eval
+
+- [ ] GA360 - decide how to handle date-partitioned tables
+- [ ] PATENTSVIEW
 
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
