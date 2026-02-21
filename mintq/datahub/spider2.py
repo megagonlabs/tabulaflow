@@ -233,7 +233,6 @@ class Spider2SnowDatasetLoader:
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
     ) -> NL2QDataset:
         tasks = await self.get_tasks_async(split, databases)
-        exit(0)
         if subsample_size:
             tasks = random.Random(42).sample(tasks, subsample_size)
         db_connectors = await self.get_db_connectors_async(split, databases)
