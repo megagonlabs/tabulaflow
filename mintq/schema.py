@@ -466,7 +466,11 @@ class Usage(BaseModel):
         api_cost_usd: float | Decimal | None = None,
     ) -> "Usage":
         if api_cost_usd is None:
-            api_cost_usd = compute_api_cost(llm, input_tokens, output_tokens, api_requests)
+            if api_requests == 0:
+                api_cost_usd = 0.0
+            else:
+                assert llm is not None, "llm is required to when api_requests > 0"
+                api_cost_usd = compute_api_cost(llm, input_tokens, output_tokens, api_requests)
 
         elif isinstance(api_cost_usd, float):
             api_cost_usd = Decimal(api_cost_usd)
