@@ -493,7 +493,7 @@ class SQLConnector:
         the database schema if one is not provided.
 
         Args:
-            global_id: A unique identifier for this database connection, also
+            global_id: A globally unique identifier for this database connection, also
                 used as the cache key when loading the schema.
             db_name: The name of the database to connect to.
             engine_type: Whether to create an ``"async"`` or ``"sync"``
