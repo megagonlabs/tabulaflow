@@ -54,11 +54,11 @@ class SQLDDLSchemaFormatter:
 
     def _format_sampled_df(self, table: SQLTableSchema) -> str:
         """Format a DataFrame as a markdown table (without wrapper)."""
-        if table.num_rows <= 10:
-            md_table = format_df(table.sampled_df, max_visible_rows=len(table.sampled_df))
+        if table.num_rows is not None and table.num_rows <= 10:
+            md_table = format_df(table.sampled_df, max_visible_rows=len(table.sampled_df))  # type: ignore
             return f"All rows:\n{md_table}"
         else:
-            df = table.sampled_df.head(5)
+            df = table.sampled_df.head(5)  # type: ignore
             md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
             return f"Sample rows:\n{md_table}"
 

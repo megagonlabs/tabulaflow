@@ -83,9 +83,9 @@ class SQLTableSchema(BaseModel):
     is_view: bool
     columns: list[SQLColumnSchema]
     primary_key: list[str]
-    num_rows: int
+    num_rows: int | None = None
     foreign_keys: list[ForeignKeySchema]
-    sampled_df: pd.DataFrame
+    sampled_df: pd.DataFrame | None = None
 
     @field_serializer("sampled_df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
@@ -100,7 +100,9 @@ class SQLTableSchema(BaseModel):
 
     @field_validator("sampled_df", mode="before")
     @classmethod
-    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame) -> pd.DataFrame:
+    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+        if v is None:
+            return None
         if isinstance(v, pd.DataFrame):
             return v
         dtypes = v["schema"]["dtypes"]
@@ -208,12 +210,13 @@ class SQLSchema(BaseModel):
             table.columns = new_columns
 
             # Update sampled_df to only include remaining columns
-            remaining_col_names = [col.name for col in table.columns]
-            cols_to_keep = [c for c in remaining_col_names if c in table.sampled_df.columns]
-            if cols_to_keep:
-                table.sampled_df = table.sampled_df[cols_to_keep]
-            else:
-                table.sampled_df = pd.DataFrame()
+            if table.sampled_df is not None:
+                remaining_col_names = [col.name for col in table.columns]
+                cols_to_keep = [c for c in remaining_col_names if c in table.sampled_df.columns]
+                if cols_to_keep:
+                    table.sampled_df = table.sampled_df[cols_to_keep]
+                else:
+                    table.sampled_df = pd.DataFrame()
 
         schema.tables = [table for table in schema.tables if table.columns]
         return schema

@@ -125,8 +125,8 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
         per_db_stats["tables_compressed"].append(len(compressed_schema.tables))
-        per_db_stats["total_rows"].append(sum(table.num_rows for table in schema.tables))
-        per_db_stats["max_rows_per_table"].append(max(table.num_rows for table in schema.tables))
+        per_db_stats["total_rows"].append(sum(table.num_rows for table in schema.tables if table.num_rows is not None))
+        per_db_stats["max_rows_per_table"].append(max((table.num_rows for table in schema.tables if table.num_rows is not None), default=0))
         per_db_stats["columns"].append(sum(len(table.columns) for table in schema.tables))
         per_db_stats["columns_compressed"].append(sum(len(table.columns) for table in compressed_schema.tables))
         per_db_stats["ratio_columns_with_desc"].append(
