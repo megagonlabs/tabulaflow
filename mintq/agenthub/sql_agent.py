@@ -203,7 +203,7 @@ class SchemaLinker:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
-            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,
+            er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,  # type: ignore
             document=task.document,
             examples=ctx.few_shot_examples,
         )
@@ -414,10 +414,9 @@ class SQLAgent:
 
     @classmethod
     async def from_config_async(cls, config: SQLAgentConfig, few_shot_dataset: NL2QDataset | None = None) -> "SQLAgent":
-        if config.num_few_shot_examples > 0 and few_shot_dataset is None:
-            raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
-
         if config.num_few_shot_examples > 0:
+            if few_shot_dataset is None:
+                raise ValueError("few_shot_dataset is required when num_few_shot_examples is greater than 0")
             question_embedder = QuestionEmbedder(embedding_llm=config.question_embedder_embedding_llm)
             few_shot_embeddings, _ = await question_embedder.preprocess_async(few_shot_dataset)
         else:
@@ -462,11 +461,11 @@ class SQLAgent:
             # Compute cosine similarity between task embedding and few-shot embeddings
             # Normalize embeddings for cosine similarity
             vec_norm = vec / np.linalg.norm(vec)
-            few_shot_norms = self.few_shot_embeddings / np.linalg.norm(self.few_shot_embeddings, axis=1, keepdims=True)
+            few_shot_norms = self.few_shot_embeddings / np.linalg.norm(self.few_shot_embeddings, axis=1, keepdims=True)  # type: ignore
             similarities = np.dot(few_shot_norms, vec_norm)
             # Get top-k most similar example indices
             top_k_indices = np.argsort(similarities)[::-1][: self.config.num_few_shot_examples]
-            examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]
+            examples = [self.few_shot_dataset.tasks[i] for i in top_k_indices]  # type: ignore
 
         ctx = SQLAgentContext(
             task=task,
@@ -485,23 +484,23 @@ class SQLAgent:
         ctx.usage += question_embedder.usage()
 
         ##### Remove #####
-        if hasattr(task, "pred_query") and task.pred_query is not None:
-            from mintq.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
+        # if hasattr(task, "pred_query") and task.pred_query is not None:
+        #     from mintq.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
 
-            task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
-            postprocessed_pred_query = await self.postprocessor.postprocess_async(
-                ctx, task, task.extra_pred_info.raw_pred_query
-            )
-            task.pred_query = postprocessed_pred_query
-            task.trajectory = ctx.trajectories
-            return task
+        #     task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
+        #     postprocessed_pred_query = await self.postprocessor.postprocess_async(
+        #         ctx, task, task.extra_pred_info.raw_pred_query
+        #     )
+        #     task.pred_query = postprocessed_pred_query
+        #     task.trajectory = ctx.trajectories
+        #     return task
         ##################
 
         if self.schema_linker is not None:
             linked_schema = await self.schema_linker.link_schema_async(ctx, task)
         else:
             linked_schema = ctx.preprocessed_schema
-        linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)
+        linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)  # type: ignore
 
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
@@ -514,7 +513,7 @@ class SQLAgent:
             language=task.language,
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=True),
-            er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),
+            er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore
             document=task.document,
             examples=examples,
         )
