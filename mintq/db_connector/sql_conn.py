@@ -512,9 +512,12 @@ async def build_schema_async(
     task_results = await asyncio.gather(*tasks)
     tables = []
     for group, table in zip(all_groups, task_results):
+        tables.append(table)
         for t in group:
             table = copy.deepcopy(table)
             table.name = t
+            # table.num_rows = None
+            # table.sampled_df = None
             tables.append(table)
 
     return SQLSchema(name=db_name, tables=tables)
