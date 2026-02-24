@@ -192,8 +192,8 @@ async def load_schema_with_cache_async(
     global_id: str,
     db_name: str,
     t_eng: ThrottledEngine,
-    skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str] = [],
+    group_date_partitioned_tables: bool = True,
+    group_table_regexes: list[str] = [],
 ) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
@@ -220,8 +220,8 @@ async def load_schema_with_cache_async(
             t_eng,
             db_name,
             dbms_supports_schema,
-            skip_date_partitioned_tables,
-            skip_table_regexes,
+            group_date_partitioned_tables,
+            group_table_regexes,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
@@ -383,19 +383,19 @@ async def build_table_async(
 
 def group_table_names(
     table_names: list[str],
-    skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str] = [],
+    group_date_partitioned_tables: bool = True,
+    group_table_regexes: list[str] = [],
 ) -> list[list[str]]:
     groups = []
     remaining = table_names
 
-    for regex in skip_table_regexes:
+    for regex in group_table_regexes:
         matched = [table_name for table_name in remaining if re.match(regex, table_name)]
         if len(matched) > 1:
             groups.append(matched)
             remaining = [table_name for table_name in remaining if table_name not in matched]
 
-    if skip_date_partitioned_tables:
+    if group_date_partitioned_tables:
         date_patterns = [
             r"^(?P<prefix>.*?)(?P<date>\d{8})(?P<suffix>.*?)$",
             r"^(?P<prefix>.*?)(?P<date>\d{6})(?P<suffix>.*?)$",
@@ -422,8 +422,8 @@ async def build_schema_async(
     t_eng: ThrottledEngine,
     db_name: str,
     dbms_supports_schema: bool,
-    skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str] = [],
+    group_date_partitioned_tables: bool = True,
+    group_table_regexes: list[str] = [],
 ) -> SQLSchema:
     async_inspector = AsyncInspector(t_eng)
 
@@ -442,7 +442,7 @@ async def build_schema_async(
         table_names = await async_inspector.get_table_names(schema=schema_name)
         view_names = await async_inspector.get_view_names(schema=schema_name)  # does not include materialized views
 
-        groups = group_table_names(table_names + view_names, skip_date_partitioned_tables, skip_table_regexes)
+        groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
         for group in groups:
             print(group[0], len(group))
             tasks.append(
@@ -482,10 +482,49 @@ class SQLConnector:
         max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
         schema: SQLSchema | None = None,
-        skip_date_partitioned_tables: bool = True,
-        skip_table_regexes: list[str] = [],
+        group_date_partitioned_tables: bool = True,
+        group_table_regexes: list[str] = [],
         **engine_kwargs: Any,
     ) -> "SQLConnector":
+        """Asynchronously create a SQLConnector from a database URL.
+
+        Creates a SQLAlchemy engine (async or sync) wrapped in a
+        :class:`ThrottledEngine` with concurrency control, and optionally loads
+        the database schema if one is not provided.
+
+        Args:
+            global_id: A unique identifier for this database connection, also
+                used as the cache key when loading the schema.
+            db_name: The name of the database to connect to.
+            engine_type: Whether to create an ``"async"`` or ``"sync"``
+                SQLAlchemy engine.
+            url: The database URL (string or :class:`SQLAlchemyURL`).
+            max_concurrency_per_db: Maximum number of concurrent queries
+                allowed against this database.  Also used as the engine's
+                ``pool_size``.  Defaults to ``8``.
+            dbms_semaphore: An optional semaphore shared across all databases
+                to limit overall concurrency.
+            schema: A pre-loaded :class:`SQLSchema`.  When ``None`` the schema
+                is loaded (and cached) automatically via
+                :func:`load_schema_with_cache_async`.
+            group_date_partitioned_tables: If ``True``, tables whose names
+                share the same prefix and suffix but differ only by a
+                date-like numeric segment (8, 6, or 4 digits) are grouped
+                together.  Only the first table in each group has its schema
+                fully inspected; the remaining tables receive a shallow copy.
+                Defaults to ``True``.
+            group_table_regexes: A list of regex patterns used to group
+                tables.  For each pattern, all table names that match are
+                collected into a group.  If a group contains more than one
+                table, only the first is fully inspected and the rest receive
+                a shallow copy of its schema.
+            **engine_kwargs: Additional keyword arguments forwarded to the
+                SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
+
+        Returns:
+            A fully initialised :class:`SQLConnector` instance ready to
+            execute queries.
+        """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
@@ -498,8 +537,8 @@ class SQLConnector:
                 global_id,
                 db_name,
                 t_eng,
-                skip_date_partitioned_tables,
-                skip_table_regexes,
+                group_date_partitioned_tables,
+                group_table_regexes,
             )
         return cls(global_id, schema, t_eng)
 

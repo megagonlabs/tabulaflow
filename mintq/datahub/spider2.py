@@ -197,7 +197,7 @@ class Spider2SnowDatasetLoader:
                 f"{base_url}/{name}",
                 max_concurrency_per_db=2,
                 connect_args=connect_args,
-                skip_date_partitioned_tables=True,
+                group_date_partitioned_tables=True,
             )
             schemas.append(db_conn.schema)
 
