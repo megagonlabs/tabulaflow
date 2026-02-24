@@ -1,3 +1,5 @@
+import json
+
 import pandas as pd
 from tabulate import tabulate
 
@@ -14,9 +16,18 @@ def format_df(
     def truncate_cell(val: object) -> object:
         if pd.isna(val):
             return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
-        if isinstance(val, str) and len(val) > max_cell_width:
-            half = max_cell_width // 2
-            return val[:half] + "..." + val[-half:]
+        if isinstance(val, str):
+            # Collapse multi-line values into a single line to preserve table layout
+            if "\n" in val or "\r" in val:
+                # For JSON values, parse and re-dump compactly
+                try:
+                    parsed = json.loads(val)
+                    val = json.dumps(parsed, separators=(",", ":"), ensure_ascii=False)
+                except (json.JSONDecodeError, ValueError):
+                    val = val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+            if len(val) > max_cell_width:
+                half = max_cell_width // 2
+                return val[:half] + "..." + val[-half:]
         return val
 
     # Apply truncation first to preserve numeric types (nulls stay as None for tabulate)
