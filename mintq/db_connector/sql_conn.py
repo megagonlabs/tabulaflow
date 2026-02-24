@@ -337,10 +337,8 @@ async def build_table_async(
     async_inspector = AsyncInspector(t_eng)
     dialect = t_eng.engine.dialect
 
-    def _denorm(name: str | None) -> str | None:
+    def _denorm(name: str) -> str:
         """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-        if name is None:
-            return None
         return str(dialect.denormalize_name(name))
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
@@ -359,7 +357,7 @@ async def build_table_async(
         foreign_keys.append(
             ForeignKeySchema(
                 columns=[_denorm(c) for c in fk["constrained_columns"]],
-                foreign_schema_name=_denorm(fk["referred_schema"]),
+                foreign_schema_name=_denorm(fk["referred_schema"]) if fk["referred_schema"] is not None else None,
                 foreign_table=_denorm(fk["referred_table"]),
                 foreign_columns=[_denorm(c) for c in fk["referred_columns"]],
             )
@@ -373,7 +371,7 @@ async def build_table_async(
 
     return SQLTableSchema(
         name=_denorm(table_name),
-        schema_name=_denorm(schema_name),
+        schema_name=_denorm(schema_name) if schema_name is not None else None,
         is_view=is_view,
         columns=columns,
         primary_key=[_denorm(c) for c in primary_key],
@@ -399,9 +397,9 @@ def group_table_names(
 
     if skip_date_partitioned_tables:
         date_patterns = [
-            re.compile(r"^(?P<prefix>.*?)(?P<date>\d{8})(?P<suffix>.*?)$"),
-            re.compile(r"^(?P<prefix>.*?)(?P<date>\d{6})(?P<suffix>.*?)$"),
-            re.compile(r"^(?P<prefix>.*?)(?P<date>\d{4})(?P<suffix>.*?)$"),
+            r"^(?P<prefix>.*?)(?P<date>\d{8})(?P<suffix>.*?)$",
+            r"^(?P<prefix>.*?)(?P<date>\d{6})(?P<suffix>.*?)$",
+            r"^(?P<prefix>.*?)(?P<date>\d{4})(?P<suffix>.*?)$",
         ]
         for regex in date_patterns:
             affix_groups = collections.defaultdict(list)
