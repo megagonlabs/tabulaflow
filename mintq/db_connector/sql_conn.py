@@ -325,6 +325,11 @@ async def build_column_async(
     )
 
 
+def _denorm(t_eng: ThrottledEngine, name: str) -> str:
+    """Denormalize a normalized identifier back to its actual stored form as a plain str."""
+    return str(t_eng.engine.dialect.denormalize_name(name))
+
+
 async def build_table_async(
     t_eng: ThrottledEngine,
     table_name: str,
@@ -335,11 +340,6 @@ async def build_table_async(
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
 
     async_inspector = AsyncInspector(t_eng)
-    dialect = t_eng.engine.dialect
-
-    def _denorm(name: str) -> str:
-        """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-        return str(dialect.denormalize_name(name))
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
@@ -350,16 +350,16 @@ async def build_table_async(
 
     primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
     for col in primary_key:
-        name2col[_denorm(col)].primary_key_type = "single" if len(primary_key) == 1 else "composite"
+        name2col[_denorm(t_eng, col)].primary_key_type = "single" if len(primary_key) == 1 else "composite"
 
     foreign_keys = []
     for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
         foreign_keys.append(
             ForeignKeySchema(
-                columns=[_denorm(c) for c in fk["constrained_columns"]],
-                foreign_schema_name=_denorm(fk["referred_schema"]) if fk["referred_schema"] is not None else None,
-                foreign_table=_denorm(fk["referred_table"]),
-                foreign_columns=[_denorm(c) for c in fk["referred_columns"]],
+                columns=[_denorm(t_eng, c) for c in fk["constrained_columns"]],
+                foreign_schema_name=_denorm(t_eng, fk["referred_schema"]) if fk["referred_schema"] is not None else None,
+                foreign_table=_denorm(t_eng, fk["referred_table"]),
+                foreign_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
             )
         )
     for fk in foreign_keys:
@@ -370,11 +370,11 @@ async def build_table_async(
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
     return SQLTableSchema(
-        name=_denorm(table_name),
-        schema_name=_denorm(schema_name) if schema_name is not None else None,
+        name=_denorm(t_eng, table_name),
+        schema_name=_denorm(t_eng, schema_name) if schema_name is not None else None,
         is_view=is_view,
         columns=columns,
-        primary_key=[_denorm(c) for c in primary_key],
+        primary_key=[_denorm(t_eng, c) for c in primary_key],
         num_rows=num_rows,
         foreign_keys=foreign_keys,
         sampled_df=sampled_df,
@@ -442,9 +442,11 @@ async def build_schema_async(
         table_names = await async_inspector.get_table_names(schema=schema_name)
         view_names = await async_inspector.get_view_names(schema=schema_name)  # does not include materialized views
 
+        table_names = [_denorm(t_eng, name) for name in table_names]
+        view_names = [_denorm(t_eng, name) for name in view_names]
+
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
         for group in groups:
-            print(group[0], len(group))
             tasks.append(
                 asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_names))
             )
