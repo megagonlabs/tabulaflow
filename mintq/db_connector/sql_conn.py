@@ -357,7 +357,9 @@ async def build_table_async(
         foreign_keys.append(
             ForeignKeySchema(
                 columns=[_denorm(t_eng, c) for c in fk["constrained_columns"]],
-                foreign_schema_name=_denorm(t_eng, fk["referred_schema"]) if fk["referred_schema"] is not None else None,
+                foreign_schema_name=_denorm(t_eng, fk["referred_schema"])
+                if fk["referred_schema"] is not None
+                else None,
                 foreign_table=_denorm(t_eng, fk["referred_table"]),
                 foreign_columns=[_denorm(t_eng, c) for c in fk["referred_columns"]],
             )
@@ -368,10 +370,15 @@ async def build_table_async(
 
     # Sample rows from the table
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
+    # Convert bytes values to strings in the DataFrame to prevent JSON serialization errors
+    if sampled_df is not None:
+        for col_name in sampled_df.columns:
+            if sampled_df[col_name].dtype == object:
+                sampled_df[col_name] = sampled_df[col_name].apply(lambda v: str(v) if isinstance(v, bytes) else v)
 
     return SQLTableSchema(
-        name=_denorm(t_eng, table_name),
-        schema_name=_denorm(t_eng, schema_name) if schema_name is not None else None,
+        name=table_name,
+        schema_name=schema_name,
         is_view=is_view,
         columns=columns,
         primary_key=[_denorm(t_eng, c) for c in primary_key],
@@ -430,7 +437,7 @@ async def build_schema_async(
     if not dbms_supports_schema:
         schema_names = [None]
     else:
-        schema_names = await async_inspector.get_schema_names()
+        schema_names = [_denorm(t_eng, name) for name in await async_inspector.get_schema_names()]
 
     tasks = []
     all_groups = []
@@ -446,6 +453,9 @@ async def build_schema_async(
         view_names = [_denorm(t_eng, name) for name in view_names]
 
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
+        ##### Remove #####
+        print(" ".join(f"{g[0]} ({len(g)})" for g in groups))
+        ##################
         for group in groups:
             tasks.append(
                 asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_names))
