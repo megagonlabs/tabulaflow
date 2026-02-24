@@ -43,7 +43,7 @@ class FoundOne:
         for gold_query in task.gold_queries:
             if self.simple_ex._compare_df(
                 pred_df,
-                gold_query.exec_result.df,
+                gold_query.exec_result.df,  # type: ignore
                 required_columns=gold_query.required_columns,
                 required_sorted=gold_query.required_sorted,
             ):

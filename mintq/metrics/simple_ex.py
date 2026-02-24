@@ -108,7 +108,7 @@ class SimpleEx:
 
         if self._compare_df(
             pred_df,
-            gold_query.exec_result.df,
+            gold_query.exec_result.df,  # type: ignore
             required_columns=gold_query.required_columns,
             required_sorted=gold_query.required_sorted,
         ):

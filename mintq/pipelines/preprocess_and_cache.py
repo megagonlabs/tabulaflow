@@ -33,7 +33,7 @@ async def preprocess_and_cache_async(
 
 
 def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
-    all_preprocessor_args = {
+    all_preprocessor_args: dict[str, dict[str, Any]] = {
         "question_embedder": {},
         "schema_preprocessor": {},
     }

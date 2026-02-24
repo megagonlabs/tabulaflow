@@ -93,7 +93,7 @@ class Spider2Ex:
 
         pred_df = pred_query.exec_result.df  # type: ignore
 
-        gold_dfs = [gold_query.exec_result.df]
+        gold_dfs = [gold_query.exec_result.df]  # type: ignore
         condition_cols = [gold_query.required_columns or []]
         for alt_result in gold_query.alternative_results:
             gold_dfs.append(alt_result.df)
@@ -108,7 +108,7 @@ class Spider2Ex:
             return compare_pandas_table(
                 pred_df,
                 gold_dfs[0],
-                condition_cols,
+                condition_cols[0],
                 ignore_order,
             )
         else:
