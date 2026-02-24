@@ -193,7 +193,7 @@ async def load_schema_with_cache_async(
     db_name: str,
     t_eng: ThrottledEngine,
     skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str | re.Pattern] = [],
+    skip_table_regexes: list[str] = [],
 ) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
@@ -386,15 +386,13 @@ async def build_table_async(
 def group_table_names(
     table_names: list[str],
     skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str | re.Pattern] = [],
+    skip_table_regexes: list[str] = [],
 ) -> list[list[str]]:
     groups = []
     remaining = table_names
 
     for regex in skip_table_regexes:
-        if isinstance(regex, str):
-            regex = re.compile(regex)
-        matched = [table_name for table_name in remaining if regex.match(table_name)]
+        matched = [table_name for table_name in remaining if re.match(regex, table_name)]
         if len(matched) > 1:
             groups.append(matched)
             remaining = [table_name for table_name in remaining if table_name not in matched]
@@ -408,7 +406,7 @@ def group_table_names(
         for regex in date_patterns:
             affix_groups = collections.defaultdict(list)
             for s in remaining:
-                match = regex.match(s)
+                match = re.match(regex, s)
                 if match:
                     affix_groups[(match.group("prefix"), match.group("suffix"))].append(s)
             for _, matched in affix_groups.items():
@@ -427,7 +425,7 @@ async def build_schema_async(
     db_name: str,
     dbms_supports_schema: bool,
     skip_date_partitioned_tables: bool = True,
-    skip_table_regexes: list[str | re.Pattern] = [],
+    skip_table_regexes: list[str] = [],
 ) -> SQLSchema:
     async_inspector = AsyncInspector(t_eng)
 
@@ -485,7 +483,7 @@ class SQLConnector:
         dbms_semaphore: asyncio.Semaphore | None = None,
         schema: SQLSchema | None = None,
         skip_date_partitioned_tables: bool = True,
-        skip_table_regexes: list[str | re.Pattern] = [],
+        skip_table_regexes: list[str] = [],
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine

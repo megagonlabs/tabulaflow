@@ -133,6 +133,8 @@ class LLMErrorClassifier:
 
     async def _classify_task_async(self, task: NL2QTaskOutput) -> list[str]:
         if self.mask_prediction:
+            if task.output_type != "simple":
+                raise ValueError("Only simple tasks are supported when mask_prediction is True for now.")
             task = copy.deepcopy(task)
             task.pred_query = None
             task.extra_pred_info.raw_pred_query = None
