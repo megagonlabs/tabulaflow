@@ -662,7 +662,7 @@ Feb 20
 - [x] other_exec_results -> alternative_results
 - [x] Patch spider2-snow eval
 
-Feb 21
+Feb 24
 - [x] GA360 - decide how to handle date-partitioned tables
   - group_date_partitioned_tables and group_table_regexes
   - no num_rows, examples and sampled_df for skipped tables
@@ -671,6 +671,7 @@ Feb 21
   - [x] example values formatting
 - [x] Look at PATENTSVIEW
   - [x] Observation: lots of classification code lookup tables in spider2
+- [x] Fix invalid utf-8 for NOAA_DATA
 
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
