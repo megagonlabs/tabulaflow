@@ -454,11 +454,13 @@ async def build_schema_async(
     tables = []
     for group, table in zip(all_groups, task_results):
         tables.append(table)
-        for t in group:
+        for table_name in group[1:]:
             table = copy.deepcopy(table)
-            table.name = t
-            # table.num_rows = None
-            # table.sampled_df = None
+            table.name = table_name
+            table.num_rows = None
+            table.sampled_df = None
+            for col in table.columns:
+                col.examples = []
             tables.append(table)
 
     return SQLSchema(name=db_name, tables=tables)
