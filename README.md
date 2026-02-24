@@ -663,8 +663,14 @@ Feb 20
 - [x] Patch spider2-snow eval
 
 Feb 21
-- [ ] GA360 - decide how to handle date-partitioned tables
-- [ ] PATENTSVIEW
+- [x] GA360 - decide how to handle date-partitioned tables
+  - group_date_partitioned_tables and group_table_regexes
+  - no num_rows, examples and sampled_df for skipped tables
+- [x] Fix formatting for multi-line values (e.g. JSON)
+  - [x] sampled_df formatting
+  - [x] example values formatting
+- [x] Look at PATENTSVIEW
+  - [x] Observation: lots of classification code lookup tables in spider2
 
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
