@@ -234,8 +234,11 @@ async def load_schema_with_cache_async(
 
 
 def _convert(value: Any) -> str | int | float | bool:
-    if isinstance(value, (int, float, str, bool)):
+    if isinstance(value, (int, float, bool)):
         return value
+    if isinstance(value, str):
+        # Strip lone surrogate code points that are invalid in UTF-8 (breaks Pydantic JSON serialization)
+        return value.encode("utf-8", errors="replace").decode("utf-8")
     return str(value)
 
 
@@ -370,11 +373,15 @@ async def build_table_async(
 
     # Sample rows from the table
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
-    # Convert bytes values to strings in the DataFrame to prevent JSON serialization errors
+    # Sanitize strings with lone surrogates and convert bytes to str to prevent Pydantic JSON serialization errors
     if sampled_df is not None:
         for col_name in sampled_df.columns:
             if sampled_df[col_name].dtype == object:
-                sampled_df[col_name] = sampled_df[col_name].apply(lambda v: str(v) if isinstance(v, bytes) else v)
+                sampled_df[col_name] = sampled_df[col_name].apply(
+                    lambda v: v.encode("utf-8", errors="replace").decode("utf-8")
+                    if isinstance(v, str)
+                    else str(v) if isinstance(v, bytes) else v
+                )
 
     return SQLTableSchema(
         name=table_name,
