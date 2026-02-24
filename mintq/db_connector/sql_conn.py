@@ -446,18 +446,26 @@ async def build_schema_async(
     else:
         schema_names = [_denorm(t_eng, name) for name in await async_inspector.get_schema_names()]
 
+    schema_names = [s for s in schema_names if not (s and s.lower() == "information_schema")]
+
+    # Discover table/view names for all schemas concurrently
+    discovery_results = await asyncio.gather(
+        *[
+            asyncio.gather(
+                async_inspector.get_table_names(schema=schema_name),
+                async_inspector.get_view_names(schema=schema_name),
+            )
+            for schema_name in schema_names
+        ]
+    )
+
     tasks = []
     all_groups = []
 
-    for schema_name in schema_names:
-        if schema_name and schema_name.lower() == "information_schema":
-            continue
-
-        table_names = await async_inspector.get_table_names(schema=schema_name)
-        view_names = await async_inspector.get_view_names(schema=schema_name)  # does not include materialized views
-
-        table_names = [_denorm(t_eng, name) for name in table_names]
-        view_names = [_denorm(t_eng, name) for name in view_names]
+    for schema_name, (raw_table_names, raw_view_names) in zip(schema_names, discovery_results):
+        table_names = [_denorm(t_eng, name) for name in raw_table_names]
+        view_names = [_denorm(t_eng, name) for name in raw_view_names]
+        view_name_set = set(view_names)
 
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
         ##### Remove #####
@@ -465,7 +473,9 @@ async def build_schema_async(
         ##################
         for group in groups:
             tasks.append(
-                asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_names))
+                asyncio.create_task(
+                    build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set)
+                )
             )
             all_groups.append(group)
 
