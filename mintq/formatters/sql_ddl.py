@@ -180,7 +180,7 @@ class SQLDDLSchemaFormatter:
                 valid_values = [f"'{self._truncate(v)}'" for v in column.examples]
                 valid_values = sorted(valid_values)
                 comment_lines.append(f"        -- <values>{{{', '.join(valid_values)}}}</values>")
-            else:
+            elif column.examples:
                 example = column.examples[0]
                 if isinstance(example, str):
                     example = f"'{self._truncate(example)}'"
