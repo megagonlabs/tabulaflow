@@ -2,6 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
+from mintq.formatters.utils import flatten_multiline
 
 
 @formatter_registry.register
@@ -38,6 +39,7 @@ class SQLBasicSchemaFormatter:
         return self._full_table_name(table.name, table.schema_name)
 
     def _truncate(self, s: str) -> str:
+        s = flatten_multiline(s)
         if len(s) <= self.example_max_chars:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]

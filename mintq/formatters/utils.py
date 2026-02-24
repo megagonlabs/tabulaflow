@@ -4,6 +4,21 @@ import pandas as pd
 from tabulate import tabulate
 
 
+def flatten_multiline(val: str) -> str:
+    """Collapse a multi-line string into a single line.
+
+    For valid JSON, parse and re-dump compactly. For other strings, replace
+    newlines with the literal ``\\n`` escape sequence.
+    """
+    if "\n" not in val and "\r" not in val:
+        return val
+    try:
+        parsed = json.loads(val)
+        return json.dumps(parsed, separators=(",", ":"), ensure_ascii=False)
+    except (json.JSONDecodeError, ValueError):
+        return val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+
+
 def format_df(
     df: pd.DataFrame,
     *,
@@ -18,13 +33,7 @@ def format_df(
             return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
         if isinstance(val, str):
             # Collapse multi-line values into a single line to preserve table layout
-            if "\n" in val or "\r" in val:
-                # For JSON values, parse and re-dump compactly
-                try:
-                    parsed = json.loads(val)
-                    val = json.dumps(parsed, separators=(",", ":"), ensure_ascii=False)
-                except (json.JSONDecodeError, ValueError):
-                    val = val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
+            val = flatten_multiline(val)
             if len(val) > max_cell_width:
                 half = max_cell_width // 2
                 return val[:half] + "..." + val[-half:]
