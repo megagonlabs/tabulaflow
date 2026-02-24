@@ -330,11 +330,11 @@ def test_snowflake_schema_qualified_table() -> None:
 
 def test_snowflake_quoted_lowercase_identifiers() -> None:
     """Test Snowflake quoted lowercase identifiers (case-sensitive, preserved as-is)."""
-    query = '''
+    query = """
     SELECT a."airport_code", a."city"
     FROM airlines.airports_data a
     WHERE a."timezone" IS NOT NULL
-    '''
+    """
     result = extract_all_source_columns(query, language="snowflake")
 
     assert set(result) == {
@@ -387,7 +387,7 @@ def test_snowflake_multi_cte_join() -> None:
 
 def test_snowflake_complex_multi_cte() -> None:
     """Test a complex Snowflake query with 4 CTEs, JOINs, subqueries, and haversine math."""
-    query = '''WITH abakan_airport AS (
+    query = """WITH abakan_airport AS (
       SELECT "airport_code"
       FROM airlines.airports_data
       WHERE LOWER(TRY_PARSE_JSON("city"):en::STRING) = 'abakan'
@@ -427,7 +427,7 @@ def test_snowflake_complex_multi_cte() -> None:
       FROM flight_routes
     )
     SELECT MAX(distance_km) AS longest_route_km
-    FROM route_distances'''
+    FROM route_distances"""
 
     result = extract_all_source_columns(query, language="snowflake")
     assert set(result) == {
@@ -460,7 +460,7 @@ def test_snowflake_subquery_in_where() -> None:
 
 def test_snowflake_trim_both_parse_fallback() -> None:
     """Test that TRIM(BOTH '(' FROM ...) which fails Snowflake parsing falls back to permissive parse."""
-    query = '''WITH other_airports AS (
+    query = """WITH other_airports AS (
         SELECT a."airport_code", a."coordinates"
         FROM airlines.airports_data a
         JOIN airlines.flights f ON f."departure_airport" = a."airport_code"
@@ -472,7 +472,7 @@ def test_snowflake_trim_both_parse_fallback() -> None:
         FROM other_airports oa
     )
     SELECT oc."airport_code"
-    FROM other_coords oc'''
+    FROM other_coords oc"""
     result = extract_all_source_columns(query, language="snowflake")
 
     # Falls back to dialect-free parsing; table names stay lowercase

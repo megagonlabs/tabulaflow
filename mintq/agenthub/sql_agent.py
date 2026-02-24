@@ -281,8 +281,7 @@ class SchemaLinker:
         # pred_query = ctx.task.gold_query
 
         source_columns = set(
-            (c[0].lower(), c[1].lower())
-            for c in extract_all_source_columns(pred_query.query, language=task.language)
+            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(pred_query.query, language=task.language)
         )
 
         linked_schema = copy.deepcopy(ctx.preprocessed_schema)

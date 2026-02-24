@@ -26,24 +26,16 @@ class SchemaPreprocessor(CachedPreprocessorMixin[SQLSchema]):
         self.column_profiler_llm = column_profiler_llm
         self.foreign_key_predictor_llm = foreign_key_predictor_llm
         self.compressor = SchemaCompressor() if compress_schema else None
-        self.column_profiler = (
-            ColumnProfiler(column_profiler_llm)
-            if column_profiler_llm is not None
-            else None
-        )
+        self.column_profiler = ColumnProfiler(column_profiler_llm) if column_profiler_llm is not None else None
         self.foreign_key_predictor = (
-            ForeignKeyPredictor(foreign_key_predictor_llm)
-            if foreign_key_predictor_llm is not None
-            else None
+            ForeignKeyPredictor(foreign_key_predictor_llm) if foreign_key_predictor_llm is not None else None
         )
         self._usage = Usage.create()
 
     def usage(self) -> Usage:
         return self._usage
 
-    async def _preprocess_impl_async(
-        self, db_connector: BaseSQLDBConnector
-    ) -> SQLSchema:
+    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> SQLSchema:
         schema = db_connector.schema
         if self.compressor is not None:
             schema = self.compressor.compress(schema)

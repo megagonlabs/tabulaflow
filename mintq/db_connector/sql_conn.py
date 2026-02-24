@@ -41,9 +41,7 @@ class ThrottledEngine:
 
     @asynccontextmanager
     async def throttle(self) -> AsyncGenerator[None, None]:
-        semaphores = [
-            sem for sem in [self.dbms_semaphore, self.db_semaphore] if sem is not None
-        ]
+        semaphores = [sem for sem in [self.dbms_semaphore, self.db_semaphore] if sem is not None]
         for sem in semaphores:
             await sem.acquire()
         try:
@@ -81,9 +79,7 @@ class ThrottledEngine:
             return pd.DataFrame(rows, columns=result.keys())
         return rows
 
-    def _create_interrupter(
-        self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int
-    ) -> asyncio.Task[None]:
+    def _create_interrupter(self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int) -> asyncio.Task[None]:
         async def interrupt_after() -> None:
             await asyncio.sleep(timeout)
             raw_conn = await conn.get_raw_connection()
@@ -137,9 +133,7 @@ class ThrottledEngine:
                 if self.engine_type == "async":
                     if self.engine.dialect.name == "sqlite":
                         return QueryResult(
-                            result=await self._run_query_aiosqlite(
-                                query, parameters, return_df, timeout
-                            ),
+                            result=await self._run_query_aiosqlite(query, parameters, return_df, timeout),
                             latency_seconds=time.time() - t0,
                         )
                     else:
@@ -154,9 +148,7 @@ class ThrottledEngine:
                     loop = asyncio.get_running_loop()
                     return QueryResult(
                         result=await asyncio.wait_for(
-                            loop.run_in_executor(
-                                None, self._run_query_s, query, parameters, return_df
-                            ),
+                            loop.run_in_executor(None, self._run_query_s, query, parameters, return_df),
                             timeout=timeout,
                         ),
                         latency_seconds=time.time() - t0,
@@ -179,9 +171,7 @@ class AsyncInspector:
         inspector = inspect(conn)
         return getattr(inspector, method)(*args, **kwargs)
 
-    def _run_inspector(
-        self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]
-    ) -> Any:
+    def _run_inspector(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
         with self.t_eng.engine.connect() as conn:  # type: ignore
             return self._run_inspector_conn(conn, method, args, kwargs)
 
@@ -190,14 +180,10 @@ class AsyncInspector:
             async with self.t_eng.throttle():
                 if self.t_eng.engine_type == "async":
                     async with self.t_eng.engine.connect() as conn:  # type: ignore
-                        return await conn.run_sync(
-                            self._run_inspector_conn, method, args, kwargs
-                        )
+                        return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
                 else:
                     loop = asyncio.get_running_loop()
-                    return await loop.run_in_executor(
-                        None, self._run_inspector, method, args, kwargs
-                    )
+                    return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
 
         return _stub_async
 
@@ -226,9 +212,7 @@ async def load_schema_with_cache_async(
                     return SQLSchema.model_validate_json(f.read())
 
         if config.cache_required:
-            raise FileNotFoundError(
-                f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}"
-            )
+            raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
 
         dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
@@ -300,36 +284,26 @@ async def build_column_async(
 
     if num_rows > 0:
         dialect = t_eng.engine.dialect.name
-        num_null = (
-            await t_eng.run_query_async(
-                select(func.count()).select_from(tbl).where(col.is_(None))
-            )
-        ).result[0][0]
+        num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
+            0
+        ]
         null_ratio = num_null / num_rows
 
         if dtype in CATEGORICAL_TYPES:
-            num_unique = (
-                await t_eng.run_query_async(
-                    get_num_unique_stmt(dialect, col, tbl, mode="approx")
-                )
-            ).result[0][0]
+            num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx"))).result[0][
+                0
+            ]
             unique_ratio = num_unique / num_rows
             examples = (
                 await t_eng.run_query_async(
-                    select(col)
-                    .distinct()
-                    .select_from(tbl)
-                    .where(col.isnot(None))
-                    .limit(min(20, num_unique))
+                    select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
                 )
             ).result
         else:
             num_unique = None
             unique_ratio = None
             examples = (
-                await t_eng.run_query_async(
-                    select(col).select_from(tbl).where(col.isnot(None)).limit(20)
-                )
+                await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(20))
             ).result
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
@@ -358,9 +332,7 @@ async def build_table_async(
     is_view: bool = False,
 ) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (
-        await t_eng.run_query_async(select(func.count()).select_from(tbl))
-    ).result[0][0]
+    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
 
     async_inspector = AsyncInspector(t_eng)
     dialect = t_eng.engine.dialect
@@ -374,20 +346,13 @@ async def build_table_async(
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
-        *[
-            build_column_async(t_eng, col, table_name, schema_name, num_rows)
-            for col in col_dicts
-        ]
+        *[build_column_async(t_eng, col, table_name, schema_name, num_rows) for col in col_dicts]
     )
     name2col = {col.name: col for col in columns}
 
-    primary_key = (
-        await async_inspector.get_pk_constraint(table_name, schema=schema_name)
-    )["constrained_columns"]
+    primary_key = (await async_inspector.get_pk_constraint(table_name, schema=schema_name))["constrained_columns"]
     for col in primary_key:
-        name2col[_denorm(col)].primary_key_type = (
-            "single" if len(primary_key) == 1 else "composite"
-        )
+        name2col[_denorm(col)].primary_key_type = "single" if len(primary_key) == 1 else "composite"
 
     foreign_keys = []
     for fk in await async_inspector.get_foreign_keys(table_name, schema=schema_name):
@@ -404,11 +369,7 @@ async def build_table_async(
             name2col[col].foreign_keys.append(fk)
 
     # Sample rows from the table
-    sampled_df = (
-        await t_eng.run_query_async(
-            select("*").select_from(tbl).limit(10), return_df=True
-        )
-    ).result
+    sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
     return SQLTableSchema(
         name=_denorm(table_name),
@@ -436,9 +397,7 @@ def group_table_names(
         matched = [table_name for table_name in remaining if regex.match(table_name)]
         if len(matched) > 1:
             groups.append(matched)
-            remaining = [
-                table_name for table_name in remaining if table_name not in matched
-            ]
+            remaining = [table_name for table_name in remaining if table_name not in matched]
 
     if skip_date_partitioned_tables:
         date_patterns = [
@@ -451,17 +410,11 @@ def group_table_names(
             for s in remaining:
                 match = regex.match(s)
                 if match:
-                    affix_groups[(match.group("prefix"), match.group("suffix"))].append(
-                        s
-                    )
+                    affix_groups[(match.group("prefix"), match.group("suffix"))].append(s)
             for _, matched in affix_groups.items():
                 if len(matched) > 1:
                     groups.append(matched)
-                    remaining = [
-                        table_name
-                        for table_name in remaining
-                        if table_name not in matched
-                    ]
+                    remaining = [table_name for table_name in remaining if table_name not in matched]
 
     for t in remaining:
         groups.append([t])
@@ -491,21 +444,13 @@ async def build_schema_async(
             continue
 
         table_names = await async_inspector.get_table_names(schema=schema_name)
-        view_names = await async_inspector.get_view_names(
-            schema=schema_name
-        )  # does not include materialized views
+        view_names = await async_inspector.get_view_names(schema=schema_name)  # does not include materialized views
 
-        groups = group_table_names(
-            table_names + view_names, skip_date_partitioned_tables, skip_table_regexes
-        )
+        groups = group_table_names(table_names + view_names, skip_date_partitioned_tables, skip_table_regexes)
         for group in groups:
             print(group[0], len(group))
             tasks.append(
-                asyncio.create_task(
-                    build_table_async(
-                        t_eng, group[0], schema_name, is_view=group[0] in view_names
-                    )
-                )
+                asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_names))
             )
             all_groups.append(group)
 
@@ -545,13 +490,9 @@ class SQLConnector:
     ) -> "SQLConnector":
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
         if engine_type == "async":
-            engine = create_async_engine(
-                url, pool_size=max_concurrency_per_db, **engine_kwargs
-            )
+            engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
-            engine = create_engine(
-                url, pool_size=max_concurrency_per_db, **engine_kwargs
-            )  # type: ignore
+            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)  # type: ignore
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
@@ -572,9 +513,7 @@ class SQLConnector:
     ) -> ExecResult:
         df, error, latency_seconds = None, None, None
         try:
-            result = await self._t_eng.run_query_async(
-                query, parameters, timeout, return_df=True
-            )
+            result = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
             df = result.result
             latency_seconds = result.latency_seconds
         except Exception as e:

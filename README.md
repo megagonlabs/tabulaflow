@@ -662,6 +662,7 @@ Feb 20
 - [x] other_exec_results -> alternative_results
 - [x] Patch spider2-snow eval
 
+Feb 21
 - [ ] GA360 - decide how to handle date-partitioned tables
 - [ ] PATENTSVIEW
 
