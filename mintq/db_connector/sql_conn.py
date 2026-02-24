@@ -380,7 +380,7 @@ async def build_table_async(
                 sampled_df[col_name] = sampled_df[col_name].apply(
                     lambda v: v.encode("utf-8", errors="replace").decode("utf-8")
                     if isinstance(v, str)
-                    else str(v) if isinstance(v, bytes) else v
+                    else str(v) if isinstance(v, (bytes, bytearray)) else v
                 )
 
     return SQLTableSchema(
