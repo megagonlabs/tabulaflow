@@ -242,20 +242,59 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
+# When num_rows exceeds this threshold in approx mode, use sampling to estimate distinct count.
+_SAMPLE_THRESHOLD = 100000
+# Target number of rows to sample.
+_SAMPLE_SIZE = 100000
+
+
+def _get_sampled_num_unique_stmt(
+    dialect: str,
+    col: sqlalchemy.ColumnElement[Any],
+    tbl: sqlalchemy.FromClause,
+    num_rows: int,
+) -> sqlalchemy.sql.expression.Executable:
+    """Build a statement that estimates COUNT(DISTINCT col) via sampling.
+
+    Uses the most efficient sampling mechanism available for each dialect:
+    - PostgreSQL: ``TABLESAMPLE SYSTEM(pct)`` (block-level, very fast)
+    - Snowflake: ``TABLESAMPLE SYSTEM(pct)`` with ``HLL`` for approx distinct
+    - Others: falls back to exact ``COUNT(DISTINCT col)``
+    """
+    sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
+    sample_pct = max(sample_frac * 100, 0.01)  # SYSTEM needs a percentage > 0
+
+    if dialect == "postgresql":
+        sampled = tbl.tablesample(func.system(sample_pct))
+        return select(func.count(distinct(col))).select_from(sampled)
+
+    if dialect == "snowflake":
+        sampled = tbl.tablesample(func.system(sample_pct))
+        return select(func.hll(col)).select_from(sampled)
+
+    # Unsupported dialect – fall back to exact count
+    return select(func.count(distinct(col))).select_from(tbl)
+
+
 def get_num_unique_stmt(
     dialect: str,
     col: sqlalchemy.ColumnElement[Any],
     tbl: sqlalchemy.FromClause,
     mode: Literal["exact", "approx"] = "approx",
+    num_rows: int = 0,
 ) -> sqlalchemy.sql.expression.Executable:
-    stmts = {
-        "exact": select(func.count(distinct(col))).select_from(tbl),
-        "snowflake": select(func.hll(col)).select_from(tbl),
-    }
-    if mode == "exact" or dialect not in stmts:
-        return stmts["exact"]
-    else:
-        return stmts[dialect]
+    if mode == "exact":
+        return select(func.count(distinct(col))).select_from(tbl)
+
+    # For large tables, use efficient sampling to estimate distinct count
+    if num_rows > _SAMPLE_THRESHOLD:
+        return _get_sampled_num_unique_stmt(dialect, col, tbl, num_rows)
+
+    # Dialect-native approximate methods (small tables)
+    if dialect == "snowflake":
+        return select(func.hll(col)).select_from(tbl)
+
+    return select(func.count(distinct(col))).select_from(tbl)
 
 
 # Types that might be categorical
@@ -293,9 +332,9 @@ async def build_column_async(
         null_ratio = num_null / num_rows
 
         if dtype in CATEGORICAL_TYPES:
-            num_unique = (await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx"))).result[0][
-                0
-            ]
+            num_unique = (
+                await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx", num_rows=num_rows))
+            ).result[0][0]
             unique_ratio = num_unique / num_rows
             examples = (
                 await t_eng.run_query_async(
@@ -380,7 +419,9 @@ async def build_table_async(
                 sampled_df[col_name] = sampled_df[col_name].apply(
                     lambda v: v.encode("utf-8", errors="replace").decode("utf-8")
                     if isinstance(v, str)
-                    else str(v) if isinstance(v, (bytes, bytearray)) else v
+                    else str(v)
+                    if isinstance(v, (bytes, bytearray))
+                    else v
                 )
 
     return SQLTableSchema(
@@ -473,9 +514,7 @@ async def build_schema_async(
         ##################
         for group in groups:
             tasks.append(
-                asyncio.create_task(
-                    build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set)
-                )
+                asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set))
             )
             all_groups.append(group)
 
