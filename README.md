@@ -673,6 +673,14 @@ Feb 24
   - [x] Observation: lots of classification code lookup tables in spider2
 - [x] Fix invalid utf-8 for NOAA_DATA
 
+- [x] Speed up num_unique computation using table sampling
+- [x] spider2-snow dataset instructions
+- [ ] Fix error message formatting
+
+- [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
+- [ ] ER diagram synthesis and check length
+
+- [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
 - [ ] Test GPT-5, gemini-3-flash/pro
