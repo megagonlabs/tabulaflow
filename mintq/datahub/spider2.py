@@ -10,15 +10,12 @@ from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
 
-# # Avoid repeatitive construction of tables with the same schema to speed up schema loading
-# TABLE_GROUP_REGEXES = {
-#     "GITHUB_REPOS_DATE": [
-#         # _YYYY, _YYYYMM, _YYYYMMDD
-#         r"_\d{4}$",
-#         r"_\d{6}$",
-#         r"_\d{8}$",
-#     ],
-# }
+# Avoid repeatitive construction of tables with the same schema to speed up schema loading
+GROUP_TABLE_REGEXES = {
+    "CENSUS_BUREAU_ACS_1": [
+        r"CENSUS_TRACTS_.*?",
+    ],
+}
 
 EVAL_STANDARD_PATCHES = {
     "sf_bq236": {
@@ -189,10 +186,15 @@ class Spider2SnowDatasetLoader:
 
         # We use a higher per-db concurrency for loading schemas
         schemas = []
+        ##### Remove #####
+        if os.getenv("MINTQ_DEBUG"):
+            databases = databases[databases.index("CENSUS_BUREAU_USA") :]
+        ##################
         for name in databases:
             ##### Remove #####
             print(f"Loading schema for {name}")
             import time
+
             t0 = time.time()
             ##################
             db_conn = await SQLConnector.from_url_async(
@@ -203,6 +205,7 @@ class Spider2SnowDatasetLoader:
                 max_concurrency_per_db=2,
                 connect_args=connect_args,
                 group_date_partitioned_tables=True,
+                group_table_regexes=GROUP_TABLE_REGEXES.get(name, []),
             )
             print(f"Time taken: {time.time() - t0} seconds")
             schemas.append(db_conn.schema)
