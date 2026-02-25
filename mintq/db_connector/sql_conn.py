@@ -243,58 +243,9 @@ def _convert(value: Any) -> str | int | float | bool:
 
 
 # When num_rows exceeds this threshold in approx mode, use sampling to estimate distinct count.
-_SAMPLE_THRESHOLD = 100000
+_SAMPLE_THRESHOLD = 10000
 # Target number of rows to sample.
-_SAMPLE_SIZE = 100000
-
-
-def _get_sampled_num_unique_stmt(
-    dialect: str,
-    col: sqlalchemy.ColumnElement[Any],
-    tbl: sqlalchemy.FromClause,
-    num_rows: int,
-) -> sqlalchemy.sql.expression.Executable:
-    """Build a statement that estimates COUNT(DISTINCT col) via sampling.
-
-    Uses the most efficient sampling mechanism available for each dialect:
-    - PostgreSQL: ``TABLESAMPLE SYSTEM(pct)`` (block-level, very fast)
-    - Snowflake: ``TABLESAMPLE SYSTEM(pct)`` with ``HLL`` for approx distinct
-    - Others: falls back to exact ``COUNT(DISTINCT col)``
-    """
-    sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
-    sample_pct = max(sample_frac * 100, 0.01)  # SYSTEM needs a percentage > 0
-
-    if dialect == "postgresql":
-        sampled = tbl.tablesample(func.system(sample_pct))
-        return select(func.count(distinct(col))).select_from(sampled)
-
-    if dialect == "snowflake":
-        sampled = tbl.tablesample(func.system(sample_pct))
-        return select(func.hll(col)).select_from(sampled)
-
-    # Unsupported dialect – fall back to exact count
-    return select(func.count(distinct(col))).select_from(tbl)
-
-
-def get_num_unique_stmt(
-    dialect: str,
-    col: sqlalchemy.ColumnElement[Any],
-    tbl: sqlalchemy.FromClause,
-    mode: Literal["exact", "approx"] = "approx",
-    num_rows: int = 0,
-) -> sqlalchemy.sql.expression.Executable:
-    if mode == "exact":
-        return select(func.count(distinct(col))).select_from(tbl)
-
-    # For large tables, use efficient sampling to estimate distinct count
-    if num_rows > _SAMPLE_THRESHOLD:
-        return _get_sampled_num_unique_stmt(dialect, col, tbl, num_rows)
-
-    # Dialect-native approximate methods (small tables)
-    if dialect == "snowflake":
-        return select(func.hll(col)).select_from(tbl)
-
-    return select(func.count(distinct(col))).select_from(tbl)
+_SAMPLE_SIZE = 10000
 
 
 # Types that might be categorical
@@ -325,17 +276,22 @@ async def build_column_async(
     dtype = column["type"].__visit_name__.upper()
 
     if num_rows > 0:
-        dialect = t_eng.engine.dialect.name
+        sampled_rows = num_rows
+        if num_rows > _SAMPLE_THRESHOLD:  # For large tables, we compute stats from a sampled subset of rows
+            if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
+                sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
+                sample_pct = max(sample_frac * 100, 0.01)  # SYSTEM needs a percentage > 0
+                tbl = tbl.tablesample(func.system(sample_pct))
+                sampled_rows = int(sample_pct / 100 * num_rows)
+
         num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
             0
         ]
-        null_ratio = num_null / num_rows
+        null_ratio = num_null / sampled_rows
 
         if dtype in CATEGORICAL_TYPES:
-            num_unique = (
-                await t_eng.run_query_async(get_num_unique_stmt(dialect, col, tbl, mode="approx", num_rows=num_rows))
-            ).result[0][0]
-            unique_ratio = num_unique / num_rows
+            num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[0][0]
+            unique_ratio = num_unique / sampled_rows
             examples = (
                 await t_eng.run_query_async(
                     select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
