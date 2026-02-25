@@ -197,8 +197,8 @@ class Spider2SnowDatasetLoader:
         # We use a higher per-db concurrency for loading schemas
         schemas = []
         ##### Remove #####
-        if os.getenv("MINTQ_DEBUG"):
-            databases = databases[databases.index("CENSUS_BUREAU_USA") :]
+        # if os.getenv("MINTQ_DEBUG"):
+        #     databases = databases[databases.index("GBIF") :]
         ##################
         for name in databases:
             ##### Remove #####
