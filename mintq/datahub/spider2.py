@@ -10,6 +10,15 @@ from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
 
+SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
+- **Snowflake Syntax Only:**
+  - Use only functions and syntax supported by Snowflake.
+  - For example, `TRIM(BOTH 'chars' FROM expr)` is not valid in Snowflake. Use `TRIM(expr, 'chars')` or `REPLACE()` instead.
+- **Case-Sensitive Identifiers:**
+  - Columns defined with double-quoted lowercase names (`CREATE TABLE ... ("col_name" ...)`) must always be referenced with double quotes.
+""".strip()
+
+
 # Avoid repeatitive construction of tables with the same schema to speed up schema loading
 GROUP_TABLE_REGEXES = {
     "CENSUS_BUREAU_ACS_1": [
@@ -154,6 +163,7 @@ class Spider2SnowDatasetLoader:
                         language="snowflake",
                         db=item["db_id"],
                         question=item["instruction"],
+                        dataset_instructions=SPIDER2_SNOW_DATASET_INSTRUCTIONS,
                         document=document,
                         gold_query=GoldQuery(
                             query=gold_sql,
