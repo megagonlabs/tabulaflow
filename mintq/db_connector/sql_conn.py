@@ -270,6 +270,7 @@ async def build_column_async(
     table_name: str,
     schema_name: str | None,
     num_rows: int,
+    is_view: bool = False,
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
@@ -280,8 +281,12 @@ async def build_column_async(
         if num_rows > _SAMPLE_THRESHOLD:  # For large tables, we compute stats from a sampled subset of rows
             if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
                 sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
-                sample_pct = max(sample_frac * 100, 0.01)  # SYSTEM needs a percentage > 0
-                tbl = tbl.tablesample(func.system(sample_pct))
+                sample_pct = max(sample_frac * 100, 0.01)  # sample at least 0.01%
+                # Snowflake views only support row-wise sampling (BERNOULLI) without seed
+                if t_eng.engine.dialect.name == "snowflake" and is_view:
+                    tbl = tbl.tablesample(func.bernoulli(sample_pct))
+                else:
+                    tbl = tbl.tablesample(func.system(sample_pct))
                 sampled_rows = int(sample_pct / 100 * num_rows)
 
         num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
@@ -346,7 +351,7 @@ async def build_table_async(
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
-        *[build_column_async(t_eng, col, table_name, schema_name, num_rows) for col in col_dicts]
+        *[build_column_async(t_eng, col, table_name, schema_name, num_rows, is_view=is_view) for col in col_dicts]
     )
     name2col = {col.name: col for col in columns}
 
