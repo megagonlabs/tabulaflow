@@ -296,8 +296,8 @@ async def build_column_async(
 
         if dtype in CATEGORICAL_TYPES:
             if t_eng.engine.dialect.name in ("snowflake",):
-                # Efficient estimation using HyperLogLog
-                num_unique = (await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0]
+                # Efficient estimation using HyperLogLog (returns a float; cast to int)
+                num_unique = int((await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0])
             else:
                 num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[0][0]
             unique_ratio = num_unique / sampled_rows
