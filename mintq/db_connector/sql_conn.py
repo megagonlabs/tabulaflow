@@ -264,6 +264,11 @@ CATEGORICAL_TYPES = [
 ]
 
 
+def _denorm(t_eng: ThrottledEngine, name: str) -> str:
+    """Denormalize a normalized identifier back to its actual stored form as a plain str."""
+    return str(t_eng.engine.dialect.denormalize_name(name))
+
+
 async def build_column_async(
     t_eng: ThrottledEngine,
     column: dict[str, Any],
@@ -275,6 +280,10 @@ async def build_column_async(
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     dtype = column["type"].__visit_name__.upper()
+
+    ##### Remove #####
+    print(f"Building column {column['name']} with type {dtype} {column['type']}")
+    ##################
 
     if num_rows > 0:
         sampled_rows = num_rows
@@ -299,7 +308,9 @@ async def build_column_async(
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
                 num_unique = int((await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0])
             else:
-                num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[0][0]
+                num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[
+                    0
+                ][0]
             unique_ratio = num_unique / sampled_rows
             examples = (
                 await t_eng.run_query_async(
@@ -319,10 +330,8 @@ async def build_column_async(
         num_unique = 0
         examples = []
 
-    actual_col_name = str(t_eng.engine.dialect.denormalize_name(column["name"]))
-
     return SQLColumnSchema(
-        name=actual_col_name,
+        name=_denorm(t_eng, column["name"]),
         dtype=dtype,
         nullable=column["nullable"],
         null_ratio=null_ratio,
@@ -330,11 +339,6 @@ async def build_column_async(
         unique_ratio=unique_ratio,
         examples=examples,
     )
-
-
-def _denorm(t_eng: ThrottledEngine, name: str) -> str:
-    """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-    return str(t_eng.engine.dialect.denormalize_name(name))
 
 
 async def build_table_async(
@@ -494,6 +498,8 @@ async def build_schema_async(
             table.sampled_df = None
             for col in table.columns:
                 col.examples = []
+            # re-validate
+            table = SQLTableSchema.model_validate(table.model_dump())
             tables.append(table)
 
     return SQLSchema(name=db_name, tables=tables)
