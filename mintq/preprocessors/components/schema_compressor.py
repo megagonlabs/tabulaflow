@@ -237,9 +237,9 @@ class SchemaCompressor:
                 variations = [v for _, v in group]
                 if len(group) == 1 or any(v is None for v in variations):
                     continue
-                remaining = [name for name in remaining if name not in group_names]
                 name_description = func.summarize(variations)
                 if name_description is not None:
+                    remaining = [name for name in remaining if name not in group_names]
                     res.append((pattern, name_description, group_names))
 
         if remaining:
