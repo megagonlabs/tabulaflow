@@ -488,7 +488,9 @@ async def build_schema_async(
             all_groups.append(group)
 
     with warnings.catch_warnings(record=True) as caught_warnings:
-        warnings.simplefilter("always", SAWarning)
+        # Capture Snowflake's "failed to reflect" warnings; let all others pass through normally
+        warnings.filterwarnings("always", message="Failed to reflect", category=SAWarning)
+        warnings.filterwarnings("always", message="Did not recognize type", category=SAWarning)
         task_results = await asyncio.gather(*tasks)
 
     # # Collect tables that failed to reflect and show a single consolidated warning
