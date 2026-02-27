@@ -99,3 +99,7 @@ If (and only if) resuming an interrupted experiment, append to the log file:
 ```bash
 bash exp/123_xxx.sh &>> log/123.out &
 ```
+
+## Guildelines
+
+Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
