@@ -331,7 +331,9 @@ async def build_column_async(
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
-        examples = (await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(5))).result
+        # Avoids scanning a large table for distinct values while still providing diverse example values.
+        subq = select(col).select_from(tbl).where(col.isnot(None)).limit(1000).subquery()
+        examples = (await t_eng.run_query_async(select(subq.c[0]).distinct().limit(5))).result
         examples = [_convert(row[0]) for row in examples]
 
     return SQLColumnSchema(
