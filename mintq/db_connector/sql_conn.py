@@ -244,9 +244,9 @@ def _convert(value: Any) -> str | int | float | bool:
 
 
 # When num_rows exceeds this threshold in approx mode, use sampling to estimate distinct count.
-_SAMPLE_THRESHOLD = 10000
+_SAMPLE_THRESHOLD = 100000
 # Target number of rows to sample.
-_SAMPLE_SIZE = 10000
+_SAMPLE_SIZE = 100000
 
 
 # Types that might be categorical
