@@ -515,9 +515,7 @@ async def build_schema_async(
             table.sampled_df = None
             for col in table.columns:
                 col.examples = []
-            # re-validate
-            table = SQLTableSchema.model_validate(table.model_dump())
-            tables.append(table)
+            tables.append(SQLTableSchema.model_validate(table.model_dump()))
 
     # if failed_tables:
     #     logger.warning(
