@@ -18,6 +18,39 @@ from mintq.config import config
 
 logger = logging.getLogger(__name__)
 
+
+def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
+    """Serialize a DataFrame to a JSON-safe dict (dtypes + records)."""
+    if df is None:
+        return None
+    # df.to_dict can produce pandas/numpy objects (NaT, Timestamp, np.int64, …)
+    # that Pydantic's JSON serializer cannot handle.  Convert them to
+    # plain Python types so the dict is safely serialisable.
+    records = df.to_dict(orient="records")
+    for row in records:
+        for key, val in row.items():
+            if isinstance(val, pd.Timestamp):
+                row[key] = val.isoformat()
+            elif val is pd.NaT:
+                row[key] = None
+    return {
+        "schema": {
+            "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
+        },
+        "data": records,
+    }
+
+
+def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+    """Deserialize a dict (dtypes + records) back into a DataFrame."""
+    if v is None or isinstance(v, pd.DataFrame):
+        return v
+    dtypes = v["schema"]["dtypes"]
+    df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
+    df = df.astype(dtypes)
+    return df
+
+
 NumericOrNull: TypeAlias = Union[float, int, None]
 
 SQLDialect: TypeAlias = Literal[
@@ -89,26 +122,12 @@ class SQLTableSchema(BaseModel):
 
     @field_serializer("sampled_df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
-        if df is None:
-            return None
-        return {
-            "schema": {
-                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-            },
-            "data": df.to_dict(orient="records"),
-        }
+        return _serialize_dataframe(df)
 
     @field_validator("sampled_df", mode="before")
     @classmethod
     def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
-        if v is None:
-            return None
-        if isinstance(v, pd.DataFrame):
-            return v
-        dtypes = v["schema"]["dtypes"]
-        df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
-        df = df.astype(dtypes)
-        return df
+        return _deserialize_dataframe(v)
 
 
 class ColumnRef(BaseModel):
@@ -521,24 +540,12 @@ class ExecResult(BaseModel):
 
     @field_serializer("df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
-        if df is None:
-            return None
-        return {
-            "schema": {
-                "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
-            },
-            "data": df.to_dict(orient="records"),
-        }
+        return _serialize_dataframe(df)
 
     @field_validator("df", mode="before")
     @classmethod
-    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame:
-        if v is None or isinstance(v, pd.DataFrame):
-            return v
-        dtypes = v["schema"]["dtypes"]
-        df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
-        df = df.astype(dtypes)
-        return df
+    def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
+        return _deserialize_dataframe(v)
 
     @model_validator(mode="after")
     def truncate_df(self) -> "ExecResult":
