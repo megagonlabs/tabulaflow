@@ -149,12 +149,6 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         """Check if all cache files exist."""
         return all(os.path.exists(path) for path in cache_paths)
 
-    def _remove_cache(self, cache_paths: list[str]) -> None:
-        """Remove all cache files."""
-        for path in cache_paths:
-            if os.path.exists(path):
-                os.remove(path)
-
     async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> OutputT:
         cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
         os.makedirs(cache_dir, exist_ok=True)
@@ -165,16 +159,12 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         cache_key = tuple(cache_paths)
         lock = _cache_locks[cache_id]
         async with lock:
-            if config.cache_enabled and self._cache_exists(cache_paths):
-                if config.cache_overwrite:
-                    self._remove_cache(cache_paths)
-                    _memory_cache.pop(cache_key, None)
-                else:
-                    if cache_key in _memory_cache:
-                        return _memory_cache[cache_key]  # type: ignore[return-value]
-                    result = self._load_from_cache(cache_paths)
-                    _memory_cache[cache_key] = result
-                    return result  # type: ignore[return-value]
+            if config.cache_enabled and not config.cache_overwrite and self._cache_exists(cache_paths):
+                if cache_key in _memory_cache:
+                    return _memory_cache[cache_key]  # type: ignore[return-value]
+                result = self._load_from_cache(cache_paths)
+                _memory_cache[cache_key] = result
+                return result  # type: ignore[return-value]
 
             if config.cache_required:
                 raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_paths}")

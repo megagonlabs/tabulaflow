@@ -208,12 +208,9 @@ async def load_schema_with_cache_async(
 
     lock = _db_locks[global_id]
     async with lock:
-        if config.cache_enabled and os.path.exists(cache_path):
-            if config.cache_overwrite:
-                os.remove(cache_path)
-            else:
-                with open(cache_path, "r", encoding="utf-8") as f:
-                    return SQLSchema.model_validate_json(f.read())
+        if config.cache_enabled and not config.cache_overwrite and os.path.exists(cache_path):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                return SQLSchema.model_validate_json(f.read())
 
         if config.cache_required:
             raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
