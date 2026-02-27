@@ -23,7 +23,7 @@ from mintq.schema import (
     ForeignKeySchema,
     ExecResult,
 )
-from mintq.config import config
+from mintq.config import config, ColumnStatsMode
 
 logger = logging.getLogger(__name__)
 
@@ -223,6 +223,7 @@ async def load_schema_with_cache_async(
             dbms_supports_schema,
             group_date_partitioned_tables,
             group_table_regexes,
+            column_stats_mode=config.column_stats_mode,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
@@ -276,9 +277,7 @@ async def build_column_async(
     schema_name: str | None,
     num_rows: int,
     is_view: bool = False,
-    column_stats_mode: Literal[
-        "always_precise", "sample_for_large_tables", "skip_for_large_tables"
-    ] = "skip_for_large_tables",
+    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(table_name, schema=schema_name)
@@ -351,6 +350,7 @@ async def build_table_async(
     table_name: str,
     schema_name: str | None,
     is_view: bool = False,
+    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLTableSchema:
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
@@ -360,7 +360,12 @@ async def build_table_async(
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
-        *[build_column_async(t_eng, col, table_name, schema_name, num_rows, is_view=is_view) for col in col_dicts]
+        *[
+            build_column_async(
+                t_eng, col, table_name, schema_name, num_rows, is_view=is_view, column_stats_mode=column_stats_mode
+            )
+            for col in col_dicts
+        ]
     )
     name2col = {col.name: col for col in columns}
 
@@ -454,6 +459,7 @@ async def build_schema_async(
     dbms_supports_schema: bool,
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
+    column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLSchema:
     t0 = time.time()
     logger.info(f"Building schema for {db_name}...")
@@ -493,7 +499,11 @@ async def build_schema_async(
             )
         for group in groups:
             tasks.append(
-                asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set))
+                asyncio.create_task(
+                    build_table_async(
+                        t_eng, group[0], schema_name, is_view=group[0] in view_name_set, column_stats_mode=column_stats_mode
+                    )
+                )
             )
             all_groups.append(group)
 

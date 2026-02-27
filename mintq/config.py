@@ -1,4 +1,7 @@
 import os
+from typing import Literal, get_args
+
+ColumnStatsMode = Literal["always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 
 
 class Config:
@@ -15,6 +18,7 @@ class Config:
     DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 150
     DEFAULT_DATASET = "bird-sql"
     DEFAULT_SPLIT = "dev"
+    DEFAULT_COLUMN_STATS_MODE: ColumnStatsMode = "skip_for_large_tables"
     # DEFAULT_MAX_LLM_CONCURRENCY = 4
     # DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 150
     # DEFAULT_MAX_EMBEDDING_CONCURRENCY = 1
@@ -113,6 +117,24 @@ class Config:
         if (value := os.getenv("MINTQ_SPLIT")) is not None:
             return value
         return self.DEFAULT_SPLIT
+
+    @property
+    def column_stats_mode(self) -> ColumnStatsMode:
+        """Column statistics collection mode for schema building.
+
+        Controls how column-level statistics (null ratio, unique count) are
+        collected for large tables:
+        - ``"always_precise"``: Always compute exact statistics.
+        - ``"sample_for_large_tables"``: Sample large tables before computing.
+        - ``"skip_for_large_tables"``: Skip statistics for large tables.
+        """
+        if (value := os.getenv("MINTQ_COLUMN_STATS_MODE")) is not None:
+            if value not in get_args(ColumnStatsMode):
+                raise ValueError(
+                    f"Invalid MINTQ_COLUMN_STATS_MODE={value!r}. Must be one of {sorted(get_args(ColumnStatsMode))}"
+                )
+            return value  # type: ignore[return-value]
+        return self.DEFAULT_COLUMN_STATS_MODE
 
     def __repr__(self) -> str:
         props = {
