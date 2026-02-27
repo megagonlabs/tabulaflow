@@ -243,10 +243,9 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-# When num_rows exceeds this threshold in approx mode, use sampling to estimate distinct count.
-_SAMPLE_THRESHOLD = 100000
-# Target number of rows to sample.
-_SAMPLE_SIZE = 100000
+def _denorm(t_eng: ThrottledEngine, name: str) -> str:
+    """Denormalize a normalized identifier back to its actual stored form as a plain str."""
+    return str(t_eng.engine.dialect.denormalize_name(name))
 
 
 # Types that might be categorical
@@ -264,10 +263,10 @@ CATEGORICAL_TYPES = [
     "ENUM",
 ]
 
-
-def _denorm(t_eng: ThrottledEngine, name: str) -> str:
-    """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-    return str(t_eng.engine.dialect.denormalize_name(name))
+# Used when column_stats_mode is either "sample_for_large_tables" or "skip_for_large_tables"
+_LARGE_TABLE_THRESHOLD = 1000000
+# Used when column_stats_mode is "sample_for_large_tables"
+_LARGE_TABLE_SAMPLE_SIZE = 1000000
 
 
 async def build_column_async(
@@ -286,14 +285,14 @@ async def build_column_async(
     dtype = column["type"].__visit_name__.upper()
     nullable = column["nullable"]
 
-    if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _SAMPLE_THRESHOLD):
+    if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD):
         null_ratio = unique_ratio = None
         num_unique = None
     else:
         sampled_rows = num_rows
-        if column_stats_mode == "sample_for_large_tables" and num_rows > _SAMPLE_THRESHOLD:
+        if column_stats_mode == "sample_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD:
             if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
-                sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
+                sample_frac = min(_LARGE_TABLE_SAMPLE_SIZE / num_rows, 1.0)
                 sample_pct = max(sample_frac * 100, 0.01)  # sample at least 0.01%
                 # Snowflake views only support row-wise sampling (BERNOULLI) without seed
                 if t_eng.engine.dialect.name == "snowflake" and is_view:
