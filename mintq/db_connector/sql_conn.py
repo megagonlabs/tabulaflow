@@ -1,5 +1,7 @@
 import copy
 import re
+import logging
+import warnings
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 from dataclasses import dataclass
 import collections
@@ -9,6 +11,7 @@ import time
 import asyncio
 from contextlib import asynccontextmanager
 import sqlalchemy
+from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, select, func, distinct, inspect
@@ -22,6 +25,7 @@ from mintq.schema import (
 )
 from mintq.config import config
 
+logger = logging.getLogger(__name__)
 
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
@@ -281,10 +285,6 @@ async def build_column_async(
     tbl = sqlalchemy.table(table_name, schema=schema_name)
     dtype = column["type"].__visit_name__.upper()
 
-    ##### Remove #####
-    print(f"Building column {column['name']} with type {dtype} {column['type']}")
-    ##################
-
     if num_rows > 0:
         sampled_rows = num_rows
         if num_rows > _SAMPLE_THRESHOLD:  # For large tables, we compute stats from a sampled subset of rows
@@ -352,7 +352,23 @@ async def build_table_async(
 
     async_inspector = AsyncInspector(t_eng)
 
-    col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", SAWarning)
+        col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+
+    for w in caught_warnings:
+        msg = str(w.message)
+        if "Failed to reflect" in msg:
+            msg += (
+                " (this table may not be accessible due to insufficient privileges;"
+                " the warning is harmless if you don't need this table)"
+            )
+        elif "Did not recognize type" in msg:
+            msg += (
+                " (the column's structured type may not be resolved due to insufficient privileges;"
+                " the column will fall back to NullType; the warning is harmless if you don't need this column)"
+            )
+        logger.warning("%s:%d: %s", w.filename, w.lineno, msg)
 
     columns = await asyncio.gather(
         *[build_column_async(t_eng, col, table_name, schema_name, num_rows, is_view=is_view) for col in col_dicts]
