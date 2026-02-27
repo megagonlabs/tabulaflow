@@ -203,15 +203,21 @@ class SchemaCompressor:
         return (schema_name, columns, primary_key, out_foreign_keys, in_foreign_keys)
 
     def _merge_columns(self, columns: list[SQLColumnSchema]) -> SQLColumnSchema:
+        all_null_ratio = [c.null_ratio for c in columns if c.null_ratio is not None]
+        merged_null_ratio = sum(all_null_ratio) / len(all_null_ratio) if all_null_ratio else None
+        merged_num_unique = max([c.num_unique for c in columns if c.num_unique is not None], default=None)
+        merged_unique_ratio = max([c.unique_ratio for c in columns if c.unique_ratio is not None], default=None)
+        merged_examples = list(dict.fromkeys(sum([c.examples for c in columns], [])))[:20]
+
         return SQLColumnSchema(
             name=columns[0].name,
             dtype=columns[0].dtype,
             description=columns[0].description,
             nullable=any(c.nullable for c in columns),
-            null_ratio=sum(c.null_ratio for c in columns) / len(columns),
-            num_unique=max([c.num_unique for c in columns if c.num_unique is not None], default=None),
-            unique_ratio=max([c.unique_ratio for c in columns if c.unique_ratio is not None], default=None),
-            examples=list(dict.fromkeys(sum([c.examples for c in columns], []))),
+            null_ratio=merged_null_ratio,
+            num_unique=merged_num_unique,
+            unique_ratio=merged_unique_ratio,
+            examples=merged_examples,
             primary_key_type=columns[0].primary_key_type,
             foreign_keys=columns[0].foreign_keys,
         )
