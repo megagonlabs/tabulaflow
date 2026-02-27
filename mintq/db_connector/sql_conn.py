@@ -293,7 +293,7 @@ async def build_column_async(
         if column_stats_mode == "sample_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD:
             if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
                 sample_frac = min(_LARGE_TABLE_SAMPLE_SIZE / num_rows, 1.0)
-                sample_pct = max(sample_frac * 100, 0.01)  # sample at least 0.01%
+                sample_pct = max(sample_frac * 100, 0.1)  # sample at least 0.1%
                 # Snowflake views only support row-wise sampling (BERNOULLI) without seed
                 if t_eng.engine.dialect.name == "snowflake" and is_view:
                     tbl = tbl.tablesample(func.bernoulli(sample_pct))
