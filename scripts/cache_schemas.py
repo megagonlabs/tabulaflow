@@ -8,8 +8,8 @@ from mintq.config import config
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_20240627")
+    parser.add_argument("--dataset", default=config.default_dataset)
+    parser.add_argument("--split", default=config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()

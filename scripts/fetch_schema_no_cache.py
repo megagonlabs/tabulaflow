@@ -2,14 +2,15 @@ import asyncio
 import argparse
 import os
 import time
+from mintq.config import config
 from mintq.datahub import dataset_registry
 from mintq.formatters import SQLDDLSchemaFormatter
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_20240627")
+    parser.add_argument("--dataset", default=config.default_dataset)
+    parser.add_argument("--split", default=config.default_split)
     parser.add_argument("--database", default="european_football_2")
     parser.add_argument("--from_cache", action="store_true")
     args = parser.parse_args()
