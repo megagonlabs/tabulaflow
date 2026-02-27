@@ -244,9 +244,11 @@ def _convert(value: Any) -> str | int | float | bool:
     return str(value)
 
 
-def _denorm(t_eng: ThrottledEngine, name: str) -> str:
+def _denorm(t_eng: ThrottledEngine, name: str | Any) -> str:
     """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-    return str(t_eng.engine.dialect.denormalize_name(name))
+    if t_eng.engine.dialect.requires_name_normalize:
+        return str(t_eng.engine.dialect.denormalize_name(name))
+    return str(name)
 
 
 # Types that might be categorical
