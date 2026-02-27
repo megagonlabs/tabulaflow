@@ -279,7 +279,7 @@ async def build_column_async(
     is_view: bool = False,
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
-    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(table_name, schema=schema_name)
     dtype = column["type"].__visit_name__.upper()
 
     if num_rows > 0:
@@ -380,6 +380,7 @@ async def build_table_async(
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
     # Sanitize strings with lone surrogates and convert bytes to str to prevent Pydantic JSON serialization errors
     if sampled_df is not None:
+        assert isinstance(sampled_df, pd.DataFrame)
         for col_name in sampled_df.columns:
             if sampled_df[col_name].dtype == object:
                 sampled_df[col_name] = sampled_df[col_name].apply(
@@ -450,6 +451,7 @@ async def build_schema_async(
     logger.info(f"Building schema for {db_name}...")
     async_inspector = AsyncInspector(t_eng)
 
+    schema_names: list[str | None]
     if not dbms_supports_schema:
         schema_names = [None]
     else:
