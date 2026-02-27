@@ -31,58 +31,58 @@ logger = logging.getLogger(__name__)
 
 
 A199_QIDS = [
-    "bird-sql_dev_20240627_17",
-    "bird-sql_dev_20240627_30",
-    "bird-sql_dev_20240627_33",
-    "bird-sql_dev_20240627_36",
-    "bird-sql_dev_20240627_49",
-    "bird-sql_dev_20240627_164",
-    "bird-sql_dev_20240627_199",
-    "bird-sql_dev_20240627_225",
-    "bird-sql_dev_20240627_237",
-    "bird-sql_dev_20240627_239",
-    "bird-sql_dev_20240627_267",
-    "bird-sql_dev_20240627_275",
-    "bird-sql_dev_20240627_352",
-    "bird-sql_dev_20240627_378",
-    "bird-sql_dev_20240627_384",
-    "bird-sql_dev_20240627_403",
-    "bird-sql_dev_20240627_407",
-    "bird-sql_dev_20240627_447",
-    "bird-sql_dev_20240627_469",
-    "bird-sql_dev_20240627_473",
-    "bird-sql_dev_20240627_500",
-    "bird-sql_dev_20240627_560",
-    "bird-sql_dev_20240627_565",
-    "bird-sql_dev_20240627_586",
-    "bird-sql_dev_20240627_587",
-    "bird-sql_dev_20240627_805",
-    "bird-sql_dev_20240627_837",
-    "bird-sql_dev_20240627_860",
-    "bird-sql_dev_20240627_861",
-    "bird-sql_dev_20240627_878",
-    "bird-sql_dev_20240627_881",
-    "bird-sql_dev_20240627_929",
-    "bird-sql_dev_20240627_985",
-    "bird-sql_dev_20240627_998",
-    "bird-sql_dev_20240627_1004",
-    "bird-sql_dev_20240627_1011",
-    # "bird-sql_dev_20240627_1026",
-    # "bird-sql_dev_20240627_1028",
-    # "bird-sql_dev_20240627_1085",
-    # "bird-sql_dev_20240627_1144",
-    # "bird-sql_dev_20240627_1174",
-    "bird-sql_dev_20240627_1196",
-    "bird-sql_dev_20240627_1277",
-    # "bird-sql_dev_20240627_1297",
-    "bird-sql_dev_20240627_1360",
-    "bird-sql_dev_20240627_1370",
-    "bird-sql_dev_20240627_1421",
-    "bird-sql_dev_20240627_1433",
-    "bird-sql_dev_20240627_1458",
-    "bird-sql_dev_20240627_1498",
-    # "bird-sql_dev_20240627_1520",
-    "bird-sql_dev_20240627_1529",
+    "bird-sql_dev_17",
+    "bird-sql_dev_30",
+    "bird-sql_dev_33",
+    "bird-sql_dev_36",
+    "bird-sql_dev_49",
+    "bird-sql_dev_164",
+    "bird-sql_dev_199",
+    "bird-sql_dev_225",
+    "bird-sql_dev_237",
+    "bird-sql_dev_239",
+    "bird-sql_dev_267",
+    "bird-sql_dev_275",
+    "bird-sql_dev_352",
+    "bird-sql_dev_378",
+    "bird-sql_dev_384",
+    "bird-sql_dev_403",
+    "bird-sql_dev_407",
+    "bird-sql_dev_447",
+    "bird-sql_dev_469",
+    "bird-sql_dev_473",
+    "bird-sql_dev_500",
+    "bird-sql_dev_560",
+    "bird-sql_dev_565",
+    "bird-sql_dev_586",
+    "bird-sql_dev_587",
+    "bird-sql_dev_805",
+    "bird-sql_dev_837",
+    "bird-sql_dev_860",
+    "bird-sql_dev_861",
+    "bird-sql_dev_878",
+    "bird-sql_dev_881",
+    "bird-sql_dev_929",
+    "bird-sql_dev_985",
+    "bird-sql_dev_998",
+    "bird-sql_dev_1004",
+    "bird-sql_dev_1011",
+    # "bird-sql_dev_1026",
+    # "bird-sql_dev_1028",
+    # "bird-sql_dev_1085",
+    # "bird-sql_dev_1144",
+    # "bird-sql_dev_1174",
+    "bird-sql_dev_1196",
+    "bird-sql_dev_1277",
+    # "bird-sql_dev_1297",
+    "bird-sql_dev_1360",
+    "bird-sql_dev_1370",
+    "bird-sql_dev_1421",
+    "bird-sql_dev_1433",
+    "bird-sql_dev_1458",
+    "bird-sql_dev_1498",
+    # "bird-sql_dev_1520",
+    "bird-sql_dev_1529",
 ]
 
 
@@ -273,7 +273,7 @@ async def main_async() -> None:
 
     args = parser.parse_args()
     if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev_20240627", num_few_shot_examples=5)
+        parser.set_defaults(split="dev", num_few_shot_examples=5)
     elif args.dataset == "spider2-snow":
         parser.set_defaults(split="test", num_few_shot_examples=0)
 
@@ -291,7 +291,7 @@ async def main_async() -> None:
     is_a199_flag = False
     if args.split == "a199":
         is_a199_flag = True
-        args.split = "dev_20240627"
+        args.split = "dev"
     ##################
 
     if args.debug_litellm:

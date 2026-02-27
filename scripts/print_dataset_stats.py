@@ -122,7 +122,10 @@ async def print_basic_stats(dataset: NL2QDataset, tablefmt: str = "github") -> N
     db_names = sorted(dataset.db_connectors.keys())
     for db_name in db_names:
         schema = dataset.db_connectors[db_name].schema
+        print(f"Schema for {db_name}: {schema}")
+        t0 = time.time()
         compressed_schema = SchemaCompressor().compress(schema)
+        print(f"Time taken to compress schema: {time.time() - t0} seconds")
         per_db_stats["database"].append(db_name)
         per_db_stats["tables"].append(len(schema.tables))
         per_db_stats["tables_compressed"].append(len(compressed_schema.tables))

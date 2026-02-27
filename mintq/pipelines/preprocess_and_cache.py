@@ -63,7 +63,7 @@ async def main_async() -> None:
     args = parser.parse_args()
 
     if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev_20240627", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
+        parser.set_defaults(split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
     elif args.dataset == "spider2-snow":
         parser.set_defaults(split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
 

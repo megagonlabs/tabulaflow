@@ -68,7 +68,7 @@ BIRD_DATASET_INSTRUCTIONS = """
 @dataset_registry.register
 class BirdSQLDatasetLoader:
     name: ClassVar = "bird-sql"
-    splits: ClassVar = ["train", "dev_20240627", "dev_20251106"]
+    splits: ClassVar = ["train", "dev", "dev_20251106"]
 
     def __init__(
         self,
@@ -83,12 +83,12 @@ class BirdSQLDatasetLoader:
 
         self._task_files = {
             "train": os.path.join(self.directory, "train", "train.json"),
-            "dev_20240627": os.path.join(self.directory, "dev_20240627", "dev.json"),
+            "dev": os.path.join(self.directory, "dev_20240627", "dev.json"),
             "dev_20251106": os.path.join(self.directory, "dev_20251106", "dev.json"),
         }
         self._db_dirs = {
             "train": os.path.join(self.directory, "train", "train_databases"),
-            "dev_20240627": os.path.join(self.directory, "dev_20240627", "dev_databases"),
+            "dev": os.path.join(self.directory, "dev_20240627", "dev_databases"),
             "dev_20251106": os.path.join(self.directory, "dev_20240627", "dev_databases"),
         }
 
