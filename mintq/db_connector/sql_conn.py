@@ -446,6 +446,7 @@ async def build_schema_async(
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
 ) -> SQLSchema:
+    t0 = time.time()
     async_inspector = AsyncInspector(t_eng)
 
     if not dbms_supports_schema:
@@ -475,10 +476,10 @@ async def build_schema_async(
         view_name_set = set(view_names)
 
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
-        ##### Remove #####
-        if os.getenv("MINTQ_DEBUG"):
-            print(" ".join(f"{g[0]} ({len(g)})" for g in groups))
-        ##################
+        num_raw = len(table_names) + len(view_names)
+        logger.info(
+            f"Schema {schema_name}: {num_raw} tables/views grouped into {len(groups)} representative tables ({', '.join(f'{g[0]} ({len(g)})' for g in groups)})"
+        )
         for group in groups:
             tasks.append(
                 asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set))
@@ -524,7 +525,7 @@ async def build_schema_async(
     #         len(failed_tables),
     #         ", ".join(failed_tables),
     #     )
-
+    logger.info(f"Time taken to build schema for {db_name}: {time.time() - t0} seconds")
     return SQLSchema(name=db_name, tables=tables)
 
 

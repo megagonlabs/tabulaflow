@@ -1,5 +1,6 @@
 import os
 import json
+import logging
 import random
 import re
 import asyncio
@@ -9,6 +10,9 @@ import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
+
+logger = logging.getLogger(__name__)
+
 
 SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 - **Snowflake Syntax Only:**
@@ -203,17 +207,7 @@ class Spider2SnowDatasetLoader:
 
         # We use a higher per-db concurrency for loading schemas
         schemas = []
-        ##### Remove #####
-        # if os.getenv("MINTQ_DEBUG"):
-        #     databases = databases[databases.index("BRAZE_USER_EVENT_DEMO_DATASET") + 2 :]
-        ##################
         for name in databases:
-            ##### Remove #####
-            if os.getenv("MINTQ_DEBUG"):
-                print(f"Loading schema for {name}")
-                import time
-            t0 = time.time()
-            ##################
             db_conn = await SQLConnector.from_url_async(
                 f"spider2-snow+{name}",
                 name,
@@ -224,8 +218,6 @@ class Spider2SnowDatasetLoader:
                 group_date_partitioned_tables=True,
                 group_table_regexes=GROUP_TABLE_REGEXES.get(name, []),
             )
-            if os.getenv("MINTQ_DEBUG"):
-                print(f"Time taken: {time.time() - t0} seconds")
             schemas.append(db_conn.schema)
 
         # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
