@@ -209,10 +209,10 @@ class Spider2SnowDatasetLoader:
         ##################
         for name in databases:
             ##### Remove #####
-            # print(f"Loading schema for {name}")
-            # import time
-
-            # t0 = time.time()
+            if os.getenv("MINTQ_DEBUG"):
+                print(f"Loading schema for {name}")
+                import time
+            t0 = time.time()
             ##################
             db_conn = await SQLConnector.from_url_async(
                 f"spider2-snow+{name}",
@@ -224,7 +224,8 @@ class Spider2SnowDatasetLoader:
                 group_date_partitioned_tables=True,
                 group_table_regexes=GROUP_TABLE_REGEXES.get(name, []),
             )
-            # print(f"Time taken: {time.time() - t0} seconds")
+            if os.getenv("MINTQ_DEBUG"):
+                print(f"Time taken: {time.time() - t0} seconds")
             schemas.append(db_conn.schema)
 
         # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections

@@ -476,7 +476,8 @@ async def build_schema_async(
 
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
         ##### Remove #####
-        print(" ".join(f"{g[0]} ({len(g)})" for g in groups))
+        if os.getenv("MINTQ_DEBUG"):
+            print(" ".join(f"{g[0]} ({len(g)})" for g in groups))
         ##################
         for group in groups:
             tasks.append(
