@@ -13,6 +13,8 @@ class Config:
     DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
     DEFAULT_MAX_EMBEDDING_CONCURRENCY = 4
     DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 150
+    DEFAULT_DATASET = "bird-sql"
+    DEFAULT_SPLIT = "dev_20240627"
     # DEFAULT_MAX_LLM_CONCURRENCY = 4
     # DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 150
     # DEFAULT_MAX_EMBEDDING_CONCURRENCY = 1
@@ -99,6 +101,18 @@ class Config:
         if (value := os.getenv("MINTQ_MAX_EMBEDDING_REQUESTS_PER_MINUTE")) is not None:
             return int(value) if int(value) > 0 else None
         return self.DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE
+
+    @property
+    def default_dataset(self) -> str:
+        if (value := os.getenv("MINTQ_DATASET")) is not None:
+            return value
+        return self.DEFAULT_DATASET
+
+    @property
+    def default_split(self) -> str:
+        if (value := os.getenv("MINTQ_SPLIT")) is not None:
+            return value
+        return self.DEFAULT_SPLIT
 
     def __repr__(self) -> str:
         props = {

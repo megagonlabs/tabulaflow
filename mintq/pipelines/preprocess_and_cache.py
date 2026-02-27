@@ -48,8 +48,8 @@ async def main_async() -> None:
     parser.add_argument("--preprocessors", nargs="*", default=["schema_preprocessor", "er_diagram_synthesizer"])
 
     # dataset
-    parser.add_argument("--dataset", default="bird-sql")
-    parser.add_argument("--split", default="dev_20240627")
+    parser.add_argument("--dataset", default=config.default_dataset)
+    parser.add_argument("--split", default=config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
 
     # preprocessor configs
