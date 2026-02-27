@@ -277,14 +277,21 @@ async def build_column_async(
     schema_name: str | None,
     num_rows: int,
     is_view: bool = False,
+    column_stats_mode: Literal[
+        "always_precise", "sample_for_large_tables", "skip_for_large_tables"
+    ] = "skip_for_large_tables",
 ) -> SQLColumnSchema:
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(table_name, schema=schema_name)
     dtype = column["type"].__visit_name__.upper()
+    nullable = column["nullable"]
 
-    if num_rows > 0:
+    if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _SAMPLE_THRESHOLD):
+        null_ratio = unique_ratio = None
+        num_unique = None
+    else:
         sampled_rows = num_rows
-        if num_rows > _SAMPLE_THRESHOLD:  # For large tables, we compute stats from a sampled subset of rows
+        if column_stats_mode == "sample_for_large_tables" and num_rows > _SAMPLE_THRESHOLD:
             if t_eng.engine.dialect.name in ("snowflake", "postgresql"):
                 sample_frac = min(_SAMPLE_SIZE / num_rows, 1.0)
                 sample_pct = max(sample_frac * 100, 0.01)  # sample at least 0.01%
@@ -301,7 +308,7 @@ async def build_column_async(
         null_ratio = num_null / sampled_rows
 
         if dtype in CATEGORICAL_TYPES:
-            if t_eng.engine.dialect.name in ("snowflake",):
+            if t_eng.engine.dialect.name in ("snowflake",) and column_stats_mode != "always_precise":
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
                 num_unique = int((await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0])
             else:
@@ -309,28 +316,28 @@ async def build_column_async(
                     0
                 ][0]
             unique_ratio = num_unique / sampled_rows
-            examples = (
-                await t_eng.run_query_async(
-                    select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
-                )
-            ).result
         else:
             num_unique = None
             unique_ratio = None
-            examples = (
-                await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(20))
-            ).result
+
+    if num_rows == 0:
+        examples = []
+    elif dtype in CATEGORICAL_TYPES and num_unique is not None:
+        examples = (
+            await t_eng.run_query_async(
+                select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
+            )
+        ).result
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
-        null_ratio = unique_ratio = 0.0
-        num_unique = 0
-        examples = []
+        examples = (await t_eng.run_query_async(select(col).select_from(tbl).where(col.isnot(None)).limit(5))).result
+        examples = [_convert(row[0]) for row in examples]
 
     return SQLColumnSchema(
         name=_denorm(t_eng, column["name"]),
         dtype=dtype,
-        nullable=column["nullable"],
+        nullable=nullable,
         null_ratio=null_ratio,
         num_unique=num_unique,
         unique_ratio=unique_ratio,

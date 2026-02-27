@@ -95,9 +95,9 @@ class SQLColumnSchema(BaseModel):
     not_used: bool = False
     """Indicates that the column contains no valid data or has been explicitly marked as not useful"""
     nullable: bool
-    null_ratio: float
-    num_unique: int | None  # Only for text or integer columns
-    unique_ratio: float | None  # Only for text or integer columns
+    null_ratio: float | None = None
+    num_unique: int | None = None  # Only for text or integer columns
+    unique_ratio: float | None = None  # Only for text or integer columns
     examples: list[Any]
     primary_key_type: Literal["single", "composite"] | None = None
     foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
