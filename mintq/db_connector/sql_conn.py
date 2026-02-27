@@ -447,6 +447,7 @@ async def build_schema_async(
     group_table_regexes: list[str] = [],
 ) -> SQLSchema:
     t0 = time.time()
+    logger.info(f"Building schema for {db_name}...")
     async_inspector = AsyncInspector(t_eng)
 
     if not dbms_supports_schema:
