@@ -84,14 +84,14 @@ class SQLBasicSchemaFormatter:
 
     def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
         res = f"- {self._quote_column(column.name)}: {column.dtype}"
-        if column.null_ratio == 1.0:
+        if column.null_ratio is not None and column.null_ratio == 1.0:
             res += " (all values are null)"
-        elif column.null_ratio > 0.0:
+        elif column.null_ratio is None or column.null_ratio > 0.0:
             res += " NULLABLE"
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR", "ENUM")
-            and column.num_unique
-            and column.unique_ratio
+            and column.num_unique is not None
+            and column.unique_ratio is not None
             and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
         )
         if is_categorical:  # show all possible values

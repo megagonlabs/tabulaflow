@@ -319,6 +319,7 @@ async def build_column_async(
             num_unique = None
             unique_ratio = None
 
+    examples: list[Any]
     if num_rows == 0:
         examples = []
     elif dtype in CATEGORICAL_TYPES and num_unique is not None:

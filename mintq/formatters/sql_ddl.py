@@ -151,7 +151,7 @@ class SQLDDLSchemaFormatter:
         parts.append(f"    {col_name} {col_type}")
 
         # NULL / NOT NULL constraint
-        if column.null_ratio == 0.0:
+        if column.null_ratio is not None and column.null_ratio == 0.0:
             parts.append("NOT NULL")
         else:
             parts.append("NULL")
@@ -173,8 +173,8 @@ class SQLDDLSchemaFormatter:
         if self.include_examples and column.examples:
             is_categorical = (
                 column.dtype in ("TEXT", "VARCHAR", "ENUM")
-                and column.num_unique
-                and column.unique_ratio
+                and column.num_unique is not None
+                and column.unique_ratio is not None
                 and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
             )
             if is_categorical:
