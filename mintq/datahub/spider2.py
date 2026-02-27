@@ -42,6 +42,11 @@ EVAL_STANDARD_PATCHES = {
 }
 
 
+# Workaround until https://github.com/xlang-ai/Spider2/issues/178 is fixed.
+# (Currently, AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET is not available)
+EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET"]
+
+
 @dataset_registry.register
 class Spider2SnowDatasetLoader:
     name: ClassVar = "spider2-snow"
@@ -82,7 +87,9 @@ class Spider2SnowDatasetLoader:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         with open(os.path.join(self.directory, "spider2-snow.jsonl"), "r") as f:
-            return list(dict.fromkeys([json.loads(line)["db_id"] for line in f]))
+            dbs = list(dict.fromkeys([json.loads(line)["db_id"] for line in f]))
+            dbs = [db for db in dbs if db not in EXCLUDE_DBS]
+            return dbs
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
         if split not in self.splits:
@@ -197,8 +204,8 @@ class Spider2SnowDatasetLoader:
         # We use a higher per-db concurrency for loading schemas
         schemas = []
         ##### Remove #####
-        # if os.getenv("MINTQ_DEBUG"):
-        #     databases = databases[databases.index("GBIF") :]
+        if os.getenv("MINTQ_DEBUG"):
+            databases = databases[databases.index("BRAZE_USER_EVENT_DEMO_DATASET") + 1 :]
         ##################
         for name in databases:
             ##### Remove #####
