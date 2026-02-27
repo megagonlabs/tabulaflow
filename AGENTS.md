@@ -5,7 +5,7 @@ Minimalist Text-to-Query toolkit for NL2SQL research. Supports BIRD-SQL, Spider 
 ## Package Manager
 
 Use `uv` for all Python operations:
-- Run scripts: `uv run <script.py>`
+- Run scripts: `uv run <script.py>` (python interpreter at `.venv/bin/python`)
 - Add dependencies: `uv add <package>`
 - Sync dependencies: `make sync` (runs `uv sync --all-extras --all-packages --group dev`)
 
