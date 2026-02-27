@@ -352,23 +352,7 @@ async def build_table_async(
 
     async_inspector = AsyncInspector(t_eng)
 
-    with warnings.catch_warnings(record=True) as caught_warnings:
-        warnings.simplefilter("always", SAWarning)
-        col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
-
-    for w in caught_warnings:
-        msg = str(w.message)
-        if "Failed to reflect" in msg:
-            msg += (
-                " (this table may not be accessible due to insufficient privileges;"
-                " the warning is harmless if you don't need this table)"
-            )
-        elif "Did not recognize type" in msg:
-            msg += (
-                " (the column's structured type may not be resolved due to insufficient privileges;"
-                " the column will fall back to NullType; the warning is harmless if you don't need this column)"
-            )
-        logger.warning("%s:%d: %s", w.filename, w.lineno, msg)
+    col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     columns = await asyncio.gather(
         *[build_column_async(t_eng, col, table_name, schema_name, num_rows, is_view=is_view) for col in col_dicts]
@@ -503,7 +487,22 @@ async def build_schema_async(
             )
             all_groups.append(group)
 
-    task_results = await asyncio.gather(*tasks)
+    with warnings.catch_warnings(record=True) as caught_warnings:
+        warnings.simplefilter("always", SAWarning)
+        task_results = await asyncio.gather(*tasks)
+
+    # # Collect tables that failed to reflect and show a single consolidated warning
+    # failed_tables = []
+    # for w in caught_warnings:
+    #     msg = str(w.message)
+    #     if "Failed to reflect" in msg:
+    #         # Extract table name from warning like "Failed to reflect 'SCHEMA' .'TABLE_NAME' ..."
+    #         match = re.search(r"Failed to reflect\s+'([^']+)'\s*\.\s*'([^']+)'", msg)
+    #         if match:
+    #             failed_tables.append(f"{match.group(1)}.{match.group(2)}")
+    #         else:
+    #             failed_tables.append(msg)
+
     tables = []
     for group, table in zip(all_groups, task_results):
         tables.append(table)
@@ -517,6 +516,16 @@ async def build_schema_async(
             # re-validate
             table = SQLTableSchema.model_validate(table.model_dump())
             tables.append(table)
+
+    # if failed_tables:
+    #     logger.warning(
+    #         "Successfully built %d table(s) for %s, but the schema does not include the following %d table(s) "
+    #         "due to likely insufficient privileges (harmless if you don't need them): %s",
+    #         len(tables),
+    #         db_name,
+    #         len(failed_tables),
+    #         ", ".join(failed_tables),
+    #     )
 
     return SQLSchema(name=db_name, tables=tables)
 
