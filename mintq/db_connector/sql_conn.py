@@ -286,8 +286,7 @@ async def build_column_async(
     nullable = column["nullable"]
 
     if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD):
-        null_ratio = unique_ratio = None
-        num_unique = None
+        null_ratio = num_unique = unique_ratio = None
     else:
         sampled_rows = num_rows
         if column_stats_mode == "sample_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD:
