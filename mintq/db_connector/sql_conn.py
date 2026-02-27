@@ -487,23 +487,11 @@ async def build_schema_async(
             )
             all_groups.append(group)
 
-    with warnings.catch_warnings(record=True) as caught_warnings:
+    with warnings.catch_warnings(record=True):
         # Capture Snowflake's "failed to reflect" warnings; let all others pass through normally
         warnings.filterwarnings("always", message="Failed to reflect", category=SAWarning)
         warnings.filterwarnings("always", message="Did not recognize type", category=SAWarning)
         task_results = await asyncio.gather(*tasks)
-
-    # # Collect tables that failed to reflect and show a single consolidated warning
-    # failed_tables = []
-    # for w in caught_warnings:
-    #     msg = str(w.message)
-    #     if "Failed to reflect" in msg:
-    #         # Extract table name from warning like "Failed to reflect 'SCHEMA' .'TABLE_NAME' ..."
-    #         match = re.search(r"Failed to reflect\s+'([^']+)'\s*\.\s*'([^']+)'", msg)
-    #         if match:
-    #             failed_tables.append(f"{match.group(1)}.{match.group(2)}")
-    #         else:
-    #             failed_tables.append(msg)
 
     tables = []
     for group, table in zip(all_groups, task_results):
@@ -517,15 +505,6 @@ async def build_schema_async(
                 col.examples = []
             tables.append(SQLTableSchema.model_validate(table.model_dump()))
 
-    # if failed_tables:
-    #     logger.warning(
-    #         "Successfully built %d table(s) for %s, but the schema does not include the following %d table(s) "
-    #         "due to likely insufficient privileges (harmless if you don't need them): %s",
-    #         len(tables),
-    #         db_name,
-    #         len(failed_tables),
-    #         ", ".join(failed_tables),
-    #     )
     logger.info(f"Time taken to build schema for {db_name}: {time.time() - t0} seconds")
     return SQLSchema(name=db_name, tables=tables)
 
