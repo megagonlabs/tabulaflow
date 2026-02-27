@@ -16,7 +16,8 @@ from mintq.utils import extract_code
 
 logger = logging.getLogger(__name__)
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.WARNING)
+logging.getLogger("mintq").setLevel(logging.INFO)
 
 
 PROMPT = """

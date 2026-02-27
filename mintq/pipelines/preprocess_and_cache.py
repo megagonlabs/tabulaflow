@@ -77,7 +77,8 @@ async def main_async() -> None:
     print(args)
     print()
 
-    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("mintq").setLevel(getattr(logging, args.log_level.upper()))
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"

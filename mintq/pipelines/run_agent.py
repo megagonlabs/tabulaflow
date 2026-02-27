@@ -285,7 +285,8 @@ async def main_async() -> None:
     print(args)
     print()
 
-    logging.basicConfig(level=getattr(logging, args.log_level.upper()))
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("mintq").setLevel(getattr(logging, args.log_level.upper()))
 
     ##### Remove #####
     is_a199_flag = False
