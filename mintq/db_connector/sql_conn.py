@@ -477,10 +477,10 @@ async def build_schema_async(
         view_name_set = set(view_names)
 
         groups = group_table_names(table_names + view_names, group_date_partitioned_tables, group_table_regexes)
-        num_raw = len(table_names) + len(view_names)
-        logger.info(
-            f"Schema {schema_name}: {num_raw} tables/views grouped into {len(groups)} representative tables ({', '.join(f'{g[0]} ({len(g)})' for g in groups)})"
-        )
+        if groups:
+            logger.info(
+                f"Schema {schema_name}: {len(table_names) + len(view_names)} tables/views grouped into {len(groups)} representative tables ({', '.join(f'{g[0]} ({len(g)})' for g in groups)})"
+            )
         for group in groups:
             tasks.append(
                 asyncio.create_task(build_table_async(t_eng, group[0], schema_name, is_view=group[0] in view_name_set))
