@@ -44,6 +44,7 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
+    parser.add_argument("--no_preprocessing", action="store_true")
     parser.add_argument("--preprocessors", nargs="*", default=["schema_preprocessor", "er_diagram_synthesizer"])
 
     # dataset
@@ -82,18 +83,22 @@ async def main_async() -> None:
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
     config.reload_from_env()
 
-    preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
-    all_preprocessor_args = parse_preprocessor_args(args)
-    preprocessors = [
-        preprocessor_registry.get_class(name)(**all_preprocessor_args.get(name, {})) for name in preprocessor_names
-    ]
-
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=args.databases)
     print(
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
+
+    if args.no_preprocessing:
+        print("Skipping preprocessing and caching because --no_preprocessing was set.")
+        return
+
+    preprocessor_names = args.preprocessors or preprocessor_registry.list_names()
+    all_preprocessor_args = parse_preprocessor_args(args)
+    preprocessors = [
+        preprocessor_registry.get_class(name)(**all_preprocessor_args.get(name, {})) for name in preprocessor_names
+    ]
 
     t0 = time.time()
     await preprocess_and_cache_async(dataset, preprocessors)
