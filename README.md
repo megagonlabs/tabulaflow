@@ -662,7 +662,7 @@ Feb 20
 - [x] other_exec_results -> alternative_results
 - [x] Patch spider2-snow eval
 
-Feb 24
+Feb 23
 - [x] GA360 - decide how to handle date-partitioned tables
   - group_date_partitioned_tables and group_table_regexes
   - no num_rows, examples and sampled_df for skipped tables
@@ -680,8 +680,27 @@ Feb 25
 - [x] spider2-snow dataset instructions
 - [x] Fix error message formatting
 
+Feb 26
+- [x] Fix bugs on spider2-snow
+  - [x] table sampling on views
+  - [x] snowflake fail to reflect warnings
+  - [x] df serialization error for NaT values
+  - [x] exclude AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET and NETHERLANDS_OPEN_MAP_DATA
+  - [x] Cache overwriting
+  - [x] schema compression infinite loop
+  - [x] log level
+  - [x] config options MINTQ_DATASET and MINTQ_SPLIT
+
+Feb 27
+- [x] Fix bugs on spider2-snow
+  - [x] column_stats_mode, fix schema fetching
+  - [x] column stats merging
+  - [x] example values fetching
+  - [x] _denorm
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
-- [ ] ER diagram synthesis and check length
+- [ ] schema compression
+- [ ] ER diagram synthesis
+
 
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
