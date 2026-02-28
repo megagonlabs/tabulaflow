@@ -55,7 +55,17 @@ class SQLBasicSchemaFormatter:
     def format_table(
         self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False
     ) -> str:
-        res = f"(SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE: {self._quote_if_needed(table.name)}"
+        res = f"(SCHEMA: {self._quote_if_needed(table.schema_name)}) TABLE:"
+        if table.name_patterns:  # This is a compressed table
+            pattern_strs = []
+            for pattern in table.name_patterns:
+                p = self._quote_if_needed(pattern.pattern)
+                if pattern.comment:
+                    p += f" ({pattern.comment})"
+                pattern_strs.append(p)
+            res += " " + ", ".join(pattern_strs)
+        else:
+            res += f" {self._quote_if_needed(table.name)}"
         if table.name_description:
             res += f" /* {table.name_description} */"
         if table.num_rows is not None:
