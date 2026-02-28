@@ -697,8 +697,11 @@ Feb 27
   - [x] column stats merging
   - [x] example values fetching
   - [x] _denorm
+- [x] schema compression v2 - multiple patterns for one table
+
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
 - [ ] schema compression
+- [ ] simple_zero_shot
 - [ ] ER diagram synthesis
 
 
