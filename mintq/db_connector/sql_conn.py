@@ -246,7 +246,7 @@ def _convert(value: Any) -> str | int | float | bool:
 
 def _denorm(t_eng: ThrottledEngine, name: str | Any) -> str:
     """Denormalize a normalized identifier back to its actual stored form as a plain str."""
-    if t_eng.engine.dialect.requires_name_normalize:
+    if getattr(t_eng.engine.dialect, "requires_name_normalize", False):
         return str(t_eng.engine.dialect.denormalize_name(name))
     return str(name)
 

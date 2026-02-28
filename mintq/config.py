@@ -131,8 +131,8 @@ class MintqConfig:
             value = value.upper()
             if value not in valid_levels:
                 raise ValueError(f"Invalid MINTQ_LOG_LEVEL={value!r}. Must be one of {valid_levels}")
-            return getattr(logging, value)
-        return getattr(logging, self.DEFAULT_LOG_LEVEL)
+            return int(getattr(logging, value))
+        return int(getattr(logging, self.DEFAULT_LOG_LEVEL))
 
     @property
     def column_stats_mode(self) -> ColumnStatsMode:
