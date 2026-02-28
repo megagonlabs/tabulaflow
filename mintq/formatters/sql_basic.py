@@ -66,8 +66,6 @@ class SQLBasicSchemaFormatter:
             res += " " + ", ".join(pattern_strs)
         else:
             res += f" {self._quote_if_needed(table.name)}"
-        if table.name_description:
-            res += f" /* {table.name_description} */"
         if table.num_rows is not None:
             res += f" ({table.num_rows} rows)"
         res = f"=== {res} ===\n"
