@@ -252,7 +252,6 @@ class SchemaCompressor:
         for name in remaining:
             res.append(NamePattern(pattern=name, original_names=[name]))
 
-        print(f"{len(names)} -> {len(res)}: {[name.pattern for name in res]}")
         return res
 
     def _merge_tables(self, tables: list[SQLTableSchema]) -> SQLTableSchema:
