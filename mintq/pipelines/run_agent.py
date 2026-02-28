@@ -363,7 +363,7 @@ async def main_async() -> None:
     agent_class = agent_registry.get_class(args.agent)
     agent_config = parse_agent_config(agent_class, args)
     print(f"Running agent {agent_class.name} with config:")
-    print(agent_mintq_config.model_dump_json(indent=2))
+    print(agent_config.model_dump_json(indent=2))
 
     t0 = time.time()
     result = await run_agent_async(

@@ -105,9 +105,13 @@ pydantic_ai.models.infer_model = _patched_infer_model
 # |     Patch pydantic_ai.models.Model.request() to support max concurrency throttling     |
 # ==========================================================================================
 
-_llm_semaphore = asyncio.Semaphore(mintq_config.max_llm_concurrency) if mintq_config.max_llm_concurrency is not None else None
+_llm_semaphore = (
+    asyncio.Semaphore(mintq_config.max_llm_concurrency) if mintq_config.max_llm_concurrency is not None else None
+)
 _llm_rate_limit = (
-    AsyncLimiter(mintq_config.max_llm_requests_per_minute, 60) if mintq_config.max_llm_requests_per_minute is not None else None
+    AsyncLimiter(mintq_config.max_llm_requests_per_minute, 60)
+    if mintq_config.max_llm_requests_per_minute is not None
+    else None
 )
 
 
@@ -163,7 +167,9 @@ patch_all_models()
 # ================================================================================================
 
 _embedding_semaphore = (
-    asyncio.Semaphore(mintq_config.max_embedding_concurrency) if mintq_config.max_embedding_concurrency is not None else None
+    asyncio.Semaphore(mintq_config.max_embedding_concurrency)
+    if mintq_config.max_embedding_concurrency is not None
+    else None
 )
 _embedding_rate_limit = (
     AsyncLimiter(mintq_config.max_embedding_requests_per_minute, 60)

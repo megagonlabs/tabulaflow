@@ -503,7 +503,11 @@ async def build_schema_async(
             tasks.append(
                 asyncio.create_task(
                     build_table_async(
-                        t_eng, group[0], schema_name, is_view=group[0] in view_name_set, column_stats_mode=column_stats_mode
+                        t_eng,
+                        group[0],
+                        schema_name,
+                        is_view=group[0] in view_name_set,
+                        column_stats_mode=column_stats_mode,
                     )
                 )
             )
