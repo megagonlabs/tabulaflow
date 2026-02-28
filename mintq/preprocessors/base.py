@@ -5,7 +5,7 @@ import asyncio
 import collections
 import os
 from mintq.db_connector import NL2QDBConnector
-from mintq.config import config
+from mintq.config import mintq_config
 from pydantic import BaseModel
 from mintq.schema import Usage, NL2QDataset
 from mintq.registry import Registry
@@ -150,7 +150,7 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         return all(os.path.exists(path) for path in cache_paths)
 
     async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> OutputT:
-        cache_dir = os.path.join(config.cache_dir, "preprocessors", self.name)
+        cache_dir = os.path.join(mintq_config.cache_dir, "preprocessors", self.name)
         os.makedirs(cache_dir, exist_ok=True)
 
         cache_id = self._get_cache_id(input_data)
@@ -159,18 +159,18 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         cache_key = tuple(cache_paths)
         lock = _cache_locks[cache_id]
         async with lock:
-            if config.cache_enabled and not config.cache_overwrite and self._cache_exists(cache_paths):
+            if mintq_config.cache_enabled and not mintq_config.cache_overwrite and self._cache_exists(cache_paths):
                 if cache_key in _memory_cache:
                     return _memory_cache[cache_key]  # type: ignore[return-value]
                 result = self._load_from_cache(cache_paths)
                 _memory_cache[cache_key] = result
                 return result  # type: ignore[return-value]
 
-            if config.cache_required:
+            if mintq_config.cache_required:
                 raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_paths}")
 
             result = await self._preprocess_impl_async(input_data)
-            if config.cache_enabled:
+            if mintq_config.cache_enabled:
                 self._save_to_cache(cache_paths, result)
                 _memory_cache[cache_key] = result
             return result

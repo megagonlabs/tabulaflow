@@ -22,7 +22,7 @@ from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.embeddings.base import EmbeddingModel
-from mintq.config import config
+from mintq.config import mintq_config
 
 
 # =====================================================================================================
@@ -105,15 +105,15 @@ pydantic_ai.models.infer_model = _patched_infer_model
 # |     Patch pydantic_ai.models.Model.request() to support max concurrency throttling     |
 # ==========================================================================================
 
-_llm_semaphore = asyncio.Semaphore(config.max_llm_concurrency) if config.max_llm_concurrency is not None else None
+_llm_semaphore = asyncio.Semaphore(mintq_config.max_llm_concurrency) if mintq_config.max_llm_concurrency is not None else None
 _llm_rate_limit = (
-    AsyncLimiter(config.max_llm_requests_per_minute, 60) if config.max_llm_requests_per_minute is not None else None
+    AsyncLimiter(mintq_config.max_llm_requests_per_minute, 60) if mintq_config.max_llm_requests_per_minute is not None else None
 )
 
 
 async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
     """
-    Wraps Model.request() with semaphore throttling based on max_llm_concurrency in config.
+    Wraps Model.request() with semaphore throttling based on max_llm_concurrency in mintq_config.
     """
     async with AsyncExitStack() as stack:
         if _llm_semaphore is not None:
@@ -163,18 +163,18 @@ patch_all_models()
 # ================================================================================================
 
 _embedding_semaphore = (
-    asyncio.Semaphore(config.max_embedding_concurrency) if config.max_embedding_concurrency is not None else None
+    asyncio.Semaphore(mintq_config.max_embedding_concurrency) if mintq_config.max_embedding_concurrency is not None else None
 )
 _embedding_rate_limit = (
-    AsyncLimiter(config.max_embedding_requests_per_minute, 60)
-    if config.max_embedding_requests_per_minute is not None
+    AsyncLimiter(mintq_config.max_embedding_requests_per_minute, 60)
+    if mintq_config.max_embedding_requests_per_minute is not None
     else None
 )
 
 
 async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
     """
-    Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in config.
+    Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in mintq_config.
     """
     async with AsyncExitStack() as stack:
         if _embedding_semaphore is not None:

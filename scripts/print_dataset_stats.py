@@ -4,7 +4,7 @@ import time
 import asyncio
 import os
 from tabulate import tabulate
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.preprocessors.components import SchemaCompressor
 from mintq.preprocessors.schema_preprocessor import SchemaPreprocessor
@@ -222,8 +222,8 @@ async def print_preprocessed_schema_stats(dataset: NL2QDataset, tablefmt: str = 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=config.default_dataset)
-    parser.add_argument("--split", default=config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.default_dataset)
+    parser.add_argument("--split", default=mintq_config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
     parser.add_argument("--no_cache", action="store_true")

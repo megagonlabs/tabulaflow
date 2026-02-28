@@ -14,7 +14,7 @@ import pandas as pd
 import logging
 import math
 import itertools
-from mintq.config import config
+from mintq.config import mintq_config
 
 logger = logging.getLogger(__name__)
 
@@ -549,9 +549,9 @@ class ExecResult(BaseModel):
 
     @model_validator(mode="after")
     def truncate_df(self) -> "ExecResult":
-        if config.df_max_rows and self.df is not None and len(self.df) > config.df_max_rows:
-            logger.warning(f"Truncated df from {len(self.df)} to {config.df_max_rows} rows")
-            self.df = self.df.head(config.df_max_rows)
+        if mintq_config.df_max_rows and self.df is not None and len(self.df) > mintq_config.df_max_rows:
+            logger.warning(f"Truncated df from {len(self.df)} to {mintq_config.df_max_rows} rows")
+            self.df = self.df.head(mintq_config.df_max_rows)
             self.df_is_truncated = True
         return self
 

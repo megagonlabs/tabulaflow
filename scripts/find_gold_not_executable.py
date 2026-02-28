@@ -2,15 +2,15 @@ import asyncio
 import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.pipelines.populate_exec_results import populate_task_async
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=config.default_dataset)
-    parser.add_argument("--split", default=config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.default_dataset)
+    parser.add_argument("--split", default=mintq_config.default_split)
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     print(args)

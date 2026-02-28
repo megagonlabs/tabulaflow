@@ -7,7 +7,7 @@ from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.preprocessors.base import NL2QPreprocessor, preprocessor_registry
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.schema import NL2QDataset
 
 logger = logging.getLogger(__name__)
@@ -48,8 +48,8 @@ async def main_async() -> None:
     parser.add_argument("--preprocessors", nargs="*", default=["schema_preprocessor", "er_diagram_synthesizer"])
 
     # dataset
-    parser.add_argument("--dataset", default=config.default_dataset)
-    parser.add_argument("--split", default=config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.default_dataset)
+    parser.add_argument("--split", default=mintq_config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
 
     # preprocessor configs
@@ -76,11 +76,11 @@ async def main_async() -> None:
     print(args)
     print()
 
-    config.setup_logging()
+    mintq_config.setup_logging()
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
-    config.reload_from_env()
+    mintq_config.reload_from_env()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

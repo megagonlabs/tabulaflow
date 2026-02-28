@@ -3,13 +3,13 @@ import time
 import os
 import asyncio
 from mintq.datahub import dataset_registry
-from mintq.config import config
+from mintq.config import mintq_config
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=config.default_dataset)
-    parser.add_argument("--split", default=config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.default_dataset)
+    parser.add_argument("--split", default=mintq_config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
@@ -22,7 +22,7 @@ async def main() -> None:
         os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
     else:
         os.environ["MINTQ_CACHE_OVERWRITE"] = "0"
-    config.reload_from_env()
+    mintq_config.reload_from_env()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

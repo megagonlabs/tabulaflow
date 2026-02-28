@@ -14,7 +14,7 @@ from mintq.utils import pprint_dict, tqdm_gather_with_exceptions
 from mintq.pipelines.utils import bool_flag
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.schema import (
     NL2QDataset,
     NL2QRunResult,
@@ -185,7 +185,7 @@ async def run_agent_async(
         subsample_size=dataset.subsample_size,
         dataset_extra_kwargs=dataset.dataset_extra_kwargs,
         agent=agent_cls.name,
-        agent_config=agent_config.model_dump(),
+        agent_config=agent_mintq_config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
         total_user_simulator_usage=reduce(lambda x, y: x + y, user_simulator_usages) if user_simulator_usages else None,
         aggregated_inference_metrics={},
@@ -251,8 +251,8 @@ async def main_async() -> None:
     parser.add_argument("--user_patience", default=None)
 
     # dataset
-    parser.add_argument("--dataset", default=config.default_dataset)
-    parser.add_argument("--split", default=config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.default_dataset)
+    parser.add_argument("--split", default=mintq_config.default_split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--qids", default=None, nargs="+")
     parser.add_argument("--subsample_size", default=None, type=int)
@@ -284,7 +284,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    config.setup_logging()
+    mintq_config.setup_logging()
 
     ##### Remove #####
     is_a199_flag = False
@@ -363,7 +363,7 @@ async def main_async() -> None:
     agent_class = agent_registry.get_class(args.agent)
     agent_config = parse_agent_config(agent_class, args)
     print(f"Running agent {agent_class.name} with config:")
-    print(agent_config.model_dump_json(indent=2))
+    print(agent_mintq_config.model_dump_json(indent=2))
 
     t0 = time.time()
     result = await run_agent_async(

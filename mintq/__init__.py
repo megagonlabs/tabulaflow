@@ -10,14 +10,14 @@ from mintq.datahub.base import dataset_registry
 from mintq.metrics.base import metric_registry
 from mintq.formatters.base import formatter_registry
 from mintq.preprocessors.base import preprocessor_registry
-from mintq.config import config
+from mintq.config import mintq_config
 import logging
 
 
 logger = logging.getLogger(__name__)
 
 
-logger.info("MINTQ Configuration: %s", config)
+logger.info("MINTQ Configuration: %s", mintq_config)
 
 if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
     with open(os.devnull, "w") as fnull, contextlib.redirect_stdout(fnull):
@@ -37,7 +37,7 @@ if os.getenv("LANGFUSE_HOST"):
         logger.error("Langfuse authentication failed. Please check your credentials and host.")
 
 
-if config.instrument_enabled:
+if mintq_config.instrument_enabled:
     Agent.instrument_all()
 
 __all__ = [

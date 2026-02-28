@@ -23,7 +23,7 @@ from mintq.schema import (
     ForeignKeySchema,
     ExecResult,
 )
-from mintq.config import config, ColumnStatsMode
+from mintq.config import mintq_config, ColumnStatsMode
 
 logger = logging.getLogger(__name__)
 
@@ -202,17 +202,17 @@ async def load_schema_with_cache_async(
     """
     Loads the database schema, utilizing a cache if available and enabled.
     """
-    schema_cache_dir = os.path.join(config.cache_dir, "schemas")
+    schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
     cache_path = os.path.join(schema_cache_dir, f"{global_id}.json")
 
     lock = _db_locks[global_id]
     async with lock:
-        if config.cache_enabled and not config.cache_overwrite and os.path.exists(cache_path):
+        if mintq_config.cache_enabled and not mintq_config.cache_overwrite and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        if config.cache_required:
+        if mintq_config.cache_required:
             raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
 
         dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
@@ -223,13 +223,13 @@ async def load_schema_with_cache_async(
             dbms_supports_schema,
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=config.column_stats_mode,
+            column_stats_mode=mintq_config.column_stats_mode,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
         else:
             t_eng.engine.dispose()
-        if config.cache_enabled:
+        if mintq_config.cache_enabled:
             with open(cache_path, "w", encoding="utf-8") as f:
                 f.write(schema.model_dump_json(indent=2))
         return schema

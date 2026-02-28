@@ -7,7 +7,7 @@ from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
 from mintq.schema import NL2QTask, Usage, Trajectory, SQLSchema
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.db_connector import NL2QDBConnector
 from mintq.toolhub import BaseTool
 from mintq.formatters.base import BaseSQLSchemaFormatter
@@ -36,7 +36,7 @@ def get_max_steps_processor(max_steps: int) -> Any:
 
 
 def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
-    if not config.instrument_enabled:
+    if not mintq_config.instrument_enabled:
         return predict_async_fn
 
     @wraps(predict_async_fn)
@@ -53,8 +53,8 @@ def instrument(predict_async_fn: Callable[..., Any]) -> Callable[..., Any]:
             return await predict_async_fn(self, task, *args, **kwargs)
 
         span_name = f"qid={task.qid}".strip()
-        if config.instrument_prefix:
-            span_name = f"{config.instrument_prefix} | {span_name}"
+        if mintq_config.instrument_prefix:
+            span_name = f"{mintq_config.instrument_prefix} | {span_name}"
         with tracer.start_as_current_span(span_name):
             return await predict_async_fn(self, task, *args, **kwargs)
 

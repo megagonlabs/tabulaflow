@@ -5,7 +5,7 @@ from typing import Literal, get_args
 ColumnStatsMode = Literal["always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 
 
-class Config:
+class MintqConfig:
     DEFAULT_CACHE_DIR = "cache"
     DEFAULT_CACHE_ENABLED = True
     DEFAULT_CACHE_OVERWRITE = False
@@ -157,7 +157,7 @@ class Config:
             name: getattr(self, name) for name, attr in self.__class__.__dict__.items() if isinstance(attr, property)
         }
         values = ", ".join(f"{k}={v!r}" for k, v in props.items())
-        return f"Config({values})"
+        return f"MintqConfig({values})"
 
     def setup_logging(self) -> None:
         """Configure logging for the mintq package.
@@ -173,4 +173,4 @@ class Config:
         self._validate()
 
 
-config = Config()
+mintq_config = MintqConfig()

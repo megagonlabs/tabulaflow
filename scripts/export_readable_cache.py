@@ -1,6 +1,6 @@
 import argparse
 import os
-from mintq.config import config
+from mintq.config import mintq_config
 from mintq.schema import SQLSchema
 from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -12,7 +12,7 @@ def main() -> None:
     parser.add_argument("--output_dir", default="readable/")
     args = parser.parse_args()
 
-    input_dir = os.path.join(config.cache_dir, "preprocessors", "schema_preprocessor")
+    input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "schema_preprocessor")
     output_dir = os.path.join(args.output_dir, "preprocessors", "schema_preprocessor")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -22,7 +22,7 @@ def main() -> None:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 
-    input_dir = os.path.join(config.cache_dir, "preprocessors", "er_diagram_synthesizer")
+    input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "er_diagram_synthesizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "er_diagram_synthesizer")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -32,7 +32,7 @@ def main() -> None:
             f.write(er_diagram_str)
     print(f"Exported {len(os.listdir(input_dir))} ER diagrams to {output_dir}")
 
-    input_dir = os.path.join(config.cache_dir, "schemas")
+    input_dir = os.path.join(mintq_config.cache_dir, "schemas")
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
