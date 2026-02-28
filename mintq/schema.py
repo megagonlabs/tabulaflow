@@ -103,15 +103,23 @@ class SQLColumnSchema(BaseModel):
     foreign_keys: list[ForeignKeySchema] = Field(default_factory=list)  # Includes composite foreign keys
 
 
+class NamePattern(BaseModel):
+    pattern: str
+    """(e.g. "events_{YYYYMMDD}")"""
+    comment: str | None = None
+    """(e.g. "YYYYMMDD from 20200101 to 20200102")"""
+    original_names: list[str] | None = None
+    """The original table names in the compressed schema (e.g. ["events_20200101", "events_20200102"])"""
+
+
 class SQLTableSchema(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
     name: str
-    name_description: str | None = None
-    """Used for describing the merged table name in the compressed schema (e.g. "YYYYMMDD from 20200101 to 20200102")"""
-    original_names: list[str] | None = None
-    """Used for recording the original table names in the compressed schema (e.g. "20200101, 20200102")"""
+    name_patterns: list[NamePattern] = Field(default_factory=list)
+    """All variations of the table name in the compressed schema."""
     schema_name: str | None = None
+    """null for DBMS that does not support schemas such as SQLite"""
     description: str | None = None
     is_view: bool
     columns: list[SQLColumnSchema]

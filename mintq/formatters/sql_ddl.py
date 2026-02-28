@@ -84,9 +84,14 @@ class SQLDDLSchemaFormatter:
         table_name = self.format_table_name(table)
         title = ""
         title += f"Schema: {self._quote_if_needed(table.schema_name)}"
-        title += f"\nTable: {self._quote_if_needed(table.name)}"
-        if table.name_description:
-            title += f" ({table.name_description})"
+        title += "\nTable:"
+        if table.name_patterns:  # This is a compressed table
+            for pattern in table.name_patterns:
+                title += f"\n  - {self._quote_if_needed(pattern.pattern)}"
+                if pattern.comment:
+                    title += f" ({pattern.comment})"
+        else:
+            title += f" {self._quote_if_needed(table.name)}"
         info_parts = [title]
         if table.num_rows is not None:
             info_parts.append(f"Rows: {table.num_rows}")

@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 import datetime
 import re
 from mintq.schema import (
+    NamePattern,
     SQLSchema,
     SQLTableSchema,
     SQLColumnSchema,
@@ -222,12 +223,12 @@ class SchemaCompressor:
             foreign_keys=columns[0].foreign_keys,
         )
 
-    def _describe_name(self, names: list[str]) -> Sequence[tuple[str, str | None, list[str]]]:
+    def _get_patterns(self, names: list[str]) -> Sequence[NamePattern]:
         """Example:
-        _describe_name(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
+        _get_patterns(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
         returns: [
-          ("revenue_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103", ["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
-          ("profit_YYYYMMDD", "YYYYMMDD from 20200101 to 20200103", ["profit_20200101", "profit_20200102", "profit_20200103"]),
+          NamePattern(pattern="revenue_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["revenue_20200101", "revenue_20200102", "revenue_20200103"]),
+          NamePattern(pattern="profit_YYYYMMDD", comment="YYYYMMDD from 20200101 to 20200103", original_names=["profit_20200101", "profit_20200102", "profit_20200103"]),
         ]
         """
         res = []
@@ -246,49 +247,30 @@ class SchemaCompressor:
                 name_description = func.summarize(variations)
                 if name_description is not None:
                     remaining = [name for name in remaining if name not in group_names]
-                    res.append((pattern, name_description, group_names))
+                    res.append(NamePattern(pattern=pattern, comment=name_description, original_names=group_names))
 
-        if remaining:
-            res.append(("{" + ",".join(remaining) + "}", None, remaining))  # type: ignore
+        for name in remaining:
+            res.append(NamePattern(pattern=name, original_names=[name]))
+
+        print(f"{len(names)} -> {len(res)}: {[name.pattern for name in res]}")
         return res
+
+    def _merge_tables(self, tables: list[SQLTableSchema]) -> SQLTableSchema:
+        if len(tables) == 1:
+            return tables[0]
+
+        merged_table = copy.deepcopy(tables[0])
+        merged_table.name_patterns = self._get_patterns([t.name for t in tables])
+        for i in range(len(merged_table.columns)):
+            merged_table.columns[i] = self._merge_columns([t.columns[i] for t in tables])
+        return merged_table
 
     def compress(self, schema: SQLSchema) -> SQLSchema:
         schema = copy.deepcopy(schema)
 
-        # We don't allow merging already merged tables
-        is_merged = set()
+        digest2tables = collections.defaultdict(list)
+        for table in schema.tables:
+            digest2tables[self._table_digest(table, schema)].append(table)
 
-        while True:
-            digest2tables = collections.defaultdict(list)
-            for table in schema.tables:
-                if table.name not in is_merged:
-                    digest2tables[self._table_digest(table, schema)].append(table)
-
-            if not digest2tables:  # All tables have been merged once
-                return schema
-
-            largest_group = max(digest2tables.values(), key=len)
-            if len(largest_group) == 1:  # No two tables have the same digest
-                return schema
-
-            for group_name, group_name_description, original_names in self._describe_name(
-                [t.name for t in largest_group]
-            ):
-                tables_to_merge = [t for t in largest_group if t.name in original_names]
-                merged_table = copy.deepcopy(largest_group[0])
-                merged_table.name = group_name
-                merged_table.name_description = group_name_description
-                merged_table.original_names = original_names
-                for i in range(len(merged_table.columns)):
-                    merged_table.columns[i] = self._merge_columns([t.columns[i] for t in tables_to_merge])
-
-                name_mapping = {(t.schema_name, t.name): merged_table.name for t in tables_to_merge}
-                new_tables = [merged_table] + [t for t in schema.tables if (t.schema_name, t.name) not in name_mapping]
-                for table in new_tables:
-                    for fk in table.foreign_keys:
-                        if (fk.foreign_schema_name, fk.foreign_table) in name_mapping:
-                            fk.foreign_table = name_mapping[(fk.foreign_schema_name, fk.foreign_table)]
-
-                is_merged.add(merged_table.name)
-
-                schema.tables = new_tables
+        schema.tables = [self._merge_tables(tables) for tables in digest2tables.values()]
+        return schema
