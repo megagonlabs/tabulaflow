@@ -223,7 +223,7 @@ class SchemaCompressor:
             foreign_keys=columns[0].foreign_keys,
         )
 
-    def _get_patterns(self, names: list[str]) -> Sequence[NamePattern]:
+    def _get_patterns(self, names: list[str]) -> list[NamePattern]:
         """Example:
         _get_patterns(names=["revenue_20200101", "revenue_20200102", "revenue_20200103", "profit_20200101", "profit_20200102", "profit_20200103"])
         returns: [
