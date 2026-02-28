@@ -265,7 +265,6 @@ async def main_async() -> None:
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--debug_litellm", action="store_true")
-    parser.add_argument("--log_level", default="WARNING", type=str)
 
     ##### Remove #####
     parser.add_argument("--TMP_resume_exp_for_postprocessor", default=None)
@@ -285,8 +284,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    logging.basicConfig(level=logging.WARNING)
-    logging.getLogger("mintq").setLevel(getattr(logging, args.log_level.upper()))
+    mintq_config.setup_logging()
 
     ##### Remove #####
     is_a199_flag = False

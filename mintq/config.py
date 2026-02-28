@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import Literal, get_args
 
@@ -18,6 +19,7 @@ class Config:
     DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 150
     DEFAULT_DATASET = "bird-sql"
     DEFAULT_SPLIT = "dev"
+    DEFAULT_LOG_LEVEL = "WARNING"
     DEFAULT_COLUMN_STATS_MODE: ColumnStatsMode = "skip_for_large_tables"
     # DEFAULT_MAX_LLM_CONCURRENCY = 4
     # DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 150
@@ -119,6 +121,20 @@ class Config:
         return self.DEFAULT_SPLIT
 
     @property
+    def log_level(self) -> int:
+        """Log level for the mintq logger.
+
+        Set via ``MINTQ_LOG_LEVEL`` (e.g. ``DEBUG``, ``INFO``, ``WARNING``).
+        """
+        valid_levels = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
+        if (value := os.getenv("MINTQ_LOG_LEVEL")) is not None:
+            value = value.upper()
+            if value not in valid_levels:
+                raise ValueError(f"Invalid MINTQ_LOG_LEVEL={value!r}. Must be one of {valid_levels}")
+            return getattr(logging, value)
+        return getattr(logging, self.DEFAULT_LOG_LEVEL)
+
+    @property
     def column_stats_mode(self) -> ColumnStatsMode:
         """Column statistics collection mode for schema building.
 
@@ -142,6 +158,15 @@ class Config:
         }
         values = ", ".join(f"{k}={v!r}" for k, v in props.items())
         return f"Config({values})"
+
+    def setup_logging(self) -> None:
+        """Configure logging for the mintq package.
+
+        Sets the root logger to WARNING and the ``mintq`` logger to the level
+        specified by ``MINTQ_LOG_LEVEL`` (default ``WARNING``).
+        """
+        logging.basicConfig(level=logging.WARNING)
+        logging.getLogger("mintq").setLevel(self.log_level)
 
     def reload_from_env(self) -> None:
         """Re-validate the config from environment variables."""

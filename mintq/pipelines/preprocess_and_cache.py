@@ -58,7 +58,6 @@ async def main_async() -> None:
     parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
 
     parser.add_argument("--overwrite", action="store_true")
-    parser.add_argument("--log_level", default="WARNING", type=str)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
@@ -77,8 +76,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    logging.basicConfig(level=logging.WARNING)
-    logging.getLogger("mintq").setLevel(getattr(logging, args.log_level.upper()))
+    config.setup_logging()
 
     os.environ["MINTQ_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_CACHE_REQUIRED"] = "0"
