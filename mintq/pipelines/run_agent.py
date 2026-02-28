@@ -185,7 +185,7 @@ async def run_agent_async(
         subsample_size=dataset.subsample_size,
         dataset_extra_kwargs=dataset.dataset_extra_kwargs,
         agent=agent_cls.name,
-        agent_config=agent_mintq_config.model_dump(),
+        agent_config=agent_config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
         total_user_simulator_usage=reduce(lambda x, y: x + y, user_simulator_usages) if user_simulator_usages else None,
         aggregated_inference_metrics={},
