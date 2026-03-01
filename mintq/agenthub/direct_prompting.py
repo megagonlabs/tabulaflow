@@ -61,6 +61,9 @@ You a helpful AI database expert that writes {{language}} queries given a user q
 """.strip()
 
 
+_FORMATTER_MAX_TOTAL_COLUMNS = 5000
+
+
 @agent_registry.register
 class DirectPrompting:
     name: ClassVar = "direct_prompting"
@@ -74,7 +77,13 @@ class DirectPrompting:
     ):
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+
+        formatter_kwargs = {}
+        if config.schema_formatter == "sql_ddl":
+            formatter_kwargs["max_total_columns"] = _FORMATTER_MAX_TOTAL_COLUMNS
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+            **formatter_kwargs
+        )
 
     @classmethod
     async def from_config_async(cls, config: BasicAgentConfig) -> "DirectPrompting":
