@@ -39,6 +39,15 @@ class SQLBasicSchemaFormatter:
     def format_table_name(self, table: SQLTableSchema) -> str:
         return self._full_table_name(table.name, table.schema_name)
 
+    def format_value(self, value: object) -> str:
+        """Format a single value for display."""
+        if isinstance(value, str):
+            return self._quote(self._truncate(value))
+        elif isinstance(value, float):
+            return f"{value:.3f}"
+        else:
+            return str(value)
+
     def _truncate(self, s: str) -> str:
         s = flatten_multiline(s)
         if len(s) <= self.example_max_chars:
@@ -128,19 +137,10 @@ class SQLBasicSchemaFormatter:
             and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
         )
         if is_categorical:  # show all possible values
-            valid_values = [self._quote(self._truncate(v)) for v in column.examples]
-            valid_values = sorted(valid_values)
+            valid_values = sorted(self.format_value(v) for v in column.examples)
             res += " {" + ", ".join(valid_values) + "}"
         elif column.examples:
-            example = column.examples[0]
-            if isinstance(example, str):
-                example = self._quote(example)
-            elif isinstance(example, float):
-                example = f"{example:.3f}"
-            else:
-                example = str(example)
-            example = self._truncate(example)
-            res += f" (e.g. {example})"
+            res += f" (e.g. {self.format_value(column.examples[0])})"
 
         if column.primary_key_type:
             res += " [PK]" if column.primary_key_type == "single" else " [PK-composite]"

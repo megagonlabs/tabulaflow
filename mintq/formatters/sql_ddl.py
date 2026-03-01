@@ -51,6 +51,15 @@ class SQLDDLSchemaFormatter:
             return s
         return s[: self.example_max_chars // 2] + "..." + s[-self.example_max_chars // 2 :]
 
+    def format_value(self, value: object) -> str:
+        """Format a single value for display in comments."""
+        if isinstance(value, str):
+            return f"'{self._truncate(value)}'"
+        elif isinstance(value, float):
+            return f"{value:.3f}"
+        else:
+            return str(value)
+
     def _map_dtype_to_sql(self, dtype: str) -> str:
         """Map internal dtype to SQL DDL type."""
         # Already in SQL format, return as-is
@@ -220,18 +229,10 @@ class SQLDDLSchemaFormatter:
                 and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
             )
             if is_categorical:
-                valid_values = [f"'{self._truncate(v)}'" for v in column.examples]
-                valid_values = sorted(valid_values)
+                valid_values = sorted(self.format_value(v) for v in column.examples)
                 comment_lines.append(f"        -- <values>{{{', '.join(valid_values)}}}</values>")
-            elif column.examples:
-                example = column.examples[0]
-                if isinstance(example, str):
-                    example = f"'{self._truncate(example)}'"
-                elif isinstance(example, float):
-                    example = f"{example:.3f}"
-                else:
-                    example = str(example)
-                comment_lines.append(f"        -- <example>{example}</example>")
+            else:
+                comment_lines.append(f"        -- <example>{self.format_value(column.examples[0])}</example>")
 
         # Add FK reference info as comment
         for fk in column.foreign_keys:
