@@ -95,12 +95,6 @@ You are an agent - please keep going until the database query is fully construct
 - Pay close attention to detail. When multiple similar columns exist, select the one that best matches the question and the instructions.
 - Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
 </goal>
-{%- if dataset_instructions %}
-
-<dataset_instructions>
-{{dataset_instructions}}
-</dataset_instructions>
-{%- endif %}
 
 <tool_calling>
 - You may call the `run_query` tool multiple times while building the final query.
@@ -108,6 +102,12 @@ You are an agent - please keep going until the database query is fully construct
 - You may use the `search_keywords` tool to search for multiple keywords within a column.
 - Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
 </tool_calling>
+{%- if dataset_instructions %}
+
+<dataset_instructions>
+{{dataset_instructions}}
+</dataset_instructions>
+{%- endif %}
 {%- if examples %}
 
 <examples>
