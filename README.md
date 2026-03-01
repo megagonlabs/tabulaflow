@@ -703,10 +703,12 @@ Feb 28
 - [x] Improve schema compression
 - [x] direct_prompting
 - [x] get_table_schema tool
-- [x] MINTQ_DEFAULT_QUERY_TIMEOUT
+- [x] MINTQ_QUERY_TIMEOUT
 
 Feb 29
 - [ ] Exp 214: direct_prompting on spider2-snow and bird-sql
+  - spider2-snow: 0.2132 spider2_ex, executable: 0.5294
+  - bird-sql:
 
 - [ ] ER diagram synthesis
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json

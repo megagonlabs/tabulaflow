@@ -110,20 +110,20 @@ class MintqConfig:
         return self.DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE
 
     @property
-    def default_dataset(self) -> str:
-        if (value := os.getenv("MINTQ_DEFAULT_DATASET")) is not None:
+    def dataset(self) -> str:
+        if (value := os.getenv("MINTQ_DATASET")) is not None:
             return value
         return self.DEFAULT_DATASET
 
     @property
-    def default_split(self) -> str:
-        if (value := os.getenv("MINTQ_DEFAULT_SPLIT")) is not None:
+    def split(self) -> str:
+        if (value := os.getenv("MINTQ_SPLIT")) is not None:
             return value
         return self.DEFAULT_SPLIT
 
     @property
-    def default_query_timeout(self) -> int | None:
-        if (value := os.getenv("MINTQ_DEFAULT_QUERY_TIMEOUT")) is not None:
+    def query_timeout(self) -> int | None:
+        if (value := os.getenv("MINTQ_QUERY_TIMEOUT")) is not None:
             return int(value) if int(value) > 0 else None
         return self.DEFAULT_QUERY_TIMEOUT
 

@@ -34,7 +34,7 @@ class RunQueryWithParamsTool:
         floatfmt: str = ".8g",
     ):
         self.db_connector = db_connector
-        self.timeout = mintq_config.default_query_timeout if timeout is _UNSET else timeout
+        self.timeout = mintq_config.query_timeout if timeout is _UNSET else timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt

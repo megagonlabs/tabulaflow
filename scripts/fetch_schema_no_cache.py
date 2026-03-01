@@ -9,8 +9,8 @@ from mintq.formatters import SQLDDLSchemaFormatter
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=mintq_config.default_dataset)
-    parser.add_argument("--split", default=mintq_config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.dataset)
+    parser.add_argument("--split", default=mintq_config.split)
     parser.add_argument("--database", default="european_football_2")
     parser.add_argument("--from_cache", action="store_true")
     args = parser.parse_args()

@@ -222,8 +222,8 @@ async def print_preprocessed_schema_stats(dataset: NL2QDataset, tablefmt: str = 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=mintq_config.default_dataset)
-    parser.add_argument("--split", default=mintq_config.default_split)
+    parser.add_argument("--dataset", default=mintq_config.dataset)
+    parser.add_argument("--split", default=mintq_config.split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
     parser.add_argument("--no_cache", action="store_true")
