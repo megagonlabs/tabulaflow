@@ -706,9 +706,12 @@ Feb 28
 - [x] MINTQ_QUERY_TIMEOUT
 
 Feb 29
-- [ ] Exp 214: direct_prompting on spider2-snow and bird-sql
+- [x] Exp 214: direct_prompting on spider2-snow and bird-sql
   - spider2-snow: 0.2132 spider2_ex, executable: 0.5294
-  - bird-sql:
+  - bird-sql: 0.6336 bird_sql_ex, executable: 0.9733
+- [ ] Tune Spider2 instructions
+  - [x] Percentage values
+  - [ ]
 
 - [ ] ER diagram synthesis
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
