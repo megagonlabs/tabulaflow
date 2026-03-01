@@ -1,6 +1,6 @@
 import copy
 import collections
-from typing import Any, Hashable, Protocol, Sequence, TypeVar
+from typing import Any, Hashable, Protocol, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
@@ -55,7 +55,7 @@ class YearAffixClusterFunc:
         if not match:
             return name, None
         year = int(match.group())
-        if year < 1000 or year > datetime.datetime.now().year:
+        if year < 1000:
             return name, None
         pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
         return pattern, year
@@ -85,13 +85,7 @@ class YearMonthAffixClusterFunc:
         year = int(match.group()[:4])
         month = int(match.group()[4:])
         day = 1
-        if (
-            year < 1000
-            or month < 12
-            and datetime.date(year, month + 1, day) > datetime.date.today()
-            or month == 12
-            and datetime.date(year + 1, 1, day) > datetime.date.today()
-        ):
+        if year < 1000 or not (1 <= month <= 12):
             return name, None
         pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
         return pattern, datetime.date(year, month, day)
@@ -129,10 +123,14 @@ class DateAffixClusterFunc:
         year = int(match.group()[:4])
         month = int(match.group()[4:6])
         day = int(match.group()[6:])
-        if year < 1000 or datetime.date(year, month, day) > datetime.date.today():
+        if year < 1000:
+            return name, None
+        try:
+            parsed_date = datetime.date(year, month, day)
+        except ValueError:
             return name, None
         pattern = re.sub(r"\d{4}\d{2}\d{2}", "{YYYYMMDD}", name, count=1)
-        return pattern, datetime.date(year, month, day)
+        return pattern, parsed_date
 
     def summarize(self, variations: list[datetime.date]) -> str | None:
         dates = sorted(variations)
