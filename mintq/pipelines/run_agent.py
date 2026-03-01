@@ -267,12 +267,12 @@ async def main_async() -> None:
     parser.add_argument("--debug_litellm", action="store_true")
 
     ##### Remove #####
-    parser.add_argument("--TMP_resume_exp_for_postprocessor", default=None)
+    parser.add_argument("--TMP_resume_exp_for_postproFcessor", default=None)
     ##################
 
     args = parser.parse_args()
     if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev", num_few_shot_examples=5)
+        parser.set_defaults(split="dev", num_few_shot_examples=5 if args.agent == "sql_agent" else 0)
     elif args.dataset == "spider2-snow":
         parser.set_defaults(split="test", num_few_shot_examples=0)
 
