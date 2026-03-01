@@ -60,7 +60,7 @@ test-spider2-direct-prompting:
 
 .PHONY: test-bird-mini-agent
 test-bird-mini-agent:
-	uv run mintq/pipelines/run_agent.py --agent mini_agent --dataset bird-sql --debug
+	uv run mintq/pipelines/run_agent.py --agent mini_agent --dataset bird-sql --debug --num_few_shot_examples 0
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug	
