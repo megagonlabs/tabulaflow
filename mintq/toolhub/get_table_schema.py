@@ -1,6 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
+from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
@@ -14,8 +15,8 @@ class GetTableSchemaToolMetrics(BaseModel):
 class GetTableSchemaTool:
     name: ClassVar = "get_table_schema"
 
-    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter):
-        self.schema = schema
+    def __init__(self, db_connector: BaseSQLDBConnector, formatter: BaseSQLSchemaFormatter):
+        self.db_connector = db_connector
         self.formatter = formatter
         self._metrics = GetTableSchemaToolMetrics()
 
@@ -43,6 +44,8 @@ class GetTableSchemaTool:
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
+
+        return self.formatter.format_table(table)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
