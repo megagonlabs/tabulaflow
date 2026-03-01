@@ -23,96 +23,6 @@ class BaseClusterFunc(Protocol[T]):
 
 
 @dataclass
-class IndexAffixClusterFunc:
-    max_missing_ratio: float = 0.2
-
-    def extract(self, name: str) -> tuple[str, int | None]:
-        match = re.search(r"\d+", name)
-        if not match:
-            return name, None
-        pattern = re.sub(r"\d+", "{#}", name, count=1)
-        return pattern, int(match.group())
-
-    def summarize(self, variations: list[int]) -> str | None:
-        indexes = sorted(variations)
-        a = indexes[0]
-        b = indexes[-1]
-        missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
-        if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
-            return None
-        res = f"# from {a} to {b}"
-        if missing_indexes:
-            res += f" except {', '.join([str(i) for i in missing_indexes])}"
-        return res
-
-
-@dataclass
-class YearAffixClusterFunc:
-    max_missing_ratio: float = 0.2
-
-    def extract(self, name: str) -> tuple[str, int | None]:
-        match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
-        if not match:
-            return name, None
-        year = int(match.group())
-        if year < 1000:
-            return name, None
-        pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
-        return pattern, year
-
-    def summarize(self, variations: list[int]) -> str | None:
-        years = sorted(variations)
-        a = years[0]
-        b = years[-1]
-        years_set = set(years)
-        missing_years = [y for y in range(a, b + 1) if y not in years_set]
-        if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
-            return None
-        res = f"YEAR from {a} to {b}"
-        if missing_years:
-            res += f" except {', '.join([str(y) for y in missing_years])}"
-        return res
-
-
-@dataclass
-class YearMonthAffixClusterFunc:
-    max_missing_ratio: float = 0.2
-
-    def extract(self, name: str) -> tuple[str, datetime.date | None]:
-        match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
-        if not match:
-            return name, None
-        year = int(match.group()[:4])
-        month = int(match.group()[4:])
-        day = 1
-        if year < 1000 or not (1 <= month <= 12):
-            return name, None
-        pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
-        return pattern, datetime.date(year, month, day)
-
-    def summarize(self, variations: list[datetime.date]) -> str | None:
-        dates = sorted(variations)
-        a = dates[0]
-        b = dates[-1]
-        dates_set = set(dates)
-        missing_dates = []
-        current = a
-        while current <= b:
-            if current not in dates_set:
-                missing_dates.append(current)
-            if current.month == 12:
-                current = current.replace(year=current.year + 1, month=1)
-            else:
-                current = current.replace(month=current.month + 1)
-        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
-            return None
-        res = f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
-        if missing_dates:
-            res += f" except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
-        return res
-
-
-@dataclass
 class DateAffixClusterFunc:
     max_missing_ratio: float = 0.2
 
@@ -133,7 +43,7 @@ class DateAffixClusterFunc:
         return pattern, parsed_date
 
     def summarize(self, variations: list[datetime.date]) -> str | None:
-        dates = sorted(variations)
+        dates = sorted(set(variations))
         a = dates[0]
         b = dates[-1]
         dates_set = set(dates)
@@ -144,10 +54,100 @@ class DateAffixClusterFunc:
                 missing_dates.append(current)
             current += datetime.timedelta(days=1)
         if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
-            return None
+            return "{" + ",".join(d.strftime("%Y%m%d") for d in dates) + "}"
         res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
         if missing_dates:
             res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
+        return res
+
+
+@dataclass
+class YearMonthAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, datetime.date | None]:
+        match = re.search(r"(?<!\d)\d{4}\d{2}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group()[:4])
+        month = int(match.group()[4:])
+        day = 1
+        if year < 1000 or not (1 <= month <= 12):
+            return name, None
+        pattern = re.sub(r"\d{4}\d{2}", "{YYYYMM}", name, count=1)
+        return pattern, datetime.date(year, month, day)
+
+    def summarize(self, variations: list[datetime.date]) -> str | None:
+        dates = sorted(set(variations))
+        a = dates[0]
+        b = dates[-1]
+        dates_set = set(dates)
+        missing_dates = []
+        current = a
+        while current <= b:
+            if current not in dates_set:
+                missing_dates.append(current)
+            if current.month == 12:
+                current = current.replace(year=current.year + 1, month=1)
+            else:
+                current = current.replace(month=current.month + 1)
+        if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
+            return "{" + ",".join(d.strftime("%Y%m") for d in dates) + "}"
+        res = f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
+        if missing_dates:
+            res += f" except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
+        return res
+
+
+@dataclass
+class YearAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, int | None]:
+        match = re.search(r"(?<!\d)\d{4}(?!\d)", name)
+        if not match:
+            return name, None
+        year = int(match.group())
+        if year < 1000:
+            return name, None
+        pattern = re.sub(r"\d{4}", "{YEAR}", name, count=1)
+        return pattern, year
+
+    def summarize(self, variations: list[int]) -> str | None:
+        years = sorted(set(variations))
+        a = years[0]
+        b = years[-1]
+        years_set = set(years)
+        missing_years = [y for y in range(a, b + 1) if y not in years_set]
+        if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
+            return "{" + ",".join(str(y) for y in years) + "}"
+        res = f"YEAR from {a} to {b}"
+        if missing_years:
+            res += f" except {', '.join([str(y) for y in missing_years])}"
+        return res
+
+
+@dataclass
+class IndexAffixClusterFunc:
+    max_missing_ratio: float = 0.2
+
+    def extract(self, name: str) -> tuple[str, int | None]:
+        match = re.search(r"\d+", name)
+        if not match:
+            return name, None
+        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        return pattern, int(match.group())
+
+    def summarize(self, variations: list[int]) -> str | None:
+        indexes = sorted(set(variations))
+        a = indexes[0]
+        b = indexes[-1]
+        missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
+        if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
+            return "{" + ",".join(str(i) for i in indexes) + "}"
+        res = f"# from {a} to {b}"
+        if missing_indexes:
+            res += f" except {', '.join([str(i) for i in missing_indexes])}"
         return res
 
 
