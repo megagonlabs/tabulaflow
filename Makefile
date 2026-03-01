@@ -52,7 +52,7 @@ test-bird-direct-prompting:
 
 .PHONY: test-spider2-direct-prompting
 test-spider2-direct-prompting:
-	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset spider2-snow --debug
+	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
