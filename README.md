@@ -703,7 +703,7 @@ Feb 28
 - [x] Improve schema compression
 - [x] direct_prompting
 - [x] get_table_schema tool
-- [x] Fix timeout
+- [x] MINTQ_DEFAULT_QUERY_TIMEOUT
 
 Feb 29
 - [ ] Exp 214: direct_prompting on spider2-snow and bird-sql
