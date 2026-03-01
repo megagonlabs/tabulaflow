@@ -41,6 +41,23 @@ test-agent:
 		uv run mintq/pipelines/evaluate.py --debug; \
 	done
 
+
+.PHONY: test-bird-direct-prompting
+test-bird-direct-prompting:
+	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset bird-sql --debug --num_few_shot_examples 0
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
+
+
+.PHONY: test-spider2-direct-prompting
+test-spider2-direct-prompting:
+	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset spider2-snow --debug
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
+
+
 .PHONY: test-bird-agent
 test-bird-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug
