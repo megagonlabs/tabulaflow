@@ -205,6 +205,8 @@ class SchemaCompressor:
         return (schema_name, columns, primary_key, out_foreign_keys, in_foreign_keys)
 
     def _merge_columns(self, columns: list[SQLColumnSchema]) -> SQLColumnSchema:
+        assert all(c.name == columns[0].name for c in columns)
+        assert all(c.dtype == columns[0].dtype for c in columns)
         all_null_ratio = [c.null_ratio for c in columns if c.null_ratio is not None]
         merged_null_ratio = sum(all_null_ratio) / len(all_null_ratio) if all_null_ratio else None
         merged_num_unique = max([c.num_unique for c in columns if c.num_unique is not None], default=None)
@@ -261,8 +263,15 @@ class SchemaCompressor:
 
         merged_table = copy.deepcopy(tables[0])
         merged_table.name_patterns = self._get_patterns([t.name for t in tables])
-        for i in range(len(merged_table.columns)):
-            merged_table.columns[i] = self._merge_columns([t.columns[i] for t in tables])
+        # Match columns by name (not index) since tables with the same digest
+        # may have different column orders.
+        col_name_to_columns: dict[str, list[SQLColumnSchema]] = collections.defaultdict(list)
+        for t in tables:
+            for c in t.columns:
+                col_name_to_columns[c.name].append(c)
+        merged_table.columns = [
+            self._merge_columns(col_name_to_columns[c.name]) for c in merged_table.columns
+        ]
         return merged_table
 
     def compress(self, schema: SQLSchema) -> SQLSchema:
