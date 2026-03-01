@@ -20,6 +20,8 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - For example, `TRIM(BOTH 'chars' FROM expr)` is not valid in Snowflake. Use `TRIM(expr, 'chars')` or `REPLACE()` instead.
 - **Case-Sensitive Identifiers:**
   - Columns defined with double-quoted lowercase names (`CREATE TABLE ... ("col_name" ...)`) must always be referenced with double quotes.
+- **No Empty Results:**
+  - The correct SQL query must return at least one row. If your query returns empty results, it is likely incorrect or the question may require a different interpretation.
 """.strip()
 
 
