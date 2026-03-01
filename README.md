@@ -699,10 +699,17 @@ Feb 27
   - [x] _denorm
 - [x] schema compression v2 - multiple patterns for one table
 
-- [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
-- [ ] schema compression
-- [ ] simple_zero_shot
+Feb 28
+- [x] Improve schema compression
+- [x] direct_prompting
+- [x] get_table_schema tool
+- [x] Fix timeout
+
+Feb 29
+- [ ] Exp 214: direct_prompting on spider2-snow and bird-sql
+
 - [ ] ER diagram synthesis
+- [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
 
 
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
