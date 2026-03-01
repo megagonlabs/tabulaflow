@@ -135,7 +135,7 @@ class IndexAffixClusterFunc:
         match = re.search(r"\d+", name)
         if not match:
             return name, None
-        pattern = re.sub(r"\d+", "{#}", name, count=1)
+        pattern = re.sub(r"\d+", "{NUM}", name, count=1)
         return pattern, int(match.group())
 
     def summarize(self, variations: list[int]) -> str | None:
@@ -145,7 +145,7 @@ class IndexAffixClusterFunc:
         missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
         if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
             return "{" + ",".join(str(i) for i in indexes) + "}"
-        res = f"# from {a} to {b}"
+        res = f"NUM from {a} to {b}"
         if missing_indexes:
             res += f" except {', '.join([str(i) for i in missing_indexes])}"
         return res
