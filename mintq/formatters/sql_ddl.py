@@ -14,9 +14,9 @@ class SQLDDLSchemaFormatter:
     quote_char: str = '"'
     always_quote_columns: bool = True
     include_examples: bool = True
-    include_sampled_rows: bool = True
-    include_sampled_rows_max_columns: int = 10
-    include_sampled_rows_max_tables: int = 20
+    include_sampled_df: bool = True
+    include_sampled_df_max_columns: int = 10
+    include_sampled_df_max_tables: int = 20
     example_max_chars: int = 100
     max_total_columns: int | None = 200
 
@@ -122,9 +122,9 @@ class SQLDDLSchemaFormatter:
 
         # Add sampled rows to info block
         if (
-            self.include_sampled_rows
-            and len(table.columns) <= self.include_sampled_rows_max_columns
-            and (num_tables is None or num_tables <= self.include_sampled_rows_max_tables)
+            self.include_sampled_df
+            and len(table.columns) <= self.include_sampled_df_max_columns
+            and (num_tables is None or num_tables <= self.include_sampled_df_max_tables)
             and table.sampled_df is not None
             and not table.sampled_df.empty
         ):
