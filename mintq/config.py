@@ -19,6 +19,7 @@ class MintqConfig:
     DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 150
     DEFAULT_DATASET = "bird-sql"
     DEFAULT_SPLIT = "dev"
+    DEFAULT_QUERY_TIMEOUT = 90
     DEFAULT_LOG_LEVEL = "WARNING"
     DEFAULT_COLUMN_STATS_MODE: ColumnStatsMode = "skip_for_large_tables"
     # DEFAULT_MAX_LLM_CONCURRENCY = 4
@@ -119,6 +120,12 @@ class MintqConfig:
         if (value := os.getenv("MINTQ_SPLIT")) is not None:
             return value
         return self.DEFAULT_SPLIT
+
+    @property
+    def default_query_timeout(self) -> int | None:
+        if (value := os.getenv("MINTQ_DEFAULT_QUERY_TIMEOUT")) is not None:
+            return int(value) if int(value) > 0 else None
+        return self.DEFAULT_QUERY_TIMEOUT
 
     @property
     def log_level(self) -> int:
