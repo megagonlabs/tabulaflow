@@ -54,7 +54,7 @@ class DateAffixClusterFunc:
                 missing_dates.append(current)
             current += datetime.timedelta(days=1)
         if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
-            return "{" + ",".join(d.strftime("%Y%m%d") for d in dates) + "}"
+            return "YYYYMMDD IN {" + ",".join(d.strftime("%Y%m%d") for d in dates) + "}"
         res = f"YYYYMMDD from {a.strftime('%Y%m%d')} to {b.strftime('%Y%m%d')}"
         if missing_dates:
             res += f" except {', '.join([d.strftime('%Y%m%d') for d in missing_dates])}"
@@ -92,7 +92,7 @@ class YearMonthAffixClusterFunc:
             else:
                 current = current.replace(month=current.month + 1)
         if len(missing_dates) / ((b - a).days + 1) > self.max_missing_ratio:
-            return "{" + ",".join(d.strftime("%Y%m") for d in dates) + "}"
+            return "YYYYMM IN {" + ",".join(d.strftime("%Y%m") for d in dates) + "}"
         res = f"YYYYMM from {a.strftime('%Y%m')} to {b.strftime('%Y%m')}"
         if missing_dates:
             res += f" except {', '.join([d.strftime('%Y%m') for d in missing_dates])}"
@@ -120,7 +120,7 @@ class YearAffixClusterFunc:
         years_set = set(years)
         missing_years = [y for y in range(a, b + 1) if y not in years_set]
         if len(missing_years) / (b - a + 1) > self.max_missing_ratio:
-            return "{" + ",".join(str(y) for y in years) + "}"
+            return "YEAR IN {" + ",".join(str(y) for y in years) + "}"
         res = f"YEAR from {a} to {b}"
         if missing_years:
             res += f" except {', '.join([str(y) for y in missing_years])}"
@@ -144,7 +144,7 @@ class IndexAffixClusterFunc:
         b = indexes[-1]
         missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
         if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
-            return "{" + ",".join(str(i) for i in indexes) + "}"
+            return "NUM IN {" + ",".join(str(i) for i in indexes) + "}"
         res = f"NUM from {a} to {b}"
         if missing_indexes:
             res += f" except {', '.join([str(i) for i in missing_indexes])}"
