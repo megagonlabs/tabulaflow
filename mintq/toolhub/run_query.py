@@ -5,7 +5,9 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import PredQuery
 from mintq.formatters.utils import format_df
 from mintq.toolhub.utils import format_sqlalchemy_error_msg
+from mintq.config import mintq_config
 
+_UNSET = object()
 
 class RunQueryToolMetrics(BaseModel):
     num_calls: int = 0
@@ -26,13 +28,13 @@ class RunQueryWithParamsTool:
     def __init__(
         self,
         db_connector: BaseSQLDBConnector,
-        timeout: int | None = 90,
+        timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
     ):
         self.db_connector = db_connector
-        self.timeout = timeout
+        self.timeout = mintq_config.default_query_timeout if timeout is _UNSET else timeout
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt

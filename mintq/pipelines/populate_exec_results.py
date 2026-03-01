@@ -6,6 +6,7 @@ from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.schema import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.db_connector import NL2QDBConnector
+from mintq.config import mintq_config
 
 
 async def populate_task_async(
@@ -52,7 +53,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
-    parser.add_argument("--timeout", type=int, default=90)
+    parser.add_argument("--timeout", type=int, default=mintq_config.default_query_timeout)
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
