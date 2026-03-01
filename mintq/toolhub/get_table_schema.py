@@ -3,7 +3,6 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 

@@ -1,46 +1,24 @@
-import asyncio
-import copy
-import json
 import jinja2
 import time
-from dataclasses import dataclass, field
-from typing import ClassVar, Any
-import numpy as np
-import numpy.typing as npt
-from pydantic import BaseModel
+from typing import ClassVar
 from pydantic_ai import Agent
 import logging
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.schema import (
-    ExtraPredInfo,
-    NL2QDataset,
-    SQLSchema,
-    SQLTableSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
     PredQuery,
     Usage,
     Trajectory,
-    ColumnRef,
 )
-from mintq.preprocessors import ERDiagramSynthesizer, QuestionEmbedder, SchemaCompressor, SchemaPreprocessor
-from mintq.toolhub import (
-    BaseTool,
-    RunQueryNoParamsTool,
-    SearchKeywordsTool,
-    FinishTool,
-)
+from mintq.preprocessors import SchemaCompressor
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
-    get_max_steps_processor,
     instrument,
     BasicAgentConfig,
-    TaskRunContext,
 )
-from mintq.utils import extract_code, extract_all_source_columns
-from mintq.preprocessors.er_diagram import ERDiagram
-from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
+from mintq.utils import extract_code
 
 
 logger = logging.getLogger(__name__)
