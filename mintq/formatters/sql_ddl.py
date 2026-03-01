@@ -16,6 +16,7 @@ class SQLDDLSchemaFormatter:
     include_examples: bool = True
     include_sampled_rows: bool = True
     include_sampled_rows_max_columns: int = 10
+    include_sampled_rows_max_tables: int = 20
     example_max_chars: int = 100
     max_total_columns: int | None = 200
 
@@ -83,7 +84,11 @@ class SQLDDLSchemaFormatter:
         quotas = self._compute_column_quotas(schema.tables)
         for table, max_columns in zip(schema.tables, quotas):
             lines.append("")  # Blank line between tables
-            lines.append(self.format_table(table, pk_fk_column_only, add_description, max_columns=max_columns))
+            lines.append(
+                self.format_table(
+                    table, pk_fk_column_only, add_description, max_columns=max_columns, num_tables=len(schema.tables)
+                )
+            )
 
         return "```sql\n" + "\n".join(lines) + "\n```"
 
@@ -93,6 +98,7 @@ class SQLDDLSchemaFormatter:
         pk_fk_column_only: bool = False,
         add_description: bool = False,
         max_columns: int | None = None,
+        num_tables: int | None = None,
     ) -> str:
         lines = []
 
@@ -118,6 +124,7 @@ class SQLDDLSchemaFormatter:
         if (
             self.include_sampled_rows
             and len(table.columns) <= self.include_sampled_rows_max_columns
+            and (num_tables is None or num_tables <= self.include_sampled_rows_max_tables)
             and table.sampled_df is not None
             and not table.sampled_df.empty
         ):
