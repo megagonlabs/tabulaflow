@@ -18,6 +18,7 @@ class SQLDDLSchemaFormatter:
     include_sampled_df_max_columns: int = 10
     include_sampled_df_max_tables: int = 20
     example_max_chars: int = 100
+    floatfmt: str = ".8g"
     max_total_columns: int | None = 200
 
     def _quote(self, s: str) -> str:
@@ -56,7 +57,7 @@ class SQLDDLSchemaFormatter:
         if isinstance(value, str):
             return f"'{self._truncate(value)}'"
         elif isinstance(value, float):
-            return f"{value:.3f}"
+            return f"{value:{self.floatfmt}}"
         else:
             return str(value)
 

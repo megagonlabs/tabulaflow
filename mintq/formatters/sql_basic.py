@@ -12,6 +12,7 @@ class SQLBasicSchemaFormatter:
     quote_char: str = '"'
     always_quote_columns: bool = True
     example_max_chars: int = 100
+    floatfmt: str = ".8g"
     max_total_columns: int | None = 200
 
     def _quote(self, s: str) -> str:
@@ -44,7 +45,7 @@ class SQLBasicSchemaFormatter:
         if isinstance(value, str):
             return self._quote(self._truncate(value))
         elif isinstance(value, float):
-            return f"{value:.3f}"
+            return f"{value:{self.floatfmt}}"
         else:
             return str(value)
 
