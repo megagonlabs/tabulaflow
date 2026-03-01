@@ -131,23 +131,26 @@ class YearAffixClusterFunc:
 class IndexAffixClusterFunc:
     max_missing_ratio: float = 0.2
 
-    def extract(self, name: str) -> tuple[str, int | None]:
+    def extract(self, name: str) -> tuple[str, str | None]:
         match = re.search(r"\d+", name)
         if not match:
             return name, None
         pattern = re.sub(r"\d+", "{NUM}", name, count=1)
-        return pattern, int(match.group())
+        return pattern, str(match.group())
 
-    def summarize(self, variations: list[int]) -> str | None:
-        indexes = sorted(set(variations))
-        a = indexes[0]
-        b = indexes[-1]
-        missing_indexes = [i for i in range(a, b + 1) if i not in indexes]
-        if len(missing_indexes) / (b - a + 1) > self.max_missing_ratio:
-            return "NUM IN {" + ",".join(str(i) for i in indexes) + "}"
-        res = f"NUM from {a} to {b}"
-        if missing_indexes:
-            res += f" except {', '.join([str(i) for i in missing_indexes])}"
+    def summarize(self, variations: list[str]) -> str | None:
+        unique = sorted(set(variations), key=lambda s: int(s))
+        int_to_str = {int(s): s for s in unique}
+        ints = list(int_to_str.keys())
+        a = ints[0]
+        b = ints[-1]
+        int_set = set(ints)
+        missing = [i for i in range(a, b + 1) if i not in int_set]
+        if len(missing) / (b - a + 1) > self.max_missing_ratio:
+            return "NUM IN {" + ",".join(unique) + "}"
+        res = f"NUM from {int_to_str[a]} to {int_to_str[b]}"
+        if missing:
+            res += f" except {', '.join(str(i) for i in missing)}"
         return res
 
 
