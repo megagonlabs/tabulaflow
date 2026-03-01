@@ -9,6 +9,7 @@ from mintq.config import mintq_config
 
 _UNSET = object()
 
+
 class RunQueryToolMetrics(BaseModel):
     num_calls: int = 0
     error_timeout: int = 0
@@ -34,7 +35,7 @@ class RunQueryWithParamsTool:
         floatfmt: str = ".8g",
     ):
         self.db_connector = db_connector
-        self.timeout = mintq_config.query_timeout if timeout is _UNSET else timeout
+        self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
