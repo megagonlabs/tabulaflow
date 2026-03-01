@@ -93,10 +93,10 @@ class SQLBasicSchemaFormatter:
         composite_fks = []
         for fk in table.foreign_keys:
             if len(fk.columns) > 1:
-                columns = "(" + ", ".join([self._quote_column(c) for c in fk.columns]) + ")"
-                fk_columns = "(" + ", ".join([self._quote_column(c) for c in fk.foreign_columns]) + ")"
-                fk_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
-                composite_fks.append(f"* {columns} -> {fk_table}.{fk_columns}")
+                fk_cols = "(" + ", ".join([self._quote_column(c) for c in fk.columns]) + ")"
+                ref_table = self._full_table_name(fk.foreign_table, fk.foreign_schema_name)
+                ref_cols = "(" + ", ".join([self._quote_column(c) for c in fk.foreign_columns]) + ")"
+                composite_fks.append(f"* {fk_cols} -> {ref_table}.{ref_cols}")
         if composite_fks:
             res += "[Composite FKs]\n" + "\n".join(composite_fks) + "\n\n"
 
