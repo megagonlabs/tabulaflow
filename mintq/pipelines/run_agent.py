@@ -267,7 +267,7 @@ async def main_async() -> None:
     parser.add_argument("--debug_litellm", action="store_true")
 
     ##### Remove #####
-    parser.add_argument("--TMP_resume_exp_for_postproFcessor", default=None)
+    parser.add_argument("--TMP_resume_exp_for_postproccessor", default=None)
     ##################
 
     args = parser.parse_args()
