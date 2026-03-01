@@ -269,9 +269,7 @@ class SchemaCompressor:
         for t in tables:
             for c in t.columns:
                 col_name_to_columns[c.name].append(c)
-        merged_table.columns = [
-            self._merge_columns(col_name_to_columns[c.name]) for c in merged_table.columns
-        ]
+        merged_table.columns = [self._merge_columns(col_name_to_columns[c.name]) for c in merged_table.columns]
         return merged_table
 
     def compress(self, schema: SQLSchema) -> SQLSchema:
