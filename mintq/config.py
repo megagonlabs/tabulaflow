@@ -111,13 +111,13 @@ class MintqConfig:
 
     @property
     def default_dataset(self) -> str:
-        if (value := os.getenv("MINTQ_DATASET")) is not None:
+        if (value := os.getenv("MINTQ_DEFAULT_DATASET")) is not None:
             return value
         return self.DEFAULT_DATASET
 
     @property
     def default_split(self) -> str:
-        if (value := os.getenv("MINTQ_SPLIT")) is not None:
+        if (value := os.getenv("MINTQ_DEFAULT_SPLIT")) is not None:
             return value
         return self.DEFAULT_SPLIT
 
