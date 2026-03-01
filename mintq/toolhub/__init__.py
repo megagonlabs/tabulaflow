@@ -5,6 +5,7 @@ from mintq.toolhub.run_query import RunQueryWithParamsTool, RunQueryNoParamsTool
 from mintq.toolhub.finish import FinishTool
 from mintq.toolhub.ask_user import AskUserTool
 from mintq.toolhub.get_schema import GetSchemaTool
+from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.get_column_description import GetColumnDescriptionTool
 
 __all__ = [
@@ -16,5 +17,6 @@ __all__ = [
     "FinishTool",
     "AskUserTool",
     "GetSchemaTool",
+    "GetTableSchemaTool",
     "GetColumnDescriptionTool",
 ]
