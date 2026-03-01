@@ -15,6 +15,7 @@ class SQLDDLSchemaFormatter:
     always_quote_columns: bool = True
     include_examples: bool = True
     include_sampled_rows: bool = True
+    include_sampled_rows_max_columns: int = 10
     example_max_chars: int = 100
     max_total_columns: int | None = 200
 
@@ -114,7 +115,12 @@ class SQLDDLSchemaFormatter:
             info_parts.append(f"Description: {table.description}")
 
         # Add sampled rows to info block
-        if self.include_sampled_rows and table.sampled_df is not None and not table.sampled_df.empty:
+        if (
+            self.include_sampled_rows
+            and len(table.columns) <= self.include_sampled_rows_max_columns
+            and table.sampled_df is not None
+            and not table.sampled_df.empty
+        ):
             info_parts.append(self._format_sampled_df(table))
 
         # Format as single /* */ block
