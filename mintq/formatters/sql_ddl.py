@@ -16,6 +16,7 @@ class SQLDDLSchemaFormatter:
     include_examples: bool = True
     include_sampled_rows: bool = True
     example_max_chars: int = 100
+    max_total_columns: int | None = 200
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -63,20 +64,34 @@ class SQLDDLSchemaFormatter:
             md_table = format_df(df, max_visible_rows=5, add_bottom_ellipsis_row=True)
             return f"Sample rows:\n{md_table}"
 
+    def _compute_column_quotas(self, tables: list[SQLTableSchema]) -> list[int | None]:
+        """Compute equal per-table column quotas from max_total_columns."""
+        if self.max_total_columns is None:
+            return [None] * len(tables)
+        if not tables:
+            return []
+        quota = max(1, self.max_total_columns // len(tables))
+        return [quota] * len(tables)
+
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         lines = [f"-- Database: {schema.name}"]
         if not schema.tables:
             lines.append("-- (database has no tables)")
             return "\n".join(lines)
 
-        for table in schema.tables:
+        quotas = self._compute_column_quotas(schema.tables)
+        for table, max_columns in zip(schema.tables, quotas):
             lines.append("")  # Blank line between tables
-            lines.append(self.format_table(table, pk_fk_column_only, add_description))
+            lines.append(self.format_table(table, pk_fk_column_only, add_description, max_columns=max_columns))
 
         return "```sql\n" + "\n".join(lines) + "\n```"
 
     def format_table(
-        self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False
+        self,
+        table: SQLTableSchema,
+        pk_fk_column_only: bool = False,
+        add_description: bool = False,
+        max_columns: int | None = None,
     ) -> str:
         lines = []
 
@@ -111,10 +126,19 @@ class SQLDDLSchemaFormatter:
         # Filter columns if pk_fk_column_only
         columns = [col for col in table.columns if not pk_fk_column_only or col.primary_key_type or col.foreign_keys]
 
+        # Truncate columns if max_columns is set
+        omitted_count = 0
+        if max_columns is not None and len(columns) > max_columns:
+            omitted_count = len(columns) - max_columns
+            columns = columns[:max_columns]
+
         # Format columns
         column_defs = []
         for column in columns:
             column_defs.append(self.format_column(column, add_description))
+
+        if omitted_count > 0:
+            column_defs.append(f"    -- ... {omitted_count} more columns omitted")
 
         # Add composite primary key constraint if needed
         composite_pk_cols = [col.name for col in table.columns if col.primary_key_type == "composite"]
