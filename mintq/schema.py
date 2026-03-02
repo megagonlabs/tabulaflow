@@ -35,6 +35,8 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
                 row[key] = None
             elif isinstance(val, (bytes, bytearray)):
                 row[key] = str(val)
+            elif isinstance(val, str):
+                row[key] = val.encode("utf-8", errors="replace").decode("utf-8")
     return {
         "schema": {
             "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},

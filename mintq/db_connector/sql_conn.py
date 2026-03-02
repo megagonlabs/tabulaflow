@@ -393,18 +393,6 @@ async def build_table_async(
 
     # Sample rows from the table
     sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
-    # Sanitize strings with lone surrogates and convert bytes to str to prevent Pydantic JSON serialization errors
-    if sampled_df is not None:
-        assert isinstance(sampled_df, pd.DataFrame)
-        for col_name in sampled_df.columns:
-            if sampled_df[col_name].dtype == object:
-                sampled_df[col_name] = sampled_df[col_name].apply(
-                    lambda v: v.encode("utf-8", errors="replace").decode("utf-8")
-                    if isinstance(v, str)
-                    else str(v)
-                    if isinstance(v, (bytes, bytearray))
-                    else v
-                )
 
     return SQLTableSchema(
         name=table_name,
