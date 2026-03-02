@@ -6,7 +6,7 @@ from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query, get_final_gold_query
 
-MAX_COLUMN_COMBINATIONS = 10_000
+_MAX_COLUMN_COMBINATIONS = 1000
 
 
 @metric_registry.register
@@ -28,7 +28,7 @@ class BirdSQLExSoft:
             return 0.0
 
         # Skip if the combinatorial space is too large (e.g. C(24,12) = 2.7M)
-        if math.comb(n_cols_pred, n_cols_gold) > MAX_COLUMN_COMBINATIONS:
+        if math.comb(n_cols_pred, n_cols_gold) > _MAX_COLUMN_COMBINATIONS:
             return 0.0
 
         # Convert results to sets of tuples for comparison
