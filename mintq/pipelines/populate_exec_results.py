@@ -35,13 +35,18 @@ async def populate_task_async(
 
 
 async def populate_exec_results_async(
-    result: NL2QRunResult, dataset: NL2QDataset, batch_size: int, timeout: int | None = None, verbose: bool = True
+    result: NL2QRunResult,
+    dataset: NL2QDataset,
+    batch_size: int,
+    timeout: int | None = None,
+    force: bool = False,
+    verbose: bool = True,
 ) -> NL2QRunResult:
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[populate_task_async(task, dataset.db_connectors[task.db], timeout) for task in batch],
+            *[populate_task_async(task, dataset.db_connectors[task.db], timeout, force) for task in batch],
             disable=not verbose,
         )
         if verbose:
@@ -54,6 +59,7 @@ async def main_async() -> None:
     parser.add_argument("--result_dir", default="output/test/")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--timeout", type=int, default=mintq_config.query_timeout)
+    parser.add_argument("--force", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
@@ -72,7 +78,7 @@ async def main_async() -> None:
     print(
         f"Loaded {len(dataset.db_connectors)} databases from {result.dataset} {result.split} in {time.time() - t0:.2f} seconds."
     )
-    result = await populate_exec_results_async(result, dataset, args.batch_size, args.timeout)
+    result = await populate_exec_results_async(result, dataset, args.batch_size, args.timeout, args.force, verbose=True)
     result.to_directory(args.result_dir)
     print(f"Saved populated exec results to {args.result_dir}")
 
