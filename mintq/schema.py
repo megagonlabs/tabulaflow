@@ -33,6 +33,8 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
                 row[key] = val.isoformat()
             elif val is pd.NaT:
                 row[key] = None
+            elif isinstance(val, (bytes, bytearray)):
+                row[key] = str(val)
     return {
         "schema": {
             "dtypes": {col: str(dtype) for col, dtype in df.dtypes.items()},
