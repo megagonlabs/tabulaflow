@@ -627,8 +627,8 @@ class SQLConnector:
         cache_hash: str | None = None
         if mintq_config.query_cache_enabled:
             cache_hash = self._query_cache_key(self.global_id, query_str, params_map, timeout)
-            cache_dir = os.path.join(mintq_config.cache_dir, "query_results", self.global_id)
-            cache_path = os.path.join(cache_dir, f"{cache_hash}.json")
+            cache_dir = os.path.join(mintq_config.cache_dir, "query_results")
+            cache_path = os.path.join(cache_dir, f"{self.global_id}_{cache_hash}.json")
 
             if use_cache:
                 # Check in-memory cache first
