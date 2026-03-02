@@ -1,5 +1,7 @@
 import copy
 import datetime
+import base64
+import io
 from decimal import Decimal
 from enum import Enum
 import json
@@ -11,6 +13,7 @@ from pydantic.types import StringConstraints
 import pydantic_ai
 from typing import Any, Literal, Annotated, TypeAlias, Union, get_args
 import pandas as pd
+import pyarrow.feather as feather
 import logging
 import math
 import itertools
@@ -18,14 +21,23 @@ from mintq.config import mintq_config
 
 logger = logging.getLogger(__name__)
 
+_DF_SERIALIZATION_FORMAT = "feather_base64_v1"
+_DF_PREVIEW_MAX_ROWS = 20
 
-def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
-    """Serialize a DataFrame to a JSON-safe dict (dtypes + records)."""
+
+def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
+    preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
+    records = json.loads(preview_df.to_json(orient="records", date_format="iso", default_handler=str))
+    return {
+        "sample_data": records,
+        "num_rows": len(df),
+    }
+
+
+def _serialize_dataframe_legacy(df: pd.DataFrame | None) -> dict[str, Any] | None:
+    """Old JSON format kept for backward compatibility fallback."""
     if df is None:
         return None
-    # df.to_dict can produce pandas/numpy objects (NaT, Timestamp, np.int64, …)
-    # that Pydantic's JSON serializer cannot handle.  Convert them to
-    # plain Python types so the dict is safely serialisable.
     records = df.to_dict(orient="records")
     for row in records:
         for key, val in row.items():
@@ -45,14 +57,34 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     }
 
 
+def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
+    """Serialize a DataFrame as Feather bytes in a single JSON payload."""
+    if df is None:
+        return None
+    buffer = io.BytesIO()
+    # preserve_index=True keeps non-trivial indexes intact through round-trip.
+    feather.write_feather(df, buffer)
+    encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
+    return {
+        "format": _DF_SERIALIZATION_FORMAT,
+        "feather_base64": encoded,
+        "preview": _build_readable_df_preview(df),
+    }
+
+
 def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
-    """Deserialize a dict (dtypes + records) back into a DataFrame."""
+    """Deserialize either new Feather payloads or legacy schema+records dicts."""
     if v is None or isinstance(v, pd.DataFrame):
         return v
+    if isinstance(v, dict) and v.get("format") == _DF_SERIALIZATION_FORMAT:
+        raw = base64.b64decode(v["feather_base64"])
+        buffer = io.BytesIO(raw)
+        return feather.read_feather(buffer)
+
+    # Backward compatibility for old cached/result JSON payloads.
     dtypes = v["schema"]["dtypes"]
     df = pd.DataFrame(v["data"], columns=list(dtypes.keys()))
-    df = df.astype(dtypes)
-    return df
+    return df.astype(dtypes)
 
 
 NumericOrNull: TypeAlias = Union[float, int, None]
