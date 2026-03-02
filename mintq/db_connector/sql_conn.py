@@ -1,4 +1,6 @@
 import copy
+import hashlib
+import json
 import re
 import logging
 import warnings
@@ -28,6 +30,8 @@ from mintq.config import mintq_config, ColumnStatsMode
 logger = logging.getLogger(__name__)
 
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
+_query_cache: dict[str, ExecResult] = {}
+_query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
 @dataclass
@@ -599,12 +603,52 @@ class SQLConnector:
             )
         return cls(global_id, schema, t_eng)
 
+    @staticmethod
+    def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
+        """Build a deterministic cache key for a query."""
+        key_data = json.dumps(
+            {"global_id": global_id, "query": query.strip(), "parameters": dict(sorted(parameters.items())) if parameters else {}, "timeout": timeout},
+            sort_keys=True,
+            ensure_ascii=True,
+        )
+        return hashlib.sha256(key_data.encode()).hexdigest()
+
     async def run_query_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult:
+        # --- query result cache lookup ---
+        query_str = str(query) if not isinstance(query, str) else query
+        params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
+        use_cache = mintq_config.query_cache_enabled and not mintq_config.query_cache_overwrite
+
+        cache_hash: str | None = None
+        if mintq_config.query_cache_enabled:
+            cache_hash = self._query_cache_key(self.global_id, query_str, params_map, timeout)
+            cache_dir = os.path.join(mintq_config.cache_dir, "query_results", self.global_id)
+            cache_path = os.path.join(cache_dir, f"{cache_hash}.json")
+
+            if use_cache:
+                # Check in-memory cache first
+                if cache_hash in _query_cache:
+                    logger.debug(f"Query cache hit (memory): {query_str[:80]}")
+                    return _query_cache[cache_hash]
+
+                # Check disk cache
+                async with _query_cache_locks[cache_hash]:
+                    # Re-check memory after acquiring lock
+                    if cache_hash in _query_cache:
+                        return _query_cache[cache_hash]
+                    if os.path.exists(cache_path):
+                        with open(cache_path, "r", encoding="utf-8") as f:
+                            cached = ExecResult.model_validate_json(f.read())
+                        _query_cache[cache_hash] = cached
+                        logger.debug(f"Query cache hit (disk): {query_str[:80]}")
+                        return cached
+
+        # --- execute query ---
         df, error, latency_seconds = None, None, None
         try:
             result = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
@@ -612,4 +656,15 @@ class SQLConnector:
             latency_seconds = result.latency_seconds
         except Exception as e:
             error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
-        return ExecResult(df=df, error=error, latency_seconds=latency_seconds)
+        exec_result = ExecResult(df=df, error=error, latency_seconds=latency_seconds)
+
+        # --- write to cache ---
+        if mintq_config.query_cache_enabled and cache_hash is not None:
+            async with _query_cache_locks[cache_hash]:
+                os.makedirs(cache_dir, exist_ok=True)
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    f.write(exec_result.model_dump_json(indent=2))
+                _query_cache[cache_hash] = exec_result
+                logger.debug(f"Query cache write: {query_str[:80]}")
+
+        return exec_result

@@ -60,10 +60,15 @@ async def main_async() -> None:
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--timeout", type=int, default=mintq_config.query_timeout)
     parser.add_argument("--force", action="store_true")
+    parser.add_argument("--no-query-cache", action="store_true", help="Disable query result cache for this run")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
+
+    if args.no_query_cache:
+        os.environ["MINTQ_QUERY_CACHE_ENABLED"] = "0"
+        mintq_config.reload_from_env()
 
     mintq_config.setup_logging()
 

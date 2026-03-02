@@ -10,6 +10,8 @@ class MintqConfig:
     DEFAULT_CACHE_ENABLED = True
     DEFAULT_CACHE_OVERWRITE = False
     DEFAULT_CACHE_REQUIRED = False
+    DEFAULT_QUERY_CACHE_ENABLED = False
+    DEFAULT_QUERY_CACHE_OVERWRITE = False
     DEFAULT_INSTRUMENT_ENABLED = True
     DEFAULT_INSTRUMENT_PREFIX = "exp"
     DEFAULT_DF_MAX_ROWS = 100000
@@ -62,6 +64,29 @@ class MintqConfig:
         if (value := os.getenv("MINTQ_CACHE_REQUIRED")) is not None:
             return value == "1"
         return self.DEFAULT_CACHE_REQUIRED
+
+    @property
+    def query_cache_enabled(self) -> bool:
+        """Cache SQL query results (including errors and timeouts) to disk.
+
+        Useful for avoiding redundant Snowflake queries across experiment runs.
+        Controlled via ``MINTQ_QUERY_CACHE_ENABLED``.  Defaults to ``False``.
+        """
+        if (value := os.getenv("MINTQ_QUERY_CACHE_ENABLED")) is not None:
+            return value == "1"
+        return self.DEFAULT_QUERY_CACHE_ENABLED
+
+    @property
+    def query_cache_overwrite(self) -> bool:
+        """Overwrite existing query result cache files.
+
+        When ``True``, queries are always executed against the database and
+        the results replace any existing cached entries.
+        Controlled via ``MINTQ_QUERY_CACHE_OVERWRITE``.  Defaults to ``False``.
+        """
+        if (value := os.getenv("MINTQ_QUERY_CACHE_OVERWRITE")) is not None:
+            return value == "1"
+        return self.DEFAULT_QUERY_CACHE_OVERWRITE
 
     @property
     def instrument_enabled(self) -> bool:
