@@ -720,8 +720,14 @@ March 1
 - [x] mini_agent
 
 March 2
-- [ ] Exp 217: new spider2 instructions
-- [ ] Exp 218: mini_agent
+- [x] Exp 217: mini_agent
+  - mini_agent, 0.3915 spider2_ex, executable: 0.9706
+  - mini_agent, 0.6408 bird_sql_ex, executable: 1.0000
+- [x] Exp 218: new spider2 instructions
+  - direct_prompting, 0.3162 spider2_ex, executable: 0.7261
+- [x] query cache
+  - [x] MINTQ_QUERY_CACHE_MODE
+- [ ] Investigate evaluation on spider2 object columns
 - [ ] Investigate cases where simple_ex = 1.0 but spider2_ex = 0.0
 
 - [ ] ER diagram synthesis
