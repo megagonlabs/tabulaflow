@@ -3,6 +3,7 @@ import os
 from typing import Literal, get_args
 
 ColumnStatsMode = Literal["always_precise", "sample_for_large_tables", "skip_for_large_tables"]
+QueryCacheMode = Literal["all", "successful_only"]
 
 
 class MintqConfig:
@@ -12,6 +13,7 @@ class MintqConfig:
     DEFAULT_CACHE_REQUIRED = False
     DEFAULT_QUERY_CACHE_ENABLED = False
     DEFAULT_QUERY_CACHE_OVERWRITE = False
+    DEFAULT_QUERY_CACHE_MODE: QueryCacheMode = "successful_only"
     DEFAULT_INSTRUMENT_ENABLED = True
     DEFAULT_INSTRUMENT_PREFIX = "exp"
     DEFAULT_DF_MAX_ROWS = 100000
@@ -75,6 +77,23 @@ class MintqConfig:
         if (value := os.getenv("MINTQ_QUERY_CACHE_ENABLED")) is not None:
             return value == "1"
         return self.DEFAULT_QUERY_CACHE_ENABLED
+
+    @property
+    def query_cache_mode(self) -> QueryCacheMode:
+        """Controls which query results are cached.
+
+        - ``"all"``: Cache all outcomes (successes, errors, and timeouts).
+        - ``"successful_only"``: Only cache queries that returned results successfully.
+
+        Controlled via ``MINTQ_QUERY_CACHE_MODE``.  Defaults to ``"all"``.
+        """
+        if (value := os.getenv("MINTQ_QUERY_CACHE_MODE")) is not None:
+            if value not in get_args(QueryCacheMode):
+                raise ValueError(
+                    f"Invalid MINTQ_QUERY_CACHE_MODE={value!r}. Must be one of {sorted(get_args(QueryCacheMode))}"
+                )
+            return value  # type: ignore[return-value]
+        return self.DEFAULT_QUERY_CACHE_MODE
 
     @property
     def query_cache_overwrite(self) -> bool:

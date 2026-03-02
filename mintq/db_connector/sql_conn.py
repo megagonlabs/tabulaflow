@@ -637,6 +637,7 @@ class SQLConnector:
                     return _query_cache[cache_hash]
 
                 # Check disk cache
+                successful_only = mintq_config.query_cache_mode == "successful_only"
                 async with _query_cache_locks[cache_hash]:
                     # Re-check memory after acquiring lock
                     if cache_hash in _query_cache:
@@ -644,9 +645,12 @@ class SQLConnector:
                     if os.path.exists(cache_path):
                         with open(cache_path, "r", encoding="utf-8") as f:
                             cached = ExecResult.model_validate_json(f.read())
-                        _query_cache[cache_hash] = cached
-                        logger.debug(f"Query cache hit (disk): {query_str[:80]}")
-                        return cached
+                        if successful_only and cached.df is None:
+                            logger.debug(f"Query cache skip (error in successful_only mode): {query_str[:80]}")
+                        else:
+                            _query_cache[cache_hash] = cached
+                            logger.debug(f"Query cache hit (disk): {query_str[:80]}")
+                            return cached
 
         # --- execute query ---
         df, error, latency_seconds = None, None, None
@@ -660,11 +664,13 @@ class SQLConnector:
 
         # --- write to cache ---
         if mintq_config.query_cache_enabled and cache_hash is not None:
-            async with _query_cache_locks[cache_hash]:
-                os.makedirs(cache_dir, exist_ok=True)
-                with open(cache_path, "w", encoding="utf-8") as f:
-                    f.write(exec_result.model_dump_json(indent=2))
-                _query_cache[cache_hash] = exec_result
-                logger.debug(f"Query cache write: {query_str[:80]}")
+            skip = mintq_config.query_cache_mode == "successful_only" and exec_result.df is None
+            if not skip:
+                async with _query_cache_locks[cache_hash]:
+                    os.makedirs(cache_dir, exist_ok=True)
+                    with open(cache_path, "w", encoding="utf-8") as f:
+                        f.write(exec_result.model_dump_json(indent=2))
+                    _query_cache[cache_hash] = exec_result
+                    logger.debug(f"Query cache write: {query_str[:80]}")
 
         return exec_result
