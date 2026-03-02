@@ -705,13 +705,21 @@ Feb 28
 - [x] get_table_schema tool
 - [x] MINTQ_QUERY_TIMEOUT
 
-Feb 29
+March 1
 - [x] Exp 214: direct_prompting on spider2-snow and bird-sql
   - spider2-snow: 0.2132 spider2_ex, executable: 0.5294
   - bird-sql: 0.6336 bird_sql_ex, executable: 0.9733
-- [ ] Tune Spider2 instructions
+- [x] Tune Spider2 instructions
   - [x] Percentage values
-  - [ ]
+  - [x] No ties in highest or lowest entity
+- [x] Investigate output/test/readable/sf_local010/task_readable.md
+- [x] Investigate 81 - 88 batch evaluation slow
+  - set DEFAULT_DF_MAX_ROWS to 10000
+
+March 2
+- [ ] Exp 217: new spider2 instructions
+- [ ] Exp 218: mini_agent
+- [ ] Investigate cases where simple_ex = 1.0 but spider2_ex = 0.0
 
 - [ ] ER diagram synthesis
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
