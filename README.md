@@ -703,7 +703,7 @@ Feb 28
 - [x] Improve schema compression
 - [x] direct_prompting
 - [x] get_table_schema tool
-- [x] MINTQ_QUERY_TIMEOUT
+- [x] Fix query timeout: add option MINTQ_QUERY_TIMEOUT
 
 March 1
 - [x] Exp 214: direct_prompting on spider2-snow and bird-sql
@@ -713,8 +713,11 @@ March 1
   - [x] Percentage values
   - [x] No ties in highest or lowest entity
 - [x] Investigate output/test/readable/sf_local010/task_readable.md
-- [x] Investigate 81 - 88 batch evaluation slow
-  - set DEFAULT_DF_MAX_ROWS to 10000
+- [x] Fix value formatting bug
+- [x] Fix column order mismatch
+- [x] Fix 81 - 88 batch evaluation slow: set DEFAULT_DF_MAX_ROWS to 10000
+- [x] Fix df serialization error for bytes
+- [x] mini_agent
 
 March 2
 - [ ] Exp 217: new spider2 instructions
