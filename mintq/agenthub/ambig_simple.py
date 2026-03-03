@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -61,7 +61,12 @@ class AmbigSimpleSQLAgent:
         config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        formatter_kwargs: dict[str, Any] = {}
+        if config.formatter_max_total_columns is not None:
+            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+            **formatter_kwargs
+        )
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
@@ -79,14 +84,14 @@ class AmbigSimpleSQLAgent:
         else:
             user_patience = self.config.user_patience  # type: ignore
 
-        tools: dict[str, BaseTool] = {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
-            "get_column_description": GetColumnDescriptionTool(db_connector),
-            "ask_user": AskUserTool(user_simulator, patience=user_patience),
-            "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryWithParamsTool(db_connector),
-            "finish": FinishTool(),
-        }
+        tools: dict[str, BaseTool] = {}
+        tools["get_schema"] = GetSchemaTool(db_connector.schema, self.formatter, self.compressor)
+        if self.config.use_column_description:
+            tools["get_column_description"] = GetColumnDescriptionTool(db_connector)
+        tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)
+        tools["search_keywords"] = SearchKeywordsTool(db_connector)
+        tools["run_query"] = RunQueryWithParamsTool(db_connector)
+        tools["finish"] = FinishTool()
 
         agent = Agent[None, None](  # type: ignore
             model=self.config.llm,

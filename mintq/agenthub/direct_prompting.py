@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar
+from typing import Any, ClassVar
 from pydantic_ai import Agent
 import logging
 from mintq.db_connector import BaseSQLDBConnector
@@ -61,9 +61,6 @@ You a helpful AI database expert that writes {{language}} queries given a user q
 """.strip()
 
 
-_FORMATTER_MAX_TOTAL_COLUMNS = 5000
-
-
 @agent_registry.register
 class DirectPrompting:
     name: ClassVar = "direct_prompting"
@@ -78,9 +75,9 @@ class DirectPrompting:
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-        formatter_kwargs = {}
-        if config.schema_formatter == "sql_ddl":
-            formatter_kwargs["max_total_columns"] = _FORMATTER_MAX_TOTAL_COLUMNS
+        formatter_kwargs: dict[str, Any] = {}
+        if config.formatter_max_total_columns is not None:
+            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
             **formatter_kwargs
         )
@@ -96,7 +93,7 @@ class DirectPrompting:
         schema = db_connector.schema
         if self.config.compress_schema:
             schema = SchemaCompressor().compress(schema)
-        schema_str = self.formatter.format(schema)
+        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
 
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=task.language,

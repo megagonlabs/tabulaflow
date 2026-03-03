@@ -122,7 +122,12 @@ class AmbigFlatSQLAgent:
         config: AmbigFlatSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        formatter_kwargs: dict[str, Any] = {}
+        if config.formatter_max_total_columns is not None:
+            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+            **formatter_kwargs
+        )
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
     @classmethod
@@ -203,7 +208,7 @@ class AmbigFlatSQLAgent:
                 language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
-            tool_keys=["get_schema", "get_column_description", "search_keywords", "run_query"],
+            tool_keys=[k for k in ["get_schema", "get_column_description", "search_keywords", "run_query"] if k in ctx.tools],
         )
         params_str = json.dumps(
             [
@@ -275,13 +280,14 @@ class AmbigFlatSQLAgent:
                     pred_query.parameter_values[ap.parameter_name] = ap.intended_parameter_value
 
     async def _get_tools(self, db_connector: BaseSQLDBConnector) -> dict[str, BaseTool]:
-        return {
-            "get_schema": GetSchemaTool(db_connector.schema, self.formatter, self.compressor),
-            "get_column_description": GetColumnDescriptionTool(db_connector),
-            "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryWithParamsTool(db_connector),
-            "finish": FinishTool(),
-        }
+        tools: dict[str, BaseTool] = {}
+        tools["get_schema"] = GetSchemaTool(db_connector.schema, self.formatter, self.compressor)
+        if self.config.use_column_description:
+            tools["get_column_description"] = GetColumnDescriptionTool(db_connector)
+        tools["search_keywords"] = SearchKeywordsTool(db_connector)
+        tools["run_query"] = RunQueryWithParamsTool(db_connector)
+        tools["finish"] = FinishTool()
+        return tools
 
     @instrument
     async def predict_async(

@@ -73,7 +73,10 @@ class SimpleZeroShotNL2Q:
         config: SimpleZeroShotNL2QConfig,
     ):
         self.config = config
-        self.formatter = formatter_registry.get_class(config.schema_formatter)()
+        formatter_kwargs: dict[str, Any] = {}
+        if config.formatter_max_total_columns is not None:
+            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
+        self.formatter = formatter_registry.get_class(config.schema_formatter)(**formatter_kwargs)
 
     @classmethod
     async def from_config_async(cls, config: SimpleZeroShotNL2QConfig) -> "SimpleZeroShotNL2Q":
@@ -87,7 +90,7 @@ class SimpleZeroShotNL2Q:
         if self.config.compress_schema:
             schema = SchemaCompressor().compress(schema)
 
-        schema_str = self.formatter.format(schema)
+        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."

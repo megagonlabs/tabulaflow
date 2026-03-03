@@ -202,7 +202,7 @@ class SchemaLinker:
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=task.language,
             dataset_instructions=task.dataset_instructions,
-            schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=True),
+            schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=self.config.use_column_description),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,  # type: ignore
             document=task.document,
             examples=ctx.few_shot_examples,
@@ -408,7 +408,12 @@ class SQLAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)()
+        formatter_kwargs: dict[str, Any] = {}
+        if config.formatter_max_total_columns is not None:
+            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+            **formatter_kwargs
+        )
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
         self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
 
@@ -512,7 +517,7 @@ class SQLAgent:
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=task.language,
             dataset_instructions=task.dataset_instructions,
-            schema=self.formatter.format(linked_schema, add_description=True),
+            schema=self.formatter.format(linked_schema, add_description=self.config.use_column_description),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore
             document=task.document,
             examples=examples,
