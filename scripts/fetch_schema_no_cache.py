@@ -5,6 +5,7 @@ import time
 from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.formatters import SQLDDLSchemaFormatter
+from mintq.preprocessors import SchemaCompressor
 
 
 async def main() -> None:
@@ -12,6 +13,8 @@ async def main() -> None:
     parser.add_argument("--dataset", default=mintq_config.dataset)
     parser.add_argument("--split", default=mintq_config.split)
     parser.add_argument("--database", default="european_football_2")
+    parser.add_argument("--compress", action="store_true")
+    parser.add_argument("--no_description", action="store_true")
     parser.add_argument("--from_cache", action="store_true")
     args = parser.parse_args()
     if args.dataset == "bird-sql":
@@ -37,7 +40,9 @@ async def main() -> None:
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split, databases=[args.database])
     schema = dataset.db_connectors[args.database].schema
-    schema_str = SQLDDLSchemaFormatter().format(schema)
+    if args.compress:
+        schema = SchemaCompressor().compress(schema)
+    schema_str = SQLDDLSchemaFormatter().format(schema, add_description=not args.no_description)
     print(schema_str)
     print()
     print(f"(schema length: {len(schema_str)} characters)")
