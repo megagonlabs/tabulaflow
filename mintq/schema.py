@@ -67,8 +67,8 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
         "format": _DF_SERIALIZATION_FORMAT,
-        "feather_base64": encoded,
         "preview": _build_readable_df_preview(df),
+        "feather_base64": encoded,
     }
 
 
