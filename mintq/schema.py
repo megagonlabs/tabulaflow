@@ -25,7 +25,40 @@ _DF_SERIALIZATION_FORMAT = "feather_base64_v1"
 _DF_PREVIEW_MAX_ROWS = 20
 
 
+def _deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Return a copy of *df* with duplicate column names disambiguated.
+
+    If columns are ``['a', 'b', 'a']`` the result is ``['a', 'b', 'a_2']``.
+    Handles tricky cases like ``['a', 'b', 'a', 'a_2']`` →
+    ``['a', 'b', 'a_3', 'a_2']`` (skips suffixes that collide with existing names).
+    Only touches DataFrames that actually contain duplicates.
+    """
+    cols = [str(c) for c in df.columns]
+    if len(cols) == len(set(cols)):
+        return df  # nothing to do
+    # Pre-reserve all original names so generated suffixes never shadow them.
+    all_original = set(cols)
+    used: set[str] = set()
+    new_cols: list[str] = []
+    for col in cols:
+        if col not in used:
+            used.add(col)
+            new_cols.append(col)
+        else:
+            n = 2
+            candidate = f"{col}_{n}"
+            while candidate in used or candidate in all_original:
+                n += 1
+                candidate = f"{col}_{n}"
+            used.add(candidate)
+            new_cols.append(candidate)
+    df = df.copy()
+    df.columns = pd.Index(new_cols)
+    return df
+
+
 def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
+    df = _deduplicate_columns(df)
     preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
     records = json.loads(preview_df.to_json(orient="records", date_format="iso", default_handler=str))
     return {
@@ -61,6 +94,7 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     """Serialize a DataFrame as Feather bytes in a single JSON payload."""
     if df is None:
         return None
+    df = _deduplicate_columns(df)
     buffer = io.BytesIO()
     # preserve_index=True keeps non-trivial indexes intact through round-trip.
     feather.write_feather(df, buffer)
