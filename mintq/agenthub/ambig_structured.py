@@ -140,11 +140,8 @@ class AmbigStructuredSQLAgent:
         config: AmbigStructuredSQLAgentConfig,
     ):
         self.config = config
-        formatter_kwargs: dict[str, Any] = {}
-        if config.formatter_max_total_columns is not None:
-            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
-            **formatter_kwargs
+            **config.to_formatter_kwargs()
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
 

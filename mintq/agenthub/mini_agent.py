@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import Any, ClassVar
+from typing import ClassVar
 from pydantic_ai import Agent
 import logging
 from mintq.db_connector import BaseSQLDBConnector, NL2QDBConnector
@@ -88,11 +88,8 @@ class MiniAgent:
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-        formatter_kwargs: dict[str, Any] = {}
-        if config.formatter_max_total_columns is not None:
-            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
-            **formatter_kwargs
+            **config.to_formatter_kwargs()
         )
 
     @classmethod

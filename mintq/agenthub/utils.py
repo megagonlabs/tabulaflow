@@ -84,6 +84,12 @@ class BasicAgentConfig(BaseModel):
     openai_reasoning_summary: Literal["detailed", "concise"] | None = None
     openai_service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
+    def to_formatter_kwargs(self) -> dict[str, Any]:
+        res: dict[str, Any] = {}
+        if self.formatter_max_total_columns is not None:
+            res["max_total_columns"] = self.formatter_max_total_columns
+        return res
+
     def to_model_settings(self) -> dict[str, Any]:
         res: dict[str, Any] = {}
         if self.temperature is not None:

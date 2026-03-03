@@ -408,11 +408,8 @@ class SQLAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        formatter_kwargs: dict[str, Any] = {}
-        if config.formatter_max_total_columns is not None:
-            formatter_kwargs["max_total_columns"] = config.formatter_max_total_columns
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
-            **formatter_kwargs
+            **config.to_formatter_kwargs()
         )
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
         self.postprocessor = Postprocessor(config) if config.do_postprocessing else None
