@@ -734,11 +734,15 @@ March 2
   - [x] Lone surrogates in string values
   - [x] Oversized Python ints
 
-- [ ] ER diagram synthesis
+March 3
+- [x] Exp 222: mini_agent with 40 steps: 0.5368 spider2_ex
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
+
+- [ ] ER diagram synthesis
 - [ ] Show intermediate tables for CTE in run_query tool
 - [ ] Code edit tool for editting complex queries
 
+- [ ] Add column description during column expansion in sql_agent.py?
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
