@@ -78,7 +78,7 @@ class Spider2SnowDatasetLoader:
         self._dbms_semaphore = asyncio.Semaphore(16)
 
     def _load_column_descriptions(self) -> dict[tuple[str, str, str, str], str]:
-        res = {}
+        res: dict[tuple[str, str, str, str], str] = {}
         directory = os.path.join(self.directory, "resource", "databases")
         for db_name in os.listdir(directory):
             for schema_name in os.listdir(os.path.join(directory, db_name)):
@@ -89,7 +89,8 @@ class Spider2SnowDatasetLoader:
                     with open(os.path.join(directory, db_name, schema_name, table_file), "r") as f:
                         data = json.load(f)
                         for column, description in zip(data["column_names"], data["description"]):
-                            res[(db_name, schema_name, table_name, column)] = description
+                            if description is not None:
+                                res[(db_name, schema_name, table_name, column)] = description.strip().replace("\n", " ")
         return res
 
     def get_databases(self, split: str) -> list[str]:
