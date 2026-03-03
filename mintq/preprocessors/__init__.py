@@ -4,6 +4,7 @@ from mintq.preprocessors.base import (
     CachedPreprocessorMixin,
     preprocessor_registry,
 )
+from mintq.preprocessors.db_summarizer import DBSummarizer
 from mintq.preprocessors.schema_preprocessor import SchemaPreprocessor
 from mintq.preprocessors.er_diagram import ERDiagramSynthesizer
 from mintq.preprocessors.question_embedder import QuestionEmbedder
@@ -17,6 +18,7 @@ __all__ = [
     "preprocessor_registry",
     "SchemaCompressor",
     "ColumnProfiler",
+    "DBSummarizer",
     "SchemaPreprocessor",
     "ERDiagramSynthesizer",
     "QuestionEmbedder",

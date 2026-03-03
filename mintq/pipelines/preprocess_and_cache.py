@@ -45,7 +45,7 @@ def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_preprocessing", action="store_true")
-    parser.add_argument("--preprocessors", nargs="*", default=["schema_preprocessor", "er_diagram_synthesizer"])
+    parser.add_argument("--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
 
     # dataset
     parser.add_argument("--dataset", default=mintq_config.dataset)
@@ -62,9 +62,9 @@ async def main_async() -> None:
     args = parser.parse_args()
 
     if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
+        parser.set_defaults(split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
     elif args.dataset == "spider2-snow":
-        parser.set_defaults(split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer"])
+        parser.set_defaults(split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
 
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
