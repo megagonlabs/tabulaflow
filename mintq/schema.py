@@ -675,18 +675,18 @@ class ExecResult(BaseModel):
         return _deserialize_dataframe(v)
 
     @model_validator(mode="after")
-    def sanitize_df(self) -> "ExecResult":
-        if self.df is not None:
-            self.df = _deduplicate_columns(self.df)
-            self.df = _sanitize_df_strings(self.df)
-        return self
-
-    @model_validator(mode="after")
     def truncate_df(self) -> "ExecResult":
         if mintq_config.df_max_rows and self.df is not None and len(self.df) > mintq_config.df_max_rows:
             logger.warning(f"Truncated df from {len(self.df)} to {mintq_config.df_max_rows} rows")
             self.df = self.df.head(mintq_config.df_max_rows)
             self.df_is_truncated = True
+        return self
+
+    @model_validator(mode="after")
+    def sanitize_df(self) -> "ExecResult":
+        if self.df is not None:
+            self.df = _deduplicate_columns(self.df)
+            self.df = _sanitize_df_strings(self.df)
         return self
 
     @model_validator(mode="after")
