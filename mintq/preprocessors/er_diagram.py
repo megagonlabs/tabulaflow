@@ -143,9 +143,7 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
 
-        system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render(
-            schema=self.formatter.format(schema, add_description=True)
-        )
+        system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()
         run_query_tool = RunQueryNoParamsTool(db_connector)
         agent = Agent[None, ERDiagram](
             model=self.llm,
