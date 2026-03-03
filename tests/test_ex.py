@@ -21,7 +21,7 @@ def examples() -> list[ExampleCase]:
             "pred_df": pd.DataFrame({"col0": [None, None, None, None]}),
             "gold_df": pd.DataFrame({"col0": [math.nan, np.nan, "nan", None]}),
             "simple_ex_expected_score": 1.0,
-            "spider2_ex_expected_score": 0.0,
+            "spider2_ex_expected_score": 1.0,  # without csv roundtrip, spider2_ex is 0.0
         },
         {
             "qid": "test_2",
@@ -49,7 +49,7 @@ def examples() -> list[ExampleCase]:
             "pred_df": pd.DataFrame({"col0": ["2.0", "1e2"]}),
             "gold_df": pd.DataFrame({"col0": [2, 100]}),
             "simple_ex_expected_score": 1.0,
-            "spider2_ex_expected_score": 0.0,
+            "spider2_ex_expected_score": 1.0,  # without csv roundtrip, spider2_ex is 0.0
         },
         {
             "qid": "test_6",
