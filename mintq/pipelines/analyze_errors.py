@@ -85,10 +85,10 @@ DEFAULT_CATEGORIES = [
     #     name="gold_query_columns_do_not_follow_question_mention_order",
     #     description="The SELECT columns in the gold query do not appear in the same order as they are mentioned in the question. Applicable regardless of prediction and evaluation metrics.",
     # ),
-    ErrorCategory(
-        name="error_due_to_numeric_precision",
-        description="The displayed predicted query execution results in the `## Pred Query` section are exactly the same as the gold query results (same shape and values). Only applicable if simple_ex = 1.0 and one other _ex metric is 0.0.",
-    ),
+    # ErrorCategory(
+    #     name="error_due_to_numeric_precision",
+    #     description="The displayed predicted query execution results in the `## Pred Query` section are exactly the same as the gold query results (same shape and values). Only applicable if simple_ex = 1.0 and one other _ex metric is 0.0.",
+    # ),
     # ErrorCategory(
     #     name="pred_query_uses_incorrect_syntax_or_function",
     #     description="""
@@ -133,6 +133,9 @@ class LLMErrorClassifier:
         return self._usage
 
     async def _classify_task_async(self, task: NL2QTaskOutput) -> list[str]:
+        if not self.categories:
+            return []
+
         if self.mask_prediction:
             if task.output_type != "simple":
                 raise ValueError("Only simple tasks are supported when mask_prediction is True for now.")
@@ -159,7 +162,7 @@ class LLMErrorClassifier:
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return list(set(result.output))
+        return list(set[Literal](result.output))
 
     async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:
         all_results = await asyncio.gather(*[self._classify_task_async(task) for task in result.tasks])
