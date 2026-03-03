@@ -11,7 +11,7 @@ from mintq.db_connector import SQLConnector
 from mintq.formatters import SQLBasicSchemaFormatter
 from mintq.utils import extract_code
 
-# os.environ["MINTQ_CACHE_ENABLED"] = "0"
+# os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
 
 
 logger = logging.getLogger(__name__)

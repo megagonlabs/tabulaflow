@@ -70,7 +70,7 @@ async def main_async() -> None:
         parser.set_defaults(databases=["california_schools"])
 
     if args.overwrite:
-        os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
+        os.environ["MINTQ_PREPROCESSOR_CACHE_OVERWRITE"] = "1"
 
     args = parser.parse_args()
     print(args)
@@ -78,8 +78,8 @@ async def main_async() -> None:
 
     mintq_config.setup_logging()
 
-    os.environ["MINTQ_CACHE_ENABLED"] = "1"
-    os.environ["MINTQ_CACHE_REQUIRED"] = "0"
+    os.environ["MINTQ_PREPROCESSOR_CACHE_ENABLED"] = "1"
+    os.environ["MINTQ_PREPROCESSOR_CACHE_REQUIRED"] = "0"
     mintq_config.reload_from_env()
 
     t0 = time.time()

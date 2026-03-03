@@ -212,12 +212,12 @@ async def load_schema_with_cache_async(
 
     lock = _db_locks[global_id]
     async with lock:
-        if mintq_config.cache_enabled and not mintq_config.cache_overwrite and os.path.exists(cache_path):
+        if mintq_config.schema_cache_enabled and not mintq_config.schema_cache_overwrite and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        if mintq_config.cache_required:
-            raise FileNotFoundError(f"Cache required (MINTQ_CACHE_REQUIRED=1) but not found at {cache_path}")
+        if mintq_config.schema_cache_required:
+            raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
         dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
 
@@ -233,7 +233,7 @@ async def load_schema_with_cache_async(
             await t_eng.engine.dispose()  # type: ignore
         else:
             t_eng.engine.dispose()
-        if mintq_config.cache_enabled:
+        if mintq_config.schema_cache_enabled:
             with open(cache_path, "w", encoding="utf-8") as f:
                 f.write(schema.model_dump_json(indent=2))
         return schema

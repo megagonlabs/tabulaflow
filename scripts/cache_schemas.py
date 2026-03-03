@@ -16,12 +16,12 @@ async def main() -> None:
     print(args)
     print()
 
-    os.environ["MINTQ_CACHE_ENABLED"] = "1"
-    os.environ["MINTQ_CACHE_REQUIRED"] = "0"
+    os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "1"
+    os.environ["MINTQ_SCHEMA_CACHE_REQUIRED"] = "0"
     if args.overwrite:
-        os.environ["MINTQ_CACHE_OVERWRITE"] = "1"
+        os.environ["MINTQ_SCHEMA_CACHE_OVERWRITE"] = "1"
     else:
-        os.environ["MINTQ_CACHE_OVERWRITE"] = "0"
+        os.environ["MINTQ_SCHEMA_CACHE_OVERWRITE"] = "0"
     mintq_config.reload_from_env()
 
     t0 = time.time()

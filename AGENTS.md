@@ -12,7 +12,7 @@ Use `uv` for all Python operations:
 ## Common Commands
 
 ```bash
-make test          # pytest: MINTQ_CACHE_ENABLED=0 MINTQ_CACHE_REQUIRED=0 uv run pytest -s tests/
+make test          # pytest with all caching disabled
 make format        # ruff format + ruff check --fix
 make lint          # ruff check
 make mypy          # mypy mintq/ tests/
@@ -61,7 +61,8 @@ cache/               # schema and preprocessing cache
 Managed via `direnv` (`.envrc` file, not committed):
 - `OPENAI_API_KEY`
 - `SF_USER`, `SF_PASSWORD`, `SF_ACCOUNT` — Snowflake (Spider 2.0)
-- `MINTQ_CACHE_ENABLED`, `MINTQ_CACHE_REQUIRED` — cache control
+- `MINTQ_SCHEMA_CACHE_ENABLED`, `MINTQ_SCHEMA_CACHE_REQUIRED` — schema cache control
+- `MINTQ_PREPROCESSOR_CACHE_ENABLED`, `MINTQ_PREPROCESSOR_CACHE_REQUIRED` — preprocessor cache control
 - `MINTQ_MAX_LLM_CONCURRENCY`, `MINTQ_MAX_LLM_REQUESTS_PER_MINUTE` — rate limiting
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `LOGFIRE_TOKEN` — tracing (optional)
 

@@ -12,7 +12,7 @@ from mintq.schema import SQLSchema, HSQLSchema
 from mcp.server.fastmcp import FastMCP
 
 
-# os.environ["MINTQ_CACHE_ENABLED"] = "0"
+# os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
 
 
 mcp = FastMCP("postgres_financial", host="0.0.0.0", port=8126)

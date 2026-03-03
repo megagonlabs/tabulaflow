@@ -46,7 +46,7 @@ async def main() -> None:
             split = default_splits.get(args.dataset, mintq_config.split)
 
         if args.no_cache:
-            os.environ["MINTQ_CACHE_ENABLED"] = "0"
+            os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
             mintq_config.reload_from_env()
 
         dataset_loader = dataset_registry.get_class(args.dataset)()

@@ -54,7 +54,7 @@ def create_db(db_path: str) -> None:
 
 
 async def main() -> None:
-    os.environ["MINTQ_CACHE_ENABLED"] = "0"
+    os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
     db_path = "output/test.db"
     create_db(db_path)
     db_connector = await SQLConnector.from_url_async(

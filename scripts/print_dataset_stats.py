@@ -233,7 +233,7 @@ async def main() -> None:
     print()
 
     if args.no_cache:
-        os.environ["MINTQ_CACHE_ENABLED"] = "0"
+        os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

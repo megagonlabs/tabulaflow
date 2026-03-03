@@ -8,9 +8,12 @@ QueryCacheMode = Literal["all", "successful_only"]
 
 class MintqConfig:
     DEFAULT_CACHE_DIR = "cache"
-    DEFAULT_CACHE_ENABLED = True
-    DEFAULT_CACHE_OVERWRITE = False
-    DEFAULT_CACHE_REQUIRED = False
+    DEFAULT_SCHEMA_CACHE_ENABLED = True
+    DEFAULT_SCHEMA_CACHE_OVERWRITE = False
+    DEFAULT_SCHEMA_CACHE_REQUIRED = False
+    DEFAULT_PREPROCESSOR_CACHE_ENABLED = True
+    DEFAULT_PREPROCESSOR_CACHE_OVERWRITE = False
+    DEFAULT_PREPROCESSOR_CACHE_REQUIRED = False
     DEFAULT_QUERY_CACHE_ENABLED = True
     DEFAULT_QUERY_CACHE_OVERWRITE = False
     DEFAULT_QUERY_CACHE_MODE: QueryCacheMode = "successful_only"
@@ -35,11 +38,19 @@ class MintqConfig:
         self._validate()
 
     def _validate(self) -> None:
-        if self.cache_required and self.cache_overwrite:
-            raise ValueError("MINTQ_CACHE_REQUIRED and MINTQ_CACHE_OVERWRITE cannot be 1 at the same time")
-
-        if self.cache_required and not self.cache_enabled:
-            raise ValueError("MINTQ_CACHE_REQUIRED cannot be 1 when MINTQ_CACHE_ENABLED is 0")
+        for prefix in ("schema", "preprocessor"):
+            enabled = getattr(self, f"{prefix}_cache_enabled")
+            overwrite = getattr(self, f"{prefix}_cache_overwrite")
+            required = getattr(self, f"{prefix}_cache_required")
+            env_prefix = prefix.upper()
+            if required and overwrite:
+                raise ValueError(
+                    f"MINTQ_{env_prefix}_CACHE_REQUIRED and MINTQ_{env_prefix}_CACHE_OVERWRITE cannot be 1 at the same time"
+                )
+            if required and not enabled:
+                raise ValueError(
+                    f"MINTQ_{env_prefix}_CACHE_REQUIRED cannot be 1 when MINTQ_{env_prefix}_CACHE_ENABLED is 0"
+                )
 
     @property
     def cache_dir(self) -> str:
@@ -48,24 +59,44 @@ class MintqConfig:
         return self.DEFAULT_CACHE_DIR
 
     @property
-    def cache_enabled(self) -> bool:
-        if (value := os.getenv("MINTQ_CACHE_ENABLED")) is not None:
+    def schema_cache_enabled(self) -> bool:
+        if (value := os.getenv("MINTQ_SCHEMA_CACHE_ENABLED")) is not None:
             return value == "1"
-        return self.DEFAULT_CACHE_ENABLED
+        return self.DEFAULT_SCHEMA_CACHE_ENABLED
 
     @property
-    def cache_overwrite(self) -> bool:
-        """Overwrite existing cache files."""
-        if (value := os.getenv("MINTQ_CACHE_OVERWRITE")) is not None:
+    def schema_cache_overwrite(self) -> bool:
+        """Overwrite existing schema cache files."""
+        if (value := os.getenv("MINTQ_SCHEMA_CACHE_OVERWRITE")) is not None:
             return value == "1"
-        return self.DEFAULT_CACHE_OVERWRITE
+        return self.DEFAULT_SCHEMA_CACHE_OVERWRITE
 
     @property
-    def cache_required(self) -> bool:
-        """Raise an error if cache is not found."""
-        if (value := os.getenv("MINTQ_CACHE_REQUIRED")) is not None:
+    def schema_cache_required(self) -> bool:
+        """Raise an error if schema cache is not found."""
+        if (value := os.getenv("MINTQ_SCHEMA_CACHE_REQUIRED")) is not None:
             return value == "1"
-        return self.DEFAULT_CACHE_REQUIRED
+        return self.DEFAULT_SCHEMA_CACHE_REQUIRED
+
+    @property
+    def preprocessor_cache_enabled(self) -> bool:
+        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_ENABLED")) is not None:
+            return value == "1"
+        return self.DEFAULT_PREPROCESSOR_CACHE_ENABLED
+
+    @property
+    def preprocessor_cache_overwrite(self) -> bool:
+        """Overwrite existing preprocessor cache files."""
+        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_OVERWRITE")) is not None:
+            return value == "1"
+        return self.DEFAULT_PREPROCESSOR_CACHE_OVERWRITE
+
+    @property
+    def preprocessor_cache_required(self) -> bool:
+        """Raise an error if preprocessor cache is not found."""
+        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_REQUIRED")) is not None:
+            return value == "1"
+        return self.DEFAULT_PREPROCESSOR_CACHE_REQUIRED
 
     @property
     def query_cache_enabled(self) -> bool:
