@@ -59,7 +59,12 @@ def _deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
     preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
-    records = json.loads(preview_df.to_json(orient="records", date_format="iso", default_handler=str))
+    # Round-trip through CSV so every column type is handled exactly like to_csv()
+    # (bytes → str repr, timestamps → ISO strings, etc.) with no risk of encoding errors.
+    csv_buf = io.StringIO()
+    preview_df.to_csv(csv_buf, index=False)
+    csv_buf.seek(0)
+    records = pd.read_csv(csv_buf).to_dict(orient="records")
     return {
         "sample_data": records,
         "num_rows": len(df),
