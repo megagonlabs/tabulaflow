@@ -727,12 +727,17 @@ March 2
   - direct_prompting, 0.3162 spider2_ex, executable: 0.7261
 - [x] query cache
   - [x] MINTQ_QUERY_CACHE_MODE
-- [ ] Investigate evaluation on spider2 object columns
-- [ ] Investigate cases where simple_ex = 1.0 but spider2_ex = 0.0
+- [x] Fix evaluation - round-trip csv
+- [x] Update df serialization to feather format
+- [x] Fix bugs
+  - [x] Duplicate column names
+  - [x] Lone surrogates in string values
+  - [x] Oversized Python ints
 
 - [ ] ER diagram synthesis
 - [ ] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
-
+- [ ] Show intermediate tables for CTE in run_query tool
+- [ ] Code edit tool for editting complex queries
 
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
@@ -746,7 +751,6 @@ March 2
 - [ ] Table description (table profiler)
 - [ ] min-max range for numeric columns
 - [ ] Update extract_all_source_columns to support schema_name
-- [ ] Show intermediate tables for CTE in run_query tool
 - [ ] Remove unuseful FKs in linked schema
 - [ ] gpt-5-mini for sql gen and gpt-4.1 for postprocessing
 - [ ] Fix Spider table and column names casing
