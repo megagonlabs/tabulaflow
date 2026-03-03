@@ -57,6 +57,52 @@ def _deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+_INT64_MIN = -(2**63)
+_UINT64_MAX = 2**64 - 1
+
+
+def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
+    """Sanitize object-dtype columns so the DataFrame is safe for Arrow/Feather and JSON.
+
+    Handles two classes of problems that database drivers can produce:
+    * **Lone surrogates** in ``str`` values – invalid UTF-8 that crashes Feather and
+      pydantic-core's JSON encoder.  Re-encoded via ``errors="replace"`` (U+FFFD).
+    * **Oversized Python ints** – values outside the int64/uint64 range that Arrow
+      cannot represent as C longs.  The entire column is cast to ``str`` to avoid
+      mixed str/int types that Arrow also rejects.
+
+    Only copies the DataFrame when actual changes are needed.
+    """
+    obj_cols = df.select_dtypes(include=["object"]).columns
+    if obj_cols.empty:
+        return df
+    copied = False
+    for col in obj_cols:
+        series = df[col]
+
+        # Check if any int overflows Arrow's int64/uint64 range.
+        # If so we must stringify the whole column to keep Arrow-compatible homogeneous types.
+        has_oversized_int = series.map(
+            lambda v: isinstance(v, int) and not isinstance(v, bool) and not (_INT64_MIN <= v <= _UINT64_MAX)
+        ).any()
+
+        if has_oversized_int:
+            sanitized = series.map(lambda v: str(v))
+        else:
+            # Only fix lone surrogates in str values.
+            sanitized = series.map(
+                lambda v: v.encode("utf-8", errors="replace").decode("utf-8") if isinstance(v, str) else v
+            )
+            if sanitized.equals(series):
+                continue
+
+        if not copied:
+            df = df.copy()
+            copied = True
+        df[col] = sanitized
+    return df
+
+
 def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
     preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
     # Round-trip through CSV so every column type is handled exactly like to_csv()
@@ -629,9 +675,10 @@ class ExecResult(BaseModel):
         return _deserialize_dataframe(v)
 
     @model_validator(mode="after")
-    def deduplicate_df_columns(self) -> "ExecResult":
+    def sanitize_df(self) -> "ExecResult":
         if self.df is not None:
             self.df = _deduplicate_columns(self.df)
+            self.df = _sanitize_df_strings(self.df)
         return self
 
     @model_validator(mode="after")
