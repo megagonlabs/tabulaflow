@@ -10,7 +10,7 @@ from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--output_dir", default="readable/")
+    parser.add_argument("--output_dir", default="readable_cache/")
     args = parser.parse_args()
 
     input_dir = os.path.join(mintq_config.cache_dir, "schemas")
