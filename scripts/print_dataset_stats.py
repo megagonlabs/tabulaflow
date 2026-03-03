@@ -226,6 +226,7 @@ async def main() -> None:
     parser.add_argument("--split", default=mintq_config.split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
+    parser.add_argument("--print_preprocessed_schema_stats", action="store_true")
     parser.add_argument("--no_cache", action="store_true")
     args = parser.parse_args()
     print(args)
@@ -242,7 +243,8 @@ async def main() -> None:
     )
 
     await print_basic_stats(dataset, args.format)
-    await print_preprocessed_schema_stats(dataset, args.format)
+    if args.print_preprocessed_schema_stats:
+        await print_preprocessed_schema_stats(dataset, args.format)
 
     if dataset.tasks[0].task_type == "ambig":
         await print_per_db_ambig_stats(dataset, args.format)
