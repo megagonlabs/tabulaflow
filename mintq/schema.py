@@ -58,7 +58,6 @@ def _deduplicate_columns(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _build_readable_df_preview(df: pd.DataFrame) -> dict[str, Any]:
-    df = _deduplicate_columns(df)
     preview_df = df.head(_DF_PREVIEW_MAX_ROWS)
     records = json.loads(preview_df.to_json(orient="records", date_format="iso", default_handler=str))
     return {
@@ -94,7 +93,6 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     """Serialize a DataFrame as Feather bytes in a single JSON payload."""
     if df is None:
         return None
-    df = _deduplicate_columns(df)
     buffer = io.BytesIO()
     # preserve_index=True keeps non-trivial indexes intact through round-trip.
     feather.write_feather(df, buffer)
@@ -624,6 +622,12 @@ class ExecResult(BaseModel):
     @classmethod
     def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
         return _deserialize_dataframe(v)
+
+    @model_validator(mode="after")
+    def deduplicate_df_columns(self) -> "ExecResult":
+        if self.df is not None:
+            self.df = _deduplicate_columns(self.df)
+        return self
 
     @model_validator(mode="after")
     def truncate_df(self) -> "ExecResult":
