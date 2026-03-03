@@ -29,7 +29,7 @@ def main() -> None:
     for f in os.listdir(input_dir):
         summary = DBSummary.model_validate_json(open(os.path.join(input_dir, f)).read())
         with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
-            f.write(summary.summary_markdown)
+            f.write(summary.db_summary_markdown)
     print(f"Exported {len(os.listdir(input_dir))} DB summaries to {output_dir}")
 
     input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "schema_preprocessor")

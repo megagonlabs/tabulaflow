@@ -29,7 +29,7 @@ def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> 
 
 
 class DBSummary(BaseModel):
-    summary_markdown: str
+    db_summary_markdown: str
 
 
 @preprocessor_registry.register
