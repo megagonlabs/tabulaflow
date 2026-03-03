@@ -211,6 +211,8 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["temperature"] = args.temperature
     if args.max_steps is not None:
         kwargs["max_steps"] = args.max_steps
+    if args.use_column_description is not None:
+        kwargs["use_column_description"] = args.use_column_description
     if args.no_query_for_intended_only:
         kwargs["query_for_intended_only"] = False
     if args.use_gold_phrases:
@@ -235,6 +237,7 @@ async def main_async() -> None:
     parser.add_argument("--max_steps", default=10, type=int)
     parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("--openai_reasoning_summary", default=None)
+    parser.add_argument("--use_column_description", type=bool_flag, default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
 
     # sql agent
