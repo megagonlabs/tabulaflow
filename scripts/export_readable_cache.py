@@ -3,6 +3,7 @@ import os
 from mintq.config import mintq_config
 from mintq.preprocessors.db_summarizer import DBSummary
 from mintq.schema import SQLSchema
+from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.preprocessors.er_diagram import ERDiagram
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
@@ -16,11 +17,15 @@ def main() -> None:
     input_dir = os.path.join(mintq_config.cache_dir, "schemas")
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)
-    for f in os.listdir(input_dir):
-        schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, f)).read())
+    for file in os.listdir(input_dir):
+        schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, file)).read())
         schema_str = SQLDDLSchemaFormatter().format(schema, add_description=True)
-        with open(os.path.join(output_dir, f.replace(".json", ".md")), "w") as f:
+        with open(os.path.join(output_dir, file.replace(".json", ".md")), "w") as f:
             f.write(schema_str)
+        compressed_schema = SchemaCompressor().compress(schema)
+        compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, add_description=True)
+        with open(os.path.join(output_dir, file.replace(".json", "_compressed.md")), "w") as f:
+            f.write(compressed_schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 
     input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "db_summarizer")
