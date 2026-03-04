@@ -202,11 +202,20 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         "schema_formatter": args.schema_formatter,
     }
     if agent_cls.name == "simple_zero_shot":
-        kwargs["num_candidates"] = args.num_majority_voting_candidates
+        if args.num_majority_voting_candidates is not None:
+            kwargs["num_candidates"] = args.num_majority_voting_candidates
     if agent_cls.name == "sql_agent":
-        kwargs["num_few_shot_examples"] = args.num_few_shot_examples
-        kwargs["do_schema_linking"] = args.do_schema_linking
-        kwargs["do_postprocessing"] = args.do_postprocessing
+        if args.do_schema_linking is not None:
+            kwargs["do_schema_linking"] = args.do_schema_linking
+        if args.do_postprocessing is not None:
+            kwargs["do_postprocessing"] = args.do_postprocessing
+        if args.num_few_shot_examples is not None:
+            kwargs["num_few_shot_examples"] = args.num_few_shot_examples
+        if args.question_embedder_embedding_llm is not None:
+            kwargs["question_embedder_embedding_llm"] = args.question_embedder_embedding_llm
+    if agent_cls.name == "mintq_agent":
+        if args.db_summarizer_llm is not None:
+            kwargs["db_summarizer_llm"] = args.db_summarizer_llm
     if args.temperature is not None:
         kwargs["temperature"] = args.temperature
     if args.max_steps is not None:
@@ -238,17 +247,20 @@ async def main_async() -> None:
     parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("--openai_reasoning_summary", default=None)
     parser.add_argument("--use_column_description", type=bool_flag, default=None)
-    parser.add_argument("-n", "--num_majority_voting_candidates", default=1, type=int)
+    parser.add_argument("-n", "--num_majority_voting_candidates", default=None, type=int)
 
     # sql agent
-    parser.add_argument("--do_schema_linking", type=bool_flag, default=True)
-    parser.add_argument("--do_postprocessing", type=bool_flag, default=True)
-    parser.add_argument("--num_few_shot_examples", default=5, type=int)
+    parser.add_argument("--do_schema_linking", type=bool_flag, default=None)
+    parser.add_argument("--do_postprocessing", type=bool_flag, default=None)
+    parser.add_argument("--num_few_shot_examples", default=None, type=int)
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")
 
+    # mintq agent
+    parser.add_argument("--db_summarizer_llm", default=None)
+
     # question embedder
-    parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
+    parser.add_argument("--question_embedder_embedding_llm", default=None)
 
     # ambig agents
     parser.add_argument("--no_query_for_intended_only", action="store_true")
