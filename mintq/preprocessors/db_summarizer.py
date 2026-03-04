@@ -18,8 +18,6 @@ You are an AI database expert tasked with producing a summary for a database.
 - Your output should contain only the summary without further suggestions or explanations.
 - Keep the content clear, precise, and concise.
 - Describe the core entities and the relationships within the database.
-- Ensure all table names are mentioned so that a reader can identify all tables in the database from the summary.
-- For important relationships, provide the corresponding join paths illustrated with a SQL snippet.
 </requirements>
 """.strip()
 
