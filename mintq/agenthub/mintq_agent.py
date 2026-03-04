@@ -59,6 +59,7 @@ You are an agent - please keep going until the database query is fully construct
 - Always use the `get_table_schema` tool to get the schema of the relevant tables before constructing the query.
 - You may call the `run_query` tool multiple times while building the final query.
 - You may execute intermediate or exploratory queries; however, the final query (the last one executed) must be complete and fully constructed. In the final query, do not split the logic into multiple dependent queries (for example, first retrieving an ID and then using that ID in a subsequent query—this is not allowed).
+- For complex queries involving multiple CTEs, use the `run_query` tool to execute and validate CTEs incrementally as you build toward the complete query.
 - Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
 </tool_calling>
 {%- if dataset_instructions %}
@@ -115,9 +116,12 @@ class MintqAgent:
             db_summary=db_summary.db_summary_markdown,
             document=task.document,
         )
+        schema = db_connector.schema
+        if self.compressor is not None:
+            schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                db_connector, self.formatter, add_description=self.config.use_column_description
+                schema, self.formatter, add_description=self.config.use_column_description
             ),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),

@@ -3,6 +3,7 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
+from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 
@@ -14,10 +15,8 @@ class GetTableSchemaToolMetrics(BaseModel):
 class GetTableSchemaTool:
     name: ClassVar = "get_table_schema"
 
-    def __init__(
-        self, db_connector: BaseSQLDBConnector, formatter: BaseSQLSchemaFormatter, add_description: bool = True
-    ):
-        self.db_connector = db_connector
+    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, add_description: bool = True):
+        self.schema = schema
         self.formatter = formatter
         self.add_description = add_description
         self._metrics = GetTableSchemaToolMetrics()
@@ -33,13 +32,16 @@ class GetTableSchemaTool:
         self._metrics.num_calls += 1
 
         # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
+        all_schema_names = [t.schema_name for t in self.schema.tables]
         if len(set[str | None](all_schema_names)) == 1:
             schema_name = all_schema_names[0]
 
         table = None
-        for t in self.db_connector.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
+        for t in self.schema.tables:
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
+                t.name.lower() == table_name.lower()
+                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
+            ):
                 table = t
                 break
 
@@ -47,7 +49,11 @@ class GetTableSchemaTool:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
-        return self.formatter.format_table(table, add_description=self.add_description)
+        res = ""
+        if table.name.lower() != table_name.lower():
+            res += f"(table {table_name} shares the same schema with {table.name})\n\n"
+        res += self.formatter.format_table(table, add_description=self.add_description)
+        return res
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
