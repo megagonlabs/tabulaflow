@@ -18,8 +18,10 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 - **Snowflake Syntax Only:**
   - Use only functions and syntax supported by Snowflake.
   - For example, `TRIM(BOTH 'chars' FROM expr)` is not valid in Snowflake. Use `TRIM(expr, 'chars')` or `REPLACE()` instead.
+- **Schema-Qualified Table Names:**
+  - Always include the schema name when referencing tables (e.g., `SCHEMA_NAME.TABLE_NAME`).
 - **Case-Sensitive Identifiers:**
-  - Columns defined with double-quoted lowercase names (`CREATE TABLE ... ("col_name" ...)`) must always be referenced with double quotes.
+  - In Snowflake, columns defined with double-quoted names (`CREATE TABLE ... ("col_name" ...)`) **must always be referenced with double quotes**.
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
