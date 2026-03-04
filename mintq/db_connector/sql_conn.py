@@ -19,6 +19,7 @@ from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, select, func, distinct, inspect
 from mintq.schema import (
     ErrorInfo,
+    SQLDialect,
     SQLSchema,
     SQLColumnSchema,
     SQLTableSchema,
@@ -212,6 +213,11 @@ async def load_schema_with_cache_async(
 
     lock = _db_locks[global_id]
     async with lock:
+        sqlalchemy_dialect = t_eng.engine.dialect.name
+        # SQLAlchemy uses "postgresql"; normalise to our SQLDialect literal "postgres"
+        dialect_map: dict[str, str] = {"postgresql": "postgres"}
+        dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
+
         if mintq_config.schema_cache_enabled and not mintq_config.schema_cache_overwrite and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
@@ -219,12 +225,10 @@ async def load_schema_with_cache_async(
         if mintq_config.schema_cache_required:
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
-        dbms_supports_schema = t_eng.engine.dialect.name not in ("sqlite", "mysql")
-
         schema = await build_schema_async(
             t_eng,
             db_name,
-            dbms_supports_schema,
+            dialect,
             group_date_partitioned_tables,
             group_table_regexes,
             column_stats_mode=mintq_config.column_stats_mode,
@@ -450,7 +454,7 @@ def group_table_names(
 async def build_schema_async(
     t_eng: ThrottledEngine,
     db_name: str,
-    dbms_supports_schema: bool,
+    dialect: SQLDialect,
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
@@ -460,7 +464,7 @@ async def build_schema_async(
     async_inspector = AsyncInspector(t_eng)
 
     schema_names: list[str | None]
-    if not dbms_supports_schema:
+    if dialect in ["sqlite", "mysql"]:
         schema_names = [None]
     else:
         schema_names = [_denorm(t_eng, name) for name in await async_inspector.get_schema_names()]
@@ -524,7 +528,7 @@ async def build_schema_async(
             tables.append(SQLTableSchema.model_validate(table.model_dump()))
 
     logger.info(f"Time taken to build schema for {db_name}: {time.time() - t0} seconds")
-    return SQLSchema(name=db_name, tables=tables)
+    return SQLSchema(name=db_name, dialect=dialect, tables=tables)
 
 
 @dataclass
@@ -607,7 +611,12 @@ class SQLConnector:
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
         """Build a deterministic cache key for a query."""
         key_data = json.dumps(
-            {"global_id": global_id, "query": query.strip(), "parameters": dict(sorted(parameters.items())) if parameters else {}, "timeout": timeout},
+            {
+                "global_id": global_id,
+                "query": query.strip(),
+                "parameters": dict(sorted(parameters.items())) if parameters else {},
+                "timeout": timeout,
+            },
             sort_keys=True,
             ensure_ascii=True,
         )

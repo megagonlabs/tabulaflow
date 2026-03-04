@@ -270,6 +270,7 @@ class TableRef(BaseModel):
 
 class SQLSchema(BaseModel):
     name: str
+    dialect: SQLDialect | None = None
     tables: list[SQLTableSchema]
 
     def num_total_columns(self) -> int:
