@@ -9,6 +9,7 @@ from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL
 from mintq.agenthub.direct_prompting import DirectPrompting
 from mintq.agenthub.mini_agent import MiniAgent
 from mintq.agenthub.sql_agent import SQLAgent
+from mintq.agenthub.mintq_agent import MintqAgent
 from mintq.agenthub.ambig_simple import AmbigSimpleSQLAgent
 from mintq.agenthub.ambig_flat import AmbigFlatSQLAgent
 from mintq.agenthub.ambig_structured import AmbigStructuredSQLAgent
@@ -25,6 +26,7 @@ __all__ = [
     "DirectPrompting",
     "MiniAgent",
     "SQLAgent",
+    "MintqAgent",
     "AmbigSimpleSQLAgent",
     "AmbigFlatSQLAgent",
     "AmbigStructuredSQLAgent",
