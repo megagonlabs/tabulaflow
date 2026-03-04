@@ -3,7 +3,6 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SQLSchema
-from mintq.preprocessors.components import SchemaCompressor
 
 
 class GetSchemaToolMetrics(BaseModel):
@@ -11,14 +10,21 @@ class GetSchemaToolMetrics(BaseModel):
 
 
 class GetSchemaTool:
+    """Tool that retrieves the full database schema.
+
+    Formats and returns the complete schema using the configured formatter.
+
+    Attributes:
+        schema: The SQL schema containing all available tables. Can be a
+            compressed schema produced by SchemaCompressor.
+        formatter: The formatter used to render the schema as text.
+    """
+
     name: ClassVar = "get_schema"
 
-    def __init__(
-        self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, compressor: SchemaCompressor | None = None
-    ):
+    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter):
         self.schema = schema
         self.formatter = formatter
-        self.compressor = compressor
         self._metrics = GetSchemaToolMetrics()
 
     async def __call__(self) -> str:
@@ -31,8 +37,7 @@ class GetSchemaTool:
         ```
         """
         self._metrics.num_calls += 1
-        schema = self.schema if self.compressor is None else self.compressor.compress(self.schema)
-        return self.formatter.format(schema)
+        return self.formatter.format(self.schema)
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
