@@ -745,7 +745,14 @@ March 3
 - [x] Separte cache config for schema and preprocessor
 - [x] db_summarizer
 - [x] Add dialect field to SQLSchema
+- [x] mintq_agent
+- [x] Revise spider2 instructions
+  - [x] Schema-Qualified Table Names
+  - [x] Case-Sensitive Identifiers
+- [ ] Exp 226: mintq_agent
 
+- [ ] Remove language field from tasks
+- [ ] schema linking for mintq_agent
 - [ ] ER diagram synthesis
 - [ ] Show intermediate tables for CTE in run_query tool
 - [ ] Code edit tool for editting complex queries
