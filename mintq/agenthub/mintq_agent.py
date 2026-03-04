@@ -116,7 +116,9 @@ class MintqAgent:
             document=task.document,
         )
         tools: dict[str, BaseTool] = {
-            "get_table_schema": GetTableSchemaTool(db_connector, self.formatter),
+            "get_table_schema": GetTableSchemaTool(
+                db_connector, self.formatter, add_description=self.config.use_column_description
+            ),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
