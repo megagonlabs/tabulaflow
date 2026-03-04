@@ -243,7 +243,7 @@ async def main_async() -> None:
     parser.add_argument("-s", "--schema_formatter", default="sql_ddl")
     parser.add_argument("--llm", default="openai-responses:gpt-4.1")
     parser.add_argument("--temperature", default=None, type=float)
-    parser.add_argument("--max_steps", default=10, type=int)
+    parser.add_argument("--max_steps", default=None, type=int)
     parser.add_argument("--openai_reasoning_effort", default=None)
     parser.add_argument("--openai_reasoning_summary", default=None)
     parser.add_argument("--use_column_description", type=bool_flag, default=None)

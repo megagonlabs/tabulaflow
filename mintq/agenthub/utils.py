@@ -77,7 +77,7 @@ class BasicAgentConfig(BaseModel):
     schema_formatter: str = "sql_ddl"
     compress_schema: bool = True
     temperature: float | None = None
-    max_steps: int = 10
+    max_steps: int = 20
     formatter_max_total_columns: int | None = 5000
     use_column_description: bool = True
     openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = None
