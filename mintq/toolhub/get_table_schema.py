@@ -13,6 +13,18 @@ class GetTableSchemaToolMetrics(BaseModel):
 
 
 class GetTableSchemaTool:
+    """Tool that retrieves the full schema definition for a specified table.
+
+    Looks up a table by schema name and table name, then formats the table
+    schema using the configured formatter.
+
+    Attributes:
+        schema: The SQL schema containing all available tables. Can be a
+            compressed schema produced by SchemaCompressor.
+        formatter: The formatter used to render table schema as text.
+        add_description: Whether to include column descriptions in output.
+    """
+
     name: ClassVar = "get_table_schema"
 
     def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, add_description: bool = True):
