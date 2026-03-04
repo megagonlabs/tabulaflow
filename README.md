@@ -742,6 +742,9 @@ March 3
   - bird-sql: 0.6551 bird_sql_ex
 - [x] print_schema.py
 - [x] config option formatter_max_total_columns and use_column_description
+- [x] Separte cache config for schema and preprocessor
+- [x] db_summarizer
+- [x] Add dialect field to SQLSchema
 
 - [ ] ER diagram synthesis
 - [ ] Show intermediate tables for CTE in run_query tool
