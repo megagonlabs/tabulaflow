@@ -194,7 +194,7 @@ class SchemaLinker:
 
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
-            # "get_column_description": GetColumnDescriptionTool(db_connector),
+            # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
@@ -506,7 +506,7 @@ class SQLAgent:
 
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
-            # "get_column_description": GetColumnDescriptionTool(db_connector),
+            # "get_column_description": GetColumnDescriptionTool(linked_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),

@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 
@@ -12,10 +12,20 @@ class GetColumnDescriptionToolMetrics(BaseModel):
 
 
 class GetColumnDescriptionTool:
+    """Tool that retrieves the description of a specific column in a table.
+
+    Looks up a column by schema name, table name, and column name, then
+    returns its description if available.
+
+    Attributes:
+        schema: The SQL schema containing all available tables. Can be a
+            compressed schema produced by SchemaCompressor.
+    """
+
     name: ClassVar = "get_column_description"
 
-    def __init__(self, db_connector: BaseSQLDBConnector):
-        self.db_connector = db_connector
+    def __init__(self, schema: SQLSchema):
+        self.schema = schema
         self._metrics = GetColumnDescriptionToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
@@ -30,7 +40,7 @@ class GetColumnDescriptionTool:
         self._metrics.num_calls += 1
 
         # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
+        all_schema_names = [t.schema_name for t in self.schema.tables]
         if len(set(all_schema_names)) == 1:
             schema_name = all_schema_names[0]
 
@@ -41,7 +51,7 @@ class GetColumnDescriptionTool:
                 break
 
         table = None
-        for t in self.db_connector.schema.tables:
+        for t in self.schema.tables:
             if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
                 table = t
                 break

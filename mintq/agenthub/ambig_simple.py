@@ -81,10 +81,13 @@ class AmbigSimpleSQLAgent:
         else:
             user_patience = self.config.user_patience  # type: ignore
 
+        schema = db_connector.schema
+        if self.compressor is not None:
+            schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = GetSchemaTool(db_connector.schema, self.formatter, self.compressor)
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_description:
-            tools["get_column_description"] = GetColumnDescriptionTool(db_connector)
+            tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)
         tools["run_query"] = RunQueryWithParamsTool(db_connector)
