@@ -738,8 +738,8 @@ March 3
 - [x] Exp 222: mini_agent with 40 steps: 0.5368 spider2_ex
 - [x] Column description: https://github.com/xlang-ai/Spider2/blob/main/spider2-snow/resource/databases/NOAA_DATA/NOAA_GSOD/GSOD1929.json
 - [x] Exp 223: mini_agent with column description:
-  - spider2-snow:
-  - bird-sql:
+  - spider2-snow: 0.5110 spider2_ex
+  - bird-sql: 0.6551 bird_sql_ex
 - [x] print_schema.py
 - [x] config option formatter_max_total_columns and use_column_description
 
