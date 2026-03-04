@@ -87,6 +87,8 @@ class SQLDDLSchemaFormatter:
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         lines = [f"-- Database: {schema.name}"]
+        if schema.dialect:
+            lines.append(f"-- Dialect: {schema.dialect}")
         if not schema.tables:
             lines.append("-- (database has no tables)")
             return "\n".join(lines)
