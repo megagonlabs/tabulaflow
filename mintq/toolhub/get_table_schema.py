@@ -31,12 +31,12 @@ class GetTableSchemaTool:
 
         # If there is only a single schema, use it regardless of what the agent specified
         all_schema_names = [t.schema_name for t in self.db_connector.schema.tables]
-        if len(set(all_schema_names)) == 1:
+        if len(set[str | None](all_schema_names)) == 1:
             schema_name = all_schema_names[0]
 
         table = None
         for t in self.db_connector.schema.tables:
-            if equals_ci(t.schema_name, schema_name) and t.name.lower() == table_name.lower():
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
                 table = t
                 break
 

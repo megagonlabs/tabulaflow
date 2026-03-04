@@ -42,7 +42,7 @@ class GetColumnDescriptionTool:
 
         table = None
         for t in self.db_connector.schema.tables:
-            if equals_ci(t.schema_name, schema_name) and t.name.lower() == table_name.lower():
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
                 table = t
                 break
 
