@@ -754,6 +754,11 @@ March 4
 - [x] Exp 226: mintq_agent
   - spider2-snow: 0.5533 spider2_ex  cost: $11.6
   - bird-sql: 0.6447 bird_sql_ex
+- [x] Exp 227: mintq_agent with step-by-step CTE prompt
+  - spider2-snow: 0.5607 simple_ex, 0.5496 spider2_ex
+- [ ] Improve get_table_schema to better handle compressed schema
+- [ ] JSON column
+- [ ] "step-by-step" CTE prompt
 - [ ] Remove language field from tasks
 - [ ] schema linking for mintq_agent
 - [ ] ER diagram synthesis
