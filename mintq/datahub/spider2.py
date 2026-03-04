@@ -21,7 +21,7 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 - **Schema-Qualified Table Names:**
   - Always include the schema name when referencing tables (e.g., `SCHEMA_NAME.TABLE_NAME`).
 - **Case-Sensitive Identifiers:**
-  - In Snowflake, columns defined with double-quoted names (`CREATE TABLE ... ("col_name" ...)`) **must always be referenced with double quotes**.
+  - Snowflake columns defined with double-quoted names (`CREATE TABLE ... ("col_name" ...)`) **must always be referenced with double quotes** (e.g., `SELECT "col_name" FROM SCHEMA_NAME.TABLE_NAME`).
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
