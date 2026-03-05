@@ -756,6 +756,8 @@ March 4
   - bird-sql: 0.6447 bird_sql_ex
 - [x] Exp 227: mintq_agent with step-by-step CTE prompt
   - spider2-snow: 0.5607 simple_ex, 0.5496 spider2_ex
+- [x] Exp 228: mintq_agent with updated step-by-step CTE prompt
+  - spider2-snow: 0.563 simple_ex, 0.5570 spider2_ex
 - [ ] Improve get_table_schema to better handle compressed schema
 - [ ] JSON column
 - [ ] "step-by-step" CTE prompt
