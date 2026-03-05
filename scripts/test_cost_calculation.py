@@ -1,3 +1,4 @@
+from mintq.config import mintq_config
 from mintq.schema import Usage
 
 LLMS = [
@@ -14,6 +15,7 @@ LLMS = [
 
 
 def main():
+    mintq_config.setup_logging()
     for llm in LLMS:
         print(llm)
         usage = Usage.create(llm, 1, 1000000, 1000000)

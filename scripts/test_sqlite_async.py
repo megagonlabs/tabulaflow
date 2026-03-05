@@ -2,6 +2,7 @@
 import time
 import asyncio
 from typing import Any
+from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.db_connector import BaseSQLDBConnector
 
@@ -54,6 +55,7 @@ async def run_query(db_connector: BaseSQLDBConnector, query: str, parameters: di
 
 
 async def main() -> None:
+    mintq_config.setup_logging()
     dataset_loader = dataset_registry.get_class("arcs")()
     # dataset = await dataset_loader.get_split_async("dev")
     # db_connector: SQLConnector = dataset.db_connectors["retails"]

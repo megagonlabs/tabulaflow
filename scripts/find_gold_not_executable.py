@@ -16,6 +16,8 @@ async def main() -> None:
     print(args)
     print()
 
+    mintq_config.setup_logging()
+
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()
     dataset = await dataset_loader.get_split_async(args.split)

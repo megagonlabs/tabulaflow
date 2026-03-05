@@ -14,6 +14,8 @@ def main() -> None:
     parser.add_argument("--output_dir", default="readable_cache/")
     args = parser.parse_args()
 
+    mintq_config.setup_logging()
+
     input_dir = os.path.join(mintq_config.cache_dir, "schemas")
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)

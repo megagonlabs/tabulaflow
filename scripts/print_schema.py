@@ -33,6 +33,8 @@ async def main() -> None:
     print(args)
     print()
 
+    mintq_config.setup_logging()
+
     t0 = time.time()
 
     if args.file:

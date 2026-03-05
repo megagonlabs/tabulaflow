@@ -232,6 +232,8 @@ async def main() -> None:
     print(args)
     print()
 
+    mintq_config.setup_logging()
+
     if args.no_cache:
         os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
 

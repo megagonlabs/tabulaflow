@@ -2,6 +2,7 @@ import argparse
 import random
 import asyncio
 import collections
+from mintq.config import mintq_config
 from mintq.datahub.arcs import ARCSDatasetLoader
 import json
 
@@ -15,6 +16,8 @@ async def main():
     args = parser.parse_args()
     print(args)
     print()
+
+    mintq_config.setup_logging()
     total_tasks = 0
 
     random.seed(args.seed)

@@ -1,4 +1,5 @@
 import os
+from mintq.config import mintq_config
 from mintq.schema import NL2QRunResult
 
 
@@ -24,6 +25,8 @@ EXP_DIRS = {
 
 TALBE_FMT = "github"
 
+
+mintq_config.setup_logging()
 
 EXP_RESULTS = {}
 for method, exp_dir in EXP_DIRS.items():

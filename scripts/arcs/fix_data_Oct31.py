@@ -1,3 +1,4 @@
+from mintq.config import mintq_config
 from mintq.datahub.arcs import ARCSDatasetLoader
 from mintq.schema import AmbigNL2QTask
 from pydantic import TypeAdapter
@@ -6,6 +7,7 @@ import asyncio
 
 
 async def main():
+    mintq_config.setup_logging()
     dataset_loader = ARCSDatasetLoader()
     dataset = await dataset_loader.get_split_async("test")
     tasks = [task for task in dataset.tasks if task.qid.endswith("-0")]
