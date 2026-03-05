@@ -27,6 +27,7 @@ from mintq.schema import (
     ExecResult,
 )
 from mintq.config import mintq_config, ColumnStatsMode
+from mintq.db_connector.utils import infer_json_schema
 
 logger = logging.getLogger(__name__)
 
@@ -274,6 +275,18 @@ CATEGORICAL_TYPES = [
     "ENUM",
 ]
 
+# Column types whose values may contain nested JSON / semi-structured data
+JSON_TYPES = [
+    "VARIANT",  # Snowflake
+    "OBJECT",  # Snowflake
+    "ARRAY",  # Snowflake
+    "JSON",  # MySQL, PostgreSQL
+    "JSONB",  # PostgreSQL
+]
+
+# Number of sample values used to infer JSON schema for semi-structured columns
+_JSON_SCHEMA_SAMPLE_SIZE = 100
+
 # Used when column_stats_mode is either "sample_for_large_tables" or "skip_for_large_tables"
 _LARGE_TABLE_THRESHOLD = 1000000
 # Used when column_stats_mode is "sample_for_large_tables"
@@ -344,6 +357,17 @@ async def build_column_async(
         examples = (await t_eng.run_query_async(select(subq.c[0]).distinct().limit(5))).result
         examples = [_convert(row[0]) for row in examples]
 
+    # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
+    json_schema: dict[str, Any] | None = None
+    if dtype in JSON_TYPES and num_rows > 0:
+        json_sample_rows = (
+            await t_eng.run_query_async(
+                select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
+            )
+        ).result
+        json_sample_values = [row[0] for row in json_sample_rows]
+        json_schema = infer_json_schema(json_sample_values)
+
     return SQLColumnSchema(
         name=_denorm(t_eng, column["name"]),
         dtype=dtype,
@@ -352,6 +376,7 @@ async def build_column_async(
         num_unique=num_unique,
         unique_ratio=unique_ratio,
         examples=examples,
+        json_schema=json_schema,
     )
 
 
