@@ -752,12 +752,12 @@ March 3
 
 March 4
 - [x] Exp 226: mintq_agent
-  - spider2-snow: 0.5533 spider2_ex  cost: $11.6
-  - bird-sql: 0.6447 bird_sql_ex
+  - spider2-snow: 0.5533 spider2_ex, cost: $11.6, steps: 5.5
+  - bird-sql: 0.6447 bird_sql_ex, cost: $11.2, steps: 3.4
 - [x] Exp 227: mintq_agent with step-by-step CTE prompt
-  - spider2-snow: 0.5607 simple_ex, 0.5496 spider2_ex
+  - spider2-snow: 0.5607 simple_ex, 0.5496 spider2_ex, cost: $12.6, steps: 5.8
 - [x] Exp 228: mintq_agent with updated step-by-step CTE prompt
-  - spider2-snow: 0.563 simple_ex, 0.5570 spider2_ex
+  - spider2-snow: 0.563 simple_ex, 0.5570 spider2_ex, cost: $15.0, steps: 7.0
 - [ ] Improve get_table_schema to better handle compressed schema
 - [ ] JSON column
 - [ ] "step-by-step" CTE prompt
