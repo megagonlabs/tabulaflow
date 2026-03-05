@@ -213,6 +213,9 @@ class SchemaCompressor:
         merged_unique_ratio = max([c.unique_ratio for c in columns if c.unique_ratio is not None], default=None)
         merged_examples = list(dict.fromkeys(sum([c.examples for c in columns], [])))[:20]
 
+        # Use the first non-None json_schema among the columns being merged
+        merged_json_schema = next((c.json_schema for c in columns if c.json_schema is not None), None)
+
         return SQLColumnSchema(
             name=columns[0].name,
             dtype=columns[0].dtype,
@@ -224,6 +227,7 @@ class SchemaCompressor:
             examples=merged_examples,
             primary_key_type=columns[0].primary_key_type,
             foreign_keys=columns[0].foreign_keys,
+            json_schema=merged_json_schema,
         )
 
     def _get_patterns(self, names: list[str]) -> list[NamePattern]:
