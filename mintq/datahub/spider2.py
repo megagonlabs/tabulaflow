@@ -222,7 +222,7 @@ class Spider2SnowDatasetLoader:
                 name,
                 "sync",
                 f"{base_url}/{name}",
-                max_concurrency_per_db=8,
+                max_concurrency_per_db=4,
                 connect_args=connect_args,
                 group_date_partitioned_tables=True,
                 group_table_regexes=GROUP_TABLE_REGEXES.get(name, []),

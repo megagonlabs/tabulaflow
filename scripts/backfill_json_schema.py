@@ -264,11 +264,11 @@ async def main() -> None:
         # Create engine and ThrottledEngine
         url = _build_url(args.dataset, db_name)
         if engine_type == "async":
-            engine = create_async_engine(url, pool_size=8, **engine_kwargs)
+            engine = create_async_engine(url, pool_size=4, **engine_kwargs)
         else:
-            engine = create_engine(url, pool_size=8, **engine_kwargs)  # type: ignore
+            engine = create_engine(url, pool_size=4, **engine_kwargs)  # type: ignore
 
-        db_semaphore = asyncio.Semaphore(8)
+        db_semaphore = asyncio.Semaphore(4)
         t_eng = ThrottledEngine(engine_type, engine, None, db_semaphore)
 
         try:
