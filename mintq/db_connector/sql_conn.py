@@ -27,7 +27,7 @@ from mintq.schema import (
     ExecResult,
 )
 from mintq.config import mintq_config, ColumnStatsMode
-from mintq.db_connector.utils import infer_json_schema
+from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 
@@ -284,6 +284,14 @@ JSON_TYPES = [
     "JSONB",  # PostgreSQL
 ]
 
+# Text column types that might contain JSON (detected via heuristic sampling)
+TEXT_TYPES = [
+    "TEXT",
+    "VARCHAR",
+    "NVARCHAR",
+    "CLOB",
+]
+
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 100
 
@@ -358,15 +366,19 @@ async def build_column_async(
         examples = [_convert(row[0]) for row in examples]
 
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
+    # For text columns (e.g. SQLite TEXT), heuristically detect JSON content from examples.
     json_schema: dict[str, Any] | None = None
-    if dtype in JSON_TYPES and num_rows > 0:
-        json_sample_rows = (
-            await t_eng.run_query_async(
-                select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
-            )
-        ).result
-        json_sample_values = [row[0] for row in json_sample_rows]
-        json_schema = infer_json_schema(json_sample_values)
+    if num_rows > 0:
+        is_json_type = dtype in JSON_TYPES
+        is_text_with_json = dtype in TEXT_TYPES and looks_like_json(examples)
+        if is_json_type or is_text_with_json:
+            json_sample_rows = (
+                await t_eng.run_query_async(
+                    select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
+                )
+            ).result
+            json_sample_values = [row[0] for row in json_sample_rows]
+            json_schema = infer_json_schema(json_sample_values)
 
     return SQLColumnSchema(
         name=_denorm(t_eng, column["name"]),

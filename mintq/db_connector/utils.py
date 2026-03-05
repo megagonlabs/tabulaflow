@@ -27,6 +27,30 @@ def infer_json_schema(values: list[Any], *, max_depth: int = 10) -> dict[str, An
     return _infer_schema(parsed, max_depth=max_depth, _depth=0)
 
 
+def looks_like_json(values: list[Any], *, threshold: float = 0.8) -> bool:
+    """Check if a list of values looks like JSON objects or arrays.
+
+    Returns True if at least ``threshold`` fraction of non-null string values
+    parse as JSON objects or arrays (not scalars like ``"hello"`` or ``123``).
+
+    Args:
+        values: Sample values to check.
+        threshold: Minimum fraction of values that must be JSON objects/arrays.
+    """
+    non_null_strings = [v for v in values if isinstance(v, str) and v.strip()]
+    if not non_null_strings:
+        return False
+    json_count = 0
+    for v in non_null_strings:
+        try:
+            parsed = json.loads(v)
+            if isinstance(parsed, (dict, list)):
+                json_count += 1
+        except (json.JSONDecodeError, ValueError):
+            pass
+    return json_count / len(non_null_strings) >= threshold
+
+
 def _parse_value(v: Any) -> Any:
     """Try to parse string values as JSON; return as-is otherwise."""
     if isinstance(v, str):

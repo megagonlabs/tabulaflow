@@ -1,5 +1,5 @@
 import pytest
-from mintq.db_connector.utils import infer_json_schema
+from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 
 def test_all_null_returns_none() -> None:
@@ -211,3 +211,52 @@ def test_mixed_json_strings_and_nulls() -> None:
             {"type": "null"},
         ]
     }
+
+
+# ── looks_like_json tests ──────────────────────────────────────────────
+
+
+def test_looks_like_json_objects() -> None:
+    assert looks_like_json(['{"a": 1}', '{"b": 2}', '{"c": 3}']) is True
+
+
+def test_looks_like_json_arrays() -> None:
+    assert looks_like_json(['[1, 2]', '[3]', '[]']) is True
+
+
+def test_looks_like_json_plain_strings() -> None:
+    assert looks_like_json(["hello", "world", "foo"]) is False
+
+
+def test_looks_like_json_scalars_not_counted() -> None:
+    """JSON scalars like '42' or '"hello"' should not count as JSON."""
+    assert looks_like_json(["42", '"hello"', "true"]) is False
+
+
+def test_looks_like_json_mixed_below_threshold() -> None:
+    """If less than 80% are JSON, return False."""
+    assert looks_like_json(['{"a": 1}', "plain", "text", "hello", "world"]) is False
+
+
+def test_looks_like_json_mixed_above_threshold() -> None:
+    """If >= 80% are JSON, return True."""
+    assert looks_like_json(['{"a": 1}', '{"b": 2}', '{"c": 3}', '{"d": 4}', "plain"]) is True
+
+
+def test_looks_like_json_empty_list() -> None:
+    assert looks_like_json([]) is False
+
+
+def test_looks_like_json_all_none() -> None:
+    assert looks_like_json([None, None]) is False
+
+
+def test_looks_like_json_custom_threshold() -> None:
+    values = ['{"a": 1}', "plain"]  # 50% JSON
+    assert looks_like_json(values, threshold=0.5) is True
+    assert looks_like_json(values, threshold=0.8) is False
+
+
+def test_looks_like_json_whitespace_strings() -> None:
+    """Empty/whitespace strings should be ignored."""
+    assert looks_like_json(["", "  ", '{"a": 1}']) is True
