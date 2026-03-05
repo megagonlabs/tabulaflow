@@ -371,6 +371,9 @@ async def build_column_async(
     if num_rows > 0:
         is_json_type = dtype in JSON_TYPES
         is_text_with_json = dtype in TEXT_TYPES and looks_like_json(examples)
+        logger.debug(
+            f"table {table_name}, column {column['name']}: is_json_type: {is_json_type}, is_text_with_json: {is_text_with_json}"
+        )
         if is_json_type or is_text_with_json:
             json_sample_rows = (
                 await t_eng.run_query_async(
