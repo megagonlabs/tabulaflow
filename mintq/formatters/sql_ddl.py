@@ -207,7 +207,7 @@ class SQLDDLSchemaFormatter:
         parts.append(f"    {col_name} {col_type}")
 
         # NULL / NOT NULL constraint
-        if not column.nullable or (column.null_ratio is not None and column.null_ratio == 0.0):
+        if not column.nullable:
             parts.append("NOT NULL")
         else:
             parts.append("NULL")
