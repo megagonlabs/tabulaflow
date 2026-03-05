@@ -102,12 +102,12 @@ def _infer_schema(values: list[Any], *, max_depth: int, _depth: int) -> dict[str
 
         if t == "object" and obj_key_values:
             properties: dict[str, Any] = {}
-            for k in sorted(obj_key_values.keys()):
-                child_values = obj_key_values[k]
-                properties[k] = _infer_schema(child_values, max_depth=max_depth, _depth=_depth + 1)
+            for k in obj_key_values:
+                properties[k] = _infer_schema(obj_key_values[k], max_depth=max_depth, _depth=_depth + 1)
             s["properties"] = properties
             # A key is required only if it appeared in every object sample
-            required = sorted(k for k, count in obj_key_counts.items() if count == num_objects)
+            # Preserve the insertion order (first-seen order from the data)
+            required = [k for k in obj_key_values if obj_key_counts[k] == num_objects]
             if required:
                 s["required"] = required
 
