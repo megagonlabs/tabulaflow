@@ -211,6 +211,8 @@ class SQLColumnSchema(BaseModel):
     """Concise description of the column"""
     detailed_description_markdown: str | None = None
     """Markdown-formatted detailed description of the column"""
+    json_schema: dict[str, Any] | None = None
+    """JSON Schema describing the internal structure of JSON/VARIANT columns (nested objects, arrays, etc.)"""
     not_used: bool = False
     """Indicates that the column contains no valid data or has been explicitly marked as not useful"""
     nullable: bool
