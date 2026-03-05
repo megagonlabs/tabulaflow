@@ -225,6 +225,11 @@ class SQLDDLSchemaFormatter:
         if add_description and column.description:
             comment_lines.append(f"        -- <description>{column.description}</description>")
 
+        # Add JSON schema for semi-structured columns
+        if self.include_json_schema and column.json_schema:
+            formatted = format_json_schema(column.json_schema, max_depth=self.json_schema_max_depth)
+            comment_lines.append(f"        -- <json_schema>{formatted}</json_schema>")
+
         # Add example values as comment
         if self.include_examples and column.examples:
             is_categorical = (
@@ -239,10 +244,6 @@ class SQLDDLSchemaFormatter:
             else:
                 comment_lines.append(f"        -- <example>{self.format_value(column.examples[0])}</example>")
 
-        # Add JSON schema for semi-structured columns
-        if self.include_json_schema and column.json_schema:
-            formatted = format_json_schema(column.json_schema, max_depth=self.json_schema_max_depth)
-            comment_lines.append(f"        -- <json_schema>{formatted}</json_schema>")
 
         # Add FK reference info as comment
         for fk in column.foreign_keys:
