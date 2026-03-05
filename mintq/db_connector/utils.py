@@ -1,0 +1,104 @@
+"""Utilities for database connector operations."""
+
+from __future__ import annotations
+
+import json
+from typing import Any
+
+
+def infer_json_schema(values: list[Any], *, max_depth: int = 10) -> dict[str, Any] | None:
+    """Infer a JSON Schema from a list of sample values.
+
+    Handles nested objects, arrays, mixed types, and null values.
+    Returns None if no non-null values are provided.
+
+    Args:
+        values: Sample values (dicts, lists, scalars, or None). String values
+            that look like JSON will be parsed automatically.
+        max_depth: Maximum nesting depth to prevent runaway recursion.
+
+    Returns:
+        A JSON Schema dict, or None if all values are null/empty.
+    """
+    parsed = [_parse_value(v) for v in values]
+    non_null = [v for v in parsed if v is not None]
+    if not non_null:
+        return None
+    return _infer_schema(parsed, max_depth=max_depth, _depth=0)
+
+
+def _parse_value(v: Any) -> Any:
+    """Try to parse string values as JSON; return as-is otherwise."""
+    if isinstance(v, str):
+        try:
+            return json.loads(v)
+        except (json.JSONDecodeError, ValueError):
+            return v
+    return v
+
+
+def _infer_schema(values: list[Any], *, max_depth: int, _depth: int) -> dict[str, Any]:
+    """Recursively infer a JSON Schema from a list of sample values."""
+    if _depth >= max_depth:
+        return {}
+
+    types: set[str] = set()
+    # For objects: key -> list of values seen for that key
+    obj_key_values: dict[str, list[Any]] = {}
+    obj_key_counts: dict[str, int] = {}
+    num_objects = 0
+    # For arrays: all element values collected across samples
+    arr_items: list[Any] = []
+
+    for v in values:
+        if v is None:
+            types.add("null")
+        elif isinstance(v, bool):
+            # Must check bool before int (bool is a subclass of int in Python)
+            types.add("boolean")
+        elif isinstance(v, int):
+            types.add("integer")
+        elif isinstance(v, float):
+            types.add("number")
+        elif isinstance(v, str):
+            types.add("string")
+        elif isinstance(v, dict):
+            types.add("object")
+            num_objects += 1
+            for k, child in v.items():
+                obj_key_values.setdefault(k, []).append(child)
+                obj_key_counts[k] = obj_key_counts.get(k, 0) + 1
+        elif isinstance(v, list):
+            types.add("array")
+            arr_items.extend(v)
+
+    schema: dict[str, Any] = {}
+
+    # Type field
+    type_list = sorted(types - {"null"})
+    has_null = "null" in types
+    if not type_list:
+        schema["type"] = "null"
+    elif len(type_list) == 1 and not has_null:
+        schema["type"] = type_list[0]
+    else:
+        all_types = type_list + (["null"] if has_null else [])
+        schema["type"] = all_types if len(all_types) > 1 else all_types[0]
+
+    # Object properties (recurse into each key's values)
+    if "object" in types and obj_key_values:
+        properties: dict[str, Any] = {}
+        for k in sorted(obj_key_values.keys()):
+            child_values = obj_key_values[k]
+            properties[k] = _infer_schema(child_values, max_depth=max_depth, _depth=_depth + 1)
+        schema["properties"] = properties
+        # A key is required only if it appeared in every object sample
+        required = sorted(k for k, count in obj_key_counts.items() if count == num_objects)
+        if required:
+            schema["required"] = required
+
+    # Array items (recurse into all collected elements)
+    if "array" in types and arr_items:
+        schema["items"] = _infer_schema(arr_items, max_depth=max_depth, _depth=_depth + 1)
+
+    return schema
