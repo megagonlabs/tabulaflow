@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.formatters.utils import format_df, flatten_multiline
+from mintq.formatters.utils import format_df, flatten_multiline, format_json_schema_compact
 
 
 @formatter_registry.register
@@ -20,6 +20,8 @@ class SQLDDLSchemaFormatter:
     example_max_chars: int = 100
     floatfmt: str = ".8g"
     max_total_columns: int | None = 200
+    include_json_schema: bool = True
+    json_schema_max_depth: int | None = 2
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -236,6 +238,11 @@ class SQLDDLSchemaFormatter:
                 comment_lines.append(f"        -- <values>{{{', '.join(valid_values)}}}</values>")
             else:
                 comment_lines.append(f"        -- <example>{self.format_value(column.examples[0])}</example>")
+
+        # Add JSON schema for semi-structured columns
+        if self.include_json_schema and column.json_schema:
+            formatted = format_json_schema_compact(column.json_schema, max_depth=self.json_schema_max_depth)
+            comment_lines.append(f"        -- <json_schema>{formatted}</json_schema>")
 
         # Add FK reference info as comment
         for fk in column.foreign_keys:
