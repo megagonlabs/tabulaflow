@@ -125,6 +125,8 @@ async def backfill_one_db(
     # Collect all (table, column) pairs that need inference
     targets: list[tuple[SQLTableSchema, SQLColumnSchema]] = []
     for table in schema.tables:
+        if table.num_rows is None:
+            continue
         for column in table.columns:
             if column.json_schema is not None and not force:
                 continue
