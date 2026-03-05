@@ -63,7 +63,7 @@ class GetTableSchemaTool:
 
         res = ""
         if table.name.lower() != table_name.lower():
-            res += f"(table {table_name} shares the same schema with {table.name})\n\n"
+            res += f"(table {table_name} shares the same schema with {table.name} shown below)\n\n"
         res += self.formatter.format_table(table, add_description=self.add_description)
         return res
 
