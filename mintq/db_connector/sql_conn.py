@@ -536,8 +536,6 @@ async def build_schema_async(
                 f"Schema {schema_name}: {len(table_names) + len(view_names)} tables/views grouped into {len(groups)} representative tables ({', '.join(f'{g[0]} ({len(g)})' for g in groups)})"
             )
         for group in groups:
-            if group[0] != "_2011":
-                continue
             tasks.append(
                 asyncio.create_task(
                     build_table_async(
