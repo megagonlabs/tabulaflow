@@ -37,7 +37,7 @@ from mintq.db_connector.sql_conn import (
     _JSON_SCHEMA_SAMPLE_SIZE,
 )
 from mintq.db_connector.utils import infer_json_schema, looks_like_json
-from mintq.schema import SQLSchema
+from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 logger = logging.getLogger(__name__)
 
@@ -112,6 +112,7 @@ async def backfill_one_db(
 
     Uses the same sampling method as build_column_async: queries up to
     _JSON_SCHEMA_SAMPLE_SIZE non-null rows from the actual database.
+    All eligible columns are sampled concurrently.
 
     Args:
         schema: The SQLSchema loaded from cache (will be modified in-place).
@@ -121,64 +122,59 @@ async def backfill_one_db(
     Returns:
         Number of columns updated.
     """
-    updated = 0
-
+    # Collect all (table, column) pairs that need inference
+    targets: list[tuple[SQLTableSchema, SQLColumnSchema]] = []
     for table in schema.tables:
         for column in table.columns:
-            # Skip if already set (unless --force)
             if column.json_schema is not None and not force:
                 continue
 
             dtype = column.dtype
-            should_infer = False
-
             if dtype in JSON_TYPES:
-                should_infer = True
+                targets.append((table, column))
             elif dtype in TEXT_TYPES and column.examples and looks_like_json(column.examples):
-                should_infer = True
+                targets.append((table, column))
 
-            if not should_infer:
-                continue
+    if not targets:
+        return 0
 
-            # Sample from the actual database — same as build_column_async.
-            # Always quote identifiers: cached names may be lowercase but
-            # case-sensitive (e.g. Snowflake columns defined with double quotes).
-            col = sqlalchemy.column(sqlalchemy.quoted_name(column.name, quote=True))  # type: ignore
-            tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
-                sqlalchemy.quoted_name(table.name, quote=True),
-                schema=sqlalchemy.quoted_name(table.schema_name, quote=True) if table.schema_name else None,
+    async def _infer_one(table: SQLTableSchema, column: SQLColumnSchema) -> bool:
+        """Sample and infer json_schema for a single column. Returns True if updated."""
+        # Always quote identifiers: cached names may be lowercase but
+        # case-sensitive (e.g. Snowflake columns defined with double quotes).
+        col = sqlalchemy.column(sqlalchemy.quoted_name(column.name, quote=True))  # type: ignore
+        tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
+            sqlalchemy.quoted_name(table.name, quote=True),
+            schema=sqlalchemy.quoted_name(table.schema_name, quote=True) if table.schema_name else None,
+        )
+        try:
+            result = await t_eng.run_query_async(
+                select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
             )
-            try:
-                result = await t_eng.run_query_async(
-                    select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
-                )
-                sample_values = [row[0] for row in result.result]
-            except Exception as e:
-                logger.warning(
-                    "  Failed to sample %s.%s: %s",
+            sample_values = [row[0] for row in result.result]
+        except Exception as e:
+            logger.warning("  Failed to sample %s.%s: %s", table.name, column.name, e)
+            return False
+
+        if not sample_values:
+            return False
+
+        inferred = infer_json_schema(sample_values)
+        if inferred is not None:
+            old = column.json_schema
+            if old != inferred:
+                column.json_schema = inferred
+                logger.debug(
+                    "  %s.%s: %s",
                     table.name,
                     column.name,
-                    e,
+                    "NEW" if old is None else "UPDATED",
                 )
-                continue
+                return True
+        return False
 
-            if not sample_values:
-                continue
-
-            inferred = infer_json_schema(sample_values)
-            if inferred is not None:
-                old = column.json_schema
-                if old != inferred:
-                    column.json_schema = inferred
-                    updated += 1
-                    logger.debug(
-                        "  %s.%s: %s",
-                        table.name,
-                        column.name,
-                        "NEW" if old is None else "UPDATED",
-                    )
-
-    return updated
+    results = await asyncio.gather(*[_infer_one(table, col) for table, col in targets])
+    return sum(results)
 
 
 async def main() -> None:
