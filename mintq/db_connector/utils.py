@@ -72,33 +72,37 @@ def _infer_schema(values: list[Any], *, max_depth: int, _depth: int) -> dict[str
             types.add("array")
             arr_items.extend(v)
 
-    schema: dict[str, Any] = {}
-
-    # Type field
-    type_list = sorted(types - {"null"})
+    # Build a schema for each observed type
+    non_null_types = sorted(types - {"null"})
     has_null = "null" in types
-    if not type_list:
-        schema["type"] = "null"
-    elif len(type_list) == 1 and not has_null:
-        schema["type"] = type_list[0]
+
+    type_schemas: list[dict[str, Any]] = []
+    for t in non_null_types:
+        s: dict[str, Any] = {"type": t}
+
+        if t == "object" and obj_key_values:
+            properties: dict[str, Any] = {}
+            for k in sorted(obj_key_values.keys()):
+                child_values = obj_key_values[k]
+                properties[k] = _infer_schema(child_values, max_depth=max_depth, _depth=_depth + 1)
+            s["properties"] = properties
+            # A key is required only if it appeared in every object sample
+            required = sorted(k for k, count in obj_key_counts.items() if count == num_objects)
+            if required:
+                s["required"] = required
+
+        if t == "array" and arr_items:
+            s["items"] = _infer_schema(arr_items, max_depth=max_depth, _depth=_depth + 1)
+
+        type_schemas.append(s)
+
+    if has_null:
+        type_schemas.append({"type": "null"})
+
+    # Flatten: single type needs no anyOf wrapper
+    if not type_schemas:
+        return {"type": "null"}
+    elif len(type_schemas) == 1:
+        return type_schemas[0]
     else:
-        all_types = type_list + (["null"] if has_null else [])
-        schema["type"] = all_types if len(all_types) > 1 else all_types[0]
-
-    # Object properties (recurse into each key's values)
-    if "object" in types and obj_key_values:
-        properties: dict[str, Any] = {}
-        for k in sorted(obj_key_values.keys()):
-            child_values = obj_key_values[k]
-            properties[k] = _infer_schema(child_values, max_depth=max_depth, _depth=_depth + 1)
-        schema["properties"] = properties
-        # A key is required only if it appeared in every object sample
-        required = sorted(k for k, count in obj_key_counts.items() if count == num_objects)
-        if required:
-            schema["required"] = required
-
-    # Array items (recurse into all collected elements)
-    if "array" in types and arr_items:
-        schema["items"] = _infer_schema(arr_items, max_depth=max_depth, _depth=_depth + 1)
-
-    return schema
+        return {"anyOf": type_schemas}

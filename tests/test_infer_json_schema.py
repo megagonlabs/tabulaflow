@@ -87,25 +87,25 @@ def test_object_with_array_field() -> None:
 
 
 def test_mixed_types() -> None:
-    """When a field has different types across samples, produce a type list."""
+    """When a field has different types across samples, produce anyOf."""
     schema = infer_json_schema([
         {"val": 42},
         {"val": "hello"},
     ])
     assert schema is not None
     val_schema = schema["properties"]["val"]
-    assert sorted(val_schema["type"]) == ["integer", "string"]
+    assert val_schema == {"anyOf": [{"type": "integer"}, {"type": "string"}]}
 
 
 def test_nullable_field() -> None:
-    """Null values should appear in the type list."""
+    """Null values should appear as anyOf with null."""
     schema = infer_json_schema([
         {"x": 1},
         {"x": None},
     ])
     assert schema is not None
     x_schema = schema["properties"]["x"]
-    assert sorted(x_schema["type"]) == ["integer", "null"]
+    assert x_schema == {"anyOf": [{"type": "integer"}, {"type": "null"}]}
 
 
 def test_nullable_top_level() -> None:
@@ -115,7 +115,12 @@ def test_nullable_top_level() -> None:
         {"a": 1},
     ])
     assert schema is not None
-    assert sorted(schema["type"]) == ["null", "object"]
+    assert schema == {
+        "anyOf": [
+            {"type": "object", "properties": {"a": {"type": "integer"}}, "required": ["a"]},
+            {"type": "null"},
+        ]
+    }
 
 
 def test_json_string_auto_parse() -> None:
@@ -155,8 +160,7 @@ def test_float_type() -> None:
 
 def test_mixed_int_and_float() -> None:
     schema = infer_json_schema([1, 2.5])
-    assert schema is not None
-    assert sorted(schema["type"]) == ["integer", "number"]
+    assert schema == {"anyOf": [{"type": "integer"}, {"type": "number"}]}
 
 
 def test_empty_object() -> None:
@@ -194,6 +198,16 @@ def test_mixed_json_strings_and_nulls() -> None:
         '{"key": "other", "extra": 1}',
     ])
     assert schema is not None
-    assert sorted(schema["type"]) == ["null", "object"]
-    assert schema["properties"]["key"] == {"type": "string"}
-    assert schema["required"] == ["key"]
+    assert schema == {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": {
+                    "extra": {"type": "integer"},
+                    "key": {"type": "string"},
+                },
+                "required": ["key"],
+            },
+            {"type": "null"},
+        ]
+    }
