@@ -140,10 +140,13 @@ async def backfill_one_db(
             if not should_infer:
                 continue
 
-            # Sample from the actual database — same as build_column_async
-            col = sqlalchemy.column(column.name)  # type: ignore
+            # Sample from the actual database — same as build_column_async.
+            # Always quote identifiers: cached names may be lowercase but
+            # case-sensitive (e.g. Snowflake columns defined with double quotes).
+            col = sqlalchemy.column(sqlalchemy.quoted_name(column.name, quote=True))  # type: ignore
             tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
-                table.name, schema=table.schema_name
+                sqlalchemy.quoted_name(table.name, quote=True),
+                schema=sqlalchemy.quoted_name(table.schema_name, quote=True) if table.schema_name else None,
             )
             try:
                 result = await t_eng.run_query_async(
