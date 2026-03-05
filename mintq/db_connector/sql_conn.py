@@ -293,7 +293,7 @@ TEXT_TYPES = [
 ]
 
 # Number of sample values used to infer JSON schema for semi-structured columns
-_JSON_SCHEMA_SAMPLE_SIZE = 100
+_JSON_SCHEMA_SAMPLE_SIZE = 1000
 
 # Used when column_stats_mode is either "sample_for_large_tables" or "skip_for_large_tables"
 _LARGE_TABLE_THRESHOLD = 1000000
