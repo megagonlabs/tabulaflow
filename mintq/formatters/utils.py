@@ -62,7 +62,7 @@ def format_df(
     )
 
 
-def format_json_schema_compact(
+def format_json_schema(
     schema: dict[str, Any],
     *,
     max_depth: int | None = 2,
@@ -91,8 +91,8 @@ def format_json_schema_compact(
         if not non_null:
             return "null"
         if len(non_null) == 1:
-            return format_json_schema_compact(non_null[0], max_depth=max_depth, _depth=_depth)
-        parts = [format_json_schema_compact(s, max_depth=max_depth, _depth=_depth) for s in non_null]
+            return format_json_schema(non_null[0], max_depth=max_depth, _depth=_depth)
+        parts = [format_json_schema(s, max_depth=max_depth, _depth=_depth) for s in non_null]
         return " | ".join(parts)
 
     t = schema.get("type")
@@ -111,14 +111,14 @@ def format_json_schema_compact(
             if not is_optional and isinstance(val_schema, dict) and "anyOf" in val_schema:
                 is_optional = any(s.get("type") == "null" for s in val_schema["anyOf"])
             suffix = "?" if is_optional else ""
-            formatted = format_json_schema_compact(val_schema, max_depth=max_depth, _depth=_depth + 1)
+            formatted = format_json_schema(val_schema, max_depth=max_depth, _depth=_depth + 1)
             field_parts.append(f"{key}{suffix}: {formatted}")
         return "{" + ", ".join(field_parts) + "}"
 
     if t == "array":
         items_schema = schema.get("items")
         if items_schema:
-            inner = format_json_schema_compact(items_schema, max_depth=max_depth, _depth=_depth)
+            inner = format_json_schema(items_schema, max_depth=max_depth, _depth=_depth)
             # Wrap object-typed items as [{...}] for readability
             if inner.startswith("{"):
                 return f"[{inner}]"
