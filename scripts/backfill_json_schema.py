@@ -23,6 +23,7 @@ import asyncio
 import logging
 import os
 import sys
+import time
 
 import sqlalchemy
 from sqlalchemy import create_engine, select
@@ -176,7 +177,9 @@ async def backfill_one_db(
         return False
 
     logger.info("Inferring json_schema for %d columns", len(targets))
+    t0 = time.time()
     results = await asyncio.gather(*[_infer_one(table, col) for table, col in targets])
+    logger.info("Inferred json_schema for %d columns in %f seconds", len(results), time.time() - t0)
     return sum(results)
 
 
