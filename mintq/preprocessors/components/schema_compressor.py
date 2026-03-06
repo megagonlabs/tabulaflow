@@ -265,7 +265,9 @@ class SchemaCompressor:
         if len(tables) == 1:
             return tables[0]
 
-        merged_table = copy.deepcopy(tables[0])
+        # Prefer a table with num_rows set, ensuring it's not a shallow-copied table (see sql_conn.py)
+        base_table = next((t for t in tables if t.num_rows is not None), tables[0])
+        merged_table = copy.deepcopy(base_table)
         merged_table.name_patterns = self._get_patterns([t.name for t in tables])
         # Match columns by name (not index) since tables with the same digest
         # may have different column orders.
