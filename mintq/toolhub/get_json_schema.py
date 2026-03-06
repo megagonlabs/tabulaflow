@@ -1,9 +1,9 @@
-import json
 from typing import ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
+from mintq.formatters.utils import format_json_schema
 from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
@@ -80,7 +80,7 @@ class GetJsonSchemaTool:
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
         if column.json_schema:
-            return json.dumps(column.json_schema, indent=2)
+            return format_json_schema(column.json_schema, max_depth=None, max_fields=None)
         else:
             self._metrics.error_no_json_schema += 1
             return f"(column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
