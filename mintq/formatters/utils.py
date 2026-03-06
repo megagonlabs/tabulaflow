@@ -65,25 +65,44 @@ def format_df(
 def format_json_schema(
     schema: dict[str, Any],
     *,
-    max_depth: int | None = 2,
+    max_depth: int | None = None,
+    max_fields: int | None = 20,
     _depth: int = 0,
+    _budget: float | None = None,
 ) -> str:
     """Format a JSON Schema dict as a compact TypeScript-style type annotation.
 
     Produces a human-readable one-liner such as
     ``{id: integer, name: string, tags: string[]}``.  Optional fields (not in
     ``required``, or nullable via ``anyOf`` with ``null``) are suffixed with
-    ``?``.  Object nesting beyond *max_depth* is truncated to ``{...}``.
+    ``?``.  Object nesting is controlled by two independent mechanisms:
+
+    * *max_depth* - hard ceiling on nesting depth.
+    * *max_fields* - adaptive budget that distributes across sibling
+      properties so that narrow schemas expand deeper and wide schemas
+      truncate earlier, keeping total output size roughly constant.
+
+    Truncation occurs when *either* limit is reached.
 
     Args:
         schema: A JSON Schema dictionary (as produced by ``infer_json_schema``).
         max_depth: Maximum nesting depth for objects.  Objects at or beyond this
             depth are shown as ``{...}``.  ``None`` disables the limit.
+        max_fields: Adaptive field budget.  At each object node the budget is
+            divided equally among its properties; when a child's share drops
+            below 1 the sub-tree is truncated to ``{...}``.  ``None`` disables
+            the adaptive limit.
         _depth: Current nesting depth (internal recursion parameter).
+        _budget: Remaining field budget (internal recursion parameter).
 
     Returns:
         A compact type-annotation string.
     """
+    if _budget is None and max_fields is not None:
+        _budget = float(max_fields)
+
+    kw = dict(max_depth=max_depth, max_fields=max_fields)
+
     # Handle anyOf (union types, including nullable)
     if "anyOf" in schema:
         subtypes: list[dict[str, Any]] = schema["anyOf"]
@@ -91,8 +110,8 @@ def format_json_schema(
         if not non_null:
             return "null"
         if len(non_null) == 1:
-            return format_json_schema(non_null[0], max_depth=max_depth, _depth=_depth)
-        parts = [format_json_schema(s, max_depth=max_depth, _depth=_depth) for s in non_null]
+            return format_json_schema(non_null[0], **kw, _depth=_depth, _budget=_budget)
+        parts = [format_json_schema(s, **kw, _depth=_depth, _budget=_budget) for s in non_null]
         return " | ".join(parts)
 
     t = schema.get("type")
@@ -103,7 +122,10 @@ def format_json_schema(
             return "object"
         if max_depth is not None and _depth >= max_depth:
             return "{...}"
-        required = set(schema.get("required", []))
+        if _budget is not None and _budget < 1:
+            return "{...}"
+        child_budget = (_budget - 1) / len(props) if _budget is not None else None
+        required = set[Any](schema.get("required", []))
         field_parts: list[str] = []
         for key, val_schema in props.items():
             is_optional = key not in required
@@ -111,14 +133,14 @@ def format_json_schema(
             if not is_optional and isinstance(val_schema, dict) and "anyOf" in val_schema:
                 is_optional = any(s.get("type") == "null" for s in val_schema["anyOf"])
             suffix = "?" if is_optional else ""
-            formatted = format_json_schema(val_schema, max_depth=max_depth, _depth=_depth + 1)
+            formatted = format_json_schema(val_schema, **kw, _depth=_depth + 1, _budget=child_budget)
             field_parts.append(f"{key}{suffix}: {formatted}")
         return "{" + ", ".join(field_parts) + "}"
 
     if t == "array":
         items_schema = schema.get("items")
         if items_schema:
-            inner = format_json_schema(items_schema, max_depth=max_depth, _depth=_depth)
+            inner = format_json_schema(items_schema, **kw, _depth=_depth, _budget=_budget)
             # Wrap object-typed items as [{...}] for readability
             if inner.startswith("{"):
                 return f"[{inner}]"
