@@ -21,7 +21,7 @@ class SQLDDLSchemaFormatter:
     floatfmt: str = ".8g"
     max_total_columns: int | None = 200
     include_json_schema: bool = True
-    json_schema_max_fields: int | None = 20
+    include_json_schema_max_fields: int | None = 20
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
@@ -227,7 +227,7 @@ class SQLDDLSchemaFormatter:
 
         # Add JSON schema for semi-structured columns
         if self.include_json_schema and column.json_schema:
-            formatted = format_json_schema(column.json_schema, max_fields=self.json_schema_max_fields)
+            formatted = format_json_schema(column.json_schema, max_fields=self.include_json_schema_max_fields)
             comment_lines.append(f"        -- <json_schema>{formatted}</json_schema>")
 
         # Add example values as comment
