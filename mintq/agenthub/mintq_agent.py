@@ -14,7 +14,7 @@ from mintq.schema import (
 from mintq.preprocessors import DBSummarizer, SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
-    GetJsonSchemaTool,
+    GetColumnJsonSchemaTool,
     GetTableSchemaTool,
     RunQueryNoParamsTool,
     FinishTool,
@@ -58,7 +58,7 @@ You are an agent - please keep going until the database query is fully construct
 
 <tool_calling>
 - Always use the `get_table_schema` tool to get the schema of the relevant tables before constructing the query.
-- You may use the `get_json_schema` tool to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
+- You may use the `get_column_json_schema` tool to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
 - You may call the `run_query` tool multiple times while building the final query.
 - You may execute intermediate or exploratory queries; however, the final query (the last one executed) must be complete and fully constructed. In the final query, do not split the logic into multiple dependent queries (for example, first retrieving an ID and then using that ID in a subsequent query—this is not allowed).
 - Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
@@ -125,7 +125,7 @@ class MintqAgent:
             "get_table_schema": GetTableSchemaTool(
                 schema, self.formatter, add_description=self.config.use_column_description
             ),
-            "get_json_schema": GetJsonSchemaTool(schema),
+            "get_column_json_schema": GetColumnJsonSchemaTool(schema),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }

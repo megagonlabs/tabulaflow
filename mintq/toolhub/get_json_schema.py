@@ -8,14 +8,14 @@ from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 
-class GetJsonSchemaToolMetrics(BaseModel):
+class GetColumnJsonSchemaToolMetrics(BaseModel):
     num_calls: int = 0
     error_table_not_found: int = 0
     error_column_not_found: int = 0
     error_no_json_schema: int = 0
 
 
-class GetJsonSchemaTool:
+class GetColumnJsonSchemaTool:
     """Tool that retrieves the JSON schema of a specific column.
 
     Looks up a column by schema name, table name, and column name, then
@@ -28,11 +28,11 @@ class GetJsonSchemaTool:
             compressed schema produced by SchemaCompressor.
     """
 
-    name: ClassVar = "get_json_schema"
+    name: ClassVar = "get_column_json_schema"
 
     def __init__(self, schema: SQLSchema):
         self.schema = schema
-        self._metrics = GetJsonSchemaToolMetrics()
+        self._metrics = GetColumnJsonSchemaToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
         """
@@ -90,5 +90,5 @@ class GetJsonSchemaTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def metrics(self) -> GetJsonSchemaToolMetrics:
+    def metrics(self) -> GetColumnJsonSchemaToolMetrics:
         return self._metrics
