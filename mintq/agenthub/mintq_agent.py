@@ -74,14 +74,16 @@ Writing the task query:
 {{dataset_instructions}}
 </dataset_instructions>
 {%- endif %}
+{%- if db_document %}
 
-<db_summary>
-{{db_summary}}
-</db_summary>
-{%- if document %}
+<db_document>
+{{db_document}}
+</db_document>
+{%- endif %}
+{%- if task_document %}
 
 <task_document>
-{{document}}
+{{task_document}}
 </task_document>
 {%- endif %}
 """.strip()
@@ -119,8 +121,8 @@ class MintqAgent:
         system_prompt = jinja2.Template(MINTQ_AGENT_SYSTEM_PROMPT).render(
             language=task.language,
             dataset_instructions=task.dataset_instructions,
-            db_summary=db_summary.db_summary_markdown,
-            document=task.document,
+            db_document=db_summary.db_summary_markdown,
+            task_document=task.document,
         )
         schema = db_connector.schema
         if self.compressor is not None:
