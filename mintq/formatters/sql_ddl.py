@@ -21,7 +21,7 @@ class SQLDDLSchemaFormatter:
     floatfmt: str = ".8g"
     max_total_columns: int | None = 200
     include_json_schema: bool = True
-    json_schema_max_fields: int | None = 2
+    json_schema_max_fields: int | None = 20
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
