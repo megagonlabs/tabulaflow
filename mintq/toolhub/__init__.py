@@ -6,6 +6,7 @@ from mintq.toolhub.ask_user import AskUserTool
 from mintq.toolhub.get_schema import GetSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.get_column_description import GetColumnDescriptionTool
+from mintq.toolhub.get_json_schema import GetJsonSchemaTool
 
 __all__ = [
     "BaseTool",
@@ -17,4 +18,5 @@ __all__ = [
     "GetSchemaTool",
     "GetTableSchemaTool",
     "GetColumnDescriptionTool",
+    "GetJsonSchemaTool",
 ]
