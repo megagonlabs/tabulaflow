@@ -46,14 +46,18 @@ class GetColumnJsonSchemaTool:
     Attributes:
         schema: The SQL schema containing all available tables. Can be a
             compressed schema produced by SchemaCompressor.
+        include_examples: Whether to include example values in the output.
         max_example_chars: Character budget for example values appended to
             the output.  At least one example is always included.
     """
 
     name: ClassVar = "get_column_json_schema"
 
-    def __init__(self, schema: SQLSchema, max_example_chars: int = _DEFAULT_MAX_EXAMPLE_CHARS):
+    def __init__(
+        self, schema: SQLSchema, include_examples: bool = True, max_example_chars: int = _DEFAULT_MAX_EXAMPLE_CHARS
+    ):
         self.schema = schema
+        self.include_examples = include_examples
         self.max_example_chars = max_example_chars
         self._metrics = GetColumnJsonSchemaToolMetrics()
 
@@ -106,7 +110,8 @@ class GetColumnJsonSchemaTool:
 
         if column.json_schema:
             result = format_json_schema(column.json_schema, max_depth=None, max_fields=None)
-            result += _format_examples(column.examples, self.max_example_chars)
+            if self.include_examples:
+                result += _format_examples(column.examples, self.max_example_chars)
             return result
         else:
             self._metrics.error_no_json_schema += 1
