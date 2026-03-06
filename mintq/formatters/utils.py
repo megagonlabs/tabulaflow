@@ -73,9 +73,9 @@ def format_json_schema(
     """Format a JSON Schema dict as a compact TypeScript-style type annotation.
 
     Produces a human-readable one-liner such as
-    ``{id: integer, name: string, tags: string[]}``.  Optional fields (not in
-    ``required``, or nullable via ``anyOf`` with ``null``) are suffixed with
-    ``?``.  Object nesting is controlled by two independent mechanisms:
+    ``{id: integer, name: string, tags: string[]}``.  Follows TypeScript
+    conventions: optional fields (not in ``required``) are suffixed with
+    ``?``, and nullable fields use ``| null``.  Object nesting is controlled by two independent mechanisms:
 
     * *max_depth* - hard ceiling on nesting depth.
     * *max_fields* - adaptive budget that distributes across sibling
@@ -107,12 +107,15 @@ def format_json_schema(
     if "anyOf" in schema:
         subtypes: list[dict[str, Any]] = schema["anyOf"]
         non_null = [s for s in subtypes if s.get("type") != "null"]
+        has_null = len(non_null) < len(subtypes)
         if not non_null:
             return "null"
         if len(non_null) == 1:
-            return format_json_schema(non_null[0], **kw, _depth=_depth, _budget=_budget)
-        parts = [format_json_schema(s, **kw, _depth=_depth, _budget=_budget) for s in non_null]
-        return " | ".join(parts)
+            inner = format_json_schema(non_null[0], **kw, _depth=_depth, _budget=_budget)
+        else:
+            parts = [format_json_schema(s, **kw, _depth=_depth, _budget=_budget) for s in non_null]
+            inner = " | ".join(parts)
+        return f"{inner} | null" if has_null else inner
 
     t = schema.get("type")
 
@@ -128,11 +131,7 @@ def format_json_schema(
         required = set[Any](schema.get("required", []))
         field_parts: list[str] = []
         for key, val_schema in props.items():
-            is_optional = key not in required
-            # Also treat nullable values (anyOf containing null) as optional
-            if not is_optional and isinstance(val_schema, dict) and "anyOf" in val_schema:
-                is_optional = any(s.get("type") == "null" for s in val_schema["anyOf"])
-            suffix = "?" if is_optional else ""
+            suffix = "?" if key not in required else ""
             formatted = format_json_schema(val_schema, **kw, _depth=_depth + 1, _budget=child_budget)
             field_parts.append(f"{key}{suffix}: {formatted}")
         return "{" + ", ".join(field_parts) + "}"
