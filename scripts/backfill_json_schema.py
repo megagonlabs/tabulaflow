@@ -175,6 +175,7 @@ async def backfill_one_db(
                 return True
         return False
 
+    logger.info("Inferring json_schema for %d columns", len(targets))
     results = await asyncio.gather(*[_infer_one(table, col) for table, col in targets])
     return sum(results)
 
