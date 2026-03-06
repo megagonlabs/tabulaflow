@@ -1,4 +1,5 @@
-from typing import ClassVar
+import json
+from typing import Any, ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
@@ -6,6 +7,25 @@ from pydantic_ai import Tool
 from mintq.formatters.utils import format_json_schema
 from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
+
+_DEFAULT_MAX_EXAMPLE_CHARS = 1000
+
+
+def _format_examples(examples: list[Any], max_chars: int) -> str:
+    """Format example values, including at least one and stopping when *max_chars* is reached."""
+    if not examples or max_chars < 0:
+        return ""
+    parts: list[str] = []
+    total = 0
+    for ex in examples:
+        formatted = json.dumps(ex, ensure_ascii=False) if isinstance(ex, (dict, list)) else str(ex)
+        total += len(formatted)
+        parts.append(formatted)
+        # Always include at least one example; stop after that if budget exceeded
+        if total >= max_chars and len(parts) >= 1:
+            break
+    parts = list(dict.fromkeys(parts))  # Remove duplicates
+    return "\n\nExamples:\n" + "\n".join(parts)
 
 
 class GetColumnJsonSchemaToolMetrics(BaseModel):
@@ -26,12 +46,15 @@ class GetColumnJsonSchemaTool:
     Attributes:
         schema: The SQL schema containing all available tables. Can be a
             compressed schema produced by SchemaCompressor.
+        max_example_chars: Character budget for example values appended to
+            the output.  At least one example is always included.
     """
 
     name: ClassVar = "get_column_json_schema"
 
-    def __init__(self, schema: SQLSchema):
+    def __init__(self, schema: SQLSchema, max_example_chars: int = _DEFAULT_MAX_EXAMPLE_CHARS):
         self.schema = schema
+        self.max_example_chars = max_example_chars
         self._metrics = GetColumnJsonSchemaToolMetrics()
 
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
@@ -82,7 +105,9 @@ class GetColumnJsonSchemaTool:
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
         if column.json_schema:
-            return format_json_schema(column.json_schema, max_depth=None, max_fields=None)
+            result = format_json_schema(column.json_schema, max_depth=None, max_fields=None)
+            result += _format_examples(column.examples, self.max_example_chars)
+            return result
         else:
             self._metrics.error_no_json_schema += 1
             return f"(column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
