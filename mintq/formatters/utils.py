@@ -89,9 +89,10 @@ def format_json_schema(
         max_depth: Maximum nesting depth for objects.  Objects at or beyond this
             depth are shown as ``{...}``.  ``None`` disables the limit.
         max_fields: Adaptive field budget.  At each object node the budget is
-            divided equally among its properties; when a child's share drops
-            below 1 the sub-tree is truncated to ``{...}``.  ``None`` disables
-            the adaptive limit.
+            split equally among properties; each field consumes 1 unit for its
+            name and type, with the remainder available for nested expansion.
+            An object is truncated to ``{...}`` when the budget cannot cover
+            all its fields.  ``None`` disables the adaptive limit.
         _depth: Current nesting depth (internal recursion parameter).
         _budget: Remaining field budget (internal recursion parameter).
 
@@ -125,9 +126,9 @@ def format_json_schema(
             return "object"
         if max_depth is not None and _depth >= max_depth:
             return "{...}"
-        if _budget is not None and _budget - 1 < len(props):
+        if _budget is not None and _budget < len(props):
             return "{...}"
-        child_budget = (_budget - 1) / len(props) if _budget is not None else None
+        child_budget = _budget / len(props) - 1 if _budget is not None else None
         required = set[Any](schema.get("required", []))
         field_parts: list[str] = []
         for key, val_schema in props.items():
