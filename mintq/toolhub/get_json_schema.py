@@ -37,6 +37,8 @@ class GetJsonSchemaTool:
     async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
         """
         Get the JSON schema of a column, describing its internal structure (nested objects, arrays, etc.).
+        Useful for semi-structured column types such as VARIANT, OBJECT, ARRAY,
+        JSON, and JSONB that store nested or complex data.
 
         Args:
             schema_name: The name of the schema, or None if schema is not applicable.
