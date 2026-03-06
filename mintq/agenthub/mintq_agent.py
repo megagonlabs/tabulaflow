@@ -14,6 +14,7 @@ from mintq.schema import (
 from mintq.preprocessors import DBSummarizer, SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
+    GetJsonSchemaTool,
     GetTableSchemaTool,
     RunQueryNoParamsTool,
     FinishTool,
@@ -123,6 +124,7 @@ class MintqAgent:
             "get_table_schema": GetTableSchemaTool(
                 schema, self.formatter, add_description=self.config.use_column_description
             ),
+            "get_json_schema": GetJsonSchemaTool(schema),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }
