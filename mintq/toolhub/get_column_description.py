@@ -52,7 +52,10 @@ class GetColumnDescriptionTool:
 
         table = None
         for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and t.name.lower() == table_name.lower():
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
+                t.name.lower() == table_name.lower()
+                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
+            ):
                 table = t
                 break
 
