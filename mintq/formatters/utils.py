@@ -125,7 +125,7 @@ def format_json_schema(
             return "object"
         if max_depth is not None and _depth >= max_depth:
             return "{...}"
-        if _budget is not None and _budget < 1:
+        if _budget is not None and _budget - 1 < len(props):
             return "{...}"
         child_budget = (_budget - 1) / len(props) if _budget is not None else None
         required = set[Any](schema.get("required", []))
