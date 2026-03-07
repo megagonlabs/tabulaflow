@@ -112,13 +112,13 @@ class RunQueryNoParamsTool:
     def __init__(
         self,
         db_connector: BaseSQLDBConnector,
-        timeout: int | None = 90,
+        timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
     ):
         self.db_connector = db_connector
-        self.timeout = timeout
+        self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
