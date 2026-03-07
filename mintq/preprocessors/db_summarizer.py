@@ -39,7 +39,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
     def __init__(self, llm: str = "openai-responses:gpt-5-mini", compress_schema: bool = True):
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
-        self.formatter = SQLDDLSchemaFormatter()
+        self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:

@@ -19,7 +19,7 @@ class SQLDDLSchemaFormatter:
     include_sampled_df_max_tables: int = 20
     example_max_chars: int = 100
     floatfmt: str = ".8g"
-    max_total_columns: int | None = 200
+    max_total_columns: int | None = None
     include_json_schema: bool = True
     include_json_schema_max_fields: int | None = 20
 
