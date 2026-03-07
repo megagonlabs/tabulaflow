@@ -774,6 +774,7 @@ March 6
 - [x] Fix timeout still 90 seconds
 - [x] read_only option for SQLConnector
 - [x] get_table_schema tool: max_columns, column_regex_filter, offset, limit
+- [x] revise run_query tool docstring - "returning large result sets is safe"
 
 - [ ] Remove language field from tasks
 - [ ] schema linking for mintq_agent
