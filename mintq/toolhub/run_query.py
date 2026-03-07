@@ -75,7 +75,7 @@ class RunQueryWithParamsTool:
             assert exec_result.error is not None
             if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
-                return f"(query timed out after {self.timeout} seconds)"
+                return "(query timed out)"
             else:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
@@ -146,7 +146,7 @@ class RunQueryNoParamsTool:
             assert exec_result.error is not None
             if exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
-                return f"(query timed out after {self.timeout} seconds)"
+                return "(query timed out)"
             else:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
