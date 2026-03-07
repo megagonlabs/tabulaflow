@@ -777,6 +777,7 @@ March 6
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] Fix mintq.__init__.py
+- [ ] Guard against write queries
 
 - [ ] Add column description during column expansion in sql_agent.py?
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp

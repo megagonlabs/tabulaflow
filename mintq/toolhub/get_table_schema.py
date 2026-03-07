@@ -10,7 +10,7 @@ from mintq.toolhub.utils import equals_ci
 
 class GetTableSchemaToolMetrics(BaseModel):
     num_calls: int = 0
-    error_max_columns_exceeded: int = 0
+    max_columns_exceeded: int = 0
     error_invalid_column_regex_filter: int = 0
     error_table_not_found: int = 0
 
@@ -108,7 +108,7 @@ class GetTableSchemaTool:
 
         # Reject if the result exceeds max_columns
         if self.max_columns is not None and len(table.columns) > self.max_columns:
-            self._metrics.error_max_columns_exceeded += 1
+            self._metrics.max_columns_exceeded += 1
             return (
                 f"(table {table_name} has {total_columns} columns which exceeds the limit of"
                 f" {self.max_columns}. Use offset/limit or column_regex_filter to narrow down.)"
