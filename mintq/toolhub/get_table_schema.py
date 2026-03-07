@@ -26,7 +26,7 @@ class GetTableSchemaTool:
         formatter: The formatter used to render table schema as text.
         add_description: Whether to include column descriptions in output.
         max_columns: If set, reject requests whose resulting columns exceed
-            this limit, prompting the agent to use offset/limit or
+            this limit, prompting the agent to use column_offset/column_limit or
             column_regex_filter to narrow down.
     """
 
@@ -68,25 +68,25 @@ class GetTableSchemaTool:
         columns: list[SQLColumnSchema],
         *,
         column_regex_filter: str | None = None,
-        offset: int = 0,
-        limit: int | None = None,
+        column_offset: int = 0,
+        column_limit: int | None = None,
     ) -> list[SQLColumnSchema]:
         """Apply regex filter and offset/limit pagination to *columns*."""
         if column_regex_filter is not None:
             pattern = re.compile(column_regex_filter, re.IGNORECASE)
             columns = [col for col in columns if pattern.search(col.name)]
-        if offset > 0 or limit is not None:
-            columns = columns[offset:]
-            if limit is not None:
-                columns = columns[:limit]
+        if column_offset > 0 or column_limit is not None:
+            columns = columns[column_offset:]
+            if column_limit is not None:
+                columns = columns[:column_limit]
         return columns
 
     async def __call__(
         self,
         schema_name: str | None,
         table_name: str,
-        offset: int = 0,
-        limit: int | None = None,
+        column_offset: int = 0,
+        column_limit: int | None = None,
         column_regex_filter: str | None = None,
     ) -> str:
         """Get the full schema of a table, with optional column filtering and pagination for very large tables.
@@ -95,10 +95,11 @@ class GetTableSchemaTool:
             schema_name: The name of the schema to which the table belongs,
                 or None if schema is not applicable.
             table_name: The name of the table.
-            offset: Number of columns to skip from the beginning. Only provide if the table is too large.
-            limit: Maximum number of columns to return. Only provide if the table is too large.
+            column_offset: Number of columns to skip from the beginning. Only provide if the table is too large.
+            column_limit: Maximum number of columns to return. Only provide if the table is too large.
             column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
                 Only columns whose names match the pattern are returned.
+                Can be combined with column_offset/column_limit to paginate within filtered results.
                 Only provide if the table is too large.
         """
         self._metrics.num_calls += 1
@@ -119,7 +120,7 @@ class GetTableSchemaTool:
                 return f"(invalid column_regex_filter regex: {e})"
 
         selected_columns = self._filter_columns(
-            table.columns, column_regex_filter=column_regex_filter, offset=offset, limit=limit
+            table.columns, column_regex_filter=column_regex_filter, column_offset=column_offset, column_limit=column_limit
         )
 
         # Reject if the result exceeds max_columns
@@ -128,7 +129,7 @@ class GetTableSchemaTool:
 
             return (
                 f"({len(selected_columns)} columns exceed the limit of"
-                f" {self.max_columns}. Use offset/limit or column_regex_filter to narrow down.)"
+                f" {self.max_columns}. Use column_offset/column_limit or column_regex_filter to narrow down.)"
             )
 
         # Trim the table to only the selected columns (also syncs sampled_df)
@@ -138,14 +139,14 @@ class GetTableSchemaTool:
         res = ""
         if table.name.lower() != table_name.lower():
             res += f"(table {table_name} shares the same schema with {table.name} shown below)\n\n"
-        needs_pagination = offset > 0 or limit is not None
+        needs_pagination = column_offset > 0 or column_limit is not None
         if column_regex_filter is not None or needs_pagination:
             parts = []
             if column_regex_filter is not None:
                 parts.append(f"filter={column_regex_filter!r}")
             if needs_pagination:
-                end = offset + len(selected_columns)
-                parts.append(f"range {offset + 1}-{end}")
+                end = column_offset + len(selected_columns)
+                parts.append(f"range {column_offset + 1}-{end}")
             res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
         if trimmed_table is not None:
             res += self.formatter.format_table(trimmed_table, add_description=self.add_description)
