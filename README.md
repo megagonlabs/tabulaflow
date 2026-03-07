@@ -771,7 +771,9 @@ March 5
 
 March 6
 - [x] Exp 233, 234: mintq_agent with get_json_schema, no improvement
-
+- [x] Fix timeout still 90 seconds
+- [x] read_only option for SQLConnector
+- [x] get_table_schema tool: max_columns, column_regex_filter, offset, limit
 
 - [ ] Remove language field from tasks
 - [ ] schema linking for mintq_agent
