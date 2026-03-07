@@ -21,12 +21,9 @@ def main() -> None:
     os.makedirs(output_dir, exist_ok=True)
     for file in os.listdir(input_dir):
         schema = SQLSchema.model_validate_json(open(os.path.join(input_dir, file)).read())
-        schema_str = SQLDDLSchemaFormatter().format(schema, add_description=True)
-        with open(os.path.join(output_dir, file.replace(".json", ".md")), "w") as f:
-            f.write(schema_str)
         compressed_schema = SchemaCompressor().compress(schema)
         compressed_schema_str = SQLDDLSchemaFormatter().format(compressed_schema, add_description=True)
-        with open(os.path.join(output_dir, file.replace(".json", "_compressed.md")), "w") as f:
+        with open(os.path.join(output_dir, file.replace(".json", ".md")), "w") as f:
             f.write(compressed_schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 
