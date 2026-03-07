@@ -125,8 +125,9 @@ class GetTableSchemaTool:
         # Reject if the result exceeds max_columns
         if self.max_columns is not None and len(selected_columns) > self.max_columns:
             self._metrics.max_columns_exceeded += 1
+
             return (
-                f"(table {table_name} has {total_columns} columns which exceeds the limit of"
+                f"({len(selected_columns)} columns exceed the limit of"
                 f" {self.max_columns}. Use offset/limit or column_regex_filter to narrow down.)"
             )
 
