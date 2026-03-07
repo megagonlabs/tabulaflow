@@ -188,13 +188,14 @@ class Analyzer:
         llm_classifier = LLMErrorClassifier(llm=self.classifier_llm)
         categories = await llm_classifier.classify_async(result)
         self._usage += llm_classifier.usage()
+        qid_to_db = {task.qid: task.db for task in result.tasks}
         res = "## Error Categories"
 
         for category in categories:
             res += f"\n\n### {category.name}\n\n"
             res += f"{category.description}\n\n"
             if len(category.qids) > 0:
-                res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in category.qids)
+                res += "\n".join(f" [[{qid} ({qid_to_db[qid]})]](./readable/{qid}/task_readable.md)" for qid in category.qids)
             else:
                 res += "(No tasks in this category)"
 
@@ -206,7 +207,7 @@ class Analyzer:
         # res += "\n\n### not_classified\n\n"
         # res += "Error tasks (simple_ex = 0.0) that were not classified into any of the above categories.\n\n"
         # if len(not_classified_qids) > 0:
-        #     res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in not_classified_qids)
+        #     res += "\n".join(f" [[{qid} ({qid_to_db[qid]})]](./readable/{qid}/task_readable.md)" for qid in not_classified_qids)
         # else:
         #     res += "(No tasks in this category)"
         return res
@@ -215,24 +216,25 @@ class Analyzer:
         res = "## Error Tasks"
         res += "\n\n### Query Syntax Error Tasks (executable = 0.0):"
         error_tasks = [task for task in result.tasks if task.eval_metrics["executable"] == 0.0]
-        res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         res += "\n\n### Query Semantic Error Tasks (executable = 1.0 but simple_ex = 0.0):"
         error_tasks = [
             task
             for task in result.tasks
             if task.eval_metrics["executable"] == 1.0 and task.eval_metrics["simple_ex"] == 0.0
         ]
-        res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
     def _schema_linking_section(self, result: NL2QRunResult) -> str:
         res = "## Schema Linking"
         res += "\n\n### Tasks where perfect_linked_schema_r = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["perfect_linked_schema_r"] == 0.0]
-        res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
     def _postprocess_impact_section(self, result: NL2QRunResult) -> str:
+        qid_to_db = {task.qid: task.db for task in result.tasks}
         qids: dict[str, list[str]] = {
             "Improved": [],
             "Regressed": [],
@@ -264,10 +266,11 @@ class Analyzer:
         for key, qs in qids.items():
             res += f"\n\n### {key}\n\n"
             res += f"{descriptions[key]}:"
-            res += "\n\n" + "\n".join(f" [[{q}]](./readable/{q}/task_readable.md)" for q in qs)
+            res += "\n\n" + "\n".join(f" [[{q} ({qid_to_db[q]})]](./readable/{q}/task_readable.md)" for q in qs)
         return res
 
     def _num_tool_calls_section(self, result: NL2QRunResult) -> str:
+        qid_to_db = {task.qid: task.db for task in result.tasks}
         res = "## Tool Calls"
         res += "\n\n### Top 10 tasks with most run_query calls"
         num_calls = []
@@ -276,7 +279,7 @@ class Analyzer:
                 num_calls.append((task.qid, task.inference_metrics["tools"]["run_query"]["num_calls"]))
         num_calls.sort(key=lambda x: x[1], reverse=True)
         for q, n in num_calls[:10]:
-            res += f"\n\n[[{q}]](./readable/{q}/task_readable.md) - {n} run_query calls"
+            res += f"\n\n[[{q} ({qid_to_db[q]})]](./readable/{q}/task_readable.md) - {n} run_query calls"
         return res
 
     async def analyze_async(self, result: NL2QRunResult) -> str:
