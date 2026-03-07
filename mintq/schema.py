@@ -258,6 +258,44 @@ class SQLTableSchema(BaseModel):
     def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
         return _deserialize_dataframe(v)
 
+    def trim(
+        self,
+        column_names: list[str],
+        case_insensitive: bool = True,
+        keep_pk: bool = True,
+    ) -> "SQLTableSchema | None":
+        """Return a trimmed copy keeping only the specified columns.
+
+        Args:
+            column_names: Column names to retain.
+            case_insensitive: If True, column name matching ignores case.
+            keep_pk: If True, primary-key columns are always retained.
+
+        Returns:
+            A deep-copied ``SQLTableSchema`` with only the matched columns,
+            or ``None`` if no columns remain after trimming.
+        """
+        normalize: callable = str.lower if case_insensitive else lambda s: s  # type: ignore[assignment]
+        normalized_names = {normalize(n) for n in column_names}
+
+        new_columns = [
+            col
+            for col in self.columns
+            if normalize(col.name) in normalized_names or (keep_pk and col.primary_key_type)
+        ]
+        if not new_columns:
+            return None
+
+        table = copy.deepcopy(self)
+        table.columns = new_columns
+
+        if table.sampled_df is not None:
+            remaining_col_names = [col.name for col in table.columns]
+            cols_to_keep = [c for c in remaining_col_names if c in table.sampled_df.columns]
+            table.sampled_df = table.sampled_df[cols_to_keep] if cols_to_keep else pd.DataFrame()
+
+        return table
+
 
 class ColumnRef(BaseModel):
     schema_name: str | None = None
@@ -335,39 +373,26 @@ class SQLSchema(BaseModel):
         return result
 
     def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
-        schema = copy.deepcopy(self)
+        normalize: callable = (lambda s: s.lower() if s is not None else s) if case_insensitive else (lambda s: s)  # type: ignore[assignment]
 
-        def normalize(s: str | None) -> str | None:
-            return s.lower() if s is not None and case_insensitive else s
+        # Group column names by (schema_name, table_name)
+        columns_by_table: dict[tuple[str | None, str], set[str]] = {}
+        for ref in column_refs:
+            key = (normalize(ref.schema_name), normalize(ref.table_name))
+            columns_by_table.setdefault(key, set()).add(ref.column_name)
 
-        column_ref_set = {
-            (normalize(c.schema_name), normalize(c.table_name), normalize(c.column_name)) for c in column_refs
-        }
-        table_ref_set = {(normalize(t.schema_name), normalize(t.table_name)) for t in column_refs}
+        new_tables: list[SQLTableSchema] = []
+        for table in self.tables:
+            table_key = (normalize(table.schema_name), normalize(table.name))
+            col_names = columns_by_table.get(table_key)
+            if col_names is None:
+                continue
+            trimmed = table.trim(col_names, case_insensitive=case_insensitive, keep_pk=keep_pk)
+            if trimmed is not None:
+                new_tables.append(trimmed)
 
-        for table in schema.tables:
-            new_columns = []
-            for column in table.columns:
-                if (normalize(table.schema_name), normalize(table.name), normalize(column.name)) in column_ref_set:
-                    new_columns.append(column)
-                elif (
-                    keep_pk
-                    and column.primary_key_type
-                    and (normalize(table.schema_name), normalize(table.name)) in table_ref_set
-                ):
-                    new_columns.append(column)
-            table.columns = new_columns
-
-            # Update sampled_df to only include remaining columns
-            if table.sampled_df is not None:
-                remaining_col_names = [col.name for col in table.columns]
-                cols_to_keep = [c for c in remaining_col_names if c in table.sampled_df.columns]
-                if cols_to_keep:
-                    table.sampled_df = table.sampled_df[cols_to_keep]
-                else:
-                    table.sampled_df = pd.DataFrame()
-
-        schema.tables = [table for table in schema.tables if table.columns]
+        schema = self.model_copy(deep=False)
+        schema.tables = new_tables
         return schema
 
 

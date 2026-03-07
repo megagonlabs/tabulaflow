@@ -2,9 +2,8 @@ import re
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SQLSchema
+from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 from mintq.toolhub.utils import equals_ci
 
 
@@ -46,6 +45,42 @@ class GetTableSchemaTool:
         self.max_columns = max_columns
         self._metrics = GetTableSchemaToolMetrics()
 
+    def _find_table(self, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
+        """Find a table by schema name and table name (case-insensitive).
+
+        If the schema contains only a single schema name, that schema is used
+        regardless of *schema_name*.
+        """
+        all_schema_names = [t.schema_name for t in self.schema.tables]
+        if len(set[str | None](all_schema_names)) == 1:
+            schema_name = all_schema_names[0]
+
+        for t in self.schema.tables:
+            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
+                t.name.lower() == table_name.lower()
+                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
+            ):
+                return t
+        return None
+
+    @staticmethod
+    def _filter_columns(
+        columns: list[SQLColumnSchema],
+        *,
+        column_regex_filter: str | None = None,
+        offset: int = 0,
+        limit: int | None = None,
+    ) -> list[SQLColumnSchema]:
+        """Apply regex filter and offset/limit pagination to *columns*."""
+        if column_regex_filter is not None:
+            pattern = re.compile(column_regex_filter, re.IGNORECASE)
+            columns = [col for col in columns if pattern.search(col.name)]
+        if offset > 0 or limit is not None:
+            columns = columns[offset:]
+            if limit is not None:
+                columns = columns[:limit]
+        return columns
+
     async def __call__(
         self,
         schema_name: str | None,
@@ -68,64 +103,53 @@ class GetTableSchemaTool:
         """
         self._metrics.num_calls += 1
 
-        # If there is only a single schema, use it regardless of what the agent specified
-        all_schema_names = [t.schema_name for t in self.schema.tables]
-        if len(set[str | None](all_schema_names)) == 1:
-            schema_name = all_schema_names[0]
-
-        table = None
-        for t in self.schema.tables:
-            if (schema_name is None or equals_ci(t.schema_name, schema_name)) and (
-                t.name.lower() == table_name.lower()
-                or any(s.lower() == table_name.lower() for pattern in t.name_patterns for s in pattern.original_names)
-            ):
-                table = t
-                break
-
+        table = self._find_table(schema_name, table_name)
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
         total_columns = len(table.columns)
 
-        # Apply column regex filter if requested
+        # Validate regex before filtering
         if column_regex_filter is not None:
             try:
-                pattern = re.compile(column_regex_filter, re.IGNORECASE)
+                re.compile(column_regex_filter)
             except re.error as e:
                 self._metrics.error_invalid_column_regex_filter += 1
                 return f"(invalid column_regex_filter regex: {e})"
-            filtered_columns = [col for col in table.columns if pattern.search(col.name)]
-            table = table.model_copy(update={"columns": filtered_columns})
 
-        # Apply column pagination if requested
-        needs_pagination = offset > 0 or limit is not None
-        if needs_pagination:
-            sliced_columns = table.columns[offset:]
-            if limit is not None:
-                sliced_columns = sliced_columns[:limit]
-            table = table.model_copy(update={"columns": sliced_columns})
+        selected_columns = self._filter_columns(
+            table.columns, column_regex_filter=column_regex_filter, offset=offset, limit=limit
+        )
 
         # Reject if the result exceeds max_columns
-        if self.max_columns is not None and len(table.columns) > self.max_columns:
+        if self.max_columns is not None and len(selected_columns) > self.max_columns:
             self._metrics.max_columns_exceeded += 1
             return (
                 f"(table {table_name} has {total_columns} columns which exceeds the limit of"
                 f" {self.max_columns}. Use offset/limit or column_regex_filter to narrow down.)"
             )
 
+        # Trim the table to only the selected columns (also syncs sampled_df)
+        column_names = [col.name for col in selected_columns]
+        trimmed_table = table.trim(column_names, case_insensitive=False, keep_pk=False)
+
         res = ""
         if table.name.lower() != table_name.lower():
             res += f"(table {table_name} shares the same schema with {table.name} shown below)\n\n"
+        needs_pagination = offset > 0 or limit is not None
         if column_regex_filter is not None or needs_pagination:
             parts = []
             if column_regex_filter is not None:
                 parts.append(f"filter={column_regex_filter!r}")
             if needs_pagination:
-                end = offset + len(table.columns)
+                end = offset + len(selected_columns)
                 parts.append(f"range {offset + 1}-{end}")
-            res += f"(showing {len(table.columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
-        res += self.formatter.format_table(table, add_description=self.add_description)
+            res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
+        if trimmed_table is not None:
+            res += self.formatter.format_table(trimmed_table, add_description=self.add_description)
+        else:
+            res += self.formatter.format_table(table.model_copy(update={"columns": []}), add_description=self.add_description)
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:
