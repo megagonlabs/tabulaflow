@@ -1,3 +1,4 @@
+import re
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
@@ -33,13 +34,25 @@ class GetTableSchemaTool:
         self.add_description = add_description
         self._metrics = GetTableSchemaToolMetrics()
 
-    async def __call__(self, schema_name: str | None, table_name: str) -> str:
-        """
-        Get the full schema of a table.
+    async def __call__(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        offset: int = 0,
+        limit: int | None = None,
+        column_regex_filter: str | None = None,
+    ) -> str:
+        """Get the full schema of a table, with optional column filtering and pagination for very large tables.
 
         Args:
-            schema_name: The name of the schema to which the table belongs, or None if schema is not applicable.
+            schema_name: The name of the schema to which the table belongs,
+                or None if schema is not applicable.
             table_name: The name of the table.
+            offset: Number of columns to skip from the beginning. Only provide if the table is too large.
+            limit: Maximum number of columns to return. Only provide if the table is too large.
+            column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
+                Only columns whose names match the pattern are returned.
+                Only provide if the table is too large.
         """
         self._metrics.num_calls += 1
 
@@ -61,9 +74,36 @@ class GetTableSchemaTool:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
 
+        total_columns = len(table.columns)
+
+        # Apply column regex filter if requested
+        if column_regex_filter is not None:
+            try:
+                pattern = re.compile(column_regex_filter, re.IGNORECASE)
+            except re.error as e:
+                return f"(invalid column_regex_filter regex: {e})"
+            filtered_columns = [col for col in table.columns if pattern.search(col.name)]
+            table = table.model_copy(update={"columns": filtered_columns})
+
+        # Apply column pagination if requested
+        needs_pagination = offset > 0 or limit is not None
+        if needs_pagination:
+            sliced_columns = table.columns[offset:]
+            if limit is not None:
+                sliced_columns = sliced_columns[:limit]
+            table = table.model_copy(update={"columns": sliced_columns})
+
         res = ""
         if table.name.lower() != table_name.lower():
             res += f"(table {table_name} shares the same schema with {table.name} shown below)\n\n"
+        if column_regex_filter is not None or needs_pagination:
+            parts = []
+            if column_regex_filter is not None:
+                parts.append(f"filter={column_regex_filter!r}")
+            if needs_pagination:
+                end = offset + len(table.columns)
+                parts.append(f"range {offset + 1}-{end}")
+            res += f"(showing {len(table.columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
         res += self.formatter.format_table(table, add_description=self.add_description)
         return res
 
