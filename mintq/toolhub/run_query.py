@@ -14,6 +14,7 @@ class RunQueryToolMetrics(BaseModel):
     num_calls: int = 0
     error_timeout: int = 0
     error_query_failed: int = 0
+    error_read_only_violation: int = 0
 
 
 class LLMParameter(BaseModel):
@@ -73,7 +74,10 @@ class RunQueryWithParamsTool:
         )
         if exec_result.df is None:
             assert exec_result.error is not None
-            if exec_result.error.exc_type == "TimeoutError":
+            if exec_result.error.exc_type == "ReadOnlyViolationError":
+                self._metrics.error_read_only_violation += 1
+                return f"(query failed: {exec_result.error.message})"
+            elif exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
                 return "(query timed out)"
             else:
@@ -144,7 +148,10 @@ class RunQueryNoParamsTool:
         )
         if exec_result.df is None:
             assert exec_result.error is not None
-            if exec_result.error.exc_type == "TimeoutError":
+            if exec_result.error.exc_type == "ReadOnlyViolationError":
+                self._metrics.error_read_only_violation += 1
+                return f"(query failed: {exec_result.error.message})"
+            elif exec_result.error.exc_type == "TimeoutError":
                 self._metrics.error_timeout += 1
                 return "(query timed out)"
             else:
