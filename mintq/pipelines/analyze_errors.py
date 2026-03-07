@@ -213,11 +213,15 @@ class Analyzer:
 
     def _error_section(self, result: NL2QRunResult) -> str:
         res = "## Error Tasks"
-        res += "\n\n### Tasks where executable = 0.0:"
+        res += "\n\n### Query Syntax Error Tasks (executable = 0.0):"
         error_tasks = [task for task in result.tasks if task.eval_metrics["executable"] == 0.0]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
-        res += "\n\n### Tasks where simple_ex = 0.0:"
-        error_tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
+        res += "\n\n### Query Semantic Error Tasks (executable = 1.0 but simple_ex = 0.0):"
+        error_tasks = [
+            task
+            for task in result.tasks
+            if task.eval_metrics["executable"] == 1.0 and task.eval_metrics["simple_ex"] == 0.0
+        ]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
