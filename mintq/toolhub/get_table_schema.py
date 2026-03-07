@@ -38,7 +38,7 @@ class GetTableSchemaTool:
         schema: SQLSchema,
         formatter: BaseSQLSchemaFormatter,
         add_description: bool = True,
-        max_columns: int | None = None,
+        max_columns: int | None = 50,
     ):
         self.schema = schema
         self.formatter = formatter
