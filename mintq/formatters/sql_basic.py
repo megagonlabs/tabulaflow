@@ -13,7 +13,7 @@ class SQLBasicSchemaFormatter:
     always_quote_columns: bool = True
     example_max_chars: int = 100
     floatfmt: str = ".8g"
-    max_total_columns: int | None = 200
+    max_total_columns: int | None = None
 
     def _quote(self, s: str) -> str:
         return f"{self.quote_char}{s}{self.quote_char}"
