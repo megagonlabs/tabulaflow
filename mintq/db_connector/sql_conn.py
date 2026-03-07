@@ -31,6 +31,22 @@ from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 
+# Statements that modify data or schema.  The pattern matches the *first*
+# non-whitespace, non-comment keyword in the query.
+_WRITE_STATEMENT_RE = re.compile(
+    r"^\s*"
+    r"(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"  # skip leading SQL comments
+    r"(?P<keyword>"
+    r"INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE"  # DML
+    r"|CREATE|ALTER|DROP|TRUNCATE|RENAME"  # DDL
+    r"|GRANT|REVOKE"  # DCL
+    r"|CALL|EXEC(?:UTE)?"  # stored procedures
+    r"|COPY|LOAD|UNLOAD|PUT|GET|REMOVE"  # bulk / file ops (Snowflake, etc.)
+    r")\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
@@ -576,6 +592,7 @@ class SQLConnector:
     global_id: str
     schema: SQLSchema
     _t_eng: ThrottledEngine
+    read_only: bool = True
 
     @classmethod
     async def from_url_async(
@@ -589,6 +606,7 @@ class SQLConnector:
         schema: SQLSchema | None = None,
         group_date_partitioned_tables: bool = True,
         group_table_regexes: list[str] = [],
+        read_only: bool = True,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -623,6 +641,9 @@ class SQLConnector:
                 collected into a group.  If a group contains more than one
                 table, only the first is fully inspected and the rest receive
                 a shallow copy of its schema.
+            read_only: If ``True`` (the default), write statements (INSERT,
+                UPDATE, DELETE, DROP, etc.) are rejected before reaching the
+                database, returning an :class:`ExecResult` with an error.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -645,7 +666,7 @@ class SQLConnector:
                 group_date_partitioned_tables,
                 group_table_regexes,
             )
-        return cls(global_id, schema, t_eng)
+        return cls(global_id, schema, t_eng, read_only=read_only)
 
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
@@ -668,8 +689,19 @@ class SQLConnector:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult:
-        # --- query result cache lookup ---
+        # --- read-only guard ---
         query_str = str(query) if not isinstance(query, str) else query
+        if self.read_only and _WRITE_STATEMENT_RE.match(query_str):
+            keyword = _WRITE_STATEMENT_RE.match(query_str)
+            assert keyword is not None
+            return ExecResult(
+                error=ErrorInfo(
+                    exc_type="ReadOnlyViolationError",
+                    message=f"Write statement blocked (read_only=True): {keyword.group('keyword').upper()} ...",
+                ),
+            )
+
+        # --- query result cache lookup ---
         params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
         use_cache = mintq_config.query_cache_enabled and not mintq_config.query_cache_overwrite
 
