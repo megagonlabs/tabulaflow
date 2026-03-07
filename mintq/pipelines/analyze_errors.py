@@ -198,32 +198,32 @@ class Analyzer:
             else:
                 res += "(No tasks in this category)"
 
-        # Add not-classified error qids subsection
-        error_qids = [task.qid for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
-        classified_qids = {qid for category in categories for qid in category.qids}
-        not_classified_qids = [qid for qid in error_qids if qid not in classified_qids]
+        # # Add not-classified error qids subsection
+        # error_qids = [task.qid for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
+        # classified_qids = {qid for category in categories for qid in category.qids}
+        # not_classified_qids = [qid for qid in error_qids if qid not in classified_qids]
 
-        res += "\n\n### not_classified\n\n"
-        res += "Error tasks (simple_ex = 0.0) that were not classified into any of the above categories.\n\n"
-        if len(not_classified_qids) > 0:
-            res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in not_classified_qids)
-        else:
-            res += "(No tasks in this category)"
+        # res += "\n\n### not_classified\n\n"
+        # res += "Error tasks (simple_ex = 0.0) that were not classified into any of the above categories.\n\n"
+        # if len(not_classified_qids) > 0:
+        #     res += "\n".join(f" [[{qid}]](./readable/{qid}/task_readable.md)" for qid in not_classified_qids)
+        # else:
+        #     res += "(No tasks in this category)"
         return res
 
     def _error_section(self, result: NL2QRunResult) -> str:
         res = "## Error Tasks"
-        res += "\n\nTasks where executable = 0.0:"
+        res += "\n\n### Tasks where executable = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["executable"] == 0.0]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
-        res += "\n\nTasks where simple_ex = 0.0:"
+        res += "\n\n### Tasks where simple_ex = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["simple_ex"] == 0.0]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
 
     def _schema_linking_section(self, result: NL2QRunResult) -> str:
         res = "## Schema Linking"
-        res += "\n\nTasks where perfect_linked_schema_r = 0.0:"
+        res += "\n\n### Tasks where perfect_linked_schema_r = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["perfect_linked_schema_r"] == 0.0]
         res += "\n\n" + "\n".join(f" [[{task.qid}]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
         return res
