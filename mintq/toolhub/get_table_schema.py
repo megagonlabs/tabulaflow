@@ -10,6 +10,8 @@ from mintq.toolhub.utils import equals_ci
 
 class GetTableSchemaToolMetrics(BaseModel):
     num_calls: int = 0
+    error_max_columns_exceeded: int = 0
+    error_invalid_column_regex_filter: int = 0
     error_table_not_found: int = 0
 
 
@@ -24,14 +26,24 @@ class GetTableSchemaTool:
             compressed schema produced by SchemaCompressor.
         formatter: The formatter used to render table schema as text.
         add_description: Whether to include column descriptions in output.
+        max_columns: If set, reject requests whose resulting columns exceed
+            this limit, prompting the agent to use offset/limit or
+            column_regex_filter to narrow down.
     """
 
     name: ClassVar = "get_table_schema"
 
-    def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter, add_description: bool = True):
+    def __init__(
+        self,
+        schema: SQLSchema,
+        formatter: BaseSQLSchemaFormatter,
+        add_description: bool = True,
+        max_columns: int | None = None,
+    ):
         self.schema = schema
         self.formatter = formatter
         self.add_description = add_description
+        self.max_columns = max_columns
         self._metrics = GetTableSchemaToolMetrics()
 
     async def __call__(
@@ -81,6 +93,7 @@ class GetTableSchemaTool:
             try:
                 pattern = re.compile(column_regex_filter, re.IGNORECASE)
             except re.error as e:
+                self._metrics.error_invalid_column_regex_filter += 1
                 return f"(invalid column_regex_filter regex: {e})"
             filtered_columns = [col for col in table.columns if pattern.search(col.name)]
             table = table.model_copy(update={"columns": filtered_columns})
@@ -92,6 +105,14 @@ class GetTableSchemaTool:
             if limit is not None:
                 sliced_columns = sliced_columns[:limit]
             table = table.model_copy(update={"columns": sliced_columns})
+
+        # Reject if the result exceeds max_columns
+        if self.max_columns is not None and len(table.columns) > self.max_columns:
+            self._metrics.error_max_columns_exceeded += 1
+            return (
+                f"(table {table_name} has {total_columns} columns which exceeds the limit of"
+                f" {self.max_columns}. Use offset/limit or column_regex_filter to narrow down.)"
+            )
 
         res = ""
         if table.name.lower() != table_name.lower():
