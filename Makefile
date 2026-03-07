@@ -93,7 +93,7 @@ test-spider2-mintq-agent:
 .PHONY: test-spider2-IDC-mintq-agent
 test-spider2-IDC-mintq-agent:
 	uv run mintq/pipelines/run_agent.py --agent mintq_agent --dataset spider2-snow --debug --databases IDC --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium --openai_reasoning_summary detailed
-	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/populate_exec_results.py --batch_size 100
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug	
 
