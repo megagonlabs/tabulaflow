@@ -44,8 +44,10 @@ class RunQueryWithParamsTool:
         self._last_pred_query: PredQuery | None = None
 
     async def __call__(self, query: str, parameters: list[LLMParameter] = []) -> str:
-        """
-        Execute a SQL query and return the results.
+        """Execute a SQL query and return the results.
+
+        Returning large result sets is safe — the display is automatically truncated,
+        and full execution results are always recorded.
 
         Example:
         ```python
@@ -130,8 +132,10 @@ class RunQueryNoParamsTool:
         self._last_pred_query: PredQuery | None = None
 
     async def __call__(self, query: str) -> str:
-        """
-        Execute a SQL query and return the results.
+        """Execute a SQL query and return the results.
+
+        Returning large result sets is safe — the display is automatically truncated,
+        and full execution results are always recorded.
 
         Args:
             query: The SQL query to execute.
