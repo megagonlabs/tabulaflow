@@ -78,12 +78,21 @@ class ThrottledEngine:
 
     def _run_query_s(
         self,
-        statement: sqlalchemy.sql.expression.Executable,
+        statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.connect() as conn:  # type: ignore
-            result = conn.execute(statement, parameters)
+            if isinstance(statement, str):
+                # We use exec_driver_sql to avoid sqlalchemy.text() parameter
+                # parsing, which misinterprets :identifier patterns (e.g.
+                # Snowflake Scripting variables, VARIANT path access) as bind
+                # parameters. exec_driver_sql sends the raw SQL string directly
+                # to the DBAPI driver, so parameters (if any) must already use
+                # the driver's native paramstyle (e.g. %(name)s for pyformat).
+                result = conn.exec_driver_sql(statement, parameters or None)
+            else:
+                result = conn.execute(statement, parameters)
             rows = result.fetchall()
             if return_df:
                 return pd.DataFrame(rows, columns=result.keys())
@@ -91,10 +100,12 @@ class ThrottledEngine:
 
     async def _run_query_a(
         self,
-        statement: sqlalchemy.sql.expression.Executable,
+        statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        if isinstance(statement, str):
+            statement = sqlalchemy.text(statement)
         rows = []
         async with self.engine.connect() as conn:  # type: ignore
             result = await conn.stream(statement, parameters)
@@ -115,12 +126,14 @@ class ThrottledEngine:
 
     async def _run_query_aiosqlite(
         self,
-        statement: sqlalchemy.sql.expression.Executable,
+        statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         timeout: int | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
+        if isinstance(statement, str):
+            statement = sqlalchemy.text(statement)
         rows = []
         async with self.engine.connect() as conn:  # type: ignore
             if timeout is not None:
@@ -150,9 +163,8 @@ class ThrottledEngine:
         timeout: int | None = None,
         return_df: bool = False,
     ) -> QueryResult:
-        if isinstance(query, str):
-            query = sqlalchemy.text(query)
-
+        # Note: str queries are passed through to _run_query_s / _run_query_a
+        # which handle the text() conversion or exec_driver_sql routing internally.
         async with self.throttle():
             t0 = time.time()
             try:
