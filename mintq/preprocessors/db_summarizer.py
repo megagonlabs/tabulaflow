@@ -15,9 +15,11 @@ You are an AI database expert tasked with producing a summary for a database.
 
 <requirements>
 - The summary should be in markdown format, under 2000 words.
-- Your output should contain only the summary without further suggestions or explanations.
+- The title should be in the format "Database: `<database_name>`".
+- Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
 - Describe the core entities and the relationships within the database.
+- When referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
 </requirements>
 """.strip()
 
