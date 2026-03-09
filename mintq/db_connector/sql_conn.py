@@ -40,7 +40,7 @@ _WRITE_STATEMENT_RE = re.compile(
     r"INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE"  # DML
     r"|CREATE|ALTER|DROP|TRUNCATE|RENAME"  # DDL
     r"|GRANT|REVOKE"  # DCL
-    r"|CALL|EXEC(?:UTE)?"  # stored procedures
+    r"|CALL|EXECUTE(?!\s+IMMEDIATE\b)|EXEC(?!UTE)"  # stored procs (not EXECUTE IMMEDIATE)
     r"|COPY|LOAD|UNLOAD|PUT|GET|REMOVE"  # bulk / file ops (Snowflake, etc.)
     r")\b",
     re.IGNORECASE | re.DOTALL,
