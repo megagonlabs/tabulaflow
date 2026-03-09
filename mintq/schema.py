@@ -375,23 +375,21 @@ class SQLSchema(BaseModel):
 
     def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
         def normalize(s: str | None) -> str | None:
-            if case_insensitive:
-                return s.lower() if s is not None else s
-            return s
+            return s.lower() if case_insensitive and s is not None else s
 
         # Group column names by (schema_name, table_name)
         columns_by_table: dict[tuple[str | None, str], set[str]] = {}
         for ref in column_refs:
             key = (normalize(ref.schema_name), normalize(ref.table_name))
-            columns_by_table.setdefault(key, set()).add(ref.column_name)
+            columns_by_table.setdefault(key, set()).add(ref.column_name)  # type: ignore[arg-type]
 
         new_tables: list[SQLTableSchema] = []
         for table in self.tables:
             table_key = (normalize(table.schema_name), normalize(table.name))
-            col_names = columns_by_table.get(table_key)
+            col_names = columns_by_table.get(table_key)  # type: ignore[arg-type]
             if col_names is None:
                 continue
-            trimmed = table.trim(col_names, case_insensitive=case_insensitive, keep_pk=keep_pk)
+            trimmed = table.trim(list(col_names), case_insensitive=case_insensitive, keep_pk=keep_pk)
             if trimmed is not None:
                 new_tables.append(trimmed)
 
