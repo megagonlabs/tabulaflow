@@ -18,6 +18,7 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 - **Snowflake Syntax Only:**
   - Use only functions and syntax supported by Snowflake.
   - For example, `TRIM(BOTH 'chars' FROM expr)` is not valid in Snowflake. Use `TRIM(expr, 'chars')` or `REPLACE()` instead.
+  - **TRIM()** in Snowflake removes only spaces by default, **not tabs** (`CHR(9)`) or other whitespace. Normalize tabs first with `REPLACE(expr, CHR(9), ' ')` before trimming if you want to remove tabs.
 - **Schema-Qualified Table Names:**
   - Always include the schema name when referencing tables (e.g., `SCHEMA_NAME.TABLE_NAME`).
 - **Case-Sensitive Identifiers:**
