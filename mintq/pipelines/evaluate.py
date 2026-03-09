@@ -88,6 +88,10 @@ async def main_async() -> None:
                 f"WARNING: Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping..."
             )
             continue
+        if metric_cls.name == "schema_linking_stats":
+            if all(task.extra_pred_info.linked_schema is None for task in result.tasks):
+                print("WARNING: skipping schema_linking_stats because no linked schema found in any task")
+                continue
         metrics.append(metric_cls())
 
     metric_aggregators: list[BaseMetricAggregator] = [
