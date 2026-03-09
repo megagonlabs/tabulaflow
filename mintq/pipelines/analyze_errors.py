@@ -37,7 +37,7 @@ You are responsible for classifying the task characteristics and prediction erro
 """.strip()
 
 
-DEFAULT_CATEGORIES = [
+DEFAULT_CATEGORIES: list[ErrorCategory] = [
     #     ErrorCategory(
     #         name="task_has_AND_ambiguity_interpreted_as_LOGICAL_AND",
     #         description="""
@@ -162,7 +162,7 @@ class LLMErrorClassifier:
         )
         result = await agent.run(prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return list(set[Literal](result.output))
+        return list(set(result.output))
 
     async def classify_async(self, result: NL2QRunResult) -> list[ErrorCategory]:
         all_results = await asyncio.gather(*[self._classify_task_async(task) for task in result.tasks])

@@ -229,7 +229,7 @@ class NamePattern(BaseModel):
     """(e.g. "events_{YYYYMMDD}")"""
     comment: str | None = None
     """(e.g. "YYYYMMDD from 20200101 to 20200102")"""
-    original_names: list[str] | None = None
+    original_names: list[str] = Field(default_factory=list)
     """The original table names in the compressed schema (e.g. ["events_20200101", "events_20200102"])"""
 
 
