@@ -784,8 +784,11 @@ March 8
 - [x] Fix mypy
 
 March 9
-- [ ] Exp 239 with procedural: no improvement
-- [ ] Exp 239: GPT-5: 0.6618 spider2_ex
+- [x] Exp 239 with procedural: no improvement
+- [x] Exp 239: GPT-5: 0.6618 spider2_ex
+- [x] Exp 240: Claude Opus 4.6: failed - rate limit exceeded
+
+- [ ] Update db summaries - use better llm
 - [ ] Language hints
 - [ ] Replace dialect list with sqlalchemy dialects
 - [ ] Remove language field from tasks
