@@ -263,7 +263,7 @@ async def load_schema_with_cache_async(
         schema = await build_schema_async(
             t_eng,
             db_name,
-            dialect,
+            dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
             column_stats_mode=mintq_config.column_stats_mode,
