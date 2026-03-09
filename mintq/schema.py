@@ -687,7 +687,7 @@ class ErrorInfo(BaseModel):
 class ExecResult(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    df: pd.DataFrame | None
+    df: pd.DataFrame | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""
     error: ErrorInfo | None = None
