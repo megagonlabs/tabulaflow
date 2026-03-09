@@ -777,17 +777,24 @@ March 6
 - [x] revise run_query tool docstring - "returning large result sets is safe"
 
 March 8
-- [ ] sf_bq416 (GOOG_BLOCKCHAIN)
-  - [ ] Snowflake blocks javascript UDF creation
-- [ ] GA360
+- [x] sf_bq416 (GOOG_BLOCKCHAIN)
+  - [x] Snowflake blocks javascript UDF creation
+- [x] GA360
+- [x] Support running procedural blocks, use exec_driver_sql
+- [x] Fix mypy
 
+March 9
+- [ ] Exp 239 with procedural: no improvement
+- [ ] Exp 239: GPT-5: 0.6618 spider2_ex
 - [ ] Language hints
+- [ ] Replace dialect list with sqlalchemy dialects
 - [ ] Remove language field from tasks
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] Fix mintq.__init__.py
 - [ ] Include db name and table list in db_document
 
+- [ ] db_summarizer prompt - title format, schema-qualified table names
 - [ ] Add column description during column expansion in sql_agent.py?
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
