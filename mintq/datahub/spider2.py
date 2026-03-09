@@ -26,8 +26,13 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
   - If the question asks for a "ratio", do not multiply by 100; return the raw fraction on a 0-1 scale.
+- **Columns to Return:**
+  - It is safe to include all columns relevant to the question.
+  - Do not concatenate columns in the results unless explicitly requested. 
 - **No Empty Results:**
   - The correct SQL query must return at least one row. If your query returns empty results, it is likely incorrect or the question may require a different interpretation.
+- **NULL Values in Results:**
+  - Check for unexpected NULLs before finishing. Do not return results with unexpected NULLs (e.g. NULL in computed columns).
 """.strip()
 
 
