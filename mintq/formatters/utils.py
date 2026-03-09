@@ -148,7 +148,7 @@ def format_json_schema(
         return "array"
 
     if t in ("string", "integer", "number", "boolean", "null"):
-        return t
+        return t  # type: ignore
 
     # Fallback for empty or unrecognized schemas
     return "any"

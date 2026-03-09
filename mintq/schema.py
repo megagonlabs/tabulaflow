@@ -275,13 +275,14 @@ class SQLTableSchema(BaseModel):
             A deep-copied ``SQLTableSchema`` with only the matched columns,
             or ``None`` if no columns remain after trimming.
         """
-        normalize: callable = str.lower if case_insensitive else lambda s: s  # type: ignore[assignment]
+
+        def normalize(s: str) -> str:
+            return s.lower() if case_insensitive else s
+
         normalized_names = {normalize(n) for n in column_names}
 
         new_columns = [
-            col
-            for col in self.columns
-            if normalize(col.name) in normalized_names or (keep_pk and col.primary_key_type)
+            col for col in self.columns if normalize(col.name) in normalized_names or (keep_pk and col.primary_key_type)
         ]
         if not new_columns:
             return None
@@ -373,7 +374,10 @@ class SQLSchema(BaseModel):
         return result
 
     def trim(self, column_refs: list[ColumnRef], case_insensitive: bool = True, keep_pk: bool = True) -> "SQLSchema":
-        normalize: callable = (lambda s: s.lower() if s is not None else s) if case_insensitive else (lambda s: s)  # type: ignore[assignment]
+        def normalize(s: str | None) -> str | None:
+            if case_insensitive:
+                return s.lower() if s is not None else s
+            return s
 
         # Group column names by (schema_name, table_name)
         columns_by_table: dict[tuple[str | None, str], set[str]] = {}
