@@ -1,4 +1,5 @@
 from typing import ClassVar
+import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from mintq.db_connector import BaseSQLDBConnector
@@ -8,6 +9,23 @@ from mintq.toolhub.utils import format_sqlalchemy_error_msg
 from mintq.config import mintq_config
 
 _UNSET = object()
+
+
+def _detect_result_hints(df: pd.DataFrame) -> list[str]:
+    """Detect common problematic result patterns and return actionable hints."""
+    hints: list[str] = []
+    cols_lower = [str(c).lower() for c in df.columns]
+
+    # Snowflake anonymous block: single column named "anonymous block" with NULL
+    if cols_lower == ["anonymous block"]:
+        hints.append(
+            "hint: The result contains only an 'anonymous block' column — this means the anonymous block "
+            "(DECLARE … BEGIN … END) executed but did not return the inner query's result set. "
+            "To fix this, declare a RESULTSET variable, assign it with `res := (EXECUTE IMMEDIATE :sql);`, "
+            "and add `RETURN TABLE(res);` before END."
+        )
+
+    return hints
 
 
 class RunQueryToolMetrics(BaseModel):
@@ -99,6 +117,8 @@ class RunQueryWithParamsTool:
         res += f"\n({len(df)} rows)"
         res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
+        for hint in _detect_result_hints(df):
+            res += f"\n({hint})"
         if df.isnull().all().any():
             res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
@@ -178,8 +198,8 @@ class RunQueryNoParamsTool:
         res += f"\n({len(df)} rows)"
         res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
-        # if df.isnull().all().any():
-        #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
+        for hint in _detect_result_hints(df):
+            res += f"\n({hint})"
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:
