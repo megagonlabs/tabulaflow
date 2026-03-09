@@ -607,6 +607,17 @@ async def build_schema_async(
 
 @dataclass
 class SQLConnector:
+    """Database connector that wraps a SQLAlchemy engine with concurrency
+    control, schema caching, and query result caching.
+
+    Raw SQL strings are executed via ``exec_driver_sql``, which sends them
+    directly to the DBAPI driver without any SQLAlchemy parameter parsing.
+    This means procedural / scripting blocks (e.g. Snowflake Scripting
+    ``DECLARE … BEGIN … END``, ``EXECUTE IMMEDIATE``) and dialect-specific
+    syntax that uses ``:identifier`` patterns (e.g. Snowflake VARIANT path
+    access) are fully supported.
+    """
+
     global_id: str
     schema: SQLSchema
     _t_eng: ThrottledEngine
@@ -707,6 +718,26 @@ class SQLConnector:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult:
+        """Execute a query and return the result.
+
+        Raw SQL strings are sent to the DBAPI driver via
+        ``exec_driver_sql``, bypassing SQLAlchemy's ``text()`` parameter
+        parsing.  This allows procedural / scripting blocks (e.g.
+        Snowflake Scripting ``DECLARE … BEGIN … END``) and
+        ``:identifier`` patterns (e.g. VARIANT path access) to be
+        executed without interference.
+
+        Args:
+            query: A raw SQL string or a SQLAlchemy ``Executable``.
+            parameters: Bind parameters.  For raw SQL strings these must
+                use the driver's native paramstyle (e.g. ``%(name)s``
+                for pyformat drivers).
+            timeout: Query timeout in seconds. ``None`` means no timeout.
+
+        Returns:
+            An :class:`ExecResult` containing the result DataFrame (or
+            an error) and latency information.
+        """
         # --- read-only guard ---
         query_str = str(query) if not isinstance(query, str) else query
         if self.read_only and _WRITE_STATEMENT_RE.match(query_str):

@@ -49,6 +49,9 @@ class RunQueryWithParamsTool:
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
 
+        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
+        ``EXECUTE IMMEDIATE``) are supported.
+
         Example:
         ```python
         run_query(
@@ -136,6 +139,9 @@ class RunQueryNoParamsTool:
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
+
+        Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
+        ``EXECUTE IMMEDIATE``) are supported.
 
         Args:
             query: The SQL query to execute.
