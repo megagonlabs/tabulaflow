@@ -104,13 +104,16 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        if isinstance(statement, str):
-            statement = sqlalchemy.text(statement)
-        rows = []
         async with self.engine.connect() as conn:  # type: ignore
-            result = await conn.stream(statement, parameters)
-            async for row in result:
-                rows.append(row)
+            if isinstance(statement, str):
+                # See _run_query_s for rationale on exec_driver_sql.
+                result = await conn.exec_driver_sql(statement, parameters or None)
+                rows = list(result.fetchall())
+            else:
+                rows = []
+                result = await conn.stream(statement, parameters)
+                async for row in result:
+                    rows.append(row)
 
         if return_df:
             return pd.DataFrame(rows, columns=result.keys())
@@ -132,17 +135,20 @@ class ThrottledEngine:
         timeout: int | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
-        if isinstance(statement, str):
-            statement = sqlalchemy.text(statement)
-        rows = []
         async with self.engine.connect() as conn:  # type: ignore
             if timeout is not None:
                 interrupter = self._create_interrupter(conn, timeout)
 
             try:
-                result = await conn.stream(statement, parameters)
-                async for row in result:
-                    rows.append(row)
+                if isinstance(statement, str):
+                    # See _run_query_s for rationale on exec_driver_sql.
+                    result = await conn.exec_driver_sql(statement, parameters or None)
+                    rows = list(result.fetchall())
+                else:
+                    rows = []
+                    result = await conn.stream(statement, parameters)
+                    async for row in result:
+                        rows.append(row)
             except sqlalchemy.exc.OperationalError as e:
                 if "interrupted" in str(e).lower():
                     raise asyncio.TimeoutError()
