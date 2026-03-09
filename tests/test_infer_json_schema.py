@@ -21,7 +21,7 @@ def test_simple_object() -> None:
             "age": {"type": "integer"},
             "name": {"type": "string"},
         },
-        "required": ["age", "name"],
+        "required": ["name", "age"],
     }
 
 
