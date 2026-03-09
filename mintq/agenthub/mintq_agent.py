@@ -52,7 +52,9 @@ You are an agent - please keep going until the database query is fully construct
 - You need to execute the query at least once before finishing. The last executed query will be the final output.
 - Ensure the query accurately reflects the original question without adding or omitting any conditions.
 - Adhere strictly to the given database schema when constructing queries.
-- Pay close attention to detail. When multiple similar columns or JSON fields exist, carefully select the one that best matches the question and the instructions.
+- Pay close attention to detail.
+  - When multiple similar columns or JSON fields exist, carefully select the one that best matches the question and the instructions.
+  - When applying filters, if multiple columns are semantically equivalent, prefer the one that is more reliable and contains fewer null values.
 - Follow the dataset and question instructions if they are provided. When there is a conflict between instructions, prioritize the question instructions.
 </goal>
 
