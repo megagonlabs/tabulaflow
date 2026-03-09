@@ -787,6 +787,9 @@ March 9
 - [x] Exp 239 with procedural: no improvement
 - [x] Exp 239: GPT-5: 0.6618 spider2_ex
 - [x] Exp 240: Claude Opus 4.6: failed - rate limit exceeded
+- [x] Analyze
+  - [x] DELIVERY_CENTER
+  - [ ] GITHUB_REPOS
 
 - [ ] Update db summaries - use better llm
 - [ ] Language hints
@@ -796,6 +799,7 @@ March 9
 - [ ] Code edit tool for editting complex queries
 - [ ] Fix mintq.__init__.py
 - [ ] Include db name and table list in db_document
+- [ ] non-empty ratio
 
 - [ ] db_summarizer prompt - title format, schema-qualified table names
 - [ ] Add column description during column expansion in sql_agent.py?
