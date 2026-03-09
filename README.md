@@ -776,6 +776,12 @@ March 6
 - [x] get_table_schema tool: max_columns, column_regex_filter, offset, limit
 - [x] revise run_query tool docstring - "returning large result sets is safe"
 
+March 8
+- [ ] sf_bq416 (GOOG_BLOCKCHAIN)
+  - [ ] Snowflake blocks javascript UDF creation
+- [ ] GA360
+
+- [ ] Language hints
 - [ ] Remove language field from tasks
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
