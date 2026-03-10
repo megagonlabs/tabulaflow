@@ -23,7 +23,7 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - Always include the schema name when referencing tables (e.g., `"SCHEMA_NAME"."TABLE_NAME"`).
 - **Case-Sensitive Identifiers:**
   - Always enclose schema, table and column names in double quotes (e.g., `SELECT "col_name" FROM "SCHEMA_NAME"."TABLE_NAME"`).
-  - In CTEs and subqueries, ensure all aliases are wrapped in double quotes (e.g., `SELECT ... AS "col_name"`) so they can be referenced consistently using double quotes.
+  - In CTEs and subqueries, ensure both table and column aliases are wrapped in double quotes (e.g., `WITH "filtered_data" AS ...`, `SELECT ... AS "col_name"`) so they can be referenced consistently using double quotes.
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
