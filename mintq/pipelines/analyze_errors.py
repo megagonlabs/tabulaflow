@@ -110,30 +110,30 @@ DEFAULT_CATEGORIES: list[ErrorCategory] = [
     # Only applicable if simple_ex = 0.0.
     # """.strip(),
     # ),
-    ErrorCategory(
-        name="pred_is_correct",
-        description="""
-    The predicted query is correct (spider2_ex = 1.0).
-    """.strip(),
-    ),
-    ErrorCategory(
-        name="error_is_trivial_to_fix",
-        description="""
-    The error is trivial to fix. The gold results can be easily obtained if a obvious mistake is fixed. Only applicable if spider2_ex = 0.0.
-    """.strip(),
-    ),
-    ErrorCategory(
-        name="error_is_easy_to_fix",
-        description="""
-    The error is easy to fix. There is something clearly wrong with the prediction. Only applicable if spider2_ex = 0.0.
-    """.strip(),
-    ),
-    ErrorCategory(
-        name="error_is_hard_to_fix",
-        description="""
-    The error is not easy to fix. The difference between the prediction and the gold query is not obvious. Only applicable if spider2_ex = 0.0.
-    """.strip(),
-    ),
+    # ErrorCategory(
+    #     name="pred_is_correct",
+    #     description="""
+    # The predicted query is correct (spider2_ex = 1.0).
+    # """.strip(),
+    # ),
+    # ErrorCategory(
+    #     name="error_is_trivial_to_fix",
+    #     description="""
+    # The error is trivial to fix. The gold results can be easily obtained if a obvious mistake is fixed. Only applicable if spider2_ex = 0.0.
+    # """.strip(),
+    # ),
+    # ErrorCategory(
+    #     name="error_is_easy_to_fix",
+    #     description="""
+    # The error is easy to fix. There is something clearly wrong with the prediction. Only applicable if spider2_ex = 0.0.
+    # """.strip(),
+    # ),
+    # ErrorCategory(
+    #     name="error_is_hard_to_fix",
+    #     description="""
+    # The error is not easy to fix. The difference between the prediction and the gold query is not obvious. Only applicable if spider2_ex = 0.0.
+    # """.strip(),
+    # ),
 ]
 
 ##### Remove #####
