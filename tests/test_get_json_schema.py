@@ -1,5 +1,6 @@
 import pytest
 
+from mintq.formatters.utils import format_json_schema
 from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 from mintq.toolhub.get_json_schema import (
     GetColumnJsonSchemaTool,
@@ -105,6 +106,85 @@ MULTI_VARIANT_ANYOF_SCHEMA: dict = {
         },
     },
 }
+
+
+# A wide schema (more fields than any reasonable budget)
+WIDE_OBJECT_SCHEMA: dict = {
+    "type": "object",
+    "properties": {
+        f"field_{i}": (
+            {
+                "type": "object",
+                "properties": {"nested": {"type": "string"}},
+                "required": ["nested"],
+            }
+            if i < 3
+            else {"type": "string"}
+        )
+        for i in range(40)
+    },
+    "required": [f"field_{i}" for i in range(40)],
+}
+
+
+# ---------------------------------------------------------------------------
+# Tests for format_json_schema always_expand_top_level
+# ---------------------------------------------------------------------------
+
+
+class TestFormatJsonSchemaAlwaysExpandTopLevel:
+    def test_wide_schema_expands_top_level_by_default(self) -> None:
+        """Default (always_expand_top_level=True) shows all top-level fields."""
+        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10)
+        # All 40 field names should appear
+        for i in range(40):
+            assert f"field_{i}" in result
+
+    def test_wide_schema_nested_objects_collapse(self) -> None:
+        """Nested objects should collapse to {...} when budget is exhausted."""
+        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10)
+        # field_0..field_2 are objects — they should collapse to {...}
+        assert "nested" not in result
+        assert "{...}" in result
+
+    def test_wide_schema_collapses_when_disabled(self) -> None:
+        """With always_expand_top_level=False, wide schema collapses entirely."""
+        result = format_json_schema(WIDE_OBJECT_SCHEMA, max_fields=10, always_expand_top_level=False)
+        assert result == "{...}"
+
+    def test_narrow_schema_unaffected(self) -> None:
+        """Schema within budget produces the same result regardless of the flag."""
+        result_on = format_json_schema(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=True)
+        result_off = format_json_schema(SIMPLE_OBJECT_SCHEMA, max_fields=20, always_expand_top_level=False)
+        assert result_on == result_off
+
+    def test_nested_wide_object_still_collapses(self) -> None:
+        """A nested wide object should still collapse even when flag is True."""
+        schema: dict = {
+            "type": "object",
+            "properties": {
+                "outer": {
+                    "type": "object",
+                    "properties": {f"x_{i}": {"type": "string"} for i in range(50)},
+                },
+            },
+        }
+        result = format_json_schema(schema, max_fields=5, always_expand_top_level=True)
+        # Top-level "outer" is shown, but its 50 children collapse
+        assert "outer" in result
+        assert "{...}" in result
+        assert "x_0" not in result
+
+    def test_array_wrapping_wide_object(self) -> None:
+        """Array whose items object is wide should expand top-level fields."""
+        schema: dict = {
+            "type": "array",
+            "items": WIDE_OBJECT_SCHEMA,
+        }
+        result = format_json_schema(schema, max_fields=10, always_expand_top_level=True)
+        # The items object is at _depth=0 (arrays pass depth through), so it expands
+        for i in range(40):
+            assert f"field_{i}" in result
 
 
 # ---------------------------------------------------------------------------

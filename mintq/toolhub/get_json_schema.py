@@ -186,7 +186,9 @@ class GetColumnJsonSchemaTool:
                 return f"(path '{path}' not found in JSON schema of column {column_name})"
             return format_json_schema(target_schema, max_depth=None, max_fields=None)
         else:
-            result = format_json_schema(column.json_schema, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS)
+            result = format_json_schema(
+                column.json_schema, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS, always_expand_top_level=True
+            )
             if self.include_examples:
                 result += _format_examples(column.examples, self.max_example_chars)
             return result

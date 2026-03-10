@@ -76,6 +76,7 @@ def format_json_schema(
     *,
     max_depth: int | None = None,
     max_fields: int | None = 20,
+    always_expand_top_level: bool = True,
     _depth: int = 0,
     _budget: float | None = None,
 ) -> str:
@@ -102,6 +103,9 @@ def format_json_schema(
             name and type, with the remainder available for nested expansion.
             An object is truncated to ``{...}`` when the budget cannot cover
             all its fields.  ``None`` disables the adaptive limit.
+        always_expand_top_level: When ``True``, the top-level object always
+            lists its fields even if the budget is insufficient.  Nested
+            objects that exceed the budget still collapse to ``{...}``.
         _depth: Current nesting depth (internal recursion parameter).
         _budget: Remaining field budget (internal recursion parameter).
 
@@ -111,7 +115,7 @@ def format_json_schema(
     if _budget is None and max_fields is not None:
         _budget = float(max_fields)
 
-    kw = dict(max_depth=max_depth, max_fields=max_fields)
+    kw = dict(max_depth=max_depth, max_fields=max_fields, always_expand_top_level=always_expand_top_level)
 
     # Handle anyOf (union types, including nullable)
     if "anyOf" in schema:
@@ -136,8 +140,14 @@ def format_json_schema(
         if max_depth is not None and _depth >= max_depth:
             return "{...}"
         if _budget is not None and _budget < len(props):
-            return "{...}"
-        child_budget = _budget / len(props) - 1 if _budget is not None else None
+            if always_expand_top_level and _depth == 0:
+                # Always show top-level fields; give children zero budget so
+                # nested objects collapse to {...}.
+                child_budget = 0.0
+            else:
+                return "{...}"
+        else:
+            child_budget = _budget / len(props) - 1 if _budget is not None else None
         required = set[Any](schema.get("required", []))
         field_parts: list[str] = []
         for key, val_schema in props.items():
