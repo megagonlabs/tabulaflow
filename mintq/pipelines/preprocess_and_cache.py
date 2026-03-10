@@ -1,4 +1,5 @@
 import argparse
+import collections
 import time
 import asyncio
 import os
@@ -33,19 +34,28 @@ async def preprocess_and_cache_async(
 
 
 def parse_preprocessor_args(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
-    all_preprocessor_args: dict[str, dict[str, Any]] = {
-        "question_embedder": {},
-        "schema_preprocessor": {},
-    }
+    all_preprocessor_args: dict[str, dict[str, Any]] = collections.defaultdict(dict)
+    if args.schema_preprocessor_column_profiler_llm is not None:
+        all_preprocessor_args["schema_preprocessor"]["column_profiler_llm"] = (
+            args.schema_preprocessor_column_profiler_llm
+        )
+    if args.schema_preprocessor_foreign_key_predictor_llm is not None:
+        all_preprocessor_args["schema_preprocessor"]["foreign_key_predictor_llm"] = (
+            args.schema_preprocessor_foreign_key_predictor_llm
+        )
     if args.question_embedder_embedding_llm is not None:
         all_preprocessor_args["question_embedder"]["embedding_llm"] = args.question_embedder_embedding_llm
+    if args.db_summarizer_llm is not None:
+        all_preprocessor_args["db_summarizer"]["llm"] = args.db_summarizer_llm
     return all_preprocessor_args
 
 
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_preprocessing", action="store_true")
-    parser.add_argument("--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
+    parser.add_argument(
+        "--preprocessors", nargs="+", default=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
+    )
 
     # dataset
     parser.add_argument("--dataset", default=mintq_config.dataset)
@@ -55,16 +65,21 @@ async def main_async() -> None:
     # preprocessor configs
     parser.add_argument("--schema_preprocessor_column_profiler_llm", default=None)
     parser.add_argument("--schema_preprocessor_foreign_key_predictor_llm", default=None)
-    parser.add_argument("--question_embedder_embedding_llm", default="openai:text-embedding-3-small")
+    parser.add_argument("--question_embedder_embedding_llm", default=None)
+    parser.add_argument("--db_summarizer_llm", default=None)
 
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
     args = parser.parse_args()
 
     if args.dataset == "bird-sql":
-        parser.set_defaults(split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
+        parser.set_defaults(
+            split="dev", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
+        )
     elif args.dataset == "spider2-snow":
-        parser.set_defaults(split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"])
+        parser.set_defaults(
+            split="test", preprocessors=["schema_preprocessor", "er_diagram_synthesizer", "db_summarizer"]
+        )
 
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
