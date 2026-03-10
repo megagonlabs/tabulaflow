@@ -52,15 +52,9 @@ class SimpleEx:
         else:
             return ("object", str(v))
 
-    def _compare_column(self, pred_col: list[Any], gold_col: list[Any], required_sorted: bool = False) -> bool:
-        pred_col = [self._digest(v) for v in pred_col]
-        gold_col = [self._digest(v) for v in gold_col]
-        if not required_sorted:  # required_sorted == False means order does not matter
-            pred_col = sorted(pred_col)
-            gold_col = sorted(gold_col)
-        if self.ignore_repetitions:
-            pred_col = list(dict.fromkeys(pred_col))
-            gold_col = list(dict.fromkeys(gold_col))
+    def _compare_digested_columns(
+        self, pred_col: list[tuple[Any, ...]], gold_col: list[tuple[Any, ...]]
+    ) -> bool:
         if len(pred_col) != len(gold_col):
             return False
         for (pred_type, pred_value), (gold_type, gold_value) in zip(pred_col, gold_col):
@@ -70,6 +64,24 @@ class SimpleEx:
             elif (pred_type, pred_value) != (gold_type, gold_value):
                 return False
         return True
+
+    def _compare_column(self, pred_col: list[Any], gold_col: list[Any], required_sorted: bool = False) -> bool:
+        pred_digested = [self._digest(v) for v in pred_col]
+        gold_digested = [self._digest(v) for v in gold_col]
+        if not required_sorted:  # required_sorted == False means order does not matter
+            pred_digested = sorted(pred_digested)
+            gold_digested = sorted(gold_digested)
+        # Always try the non-deduped comparison first, so that ignore_repetitions
+        # can only add leniency (accept more) and never cause false negatives.
+        # Without this, [0.9999, 0.999] will not match [1.0000, 1.000] if ignore_repetitions is True.
+        if self._compare_digested_columns(pred_digested, gold_digested):
+            return True
+        if self.ignore_repetitions:
+            pred_deduped = list(dict.fromkeys(pred_digested))
+            gold_deduped = list(dict.fromkeys(gold_digested))
+            if self._compare_digested_columns(pred_deduped, gold_deduped):
+                return True
+        return False
 
     def _compare_df(
         self,
