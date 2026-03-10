@@ -68,6 +68,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         model_settings = {}
         if self.openai_reasoning_effort is not None:
             model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
+            model_settings["openai_reasoning_summary"] = "detailed"
 
         agent = Agent[None, DBSummary](
             model=self.llm,
