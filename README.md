@@ -799,12 +799,18 @@ March 9
   - [x] always use double-quoted identifiers
 - [x] Analyze full spider2-snow test split exp239
 
+March 10
+- [ ] Analyze spider2 rounding behavior
+- [ ] Top 10 costliest tasks
+- [ ] Engineer get_json_schema - test on tasks that invoked get_json_schema
+- [ ] Model ensemble
+
+- [ ] Fix connection pool
 - [ ] Fix mintq.__init__.py
 - [ ] test whether null_ratio is useful
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
-- [ ] Model ensemble
 
 
 - [ ] Add column description during column expansion in sql_agent.py?
