@@ -9,7 +9,6 @@ from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000
-_DEFAULT_OVERVIEW_MAX_DEPTH = 2
 _DEFAULT_OVERVIEW_MAX_FIELDS = 30
 
 
@@ -187,9 +186,7 @@ class GetColumnJsonSchemaTool:
                 return f"(path '{path}' not found in JSON schema of column {column_name})"
             return format_json_schema(target_schema, max_depth=None, max_fields=None)
         else:
-            result = format_json_schema(
-                column.json_schema, max_depth=_DEFAULT_OVERVIEW_MAX_DEPTH, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS
-            )
+            result = format_json_schema(column.json_schema, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS)
             if self.include_examples:
                 result += _format_examples(column.examples, self.max_example_chars)
             return result
