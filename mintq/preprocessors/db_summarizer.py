@@ -43,7 +43,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         self,
         llm: str = "openai-responses:gpt-5.4",
         compress_schema: bool = True,
-        openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = "high",
+        openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
     ):
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None

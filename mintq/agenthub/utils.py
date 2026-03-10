@@ -80,7 +80,7 @@ class BasicAgentConfig(BaseModel):
     max_steps: int = 20
     formatter_max_total_columns: int | None = 5000
     use_column_description: bool = True
-    openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = None
+    openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
     openai_reasoning_summary: Literal["detailed", "concise"] | None = None
     openai_service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
