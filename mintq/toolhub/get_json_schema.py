@@ -235,6 +235,8 @@ class GetColumnJsonSchemaTool:
             )
             if self.include_examples:
                 result += _format_examples(column.examples, self.max_example_chars)
+            if "{...}" in result:
+                result += '\n\n(hint: some nested fields are collapsed due to schema size. Use the "path" parameter to expand a specific sub-schema)'
             return result
 
     def as_pydantic_ai_tool(self) -> Tool:
