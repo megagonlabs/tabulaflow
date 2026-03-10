@@ -789,25 +789,27 @@ March 9
 - [x] Exp 240: Claude Opus 4.6: failed - rate limit exceeded
 - [x] Analyze
   - [x] DELIVERY_CENTER
-  - [ ] GITHUB_REPOS
+  - [x] GITHUB_REPOS
+- [x] Update db summaries - use better llm
+  - [x] db_summarizer prompt - title format, schema-qualified table names
+- [x] Move language field from tasks to db connectors
 
-- [ ] Update db summaries - use better llm
-- [ ] Language hints
-- [ ] Replace dialect list with sqlalchemy dialects
-- [ ] Remove language field from tasks
+- [ ] Analyze full spider2-snow test split
+
+- [ ] Fix mintq.__init__.py
+- [ ] test whether null_ratio is useful
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
-- [ ] Fix mintq.__init__.py
-- [ ] Include db name and table list in db_document
 - [ ] non-empty ratio
+- [ ] Model ensemble
 
-- [ ] db_summarizer prompt - title format, schema-qualified table names
+
 - [ ] Add column description during column expansion in sql_agent.py?
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
 - [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
 - [ ] Test GPT-5, gemini-3-flash/pro
-- [ ] Model ensemble
+
 - [ ] Caching for embedding models
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
