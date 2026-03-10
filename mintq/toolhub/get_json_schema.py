@@ -67,6 +67,38 @@ def _resolve_segments(schema: dict[str, Any], segments: list[str]) -> dict[str, 
     return None
 
 
+def _extract_examples_at_path(examples: list[Any], path: str) -> list[Any]:
+    """Extract sub-values from column-level examples by following a dot-separated path.
+
+    Navigates each example value along the path.  When a list is encountered
+    the path is applied to every element (flattening one level).  ``None``
+    values and missing keys are silently skipped.
+
+    Args:
+        examples: Column-level example values (dicts, lists, scalars, …).
+        path: Dot-separated path (e.g. ``"transaction.currencyCode"``).
+
+    Returns:
+        A flat list of extracted sub-values (may be empty).
+    """
+    segments = path.split(".")
+    values: list[Any] = list(examples)
+    for segment in segments:
+        next_values: list[Any] = []
+        for val in values:
+            if isinstance(val, list):
+                # Flatten arrays: apply the segment to each element
+                for item in val:
+                    if isinstance(item, dict) and segment in item:
+                        next_values.append(item[segment])
+            elif isinstance(val, dict) and segment in val:
+                next_values.append(val[segment])
+        values = next_values
+        if not values:
+            break
+    return values
+
+
 def _format_examples(examples: list[Any], max_chars: int) -> str:
     """Format example values, including at least one and stopping when *max_chars* is reached."""
     if not examples or max_chars < 0:
@@ -184,7 +216,12 @@ class GetColumnJsonSchemaTool:
             if target_schema is None:
                 self._metrics.error_path_not_found += 1
                 return f"(path '{path}' not found in JSON schema of column {column_name})"
-            return format_json_schema(target_schema, max_depth=None, max_fields=None)
+            result = format_json_schema(target_schema, max_depth=None, max_fields=None)
+            if self.include_examples and column.examples:
+                sub_examples = _extract_examples_at_path(column.examples, path)
+                if sub_examples:
+                    result += _format_examples(sub_examples, self.max_example_chars)
+            return result
         else:
             result = format_json_schema(
                 column.json_schema, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS, always_expand_top_level=True

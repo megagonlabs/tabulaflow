@@ -4,6 +4,7 @@ from mintq.formatters.utils import format_json_schema
 from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 from mintq.toolhub.get_json_schema import (
     GetColumnJsonSchemaTool,
+    _extract_examples_at_path,
     _resolve_json_schema_path,
 )
 
@@ -356,9 +357,78 @@ class TestGetColumnJsonSchemaTool:
         assert "Alice" in result
 
     @pytest.mark.asyncio
-    async def test_path_excludes_examples(self) -> None:
+    async def test_path_includes_sub_examples(self) -> None:
+        """When path is given, examples are extracted at that sub-path."""
         tool = GetColumnJsonSchemaTool(
-            _make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice", "age": 30}])
+            _make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}])
         )
         result = await tool("test_schema", "test_table", "data_col", path="name")
-        assert "Alice" not in result
+        assert "Alice" in result
+        assert "Bob" in result
+        # Should NOT contain the full object
+        assert "age" not in result
+
+    @pytest.mark.asyncio
+    async def test_path_no_matching_examples(self) -> None:
+        """When examples don't contain the path, no examples section is appended."""
+        tool = GetColumnJsonSchemaTool(
+            _make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice"}])
+        )
+        # "age" exists in schema but not all examples have it — the one that does would be extracted
+        # Use a path that truly doesn't exist in examples
+        result = await tool("test_schema", "test_table", "data_col", path="age")
+        # age=30 is not in the example (only "name" is), but let's test with a missing key
+        assert "Examples:" not in result or "Alice" not in result
+
+
+# ---------------------------------------------------------------------------
+# Tests for _extract_examples_at_path
+# ---------------------------------------------------------------------------
+
+
+class TestExtractExamplesAtPath:
+    def test_simple_key(self) -> None:
+        examples = [{"name": "Alice", "age": 30}, {"name": "Bob", "age": 25}]
+        assert _extract_examples_at_path(examples, "name") == ["Alice", "Bob"]
+
+    def test_nested_key(self) -> None:
+        examples = [
+            {"page": {"hostname": "example.com", "path": "/a"}},
+            {"page": {"hostname": "test.org", "path": "/b"}},
+        ]
+        assert _extract_examples_at_path(examples, "page.hostname") == ["example.com", "test.org"]
+
+    def test_array_flattening(self) -> None:
+        """Lists in examples are flattened — each element is navigated."""
+        examples = [
+            [{"product": "A"}, {"product": "B"}],
+            [{"product": "C"}],
+        ]
+        assert _extract_examples_at_path(examples, "product") == ["A", "B", "C"]
+
+    def test_nested_array_flattening(self) -> None:
+        """Array -> object -> array -> object path."""
+        examples = [
+            {
+                "hits": [
+                    {"transaction": {"id": "T1"}},
+                    {"transaction": {"id": "T2"}},
+                ]
+            }
+        ]
+        assert _extract_examples_at_path(examples, "hits.transaction.id") == ["T1", "T2"]
+
+    def test_missing_key_skipped(self) -> None:
+        examples = [{"a": 1}, {"b": 2}, {"a": 3}]
+        assert _extract_examples_at_path(examples, "a") == [1, 3]
+
+    def test_none_values_skipped(self) -> None:
+        examples = [None, {"name": "Alice"}, None]
+        assert _extract_examples_at_path(examples, "name") == ["Alice"]
+
+    def test_empty_examples(self) -> None:
+        assert _extract_examples_at_path([], "anything") == []
+
+    def test_path_not_in_any_example(self) -> None:
+        examples = [{"a": 1}, {"b": 2}]
+        assert _extract_examples_at_path(examples, "c") == []
