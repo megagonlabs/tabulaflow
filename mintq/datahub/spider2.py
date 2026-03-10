@@ -20,9 +20,10 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - For example, `TRIM(BOTH 'chars' FROM expr)` is not valid in Snowflake. Use `TRIM(expr, 'chars')` or `REPLACE()` instead.
   - When a regex pattern contains backslashes or single quotes, wrap it in dollar-quoted strings (`$$...$$`) to avoid escaping conflicts. Inside `$$...$$`, no escape interpretation occurs at the SQL level.
 - **Schema-Qualified Table Names:**
-  - Always include the schema name when referencing tables (e.g., `SCHEMA_NAME.TABLE_NAME`).
+  - Always include the schema name when referencing tables (e.g., `"SCHEMA_NAME"."TABLE_NAME"`).
 - **Case-Sensitive Identifiers:**
-  - Snowflake columns defined with double-quoted names (`CREATE TABLE ... ("col_name" ...)`) **must always be referenced with double quotes** (e.g., `SELECT "col_name" FROM SCHEMA_NAME.TABLE_NAME`).
+  - Always enclose schema, table and column names in double quotes (e.g., `SELECT "col_name" FROM "SCHEMA_NAME"."TABLE_NAME"`).
+  - In CTEs and subqueries, ensure all aliases are wrapped in double quotes (e.g., `SELECT ... AS "col_name"`) so they can be referenced consistently using double quotes.
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
