@@ -371,6 +371,9 @@ async def main_async() -> None:
         f"Loaded {len(dataset.tasks)} tasks and {len(dataset.db_connectors)} databases from {args.dataset} ({args.split}) in {time.time() - t0:.2f} seconds."
     )
 
+    if len(dataset.tasks) == 0:
+        raise ValueError(f"No tasks loaded from {args.dataset} ({args.split})")
+
     few_shot_dataset = None
     if args.num_few_shot_examples > 0:
         t0 = time.time()
