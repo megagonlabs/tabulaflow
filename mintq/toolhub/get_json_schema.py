@@ -9,7 +9,7 @@ from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000
-_DEFAULT_OVERVIEW_MAX_FIELDS = 30
+_DEFAULT_OVERVIEW_MAX_FIELDS = 20
 
 
 def _resolve_json_schema_path(schema: dict[str, Any], path: str) -> dict[str, Any] | None:
