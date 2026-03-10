@@ -99,6 +99,34 @@ class TestFormatDf:
         assert "nan" not in result or "[NULL]" in result
         assert "NaT" not in result
 
+    def test_non_string_truncation_bytes(self) -> None:
+        """Test that long bytes values are truncated."""
+        long_bytes = b"x" * 300
+        df = pd.DataFrame({"a": [long_bytes]})
+        result = format_df(df, max_cell_width=100)
+        assert "..." in result
+        assert str(long_bytes) not in result
+
+    def test_non_string_truncation_list(self) -> None:
+        """Test that long list values are truncated."""
+        long_list = list(range(200))
+        df = pd.DataFrame({"a": [long_list]})
+        result = format_df(df, max_cell_width=100)
+        assert "..." in result
+
+    def test_non_string_truncation_dict(self) -> None:
+        """Test that long dict values are truncated."""
+        long_dict = {f"key_{i}": i for i in range(100)}
+        df = pd.DataFrame({"a": [long_dict]})
+        result = format_df(df, max_cell_width=100)
+        assert "..." in result
+
+    def test_list_with_none_not_crash(self) -> None:
+        """Test that list cells containing None don't crash pd.isna."""
+        df = pd.DataFrame({"a": [[1, None, 3]]})
+        result = format_df(df)
+        assert "[1," in result or "1, None" in result or "1," in result
+
     def test_tablefmt_parameter(self) -> None:
         """Test different table formats."""
         df = pd.DataFrame({"a": [1, 2], "b": [3, 4]})

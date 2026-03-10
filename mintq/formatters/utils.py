@@ -29,16 +29,25 @@ def format_df(
     floatfmt: str = ".8g",
     add_bottom_ellipsis_row: bool = False,
 ) -> str:
+    def _truncate_str(s: str) -> str:
+        s = flatten_multiline(s)
+        if len(s) > max_cell_width:
+            half = max_cell_width // 2
+            return s[:half] + "..." + s[-half:]
+        return s
+
     def truncate_cell(val: object) -> object:
-        if pd.isna(val):
-            return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
+        try:
+            if pd.isna(val):
+                return "[NULL]"  # Convert all nulls to string (pandas coerces None back to nan/NaT)
+        except (ValueError, TypeError):
+            pass  # Container types (list, dict, ndarray) make pd.isna return non-scalar
         if isinstance(val, str):
-            # Collapse multi-line values into a single line to preserve table layout
-            val = flatten_multiline(val)
-            if len(val) > max_cell_width:
-                half = max_cell_width // 2
-                return val[:half] + "..." + val[-half:]
-        return val
+            return _truncate_str(val)
+        if isinstance(val, (int, float)):
+            return val  # Preserve numeric types for tabulate formatting (floatfmt, alignment)
+        # Convert other types (bytes, list, dict, Decimal, datetime, etc.) to str and truncate
+        return _truncate_str(str(val))
 
     # Apply truncation first to preserve numeric types (nulls stay as None for tabulate)
     display_df = df.map(truncate_cell)
