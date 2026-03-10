@@ -9,6 +9,63 @@ from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000
+_DEFAULT_OVERVIEW_MAX_DEPTH = 2
+_DEFAULT_OVERVIEW_MAX_FIELDS = 30
+
+
+def _resolve_json_schema_path(schema: dict[str, Any], path: str) -> dict[str, Any] | None:
+    """Navigate into a JSON Schema dict following a dot-separated path.
+
+    At each segment the resolver:
+    - Unwraps ``anyOf`` by trying each non-null variant until one succeeds.
+    - Dereferences ``type: "array"`` by stepping into ``items``.
+    - Looks up the segment in ``properties`` of an object node.
+
+    Args:
+        schema: A JSON Schema dictionary.
+        path: Dot-separated path (e.g. ``"product.v2ProductName"``).
+
+    Returns:
+        The sub-schema at the given path, or ``None`` if the path does not
+        resolve.
+    """
+    return _resolve_segments(schema, path.split("."))
+
+
+def _resolve_segments(schema: dict[str, Any], segments: list[str]) -> dict[str, Any] | None:
+    """Recursively resolve path segments against a JSON Schema node."""
+    if not segments:
+        return schema
+
+    # Handle anyOf — try each non-null variant
+    if "anyOf" in schema:
+        non_null = [s for s in schema["anyOf"] if s.get("type") != "null"]
+        for variant in non_null:
+            result = _resolve_segments(variant, segments)
+            if result is not None:
+                return result
+        return None
+
+    # Dereference arrays — step into items
+    if schema.get("type") == "array":
+        if "items" in schema:
+            return _resolve_segments(schema["items"], segments)
+        return None
+
+    # Look up segment in object properties
+    if schema.get("type") == "object" and "properties" in schema:
+        props = schema["properties"]
+        segment = segments[0]
+        # Case-insensitive lookup
+        matched_key = None
+        for key in props:
+            if key.lower() == segment.lower():
+                matched_key = key
+                break
+        if matched_key is not None:
+            return _resolve_segments(props[matched_key], segments[1:])
+
+    return None
 
 
 def _format_examples(examples: list[Any], max_chars: int) -> str:
@@ -33,6 +90,7 @@ class GetColumnJsonSchemaToolMetrics(BaseModel):
     error_table_not_found: int = 0
     error_column_not_found: int = 0
     error_no_json_schema: int = 0
+    error_path_not_found: int = 0
 
 
 class GetColumnJsonSchemaTool:
@@ -61,16 +119,26 @@ class GetColumnJsonSchemaTool:
         self.max_example_chars = max_example_chars
         self._metrics = GetColumnJsonSchemaToolMetrics()
 
-    async def __call__(self, schema_name: str | None, table_name: str, column_name: str) -> str:
-        """
-        Get the JSON schema of a column, describing its internal structure (nested objects, arrays, etc.).
+    async def __call__(
+        self, schema_name: str | None, table_name: str, column_name: str, path: str | None = None
+    ) -> str:
+        """Get the JSON schema of a column, describing its internal structure (nested objects, arrays, etc.).
+
         Useful for semi-structured column types such as VARIANT, OBJECT, ARRAY,
         JSON, and JSONB that store nested or complex data.
+
+        When called without a path, returns a shallow overview of the schema
+        (top-level fields and one level of nesting). To drill into a specific
+        sub-structure, provide a dot-separated path (e.g. "product",
+        "transaction.currencyCode"). Arrays are traversed automatically.
 
         Args:
             schema_name: The name of the schema, or None if schema is not applicable.
             table_name: The name of the table.
             column_name: The name of the column.
+            path: Optional dot-separated path to a nested sub-schema. When
+                provided, returns the full details of that sub-path instead of
+                a shallow overview of the entire schema.
         """
         self._metrics.num_calls += 1
 
@@ -108,14 +176,23 @@ class GetColumnJsonSchemaTool:
             self._metrics.error_column_not_found += 1
             return f"(column {column_name} not found in table {table_name} in schema {schema_name})"
 
-        if column.json_schema:
-            result = format_json_schema(column.json_schema, max_depth=None, max_fields=None)
+        if not column.json_schema:
+            self._metrics.error_no_json_schema += 1
+            return f"(column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
+
+        if path:
+            target_schema = _resolve_json_schema_path(column.json_schema, path)
+            if target_schema is None:
+                self._metrics.error_path_not_found += 1
+                return f"(path '{path}' not found in JSON schema of column {column_name})"
+            return format_json_schema(target_schema, max_depth=None, max_fields=None)
+        else:
+            result = format_json_schema(
+                column.json_schema, max_depth=_DEFAULT_OVERVIEW_MAX_DEPTH, max_fields=_DEFAULT_OVERVIEW_MAX_FIELDS
+            )
             if self.include_examples:
                 result += _format_examples(column.examples, self.max_example_chars)
             return result
-        else:
-            self._metrics.error_no_json_schema += 1
-            return f"(column {column_name} in table {table_name} in schema {schema_name} has no JSON schema)"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
