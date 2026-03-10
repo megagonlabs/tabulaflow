@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 
 
 class MintqAgentConfig(BasicAgentConfig):
-    db_summarizer_llm: str = "openai-responses:gpt-5-mini"
+    db_summarizer_llm: str = "openai-responses:gpt-5.4"
 
 
 def format_question(task: SimpleNL2QTask) -> str:
