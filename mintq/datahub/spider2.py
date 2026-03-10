@@ -31,7 +31,7 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - It is safe to include all columns relevant to the question.
   - Do not concatenate columns in the results unless explicitly requested.
 - **Rows to Return:**
-  - Return exactly the rows requested in the question, no more and no fewer. Be careful to handle duplicates appropriately.
+  - Return exactly the rows requested as the final result in the question, no more and no fewer. Be careful to handle duplicates appropriately.
 - **No Empty Results:**
   - The correct SQL query must return at least one row. If your query returns empty results, it is likely incorrect or the question may require a different interpretation.
 - **NULL Values in Results:**
