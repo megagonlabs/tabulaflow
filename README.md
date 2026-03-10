@@ -793,8 +793,11 @@ March 9
 - [x] Update db summaries - use better llm
   - [x] db_summarizer prompt - title format, schema-qualified table names
 - [x] Move language field from tasks to db connectors
-
-- [ ] Analyze full spider2-snow test split
+- [x] Fix bytes not truncated bug
+- [x] Update spider2 instructions
+  - [x] rows to return
+  - [x] always use double-quoted identifiers
+- [x] Analyze full spider2-snow test split exp239
 
 - [ ] Fix mintq.__init__.py
 - [ ] test whether null_ratio is useful
