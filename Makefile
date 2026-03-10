@@ -97,6 +97,12 @@ test-spider2-dbs-mintq-agent:
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug	
 
+.PHONY: test-spider2-get-json-schema-mintq-agent
+test-spider2-get-json-schema-mintq-agent:
+	uv run mintq/pipelines/run_agent.py --agent mintq_agent --dataset spider2-snow --llm openai-responses:gpt-5 --openai_reasoning_effort medium --openai_reasoning_summary detailed --batch_size 100 --overwrite --qids sf_bq010 sf_bq001 sf_bq002 sf_bq003 sf_bq004 sf_bq008 sf_bq268 sf_bq270 sf_bq091 sf_bq033 sf_bq209 sf_bq027 sf_bq210 sf_bq212 sf_bq214 sf_bq127 sf_bq215 sf_bq036 sf_bq182 sf_bq248 sf_bq193 sf_bq255 sf_bq359 sf_bq291 sf_bq348 sf_bq253 sf_bq068 sf_bq092 sf_bq065 sf_bq063 sf_bq028 sf_bq090 sf_bq442 sf_bq102 sf_bq445 sf_bq103 sf_bq124 sf_bq366 sf_bq346 sf_bq421 sf_bq451 sf_bq452 sf_bq453 sf_bq412 sf_bq423 sf_bq070 sf_bq324 sf_ga001 sf_ga002 sf_ga007 sf_ga031 sf_ga032 sf_ga006 sf_ga009 sf_ga014 sf_ga012
+	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/evaluate.py --debug
+	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird-agent
 test-bird-agent:
