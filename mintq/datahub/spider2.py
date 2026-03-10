@@ -34,7 +34,8 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
 - **Rows to Return:**
   - Return exactly the rows requested as the final result in the question, no more and no fewer. Be careful to handle duplicates appropriately.
 - **No Empty Results:**
-  - The correct SQL query must return at least one row. If your query returns empty results, it is likely incorrect or the question may require a different interpretation.
+  - The final SQL query **must return at least one row**. Empty results are not allowed.
+  - Common causes of unexpected empty results include insufficient exploration of alternative columns, misinterpreting value formats or encodings, applying overly restrictive filters, or misinterpreting the question. When you get empty results, systematically explore alternative columns and interpretations before giving up.
 - **NULL Values in Results:**
   - Check for unexpected NULLs before finishing. Do not return results with unexpected NULLs (e.g. NULL in computed columns).
 """.strip()
