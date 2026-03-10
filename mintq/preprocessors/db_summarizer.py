@@ -39,10 +39,16 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
     input_type: ClassVar[Literal["db_connector"]] = "db_connector"
     output_type: ClassVar[type[CacheableResult]] = DBSummary
 
-    def __init__(self, llm: str = "openai-responses:gpt-5.4", compress_schema: bool = True):
+    def __init__(
+        self,
+        llm: str = "openai-responses:gpt-5.4",
+        compress_schema: bool = True,
+        openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high"] | None = "high",
+    ):
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
         self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)
+        self.openai_reasoning_effort = openai_reasoning_effort
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -58,11 +64,17 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render()
         run_query_tool = RunQueryNoParamsTool(db_connector)
+
+        model_settings = {}
+        if self.openai_reasoning_effort is not None:
+            model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
+
         agent = Agent[None, DBSummary](
             model=self.llm,
             output_type=DBSummary,
             instructions=system_prompt,
             tools=[run_query_tool.as_pydantic_ai_tool()],
+            model_settings=model_settings,
         )
         user_prompt = format_user_prompt(schema, self.formatter)
         result = await agent.run(user_prompt)
