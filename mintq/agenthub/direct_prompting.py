@@ -93,7 +93,7 @@ class DirectPrompting:
         schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
 
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
-            language=task.language,
+            language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=schema_str,
             document=task.document,

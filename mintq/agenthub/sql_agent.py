@@ -200,7 +200,7 @@ class SchemaLinker:
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
-            language=task.language,
+            language=ctx.db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=ctx.schema_formatter.format(ctx.preprocessed_schema, add_description=self.config.use_column_description),
             er_diagram=ctx.er_diagram_formatter.format(ctx.er_diagram) if ctx.er_diagram is not None else None,  # type: ignore
@@ -281,7 +281,7 @@ class SchemaLinker:
         # pred_query = ctx.task.gold_query
 
         source_columns = set(
-            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(pred_query.query, language=task.language)
+            (c[0].lower(), c[1].lower()) for c in extract_all_source_columns(pred_query.query, language=ctx.db_connector.language)
         )
 
         linked_schema = copy.deepcopy(ctx.preprocessed_schema)
@@ -360,7 +360,7 @@ class Postprocessor:
             model_settings=self.config.to_model_settings(),
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
-            language=task.language,
+            language=ctx.db_connector.language,
             question=format_question(task),
             dataset_instructions=task.dataset_instructions or "(no dataset instructions)",
             examples=ctx.few_shot_examples,
@@ -512,7 +512,7 @@ class SQLAgent:
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
-            language=task.language,
+            language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
             schema=self.formatter.format(linked_schema, add_description=self.config.use_column_description),
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore

@@ -836,7 +836,6 @@ class CSVSummaryRow(BaseModel):
 class SimpleNL2QTask(BaseModel):
     task_type: Literal["simple"] = "simple"
     qid: str
-    language: SQLDialect | NonSQLLanguage | str
     db: str
     question: str
     question_instructions: str | None = None
@@ -935,7 +934,6 @@ class AmbigNL2QTask(BaseModel):
     qid: str
     task_type: Literal["ambig"] = "ambig"
     has_intended_resolution: bool
-    language: SQLDialect | NonSQLLanguage | str
     db: str
     question: str
     dataset_instructions: str | None = None
@@ -1253,7 +1251,6 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
 
     # Basic info
     lines.append(f"**Database:** {task.db}  ")
-    lines.append(f"**Language:** {task.language}  ")
     lines.append("")
 
     # Question

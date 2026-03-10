@@ -26,6 +26,7 @@ from mintq.schema import (
     ForeignKeySchema,
     ExecResult,
 )
+
 from mintq.config import mintq_config, ColumnStatsMode
 from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
@@ -620,6 +621,7 @@ class SQLConnector:
 
     global_id: str
     schema: SQLSchema
+    language: SQLDialect
     _t_eng: ThrottledEngine
     read_only: bool = True
 
@@ -695,7 +697,8 @@ class SQLConnector:
                 group_date_partitioned_tables,
                 group_table_regexes,
             )
-        return cls(global_id, schema, t_eng, read_only=read_only)
+        language: SQLDialect = schema.dialect  # type: ignore[assignment]
+        return cls(global_id, schema, language, t_eng, read_only=read_only)
 
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:

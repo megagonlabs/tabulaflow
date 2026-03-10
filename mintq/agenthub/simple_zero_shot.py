@@ -94,12 +94,12 @@ class SimpleZeroShotNL2Q:
             )
             schema_str = schema_str[:SCHEMA_MAX_CHARS] + "..."
 
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=task.language)
+        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(language=db_connector.language)
         user_prompt = jinja2.Template(TASK_PROMPT).render(
             schema=schema_str,
             hints=task.document,
             question=task.question,
-            language=task.language,
+            language=db_connector.language,
         )
 
         # Text-to-SQL generation by LLM

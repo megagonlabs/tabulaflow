@@ -48,7 +48,6 @@ async def get_demo_dataset() -> NL2QDataset:
     tasks = [
         SimpleNL2QTask(
             qid="1",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Retrieve the average temperature, average wind speed, and precipitation (null if incomplete) of station ID 725030 for each day from April 1 to 14, 2020?",
             gold_query=GoldQuery(
@@ -64,7 +63,6 @@ ORDER BY "date";""".strip()
         ),
         SimpleNL2QTask(
             qid="2",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Show all days with precipitation less than 0.1 inches.",
             gold_query=GoldQuery(
@@ -77,7 +75,6 @@ WHERE prcp < 0.1 AND prcp <> 99.99
         ),
         SimpleNL2QTask(
             qid="3",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="List all days where snow depth was reported (sndp not missing) but snow/ice pellets event was 0.",
             gold_query=GoldQuery(
@@ -90,7 +87,6 @@ WHERE sndp <> 999.9
         ),
         SimpleNL2QTask(
             qid="4",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Count, for each station, the number of wet days in 2020.",
             gold_query=GoldQuery(
@@ -106,7 +102,6 @@ GROUP BY stn;
         ),
         SimpleNL2QTask(
             qid="5",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Find stations that rarely snow.",
             gold_query=GoldQuery(
@@ -125,7 +120,6 @@ WHERE stn IN (
         ),
         SimpleNL2QTask(
             qid="6",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Return the top 5 stations with the highest number of wet days in 2020. ",
             gold_query=GoldQuery(
@@ -141,7 +135,6 @@ LIMIT 5;
         ),
         SimpleNL2QTask(
             qid="7",
-            language="PostgresSQL",
             db="NOAA_DATA",
             question="Return all dates with extreme events with precipitation.",
             gold_query=GoldQuery(

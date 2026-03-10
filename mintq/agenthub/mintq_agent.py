@@ -121,7 +121,7 @@ class MintqAgent:
 
         db_summary = await db_summarizer.preprocess_async(db_connector)
         system_prompt = jinja2.Template(MINTQ_AGENT_SYSTEM_PROMPT).render(
-            language=task.language,
+            language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
             db_document=db_summary.db_summary_markdown,
             task_document=task.document,

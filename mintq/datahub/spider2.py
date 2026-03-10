@@ -187,7 +187,6 @@ class Spider2SnowDatasetLoader:
                 tasks.append(
                     SimpleNL2QTask(
                         qid=item["instance_id"],
-                        language="snowflake",
                         db=item["db_id"],
                         question=item["instruction"],
                         dataset_instructions=SPIDER2_SNOW_DATASET_INSTRUCTIONS,

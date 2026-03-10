@@ -185,7 +185,7 @@ class AmbigStructuredSQLAgent:
         disamb_agent: Agent[None, LLMOutput] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(DISAMBIGUATION_PROMPT).render(
-                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+                language=ctx.db_connector.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=LLMOutput,
             tool_keys=["get_schema"],
@@ -227,7 +227,7 @@ class AmbigStructuredSQLAgent:
         sql_agent: Agent[None, None] = self._get_agent(
             ctx,
             system_prompt=jinja2.Template(TEXT2SQL_PROMPT).render(
-                language=ctx.task.language, dataset_instructions=ctx.task.dataset_instructions
+                language=ctx.db_connector.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
             tool_keys=[

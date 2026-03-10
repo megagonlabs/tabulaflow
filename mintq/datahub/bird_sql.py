@@ -174,7 +174,6 @@ WHERE c.name = 'Italy';"""
                 tasks.append(
                     SimpleNL2QTask(
                         qid=f"{self.name}_{split}_{i}",
-                        language="sqlite",
                         db=item["db_id"],
                         question=item["question"],
                         question_instructions=item["evidence"],

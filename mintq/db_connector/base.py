@@ -1,11 +1,12 @@
 from typing import Any, Protocol, Sequence, Mapping, TypeAlias
 import sqlalchemy
-from mintq.schema import SQLSchema, ExecResult
+from mintq.schema import SQLDialect, SQLSchema, ExecResult
 
 
 class BaseSQLDBConnector(Protocol):
     global_id: str
     schema: SQLSchema
+    language: SQLDialect
 
     def __init__(self, global_id: str, **kwargs: Any): ...
 

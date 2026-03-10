@@ -98,7 +98,6 @@ def examples() -> list[ExampleCase]:
         ExampleCase(
             task=SimpleNL2QTaskOutput(
                 qid=test_case["qid"],
-                language="sqlite",
                 db="",
                 question="",
                 gold_query=GoldQuery(
