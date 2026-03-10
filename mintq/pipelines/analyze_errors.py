@@ -110,6 +110,30 @@ DEFAULT_CATEGORIES: list[ErrorCategory] = [
     # Only applicable if simple_ex = 0.0.
     # """.strip(),
     # ),
+    ErrorCategory(
+        name="pred_is_correct",
+        description="""
+    The predicted query is correct (spider2_ex = 1.0).
+    """.strip(),
+    ),
+    ErrorCategory(
+        name="error_is_trivial_to_fix",
+        description="""
+    The error is trivial to fix. The gold results can be easily obtained if a obvious mistake is fixed. Only applicable if spider2_ex = 0.0.
+    """.strip(),
+    ),
+    ErrorCategory(
+        name="error_is_easy_to_fix",
+        description="""
+    The error is easy to fix. There is something clearly wrong with the prediction. Only applicable if spider2_ex = 0.0.
+    """.strip(),
+    ),
+    ErrorCategory(
+        name="error_is_hard_to_fix",
+        description="""
+    The error is not easy to fix. The difference between the prediction and the gold query is not obvious. Only applicable if spider2_ex = 0.0.
+    """.strip(),
+    ),
 ]
 
 ##### Remove #####
@@ -195,7 +219,9 @@ class Analyzer:
             res += f"\n\n### {category.name}\n\n"
             res += f"{category.description}\n\n"
             if len(category.qids) > 0:
-                res += "\n".join(f" [[{qid} ({qid_to_db[qid]})]](./readable/{qid}/task_readable.md)" for qid in category.qids)
+                res += "\n".join(
+                    f" [[{qid} ({qid_to_db[qid]})]](./readable/{qid}/task_readable.md)" for qid in category.qids
+                )
             else:
                 res += "(No tasks in this category)"
 
@@ -216,21 +242,27 @@ class Analyzer:
         res = "## Error Tasks"
         res += "\n\n### Query Syntax Error Tasks (executable = 0.0):"
         error_tasks = [task for task in result.tasks if task.eval_metrics["executable"] == 0.0]
-        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(
+            f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks
+        )
         res += "\n\n### Query Semantic Error Tasks (executable = 1.0 but simple_ex = 0.0):"
         error_tasks = [
             task
             for task in result.tasks
             if task.eval_metrics["executable"] == 1.0 and task.eval_metrics["simple_ex"] == 0.0
         ]
-        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(
+            f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks
+        )
         return res
 
     def _schema_linking_section(self, result: NL2QRunResult) -> str:
         res = "## Schema Linking"
         res += "\n\n### Tasks where perfect_linked_schema_r = 0.0:"
         error_tasks = [task for task in result.tasks if task.eval_metrics["perfect_linked_schema_r"] == 0.0]
-        res += "\n\n" + "\n".join(f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks)
+        res += "\n\n" + "\n".join(
+            f" [[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)" for task in error_tasks
+        )
         return res
 
     def _postprocess_impact_section(self, result: NL2QRunResult) -> str:
@@ -301,7 +333,7 @@ class Analyzer:
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
-    parser.add_argument("--classifier_llm", default="openai-responses:gpt-5-mini")
+    parser.add_argument("--classifier_llm", default="openai-responses:gpt-5")
     parser.add_argument("--debug", action="store_true")
     parser.add_argument("--error_metric_name", default="simple_ex")
     parser.add_argument("--do_error_classification", type=bool_flag, default=True)
