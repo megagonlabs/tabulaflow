@@ -14,7 +14,8 @@ SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
 
 <requirements>
-- The summary should be in markdown format, under 2000 words.
+- The summary should be in markdown format.
+- The summary should be around 1000 - 4000 words, depending on the complexity of the database.
 - The title should be in the format "Database: `<database_name>`".
 - Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
