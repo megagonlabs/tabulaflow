@@ -100,13 +100,20 @@ def _extract_examples_at_path(examples: list[Any], path: str) -> list[Any]:
 
 
 def _format_examples(examples: list[Any], max_chars: int) -> str:
-    """Format example values, including at least one and stopping when *max_chars* is reached."""
+    """Format example values, including at least one and stopping when *max_chars* is reached.
+
+    Individual examples that exceed *max_chars* on their own are truncated
+    with an ellipsis so that they fit within the budget.
+    """
     if not examples or max_chars < 0:
         return ""
     parts: list[str] = []
     total = 0
     for ex in examples:
         formatted = json.dumps(ex, ensure_ascii=False) if isinstance(ex, (dict, list)) else str(ex)
+        if len(formatted) > max_chars:
+            half = max_chars // 2
+            formatted = formatted[:half] + "..." + formatted[-half:]
         total += len(formatted)
         parts.append(formatted)
         # Always include at least one example; stop after that if budget exceeded
