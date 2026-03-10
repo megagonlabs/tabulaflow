@@ -67,6 +67,25 @@ def _resolve_segments(schema: dict[str, Any], segments: list[str]) -> dict[str, 
     return None
 
 
+def _parse_json_examples(examples: list[Any]) -> list[Any]:
+    """Parse JSON string examples into Python objects.
+
+    Snowflake VARIANT columns store examples as JSON-formatted strings.
+    This helper attempts ``json.loads`` on each string value; non-JSON
+    strings are kept as-is.
+    """
+    parsed: list[Any] = []
+    for ex in examples:
+        if isinstance(ex, str):
+            try:
+                parsed.append(json.loads(ex))
+            except (json.JSONDecodeError, ValueError):
+                parsed.append(ex)
+        else:
+            parsed.append(ex)
+    return parsed
+
+
 def _extract_examples_at_path(examples: list[Any], path: str) -> list[Any]:
     """Extract sub-values from column-level examples by following a dot-separated path.
 
@@ -76,6 +95,8 @@ def _extract_examples_at_path(examples: list[Any], path: str) -> list[Any]:
 
     Args:
         examples: Column-level example values (dicts, lists, scalars, …).
+            Must be pre-parsed (use ``_parse_json_examples`` first if
+            examples may contain JSON strings).
         path: Dot-separated path (e.g. ``"transaction.currencyCode"``).
 
     Returns:
@@ -225,7 +246,7 @@ class GetColumnJsonSchemaTool:
                 return f"(path '{path}' not found in JSON schema of column {column_name})"
             result = format_json_schema(target_schema, max_depth=None, max_fields=None)
             if self.include_examples and column.examples:
-                sub_examples = _extract_examples_at_path(column.examples, path)
+                sub_examples = _extract_examples_at_path(_parse_json_examples(column.examples), path)
                 if sub_examples:
                     result += _format_examples(sub_examples, self.max_example_chars)
             return result

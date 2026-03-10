@@ -5,6 +5,7 @@ from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 from mintq.toolhub.get_json_schema import (
     GetColumnJsonSchemaTool,
     _extract_examples_at_path,
+    _parse_json_examples,
     _resolve_json_schema_path,
 )
 
@@ -432,3 +433,24 @@ class TestExtractExamplesAtPath:
     def test_path_not_in_any_example(self) -> None:
         examples = [{"a": 1}, {"b": 2}]
         assert _extract_examples_at_path(examples, "c") == []
+
+    def test_json_string_examples_are_parsed(self) -> None:
+        """String examples (e.g. from Snowflake VARIANT) should be parsed first."""
+        examples = [
+            '{"name": "Alice", "age": 30}',
+            '{"name": "Bob", "age": 25}',
+        ]
+        assert _extract_examples_at_path(_parse_json_examples(examples), "name") == ["Alice", "Bob"]
+
+    def test_json_string_array_examples(self) -> None:
+        """Top-level JSON array strings are parsed and flattened."""
+        examples = [
+            '[{"product": "A"}, {"product": "B"}]',
+            '[{"product": "C"}]',
+        ]
+        assert _extract_examples_at_path(_parse_json_examples(examples), "product") == ["A", "B", "C"]
+
+    def test_non_json_strings_are_skipped(self) -> None:
+        """Plain strings that aren't valid JSON are silently skipped."""
+        examples = ["not-json", '{"name": "Alice"}']
+        assert _extract_examples_at_path(_parse_json_examples(examples), "name") == ["Alice"]
