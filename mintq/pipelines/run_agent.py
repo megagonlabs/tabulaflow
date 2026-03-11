@@ -234,8 +234,6 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
         kwargs["user_patience"] = args.user_patience
     if args.openai_reasoning_effort is not None:
         kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
-    if args.openai_reasoning_summary is not None:
-        kwargs["openai_reasoning_summary"] = args.openai_reasoning_summary
     return agent_cls.config_cls(**kwargs)
 
 
@@ -247,7 +245,6 @@ async def main_async() -> None:
     parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--max_steps", default=None, type=int)
     parser.add_argument("--openai_reasoning_effort", default=None)
-    parser.add_argument("--openai_reasoning_summary", default=None)
     parser.add_argument("--use_column_description", type=bool_flag, default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=None, type=int)
 

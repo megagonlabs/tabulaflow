@@ -81,7 +81,6 @@ class BasicAgentConfig(BaseModel):
     formatter_max_total_columns: int | None = 5000
     use_column_description: bool = True
     openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = None
-    openai_reasoning_summary: Literal["detailed", "concise"] | None = None
     openai_service_tier: Literal["auto", "default", "flex", "priority"] | None = None
 
     def to_formatter_kwargs(self) -> dict[str, Any]:
@@ -96,8 +95,7 @@ class BasicAgentConfig(BaseModel):
             res["temperature"] = self.temperature
         if self.openai_reasoning_effort is not None:
             res["openai_reasoning_effort"] = self.openai_reasoning_effort
-        if self.openai_reasoning_summary is not None:
-            res["openai_reasoning_summary"] = self.openai_reasoning_summary
+            res["openai_reasoning_summary"] = "detailed"
         if self.openai_service_tier is not None:
             res["openai_service_tier"] = self.openai_service_tier
         return res

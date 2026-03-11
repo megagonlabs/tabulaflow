@@ -87,6 +87,7 @@ class LLMEnsemblerConfig(BaseModel):
             res["temperature"] = self.temperature
         if self.openai_reasoning_effort is not None:
             res["openai_reasoning_effort"] = self.openai_reasoning_effort
+            res["openai_reasoning_summary"] = "detailed"
         if self.openai_service_tier is not None:
             res["openai_service_tier"] = self.openai_service_tier
         return res
