@@ -13,6 +13,7 @@ from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, Majo
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.config import mintq_config
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
+from mintq.pipelines.utils import bool_flag
 from mintq.utils import tqdm_gather_with_exceptions
 
 Ensembler = MajorityEnsembler | LLMEnsembler
@@ -117,6 +118,8 @@ def parse_ensembler(args: argparse.Namespace) -> Ensembler:
             kwargs["temperature"] = args.temperature
         if args.openai_reasoning_effort is not None:
             kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
+        if args.deduplicate_results is not None:
+            kwargs["deduplicate_results"] = args.deduplicate_results
         return LLMEnsembler(LLMEnsemblerConfig(**kwargs))
     else:
         return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
@@ -135,6 +138,7 @@ async def main_async() -> None:
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (required for llm ensembler).")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm ensembler.")
     parser.add_argument("--openai_reasoning_effort", default=None, help="Reasoning effort for llm ensembler.")
+    parser.add_argument("--deduplicate_results", type=bool_flag, default=None, help="Deduplicate candidates with identical results (llm ensembler, default true).")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
