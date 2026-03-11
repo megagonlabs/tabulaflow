@@ -9,6 +9,7 @@ from pydantic_ai import Agent, ToolOutput
 from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.utils import instrument
 from mintq.db_connector import BaseSQLDBConnector
+from mintq.formatters.utils import format_df
 from mintq.pipelines.populate_exec_results import populate_task_async
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Usage, Trajectory
@@ -112,23 +113,13 @@ class LLMEnsembler:
 
     def _format_exec_result(self, output: SimpleNL2QTaskOutput) -> str:
         """Format the execution result of a candidate for the LLM prompt."""
-        if output.pred_query is None:
-            return "(no query)"
         exec_result = output.pred_query.exec_result
-        if exec_result is None:
-            return "(not executed)"
-        if exec_result.error is not None:
-            return f"ERROR: {exec_result.error.message}"
-        if exec_result.df is None:
-            return "(no result)"
         if exec_result.df.empty:
             return "(empty result)"
         df = exec_result.df
-        preview: str = df.head(_DF_PREVIEW_MAX_ROWS).to_string(index=False)
-        suffix = ""
-        if len(df) > _DF_PREVIEW_MAX_ROWS:
-            suffix = f"\n... ({len(df)} rows total, showing first {_DF_PREVIEW_MAX_ROWS})"
-        return preview + suffix
+        preview = format_df(df, max_visible_rows=_DF_PREVIEW_MAX_ROWS)
+        preview += f"\n({len(df)} rows)"
+        return preview
 
     @instrument
     async def ensemble_async(
