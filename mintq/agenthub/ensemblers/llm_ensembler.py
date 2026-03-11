@@ -20,17 +20,11 @@ logger = logging.getLogger(__name__)
 _DF_PREVIEW_MAX_ROWS = 10
 
 LLM_ENSEMBLE_SYSTEM_PROMPT = """
-You are a helpful AI database expert. You are given a natural-language question and multiple candidate SQL queries along with their execution results.
-
+You are a helpful AI database expert.
+You are given a natural-language question and multiple candidate SQL queries along with their execution results.
 Your task is to select the **single best** candidate whose SQL query most accurately answers the question.
+The correct query should faithfully reflect the question and dataset instructions without adding or omitting conditions.
 
-<guidelines>
-- The correct query should faithfully reflect the question without adding or omitting conditions.
-- Prefer candidates whose execution results are non-empty and look reasonable for the question asked.
-- If multiple candidates produce identical results, prefer the one with the simpler / more readable query.
-- If all candidates look equally plausible, prefer the first one.
-- If no candidate looks correct, still pick the best available one.
-</guidelines>
 {%- if dataset_instructions %}
 
 <dataset_instructions>
