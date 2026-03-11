@@ -20,6 +20,7 @@ class SQLDDLSchemaFormatter:
     example_max_chars: int = 100
     floatfmt: str = ".8g"
     max_total_columns: int | None = None
+    include_null_ratio: bool = True
     include_json_schema: bool = True
     include_json_schema_max_fields: int | None = 20
 
@@ -224,6 +225,10 @@ class SQLDDLSchemaFormatter:
 
         if add_description and column.description:
             comment_lines.append(f"        -- <description>{column.description}</description>")
+
+        # Add null ratio for nullable columns
+        if self.include_null_ratio and column.nullable and column.null_ratio is not None:
+            comment_lines.append(f"        -- <null_ratio>{column.null_ratio:.0%}</null_ratio>")
 
         # Add JSON schema for semi-structured columns
         if self.include_json_schema and column.json_schema:
