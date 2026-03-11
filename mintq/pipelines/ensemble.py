@@ -9,15 +9,18 @@ import traceback
 
 from mintq import dataset_registry
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
+from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.config import mintq_config
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.utils import tqdm_gather_with_exceptions
+
+Ensembler = MajorityEnsembler | LLMEnsembler
 
 logger = logging.getLogger(__name__)
 
 
 async def ensemble_async(
-    ensembler: MajorityEnsembler,
+    ensembler: Ensembler,
     results: list[NL2QRunResult],
     dataset: NL2QDataset,
     batch_size: int,
@@ -103,10 +106,34 @@ async def ensemble_async(
     )
 
 
+def parse_ensembler(args: argparse.Namespace) -> Ensembler:
+    """Build an ensembler instance from parsed CLI arguments."""
+    if args.ensembler == "llm_ensembler":
+        if args.llm is None:
+            raise ValueError("--llm is required when using the llm_ensembler.")
+        return LLMEnsembler(
+            LLMEnsemblerConfig(
+                source_dirs=args.result_dirs,
+                llm=args.llm,
+                temperature=args.temperature,
+            )
+        )
+    else:
+        return MajorityEnsembler(MajorityEnsemblerConfig(source_dirs=args.result_dirs))
+
+
 async def main_async() -> None:
-    parser = argparse.ArgumentParser(description="Ensemble multiple result directories via majority voting.")
+    parser = argparse.ArgumentParser(description="Ensemble multiple result directories.")
     parser.add_argument("result_dirs", nargs="+", help="Paths to result directories to ensemble.")
     parser.add_argument("--output_dir", required=True, help="Path to save ensembled result.")
+    parser.add_argument(
+        "--ensembler",
+        choices=["majority_ensembler", "llm_ensembler"],
+        default="majority_ensembler",
+        help="Ensembler strategy.",
+    )
+    parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (required for llm ensembler).")
+    parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm ensembler.")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
@@ -147,7 +174,7 @@ async def main_async() -> None:
         f"Loaded {len(dataset.db_connectors)} databases from {ref.dataset} {ref.split} in {time.time() - t0:.2f} seconds."
     )
 
-    ensembler = MajorityEnsembler(MajorityEnsemblerConfig(source_dirs=args.result_dirs))
+    ensembler = parse_ensembler(args)
 
     t0 = time.time()
     result = await ensemble_async(ensembler, results, dataset, args.batch_size)
