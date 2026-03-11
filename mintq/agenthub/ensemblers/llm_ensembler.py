@@ -81,6 +81,7 @@ class LLMEnsemblerConfig(BaseModel):
     result_dirs: list[str]
     llm: str = "openai-responses:gpt-5-mini"
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
+    skip_empty_results: bool = True
     temperature: float | None = None
     openai_reasoning_effort: str | None = None
     openai_service_tier: str | None = None
@@ -144,6 +145,20 @@ class LLMEnsembler:
 
         # Populate exec results for all candidates (skips queries that already have results)
         await asyncio.gather(*[populate_task_async(output, db_connector) for output in candidates])
+
+        # Filter out candidates with execution errors
+        candidates = [
+            output for output in candidates if output.pred_query.exec_result.df is not None  # type: ignore[union-attr]
+        ]
+        # Optionally also filter out candidates with empty results
+        if self.config.skip_empty_results:
+            candidates = [
+                output for output in candidates if not output.pred_query.exec_result.df.empty  # type: ignore[union-attr]
+            ]
+
+        if len(candidates) <= 1:
+            best = candidates[0] if candidates else task_outputs[0]
+            return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=best.pred_query)
 
         # Get db summary for context
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)

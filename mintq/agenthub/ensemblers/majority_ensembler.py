@@ -30,6 +30,7 @@ def _normalize_value(v: Any) -> str:
 
 class MajorityEnsemblerConfig(BaseModel):
     result_dirs: list[str]
+    skip_empty_results: bool = True
 
 
 class MajorityEnsembler:
@@ -50,41 +51,42 @@ class MajorityEnsembler:
         self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector, task_outputs: list[SimpleNL2QTaskOutput]
     ) -> SimpleNL2QTaskOutput:
         # Filter to outputs that have a pred_query
-        valid_outputs = [(idx, output) for idx, output in enumerate(task_outputs) if output.pred_query is not None]
+        candidates = [output for output in task_outputs if output.pred_query is not None]
 
-        if not valid_outputs:
+        if not candidates:
             return task_outputs[0]
 
         # Populate exec results for all candidates (skips queries that already have results)
-        await asyncio.gather(*[populate_task_async(output, db_connector) for _, output in valid_outputs])
+        await asyncio.gather(*[populate_task_async(output, db_connector) for output in candidates])
+
+        # Filter out candidates with execution errors
+        candidates = [
+            output for output in candidates if output.pred_query.exec_result.df is not None  # type: ignore[union-attr]
+        ]
+        # Optionally also filter out candidates with empty results
+        if self.config.skip_empty_results:
+            candidates = [
+                output for output in candidates if not output.pred_query.exec_result.df.empty  # type: ignore[union-attr]
+            ]
+
+        if len(candidates) <= 1:
+            best = candidates[0] if candidates else task_outputs[0]
+            return SimpleNL2QTaskOutput(**task.model_dump(), pred_query=best.pred_query)
 
         # Group candidates by execution result for majority voting
-        result2indices: dict[tuple[tuple[str, ...], ...], list[int]] = collections.defaultdict(list)
-        for idx, output in valid_outputs:
-            assert output.pred_query is not None
-            exec_result = output.pred_query.exec_result
-            if exec_result is None or exec_result.error is not None or exec_result.df is None:
-                continue
-            if exec_result.df.empty:
-                continue
-            # Convert DataFrame to a hashable representation for comparison.
-            # Normalize: sort columns by name, round floats, and coerce NULLs
-            # so that semantically identical results from different queries match.
-            df = exec_result.df
+        result2candidates: dict[tuple[tuple[str, ...], ...], list[SimpleNL2QTaskOutput]] = collections.defaultdict(list)
+        for output in candidates:
+            assert output.pred_query is not None and output.pred_query.exec_result is not None
+            df = output.pred_query.exec_result.df
+            assert df is not None
             df = df.reindex(sorted(df.columns), axis=1)
             rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
             hashable = tuple(sorted(set(rows)))
-            result2indices[hashable].append(idx)
+            result2candidates[hashable].append(output)
 
         # Select the best output via majority voting
-        if result2indices:
-            majority_group = max(result2indices.values(), key=len)
-            best_idx = majority_group[0]
-        else:
-            # No query produced valid results; fall back to the first candidate
-            best_idx = valid_outputs[0][0]
-
-        best_output = task_outputs[best_idx]
+        majority_group = max(result2candidates.values(), key=len)
+        best_output = majority_group[0]
 
         return SimpleNL2QTaskOutput(
             **task.model_dump(),
