@@ -7,11 +7,11 @@ import os
 import time
 import traceback
 
-from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from mintq.config import mintq_config
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
+from mintq.utils import tqdm_gather_with_exceptions
 
 logger = logging.getLogger(__name__)
 
@@ -64,7 +64,7 @@ async def ensemble_async(
         batch_tasks = tasks[i:j]
         batch_groups = task_output_groups[i:j]
 
-        batch_results = await tqdm_asyncio.gather(
+        batch_results = await tqdm_gather_with_exceptions(
             *[
                 ensembler.ensemble_async(task, dataset.db_connectors[task.db], outputs)
                 for task, outputs in zip(batch_tasks, batch_groups)
