@@ -10,6 +10,7 @@ from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.utils import instrument
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.pipelines.populate_exec_results import populate_task_async
+from mintq.preprocessors import DBSummarizer
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Usage, Trajectory
 
 
@@ -34,6 +35,18 @@ Your task is to select the **single best** candidate whose SQL query most accura
 <dataset_instructions>
 {{ dataset_instructions }}
 </dataset_instructions>
+{%- endif %}
+{%- if db_document %}
+
+<db_document>
+{{ db_document }}
+</db_document>
+{%- endif %}
+{%- if task_document %}
+
+<task_document>
+{{ task_document }}
+</task_document>
 {%- endif %}
 """.strip()
 
@@ -67,6 +80,7 @@ Select the number of the best candidate.
 class LLMEnsemblerConfig(BaseModel):
     result_dirs: list[str]
     llm: str = "openai-responses:gpt-5-mini"
+    db_summarizer_llm: str = "openai-responses:gpt-5.4"
     temperature: float | None = None
     openai_reasoning_effort: str | None = None
     openai_service_tier: str | None = None
@@ -131,6 +145,10 @@ class LLMEnsembler:
         # Populate exec results for all candidates (skips queries that already have results)
         await asyncio.gather(*[populate_task_async(output, db_connector) for output in candidates])
 
+        # Get db summary for context
+        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summary = await db_summarizer.preprocess_async(db_connector)
+
         # Build candidate descriptions for the LLM
         candidate_strs: list[str] = []
         for i, output in enumerate(candidates):
@@ -144,6 +162,8 @@ class LLMEnsembler:
 
         system_prompt = jinja2.Template(LLM_ENSEMBLE_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
+            db_document=db_summary.db_summary_markdown,
+            task_document=task.document,
         )
 
         user_prompt = jinja2.Template(USER_PROMPT_TEMPLATE).render(
