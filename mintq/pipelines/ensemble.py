@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import traceback
+from functools import reduce
 from typing import Any
 
 from mintq import dataset_registry
@@ -94,6 +95,8 @@ async def ensemble_async(
 
     end_time = datetime.datetime.now()
 
+    usages = [t.usage for t in ensembled_outputs if t.usage is not None]
+
     return NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
@@ -104,6 +107,7 @@ async def ensemble_async(
         dataset_extra_kwargs=results[0].dataset_extra_kwargs,
         agent=ensembler.name,
         agent_config=ensembler.config.model_dump(),
+        total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
         tasks=ensembled_outputs,
     )
 
@@ -183,7 +187,10 @@ async def main_async() -> None:
 
     t0 = time.time()
     result = await ensemble_async(ensembler, results, dataset, args.batch_size)
-    print(f"\nEnsembled {len(result.tasks)} tasks in {time.time() - t0:.2f} seconds.")
+    latency = time.time() - t0
+    print(f"\nEnsembled {len(result.tasks)} tasks in {latency:.2f} seconds.")
+    cost = "N/A" if result.total_usage is None else f"{result.total_usage.api_cost_usd:.6f}"
+    print(f"Total cost USD: {cost}")
 
     result.to_directory(args.output_dir)
     print(f"Saved ensembled result to {args.output_dir}")
