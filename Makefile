@@ -52,7 +52,8 @@ test-bird-direct-prompting:
 
 .PHONY: test-spider2-direct-prompting
 test-spider2-direct-prompting:
-	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent direct_prompting --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
@@ -67,7 +68,8 @@ test-bird-mini-agent:
 
 .PHONY: test-spider2-mini-agent
 test-spider2-mini-agent:
-	uv run mintq/pipelines/run_agent.py --agent mini_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent mini_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug	
 
@@ -82,7 +84,8 @@ test-bird-mintq-agent:
 
 .PHONY: test-spider2-mintq-agent
 test-spider2-mintq-agent:
-	uv run mintq/pipelines/run_agent.py --agent mintq_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent mintq_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug	
 
@@ -153,25 +156,29 @@ test-bird25-agent:
 
 .PHONY: test-bird-agent-gpt-5
 test-bird-agent-gpt-5:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird-agent-gpt-5-mini
 test-bird-agent-gpt-5-mini:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird-thrombosis-agent-gpt-5-mini
 test-bird-thrombosis-agent-gpt-5-mini:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --databases thrombosis_prediction --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --databases thrombosis_prediction --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
 .PHONY: test-bird-agent-gpt-5-mini-minimal
 test-bird-agent-gpt-5-mini-minimal:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort minimal	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort minimal
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
@@ -213,17 +220,20 @@ test-arcs-simple-patience-1:
 
 .PHONY: test-arcs-simple-gpt-5-low
 test-arcs-simple-gpt-5-low:
-	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-simple-gpt-5-medium
 test-arcs-simple-gpt-5-medium:
-	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-simple-gpt-5-high
 test-arcs-simple-gpt-5-high:
-	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_simple_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-simple-qwen
@@ -240,7 +250,8 @@ test-arcs-flat:
 
 .PHONY: test-arcs-flat-gpt-5-medium
 test-arcs-flat-gpt-5-medium:
-	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_flat_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-flat-all-query
@@ -263,22 +274,26 @@ test-arcs-structured-with-taxonomy:
 
 .PHONY: test-arcs-structured-gpt-5-minimal
 test-arcs-structured-gpt-5-minimal:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort minimal	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort minimal
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-structured-gpt-5-low
 test-arcs-structured-gpt-5-low:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort low
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-structured-gpt-5-medium
 test-arcs-structured-gpt-5-medium:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-structured-gpt-5-high
 test-arcs-structured-gpt-5-high:
-	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent ambig_structured_sql_agent --dataset arcs --debug --llm openai-responses:gpt-5 --openai_reasoning_effort high
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-arcs-structured-gold-phrases
@@ -397,7 +412,8 @@ test-arcs-structured-kimi:
 
 .PHONY: test-spider2-agent
 test-spider2-agent:
-	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium	uv run mintq/pipelines/populate_exec_results.py --debug
+	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
+	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 	uv run mintq/pipelines/analyze_errors.py --debug
 
