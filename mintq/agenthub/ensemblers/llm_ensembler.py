@@ -7,6 +7,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 
 from mintq.agenthub.base import BaseAgentConfig
+from mintq.agenthub.ensemblers.majority_ensembler import _normalize_value
 from mintq.agenthub.utils import instrument
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.utils import format_df
@@ -77,6 +78,7 @@ class LLMEnsemblerConfig(BaseModel):
     llm: str = "openai-responses:gpt-5-mini"
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
     skip_empty_results: bool = True
+    deduplicate_results: bool = True
     temperature: float | None = None
     openai_reasoning_effort: str | None = None
     openai_service_tier: str | None = None
@@ -141,6 +143,20 @@ class LLMEnsembler:
             candidates = [
                 output for output in candidates if not output.pred_query.exec_result.df.empty  # type: ignore[union-attr]
             ]
+
+        # Optionally deduplicate candidates with identical execution results
+        if self.config.deduplicate_results:
+            seen: set[tuple[tuple[str, ...], ...]] = set()
+            deduped: list[SimpleNL2QTaskOutput] = []
+            for output in candidates:
+                df = output.pred_query.exec_result.df  # type: ignore[union-attr]
+                df = df.reindex(sorted(df.columns), axis=1)
+                rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
+                hashable = tuple(sorted(set(rows)))
+                if hashable not in seen:
+                    seen.add(hashable)
+                    deduped.append(output)
+            candidates = deduped
 
         if len(candidates) <= 1:
             best = candidates[0] if candidates else task_outputs[0]
