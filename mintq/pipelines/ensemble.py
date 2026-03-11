@@ -115,6 +115,8 @@ def parse_ensembler(args: argparse.Namespace) -> Ensembler:
             kwargs["llm"] = args.llm
         if args.temperature is not None:
             kwargs["temperature"] = args.temperature
+        if args.openai_reasoning_effort is not None:
+            kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
         return LLMEnsembler(LLMEnsemblerConfig(**kwargs))
     else:
         return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
@@ -132,6 +134,7 @@ async def main_async() -> None:
     )
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (required for llm ensembler).")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm ensembler.")
+    parser.add_argument("--openai_reasoning_effort", default=None, help="Reasoning effort for llm ensembler.")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
