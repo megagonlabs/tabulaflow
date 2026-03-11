@@ -6,6 +6,7 @@ import logging
 import os
 import time
 import traceback
+from typing import Any
 
 from mintq import dataset_registry
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
@@ -109,17 +110,14 @@ async def ensemble_async(
 def parse_ensembler(args: argparse.Namespace) -> Ensembler:
     """Build an ensembler instance from parsed CLI arguments."""
     if args.ensembler == "llm_ensembler":
-        if args.llm is None:
-            raise ValueError("--llm is required when using the llm_ensembler.")
-        return LLMEnsembler(
-            LLMEnsemblerConfig(
-                source_dirs=args.result_dirs,
-                llm=args.llm,
-                temperature=args.temperature,
-            )
-        )
+        kwargs: dict[str, Any] = {"result_dirs": args.result_dirs}
+        if args.llm is not None:
+            kwargs["llm"] = args.llm
+        if args.temperature is not None:
+            kwargs["temperature"] = args.temperature
+        return LLMEnsembler(LLMEnsemblerConfig(**kwargs))
     else:
-        return MajorityEnsembler(MajorityEnsemblerConfig(source_dirs=args.result_dirs))
+        return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
 
 
 async def main_async() -> None:

@@ -65,8 +65,8 @@ Select the number of the best candidate.
 
 
 class LLMEnsemblerConfig(BaseModel):
-    source_dirs: list[str]
-    llm: str
+    result_dirs: list[str]
+    llm: str = "openai-responses:gpt-5-mini"
     temperature: float | None = None
     openai_reasoning_effort: str | None = None
     openai_service_tier: str | None = None

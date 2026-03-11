@@ -3,6 +3,7 @@ import os
 import shutil
 import time
 from functools import reduce
+from typing import Any
 import datetime
 import asyncio
 import logging
@@ -197,10 +198,11 @@ async def run_agent_async(
 
 
 def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> BaseAgentConfig:
-    kwargs = {
-        "llm": args.llm,
+    kwargs: dict[str, Any] = {
         "schema_formatter": args.schema_formatter,
     }
+    if args.llm is not None:
+        kwargs["llm"] = args.llm
     if agent_cls.name == "simple_zero_shot":
         if args.num_majority_voting_candidates is not None:
             kwargs["num_candidates"] = args.num_majority_voting_candidates
@@ -241,7 +243,7 @@ async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--agent", default="sql_agent")
     parser.add_argument("-s", "--schema_formatter", default="sql_ddl")
-    parser.add_argument("--llm", default="openai-responses:gpt-4.1")
+    parser.add_argument("--llm", default=None)
     parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--max_steps", default=None, type=int)
     parser.add_argument("--openai_reasoning_effort", default=None)

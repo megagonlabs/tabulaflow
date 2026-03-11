@@ -73,7 +73,7 @@ class TaskRunContext:
 
 
 class BasicAgentConfig(BaseModel):
-    llm: str
+    llm: str = "openai-responses:gpt-5-mini"
     schema_formatter: str = "sql_ddl"
     compress_schema: bool = True
     temperature: float | None = None
