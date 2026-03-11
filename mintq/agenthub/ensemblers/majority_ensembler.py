@@ -29,7 +29,7 @@ def _normalize_value(v: Any) -> str:
 
 
 class MajorityEnsemblerConfig(BaseModel):
-    pass
+    source_dirs: list[str]
 
 
 class MajorityEnsembler:

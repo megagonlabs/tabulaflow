@@ -89,7 +89,6 @@ async def ensemble_async(
 
     end_time = datetime.datetime.now()
 
-    source_dirs = [r.agent for r in results]
     return NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
@@ -98,8 +97,8 @@ async def ensemble_async(
         databases=results[0].databases,
         subsample_size=results[0].subsample_size,
         dataset_extra_kwargs=results[0].dataset_extra_kwargs,
-        agent="majority_ensembler",
-        agent_config={"sources": source_dirs, "num_sources": len(results)},
+        agent=ensembler.name,
+        agent_config=ensembler.config.model_dump(),
         tasks=ensembled_outputs,
     )
 
@@ -148,7 +147,7 @@ async def main_async() -> None:
         f"Loaded {len(dataset.db_connectors)} databases from {ref.dataset} {ref.split} in {time.time() - t0:.2f} seconds."
     )
 
-    ensembler = MajorityEnsembler(MajorityEnsemblerConfig())
+    ensembler = MajorityEnsembler(MajorityEnsemblerConfig(source_dirs=args.result_dirs))
 
     t0 = time.time()
     result = await ensemble_async(ensembler, results, dataset, args.batch_size)
