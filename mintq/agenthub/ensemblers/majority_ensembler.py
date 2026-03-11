@@ -8,6 +8,7 @@ from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.utils import instrument
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.db_connector import BaseSQLDBConnector
+from mintq.pipelines.populate_exec_results import populate_task_async
 
 
 logger = logging.getLogger(__name__)
@@ -55,8 +56,6 @@ class MajorityEnsembler:
             return task_outputs[0]
 
         # Populate exec results for all candidates (skips queries that already have results)
-        from mintq.pipelines.populate_exec_results import populate_task_async
-
         await asyncio.gather(*[populate_task_async(output, db_connector) for _, output in valid_outputs])
 
         # Group candidates by execution result for majority voting
