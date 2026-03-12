@@ -156,7 +156,7 @@ async def main_async() -> None:
     parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")
     parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm/agent ensembler.")
     parser.add_argument("--openai_reasoning_effort", default=None, help="Reasoning effort for llm/agent ensembler.")
-    parser.add_argument("--deduplicate_results", type=bool_flag, default=None, help="Deduplicate candidates with identical results (llm/agent ensembler, default true).")
+    parser.add_argument("--deduplicate_results", type=bool_flag, default=True, help="Deduplicate candidates with identical results (llm/agent ensembler, default true).")
     parser.add_argument("--max_steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
