@@ -12,12 +12,13 @@ from typing import Any
 from mintq import dataset_registry
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
+from mintq.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
 from mintq.config import mintq_config
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pipelines.utils import bool_flag
 from mintq.utils import tqdm_gather_with_exceptions
 
-Ensembler = MajorityEnsembler | LLMEnsembler
+Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler
 
 logger = logging.getLogger(__name__)
 
@@ -125,6 +126,19 @@ def parse_ensembler(args: argparse.Namespace) -> Ensembler:
         if args.deduplicate_results is not None:
             kwargs["deduplicate_results"] = args.deduplicate_results
         return LLMEnsembler(LLMEnsemblerConfig(**kwargs))
+    elif args.ensembler == "agent_ensembler":
+        kwargs = {"result_dirs": args.result_dirs}
+        if args.llm is not None:
+            kwargs["llm"] = args.llm
+        if args.temperature is not None:
+            kwargs["temperature"] = args.temperature
+        if args.openai_reasoning_effort is not None:
+            kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
+        if args.deduplicate_results is not None:
+            kwargs["deduplicate_results"] = args.deduplicate_results
+        if args.max_steps is not None:
+            kwargs["max_steps"] = args.max_steps
+        return AgentEnsembler(AgentEnsemblerConfig(**kwargs))
     else:
         return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
 
@@ -135,14 +149,15 @@ async def main_async() -> None:
     parser.add_argument("--output_dir", required=True, help="Path to save ensembled result.")
     parser.add_argument(
         "--ensembler",
-        choices=["majority_ensembler", "llm_ensembler"],
+        choices=["majority_ensembler", "llm_ensembler", "agent_ensembler"],
         default="majority_ensembler",
         help="Ensembler strategy.",
     )
-    parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (required for llm ensembler).")
-    parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm ensembler.")
-    parser.add_argument("--openai_reasoning_effort", default=None, help="Reasoning effort for llm ensembler.")
-    parser.add_argument("--deduplicate_results", type=bool_flag, default=None, help="Deduplicate candidates with identical results (llm ensembler, default true).")
+    parser.add_argument("--llm", type=str, default=None, help="LLM model identifier (for llm/agent ensembler).")
+    parser.add_argument("--temperature", type=float, default=None, help="Temperature for llm/agent ensembler.")
+    parser.add_argument("--openai_reasoning_effort", default=None, help="Reasoning effort for llm/agent ensembler.")
+    parser.add_argument("--deduplicate_results", type=bool_flag, default=None, help="Deduplicate candidates with identical results (llm/agent ensembler, default true).")
+    parser.add_argument("--max_steps", type=int, default=None, help="Maximum agent steps (agent ensembler only).")
     parser.add_argument("--batch_size", type=int, default=8)
     parser.add_argument("--overwrite", action="store_true")
     parser.add_argument("--debug", action="store_true")
