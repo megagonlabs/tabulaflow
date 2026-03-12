@@ -808,12 +808,14 @@ March 10
   - [x] majority_ensembler
   - [x] ensemble.py
   - [x] llm_ensembler
-  - [x] Exp 249 - 250
-    - majority_ensembler improves ~2%
-    - llm_ensembler
-      - gpt-5-mini improves ~4% on gpt-5-mini results, does not improve on gpt-5 results
-      - gpt-5
-      - gpt-5 w/ deduplicate_results=True
+  - [x] Exp 249 - 251
+    - Exp 249 majority_ensembler: 5x_gpt-5-mini 0.6066, mixed 0.6728 spider2_ex
+    - Exp 250 llm_ensembler (gpt-5-mini): 5x_gpt-5-mini 0.6140, mixed 0.6746 spider2_ex
+    - Exp 251 llm_ensembler (gpt-5): 5x_gpt-5 0.6452, 5x_gpt-5_dedup 0.6526, mixed 0.7132, mixed_dedup 0.7040 spider2_ex
+    - Observation:
+      - Strong llm as ensembler is needed
+      - llm_ensembler is much better than majority_ensembler (with strong llm)
+      - improvements are ~5% - 8%
 
 - [ ] test whether null_ratio is useful
 
