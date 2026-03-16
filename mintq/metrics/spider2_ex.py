@@ -97,7 +97,7 @@ class Spider2Ex:
         condition_cols = [gold_query.required_columns or []]
         for alt_result in gold_query.alternative_results:
             gold_dfs.append(alt_result.df)
-            # The condition_cols is already applied for alternative_results during dataset loading (see mintq/datahub/spider2.py)
+            # The condition_cols is already applied for alternative_results during dataset loading (see mintq/datahub/spider2_snow.py)
             condition_cols.append([])
 
         ignore_order = not gold_query.required_sorted

@@ -102,7 +102,7 @@ mintq
 │   └── ...
 ├── datahub/                # text-to-query datasets
 │   ├── bird_sql.py
-│   ├── spider2.py
+│   ├── spider2_snow.py
 │   ├── beaver.py
 │   ├── arcs.py
 │   └── ...
