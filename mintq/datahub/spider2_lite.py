@@ -9,13 +9,25 @@ import json
 import logging
 import random
 import re
+import asyncio
+from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
-from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.schema import (
+    SimpleNL2QTask,
+    NL2QDataset,
+    GoldQuery,
+    ExecResult,
+    SQLSchema,
+    SQLTableSchema,
+    SQLColumnSchema,
+)
+from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
 
 logger = logging.getLogger(__name__)
+
+Backend = str  # "bigquery" | "snowflake" | "sqlite"
 
 
 SPIDER2_LITE_DATASET_INSTRUCTIONS = """
@@ -45,8 +57,24 @@ class Spider2LiteDatasetLoader:
     name: ClassVar = "spider2-lite"
     splits: ClassVar = ["test"]
 
-    def __init__(self, directory: str = "data/Spider2/spider2-lite"):
+    def __init__(
+        self,
+        directory: str = "data/Spider2/spider2-lite",
+        sf_user: Optional[str] = None,
+        sf_password: Optional[str] = None,
+        sf_account: Optional[str] = None,
+        bq_credentials_path: Optional[str] = None,
+        sqlite_db_dir: Optional[str] = None,
+    ):
         self.directory = directory
+        self.sf_user = sf_user
+        self.sf_password = sf_password
+        self.sf_account = sf_account
+        self.bq_credentials_path = bq_credentials_path
+        self.sqlite_db_dir = sqlite_db_dir or os.path.join(
+            directory, "resource", "databases", "spider2-localdb"
+        )
+        self._sf_semaphore = asyncio.Semaphore(16)
 
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
@@ -149,17 +177,230 @@ class Spider2LiteDatasetLoader:
 
         return tasks
 
+    def _get_backend(self, db_name: str) -> Backend:
+        """Determine the backend for a database by checking resource directories."""
+        resource_dir = os.path.join(self.directory, "resource", "databases")
+        for backend in ("bigquery", "snowflake", "sqlite"):
+            backend_dir = os.path.join(resource_dir, backend)
+            if os.path.isdir(backend_dir) and db_name in os.listdir(backend_dir):
+                return backend
+        raise ValueError(f"Cannot determine backend for database {db_name!r}")
+
+    def _get_bq_project_datasets(self, db_name: str) -> list[tuple[str, str]]:
+        """Parse project.dataset pairs from the BigQuery resource directory."""
+        bq_dir = os.path.join(self.directory, "resource", "databases", "bigquery", db_name)
+        result = []
+        for entry in sorted(os.listdir(bq_dir)):
+            entry_path = os.path.join(bq_dir, entry)
+            if os.path.isdir(entry_path) and "." in entry:
+                project, dataset = entry.split(".", 1)
+                result.append((project, dataset))
+        return result
+
+    def _load_column_descriptions(self) -> dict[tuple[str, str, str], str]:
+        """Load column descriptions from resource JSON files.
+
+        Returns:
+            Mapping from (db_name, table_name, column_name) to description.
+        """
+        res: dict[tuple[str, str, str], str] = {}
+        resource_dir = os.path.join(self.directory, "resource", "databases")
+        for backend in ("bigquery", "snowflake", "sqlite"):
+            backend_dir = os.path.join(resource_dir, backend)
+            if not os.path.isdir(backend_dir):
+                continue
+            for db_name in os.listdir(backend_dir):
+                db_path = os.path.join(backend_dir, db_name)
+                if not os.path.isdir(db_path):
+                    continue
+                for root, _dirs, files in os.walk(db_path):
+                    for fname in files:
+                        if not fname.endswith(".json"):
+                            continue
+                        fpath = os.path.join(root, fname)
+                        try:
+                            with open(fpath, "r") as f:
+                                data = json.load(f)
+                        except (json.JSONDecodeError, KeyError):
+                            continue
+                        table_name = data.get("table_name", fname.replace(".json", ""))
+                        for col, desc in zip(
+                            data.get("column_names", []),
+                            data.get("description", []),
+                        ):
+                            if desc:
+                                desc_str = str(desc).strip().replace("\n", " ")
+                                if desc_str:
+                                    res[(db_name, table_name, col)] = desc_str
+        return res
+
+    def _build_bq_schema_from_metadata(
+        self, db_name: str, project_datasets: list[tuple[str, str]]
+    ) -> SQLSchema:
+        """Build an SQLSchema from spider2-lite resource metadata files."""
+        bq_dir = os.path.join(self.directory, "resource", "databases", "bigquery", db_name)
+        tables: list[SQLTableSchema] = []
+
+        for project, dataset in project_datasets:
+            ds_dir = os.path.join(bq_dir, f"{project}.{dataset}")
+            if not os.path.isdir(ds_dir):
+                continue
+            for fname in sorted(os.listdir(ds_dir)):
+                if not fname.endswith(".json"):
+                    continue
+                fpath = os.path.join(ds_dir, fname)
+                try:
+                    with open(fpath, "r") as f:
+                        data = json.load(f)
+                except (json.JSONDecodeError, KeyError):
+                    logger.warning(f"Failed to parse {fpath}")
+                    continue
+
+                columns = []
+                for col_name, col_type, desc in zip(
+                    data.get("column_names", []),
+                    data.get("column_types", []),
+                    data.get("description", []),
+                ):
+                    columns.append(
+                        SQLColumnSchema(
+                            name=col_name,
+                            dtype=col_type or "STRING",
+                            nullable=True,
+                            examples=[],
+                            description=desc if desc else None,
+                        )
+                    )
+
+                sample_rows = data.get("sample_rows", [])
+                sampled_df = pd.DataFrame(sample_rows) if sample_rows else None
+
+                tables.append(
+                    SQLTableSchema(
+                        name=data.get("table_name", fname.replace(".json", "")),
+                        schema_name=f"{project}.{dataset}",
+                        is_view=False,
+                        columns=columns,
+                        primary_key=[],
+                        foreign_keys=[],
+                        num_rows=None,
+                        sampled_df=sampled_df,
+                    )
+                )
+
+        return SQLSchema(name=db_name, dialect="bigquery", tables=tables)
+
+    async def _build_bq_connector(
+        self, db_name: str, project_datasets: list[tuple[str, str]]
+    ) -> SQLConnector:
+        """Build a BigQuery SQLConnector for a spider2-lite database.
+
+        Uses our own GCP project for billing (job execution) and builds
+        schemas from metadata files since we can't run jobs on public projects.
+        """
+        bq_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "vertexai-434121")
+        bq_credentials_path = self.bq_credentials_path or os.environ.get(
+            "GOOGLE_APPLICATION_CREDENTIALS"
+        )
+        engine_kwargs: dict = {}
+        if bq_credentials_path:
+            engine_kwargs["credentials_path"] = bq_credentials_path
+
+        schema = self._build_bq_schema_from_metadata(db_name, project_datasets)
+
+        url = f"bigquery://{bq_project}"
+        return await SQLConnector.from_url_async(
+            f"spider2-lite+{db_name}",
+            db_name,
+            "sync",
+            url,
+            max_concurrency_per_db=4,
+            schema=schema,
+            **engine_kwargs,
+        )
+
+    async def _build_sf_connector(self, db_name: str) -> SQLConnector:
+        """Build a Snowflake SQLConnector for a spider2-lite database."""
+        sf_user = self.sf_user or os.environ["SF_USER"]
+        sf_password = self.sf_password or os.environ["SF_PASSWORD"]
+        sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
+        base_url = f"snowflake://{quote_plus(sf_user)}:{quote_plus(sf_password)}@{sf_account}"
+        connect_args = {
+            "disable_ocsp_checks": True,
+            "client_session_keep_alive": True,
+        }
+        return await SQLConnector.from_url_async(
+            f"spider2-lite+{db_name}",
+            db_name,
+            "sync",
+            f"{base_url}/{db_name}",
+            max_concurrency_per_db=2,
+            dbms_semaphore=self._sf_semaphore,
+            connect_args=connect_args,
+            group_date_partitioned_tables=True,
+        )
+
+    async def _build_sqlite_connector(self, db_name: str) -> SQLConnector:
+        """Build a SQLite SQLConnector for a spider2-lite database."""
+        db_path = os.path.join(self.sqlite_db_dir, f"{db_name}.sqlite")
+        if not os.path.exists(db_path):
+            raise FileNotFoundError(
+                f"SQLite database not found: {db_path}. "
+                "Download from https://drive.usercontent.google.com/download?"
+                "id=1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG and unzip into "
+                f"{self.sqlite_db_dir}/"
+            )
+        url = f"sqlite+aiosqlite:///{db_path}"
+        return await SQLConnector.from_url_async(
+            f"spider2-lite+{db_name}",
+            db_name,
+            "async",
+            url,
+            max_concurrency_per_db=4,
+        )
+
     async def get_db_connectors_async(
         self, split: str, databases: list[str] | None = None
     ) -> dict[str, BaseSQLDBConnector]:
-        """Return DB connectors. Spider2-Lite uses BigQuery, Snowflake, and SQLite.
+        """Return DB connectors keyed by database name.
 
-        TODO: Implement backend dispatch (BigQuery via sqlalchemy-bigquery,
-        Snowflake via snowflake-sqlalchemy, SQLite via aiosqlite).
+        Dispatches to BigQuery, Snowflake, or SQLite based on the resource
+        directory layout.
         """
-        raise NotImplementedError(
-            "spider2-lite get_db_connectors_async: implement BigQuery, Snowflake, and SQLite connectors"
-        )
+        if split not in self.splits:
+            raise ValueError(
+                f"Split {split} not supported, only {self.splits} are supported for {self.name}"
+            )
+
+        databases = databases or self.get_databases(split)
+        column_descriptions = self._load_column_descriptions()
+
+        connectors: dict[str, BaseSQLDBConnector] = {}
+        for db_name in databases:
+            backend = self._get_backend(db_name)
+            logger.info(f"Building connector for {db_name} (backend={backend})")
+
+            if backend == "bigquery":
+                project_datasets = self._get_bq_project_datasets(db_name)
+                conn = await self._build_bq_connector(db_name, project_datasets)
+            elif backend == "snowflake":
+                conn = await self._build_sf_connector(db_name)
+            elif backend == "sqlite":
+                conn = await self._build_sqlite_connector(db_name)
+            else:
+                raise ValueError(f"Unknown backend {backend!r} for {db_name}")
+
+            for table in conn.schema.tables:
+                for column in table.columns:
+                    desc = column_descriptions.get(
+                        (db_name, table.name, column.name)
+                    )
+                    if desc:
+                        column.description = desc
+
+            connectors[db_name] = conn
+
+        return connectors
 
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
