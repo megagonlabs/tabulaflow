@@ -13,15 +13,7 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
-from mintq.schema import (
-    SimpleNL2QTask,
-    NL2QDataset,
-    GoldQuery,
-    ExecResult,
-    SQLSchema,
-    SQLTableSchema,
-    SQLColumnSchema,
-)
+from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.datahub.base import dataset_registry
 
@@ -234,88 +226,40 @@ class Spider2LiteDatasetLoader:
                                     res[(db_name, table_name, col)] = desc_str
         return res
 
-    def _build_bq_schema_from_metadata(
-        self, db_name: str, project_datasets: list[tuple[str, str]]
-    ) -> SQLSchema:
-        """Build an SQLSchema from spider2-lite resource metadata files."""
-        bq_dir = os.path.join(self.directory, "resource", "databases", "bigquery", db_name)
-        tables: list[SQLTableSchema] = []
-
-        for project, dataset in project_datasets:
-            ds_dir = os.path.join(bq_dir, f"{project}.{dataset}")
-            if not os.path.isdir(ds_dir):
-                continue
-            for fname in sorted(os.listdir(ds_dir)):
-                if not fname.endswith(".json"):
-                    continue
-                fpath = os.path.join(ds_dir, fname)
-                try:
-                    with open(fpath, "r") as f:
-                        data = json.load(f)
-                except (json.JSONDecodeError, KeyError):
-                    logger.warning(f"Failed to parse {fpath}")
-                    continue
-
-                columns = []
-                for col_name, col_type, desc in zip(
-                    data.get("column_names", []),
-                    data.get("column_types", []),
-                    data.get("description", []),
-                ):
-                    columns.append(
-                        SQLColumnSchema(
-                            name=col_name,
-                            dtype=col_type or "STRING",
-                            nullable=True,
-                            examples=[],
-                            description=desc if desc else None,
-                        )
-                    )
-
-                sample_rows = data.get("sample_rows", [])
-                sampled_df = pd.DataFrame(sample_rows) if sample_rows else None
-
-                tables.append(
-                    SQLTableSchema(
-                        name=data.get("table_name", fname.replace(".json", "")),
-                        schema_name=f"{project}.{dataset}",
-                        is_view=False,
-                        columns=columns,
-                        primary_key=[],
-                        foreign_keys=[],
-                        num_rows=None,
-                        sampled_df=sampled_df,
-                    )
-                )
-
-        return SQLSchema(name=db_name, dialect="bigquery", tables=tables)
-
     async def _build_bq_connector(
         self, db_name: str, project_datasets: list[tuple[str, str]]
     ) -> SQLConnector:
         """Build a BigQuery SQLConnector for a spider2-lite database.
 
-        Uses our own GCP project for billing (job execution) and builds
-        schemas from metadata files since we can't run jobs on public projects.
+        Uses ``billing_project_id`` so that BigQuery jobs are billed to our
+        GCP project while the data project in the URL is used for schema
+        introspection and table resolution.  A single engine handles
+        multi-dataset dbs because the inspector accepts an explicit
+        ``schema`` argument that overrides the default dataset.
         """
-        bq_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "vertexai-434121")
+        billing_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "vertexai-434121")
         bq_credentials_path = self.bq_credentials_path or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
+
+        primary_project = project_datasets[0][0]
+        first_dataset = project_datasets[0][1]
+        datasets = [d for p, d in project_datasets if p == primary_project]
+
         engine_kwargs: dict = {}
         if bq_credentials_path:
             engine_kwargs["credentials_path"] = bq_credentials_path
+        engine_kwargs["billing_project_id"] = billing_project
 
-        schema = self._build_bq_schema_from_metadata(db_name, project_datasets)
-
-        url = f"bigquery://{bq_project}"
+        url = f"bigquery://{primary_project}/{first_dataset}"
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
             db_name,
             "sync",
             url,
             max_concurrency_per_db=4,
-            schema=schema,
+            schema_names_filter=datasets,
+            group_date_partitioned_tables=True,
             **engine_kwargs,
         )
 
