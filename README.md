@@ -817,14 +817,22 @@ March 10
       - llm_ensembler is much better than majority_ensembler (with strong llm)
       - improvements are ~5% - 8%
 
-- [ ] test whether null_ratio is useful
+March 11
+- [x] test whether null_ratio is useful - no improvement
+- [x] claude-sonnet-4-5: cost $429
+- [x] gpt-5.3-codex (spider2-snow test): simple_ex 0.7004, spider2_ex 0.6985, cost $92.15
+- [x] Exp 255: agent_ensembler: 5x_gpt-5_dedup spider2_ex 0.6691, mixed_dedup spider2_ex 0.7132
 
-- [ ] agent_ensembler
-- [ ] Fix connection pool
+March 16
+- [ ] Test gemini-3-flash/pro
+- [ ] Support spider2-lite
 - [ ] Fix mintq.__init__.py
+
+- [ ] Fix connection pool
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
+- [ ] Safe to include extra columns?
 
 
 - [ ] Add column description during column expansion in sql_agent.py?
