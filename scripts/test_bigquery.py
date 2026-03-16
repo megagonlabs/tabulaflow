@@ -1,17 +1,15 @@
 #!/usr/bin/env -S uv run
-"""Test BigQuery connectivity using Application Default Credentials."""
+"""Test BigQuery connectivity using SQLAlchemy without passing credentials."""
 
-from google.cloud import bigquery
+from sqlalchemy import create_engine, text
 
-# Uses GOOGLE_APPLICATION_CREDENTIALS from environment (e.g. .envrc)
-client = bigquery.Client()
-
-sql_query = (
-    "SELECT name FROM `bigquery-public-data.usa_names.usa_1910_2013` "
-    "WHERE state = 'TX' LIMIT 10"
-)
-query_job = client.query(sql_query)
-rows = query_job.result()
-
-for row in rows:
-    print(row.name)
+engine = create_engine("bigquery://")
+with engine.connect() as conn:
+    rows = conn.execute(
+        text(
+            "SELECT name FROM `bigquery-public-data.usa_names.usa_1910_2013` "
+            "WHERE state = 'TX' LIMIT 10"
+        )
+    )
+    for row in rows:
+        print(row.name)
