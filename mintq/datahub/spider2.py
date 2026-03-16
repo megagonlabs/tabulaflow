@@ -30,7 +30,7 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
   - If the question asks for a "ratio", do not multiply by 100; return the raw fraction on a 0-1 scale.
 - **Columns to Return:**
-  - It is safe to include all columns relevant to the question.
+  - It is safe to include all columns relevant to the question. Extra columns do not affect correctness.
   - Do not concatenate columns in the results unless explicitly requested.
 - **Rows to Return:**
   - Return exactly the rows requested as the final result in the question, no more and no fewer. Be careful to handle duplicates appropriately.
