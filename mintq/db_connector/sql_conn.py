@@ -442,16 +442,19 @@ async def build_table_async(
     schema_name: str | None,
     is_view: bool = False,
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
-) -> SQLTableSchema:
-    tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
-
+) -> SQLTableSchema | None:
     async_inspector = AsyncInspector(t_eng)
-
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
 
     if t_eng.engine.dialect.name == "bigquery":
         col_dicts = [c for c in col_dicts if "." not in c["name"]]
+
+    if not col_dicts:
+        logger.warning(f"Skipping table {schema_name}.{table_name}: no columns found")
+        return None
+
+    tbl = sqlalchemy.table(table_name, schema=schema_name)
+    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
 
     columns = await asyncio.gather(
         *[
@@ -605,6 +608,8 @@ async def build_schema_async(
 
     tables = []
     for group, table in zip(all_groups, task_results):
+        if table is None:
+            continue
         tables.append(table)
         for table_name in group[1:]:
             table = copy.deepcopy(table)
