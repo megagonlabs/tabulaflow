@@ -826,7 +826,11 @@ March 11
 March 16
 - [x] Exp 256: Test gemini-3-flash/pro
   - [x] gemini-3.1-pro-preview: simple_ex 0.6029, spider2_ex 0.5974, cost $401.26; gemini-3-flash-preview: simple_ex 0.5974, spider2_ex 0.5919, cost $68.53
-- [ ] Support spider2-lite
+- [x] Support spider2-lite
+
+March 17
+- [ ] Cache spider2-lite schemas
+- [ ] Test spider2-lite
 
 - [ ] Fix mintq.__init__.py
 - [ ] Fix connection pool
