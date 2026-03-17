@@ -824,10 +824,11 @@ March 11
 - [x] Exp 255: agent_ensembler: 5x_gpt-5_dedup spider2_ex 0.6691, mixed_dedup spider2_ex 0.7132
 
 March 16
-- [ ] Test gemini-3-flash/pro
+- [x] Exp 256: Test gemini-3-flash/pro
+  - [x] gemini-3.1-pro-preview: simple_ex 0.6029, spider2_ex 0.5974, cost $401.26; gemini-3-flash-preview: simple_ex 0.5974, spider2_ex 0.5919, cost $68.53
 - [ ] Support spider2-lite
-- [ ] Fix mintq.__init__.py
 
+- [ ] Fix mintq.__init__.py
 - [ ] Fix connection pool
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
