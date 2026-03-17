@@ -258,7 +258,7 @@ class Spider2LiteDatasetLoader:
             "sync",
             url,
             max_concurrency_per_db=4,
-            schema_names_filter=datasets,
+            include_schema_names=datasets,
             group_date_partitioned_tables=True,
             **engine_kwargs,
         )

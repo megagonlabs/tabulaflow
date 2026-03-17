@@ -239,7 +239,7 @@ async def load_schema_with_cache_async(
     t_eng: ThrottledEngine,
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
-    schema_names_filter: list[str] | None = None,
+    include_schema_names: list[str] | None = None,
 ) -> SQLSchema:
     """
     Loads the database schema, utilizing a cache if available and enabled.
@@ -269,7 +269,7 @@ async def load_schema_with_cache_async(
             group_date_partitioned_tables,
             group_table_regexes,
             column_stats_mode=mintq_config.column_stats_mode,
-            schema_names_filter=schema_names_filter,
+            include_schema_names=include_schema_names,
         )
         if t_eng.engine_type == "async":
             await t_eng.engine.dispose()  # type: ignore
@@ -535,7 +535,7 @@ async def build_schema_async(
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
-    schema_names_filter: list[str] | None = None,
+    include_schema_names: list[str] | None = None,
 ) -> SQLSchema:
     t0 = time.time()
     logger.info(f"Building schema for {db_name}...")
@@ -548,8 +548,8 @@ async def build_schema_async(
         schema_names = [_denorm(t_eng, name) for name in await async_inspector.get_schema_names()]
 
     schema_names = [s for s in schema_names if not (s and s.lower() == "information_schema")]
-    if schema_names_filter is not None:
-        allowed = set(schema_names_filter)
+    if include_schema_names is not None:
+        allowed = set(include_schema_names)
         schema_names = [s for s in schema_names if s in allowed]
 
     # Discover table/view names for all schemas concurrently
@@ -644,7 +644,7 @@ class SQLConnector:
         group_date_partitioned_tables: bool = True,
         group_table_regexes: list[str] = [],
         read_only: bool = True,
-        schema_names_filter: list[str] | None = None,
+        include_schema_names: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -703,7 +703,7 @@ class SQLConnector:
                 t_eng,
                 group_date_partitioned_tables,
                 group_table_regexes,
-                schema_names_filter=schema_names_filter,
+                include_schema_names=include_schema_names,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(global_id, schema, language, t_eng, read_only=read_only)
