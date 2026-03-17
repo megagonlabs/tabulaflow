@@ -820,7 +820,7 @@ March 10
 
 March 11
 - [x] test whether null_ratio is useful - no improvement
-- [x] claude-sonnet-4-5 (spider2-snow test): simple_ex 0.5827, spider2_ex 0.5735, cost $479.20
+- [x] Exp 253: claude-sonnet-4-5 (spider2-snow test): simple_ex 0.5827, spider2_ex 0.5735, cost $479.20
 - [x] gpt-5.3-codex (spider2-snow test): simple_ex 0.7004, spider2_ex 0.6985, cost $92.15
 - [x] Exp 255: agent_ensembler: 5x_gpt-5_dedup spider2_ex 0.6691, mixed_dedup spider2_ex 0.7132
 
