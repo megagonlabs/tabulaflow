@@ -800,6 +800,7 @@ March 9
 - [x] Analyze full spider2-snow test split exp239
 
 March 10
+- [x] Exp 247 (spider2-snow test, updated instructions): gpt-5.4 simple_ex 0.6838, spider2_ex 0.6710, cost $391.50; gpt-5-mini simple_ex 0.5938, spider2_ex 0.5846, cost $16.19
 - [x] Analyze spider2 rounding behavior - question explicitly specifies rounding
 - [x] Top 10 costliest tasks
 - [x] path parameter for get_json_schema - test on tasks that invoked get_json_schema
@@ -819,7 +820,7 @@ March 10
 
 March 11
 - [x] test whether null_ratio is useful - no improvement
-- [x] claude-sonnet-4-5: cost $429
+- [x] claude-sonnet-4-5 (spider2-snow test): simple_ex 0.5827, spider2_ex 0.5735, cost $479.20
 - [x] gpt-5.3-codex (spider2-snow test): simple_ex 0.7004, spider2_ex 0.6985, cost $92.15
 - [x] Exp 255: agent_ensembler: 5x_gpt-5_dedup spider2_ex 0.6691, mixed_dedup spider2_ex 0.7132
 
