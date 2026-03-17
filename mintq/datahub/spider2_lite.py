@@ -31,8 +31,8 @@ class _DBInfo:
 
 
 SPIDER2_LITE_DATASET_INSTRUCTIONS = """
-- **BigQuery Syntax Only:**
-  - Use only functions and syntax supported by BigQuery.
+- **Dialect-Specific Syntax Only:**
+  - Use only functions and syntax supported by the corresponding dialect.
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
