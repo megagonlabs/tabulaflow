@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.formatters.utils import flatten_multiline
+from mintq.formatters.utils import flatten_multiline, format_ratio_as_percent
 
 
 @formatter_registry.register
@@ -133,6 +133,8 @@ class SQLBasicSchemaFormatter:
             res += " (all values are null)"
         elif column.null_ratio is None or column.null_ratio > 0.0:
             res += " NULLABLE"
+            if column.null_ratio is not None:
+                res += f" (null_ratio={format_ratio_as_percent(column.null_ratio)})"
         is_categorical = (
             column.dtype in ("TEXT", "VARCHAR", "STRING", "ENUM")
             and column.num_unique is not None

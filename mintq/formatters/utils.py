@@ -20,6 +20,35 @@ def flatten_multiline(val: str) -> str:
         return val.replace("\r\n", "\\n").replace("\r", "\\n").replace("\n", "\\n")
 
 
+def format_ratio_as_percent(
+    ratio: float,
+    *,
+    decimals: int = 0,
+    min_nonzero_percent: float | None = 1.0,
+) -> str:
+    """Format a ratio in [0, 1] as a percentage string.
+
+    Args:
+        ratio: Ratio value where 0.0 means 0% and 1.0 means 100%.
+        decimals: Number of decimal places for standard percentage formatting.
+        min_nonzero_percent: If set, non-zero ratios below this threshold are
+            shown as ``less than X%`` (e.g., ``less than 1%``) to avoid
+            displaying misleading ``0%`` values due to rounding. Set to
+            ``None`` to disable.
+
+    Returns:
+        A human-readable percentage string.
+    """
+    if ratio <= 0:
+        return "0%"
+
+    if min_nonzero_percent is not None and ratio * 100 < min_nonzero_percent:
+        threshold = f"{min_nonzero_percent:g}%"
+        return f"less than {threshold}"
+
+    return f"{ratio:.{decimals}%}"
+
+
 def format_df(
     df: pd.DataFrame,
     *,

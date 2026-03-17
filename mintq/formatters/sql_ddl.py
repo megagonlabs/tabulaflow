@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.formatters.utils import format_df, flatten_multiline, format_json_schema
+from mintq.formatters.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent
 
 
 @formatter_registry.register
@@ -228,7 +228,7 @@ class SQLDDLSchemaFormatter:
 
         # Add null ratio for nullable columns
         if self.include_null_ratio and column.nullable and column.null_ratio is not None:
-            comment_lines.append(f"        -- <null_ratio>{column.null_ratio:.0%}</null_ratio>")
+            comment_lines.append(f"        -- <null_ratio>{format_ratio_as_percent(column.null_ratio)}</null_ratio>")
 
         # Add JSON schema for semi-structured columns
         if self.include_json_schema and column.json_schema:
