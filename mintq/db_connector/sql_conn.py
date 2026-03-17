@@ -317,9 +317,12 @@ CATEGORICAL_TYPES = [
 JSON_TYPES = [
     "VARIANT",  # Snowflake
     "OBJECT",  # Snowflake
-    "ARRAY",  # Snowflake
-    "JSON",  # MySQL, PostgreSQL
+    "ARRAY",  # Snowflake, BigQuery, PostgreSQL, DuckDB
+    "STRUCT",  # BigQuery (RECORD/STRUCT), DuckDB
+    "JSON",  # MySQL, PostgreSQL, SQLite, DuckDB, BigQuery
     "JSONB",  # PostgreSQL
+    "SUPER",  # Redshift
+    "SQL_VARIANT",  # SQL Server
 ]
 
 # Text column types that might contain JSON (detected via heuristic sampling)
