@@ -86,6 +86,7 @@ class Spider2LiteDatasetLoader:
         self.google_cloud_project = google_cloud_project
         self.google_application_credentials = google_application_credentials
         self._sf_semaphore = asyncio.Semaphore(16)
+        self._bq_semaphore = asyncio.Semaphore(16)
         self._db_info = self._build_db_info()
 
     def _build_db_info(self) -> dict[str, _DBInfo]:
@@ -288,7 +289,8 @@ class Spider2LiteDatasetLoader:
             db_name,
             "sync",
             url,
-            max_concurrency_per_db=4,
+            max_concurrency_per_db=2,
+            dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
             group_date_partitioned_tables=True,
             **engine_kwargs,
