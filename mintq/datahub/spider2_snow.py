@@ -230,14 +230,8 @@ class Spider2SnowDatasetLoader:
 
         return tasks
 
-    async def get_db_connectors_async(
-        self, split: str, databases: list[str] | None = None
-    ) -> dict[str, BaseSQLDBConnector]:
-        if split not in self.splits:
-            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
-
-        databases = databases or self.get_databases(split)
-
+    async def _build_sf_connector(self, db_name: str) -> SQLConnector:
+        """Build a Snowflake SQLConnector for a spider2-snow database."""
         sf_user = self.sf_user or os.environ["SF_USER"]
         sf_password = self.sf_password or os.environ["SF_PASSWORD"]
         sf_account = self.sf_account or os.environ["SF_ACCOUNT"]
@@ -246,49 +240,43 @@ class Spider2SnowDatasetLoader:
             "disable_ocsp_checks": True,
             "client_session_keep_alive": True,
         }
+        # Per-db concurrency is 2 because there are 152 databases so we can have up to 152 x 2 = 304 concurrent connections
+        return await SQLConnector.from_url_async(
+            f"spider2-snow+{db_name}",
+            db_name,
+            "sync",
+            f"{base_url}/{db_name}",
+            max_concurrency_per_db=2,
+            dbms_semaphore=self._dbms_semaphore,
+            connect_args=connect_args,
+            group_date_partitioned_tables=True,
+            group_table_regexes=GROUP_TABLE_REGEXES.get(db_name, []),
+        )
 
-        # We use a higher per-db concurrency for loading schemas
-        schemas = []
-        for name in databases:
-            db_conn = await SQLConnector.from_url_async(
-                f"spider2-snow+{name}",
-                name,
-                "sync",
-                f"{base_url}/{name}",
-                max_concurrency_per_db=4,
-                connect_args=connect_args,
-                group_date_partitioned_tables=True,
-                group_table_regexes=GROUP_TABLE_REGEXES.get(name, []),
-            )
-            schemas.append(db_conn.schema)
+    async def get_db_connectors_async(
+        self, split: str, databases: list[str] | None = None
+    ) -> dict[str, BaseSQLDBConnector]:
+        if split not in self.splits:
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
-        # We set the per-db concurrency to 2 because there are 152 databases so we can have up to 152 x 2 = 304 concurrent connections
-        db_connectors = [
-            await SQLConnector.from_url_async(
-                f"spider2-snow+{name}",
-                name,
-                "sync",
-                f"{base_url}/{name}",
-                max_concurrency_per_db=2,
-                dbms_semaphore=self._dbms_semaphore,
-                schema=schema,
-                connect_args=connect_args,
-            )
-            for name, schema in zip(databases, schemas)
-        ]
-
+        databases = databases or self.get_databases(split)
         column_descriptions = self._load_column_descriptions()
-        for conn in db_connectors:
-            for table in conn.schema.tables:
-                # table.name = table.name.upper()
-                # table.schema_name = table.schema_name.upper()  # type: ignore
-                for column in table.columns:
-                    column.description = column_descriptions.get(
-                        (conn.schema.name, table.schema_name, table.name, column.name),  # type: ignore
-                        None,
-                    )
 
-        return {name: conn for name, conn in zip(databases, db_connectors)}
+        connectors: dict[str, BaseSQLDBConnector] = {}
+        for db_name in databases:
+            conn = await self._build_sf_connector(db_name)
+
+            for table in conn.schema.tables:
+                for column in table.columns:
+                    desc = column_descriptions.get(
+                        (db_name, table.schema_name, table.name, column.name),  # type: ignore
+                    )
+                    if desc:
+                        column.description = desc
+
+            connectors[db_name] = conn
+
+        return connectors
 
     async def get_split_async(
         self, split: str, databases: list[str] | None = None, subsample_size: int | None = None
