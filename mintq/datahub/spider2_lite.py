@@ -65,14 +65,31 @@ class Spider2LiteDatasetLoader:
         sf_user: Optional[str] = None,
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
-        bq_credentials_path: Optional[str] = None,
+        google_cloud_project: Optional[str] = None,
+        google_application_credentials: Optional[str] = None,
         sqlite_db_dir: Optional[str] = None,
     ):
+        """Initializes the Spider 2.0-Lite dataset loader.
+
+        Args:
+            directory: Path to the spider2-lite data directory.
+            sf_user: Snowflake username. Falls back to ``SF_USER`` env var.
+            sf_password: Snowflake password. Falls back to ``SF_PASSWORD`` env var.
+            sf_account: Snowflake account identifier. Falls back to ``SF_ACCOUNT``
+                env var.
+            google_cloud_project: GCP project used for BigQuery billing. Falls
+                back to ``GOOGLE_CLOUD_PROJECT`` env var.
+            google_application_credentials: Path to a GCP service account JSON
+                key file. Falls back to ``GOOGLE_APPLICATION_CREDENTIALS`` env var.
+            sqlite_db_dir: Directory containing ``.sqlite`` files. Defaults to
+                ``<directory>/resource/databases/spider2-localdb``.
+        """
         self.directory = directory
         self.sf_user = sf_user
         self.sf_password = sf_password
         self.sf_account = sf_account
-        self.bq_credentials_path = bq_credentials_path
+        self.google_cloud_project = google_cloud_project
+        self.google_application_credentials = google_application_credentials
         self.sqlite_db_dir = sqlite_db_dir or os.path.join(
             directory, "resource", "databases", "spider2-localdb"
         )
@@ -250,8 +267,12 @@ class Spider2LiteDatasetLoader:
         multi-dataset dbs because the inspector accepts an explicit
         ``schema`` argument that overrides the default dataset.
         """
-        billing_project = os.environ.get("GOOGLE_CLOUD_PROJECT", "vertexai-434121")
-        bq_credentials_path = self.bq_credentials_path or os.environ.get(
+        google_cloud_project = self.google_cloud_project or os.environ.get("GOOGLE_CLOUD_PROJECT")
+        if not google_cloud_project:
+            raise ValueError(
+                "BigQuery billing project required: set google_cloud_project or GOOGLE_CLOUD_PROJECT"
+            )
+        google_application_credentials = self.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
 
@@ -265,9 +286,9 @@ class Spider2LiteDatasetLoader:
         datasets = [d for _, d in db_info.bq_project_datasets]
 
         engine_kwargs: dict = {}
-        if bq_credentials_path:
-            engine_kwargs["credentials_path"] = bq_credentials_path
-        engine_kwargs["billing_project_id"] = billing_project
+        if google_application_credentials:
+            engine_kwargs["credentials_path"] = google_application_credentials
+        engine_kwargs["billing_project_id"] = google_cloud_project
 
         url = f"bigquery://{project}/{datasets[0]}"
         return await SQLConnector.from_url_async(
