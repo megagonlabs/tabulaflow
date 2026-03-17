@@ -331,6 +331,45 @@ TEXT_TYPES = [
     "CLOB",
 ]
 
+# Only use DISTINCT on known-safe scalar types. Complex/LOB/semi-structured
+# types are handled without DISTINCT to avoid cross-dialect comparability errors.
+DISTINCT_SAFE_TYPES = {
+    "BOOLEAN",
+    "TINYINT",
+    "SMALLINT",
+    "INTEGER",
+    "BIGINT",
+    "INT",
+    "INT2",
+    "INT4",
+    "INT8",
+    "NUMERIC",
+    "BIGNUMERIC",
+    "DECIMAL",
+    "FLOAT",
+    "REAL",
+    "DOUBLE",
+    "DOUBLE_PRECISION",
+    "DATE",
+    "TIME",
+    "DATETIME",
+    "TIMESTAMP",
+    "TIMESTAMPTZ",
+    "TIMESTAMP_NTZ",
+    "TIMESTAMP_LTZ",
+    "TIMESTAMP_TZ",
+    "CHAR",
+    "VARCHAR",
+    "NCHAR",
+    "NVARCHAR",
+    "STRING",
+    "ENUM",
+    "UUID",
+    "BINARY",
+    "VARBINARY",
+    "BYTES",
+}
+
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 1000
 
@@ -355,6 +394,7 @@ async def build_column_async(
     if dtype == "USER_DEFINED":
         dtype = type(column["type"]).__name__.upper()
     nullable = column["nullable"]
+    can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
     if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD):
         null_ratio = num_unique = unique_ratio = None
@@ -376,18 +416,17 @@ async def build_column_async(
         ]
         null_ratio = num_null / sampled_rows
 
+        num_unique = None
         if dtype in CATEGORICAL_TYPES:
-            if t_eng.engine.dialect.name in ("snowflake",) and column_stats_mode != "always_precise":
+            use_snowflake_hll = t_eng.engine.dialect.name == "snowflake" and column_stats_mode != "always_precise"
+            if use_snowflake_hll:
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
                 num_unique = int((await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0])
-            else:
+            elif can_use_distinct:
                 num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[
                     0
                 ][0]
-            unique_ratio = num_unique / sampled_rows
-        else:
-            num_unique = None
-            unique_ratio = None
+        unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
 
     examples: list[Any]
     if num_rows == 0:
@@ -403,7 +442,11 @@ async def build_column_async(
     else:
         # Avoids scanning a large table for distinct values while still providing diverse example values.
         subq = select(col.label("_v")).select_from(tbl).where(col.isnot(None)).limit(1000).subquery()
-        examples = (await t_eng.run_query_async(select(subq.c._v).distinct().limit(5))).result
+        if can_use_distinct:
+            stmt = select(subq.c._v).distinct().limit(5)
+        else:
+            stmt = select(subq.c._v).limit(5)
+        examples = (await t_eng.run_query_async(stmt)).result
         examples = [_convert(row[0]) for row in examples]
 
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
