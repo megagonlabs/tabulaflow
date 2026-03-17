@@ -67,7 +67,6 @@ class Spider2LiteDatasetLoader:
         sf_account: Optional[str] = None,
         google_cloud_project: Optional[str] = None,
         google_application_credentials: Optional[str] = None,
-        sqlite_db_dir: Optional[str] = None,
     ):
         """Initializes the Spider 2.0-Lite dataset loader.
 
@@ -81,8 +80,6 @@ class Spider2LiteDatasetLoader:
                 back to ``GOOGLE_CLOUD_PROJECT`` env var.
             google_application_credentials: Path to a GCP service account JSON
                 key file. Falls back to ``GOOGLE_APPLICATION_CREDENTIALS`` env var.
-            sqlite_db_dir: Directory containing ``.sqlite`` files. Defaults to
-                ``<directory>/resource/databases/spider2-localdb``.
         """
         self.directory = directory
         self.sf_user = sf_user
@@ -90,9 +87,6 @@ class Spider2LiteDatasetLoader:
         self.sf_account = sf_account
         self.google_cloud_project = google_cloud_project
         self.google_application_credentials = google_application_credentials
-        self.sqlite_db_dir = sqlite_db_dir or os.path.join(
-            directory, "resource", "databases", "spider2-localdb"
-        )
         self._sf_semaphore = asyncio.Semaphore(16)
         self._db_info = self._build_db_info()
 
@@ -325,13 +319,13 @@ class Spider2LiteDatasetLoader:
 
     async def _build_sqlite_connector(self, db_name: str) -> SQLConnector:
         """Build a SQLite SQLConnector for a spider2-lite database."""
-        db_path = os.path.join(self.sqlite_db_dir, f"{db_name}.sqlite")
+        sqlite_db_dir = os.path.join(self.directory, "resource", "databases", "spider2-localdb")
+        db_path = os.path.join(sqlite_db_dir, f"{db_name}.sqlite")
         if not os.path.exists(db_path):
             raise FileNotFoundError(
                 f"SQLite database not found: {db_path}. "
-                "Download from https://drive.usercontent.google.com/download?"
-                "id=1coEVsCZq-Xvj9p2TnhBFoFTsY-UoYGmG and unzip into "
-                f"{self.sqlite_db_dir}/"
+                "See https://github.com/xlang-ai/Spider2/tree/main/spider2-lite#quickstart "
+                f"to download and unzip the local databases into {sqlite_db_dir}/"
             )
         url = f"sqlite+aiosqlite:///{db_path}"
         return await SQLConnector.from_url_async(
