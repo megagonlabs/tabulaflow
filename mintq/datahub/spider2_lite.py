@@ -12,7 +12,7 @@ import random
 import re
 import asyncio
 from urllib.parse import quote_plus
-from typing import Optional, ClassVar
+from typing import Optional, ClassVar, Literal
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
@@ -20,14 +20,12 @@ from mintq.datahub.base import dataset_registry
 
 logger = logging.getLogger(__name__)
 
-Backend = str  # "bigquery" | "snowflake" | "sqlite"
-
 
 @dataclasses.dataclass
 class _DBInfo:
     """Metadata for a spider2-lite database."""
 
-    backend: Backend
+    backend: Literal["bigquery", "snowflake", "sqlite"]
     bq_project_datasets: list[tuple[str, str]] = dataclasses.field(default_factory=list)
     """(project, dataset) pairs; only populated for bigquery backends."""
 
