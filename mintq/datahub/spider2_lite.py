@@ -4,6 +4,7 @@ Spider 2.0-Lite provides 547 examples across BigQuery, Snowflake, and SQLite.
 See https://spider2-sql.github.io/
 """
 
+import dataclasses
 import os
 import json
 import logging
@@ -20,6 +21,15 @@ from mintq.datahub.base import dataset_registry
 logger = logging.getLogger(__name__)
 
 Backend = str  # "bigquery" | "snowflake" | "sqlite"
+
+
+@dataclasses.dataclass
+class _DBInfo:
+    """Metadata for a spider2-lite database."""
+
+    backend: Backend
+    bq_project_datasets: list[tuple[str, str]] = dataclasses.field(default_factory=list)
+    """(project, dataset) pairs; only populated for bigquery backends."""
 
 
 SPIDER2_LITE_DATASET_INSTRUCTIONS = """
@@ -67,6 +77,31 @@ class Spider2LiteDatasetLoader:
             directory, "resource", "databases", "spider2-localdb"
         )
         self._sf_semaphore = asyncio.Semaphore(16)
+        self._db_info = self._build_db_info()
+
+    def _build_db_info(self) -> dict[str, _DBInfo]:
+        """Scan resource directories once to build a backend mapping for every db."""
+        resource_dir = os.path.join(self.directory, "resource", "databases")
+        info: dict[str, _DBInfo] = {}
+        for backend in ("bigquery", "snowflake", "sqlite"):
+            backend_dir = os.path.join(resource_dir, backend)
+            if not os.path.isdir(backend_dir):
+                continue
+            for db_name in sorted(os.listdir(backend_dir)):
+                db_path = os.path.join(backend_dir, db_name)
+                if not os.path.isdir(db_path):
+                    continue
+                bq_project_datasets: list[tuple[str, str]] = []
+                if backend == "bigquery":
+                    for entry in sorted(os.listdir(db_path)):
+                        if os.path.isdir(os.path.join(db_path, entry)) and "." in entry:
+                            project, dataset = entry.split(".", 1)
+                            bq_project_datasets.append((project, dataset))
+                info[db_name] = _DBInfo(
+                    backend=backend,
+                    bq_project_datasets=bq_project_datasets,
+                )
+        return info
 
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
@@ -169,26 +204,6 @@ class Spider2LiteDatasetLoader:
 
         return tasks
 
-    def _get_backend(self, db_name: str) -> Backend:
-        """Determine the backend for a database by checking resource directories."""
-        resource_dir = os.path.join(self.directory, "resource", "databases")
-        for backend in ("bigquery", "snowflake", "sqlite"):
-            backend_dir = os.path.join(resource_dir, backend)
-            if os.path.isdir(backend_dir) and db_name in os.listdir(backend_dir):
-                return backend
-        raise ValueError(f"Cannot determine backend for database {db_name!r}")
-
-    def _get_bq_project_datasets(self, db_name: str) -> list[tuple[str, str]]:
-        """Parse project.dataset pairs from the BigQuery resource directory."""
-        bq_dir = os.path.join(self.directory, "resource", "databases", "bigquery", db_name)
-        result = []
-        for entry in sorted(os.listdir(bq_dir)):
-            entry_path = os.path.join(bq_dir, entry)
-            if os.path.isdir(entry_path) and "." in entry:
-                project, dataset = entry.split(".", 1)
-                result.append((project, dataset))
-        return result
-
     def _load_column_descriptions(self) -> dict[tuple[str, str, str], str]:
         """Load column descriptions from resource JSON files.
 
@@ -226,9 +241,7 @@ class Spider2LiteDatasetLoader:
                                     res[(db_name, table_name, col)] = desc_str
         return res
 
-    async def _build_bq_connector(
-        self, db_name: str, project_datasets: list[tuple[str, str]]
-    ) -> SQLConnector:
+    async def _build_bq_connector(self, db_name: str, db_info: _DBInfo) -> SQLConnector:
         """Build a BigQuery SQLConnector for a spider2-lite database.
 
         Uses ``billing_project_id`` so that BigQuery jobs are billed to our
@@ -242,9 +255,9 @@ class Spider2LiteDatasetLoader:
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
 
-        primary_project = project_datasets[0][0]
-        first_dataset = project_datasets[0][1]
-        datasets = [d for p, d in project_datasets if p == primary_project]
+        primary_project = db_info.bq_project_datasets[0][0]
+        first_dataset = db_info.bq_project_datasets[0][1]
+        datasets = [d for p, d in db_info.bq_project_datasets if p == primary_project]
 
         engine_kwargs: dict = {}
         if bq_credentials_path:
@@ -321,18 +334,19 @@ class Spider2LiteDatasetLoader:
 
         connectors: dict[str, BaseSQLDBConnector] = {}
         for db_name in databases:
-            backend = self._get_backend(db_name)
-            logger.info(f"Building connector for {db_name} (backend={backend})")
+            db_info = self._db_info.get(db_name)
+            if db_info is None:
+                raise ValueError(f"No backend found for database {db_name!r}")
+            logger.info(f"Building connector for {db_name} (backend={db_info.backend})")
 
-            if backend == "bigquery":
-                project_datasets = self._get_bq_project_datasets(db_name)
-                conn = await self._build_bq_connector(db_name, project_datasets)
-            elif backend == "snowflake":
+            if db_info.backend == "bigquery":
+                conn = await self._build_bq_connector(db_name, db_info)
+            elif db_info.backend == "snowflake":
                 conn = await self._build_sf_connector(db_name)
-            elif backend == "sqlite":
+            elif db_info.backend == "sqlite":
                 conn = await self._build_sqlite_connector(db_name)
             else:
-                raise ValueError(f"Unknown backend {backend!r} for {db_name}")
+                raise ValueError(f"Unknown backend {db_info.backend!r} for {db_name}")
 
             for table in conn.schema.tables:
                 for column in table.columns:
