@@ -72,7 +72,7 @@ EVAL_STANDARD_PATCHES = {
 
 
 # Workaround until https://github.com/xlang-ai/Spider2/issues/178 is fixed.
-# (Currently, AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET is not available)
+# (Currently, AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET and NETHERLANDS_OPEN_MAP_DATA are not available)
 EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET", "NETHERLANDS_OPEN_MAP_DATA"]
 
 
