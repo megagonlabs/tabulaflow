@@ -303,6 +303,7 @@ CATEGORICAL_TYPES = [
     "VARCHAR",
     "NCHAR",
     "NVARCHAR",
+    "STRING",
     "TEXT",
     "CLOB",
     "BOOLEAN",
@@ -326,6 +327,7 @@ TEXT_TYPES = [
     "TEXT",
     "VARCHAR",
     "NVARCHAR",
+    "STRING",
     "CLOB",
 ]
 
@@ -350,6 +352,8 @@ async def build_column_async(
     col = sqlalchemy.column(column["name"])  # type: ignore
     tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(table_name, schema=schema_name)
     dtype = column["type"].__visit_name__.upper()
+    if dtype == "USER_DEFINED":
+        dtype = type(column["type"]).__name__.upper()
     nullable = column["nullable"]
 
     if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD):
