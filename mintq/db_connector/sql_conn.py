@@ -398,8 +398,8 @@ async def build_column_async(
         examples = [_convert(row[0]) for row in examples]
     else:
         # Avoids scanning a large table for distinct values while still providing diverse example values.
-        subq = select(col).select_from(tbl).where(col.isnot(None)).limit(1000).subquery()
-        examples = (await t_eng.run_query_async(select(subq.c[0]).distinct().limit(5))).result
+        subq = select(col.label("_v")).select_from(tbl).where(col.isnot(None)).limit(1000).subquery()
+        examples = (await t_eng.run_query_async(select(subq.c._v).distinct().limit(5))).result
         examples = [_convert(row[0]) for row in examples]
 
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
@@ -445,6 +445,9 @@ async def build_table_async(
     async_inspector = AsyncInspector(t_eng)
 
     col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+
+    if t_eng.engine.dialect.name == "bigquery":
+        col_dicts = [c for c in col_dicts if "." not in c["name"]]
 
     columns = await asyncio.gather(
         *[
