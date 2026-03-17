@@ -14,6 +14,7 @@ from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, Majo
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
 from mintq.config import mintq_config
+from mintq.metrics import SimpleInferenceMetricsAggregator
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pipelines.utils import bool_flag
 from mintq.utils import tqdm_gather_with_exceptions
@@ -98,7 +99,7 @@ async def ensemble_async(
 
     usages = [t.usage for t in ensembled_outputs if t.usage is not None]
 
-    return NL2QRunResult(
+    res = NL2QRunResult(
         start_time=start_time,
         end_time=end_time,
         dataset=results[0].dataset,
@@ -109,8 +110,12 @@ async def ensemble_async(
         agent=ensembler.name,
         agent_config=ensembler.config.model_dump(),
         total_usage=reduce(lambda x, y: x + y, usages) if usages else None,
+        aggregated_inference_metrics={},
         tasks=ensembled_outputs,
     )
+    for aggregator in [SimpleInferenceMetricsAggregator()]:
+        res.aggregated_inference_metrics.update(aggregator.aggregate(res))
+    return res
 
 
 def parse_ensembler(args: argparse.Namespace) -> Ensembler:
