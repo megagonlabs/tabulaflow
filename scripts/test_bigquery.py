@@ -3,6 +3,7 @@
 
 import asyncio
 from mintq.datahub.spider2_lite import Spider2LiteDatasetLoader
+from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 
 async def main():
@@ -10,11 +11,13 @@ async def main():
     connectors = await loader.get_db_connectors_async("test", databases=["austin"])
     conn = connectors["austin"]
     schema = conn.schema
-    print(f"Database: {schema.name}")
-    print(f"Tables: {len(schema.tables)}")
-    for table in schema.tables:
-        col_names = [c.name for c in table.columns]
-        print(f"  {table.schema_name}.{table.name} ({len(table.columns)} cols): {col_names[:5]}...")
+
+    formatter = SQLDDLSchemaFormatter()
+    formatted = formatter.format(schema, add_description=True)
+
+    with open("log/schema.out", "w") as f:
+        f.write(formatted)
+    print(f"Wrote {len(schema.tables)} tables to log/schema.out")
 
 
 if __name__ == "__main__":
