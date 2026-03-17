@@ -1,3 +1,9 @@
+"""Spider 2.0 Snowflake dataset loader.
+
+Spider 2.0 Snowflake provides 547 examples across 152 Snowflake databases.
+See https://spider2-sql.github.io/
+"""
+
 import os
 import json
 import logging
@@ -72,6 +78,8 @@ EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET", "NETHERLANDS_OPEN_MAP_
 
 @dataset_registry.register
 class Spider2SnowDatasetLoader:
+    """Loader for Spider 2.0 Snowflake."""
+
     name: ClassVar = "spider2-snow"
     splits: ClassVar = ["test"]
 
@@ -82,6 +90,15 @@ class Spider2SnowDatasetLoader:
         sf_password: Optional[str] = None,
         sf_account: Optional[str] = None,
     ):
+        """Initializes the Spider 2.0 Snowflake dataset loader.
+
+        Args:
+            directory: Path to the spider2-snow data directory.
+            sf_user: Snowflake username. Falls back to ``SF_USER`` env var.
+            sf_password: Snowflake password. Falls back to ``SF_PASSWORD`` env var.
+            sf_account: Snowflake account identifier. Falls back to ``SF_ACCOUNT``
+                env var.
+        """
         self.directory = directory
         self.sf_user = sf_user
         self.sf_password = sf_password
@@ -91,6 +108,12 @@ class Spider2SnowDatasetLoader:
         self._dbms_semaphore = asyncio.Semaphore(16)
 
     def _load_column_descriptions(self) -> dict[tuple[str, str, str, str], str]:
+        """Load column descriptions from resource JSON files.
+
+        Returns:
+            Mapping from (db_name, schema_name, table_name, column_name) to
+            description.
+        """
         res: dict[tuple[str, str, str, str], str] = {}
         directory = os.path.join(self.directory, "resource", "databases")
         for db_name in os.listdir(directory):
@@ -239,7 +262,7 @@ class Spider2SnowDatasetLoader:
             )
             schemas.append(db_conn.schema)
 
-        # We set the per-db concurrency to 2 because there are 151 databases so we can have up to 151 x 2 = 302 concurrent connections
+        # We set the per-db concurrency to 2 because there are 152 databases so we can have up to 152 x 2 = 304 concurrent connections
         db_connectors = [
             await SQLConnector.from_url_async(
                 f"spider2-snow+{name}",
