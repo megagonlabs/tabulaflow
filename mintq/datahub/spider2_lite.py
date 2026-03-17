@@ -21,6 +21,10 @@ from mintq.datahub.base import dataset_registry
 logger = logging.getLogger(__name__)
 
 
+# Match spider2-snow behavior for unavailable Snowflake databases.
+EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET", "NETHERLANDS_OPEN_MAP_DATA"]
+
+
 @dataclasses.dataclass
 class _DBInfo:
     """Metadata for a spider2-lite database."""
@@ -123,6 +127,7 @@ class Spider2LiteDatasetLoader:
 
         with open(jsonl_path, "r") as f:
             dbs = list(dict.fromkeys([json.loads(line)["db"] for line in f]))
+            dbs = [db for db in dbs if db not in EXCLUDE_DBS]
         return dbs
 
     async def get_tasks_async(self, split: str, databases: list[str] | None = None) -> list[SimpleNL2QTask]:
