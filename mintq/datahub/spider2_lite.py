@@ -251,7 +251,7 @@ class Spider2LiteDatasetLoader:
                                     res[(db_name, table_name, col)] = desc_str
         return res
 
-    async def _build_bq_connector(self, db_name: str, db_info: _DBInfo) -> SQLConnector:
+    async def _build_bigquery_connector(self, db_name: str, db_info: _DBInfo) -> SQLConnector:
         """Build a BigQuery SQLConnector for a spider2-lite database.
 
         Uses ``billing_project_id`` so that BigQuery jobs are billed to our
@@ -296,7 +296,7 @@ class Spider2LiteDatasetLoader:
             **engine_kwargs,
         )
 
-    async def _build_sf_connector(self, db_name: str) -> SQLConnector:
+    async def _build_snowflake_connector(self, db_name: str) -> SQLConnector:
         """Build a Snowflake SQLConnector for a spider2-lite database."""
         sf_user = self.sf_user or os.environ["SF_USER"]
         sf_password = self.sf_password or os.environ["SF_PASSWORD"]
@@ -360,9 +360,9 @@ class Spider2LiteDatasetLoader:
             logger.info(f"Building connector for {db_name} (backend={db_info.backend})")
 
             if db_info.backend == "bigquery":
-                conn = await self._build_bq_connector(db_name, db_info)
+                conn = await self._build_bigquery_connector(db_name, db_info)
             elif db_info.backend == "snowflake":
-                conn = await self._build_sf_connector(db_name)
+                conn = await self._build_snowflake_connector(db_name)
             elif db_info.backend == "sqlite":
                 conn = await self._build_sqlite_connector(db_name)
             else:

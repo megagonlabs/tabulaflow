@@ -230,7 +230,7 @@ class Spider2SnowDatasetLoader:
 
         return tasks
 
-    async def _build_sf_connector(self, db_name: str) -> SQLConnector:
+    async def _build_snowflake_connector(self, db_name: str) -> SQLConnector:
         """Build a Snowflake SQLConnector for a spider2-snow database."""
         sf_user = self.sf_user or os.environ["SF_USER"]
         sf_password = self.sf_password or os.environ["SF_PASSWORD"]
@@ -264,7 +264,7 @@ class Spider2SnowDatasetLoader:
 
         connectors: dict[str, BaseSQLDBConnector] = {}
         for db_name in databases:
-            conn = await self._build_sf_connector(db_name)
+            conn = await self._build_snowflake_connector(db_name)
 
             for table in conn.schema.tables:
                 for column in table.columns:
