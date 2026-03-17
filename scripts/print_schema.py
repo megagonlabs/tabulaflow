@@ -13,22 +13,23 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description="Print a database schema from a dataset or a cached JSON file.")
 
     # Source: either --file or --dataset + --database
-    source = parser.add_mutually_exclusive_group(required=True)
+    parser.add_argument("--dataset", default=mintq_config.dataset, help="Dataset name (e.g. bird-sql, spider2-snow, beaver)")
+    parser.add_argument("--split", default=mintq_config.split, help="Dataset split (auto-detected if omitted)")
+    source = parser.add_mutually_exclusive_group()
     source.add_argument(
         "--file", help="Path to a cached schema JSON file (e.g. cache/schemas/spider2-snow+NOAA_DATA.json)"
     )
-    source.add_argument("--dataset", help="Dataset name (e.g. bird-sql, spider2-snow, beaver)")
-
-    parser.add_argument("--split", default=None, help="Dataset split (auto-detected if omitted)")
-    parser.add_argument("--database", default=None, help="Database name (required when using --dataset)")
+    source.add_argument("--database", default=None, help="Database name (required when using --dataset)")
     parser.add_argument("--formatter", default="sql_ddl", help="Schema formatter (default: sql_ddl)")
     parser.add_argument("--no_compress", action="store_true", help="Do not compress schema before formatting")
     parser.add_argument("--no_description", action="store_true", help="Omit column descriptions")
     parser.add_argument("--no_cache", action="store_true", help="Do not load schema from cache")
     args = parser.parse_args()
 
-    if args.dataset and not args.database:
-        parser.error("--database is required when using --dataset")
+    if not args.file and not args.database:
+        parser.error("--file or --database is required")
+    if args.database and not args.dataset:
+        parser.error("--dataset is required when using --database (set MINTQ_DATASET env var or pass explicitly)")
 
     print(args)
     print()
