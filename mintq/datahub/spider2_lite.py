@@ -255,9 +255,15 @@ class Spider2LiteDatasetLoader:
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
 
+        projects = set(p for p, d in db_info.bq_project_datasets)
+        if len(projects) > 1:
+            raise ValueError(
+                f"Multiple BigQuery projects not supported for {db_name}: {projects}"
+            )
+
         primary_project = db_info.bq_project_datasets[0][0]
         first_dataset = db_info.bq_project_datasets[0][1]
-        datasets = [d for p, d in db_info.bq_project_datasets if p == primary_project]
+        datasets = [d for _, d in db_info.bq_project_datasets]
 
         engine_kwargs: dict = {}
         if bq_credentials_path:
