@@ -238,7 +238,7 @@ class SQLDDLSchemaFormatter:
         # Add example values as comment
         if self.include_examples and column.examples:
             is_categorical = (
-                column.dtype in ("TEXT", "VARCHAR", "ENUM")
+                column.dtype in ("TEXT", "VARCHAR", "STRING", "ENUM")
                 and column.num_unique is not None
                 and column.unique_ratio is not None
                 and (0 < column.num_unique <= 10 or (0 < column.num_unique <= 20 and column.unique_ratio < 0.01))
