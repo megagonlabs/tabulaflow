@@ -261,8 +261,7 @@ class Spider2LiteDatasetLoader:
                 f"Multiple BigQuery projects not supported for {db_name}: {projects}"
             )
 
-        primary_project = db_info.bq_project_datasets[0][0]
-        first_dataset = db_info.bq_project_datasets[0][1]
+        project = db_info.bq_project_datasets[0][0]
         datasets = [d for _, d in db_info.bq_project_datasets]
 
         engine_kwargs: dict = {}
@@ -270,7 +269,7 @@ class Spider2LiteDatasetLoader:
             engine_kwargs["credentials_path"] = bq_credentials_path
         engine_kwargs["billing_project_id"] = billing_project
 
-        url = f"bigquery://{primary_project}/{first_dataset}"
+        url = f"bigquery://{project}/{datasets[0]}"
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
             db_name,
