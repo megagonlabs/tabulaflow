@@ -8,8 +8,8 @@ from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 async def main():
     loader = Spider2LiteDatasetLoader()
-    connectors = await loader.get_db_connectors_async("test", databases=["austin"])
-    conn = connectors["austin"]
+    connectors = await loader.get_db_connectors_async("test", databases=["ga4"])
+    conn = connectors["ga4"]
     schema = conn.schema
 
     formatter = SQLDDLSchemaFormatter()
