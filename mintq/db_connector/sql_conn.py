@@ -388,8 +388,10 @@ async def build_column_async(
     is_view: bool = False,
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLColumnSchema:
-    col = sqlalchemy.column(column["name"])  # type: ignore
-    tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(table_name, schema=schema_name)
+    tbl: sqlalchemy.sql.expression.FromClause = sqlalchemy.table(
+        table_name, sqlalchemy.column(column["name"]), schema=schema_name
+    )
+    col = tbl.c[column["name"]]
     dtype = column["type"].__visit_name__.upper()
     if dtype == "USER_DEFINED":
         dtype = type(column["type"]).__name__.upper()
@@ -409,6 +411,7 @@ async def build_column_async(
                     tbl = tbl.tablesample(func.bernoulli(sample_pct))
                 else:
                     tbl = tbl.tablesample(func.system(sample_pct))
+                col = tbl.c[column["name"]]
                 sampled_rows = int(sample_pct / 100 * num_rows)
 
         num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
