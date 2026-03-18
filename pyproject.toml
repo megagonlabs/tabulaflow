@@ -8,7 +8,7 @@ authors = [{ name = "Yanlin Feng", email = "yanlinf23@gmail.com" }]
 version = "0.1.0"
 description = "Minimalist Text to Query Toolkit"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 dependencies = [
     "aiolimiter>=1.2.1",
     "aiosqlite>=0.21.0",
