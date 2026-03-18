@@ -375,7 +375,7 @@ DISTINCT_SAFE_TYPES = {
 
 # Timeout (seconds) for per-table row-count queries during schema building.
 # Views backed by expensive joins can take hours; this prevents hangs.
-_SCHEMA_COUNT_TIMEOUT = 60
+_SCHEMA_COUNT_TIMEOUT = 120
 
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 1000
@@ -391,7 +391,7 @@ async def build_column_async(
     column: dict[str, Any],
     table_name: str,
     schema_name: str | None,
-    num_rows: int,
+    num_rows: int | None,
     is_view: bool = False,
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLColumnSchema:
@@ -405,7 +405,12 @@ async def build_column_async(
     nullable = column["nullable"]
     can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
-    if num_rows == 0 or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD):
+    skip_stats = (
+        num_rows is None
+        or num_rows == 0
+        or (column_stats_mode == "skip_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD)
+    )
+    if skip_stats:
         null_ratio = num_unique = unique_ratio = None
     else:
         sampled_rows = num_rows
@@ -439,7 +444,7 @@ async def build_column_async(
         unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
 
     examples: list[Any]
-    if num_rows == 0:
+    if num_rows is not None and num_rows == 0:
         examples = []
     elif dtype in CATEGORICAL_TYPES and num_unique is not None:
         examples = (
@@ -462,7 +467,7 @@ async def build_column_async(
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
     # For text columns (e.g. SQLite TEXT), heuristically detect JSON content from examples.
     json_schema: dict[str, Any] | None = None
-    if num_rows > 0:
+    if num_rows is None or num_rows > 0:
         is_json_type = dtype in JSON_TYPES
         is_text_with_json = dtype in TEXT_TYPES and looks_like_json(examples)
         logger.debug(
@@ -507,7 +512,19 @@ async def build_table_async(
         return None
 
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    num_rows = (await t_eng.run_query_async(select(func.count()).select_from(tbl))).result[0][0]
+    try:
+        num_rows = (
+            await t_eng.run_query_async(
+                select(func.count()).select_from(tbl),
+                timeout=_SCHEMA_COUNT_TIMEOUT,
+            )
+        ).result[0][0]
+    except (TimeoutError, asyncio.TimeoutError):
+        logger.warning(
+            f"COUNT(*) on {schema_name}.{table_name} timed out after "
+            f"{_SCHEMA_COUNT_TIMEOUT}s; skipping column stats"
+        )
+        num_rows = None
 
     columns = await asyncio.gather(
         *[
