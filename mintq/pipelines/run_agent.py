@@ -375,7 +375,7 @@ async def main_async() -> None:
         raise ValueError(f"No tasks loaded from {args.dataset} ({args.split})")
 
     few_shot_dataset = None
-    if args.num_few_shot_examples > 0:
+    if args.num_few_shot_examples is not None and args.num_few_shot_examples > 0:
         t0 = time.time()
         few_shot_dataset_loader = dataset_registry.get_class(args.few_shot_dataset)()
         few_shot_dataset = await few_shot_dataset_loader.get_split_async(args.few_shot_split)
