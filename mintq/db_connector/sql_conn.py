@@ -505,10 +505,7 @@ async def build_table_async(
     try:
         col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
     except Exception:
-        logger.warning(
-            f"Skipping table {schema_name}.{table_name}: failed to introspect columns",
-            exc_info=True,
-        )
+        logger.warning(f"Skipping table {schema_name}.{table_name}: failed to introspect columns")
         return None
 
     if t_eng.engine.dialect.name == "bigquery":
@@ -528,8 +525,7 @@ async def build_table_async(
         ).result[0][0]
     except (TimeoutError, asyncio.TimeoutError):
         logger.warning(
-            f"COUNT(*) on {schema_name}.{table_name} timed out after "
-            f"{_SCHEMA_COUNT_TIMEOUT}s; skipping column stats"
+            f"COUNT(*) on {schema_name}.{table_name} timed out after {_SCHEMA_COUNT_TIMEOUT}s; skipping column stats"
         )
         num_rows = None
 
