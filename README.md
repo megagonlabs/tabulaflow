@@ -831,23 +831,27 @@ March 16
 - [x] Support spider2-lite
 
 March 17
-- [ ] Cache spider2-lite schemas
-- [ ] Test spider2-lite
-- [ ] Fix mintq.__init__.py
+- [x] Cache spider2-lite schemas
+  - [x] Fix cannot distinct
+  - [x] Fix unqualified columns
+  - [x] Fix json schema for struct and array columns
+  - [x] Fix json stringification and mixed type columns
+- [x] RealScoreAggregator
+- [x] Fix mintq.__init__.py -> mintq.configure()
 
-- [ ] Fix connection pool
+March 18
+- [ ] Exp 258: gpt-5.4-mini on spider2-snow
+- [ ] Test spider2-lite
+
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
 - [ ] partial trajectories on error
-
+- [ ] column descriptions all used
 
 - [ ] Add column description during column expansion in sql_agent.py?
 - [ ] Support official snowflake mcp: https://github.com/Snowflake-Labs/mcp
 - [ ] Update schema preprocessor - fix gas station price
-- [ ] "rates and ratio not multiplied by 100" ignored by gpt-4.1
-- [ ] Test GPT-5, gemini-3-flash/pro
-
 - [ ] Caching for embedding models
 - [ ] Fix schema linking evaluation / include FK columns
 - [ ] Re-evaluate not_used
