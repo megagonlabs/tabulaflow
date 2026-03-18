@@ -382,7 +382,6 @@ class Spider2LiteDatasetLoader:
             db_info = self._db_info.get(db_name)
             if db_info is None:
                 raise ValueError(f"No backend found for database {db_name!r}")
-            logger.info(f"Building connector for {db_name} (backend={db_info.backend})")
 
             if db_info.backend == "bigquery":
                 conn = await self._build_bigquery_connector(db_name, db_info)
