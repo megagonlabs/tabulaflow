@@ -502,7 +502,14 @@ async def build_table_async(
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables",
 ) -> SQLTableSchema | None:
     async_inspector = AsyncInspector(t_eng)
-    col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+    try:
+        col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
+    except Exception:
+        logger.warning(
+            f"Skipping table {schema_name}.{table_name}: failed to introspect columns",
+            exc_info=True,
+        )
+        return None
 
     if t_eng.engine.dialect.name == "bigquery":
         col_dicts = [c for c in col_dicts if "." not in c["name"]]
