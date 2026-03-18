@@ -385,10 +385,8 @@ class Spider2LiteDatasetLoader:
             logger.info(f"Building connector for {db_name} (backend={db_info.backend})")
 
             if db_info.backend == "bigquery":
-                continue
                 conn = await self._build_bigquery_connector(db_name, db_info)
             elif db_info.backend == "snowflake":
-                continue
                 conn = await self._build_snowflake_connector(db_name)
             elif db_info.backend == "sqlite":
                 conn = await self._build_sqlite_connector(db_name)
