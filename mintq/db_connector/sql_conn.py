@@ -504,8 +504,8 @@ async def build_table_async(
     async_inspector = AsyncInspector(t_eng)
     try:
         col_dicts = await async_inspector.get_columns(table_name, schema=schema_name)
-    except Exception:
-        logger.warning(f"Skipping table {schema_name}.{table_name}: failed to introspect columns")
+    except Exception as e:
+        logger.warning(f"Skipping table {schema_name}.{table_name}: failed to introspect columns: {e}")
         return None
 
     if t_eng.engine.dialect.name == "bigquery":
