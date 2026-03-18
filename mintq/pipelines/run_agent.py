@@ -115,6 +115,9 @@ async def run_agent_async(
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
+    if Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
+        logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
+
     start_time = datetime.datetime.now()
     task_outputs = []
     num_failed = 0
@@ -323,9 +326,6 @@ async def main_async() -> None:
         else:
             shutil.rmtree(args.result_dir)
     os.makedirs(args.result_dir)
-
-    if Usage.create(args.llm, 1, 1000000, 1000000).api_cost_usd == 0:
-        print(f"Warning: API cost for {args.llm} is 0.0. API cost calculation might not be supported for {args.llm}.")
 
     t0 = time.time()
     kwargs = {}
