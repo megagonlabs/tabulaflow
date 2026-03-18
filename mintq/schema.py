@@ -65,9 +65,9 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
     """Sanitize object-dtype columns so the DataFrame is safe for Arrow/Feather and JSON.
 
     Handles two classes of problems that database drivers can produce:
-    * **Lone surrogates** in ``str`` values – invalid UTF-8 that crashes Feather and
+    * **Lone surrogates** in ``str`` values - invalid UTF-8 that crashes Feather and
       pydantic-core's JSON encoder.  Re-encoded via ``errors="replace"`` (U+FFFD).
-    * **Oversized Python ints** – values outside the int64/uint64 range that Arrow
+    * **Oversized Python ints** - values outside the int64/uint64 range that Arrow
       cannot represent as C longs.  The entire column is cast to ``str`` to avoid
       mixed str/int types that Arrow also rejects.
 
@@ -100,6 +100,39 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
             df = df.copy()
             copied = True
         df[col] = sanitized
+    return df
+
+
+def _json_stringify_nested_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """JSON-stringify object columns containing dicts/lists.
+
+    Feather mangles nested structures on round-trip (merges dict keys, converts
+    lists to ndarray). Converting to JSON strings preserves the original values.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if df[col].dtype != object:
+            continue
+        if df[col].dropna().map(lambda x: isinstance(x, (dict, list))).any():
+            df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+    return df
+
+
+def _stringify_mixed_type_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Stringify object columns with mixed scalar types (e.g. ints + strings).
+
+    Arrow can't infer a single type for such columns. Only touches columns
+    that contain both string and non-string scalars. Preserves actual nulls.
+    """
+    df = df.copy()
+    for col in df.columns:
+        if df[col].dtype != object:
+            continue
+        sample = df[col].dropna()
+        if sample.empty or sample.map(lambda x: isinstance(x, str)).all():
+            continue
+        if sample.map(lambda x: isinstance(x, str)).any():
+            df[col] = df[col].where(df[col].isna(), df[col].astype(str))
     return df
 
 
@@ -140,12 +173,20 @@ def _serialize_dataframe_legacy(df: pd.DataFrame | None) -> dict[str, Any] | Non
     }
 
 
+def _sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
+    """Sanitize a DataFrame for consistent serialization and display."""
+    df = _deduplicate_columns(df)
+    df = _sanitize_df_strings(df)
+    df = _json_stringify_nested_columns(df)
+    df = _stringify_mixed_type_columns(df)
+    return df
+
+
 def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     """Serialize a DataFrame as Feather bytes in a single JSON payload."""
     if df is None:
         return None
     buffer = io.BytesIO()
-    # preserve_index=True keeps non-trivial indexes intact through round-trip.
     feather.write_feather(df, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
@@ -257,6 +298,12 @@ class SQLTableSchema(BaseModel):
     @classmethod
     def deserialize_df(cls, v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
         return _deserialize_dataframe(v)
+
+    @model_validator(mode="after")
+    def sanitize_sampled_df(self) -> "SQLTableSchema":
+        if self.sampled_df is not None:
+            self.sampled_df = _sanitize_df(self.sampled_df)
+        return self
 
     def trim(
         self,
@@ -715,8 +762,7 @@ class ExecResult(BaseModel):
     @model_validator(mode="after")
     def sanitize_df(self) -> "ExecResult":
         if self.df is not None:
-            self.df = _deduplicate_columns(self.df)
-            self.df = _sanitize_df_strings(self.df)
+            self.df = _sanitize_df(self.df)
         return self
 
     @model_validator(mode="after")
