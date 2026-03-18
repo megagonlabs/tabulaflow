@@ -1,11 +1,11 @@
 # mypy: ignore-errors
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import AmbigNL2QTask
 import os
 
 
 def main():
-    mintq_config.setup_logging()
+    mintq.configure()
     latency_1 = []
     for qid in os.listdir("data/ARCS/tasks_1"):
         if qid.endswith(".json"):

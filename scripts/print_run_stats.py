@@ -3,7 +3,7 @@ import argparse
 import asyncio
 import os
 from tabulate import tabulate
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import NL2QRunResult, StructuredAmbigNL2QTaskOutput
 from mintq.utils import dict_to_df
 
@@ -53,7 +53,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

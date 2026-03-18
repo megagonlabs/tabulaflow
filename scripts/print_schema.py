@@ -2,6 +2,7 @@ import asyncio
 import argparse
 import os
 import time
+import mintq
 from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.formatters import formatter_registry
@@ -34,7 +35,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     t0 = time.time()
 

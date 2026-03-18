@@ -839,7 +839,7 @@ March 17
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
-
+- [ ] partial trajectories on error
 
 
 - [ ] Add column description during column expansion in sql_agent.py?

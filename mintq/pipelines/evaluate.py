@@ -4,6 +4,7 @@ import os
 import time
 from tqdm.asyncio import tqdm_asyncio
 from mintq import metric_registry, dataset_registry
+import mintq
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.db_connector import NL2QDBConnector
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
@@ -15,7 +16,6 @@ from mintq.metrics.aggregators import (
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
 )
-from mintq.config import mintq_config
 from mintq.utils import pprint_dict
 
 
@@ -65,7 +65,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

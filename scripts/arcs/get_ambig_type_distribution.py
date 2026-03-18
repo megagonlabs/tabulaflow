@@ -1,10 +1,10 @@
-from mintq.config import mintq_config
+import mintq
 from mintq.datahub.arcs import ARCSDatasetLoader
 import asyncio
 
 
 async def main():
-    mintq_config.setup_logging()
+    mintq.configure()
     dataset_loader = ARCSDatasetLoader()
     dataset = await dataset_loader.get_split_async("test")
     # tasks = [task for task in dataset.tasks if task.qid.endswith("-0")]

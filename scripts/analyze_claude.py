@@ -1,8 +1,8 @@
 import os
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import NL2QRunResult
 
-mintq_config.setup_logging()
+mintq.configure()
 
 result_dir = "output/115_o4-mini-structured/"
 

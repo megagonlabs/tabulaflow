@@ -1,6 +1,6 @@
 import argparse
 import os
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import NL2QRunResult
 
 
@@ -13,7 +13,7 @@ def main():
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     with open(os.path.join(args.result_dir_a, "result.json"), "r") as f:
         result_a = NL2QRunResult.model_validate_json(f.read())

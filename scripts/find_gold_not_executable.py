@@ -2,6 +2,7 @@ import asyncio
 import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
+import mintq
 from mintq.config import mintq_config
 from mintq.datahub import dataset_registry
 from mintq.pipelines.populate_exec_results import populate_task_async
@@ -16,7 +17,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

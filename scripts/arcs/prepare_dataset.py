@@ -10,7 +10,7 @@ import sqlparse
 import asyncio
 from pydantic import TypeAdapter
 from tabulate import tabulate
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
 from mintq.datahub import dataset_registry
 from mintq.db_connector import SQLConnector
@@ -247,7 +247,7 @@ async def main():
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     # If output_dir exists and is not empty, exit
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):

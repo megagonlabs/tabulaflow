@@ -7,6 +7,7 @@ import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
 from mintq import dataset_registry
+import mintq
 from mintq.preprocessors.base import NL2QPreprocessor, preprocessor_registry
 from mintq.config import mintq_config
 from mintq.schema import NL2QDataset
@@ -91,7 +92,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     os.environ["MINTQ_PREPROCESSOR_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_PREPROCESSOR_CACHE_REQUIRED"] = "0"

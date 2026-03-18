@@ -1,13 +1,13 @@
 import asyncio
 import os
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import NL2QRunResult
 from mintq.db_connector import SQLConnector
 from mintq.datahub import BirdSQLDatasetLoader
 
 
 async def main() -> None:
-    mintq_config.setup_logging()
+    mintq.configure()
     result_dir = "output/152_gpt-5-mini-minimal/"
     with open(os.path.join(result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

@@ -10,6 +10,7 @@ import logging
 import litellm
 import traceback
 from mintq import agent_registry, dataset_registry
+import mintq
 from mintq.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
 from mintq.utils import pprint_dict, tqdm_gather_with_exceptions
 from mintq.pipelines.utils import bool_flag
@@ -303,7 +304,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     ##### Remove #####
     is_a199_flag = False

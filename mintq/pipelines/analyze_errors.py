@@ -8,8 +8,8 @@ from typing import Literal
 from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
+import mintq
 from mintq.schema import NL2QRunResult, Usage, NL2QTaskOutput
-from mintq.config import mintq_config
 from mintq.pipelines.utils import bool_flag
 
 
@@ -341,7 +341,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

@@ -9,7 +9,7 @@ from sqlalchemy import (
     insert,
 )
 import os
-from mintq.config import mintq_config
+import mintq
 from mintq.db_connector import SQLConnector
 from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from mintq.schema import SimpleNL2QTask, GoldQuery
@@ -55,7 +55,7 @@ def create_db(db_path: str) -> None:
 
 
 async def main() -> None:
-    mintq_config.setup_logging()
+    mintq.configure()
     os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
     db_path = "output/test.db"
     create_db(db_path)

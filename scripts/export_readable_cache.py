@@ -1,5 +1,6 @@
 import argparse
 import os
+import mintq
 from mintq.config import mintq_config
 from mintq.preprocessors.db_summarizer import DBSummary
 from mintq.schema import SQLSchema
@@ -14,7 +15,7 @@ def main() -> None:
     parser.add_argument("--output_dir", default="readable_cache/")
     args = parser.parse_args()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     input_dir = os.path.join(mintq_config.cache_dir, "schemas")
     output_dir = os.path.join(args.output_dir, "schemas")

@@ -1,7 +1,7 @@
 import math
 import os
 from typing import Any
-from mintq.config import mintq_config
+import mintq
 from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
 from tabulate import tabulate
@@ -93,7 +93,7 @@ EXPS = [
 TALBE_FMT = "github"
 
 
-mintq_config.setup_logging()
+mintq.configure()
 
 for exp in EXPS:
     assert os.path.exists(os.path.join("output", "paper", exp, "result.json")), f"Result file not found for {exp}"

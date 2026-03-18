@@ -241,15 +241,6 @@ class MintqConfig:
         values = ", ".join(f"{k}={v!r}" for k, v in props.items())
         return f"MintqConfig({values})"
 
-    def setup_logging(self) -> None:
-        """Configure logging for the mintq package.
-
-        Sets the root logger to WARNING and the ``mintq`` logger to the level
-        specified by ``MINTQ_LOG_LEVEL`` (default ``WARNING``).
-        """
-        logging.basicConfig(level=logging.WARNING)
-        logging.getLogger("mintq").setLevel(self.log_level)
-
     def reload_from_env(self) -> None:
         """Re-validate the config from environment variables."""
         self._validate()

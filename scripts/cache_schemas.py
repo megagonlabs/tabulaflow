@@ -3,6 +3,7 @@ import time
 import os
 import asyncio
 from mintq.datahub import dataset_registry
+import mintq
 from mintq.config import mintq_config
 
 
@@ -16,7 +17,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "1"
     os.environ["MINTQ_SCHEMA_CACHE_REQUIRED"] = "0"

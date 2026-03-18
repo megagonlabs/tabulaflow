@@ -2,14 +2,14 @@ import time
 import asyncio
 import json
 import os
-from mintq.config import mintq_config
+import mintq
 from mintq.db_connector.snowflake_conn import SnowflakeConnector
 from mintq.visualization import er_diagram_to_graphviz
 from mintq.metadata_synthesizer import LLMERDiagramSynthesizer
 
 
 async def main() -> None:
-    mintq_config.setup_logging()
+    mintq.configure()
     t0 = time.time()
     connector = SnowflakeConnector.from_credentials_async(
         "AIRLINES",

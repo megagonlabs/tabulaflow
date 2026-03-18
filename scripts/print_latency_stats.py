@@ -1,11 +1,11 @@
 # mypy: ignore-errors
 import asyncio
-from mintq.config import mintq_config
+import mintq
 from mintq.datahub import dataset_registry
 
 
 async def main() -> None:
-    mintq_config.setup_logging()
+    mintq.configure()
 
     latency = []
     dataset_loader = dataset_registry.get_class("arcs")()

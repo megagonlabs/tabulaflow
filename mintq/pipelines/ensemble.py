@@ -10,10 +10,10 @@ from functools import reduce
 from typing import Any
 
 from mintq import dataset_registry
+import mintq
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
-from mintq.config import mintq_config
 from mintq.metrics import SimpleInferenceMetricsAggregator
 from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pipelines.utils import bool_flag
@@ -170,7 +170,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    mintq_config.setup_logging()
+    mintq.configure()
 
     if os.path.exists(args.output_dir):
         if not args.overwrite:
