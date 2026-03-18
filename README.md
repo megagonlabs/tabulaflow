@@ -840,8 +840,14 @@ March 17
 - [x] Fix mintq.__init__.py -> mintq.configure()
 
 March 18
-- [ ] Exp 258: gpt-5.4-mini on spider2-snow
-- [ ] Test spider2-lite
+- [x] Exp 258: gpt-5.4-mini on spider2-snow
+- [ ] Exp 259: deepseek-r1 on spider2-snow
+- [x] Cache spider2-lite schemas
+- [x] Update python and litellm
+- [ ] Update spider2-lite instructions
+  - [ ] Quoting identifiers for snowflake?
+- [ ] Exp 261: gpt-5-mini on spider2-lite
+
 
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
