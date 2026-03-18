@@ -15,9 +15,22 @@ format:
 lint:
 	uv run ruff check .
 
+PYTHON_VERSIONS := 3.11 3.12 3.13
+
 .PHONY: test
 test:
 	MINTQ_SCHEMA_CACHE_ENABLED=0 MINTQ_SCHEMA_CACHE_REQUIRED=0 MINTQ_PREPROCESSOR_CACHE_ENABLED=0 MINTQ_PREPROCESSOR_CACHE_REQUIRED=0 uv run pytest -s tests/
+
+.PHONY: test-all-python
+test-all-python:
+	@set -e; \
+	for v in $(PYTHON_VERSIONS); do \
+		echo "=== Python $$v ==="; \
+		MINTQ_SCHEMA_CACHE_ENABLED=0 MINTQ_SCHEMA_CACHE_REQUIRED=0 MINTQ_PREPROCESSOR_CACHE_ENABLED=0 MINTQ_PREPROCESSOR_CACHE_REQUIRED=0 uv run --python $$v pytest -s tests/; \
+	done; \
+	echo "=== Restoring default venv ==="; \
+	uv run --python $$(cat .python-version) python --version; \
+	echo "=== All Python versions passed ==="
 
 .PHONY: exp
 exp:
