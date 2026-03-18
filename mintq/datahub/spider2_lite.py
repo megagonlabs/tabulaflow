@@ -28,6 +28,12 @@ EXCLUDE_DBS = [
     "open_targets_genetics_1",  # BigQuery dataset deprecated July 2025
 ]
 
+# sqlite/ directory names that differ from the canonical JSONL db names.
+_SQLITE_DIR_ALIASES: dict[str, str] = {
+    "DB_IMDB": "Db-IMDB",
+    "SQLITE_SAKILA": "sqlite-sakila",
+}
+
 
 @dataclasses.dataclass
 class _DBInfo:
@@ -119,6 +125,11 @@ class Spider2LiteDatasetLoader:
                     backend=backend,
                     bq_project_datasets=bq_project_datasets,
                 )
+
+        for old, new in _SQLITE_DIR_ALIASES.items():
+            if old in info and new not in info:
+                info[new] = info.pop(old)
+
         return info
 
     def get_databases(self, split: str) -> list[str]:
@@ -235,10 +246,15 @@ class Spider2LiteDatasetLoader:
             backend_dir = os.path.join(resource_dir, backend)
             if not os.path.isdir(backend_dir):
                 continue
-            for db_name in os.listdir(backend_dir):
-                db_path = os.path.join(backend_dir, db_name)
+            for dir_name in os.listdir(backend_dir):
+                db_path = os.path.join(backend_dir, dir_name)
                 if not os.path.isdir(db_path):
                     continue
+                db_name = (
+                    _SQLITE_DIR_ALIASES.get(dir_name, dir_name)
+                    if backend == "sqlite"
+                    else dir_name
+                )
                 for root, _dirs, files in os.walk(db_path):
                     for fname in files:
                         if not fname.endswith(".json"):
@@ -369,8 +385,10 @@ class Spider2LiteDatasetLoader:
             logger.info(f"Building connector for {db_name} (backend={db_info.backend})")
 
             if db_info.backend == "bigquery":
+                continue
                 conn = await self._build_bigquery_connector(db_name, db_info)
             elif db_info.backend == "snowflake":
+                continue
                 conn = await self._build_snowflake_connector(db_name)
             elif db_info.backend == "sqlite":
                 conn = await self._build_sqlite_connector(db_name)
