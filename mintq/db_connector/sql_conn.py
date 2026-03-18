@@ -373,6 +373,10 @@ DISTINCT_SAFE_TYPES = {
     "BYTES",
 }
 
+# Timeout (seconds) for per-table row-count queries during schema building.
+# Views backed by expensive joins can take hours; this prevents hangs.
+_SCHEMA_COUNT_TIMEOUT = 60
+
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 1000
 

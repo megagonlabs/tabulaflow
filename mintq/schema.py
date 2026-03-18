@@ -653,7 +653,6 @@ def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_reques
     except Exception:
         pass
 
-    logger.info(f"Unable to calculate API cost for {llm}, setting to 0.0")
     return Decimal(0)
 
 
