@@ -10,6 +10,7 @@ from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
     SimpleAverageAggregator,
+    RealScoreAggregator,
     ByDBAggregator,
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
@@ -96,6 +97,7 @@ async def main_async() -> None:
 
     metric_aggregators: list[BaseMetricAggregator] = [
         SimpleAverageAggregator(),
+        RealScoreAggregator(),
         ByDBAggregator(),
         ByAmbigPointNumAggregator(),
         ByAmbrosiaTaxonomyTypeAggregator(),

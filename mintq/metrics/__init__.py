@@ -9,6 +9,7 @@ from mintq.metrics.base import (
 )
 from mintq.metrics.aggregators import (
     SimpleAverageAggregator,
+    RealScoreAggregator,
     ByDBAggregator,
     ByAmbigPointNumAggregator,
     SimpleInferenceMetricsAggregator,
@@ -36,6 +37,7 @@ __all__ = [
     "NL2QMetric",
     "BaseMetricAggregator",
     "SimpleAverageAggregator",
+    "RealScoreAggregator",
     "SimpleInferenceMetricsAggregator",
     "ByDBAggregator",
     "ByAmbigPointNumAggregator",

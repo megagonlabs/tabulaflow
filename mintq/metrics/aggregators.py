@@ -3,6 +3,40 @@ from mintq.schema import AmbigNL2QTask, NL2QRunResult
 from mintq.utils import aggregate_metrics
 
 
+class RealScoreAggregator:
+    """Aggregator that divides by total dataset size, treating missing tasks as 0.
+
+    Unlike SimpleAverageAggregator which divides by the number of evaluated
+    tasks, this divides by the known dataset size so that unevaluated/missing
+    predictions are implicitly counted as failures.
+    """
+
+    DATASET_CONFIGS: dict[tuple[str, str], tuple[int, str]] = {
+        ("bird-sql", "dev"): (1534, "bird_sql_ex"),
+        ("bird-sql", "dev_20251106"): (1534, "bird_sql_ex"),
+        ("bird-sql", "train"): (9428, "bird_sql_ex"),
+        ("spider2-snow", "test"): (547, "spider2_ex"),
+        ("spider2-lite", "test"): (547, "spider2_ex"),
+        ("spider2-dbt", "test"): (68, "spider2_ex"),
+        ("beaver", "test"): (209, "simple_ex"),
+        ("arcs", "test"): (331, "simple_ex"),
+        ("arcs", "test_unsampled"): (101, "simple_ex"),
+        ("ambrosia-s", "test"): (1149, "simple_ex"),
+        ("ambrosia-s", "few_shot_examples"): (128, "simple_ex"),
+    }
+
+    def aggregate(self, result: NL2QRunResult) -> dict[str, Any]:
+        config = self.DATASET_CONFIGS.get((result.dataset, result.split))
+        if config is None:
+            return {}
+        total_tasks, metric_key = config
+        values = [task.eval_metrics[metric_key] for task in result.tasks if metric_key in task.eval_metrics]
+        total = sum(v for v in values if v is not None)
+        return {
+            f"{metric_key}_real": round(total / total_tasks, 4)
+        }
+
+
 class SimpleInferenceMetricsAggregator:
     def __init__(self, ops: list[Literal["avg", "sum", "max", "min"]] = ["avg", "sum", "max"]):
         self.ops = ops
