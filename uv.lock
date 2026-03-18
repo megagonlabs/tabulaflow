@@ -1359,6 +1359,22 @@ wheels = [
 ]
 
 [[package]]
+name = "google-cloud-bigquery-storage"
+version = "2.36.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "google-api-core", extra = ["grpc"] },
+    { name = "google-auth" },
+    { name = "grpcio" },
+    { name = "proto-plus" },
+    { name = "protobuf" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/e0/fa/877e0059349369be38a64586b135c59ceadb87d0386084043d8c440ef929/google_cloud_bigquery_storage-2.36.2.tar.gz", hash = "sha256:ad49d8c09ad6cd82da4efe596fcfcdbc1458bf05b93915e3c5c00f1e700ae128", size = 308672, upload_time = "2026-02-19T16:03:10.544Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1f/07/62dbe78ef773569be0a1d2c1b845e9214889b404e506126519b4d33ee999/google_cloud_bigquery_storage-2.36.2-py3-none-any.whl", hash = "sha256:823a73db0c4564e8ad3eedcfd5049f3d5aa41775267863b5627211ec36be2dbf", size = 304398, upload_time = "2026-02-19T16:02:55.112Z" },
+]
+
+[[package]]
 name = "google-cloud-core"
 version = "2.5.0"
 source = { registry = "https://pypi.org/simple" }
@@ -2408,6 +2424,7 @@ dependencies = [
     { name = "datasets" },
     { name = "func-timeout" },
     { name = "genai-prices" },
+    { name = "google-cloud-bigquery-storage" },
     { name = "graphviz" },
     { name = "httpx" },
     { name = "jinja2" },
@@ -2460,6 +2477,7 @@ requires-dist = [
     { name = "datasets", specifier = ">=4.4.2" },
     { name = "func-timeout", specifier = ">=4.3.5" },
     { name = "genai-prices", specifier = ">=0.0.29" },
+    { name = "google-cloud-bigquery-storage", specifier = ">=2.36.2" },
     { name = "graphviz", specifier = ">=0.20.3" },
     { name = "httpx", specifier = ">=0.28.1" },
     { name = "jinja2", specifier = ">=3.1.6" },
