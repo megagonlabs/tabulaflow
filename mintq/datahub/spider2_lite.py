@@ -22,7 +22,11 @@ logger = logging.getLogger(__name__)
 
 
 # Match spider2-snow behavior for unavailable Snowflake databases.
-EXCLUDE_DBS = ["AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET", "NETHERLANDS_OPEN_MAP_DATA"]
+EXCLUDE_DBS = [
+    "AMAZON_VENDOR_ANALYTICS__SAMPLE_DATASET",
+    "NETHERLANDS_OPEN_MAP_DATA",
+    "open_targets_genetics_1",  # BigQuery dataset deprecated July 2025
+]
 
 
 @dataclasses.dataclass
