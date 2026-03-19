@@ -165,12 +165,16 @@ class AgentEnsembler:
 
         # Filter out candidates with execution errors
         candidates = [
-            output for output in candidates if output.pred_query.exec_result.df is not None  # type: ignore[union-attr]
+            output
+            for output in candidates
+            if output.pred_query.exec_result.df is not None  # type: ignore[union-attr]
         ]
         # Optionally filter out candidates with empty results
         if self.config.skip_empty_results:
             candidates = [
-                output for output in candidates if not output.pred_query.exec_result.df.empty  # type: ignore[union-attr]
+                output
+                for output in candidates
+                if not output.pred_query.exec_result.df.empty  # type: ignore[union-attr]
             ]
 
         # Optionally deduplicate candidates with identical execution results

@@ -159,7 +159,11 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         cache_key = tuple(cache_paths)
         lock = _cache_locks[cache_id]
         async with lock:
-            if mintq_config.preprocessor_cache_enabled and not mintq_config.preprocessor_cache_overwrite and self._cache_exists(cache_paths):
+            if (
+                mintq_config.preprocessor_cache_enabled
+                and not mintq_config.preprocessor_cache_overwrite
+                and self._cache_exists(cache_paths)
+            ):
                 if cache_key in _memory_cache:
                     return _memory_cache[cache_key]  # type: ignore[return-value]
                 result = self._load_from_cache(cache_paths)

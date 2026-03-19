@@ -351,9 +351,7 @@ class TestGetColumnJsonSchemaTool:
 
     @pytest.mark.asyncio
     async def test_overview_includes_examples(self) -> None:
-        tool = GetColumnJsonSchemaTool(
-            _make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice", "age": 30}])
-        )
+        tool = GetColumnJsonSchemaTool(_make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice", "age": 30}]))
         result = await tool("test_schema", "test_table", "data_col")
         assert "Alice" in result
 
@@ -372,9 +370,7 @@ class TestGetColumnJsonSchemaTool:
     @pytest.mark.asyncio
     async def test_path_no_matching_examples(self) -> None:
         """When examples don't contain the path, no examples section is appended."""
-        tool = GetColumnJsonSchemaTool(
-            _make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice"}])
-        )
+        tool = GetColumnJsonSchemaTool(_make_schema(SIMPLE_OBJECT_SCHEMA, examples=[{"name": "Alice"}]))
         # "age" exists in schema but not all examples have it — the one that does would be extracted
         # Use a path that truly doesn't exist in examples
         result = await tool("test_schema", "test_table", "data_col", path="age")

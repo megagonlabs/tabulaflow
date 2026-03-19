@@ -32,9 +32,7 @@ class RealScoreAggregator:
         total_tasks, metric_key = config
         values = [task.eval_metrics[metric_key] for task in result.tasks if metric_key in task.eval_metrics]
         total = sum(v for v in values if v is not None)
-        return {
-            f"{metric_key}_real": round(total / total_tasks, 4)
-        }
+        return {f"{metric_key}_real": round(total / total_tasks, 4)}
 
 
 class SimpleInferenceMetricsAggregator:

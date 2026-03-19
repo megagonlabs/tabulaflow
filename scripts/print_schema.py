@@ -14,7 +14,9 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description="Print a database schema from a dataset or a cached JSON file.")
 
     # Source: either --file or --dataset + --database
-    parser.add_argument("--dataset", default=mintq_config.dataset, help="Dataset name (e.g. bird-sql, spider2-snow, beaver)")
+    parser.add_argument(
+        "--dataset", default=mintq_config.dataset, help="Dataset name (e.g. bird-sql, spider2-snow, beaver)"
+    )
     parser.add_argument("--split", default=mintq_config.split, help="Dataset split (auto-detected if omitted)")
     source = parser.add_mutually_exclusive_group()
     source.add_argument(

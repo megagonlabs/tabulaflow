@@ -20,10 +20,7 @@ def _parse_bool_env(env_var: str, value: str) -> bool:
         return True
     if normed in _FALSY:
         return False
-    raise ValueError(
-        f"Invalid boolean value for {env_var}={value!r}. "
-        f"Expected one of {sorted(_TRUTHY | _FALSY)}"
-    )
+    raise ValueError(f"Invalid boolean value for {env_var}={value!r}. Expected one of {sorted(_TRUTHY | _FALSY)}")
 
 
 class MintqConfig:

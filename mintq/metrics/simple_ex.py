@@ -52,9 +52,7 @@ class SimpleEx:
         else:
             return ("object", str(v))
 
-    def _compare_digested_columns(
-        self, pred_col: list[tuple[Any, ...]], gold_col: list[tuple[Any, ...]]
-    ) -> bool:
+    def _compare_digested_columns(self, pred_col: list[tuple[Any, ...]], gold_col: list[tuple[Any, ...]]) -> bool:
         if len(pred_col) != len(gold_col):
             return False
         for (pred_type, pred_value), (gold_type, gold_value) in zip(pred_col, gold_col):

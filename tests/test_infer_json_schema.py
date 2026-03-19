@@ -11,10 +11,12 @@ def test_empty_list_returns_none() -> None:
 
 
 def test_simple_object() -> None:
-    schema = infer_json_schema([
-        {"name": "Alice", "age": 30},
-        {"name": "Bob", "age": 25},
-    ])
+    schema = infer_json_schema(
+        [
+            {"name": "Alice", "age": 30},
+            {"name": "Bob", "age": 25},
+        ]
+    )
     assert schema == {
         "type": "object",
         "properties": {
@@ -27,20 +29,24 @@ def test_simple_object() -> None:
 
 def test_optional_keys() -> None:
     """Keys not present in every sample should not be in 'required'."""
-    schema = infer_json_schema([
-        {"name": "Alice", "age": 30},
-        {"name": "Bob"},
-    ])
+    schema = infer_json_schema(
+        [
+            {"name": "Alice", "age": 30},
+            {"name": "Bob"},
+        ]
+    )
     assert schema is not None
     assert schema["required"] == ["name"]
     assert "age" in schema["properties"]
 
 
 def test_nested_object() -> None:
-    schema = infer_json_schema([
-        {"address": {"city": "NYC", "zip": "10001"}},
-        {"address": {"city": "SF"}},
-    ])
+    schema = infer_json_schema(
+        [
+            {"address": {"city": "NYC", "zip": "10001"}},
+            {"address": {"city": "SF"}},
+        ]
+    )
     assert schema is not None
     addr = schema["properties"]["address"]
     assert addr["type"] == "object"
@@ -50,10 +56,12 @@ def test_nested_object() -> None:
 
 
 def test_simple_array() -> None:
-    schema = infer_json_schema([
-        ["a", "b"],
-        ["c"],
-    ])
+    schema = infer_json_schema(
+        [
+            ["a", "b"],
+            ["c"],
+        ]
+    )
     assert schema == {
         "type": "array",
         "items": {"type": "string"},
@@ -61,10 +69,12 @@ def test_simple_array() -> None:
 
 
 def test_array_of_objects() -> None:
-    schema = infer_json_schema([
-        [{"id": 1}, {"id": 2}],
-        [{"id": 3, "label": "x"}],
-    ])
+    schema = infer_json_schema(
+        [
+            [{"id": 1}, {"id": 2}],
+            [{"id": 3, "label": "x"}],
+        ]
+    )
     assert schema is not None
     assert schema["type"] == "array"
     items = schema["items"]
@@ -75,10 +85,12 @@ def test_array_of_objects() -> None:
 
 
 def test_object_with_array_field() -> None:
-    schema = infer_json_schema([
-        {"tags": ["a", "b"]},
-        {"tags": ["c"]},
-    ])
+    schema = infer_json_schema(
+        [
+            {"tags": ["a", "b"]},
+            {"tags": ["c"]},
+        ]
+    )
     assert schema is not None
     assert schema["properties"]["tags"] == {
         "type": "array",
@@ -88,10 +100,12 @@ def test_object_with_array_field() -> None:
 
 def test_mixed_types() -> None:
     """When a field has different types across samples, produce anyOf."""
-    schema = infer_json_schema([
-        {"val": 42},
-        {"val": "hello"},
-    ])
+    schema = infer_json_schema(
+        [
+            {"val": 42},
+            {"val": "hello"},
+        ]
+    )
     assert schema is not None
     val_schema = schema["properties"]["val"]
     assert val_schema == {"anyOf": [{"type": "integer"}, {"type": "string"}]}
@@ -99,10 +113,12 @@ def test_mixed_types() -> None:
 
 def test_nullable_field() -> None:
     """Null values should appear as anyOf with null."""
-    schema = infer_json_schema([
-        {"x": 1},
-        {"x": None},
-    ])
+    schema = infer_json_schema(
+        [
+            {"x": 1},
+            {"x": None},
+        ]
+    )
     assert schema is not None
     x_schema = schema["properties"]["x"]
     assert x_schema == {"anyOf": [{"type": "integer"}, {"type": "null"}]}
@@ -110,10 +126,12 @@ def test_nullable_field() -> None:
 
 def test_nullable_top_level() -> None:
     """Mix of null and non-null top-level values."""
-    schema = infer_json_schema([
-        None,
-        {"a": 1},
-    ])
+    schema = infer_json_schema(
+        [
+            None,
+            {"a": 1},
+        ]
+    )
     assert schema is not None
     assert schema == {
         "anyOf": [
@@ -125,10 +143,12 @@ def test_nullable_top_level() -> None:
 
 def test_json_string_auto_parse() -> None:
     """String values that are valid JSON should be parsed automatically."""
-    schema = infer_json_schema([
-        '{"name": "Alice", "age": 30}',
-        '{"name": "Bob", "age": 25}',
-    ])
+    schema = infer_json_schema(
+        [
+            '{"name": "Alice", "age": 30}',
+            '{"name": "Bob", "age": 25}',
+        ]
+    )
     assert schema is not None
     assert schema["type"] == "object"
     assert "name" in schema["properties"]
@@ -192,11 +212,13 @@ def test_max_depth_truncates() -> None:
 
 
 def test_mixed_json_strings_and_nulls() -> None:
-    schema = infer_json_schema([
-        '{"key": "val"}',
-        None,
-        '{"key": "other", "extra": 1}',
-    ])
+    schema = infer_json_schema(
+        [
+            '{"key": "val"}',
+            None,
+            '{"key": "other", "extra": 1}',
+        ]
+    )
     assert schema is not None
     assert schema == {
         "anyOf": [
@@ -221,7 +243,7 @@ def test_looks_like_json_objects() -> None:
 
 
 def test_looks_like_json_arrays() -> None:
-    assert looks_like_json(['[1, 2]', '[3]', '[]']) is True
+    assert looks_like_json(["[1, 2]", "[3]", "[]"]) is True
 
 
 def test_looks_like_json_plain_strings() -> None:

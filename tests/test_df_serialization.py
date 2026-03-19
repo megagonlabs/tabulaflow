@@ -63,4 +63,3 @@ def test_exec_result_json_round_trip_dataframe() -> None:
     assert_frame_equal(df, loaded.df, check_dtype=True)
     assert isinstance(loaded.df.loc[0, "value"], Decimal)
     assert isinstance(loaded.df.loc[1, "value"], Decimal)
-

@@ -13,7 +13,10 @@ class BaseSQLSchemaFormatter(Protocol):
     def format_table_name(self, table: SQLTableSchema) -> str: ...
 
     def format_table(
-        self, table: SQLTableSchema, pk_fk_column_only: bool = False, add_description: bool = False,
+        self,
+        table: SQLTableSchema,
+        pk_fk_column_only: bool = False,
+        add_description: bool = False,
     ) -> str: ...
 
     def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str: ...

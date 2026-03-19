@@ -26,7 +26,7 @@ EXP_DIRS = {
 TALBE_FMT = "github"
 
 
-    mintq.configure()
+mintq.configure()
 
 EXP_RESULTS = {}
 for method, exp_dir in EXP_DIRS.items():

@@ -19,9 +19,7 @@ class SQLBasicSchemaFormatter:
 
     def set_dialect(self, dialect: SQLDialect | None) -> None:
         """Configure quoting for a SQL dialect."""
-        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(
-            dialect or "", _DEFAULT_QUOTING
-        )
+        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(dialect or "", _DEFAULT_QUOTING)
 
     def _quote(self, s: str) -> str:
         return f"{self._quote_char}{s}{self._quote_char}"

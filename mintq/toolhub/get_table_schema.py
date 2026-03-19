@@ -120,7 +120,10 @@ class GetTableSchemaTool:
                 return f"(invalid column_regex_filter regex: {e})"
 
         selected_columns = self._filter_columns(
-            table.columns, column_regex_filter=column_regex_filter, column_offset=column_offset, column_limit=column_limit
+            table.columns,
+            column_regex_filter=column_regex_filter,
+            column_offset=column_offset,
+            column_limit=column_limit,
         )
 
         # Reject if the result exceeds max_columns
@@ -152,7 +155,9 @@ class GetTableSchemaTool:
         if trimmed_table is not None:
             res += self.formatter.format_table(trimmed_table, add_description=self.add_description)
         else:
-            res += self.formatter.format_table(table.model_copy(update={"columns": []}), add_description=self.add_description)
+            res += self.formatter.format_table(
+                table.model_copy(update={"columns": []}), add_description=self.add_description
+            )
         return res
 
     def as_pydantic_ai_tool(self) -> Tool:

@@ -187,9 +187,7 @@ class Spider2LiteDatasetLoader:
                         gold_sql = gf.read()
 
                 pattern = re.compile(rf"^{re.escape(item['instance_id'])}(_[a-z])?\.csv$")
-                gold_exec_result_files = sorted(
-                    [f for f in all_gold_exec_result_files if re.match(pattern, f)]
-                )
+                gold_exec_result_files = sorted([f for f in all_gold_exec_result_files if re.match(pattern, f)])
                 gold_exec_results = []
                 for file in gold_exec_result_files:
                     with open(os.path.join(exec_result_dir, file), "r") as rf:
@@ -250,11 +248,7 @@ class Spider2LiteDatasetLoader:
                 db_path = os.path.join(backend_dir, dir_name)
                 if not os.path.isdir(db_path):
                     continue
-                db_name = (
-                    _SQLITE_DIR_ALIASES.get(dir_name, dir_name)
-                    if backend == "sqlite"
-                    else dir_name
-                )
+                db_name = _SQLITE_DIR_ALIASES.get(dir_name, dir_name) if backend == "sqlite" else dir_name
                 for root, _dirs, files in os.walk(db_path):
                     for fname in files:
                         if not fname.endswith(".json"):
@@ -287,18 +281,14 @@ class Spider2LiteDatasetLoader:
         """
         google_cloud_project = self.google_cloud_project or os.environ.get("GOOGLE_CLOUD_PROJECT")
         if not google_cloud_project:
-            raise ValueError(
-                "BigQuery billing project required: set google_cloud_project or GOOGLE_CLOUD_PROJECT"
-            )
+            raise ValueError("BigQuery billing project required: set google_cloud_project or GOOGLE_CLOUD_PROJECT")
         google_application_credentials = self.google_application_credentials or os.environ.get(
             "GOOGLE_APPLICATION_CREDENTIALS"
         )
 
         projects = set(p for p, d in db_info.bq_project_datasets)
         if len(projects) > 1:
-            raise ValueError(
-                f"Multiple BigQuery projects not supported for {db_name}: {projects}"
-            )
+            raise ValueError(f"Multiple BigQuery projects not supported for {db_name}: {projects}")
 
         project = db_info.bq_project_datasets[0][0]
         datasets = [d for _, d in db_info.bq_project_datasets]
@@ -370,9 +360,7 @@ class Spider2LiteDatasetLoader:
         directory layout.
         """
         if split not in self.splits:
-            raise ValueError(
-                f"Split {split} not supported, only {self.splits} are supported for {self.name}"
-            )
+            raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
 
         databases = databases or self.get_databases(split)
         column_descriptions = self._load_column_descriptions()
@@ -394,9 +382,7 @@ class Spider2LiteDatasetLoader:
 
             for table in conn.schema.tables:
                 for column in table.columns:
-                    desc = column_descriptions.get(
-                        (db_name, table.name, column.name)
-                    )
+                    desc = column_descriptions.get((db_name, table.name, column.name))
                     if desc:
                         column.description = desc
 

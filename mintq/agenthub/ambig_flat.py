@@ -205,7 +205,9 @@ class AmbigFlatSQLAgent:
                 language=ctx.db_connector.language, dataset_instructions=ctx.task.dataset_instructions
             ),
             output_type=ctx.tools["finish"].as_pydantic_ai_tool(),  # type: ignore
-            tool_keys=[k for k in ["get_schema", "get_column_description", "search_keywords", "run_query"] if k in ctx.tools],
+            tool_keys=[
+                k for k in ["get_schema", "get_column_description", "search_keywords", "run_query"] if k in ctx.tools
+            ],
         )
         params_str = json.dumps(
             [

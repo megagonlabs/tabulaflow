@@ -182,6 +182,7 @@ patch_all_models()
 # |     Patch pydantic_ai embedding models to support max concurrency and rate limit throttling  |
 # ================================================================================================
 
+
 async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
     """Wraps EmbeddingModel.embed() with concurrency and rate-limit throttling."""
     sem, limiter = _get_throttles(

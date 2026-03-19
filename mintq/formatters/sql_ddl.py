@@ -38,9 +38,7 @@ class SQLDDLSchemaFormatter:
 
     def set_dialect(self, dialect: SQLDialect | None) -> None:
         """Configure quoting for a SQL dialect."""
-        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(
-            dialect or "", _DEFAULT_QUOTING
-        )
+        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(dialect or "", _DEFAULT_QUOTING)
 
     def _quote(self, s: str) -> str:
         return f"{self._quote_char}{s}{self._quote_char}"
@@ -120,7 +118,11 @@ class SQLDDLSchemaFormatter:
             lines.append("")  # Blank line between tables
             lines.append(
                 self.format_table(
-                    table, pk_fk_column_only, add_description, max_columns=max_columns, num_tables=len(schema.tables),
+                    table,
+                    pk_fk_column_only,
+                    add_description,
+                    max_columns=max_columns,
+                    num_tables=len(schema.tables),
                 )
             )
 
@@ -267,7 +269,6 @@ class SQLDDLSchemaFormatter:
                 comment_lines.append(f"        -- <values>{{{', '.join(valid_values)}}}</values>")
             else:
                 comment_lines.append(f"        -- <example>{self.format_value(column.examples[0])}</example>")
-
 
         # Add FK reference info as comment
         for fk in column.foreign_keys:

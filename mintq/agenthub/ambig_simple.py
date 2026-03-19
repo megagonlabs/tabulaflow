@@ -98,7 +98,9 @@ class AmbigSimpleSQLAgent:
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(
-                language=db_connector.language, dataset_instructions=task.dataset_instructions, user_patience=user_patience
+                language=db_connector.language,
+                dataset_instructions=task.dataset_instructions,
+                user_patience=user_patience,
             ),
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
