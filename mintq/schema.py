@@ -358,6 +358,7 @@ class TableRef(BaseModel):
 
 class SQLSchema(BaseModel):
     name: str
+    """Database name, or project name for BigQuery."""
     dialect: SQLDialect | None = None
     tables: list[SQLTableSchema]
 
