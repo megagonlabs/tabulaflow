@@ -1,8 +1,19 @@
 from typing import ClassVar
-from dataclasses import dataclass
-from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
+from dataclasses import dataclass, field
+from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
 from mintq.formatters.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent
+
+_DIALECT_QUOTING: dict[str, tuple[str, bool]] = {
+    "bigquery": ("`", False),
+    "snowflake": ('"', True),
+    "sqlite": ('"', False),
+    "mysql": ("`", False),
+    "athena": ('"', False),
+    "clickhouse": ('"', False),
+    "tsql": ('"', True),
+}
+_DEFAULT_QUOTING = ('"', True)
 
 
 @formatter_registry.register
@@ -11,8 +22,6 @@ class SQLDDLSchemaFormatter:
     """Formats schema as DDL statements with additional info like descriptions using comments."""
 
     name: ClassVar[str] = "sql_ddl"
-    quote_char: str = '"'
-    always_quote_columns: bool = True
     include_examples: bool = True
     include_sampled_df: bool = True
     include_sampled_df_max_columns: int = 10
@@ -24,19 +33,27 @@ class SQLDDLSchemaFormatter:
     include_json_schema: bool = True
     include_json_schema_max_fields: int | None = 20
 
+    _quote_char: str = field(default='"', init=False, repr=False)
+    _always_quote_columns: bool = field(default=True, init=False, repr=False)
+
+    def set_dialect(self, dialect: SQLDialect | None) -> None:
+        """Configure quoting for a SQL dialect."""
+        self._quote_char, self._always_quote_columns = _DIALECT_QUOTING.get(
+            dialect or "", _DEFAULT_QUOTING
+        )
+
     def _quote(self, s: str) -> str:
-        return f"{self.quote_char}{s}{self.quote_char}"
+        return f"{self._quote_char}{s}{self._quote_char}"
 
     def _quote_if_needed(self, s: str | None) -> str:
         if s is None:
             return "NULL"
-        # Quote if contains spaces, special chars, or is a reserved word
         if " " in s or "-" in s or not s.isidentifier():
             return self._quote(s)
         return s
 
     def _quote_column(self, s: str) -> str:
-        if self.always_quote_columns:
+        if self._always_quote_columns:
             return self._quote(s)
         return self._quote_if_needed(s)
 
@@ -89,6 +106,7 @@ class SQLDDLSchemaFormatter:
         return [quota] * len(tables)
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
+        self.set_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
         lines = [f"-- {name_label}: {schema.name}"]
         if schema.dialect:
@@ -102,7 +120,7 @@ class SQLDDLSchemaFormatter:
             lines.append("")  # Blank line between tables
             lines.append(
                 self.format_table(
-                    table, pk_fk_column_only, add_description, max_columns=max_columns, num_tables=len(schema.tables)
+                    table, pk_fk_column_only, add_description, max_columns=max_columns, num_tables=len(schema.tables),
                 )
             )
 

@@ -148,6 +148,7 @@ class GetTableSchemaTool:
                 end = column_offset + len(selected_columns)
                 parts.append(f"range {column_offset + 1}-{end}")
             res += f"(showing {len(selected_columns)} of {total_columns} total columns, {', '.join(parts)})\n\n"
+        self.formatter.set_dialect(self.schema.dialect)
         if trimmed_table is not None:
             res += self.formatter.format_table(trimmed_table, add_description=self.add_description)
         else:
