@@ -848,7 +848,7 @@ March 18
   - [ ] Quoting identifiers for snowflake?
 - [ ] Exp 261: gpt-5-mini on spider2-lite
 
-
+- [ ] Revise db_summarizer prompt - "used for efficient navigation and SQL writing by SQL experts"
 - [ ] schema linking for mintq_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
