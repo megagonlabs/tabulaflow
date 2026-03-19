@@ -1,3 +1,5 @@
+from typing import Any
+
 import pytest
 
 from mintq.formatters.utils import format_json_schema
@@ -13,7 +15,7 @@ from mintq.toolhub.get_column_json_schema import (
 # Fixtures: reusable JSON schemas
 # ---------------------------------------------------------------------------
 
-SIMPLE_OBJECT_SCHEMA: dict = {
+SIMPLE_OBJECT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "name": {"type": "string"},
@@ -22,7 +24,7 @@ SIMPLE_OBJECT_SCHEMA: dict = {
     "required": ["name", "age"],
 }
 
-NESTED_OBJECT_SCHEMA: dict = {
+NESTED_OBJECT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "page": {
@@ -38,7 +40,7 @@ NESTED_OBJECT_SCHEMA: dict = {
     "required": ["page", "time"],
 }
 
-ARRAY_OF_OBJECTS_SCHEMA: dict = {
+ARRAY_OF_OBJECTS_SCHEMA: dict[str, Any] = {
     "type": "array",
     "items": {
         "type": "object",
@@ -68,7 +70,7 @@ ARRAY_OF_OBJECTS_SCHEMA: dict = {
     },
 }
 
-NULLABLE_WRAPPER_SCHEMA: dict = {
+NULLABLE_WRAPPER_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "info": {
@@ -86,7 +88,7 @@ NULLABLE_WRAPPER_SCHEMA: dict = {
     },
 }
 
-MULTI_VARIANT_ANYOF_SCHEMA: dict = {
+MULTI_VARIANT_ANYOF_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         "data": {
@@ -111,7 +113,7 @@ MULTI_VARIANT_ANYOF_SCHEMA: dict = {
 
 
 # A wide schema (more fields than any reasonable budget)
-WIDE_OBJECT_SCHEMA: dict = {
+WIDE_OBJECT_SCHEMA: dict[str, Any] = {
     "type": "object",
     "properties": {
         f"field_{i}": (
@@ -162,7 +164,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
 
     def test_nested_wide_object_still_collapses(self) -> None:
         """A nested wide object should still collapse even when flag is True."""
-        schema: dict = {
+        schema: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "outer": {
@@ -179,7 +181,7 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
 
     def test_array_wrapping_wide_object(self) -> None:
         """Array whose items object is wide should expand top-level fields."""
-        schema: dict = {
+        schema: dict[str, Any] = {
             "type": "array",
             "items": WIDE_OBJECT_SCHEMA,
         }
@@ -241,11 +243,11 @@ class TestResolveJsonSchemaPath:
         assert _resolve_json_schema_path(SIMPLE_OBJECT_SCHEMA, "name.something") is None
 
     def test_array_without_items_returns_none(self) -> None:
-        schema: dict = {"type": "array"}
+        schema: dict[str, Any] = {"type": "array"}
         assert _resolve_json_schema_path(schema, "anything") is None
 
     def test_all_null_anyof_returns_none(self) -> None:
-        schema: dict = {
+        schema: dict[str, Any] = {
             "type": "object",
             "properties": {
                 "field": {"anyOf": [{"type": "null"}]},
@@ -273,7 +275,9 @@ class TestResolveJsonSchemaPath:
 # ---------------------------------------------------------------------------
 
 
-def _make_schema(json_schema: dict | None = None, examples: list | None = None) -> SQLSchema:
+def _make_schema(
+    json_schema: dict[str, Any] | None = None, examples: list[Any] | None = None
+) -> SQLSchema:
     """Build a minimal SQLSchema with one table and one column."""
     return SQLSchema(
         name="test_db",
