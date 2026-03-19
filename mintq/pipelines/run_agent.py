@@ -114,6 +114,7 @@ async def run_agent_async(
     dataset: NL2QDataset,
     few_shot_dataset: NL2QDataset | None,
     batch_size: int,
+    result_dir: str = "output/test/",
     metric_aggregators: list[BaseMetricAggregator] = [SimpleInferenceMetricsAggregator()],
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
@@ -138,7 +139,7 @@ async def run_agent_async(
             *[agent_cls.from_config_async(agent_config, **agent_kwargs) for _ in batch]  # type: ignore
         )
 
-        batch_kwargs = []
+        batch_kwargs: list[dict[str, Any]] = []
         for task in batch:
             if task.task_type != agent_cls.task_type:
                 raise ValueError(
@@ -152,6 +153,13 @@ async def run_agent_async(
                     answer_with_multiple_ambig_points=agent_cls.name == "ambig_flat_sql_agent",
                 )
                 batch_kwargs.append({"user_simulator": user_simulator})
+            elif task.task_type == "dbt":
+                working_dir = os.path.join(result_dir, "working", task.qid)
+                if os.path.exists(working_dir):
+                    shutil.rmtree(working_dir)
+                shutil.copytree(task.project_dir, working_dir)
+                task.working_dir = working_dir
+                batch_kwargs.append({})
             else:
                 batch_kwargs.append({})
 
@@ -398,6 +406,7 @@ async def main_async() -> None:
         dataset=dataset,
         few_shot_dataset=few_shot_dataset,
         batch_size=args.batch_size,
+        result_dir=args.result_dir,
         verbose=True,
     )
     print()

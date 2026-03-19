@@ -1266,6 +1266,8 @@ class DbtTask(BaseModel):
     """Instructions (e.g. for formatting) that apply to all questions in the dataset."""
     project_dir: str
     """Relative path to the original dbt project directory (e.g. ``"data/Spider2/spider2-dbt/examples/zuora001"``)."""
+    working_dir: str | None = None
+    """Relative path to the working copy of the project, set by the pipeline before the agent runs (e.g. ``"output/exp123/working/zuora001"``)."""
     gold_tables: list[DbtGoldTable]
     """Tables to compare in evaluation, from the evaluation spec."""
     gold_db_path: str | None = None
@@ -1283,8 +1285,6 @@ class DbtTaskOutput(DbtTask):
     """Output of a dbt agent."""
 
     output_type: Literal["dbt"] = "dbt"
-    working_dir: str | None = None
-    """Relative path to the working copy of the project that the agent operated on (e.g. ``"output/exp123/working/zuora001"``)."""
     pred_model_files: dict[str, str] = Field(default_factory=dict)
     """Maps path relative to ``working_dir`` (e.g. ``"models/my_model.sql"``) to file content."""
     dbt_run_success: bool | None = None
