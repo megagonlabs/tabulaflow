@@ -144,7 +144,9 @@ def format_json_schema(
     if _budget is None and max_fields is not None:
         _budget = float(max_fields)
 
-    kw = dict(max_depth=max_depth, max_fields=max_fields, always_expand_top_level=always_expand_top_level)
+    kw: dict[str, Any] = dict(
+        max_depth=max_depth, max_fields=max_fields, always_expand_top_level=always_expand_top_level
+    )
 
     # Handle anyOf (union types, including nullable)
     if "anyOf" in schema:
@@ -168,6 +170,7 @@ def format_json_schema(
             return "object"
         if max_depth is not None and _depth >= max_depth:
             return "{...}"
+        child_budget: float | None
         if _budget is not None and _budget < len(props):
             if always_expand_top_level and _depth == 0:
                 # Always show top-level fields; give children zero budget so
