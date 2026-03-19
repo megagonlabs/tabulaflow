@@ -115,7 +115,7 @@ async def run_agent_async(
     sleep_between_batches: float = 0.0,
     verbose: bool = True,
 ) -> NL2QRunResult:
-    if Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
+    if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
         logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
 
     start_time = datetime.datetime.now()

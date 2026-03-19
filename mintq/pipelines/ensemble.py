@@ -15,7 +15,7 @@ from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, Majo
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
 from mintq.metrics import SimpleInferenceMetricsAggregator
-from mintq.schema import NL2QRunResult, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
+from mintq.schema import NL2QRunResult, NL2QDataset, NL2QTaskOutput, SimpleNL2QTask, SimpleNL2QTaskOutput
 from mintq.pipelines.utils import bool_flag
 from mintq.utils import tqdm_gather_with_exceptions
 
@@ -65,7 +65,7 @@ async def ensemble_async(
 
     # Run ensemble in batches
     start_time = datetime.datetime.now()
-    ensembled_outputs: list[SimpleNL2QTaskOutput] = []
+    ensembled_outputs: list[NL2QTaskOutput] = []
     num_failed = 0
     for i in range(0, len(tasks), batch_size):
         j = min(i + batch_size, len(tasks))
