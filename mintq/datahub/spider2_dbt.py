@@ -12,7 +12,7 @@ import json
 import logging
 import os
 import random
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from mintq.datahub.base import dataset_registry
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
@@ -60,10 +60,10 @@ class Spider2DbtDatasetLoader:
         with open(jsonl_path, "r") as f:
             return list(dict.fromkeys(json.loads(line)["instance_id"] for line in f))
 
-    def _load_eval_spec(self) -> dict[str, dict]:
+    def _load_eval_spec(self) -> dict[str, dict[str, Any]]:
         """Load evaluation specifications keyed by instance_id."""
         eval_path = self._eval_jsonl_path()
-        specs: dict[str, dict] = {}
+        specs: dict[str, dict[str, Any]] = {}
         if os.path.exists(eval_path):
             with open(eval_path, "r") as f:
                 for line in f:
@@ -156,7 +156,7 @@ class Spider2DbtDatasetLoader:
                 logger.warning("Multiple .duckdb files in %s, using %s", project_dir, duckdb_files[0])
             db_path = os.path.join(project_dir, duckdb_files[0])
             url = f"duckdb:///{db_path}"
-            conn = await SQLConnector.from_url_·async(
+            conn = await SQLConnector.from_url_async(
                 global_id=f"spider2-dbt+{instance_id}",
                 db_name=instance_id,
                 engine_type="sync",
