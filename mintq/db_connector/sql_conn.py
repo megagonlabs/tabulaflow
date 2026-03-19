@@ -413,6 +413,7 @@ async def build_column_async(
     if skip_stats:
         null_ratio = num_unique = unique_ratio = None
     else:
+        assert num_rows is not None
         sampled_rows = num_rows
         if column_stats_mode == "sample_for_large_tables" and num_rows > _LARGE_TABLE_THRESHOLD:
             if t_eng.engine.dialect.name in ("snowflake", "postgresql"):

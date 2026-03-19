@@ -106,7 +106,7 @@ def sort_ambiguity_points(task: AmbigNL2QTask) -> AmbigNL2QTask:
     finite_aps = [ap for ap in task.gold_ambiguity_points if ap.type == "finite"]
     finite_ap_new_order = sorted(range(len(finite_aps)), key=lambda x: get_ap_location(finite_aps[x]))
     sql_idx = np.arange(len(task.gold_queries))
-    sql_idx = sql_idx.reshape([len(ap.interpretations) for ap in finite_aps])  # type: ignore
+    sql_idx = sql_idx.reshape([len(ap.interpretations) for ap in finite_aps])
     sql_idx = np.permute_dims(sql_idx, finite_ap_new_order)
     sql_idx = sql_idx.flatten()
     new_gold_queries = [task.gold_queries[i] for i in sql_idx]

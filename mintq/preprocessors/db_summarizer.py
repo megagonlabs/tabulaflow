@@ -65,7 +65,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render()
         run_query_tool = RunQueryNoParamsTool(db_connector)
 
-        model_settings = {}
+        model_settings: dict[str, Any] = {}
         if self.openai_reasoning_effort is not None:
             model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
             model_settings["openai_reasoning_summary"] = "detailed"
