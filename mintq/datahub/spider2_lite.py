@@ -28,6 +28,16 @@ EXCLUDE_DBS = [
     "open_targets_genetics_1",  # BigQuery dataset deprecated July 2025
 ]
 
+# Patches for spider2lite_eval.jsonl where condition_cols length does not match
+# the number of exec_result CSV files, or column indices are out of range for
+# some CSVs (upstream data inconsistency).
+EVAL_STANDARD_PATCHES = {
+    "sf_bq236": {"condition_cols": [[0, 4], [0], [0]]},
+    "bq060": {"condition_cols": [[1], [3], [2], [1], [1]]},
+    "bq169": {"condition_cols": [[1, 3, 7, 8, 13], [0, 1, 13], [1, 3, 7, 8, 13], [1, 3, 7, 8, 13]]},
+    "bq389": {"condition_cols": [[1, 2, 3, 4, 5, 6], [3], [2], [1, 2, 3, 4, 5, 6], [1, 2, 3, 4, 5, 6], [2], [2]]},
+}
+
 # sqlite/ directory names that differ from the canonical JSONL db names.
 _SQLITE_DIR_ALIASES: dict[str, str] = {
     "DB_IMDB": "Db-IMDB",
@@ -164,7 +174,10 @@ class Spider2LiteDatasetLoader:
             with open(eval_standard_file, "r") as f:
                 for line in f:
                     eval_item = json.loads(line)
-                    eval_standard[eval_item.pop("instance_id")] = eval_item
+                    qid = eval_item.pop("instance_id")
+                    if qid in EVAL_STANDARD_PATCHES:
+                        eval_item.update(EVAL_STANDARD_PATCHES[qid])
+                    eval_standard[qid] = eval_item
 
         tasks = []
         with open(jsonl_path, "r") as f:
