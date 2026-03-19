@@ -105,25 +105,41 @@ pydantic_ai.models.infer_model = _patched_infer_model
 # |     Patch pydantic_ai.models.Model.request() to support max concurrency throttling     |
 # ==========================================================================================
 
-_llm_semaphore = (
-    asyncio.Semaphore(mintq_config.max_llm_concurrency) if mintq_config.max_llm_concurrency is not None else None
-)
-_llm_rate_limit = (
-    AsyncLimiter(mintq_config.max_llm_requests_per_minute, 60)
-    if mintq_config.max_llm_requests_per_minute is not None
-    else None
-)
+_llm_throttle_cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]] = {}
+_embedding_throttle_cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]] = {}
+
+
+def _get_throttles(
+    cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]],
+    max_concurrency: int | None,
+    max_requests_per_minute: int | None,
+) -> tuple[asyncio.Semaphore | None, AsyncLimiter | None]:
+    """Return (semaphore, rate_limiter) bound to the current event loop.
+
+    Creates fresh instances when called from a new loop (e.g. a second
+    ``asyncio.run()`` call), so callers never hit "attached to a different
+    loop" errors.
+    """
+    loop_id = id(asyncio.get_running_loop())
+    if loop_id not in cache:
+        sem = asyncio.Semaphore(max_concurrency) if max_concurrency is not None else None
+        limiter = AsyncLimiter(max_requests_per_minute, 60) if max_requests_per_minute is not None else None
+        cache[loop_id] = (sem, limiter)
+    return cache[loop_id]
 
 
 async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
-    """
-    Wraps Model.request() with semaphore throttling based on max_llm_concurrency in mintq_config.
-    """
+    """Wraps Model.request() with concurrency and rate-limit throttling."""
+    sem, limiter = _get_throttles(
+        _llm_throttle_cache,
+        mintq_config.max_llm_concurrency,
+        mintq_config.max_llm_requests_per_minute,
+    )
     async with AsyncExitStack() as stack:
-        if _llm_semaphore is not None:
-            await stack.enter_async_context(_llm_semaphore)
-        if _llm_rate_limit is not None:
-            await stack.enter_async_context(_llm_rate_limit)
+        if sem is not None:
+            await stack.enter_async_context(sem)
+        if limiter is not None:
+            await stack.enter_async_context(limiter)
         return await self.__original_request__(*args, **kwargs)  # type: ignore
 
 
@@ -166,27 +182,18 @@ patch_all_models()
 # |     Patch pydantic_ai embedding models to support max concurrency and rate limit throttling  |
 # ================================================================================================
 
-_embedding_semaphore = (
-    asyncio.Semaphore(mintq_config.max_embedding_concurrency)
-    if mintq_config.max_embedding_concurrency is not None
-    else None
-)
-_embedding_rate_limit = (
-    AsyncLimiter(mintq_config.max_embedding_requests_per_minute, 60)
-    if mintq_config.max_embedding_requests_per_minute is not None
-    else None
-)
-
-
 async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
-    """
-    Wraps EmbeddingModel.embed() with semaphore throttling based on max_embedding_concurrency in mintq_config.
-    """
+    """Wraps EmbeddingModel.embed() with concurrency and rate-limit throttling."""
+    sem, limiter = _get_throttles(
+        _embedding_throttle_cache,
+        mintq_config.max_embedding_concurrency,
+        mintq_config.max_embedding_requests_per_minute,
+    )
     async with AsyncExitStack() as stack:
-        if _embedding_semaphore is not None:
-            await stack.enter_async_context(_embedding_semaphore)
-        if _embedding_rate_limit is not None:
-            await stack.enter_async_context(_embedding_rate_limit)
+        if sem is not None:
+            await stack.enter_async_context(sem)
+        if limiter is not None:
+            await stack.enter_async_context(limiter)
         return await self.__original_embed__(*args, **kwargs)  # type: ignore
 
 
