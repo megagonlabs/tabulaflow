@@ -12,7 +12,7 @@ import random
 import re
 import asyncio
 from urllib.parse import quote_plus
-from typing import Optional, ClassVar, Literal
+from typing import Any, ClassVar, Literal, Optional
 import pandas as pd
 from mintq.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
@@ -158,13 +158,13 @@ class Spider2LiteDatasetLoader:
         exec_result_dir = os.path.join(eval_dir, "exec_result")
         all_gold_exec_result_files = os.listdir(exec_result_dir) if os.path.isdir(exec_result_dir) else []
 
-        eval_file = os.path.join(eval_dir, "spider2lite_eval.jsonl")
-        eval_standard: dict = {}
-        if os.path.exists(eval_file):
-            with open(eval_file, "r") as f:
+        eval_standard_file = os.path.join(eval_dir, "spider2lite_eval.jsonl")
+        eval_standard: dict[str, Any] = {}
+        if os.path.exists(eval_standard_file):
+            with open(eval_standard_file, "r") as f:
                 for line in f:
-                    item = json.loads(line)
-                    eval_standard[item.pop("instance_id")] = item
+                    eval_item = json.loads(line)
+                    eval_standard[eval_item.pop("instance_id")] = eval_item
 
         tasks = []
         with open(jsonl_path, "r") as f:
@@ -173,45 +173,63 @@ class Spider2LiteDatasetLoader:
                 if item["db"] not in databases:
                     continue
 
-                document = None
                 if item.get("external_knowledge"):
-                    doc_path = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
-                    if os.path.exists(doc_path):
-                        with open(doc_path, "r") as df:
-                            document = df.read()
+                    document_file = os.path.join(
+                        self.directory, "resource", "documents", item["external_knowledge"]
+                    )
+                    if os.path.exists(document_file):
+                        with open(document_file, "r") as docf:
+                            document = docf.read()
+                    else:
+                        document = None
+                else:
+                    document = None
 
-                gold_sql = None
-                gold_sql_path = os.path.join(eval_dir, "sql", item["instance_id"] + ".sql")
-                if os.path.exists(gold_sql_path):
-                    with open(gold_sql_path, "r") as gf:
+                gold_sql_file = os.path.join(eval_dir, "sql", item["instance_id"] + ".sql")
+                if os.path.exists(gold_sql_file):
+                    with open(gold_sql_file, "r") as gf:
                         gold_sql = gf.read()
+                else:
+                    gold_sql = None
 
                 pattern = re.compile(rf"^{re.escape(item['instance_id'])}(_[a-z])?\.csv$")
-                gold_exec_result_files = sorted([f for f in all_gold_exec_result_files if re.match(pattern, f)])
+                gold_exec_result_files = [f for f in all_gold_exec_result_files if re.match(pattern, f)]
+                gold_exec_result_files = sorted(gold_exec_result_files)
                 gold_exec_results = []
                 for file in gold_exec_result_files:
                     with open(os.path.join(exec_result_dir, file), "r") as rf:
                         gold_exec_results.append(pd.read_csv(rf))
 
                 condition_cols = eval_standard.get(item["instance_id"], {}).get("condition_cols", [])
-                if not condition_cols or not isinstance(condition_cols[0] if condition_cols else None, list):
+                if not condition_cols or not isinstance(
+                    condition_cols[0] if condition_cols else None, list
+                ):
                     condition_cols = [condition_cols for _ in range(max(1, len(gold_exec_results)))]
 
-                filtered_gold_exec_results = []
-                for i, df in enumerate(gold_exec_results):
-                    cols = condition_cols[i] if i < len(condition_cols) else []
-                    if cols and all(c < len(df.columns) for c in cols):
-                        filtered_gold_exec_results.append(df.iloc[:, cols])
-                    else:
-                        filtered_gold_exec_results.append(df)
+                if gold_exec_results:
+                    if len(condition_cols) != len(gold_exec_results):
+                        raise ValueError(
+                            f"Length of condition_cols and number of CSV files do not match for {item['instance_id']}"
+                        )
+                    filtered_gold_exec_results = []
+                    for df, cols in zip(gold_exec_results, condition_cols):
+                        if cols:
+                            if any(c >= len(df.columns) for c in cols):
+                                raise ValueError(
+                                    f"A column index in condition_cols is out of range for {item['instance_id']}"
+                                )
+                            filtered_gold_exec_results.append(df.iloc[:, cols])
+                        else:
+                            filtered_gold_exec_results.append(df)
+                    primary = ExecResult(df=filtered_gold_exec_results[0])
+                    alternatives = [
+                        ExecResult(df=df) for df in filtered_gold_exec_results[1:]
+                    ]
+                else:
+                    primary = ExecResult(df=pd.DataFrame())
+                    alternatives = []
 
                 ignore_order = eval_standard.get(item["instance_id"], {}).get("ignore_order", False)
-                primary = (
-                    ExecResult(df=filtered_gold_exec_results[0])
-                    if filtered_gold_exec_results
-                    else ExecResult(df=pd.DataFrame())
-                )
-                alternatives = [ExecResult(df=df) for df in filtered_gold_exec_results[1:]]
 
                 tasks.append(
                     SimpleNL2QTask(
@@ -293,7 +311,7 @@ class Spider2LiteDatasetLoader:
         project = db_info.bq_project_datasets[0][0]
         datasets = [d for _, d in db_info.bq_project_datasets]
 
-        engine_kwargs: dict = {}
+        engine_kwargs: dict[str, Any] = {}
         if google_application_credentials:
             engine_kwargs["credentials_path"] = google_application_credentials
         engine_kwargs["billing_project_id"] = google_cloud_project

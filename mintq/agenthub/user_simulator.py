@@ -4,7 +4,7 @@ import pydantic_ai
 from pydantic_ai import Agent, ToolOutput
 import asyncio
 import jinja2
-from litellm import token_counter  # type: ignore
+from litellm import token_counter
 from mintq.agenthub.base import (
     UserQuestion,
     UserAnswer,
