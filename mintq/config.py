@@ -19,6 +19,7 @@ class MintqConfig:
     DEFAULT_QUERY_CACHE_MODE: QueryCacheMode = "successful_only"
     DEFAULT_INSTRUMENT_ENABLED = True
     DEFAULT_INSTRUMENT_PREFIX = "exp"
+    DEFAULT_DISABLE_BIGQUERY_TRACING = True
     DEFAULT_DF_MAX_ROWS = 100000
     DEFAULT_MAX_LLM_CONCURRENCY = 16
     DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
@@ -149,6 +150,18 @@ class MintqConfig:
         if (value := os.getenv("MINTQ_INSTRUMENT_PREFIX")) is not None:
             return value
         return self.DEFAULT_INSTRUMENT_PREFIX
+
+    @property
+    def disable_bigquery_tracing(self) -> bool:
+        """Disable BigQuery's built-in OpenTelemetry tracing.
+
+        The google-cloud-bigquery client auto-emits OTEL spans when a
+        TracerProvider is configured, polluting Langfuse with DB-level spans.
+        Controlled via ``MINTQ_DISABLE_BIGQUERY_TRACING``.  Defaults to ``True``.
+        """
+        if (value := os.getenv("MINTQ_DISABLE_BIGQUERY_TRACING")) is not None:
+            return value == "1"
+        return self.DEFAULT_DISABLE_BIGQUERY_TRACING
 
     @property
     def df_max_rows(self) -> int | None:

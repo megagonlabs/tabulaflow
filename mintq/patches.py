@@ -213,3 +213,19 @@ def patch_all_embedding_models() -> None:
 
 
 patch_all_embedding_models()
+
+
+# ================================================================================================
+# |     Disable BigQuery's built-in OpenTelemetry tracing                                        |
+# |     The google-cloud-bigquery client auto-emits OTEL spans when it detects a TracerProvider.  |
+# |     This pollutes Langfuse with low-level DB spans. There's no env var to disable it, so we   |
+# |     flip the HAS_OPENTELEMETRY flag to make its create_span() yield None.                     |
+# ================================================================================================
+
+if mintq_config.disable_bigquery_tracing:
+    try:
+        from google.cloud.bigquery import opentelemetry_tracing
+
+        opentelemetry_tracing.HAS_OPENTELEMETRY = False
+    except ImportError:
+        pass
