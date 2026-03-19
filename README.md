@@ -852,6 +852,9 @@ March 18
 - [x] Improve env var parsing
 - [x] Fix asyncio lock shared across event loops
 - [x] Fix mypy errors
+- [x] Exp 266: new db summary: gpt-5.3-codex on spider2-lite: simple_ex 0.6851, spider2_ex 0.6740, cost $84.18
+
+March 19
 - [ ] Support spider2-dbt
 
 - [ ] Update spider2-lite instructions
