@@ -197,17 +197,21 @@ class Spider2SnowDatasetLoader:
                         f"Length of condition_cols and number of CSV files do not match for {item['instance_id']}"
                     )
 
-                # Only keep the required columns in the df
-                filtered_gold_exec_results = []
-                for df, cols in zip(gold_exec_results, condition_cols):
+                # Primary: use full DataFrame (no condition_cols at load).
+                # required_columns = condition_cols[0] so spider2_ex applies it at eval time.
+                primary = ExecResult(df=gold_exec_results[0])
+                primary_required_columns = condition_cols[0] if condition_cols[0] else None
+                filtered_alternatives = []
+                for df, cols in zip(gold_exec_results[1:], condition_cols[1:]):
                     if cols:
-                        if any(c > len(df.columns) for c in cols):
+                        if any(c >= len(df.columns) for c in cols):
                             raise ValueError(
                                 f"A column index in condition_cols is out of range for {item['instance_id']}"
                             )
-                        filtered_gold_exec_results.append(df.iloc[:, cols])
+                        filtered_alternatives.append(df.iloc[:, cols])
                     else:
-                        filtered_gold_exec_results.append(df)
+                        filtered_alternatives.append(df)
+                alternatives = [ExecResult(df=df) for df in filtered_alternatives]
 
                 ignore_order = eval_standard[item["instance_id"]].get("ignore_order", False)
 
@@ -220,9 +224,9 @@ class Spider2SnowDatasetLoader:
                         document=document,
                         gold_query=GoldQuery(
                             query=gold_sql,
-                            exec_result=ExecResult(df=filtered_gold_exec_results[0]),
-                            alternative_results=[ExecResult(df=df) for df in filtered_gold_exec_results[1:]],
-                            required_columns=None,
+                            exec_result=primary,
+                            alternative_results=alternatives,
+                            required_columns=primary_required_columns,
                             required_sorted=not ignore_order,
                         ),
                     )
