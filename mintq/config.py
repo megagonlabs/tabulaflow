@@ -175,8 +175,8 @@ class MintqConfig:
     def disable_bigquery_tracing(self) -> bool:
         """Disable BigQuery's built-in OpenTelemetry tracing.
 
-        The google-cloud-bigquery client auto-emits OTEL spans when a
-        TracerProvider is configured, polluting Langfuse with DB-level spans.
+        The google-cloud-bigquery client auto-emits OTEL spans for every
+        API call when a TracerProvider is configured, cluttering Langfuse.
         Controlled via ``MINTQ_DISABLE_BIGQUERY_TRACING``.  Defaults to ``True``.
         """
         if (value := os.getenv("MINTQ_DISABLE_BIGQUERY_TRACING")) is not None:
