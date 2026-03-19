@@ -14,6 +14,7 @@ from mintq.agenthub.mintq_agent import MintqAgent
 from mintq.agenthub.ambig_simple import AmbigSimpleSQLAgent
 from mintq.agenthub.ambig_flat import AmbigFlatSQLAgent
 from mintq.agenthub.ambig_structured import AmbigStructuredSQLAgent
+from mintq.agenthub.dbt_agent import DbtAgent
 from mintq.agenthub.utils import BasicAgentConfig
 
 __all__ = [
@@ -32,5 +33,6 @@ __all__ = [
     "AmbigSimpleSQLAgent",
     "AmbigFlatSQLAgent",
     "AmbigStructuredSQLAgent",
+    "DbtAgent",
     "agent_registry",
 ]

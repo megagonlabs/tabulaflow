@@ -307,6 +307,8 @@ async def main_async() -> None:
         parser.set_defaults(split="dev", num_few_shot_examples=5 if args.agent == "sql_agent" else 0)
     elif args.dataset == "spider2-snow":
         parser.set_defaults(split="test", num_few_shot_examples=0)
+    elif args.dataset == "spider2-dbt":
+        parser.set_defaults(split="test", num_few_shot_examples=0)
     elif args.dataset == "arcs":
         parser.set_defaults(split="test", schema_formatter="sql_basic")
 
@@ -314,6 +316,8 @@ async def main_async() -> None:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
         if args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
+        elif args.dataset == "spider2-dbt":
+            parser.set_defaults(databases=["airbnb001"])
     args = parser.parse_args()
     print(args)
     print()
