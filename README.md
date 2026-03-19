@@ -847,9 +847,11 @@ March 18
 - [x] Fix bigquery project name
 - [x] Exp 261: gpt-5-mini on spider2-lite: simple_ex 0.5028, spider2_ex 0.4954, cost $15.37
 - [x] Exp 263: gpt-5-mini on spider2-lite (fix project name): simple_ex 0.5875, spider2_ex 0.5820, cost $15.54
-- [ ] Exp 264: gpt-5.3-codex on spider2-lite
-- [ ] Fix bigquery auto tracing
-- [ ] Fix event loop asyncio lock
+- [x] Exp 264: gpt-5.3-codex on spider2-lite: simple_ex 0.6869, spider2_ex 0.6796, cost $80.19
+- [x] Fix bigquery auto tracing
+- [x] Improve env var parsing
+- [x] Fix asyncio lock shared across event loops
+- [x] Fix mypy errors
 - [ ] Support spider2-dbt
 
 - [ ] Update spider2-lite instructions
