@@ -26,6 +26,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    DbtTaskOutput,
     Usage,
 )
 
@@ -101,6 +102,8 @@ def get_empty_output(agent_cls: type[NL2QAgent], task: NL2QTask) -> NL2QTaskOutp
         return StructuredAmbigNL2QTaskOutput(
             **task.model_dump(), pred_ambiguity_points=[], pred_queries=[], pred_intended_query_id=None
         )
+    elif agent_cls.output_type == "dbt":
+        return DbtTaskOutput(**task.model_dump())
     else:
         raise ValueError(f"Unknown agent output type: {agent_cls.output_type}")
 

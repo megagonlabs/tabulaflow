@@ -1241,9 +1241,82 @@ class StructuredAmbigNL2QTaskOutput(AmbigNL2QTask):
         return _task_to_summary(self, eval_metrics)
 
 
-NL2QTask = Annotated[Union[SimpleNL2QTask, AmbigNL2QTask], Field(discriminator="task_type")]
+class DbtGoldTable(BaseModel):
+    """An expected output table for dbt evaluation."""
+
+    table_name: str
+    required_columns: list[int] = Field(default_factory=list)
+    """Column indices to compare. Empty means all columns."""
+    required_sorted: bool = False
+    """True if row order matters."""
+
+
+class DbtTask(BaseModel):
+    """A dbt data-transformation task."""
+
+    task_type: Literal["dbt"] = "dbt"
+    qid: str
+    db: str
+    """Instance ID (e.g. ``"zuora001"``), maps to a DuckDB connector for the project's source database."""
+    question: str
+    """Natural-language instruction describing the transformation to build."""
+    question_instructions: str | None = None
+    """Instructions that apply to this question only."""
+    dataset_instructions: str | None = None
+    """Instructions (e.g. for formatting) that apply to all questions in the dataset."""
+    project_dir: str
+    """Relative path to the original dbt project directory (e.g. ``"data/Spider2/spider2-dbt/examples/zuora001"``)."""
+    gold_tables: list[DbtGoldTable]
+    """Tables to compare in evaluation, from the evaluation spec."""
+    gold_db_path: str | None = None
+    """Relative path to the gold ``.duckdb`` file for evaluation."""
+    extra_info: dict[str, Any] = Field(default_factory=dict)
+
+    def to_directory(self, directory: str) -> None:
+        return _task_to_directory(self, directory)
+
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
+
+
+class DbtTaskOutput(DbtTask):
+    """Output of a dbt agent."""
+
+    output_type: Literal["dbt"] = "dbt"
+    working_dir: str | None = None
+    """Relative path to the working copy of the project that the agent operated on (e.g. ``"output/exp123/working/zuora001"``)."""
+    pred_model_files: dict[str, str] = Field(default_factory=dict)
+    """Maps path relative to ``working_dir`` (e.g. ``"models/my_model.sql"``) to file content."""
+    dbt_run_success: bool | None = None
+    dbt_run_log: str | None = None
+    trajectory: Trajectory | list[Trajectory] | None = None
+    usage: Usage | None = None
+    inference_metrics: dict[str, Any] = Field(default_factory=dict)
+    """Metrics produced during agent prediction, e.g. latency, API costs, etc."""
+    eval_metrics: dict[str, Any] = Field(default_factory=dict)
+    """Metrics produced during evaluation."""
+    extra_pred_info: ExtraPredInfo = Field(default_factory=ExtraPredInfo)
+    """Not used for dbt tasks. Present for compatibility with the NL2QTaskOutput union."""
+
+    def to_directory(self, directory: str) -> None:
+        return _task_to_directory(self, directory)
+
+    def to_markdown(self, heading_level: int = 1) -> str:
+        return _task_to_markdown(self, heading_level)
+
+    def to_summary(self, eval_metrics: list[str] = []) -> CSVSummaryRow:
+        return _task_to_summary(self, eval_metrics)
+
+
+NL2QTask = Annotated[Union[SimpleNL2QTask, AmbigNL2QTask, DbtTask], Field(discriminator="task_type")]
 NL2QTaskOutput = Annotated[
-    Union[SimpleNL2QTaskOutput, SimpleAmbigNL2QTaskOutput, FlatAmbigNL2QTaskOutput, StructuredAmbigNL2QTaskOutput],
+    Union[
+        SimpleNL2QTaskOutput,
+        SimpleAmbigNL2QTaskOutput,
+        FlatAmbigNL2QTaskOutput,
+        StructuredAmbigNL2QTaskOutput,
+        DbtTaskOutput,
+    ],
     Field(discriminator="output_type"),
 ]
 
@@ -1268,6 +1341,9 @@ def _save_trajectories(trajectory: Trajectory | list[Trajectory], directory: str
 
 
 def _task_to_directory(task: NL2QTask | NL2QTaskOutput, directory: str) -> None:
+    if isinstance(task, (DbtTask, DbtTaskOutput)):
+        return _dbt_task_to_directory(task, directory)
+
     os.makedirs(directory, exist_ok=True)
     for prefix in ["gold", "pred"]:
         for field in _get_query_fields(task, GoldQuery if prefix == "gold" else PredQuery):
@@ -1291,6 +1367,9 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
         task: The task to convert.
         heading_level: The base heading level (1 for #, 2 for ##, 3 for ###, etc.)
     """
+    if isinstance(task, (DbtTask, DbtTaskOutput)):
+        return _dbt_task_to_markdown(task, heading_level)
+
     h1 = "#" * heading_level
     h2 = "#" * (heading_level + 1)
     lines = [f"{h1} Task: {task.qid}", ""]
@@ -1382,6 +1461,9 @@ def _task_to_markdown(task: NL2QTask | NL2QTaskOutput, heading_level: int = 1) -
 
 
 def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    if isinstance(task, (DbtTask, DbtTaskOutput)):
+        return _dbt_task_to_summary(task, eval_metrics)
+
     gold_query_field = "gold_query" if task.task_type == "simple" else "gold_intended_query"
     gold_query = getattr(task, gold_query_field, None)
     pred_query_field = "pred_query" if task.task_type == "simple" else "pred_intended_query"
@@ -1395,6 +1477,101 @@ def _task_to_summary(task: NL2QTask | NL2QTaskOutput, eval_metrics: list[str] = 
         pred_query=pred_query.query if pred_query else None,
         gold_exec_result=gold_query.exec_result.to_markdown() if gold_query and gold_query.exec_result else None,
         pred_exec_result=pred_query.exec_result.to_markdown() if pred_query and pred_query.exec_result else None,
+        metrics={m: getattr(task, "eval_metrics", {}).get(m) for m in eval_metrics},
+    )
+
+
+def _dbt_task_to_directory(task: DbtTask | DbtTaskOutput, directory: str) -> None:
+    os.makedirs(directory, exist_ok=True)
+    with open(os.path.join(directory, "task_readable.md"), "w") as f:
+        f.write(task.to_markdown())
+    trajectory = getattr(task, "trajectory", None)
+    if trajectory is not None:
+        _save_trajectories(trajectory, os.path.join(directory, "trajectory"))
+    pred_model_files: dict[str, str] = getattr(task, "pred_model_files", {})
+    if pred_model_files:
+        models_dir = os.path.join(directory, "pred_models")
+        os.makedirs(models_dir, exist_ok=True)
+        for rel_path, content in pred_model_files.items():
+            out_path = os.path.join(models_dir, rel_path)
+            os.makedirs(os.path.dirname(out_path), exist_ok=True)
+            with open(out_path, "w") as f:
+                f.write(content)
+
+
+def _dbt_task_to_markdown(task: DbtTask | DbtTaskOutput, heading_level: int = 1) -> str:
+    h1 = "#" * heading_level
+    h2 = "#" * (heading_level + 1)
+    lines = [f"{h1} Task: {task.qid}", ""]
+
+    lines.append(f"**Project:** {task.db}  ")
+    lines.append(f"**Project Dir:** `{task.project_dir}`  ")
+    working_dir = getattr(task, "working_dir", None)
+    if working_dir:
+        lines.append(f"**Working Dir:** `{working_dir}`  ")
+    lines.append("")
+
+    lines.append(f"{h2} Instruction")
+    lines.append(task.question)
+
+    # Gold tables
+    if task.gold_tables:
+        lines.append(f"\n{h2} Gold Tables")
+        for gt in task.gold_tables:
+            cols = ", ".join(str(c) for c in gt.required_columns) if gt.required_columns else "all"
+            lines.append(f"- **{gt.table_name}** (cols: {cols}, sorted: {gt.required_sorted})")
+
+    if task.gold_db_path:
+        lines.append(f"\n**Gold DB:** `{task.gold_db_path}`")
+
+    # Predicted model files (output only)
+    pred_model_files: dict[str, str] = getattr(task, "pred_model_files", {})
+    if pred_model_files:
+        lines.append(f"\n{h2} Predicted Model Files")
+        for rel_path, content in pred_model_files.items():
+            lines.append(f"\n**`{rel_path}`**\n")
+            lines.append(f"```sql\n{content}\n```")
+
+    # dbt run status
+    dbt_run_success = getattr(task, "dbt_run_success", None)
+    if dbt_run_success is not None:
+        lines.append(f"\n{h2} dbt run")
+        lines.append(f"**Success:** {dbt_run_success}")
+        dbt_run_log = getattr(task, "dbt_run_log", None)
+        if dbt_run_log:
+            lines.append(f"\n```\n{dbt_run_log}\n```")
+
+    # Eval metrics
+    eval_metrics = getattr(task, "eval_metrics", None)
+    if eval_metrics:
+        lines.append(f"\n{h2} Evaluation Metrics")
+        for key, value in eval_metrics.items():
+            lines.append(f"- **{key}:** {value}")
+
+    # Inference metrics
+    inference_metrics = getattr(task, "inference_metrics", None)
+    if inference_metrics:
+        lines.append(f"\n{h2} Inference Metrics")
+        for key, value in inference_metrics.items():
+            lines.append(f"- **{key}:** {value}")
+
+    # Usage
+    usage = getattr(task, "usage", None)
+    if usage:
+        lines.append(f"\n{h2} Usage")
+        lines.append(f"- **API Requests:** {usage.api_requests}")
+        lines.append(f"- **Input Tokens:** {usage.input_tokens}")
+        lines.append(f"- **Output Tokens:** {usage.output_tokens}")
+        lines.append(f"- **Cost:** ${round(float(usage.api_cost_usd), 4)}")
+
+    return "\n".join(lines)
+
+
+def _dbt_task_to_summary(task: DbtTask | DbtTaskOutput, eval_metrics: list[str] = []) -> CSVSummaryRow:
+    return CSVSummaryRow(
+        qid=task.qid,
+        db=task.db,
+        question=task.question,
         metrics={m: getattr(task, "eval_metrics", {}).get(m) for m in eval_metrics},
     )
 

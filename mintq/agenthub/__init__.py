@@ -2,6 +2,7 @@ from mintq.agenthub.base import (
     BaseAgentConfig,
     BaseSimpleSQLAgent,
     BaseAmbigSQLAgent,
+    BaseDbtAgent,
     NL2QAgent,
     agent_registry,
 )
@@ -18,6 +19,7 @@ from mintq.agenthub.utils import BasicAgentConfig
 __all__ = [
     "BaseSimpleSQLAgent",
     "BaseAmbigSQLAgent",
+    "BaseDbtAgent",
     "NL2QAgent",
     "BaseAgentConfig",
     "BasicAgentConfig",

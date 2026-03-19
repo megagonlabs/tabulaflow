@@ -3,10 +3,12 @@ from pydantic import BaseModel, Field
 from mintq.schema import (
     SimpleNL2QTask,
     AmbigNL2QTask,
+    DbtTask,
     SimpleNL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    DbtTaskOutput,
     Usage,
     Trajectory,
 )
@@ -90,7 +92,16 @@ class BaseAmbigSQLAgent(Protocol):
     ) -> SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput: ...
 
 
-NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent]
+class BaseDbtAgent(Protocol):
+    name: ClassVar[str]
+    task_type: ClassVar[str]
+    output_type: ClassVar[str]
+    config_cls: ClassVar[type[BaseAgentConfig]]
+
+    async def predict_async(self, task: DbtTask, db_connector: BaseSQLDBConnector) -> DbtTaskOutput: ...
+
+
+NL2QAgent: TypeAlias = Union[BaseSimpleSQLAgent, BaseAmbigSQLAgent, BaseDbtAgent]
 
 
 agent_registry = Registry[NL2QAgent]("agent")
