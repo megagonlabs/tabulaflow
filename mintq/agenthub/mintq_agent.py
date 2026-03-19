@@ -3,7 +3,7 @@ import time
 from typing import ClassVar
 from pydantic_ai import Agent
 import logging
-from mintq.db_connector import BaseSQLDBConnector, NL2QDBConnector
+from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,

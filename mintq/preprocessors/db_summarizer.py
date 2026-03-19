@@ -1,10 +1,10 @@
 from typing import ClassVar, Literal
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 import jinja2
 from pydantic_ai import Agent
 from mintq.formatters.base import BaseSQLSchemaFormatter
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.schema import SQLSchema, TableRef, Usage
+from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter

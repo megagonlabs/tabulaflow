@@ -1,4 +1,3 @@
-import pytest
 from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 
