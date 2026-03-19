@@ -612,6 +612,29 @@ def group_table_names(
     return groups
 
 
+def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: list[str | None]) -> list[str | None]:
+    """Strip the database prefix from duckdb-engine schema names.
+
+    ``duckdb-engine`` flattens DuckDB's 3-level hierarchy (database, schema,
+    table) into SQLAlchemy's 2-level model by returning ``"database.schema"``
+    from ``get_schema_names()``.  This function strips the database prefix and
+    filters to only schemas belonging to the current database.
+    """
+    with t_eng.engine.connect() as conn:  # type: ignore
+        current_db: str | None = conn.execute(sqlalchemy.text("SELECT current_database()")).scalar()
+
+    result: list[str | None] = []
+    for s in schema_names:
+        if s and "." in s:
+            db_part, schema_part = s.split(".", 1)
+            if current_db and db_part != current_db:
+                continue
+            result.append(schema_part)
+        else:
+            result.append(s)
+    return result
+
+
 async def build_schema_async(
     t_eng: ThrottledEngine,
     db_name: str,
@@ -630,6 +653,9 @@ async def build_schema_async(
         schema_names = [None]
     else:
         schema_names = [_denorm(t_eng, name) for name in await async_inspector.get_schema_names()]
+
+    if dialect == "duckdb":
+        schema_names = _normalize_duckdb_schema_names(t_eng, schema_names)
 
     schema_names = [s for s in schema_names if not (s and s.lower() == "information_schema")]
     if include_schema_names is not None:
