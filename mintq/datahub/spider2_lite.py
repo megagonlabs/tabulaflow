@@ -311,7 +311,7 @@ class Spider2LiteDatasetLoader:
         url = f"bigquery://{project}/{datasets[0]}"
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
-            db_name,
+            project,
             "sync",
             url,
             max_concurrency_per_db=8,

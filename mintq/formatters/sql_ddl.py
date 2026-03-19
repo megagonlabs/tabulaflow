@@ -89,7 +89,8 @@ class SQLDDLSchemaFormatter:
         return [quota] * len(tables)
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
-        lines = [f"-- Database: {schema.name}"]
+        name_label = "Project" if schema.dialect == "bigquery" else "Database"
+        lines = [f"-- {name_label}: {schema.name}"]
         if schema.dialect:
             lines.append(f"-- SQL Dialect: {schema.dialect}")
         if not schema.tables:
