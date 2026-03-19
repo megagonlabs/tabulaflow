@@ -12,6 +12,7 @@ from mintq.toolhub.run_query import RunQueryNoParamsTool
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
+The purpose of the summary is to help database experts explore the database and write database queries efficiently and accurately.
 
 <requirements>
 - The summary should be in markdown format.
