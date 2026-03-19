@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal
+from typing import Any, ClassVar, Literal
 from pydantic import BaseModel
 import jinja2
 from pydantic_ai import Agent
@@ -70,7 +70,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
             model_settings["openai_reasoning_summary"] = "detailed"
 
-        agent = Agent[None, DBSummary](
+        agent = Agent[None, DBSummary](  # type: ignore
             model=self.llm,
             output_type=DBSummary,
             instructions=system_prompt,
@@ -80,4 +80,4 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         user_prompt = format_user_prompt(schema, self.formatter)
         result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
-        return result.output
+        return result.output  # type: ignore
