@@ -137,7 +137,9 @@ class AgentEnsembler:
 
     def _format_exec_result(self, output: SimpleNL2QTaskOutput) -> str:
         """Format the execution result of a candidate for the prompt."""
+        assert output.pred_query is not None and output.pred_query.exec_result is not None
         exec_result = output.pred_query.exec_result
+        assert exec_result.df is not None
         if exec_result.df.empty:
             return "(empty result)"
         df = exec_result.df
@@ -183,6 +185,7 @@ class AgentEnsembler:
             deduped: list[SimpleNL2QTaskOutput] = []
             for output in candidates:
                 df = output.pred_query.exec_result.df  # type: ignore[union-attr]
+                assert df is not None
                 df = df.reindex(sorted(df.columns), axis=1)
                 rows = [tuple(_normalize_value(v) for v in row) for row in df.itertuples(index=False, name=None)]
                 hashable = tuple(sorted(set(rows)))
