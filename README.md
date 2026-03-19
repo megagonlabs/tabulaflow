@@ -840,13 +840,16 @@ March 17
 - [x] Fix mintq.__init__.py -> mintq.configure()
 
 March 18
-- [x] Exp 258: gpt-5.4-mini on spider2-snow
-- [ ] Exp 259: deepseek-r1 on spider2-snow
+- [x] Exp 258: gpt-5.4-mini on spider2-snow: simple_ex 0.6232, spider2_ex 0.6158
+- [ ] Exp 259: deepseek-v3p2 on spider2-snow
 - [x] Cache spider2-lite schemas
 - [x] Update python and litellm
+- [x] Fix bigquery project name
+- [x] Exp 261: gpt-5-mini on spider2-lite: simple_ex 0.5028, spider2_ex 0.4954, cost $15.37
+- [x] Exp 263: gpt-5-mini on spider2-lite (fix project name): simple_ex 0.5875, spider2_ex 0.5820, cost $15.54
+- [ ] Exp 264: gpt-5.3-codex on spider2-lite
 - [ ] Update spider2-lite instructions
   - [ ] Quoting identifiers for snowflake?
-- [ ] Exp 261: gpt-5-mini on spider2-lite
 
 - [ ] Revise db_summarizer prompt - "used for efficient navigation and SQL writing by SQL experts"
 - [ ] schema linking for mintq_agent
