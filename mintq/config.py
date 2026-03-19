@@ -5,6 +5,26 @@ from typing import Literal, get_args
 ColumnStatsMode = Literal["always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 QueryCacheMode = Literal["all", "successful_only"]
 
+_TRUTHY = frozenset({"1", "true", "yes", "on"})
+_FALSY = frozenset({"0", "false", "no", "off"})
+
+
+def _parse_bool_env(env_var: str, value: str) -> bool:
+    """Parse a boolean from an environment variable value.
+
+    Accepts ``1/true/yes/on`` (truthy) and ``0/false/no/off`` (falsy),
+    case-insensitive.  Raises ``ValueError`` for unrecognised values.
+    """
+    normed = value.strip().lower()
+    if normed in _TRUTHY:
+        return True
+    if normed in _FALSY:
+        return False
+    raise ValueError(
+        f"Invalid boolean value for {env_var}={value!r}. "
+        f"Expected one of {sorted(_TRUTHY | _FALSY)}"
+    )
+
 
 class MintqConfig:
     DEFAULT_CACHE_DIR = "cache"
@@ -62,41 +82,41 @@ class MintqConfig:
     @property
     def schema_cache_enabled(self) -> bool:
         if (value := os.getenv("MINTQ_SCHEMA_CACHE_ENABLED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_SCHEMA_CACHE_ENABLED", value)
         return self.DEFAULT_SCHEMA_CACHE_ENABLED
 
     @property
     def schema_cache_overwrite(self) -> bool:
         """Overwrite existing schema cache files."""
         if (value := os.getenv("MINTQ_SCHEMA_CACHE_OVERWRITE")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_SCHEMA_CACHE_OVERWRITE", value)
         return self.DEFAULT_SCHEMA_CACHE_OVERWRITE
 
     @property
     def schema_cache_required(self) -> bool:
         """Raise an error if schema cache is not found."""
         if (value := os.getenv("MINTQ_SCHEMA_CACHE_REQUIRED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_SCHEMA_CACHE_REQUIRED", value)
         return self.DEFAULT_SCHEMA_CACHE_REQUIRED
 
     @property
     def preprocessor_cache_enabled(self) -> bool:
         if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_ENABLED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_ENABLED", value)
         return self.DEFAULT_PREPROCESSOR_CACHE_ENABLED
 
     @property
     def preprocessor_cache_overwrite(self) -> bool:
         """Overwrite existing preprocessor cache files."""
         if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_OVERWRITE")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_OVERWRITE", value)
         return self.DEFAULT_PREPROCESSOR_CACHE_OVERWRITE
 
     @property
     def preprocessor_cache_required(self) -> bool:
         """Raise an error if preprocessor cache is not found."""
         if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_REQUIRED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_REQUIRED", value)
         return self.DEFAULT_PREPROCESSOR_CACHE_REQUIRED
 
     @property
@@ -107,7 +127,7 @@ class MintqConfig:
         Controlled via ``MINTQ_QUERY_CACHE_ENABLED``.  Defaults to ``False``.
         """
         if (value := os.getenv("MINTQ_QUERY_CACHE_ENABLED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_QUERY_CACHE_ENABLED", value)
         return self.DEFAULT_QUERY_CACHE_ENABLED
 
     @property
@@ -136,13 +156,13 @@ class MintqConfig:
         Controlled via ``MINTQ_QUERY_CACHE_OVERWRITE``.  Defaults to ``False``.
         """
         if (value := os.getenv("MINTQ_QUERY_CACHE_OVERWRITE")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_QUERY_CACHE_OVERWRITE", value)
         return self.DEFAULT_QUERY_CACHE_OVERWRITE
 
     @property
     def instrument_enabled(self) -> bool:
         if (value := os.getenv("MINTQ_INSTRUMENT_ENABLED")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_INSTRUMENT_ENABLED", value)
         return self.DEFAULT_INSTRUMENT_ENABLED
 
     @property
@@ -160,7 +180,7 @@ class MintqConfig:
         Controlled via ``MINTQ_DISABLE_BIGQUERY_TRACING``.  Defaults to ``True``.
         """
         if (value := os.getenv("MINTQ_DISABLE_BIGQUERY_TRACING")) is not None:
-            return value == "1"
+            return _parse_bool_env("MINTQ_DISABLE_BIGQUERY_TRACING", value)
         return self.DEFAULT_DISABLE_BIGQUERY_TRACING
 
     @property
