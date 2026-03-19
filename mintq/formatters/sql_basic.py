@@ -65,7 +65,8 @@ class SQLBasicSchemaFormatter:
         return [quota] * len(tables)
 
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
-        res = f"Database: {schema.name}"
+        name_label = "Project" if schema.dialect == "bigquery" else "Database"
+        res = f"{name_label}: {schema.name}"
         if schema.dialect:
             res += f" (SQL Dialect: {schema.dialect})"
         if not schema.tables:
