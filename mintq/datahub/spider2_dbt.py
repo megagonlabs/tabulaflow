@@ -81,6 +81,7 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
             max_concurrency_per_db=4,
             schema=existing_schema,
             read_only=False,
+            enable_caching=False,
         )
         dataset.db_connectors[task.db] = conn
 
@@ -177,9 +178,7 @@ class Spider2DbtDatasetLoader:
                 gold_db_name = params.get("gold")
                 gold_db_path: str | None = None
                 if gold_db_name:
-                    gold_db_path = os.path.join(
-                        self.directory, "evaluation_suite", "gold", instance_id, gold_db_name
-                    )
+                    gold_db_path = os.path.join(self.directory, "evaluation_suite", "gold", instance_id, gold_db_name)
 
                 tasks.append(
                     DbtTask(

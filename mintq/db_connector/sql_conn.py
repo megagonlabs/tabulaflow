@@ -742,6 +742,7 @@ class SQLConnector:
     language: SQLDialect
     _t_eng: ThrottledEngine
     read_only: bool = True
+    enable_caching: bool = True
 
     @classmethod
     async def from_url_async(
@@ -756,6 +757,7 @@ class SQLConnector:
         group_date_partitioned_tables: bool = True,
         group_table_regexes: list[str] = [],
         read_only: bool = True,
+        enable_caching: bool = True,
         include_schema_names: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
@@ -794,6 +796,9 @@ class SQLConnector:
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) are rejected before reaching the
                 database, returning an :class:`ExecResult` with an error.
+            enable_caching: If ``False``, skip schema and query result
+                caching for this connector regardless of global config.
+                Use for mutable databases where cached results would be stale.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -809,16 +814,29 @@ class SQLConnector:
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
-            schema = await load_schema_with_cache_async(
-                global_id,
-                db_name,
-                t_eng,
-                group_date_partitioned_tables,
-                group_table_regexes,
-                include_schema_names=include_schema_names,
-            )
+            if enable_caching:
+                schema = await load_schema_with_cache_async(
+                    global_id,
+                    db_name,
+                    t_eng,
+                    group_date_partitioned_tables,
+                    group_table_regexes,
+                    include_schema_names=include_schema_names,
+                )
+            else:
+                sqlalchemy_dialect = t_eng.engine.dialect.name
+                dialect_map: dict[str, str] = {"postgresql": "postgres"}
+                dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
+                schema = await build_schema_async(
+                    t_eng,
+                    db_name,
+                    dialect,  # type: ignore
+                    group_date_partitioned_tables,
+                    group_table_regexes,
+                    include_schema_names=include_schema_names,
+                )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
-        return cls(global_id, schema, language, t_eng, read_only=read_only)
+        return cls(global_id, schema, language, t_eng, read_only=read_only, enable_caching=enable_caching)
 
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
@@ -875,10 +893,11 @@ class SQLConnector:
 
         # --- query result cache lookup ---
         params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
-        use_cache = mintq_config.query_cache_enabled and not mintq_config.query_cache_overwrite
+        caching_on = self.enable_caching and mintq_config.query_cache_enabled
+        use_cache = caching_on and not mintq_config.query_cache_overwrite
 
         cache_hash: str | None = None
-        if mintq_config.query_cache_enabled:
+        if caching_on:
             cache_hash = self._query_cache_key(self.global_id, query_str, params_map, timeout)
             cache_dir = os.path.join(mintq_config.cache_dir, "query_results")
             cache_path = os.path.join(cache_dir, f"{self.global_id}_{cache_hash}.json")
@@ -916,7 +935,7 @@ class SQLConnector:
         exec_result = ExecResult(df=df, error=error, latency_seconds=latency_seconds)
 
         # --- write to cache ---
-        if mintq_config.query_cache_enabled and cache_hash is not None:
+        if caching_on and cache_hash is not None:
             skip = mintq_config.query_cache_mode == "successful_only" and exec_result.df is None
             if not skip:
                 async with _query_cache_locks[cache_hash]:
