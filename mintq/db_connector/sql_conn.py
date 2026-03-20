@@ -240,9 +240,14 @@ async def load_schema_with_cache_async(
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
+    enable_caching: bool = True,
 ) -> SQLSchema:
-    """
-    Loads the database schema, utilizing a cache if available and enabled.
+    """Loads the database schema, utilizing a cache if available and enabled.
+
+    Args:
+        enable_caching: If False, skip schema cache read/write regardless of
+            global config.  Useful for mutable databases where cached schemas
+            would be stale.
     """
     schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
@@ -255,11 +260,11 @@ async def load_schema_with_cache_async(
         dialect_map: dict[str, str] = {"postgresql": "postgres"}
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
-        if mintq_config.schema_cache_enabled and not mintq_config.schema_cache_overwrite and os.path.exists(cache_path):
+        if enable_caching and mintq_config.schema_cache_enabled and not mintq_config.schema_cache_overwrite and os.path.exists(cache_path):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        if mintq_config.schema_cache_required:
+        if enable_caching and mintq_config.schema_cache_required:
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
         schema = await build_schema_async(
@@ -275,7 +280,7 @@ async def load_schema_with_cache_async(
             await t_eng.engine.dispose()  # type: ignore
         else:
             t_eng.engine.dispose()
-        if mintq_config.schema_cache_enabled:
+        if enable_caching and mintq_config.schema_cache_enabled:
             with open(cache_path, "w", encoding="utf-8") as f:
                 f.write(schema.model_dump_json(indent=2))
         return schema
@@ -814,27 +819,15 @@ class SQLConnector:
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
-            if enable_caching:
-                schema = await load_schema_with_cache_async(
-                    global_id,
-                    db_name,
-                    t_eng,
-                    group_date_partitioned_tables,
-                    group_table_regexes,
-                    include_schema_names=include_schema_names,
-                )
-            else:
-                sqlalchemy_dialect = t_eng.engine.dialect.name
-                dialect_map: dict[str, str] = {"postgresql": "postgres"}
-                dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
-                schema = await build_schema_async(
-                    t_eng,
-                    db_name,
-                    dialect,  # type: ignore
-                    group_date_partitioned_tables,
-                    group_table_regexes,
-                    include_schema_names=include_schema_names,
-                )
+            schema = await load_schema_with_cache_async(
+                global_id,
+                db_name,
+                t_eng,
+                group_date_partitioned_tables,
+                group_table_regexes,
+                include_schema_names=include_schema_names,
+                enable_caching=enable_caching,
+            )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(global_id, schema, language, t_eng, read_only=read_only, enable_caching=enable_caching)
 
