@@ -17,6 +17,7 @@ from mintq.pipelines.utils import bool_flag
 from mintq.agenthub import NL2QAgent, BaseAgentConfig
 from mintq.agenthub.user_simulator import UserSimulator
 from mintq.config import mintq_config
+from mintq.datahub.spider2_dbt import prepare_working_env_async
 from mintq.schema import (
     NL2QDataset,
     NL2QRunResult,
@@ -122,6 +123,9 @@ async def run_agent_async(
     if hasattr(agent_config, "llm") and Usage.create(agent_config.llm, 1, 1000000, 1000000).api_cost_usd == 0:
         logger.warning("API cost for %s is 0.0. Cost calculation might not be supported.", agent_config.llm)
 
+    if agent_cls.task_type == "dbt":
+        await prepare_working_env_async(dataset, result_dir)
+
     start_time = datetime.datetime.now()
     task_outputs = []
     num_failed = 0
@@ -153,13 +157,6 @@ async def run_agent_async(
                     answer_with_multiple_ambig_points=agent_cls.name == "ambig_flat_sql_agent",
                 )
                 batch_kwargs.append({"user_simulator": user_simulator})
-            elif task.task_type == "dbt":
-                working_dir = os.path.join(result_dir, "working", task.qid)
-                if os.path.exists(working_dir):
-                    shutil.rmtree(working_dir)
-                shutil.copytree(task.project_dir, working_dir)
-                task.working_dir = working_dir
-                batch_kwargs.append({})
             else:
                 batch_kwargs.append({})
 

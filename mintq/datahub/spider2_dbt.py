@@ -12,13 +12,77 @@ import json
 import logging
 import os
 import random
+import re
+import shutil
 from typing import Any, ClassVar
+
+import duckdb
 
 from mintq.datahub.base import dataset_registry
 from mintq.db_connector import SQLConnector, BaseSQLDBConnector
 from mintq.schema import DbtTask, DbtGoldTable, NL2QDataset
 
 logger = logging.getLogger(__name__)
+
+_DUCKDB_PATH_RE = re.compile(r"""path:\s*['"]?\.?/?([^'"\s]+\.duckdb)['"]?""")
+
+
+def _db_name_from_profiles(project_dir: str) -> str:
+    """Extract the ``.duckdb`` filename from ``profiles.yml``."""
+    profiles_path = os.path.join(project_dir, "profiles.yml")
+    if os.path.exists(profiles_path):
+        with open(profiles_path) as f:
+            m = _DUCKDB_PATH_RE.search(f.read())
+            if m:
+                return m.group(1)
+    raise FileNotFoundError(f"Cannot determine DuckDB filename from {profiles_path}")
+
+
+async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> None:
+    """Copy each dbt project to a working directory and rewire db_connectors.
+
+    For each ``DbtTask`` in *dataset*, this function:
+    1. Copies ``project_dir`` → ``<result_dir>/working/<qid>``
+    2. Sets ``task.working_dir`` to the copy
+    3. Creates an empty DuckDB if the project has none yet
+    4. Replaces ``dataset.db_connectors[task.db]`` with a read/write
+       ``SQLConnector`` pointing to the duckdb file inside the copy
+
+    Args:
+        dataset: The dataset returned by
+            :meth:`Spider2DbtDatasetLoader.get_split_async`.
+        result_dir: Root output directory for the experiment run.
+    """
+    for task in dataset.tasks:
+        if not isinstance(task, DbtTask):
+            continue
+        working_dir = os.path.join(result_dir, "working", task.qid)
+        if os.path.exists(working_dir):
+            shutil.rmtree(working_dir)
+        shutil.copytree(task.project_dir, working_dir)
+        task.working_dir = working_dir
+
+        duckdb_files = [f for f in os.listdir(working_dir) if f.endswith(".duckdb")]
+        if not duckdb_files:
+            db_name = _db_name_from_profiles(working_dir)
+            working_db_path = os.path.join(working_dir, db_name)
+            duckdb.connect(database=working_db_path).close()
+            logger.info("Created empty DuckDB at %s", working_db_path)
+        else:
+            working_db_path = os.path.join(working_dir, duckdb_files[0])
+
+        original_conn = dataset.db_connectors.get(task.db)
+        existing_schema = original_conn.schema if isinstance(original_conn, SQLConnector) else None
+        conn = await SQLConnector.from_url_async(
+            global_id=f"spider2-dbt-working+{task.db}",
+            db_name=task.db,
+            engine_type="sync",
+            url=f"duckdb:///{working_db_path}",
+            max_concurrency_per_db=4,
+            schema=existing_schema,
+            read_only=False,
+        )
+        dataset.db_connectors[task.db] = conn
 
 
 @dataset_registry.register
