@@ -147,7 +147,7 @@ async def run_agent_async(
         for task in batch:
             if task.task_type != agent_cls.task_type:
                 raise ValueError(
-                    f"Task type {task.task_type} does not match agent requiredtask type {agent_cls.task_type}"
+                    f"Task type {task.task_type} does not match agent required task type {agent_cls.task_type}"
                 )
 
             if task.task_type == "ambig":
