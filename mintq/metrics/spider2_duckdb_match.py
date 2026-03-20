@@ -15,7 +15,6 @@ from typing import Any, ClassVar
 import duckdb
 import pandas as pd
 
-from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.schema import DbtTaskOutput, NumericOrNull
 
@@ -73,7 +72,7 @@ class Spider2DuckdbMatch:
     compatible_output_types: ClassVar[list[str]] = ["dbt"]
 
     async def compute_async(
-        self, task: DbtTaskOutput, db_connector: NL2QDBConnector
+        self, task: DbtTaskOutput
     ) -> NumericOrNull:
         if not task.gold_db_path or not os.path.exists(task.gold_db_path):
             raise ValueError(f"No gold DuckDB for {task.qid}")

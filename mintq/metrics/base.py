@@ -53,7 +53,7 @@ class BaseDbtMetric(Protocol):
     compatible_output_types: ClassVar[list[str]]
 
     async def compute_async(
-        self, task: DbtTaskOutput, db_connector: NL2QDBConnector
+        self, task: DbtTaskOutput
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 

@@ -6,7 +6,7 @@ from tqdm.asyncio import tqdm_asyncio
 from mintq import metric_registry, dataset_registry
 import mintq
 from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset, DbtTaskOutput
-from mintq.db_connector import NL2QDBConnector, SQLConnector
+from mintq.db_connector import NL2QDBConnector
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -20,9 +20,12 @@ from mintq.utils import pprint_dict
 
 
 async def compute_metrics_async(
-    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector
+    task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector | None
 ) -> NL2QTaskOutput:
-    results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])  # type: ignore
+    results = await asyncio.gather(*[
+        m.compute_async(task) if isinstance(task, DbtTaskOutput) else m.compute_async(task, db_connector)  # type: ignore
+        for m in metrics
+    ])
     task.eval_metrics = {}
     for m, r in zip(metrics, results):
         if isinstance(r, dict):
@@ -30,22 +33,6 @@ async def compute_metrics_async(
         else:
             task.eval_metrics[m.name] = r
     return task
-
-
-async def _build_dbt_working_connector(task: DbtTaskOutput, dataset: NL2QDataset) -> tuple[str, SQLConnector]:
-    """Create a read-only connector to the predicted DuckDB for a dbt task."""
-    original_conn = dataset.db_connectors.get(task.db)
-    global_id = original_conn.global_id if original_conn is not None else f"spider2-dbt+{task.db}"
-    conn = await SQLConnector.from_url_async(
-        global_id=global_id,
-        db_name=task.db,
-        engine_type="sync",
-        url=f"duckdb:///{task.pred_db_path}",
-        max_concurrency_per_db=4,
-        read_only=True,
-        enable_caching=False,
-    )
-    return task.db, conn
 
 
 async def evaluate_async(
@@ -56,25 +43,11 @@ async def evaluate_async(
     metric_aggregators: list[BaseMetricAggregator],
     verbose: bool = True,
 ) -> NL2QRunResult:
-    dbt_db_connectors = {}
-    dbt_tasks = [
-        t for t in result.tasks if t.task_type == "dbt" and t.pred_db_path and os.path.exists(t.pred_db_path)
-    ]
-    if dbt_tasks:
-        pairs = await asyncio.gather(*[_build_dbt_working_connector(t, dataset) for t in dbt_tasks])
-        for db, conn in pairs:
-            dbt_db_connectors[db] = conn
-
-    def _get_db_connector(task: NL2QTaskOutput) -> NL2QDBConnector:
-        if task.task_type == "dbt" and task.db in dbt_db_connectors:
-            return dbt_db_connectors[task.db]
-        return dataset.db_connectors[task.db]
-
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[compute_metrics_async(task, metrics, _get_db_connector(task)) for task in batch],
+            *[compute_metrics_async(task, metrics, dataset.db_connectors.get(task.db)) for task in batch],
             disable=not verbose,
         )
         if verbose:
@@ -115,13 +88,9 @@ async def main_async() -> None:
     for m in metric_names:
         metric_cls = metric_registry.get_class(m)
         if any(output_type not in metric_cls.compatible_output_types for output_type in unique_output_types):
-            print(
-                f"WARNING: Metric {m} is not compatible with at least one output type in {unique_output_types}, skipping..."
-            )
             continue
         if metric_cls.name == "schema_linking_stats":
             if all(task.extra_pred_info.linked_schema is None for task in result.tasks):
-                print("WARNING: skipping schema_linking_stats because no linked schema found in any task")
                 continue
         metrics.append(metric_cls())
 
