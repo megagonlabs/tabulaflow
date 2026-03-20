@@ -5,6 +5,7 @@ import re
 import logging
 import warnings
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
+import dataclasses
 from dataclasses import dataclass
 import collections
 import pandas as pd
@@ -25,6 +26,7 @@ from mintq.schema import (
     SQLTableSchema,
     ForeignKeySchema,
     ExecResult,
+    TableRef,
 )
 
 from mintq.config import mintq_config, ColumnStatsMode
@@ -748,6 +750,10 @@ class SQLConnector:
     _t_eng: ThrottledEngine
     read_only: bool = True
     enable_caching: bool = True
+    _group_date_partitioned_tables: bool = True
+    _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
+    _include_schema_names: list[str] | None = None
+    _column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
 
     @classmethod
     async def from_url_async(
@@ -829,7 +835,91 @@ class SQLConnector:
                 enable_caching=enable_caching,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
-        return cls(global_id, schema, language, t_eng, read_only=read_only, enable_caching=enable_caching)
+        return cls(
+            global_id,
+            schema,
+            language,
+            t_eng,
+            read_only=read_only,
+            enable_caching=enable_caching,
+            _group_date_partitioned_tables=group_date_partitioned_tables,
+            _group_table_regexes=list(group_table_regexes),
+            _include_schema_names=include_schema_names,
+            _column_stats_mode=mintq_config.column_stats_mode,
+        )
+
+    async def refresh_schema_async(
+        self,
+        tables: list[TableRef] | None = None,
+    ) -> SQLSchema:
+        """Re-introspect the live database and update ``self.schema``.
+
+        Use after DDL mutations (e.g. ``dbt run`` creating new tables) to
+        make the connector's schema reflect the current database state.
+        Bypasses the schema cache entirely.
+
+        Args:
+            tables: If provided, only (re-)build schemas for these tables
+                (or views) and merge them into the existing schema —
+                replacing any entry with a matching name, and appending
+                truly new ones. If ``None``, do a full rebuild.
+
+        Returns:
+            The updated :class:`SQLSchema`.
+        """
+        if tables is not None:
+            async_inspector = AsyncInspector(self._t_eng)
+            view_names_by_schema: dict[str | None, set[str]] = {}
+            for ref in tables:
+                if ref.schema_name not in view_names_by_schema:
+                    raw_views = await async_inspector.get_view_names(schema=ref.schema_name)
+                    view_names_by_schema[ref.schema_name] = {
+                        _denorm(self._t_eng, v) for v in raw_views
+                    }
+
+            new_tables = await asyncio.gather(*[
+                build_table_async(
+                    self._t_eng,
+                    ref.table_name,
+                    ref.schema_name,
+                    is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
+                    column_stats_mode=self._column_stats_mode,
+                )
+                for ref in tables
+            ])
+
+            requested = {
+                (ref.schema_name, ref.table_name) for ref in tables
+            }
+            kept = [
+                t for t in self.schema.tables
+                if (t.schema_name, t.name) not in requested
+            ]
+            for t in new_tables:
+                if t is not None:
+                    kept.append(t)
+
+            self.schema = SQLSchema(
+                name=self.schema.name,
+                dialect=self.schema.dialect,
+                tables=kept,
+            )
+        else:
+            self.schema = await build_schema_async(
+                self._t_eng,
+                self.schema.name,
+                self.schema.dialect,  # type: ignore[arg-type]
+                self._group_date_partitioned_tables,
+                self._group_table_regexes,
+                column_stats_mode=self._column_stats_mode,
+                include_schema_names=self._include_schema_names,
+            )
+
+        logger.info(
+            f"Schema refreshed for {self.global_id}: "
+            f"{len(self.schema.tables)} tables"
+        )
+        return self.schema
 
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:

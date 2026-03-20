@@ -1,6 +1,6 @@
 from typing import Any, Protocol, Sequence, Mapping, TypeAlias
 import sqlalchemy
-from mintq.schema import SQLDialect, SQLSchema, ExecResult
+from mintq.schema import SQLDialect, SQLSchema, ExecResult, TableRef
 
 
 class BaseSQLDBConnector(Protocol):
@@ -16,6 +16,11 @@ class BaseSQLDBConnector(Protocol):
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
     ) -> ExecResult: ...
+
+    async def refresh_schema_async(
+        self,
+        tables: list[TableRef] | None = None,
+    ) -> SQLSchema: ...
 
 
 NL2QDBConnector: TypeAlias = BaseSQLDBConnector
