@@ -66,7 +66,9 @@ async def evaluate_async(
             dbt_db_connectors[db] = conn
 
     def _get_db_connector(task: NL2QTaskOutput) -> NL2QDBConnector:
-        return dbt_db_connectors[task.db] if task.task_type == "dbt" else dataset.db_connectors[task.db]
+        if task.task_type == "dbt" and task.db in dbt_db_connectors:
+            return dbt_db_connectors[task.db]
+        return dataset.db_connectors[task.db]
 
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
