@@ -58,7 +58,7 @@ async def evaluate_async(
 ) -> NL2QRunResult:
     dbt_db_connectors = {}
     dbt_tasks = [
-        t for t in result.tasks if isinstance(t, DbtTaskOutput) and t.pred_db_path and os.path.exists(t.pred_db_path)
+        t for t in result.tasks if t.task_type == "dbt" and t.pred_db_path and os.path.exists(t.pred_db_path)
     ]
     if dbt_tasks:
         pairs = await asyncio.gather(*[_build_dbt_working_connector(t, dataset) for t in dbt_tasks])
