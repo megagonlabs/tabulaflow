@@ -230,7 +230,7 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
             kwargs["num_few_shot_examples"] = args.num_few_shot_examples
         if args.question_embedder_embedding_llm is not None:
             kwargs["question_embedder_embedding_llm"] = args.question_embedder_embedding_llm
-    if agent_cls.name == "mintq_agent":
+    if agent_cls.name in ("mintq_agent", "dbt_agent"):
         if args.db_summarizer_llm is not None:
             kwargs["db_summarizer_llm"] = args.db_summarizer_llm
     if args.temperature is not None:

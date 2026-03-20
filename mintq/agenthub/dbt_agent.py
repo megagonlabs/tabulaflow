@@ -6,16 +6,20 @@ import time
 from typing import Any, ClassVar
 
 import jinja2
-from pydantic import BaseModel
-from pydantic_ai import Agent, RunContext, ModelRetry, ToolOutput
+from pydantic_ai import Agent
 
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from mintq.db_connector import BaseSQLDBConnector
+from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
 from mintq.toolhub import FileEditorTool, RunDbtTool
 
 logger = logging.getLogger(__name__)
+
+
+class DbtAgentConfig(BasicAgentConfig):
+    db_summarizer_llm: str = "openai-responses:gpt-5.4"
 
 
 def _find_duckdb_file(directory: str) -> str | None:
@@ -58,6 +62,12 @@ Writing model SQL:
 {{ dataset_instructions }}
 </dataset_instructions>
 {%- endif %}
+{%- if db_document %}
+
+<db_document>
+{{ db_document }}
+</db_document>
+{%- endif %}
 """.strip()
 
 
@@ -66,13 +76,13 @@ class DbtAgent:
     name: ClassVar = "dbt_agent"
     task_type: ClassVar = "dbt"
     output_type: ClassVar = "dbt"
-    config_cls: ClassVar[type[BaseAgentConfig]] = BasicAgentConfig
+    config_cls: ClassVar[type[BaseAgentConfig]] = DbtAgentConfig
 
-    def __init__(self, config: BasicAgentConfig):
+    def __init__(self, config: DbtAgentConfig):
         self.config = config
 
     @classmethod
-    async def from_config_async(cls, config: BasicAgentConfig) -> "DbtAgent":
+    async def from_config_async(cls, config: DbtAgentConfig) -> "DbtAgent":
         return cls(config)
 
     @instrument
@@ -80,11 +90,16 @@ class DbtAgent:
         t0 = time.time()
         assert task.working_dir is not None, "working_dir must be set before calling predict_async"
 
+        db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
+        db_summary = await db_summarizer.preprocess_async(db_connector)
+        db_document = db_summary.db_summary_markdown
+
         file_editor = FileEditorTool(task.working_dir)
         run_dbt = RunDbtTool(task.working_dir)
 
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
+            db_document=db_document,
         )
 
         agent = Agent[None, None](  # type: ignore
