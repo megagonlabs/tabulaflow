@@ -76,12 +76,10 @@ class Spider2DuckdbMatch:
         self, task: DbtTaskOutput, db_connector: NL2QDBConnector
     ) -> NumericOrNull:
         if not task.gold_db_path or not os.path.exists(task.gold_db_path):
-            logger.warning("No gold DuckDB for %s, skipping", task.qid)
-            return None
+            raise ValueError(f"No gold DuckDB for {task.qid}")
 
         if not task.gold_tables:
-            logger.warning("No gold_tables specified for %s, skipping", task.qid)
-            return None
+            raise ValueError(f"No gold_tables specified for {task.qid}")
 
         if not task.pred_db_path or not os.path.exists(task.pred_db_path):
             logger.info("No predicted DuckDB for %s", task.qid)
