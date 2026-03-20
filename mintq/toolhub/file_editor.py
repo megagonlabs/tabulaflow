@@ -18,6 +18,7 @@ from pydantic_ai import Tool
 
 SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 500
+MAX_DIR_ENTRIES = 200
 
 
 class FileEditorToolMetrics(BaseModel):
@@ -85,6 +86,13 @@ class FileEditorTool:
                 for f in sorted(files):
                     if not f.startswith("."):
                         entries.append(os.path.join(rel, f))
+            total = len(entries)
+            if total > MAX_DIR_ENTRIES:
+                entries = entries[:MAX_DIR_ENTRIES]
+                return (
+                    f"Directory listing of {path or '.'}:\n" + "\n".join(entries)
+                    + f"\n\n(showing first {MAX_DIR_ENTRIES} of {total} entries)"
+                )
             return f"Directory listing of {path or '.'}:\n" + "\n".join(entries)
 
         if not resolved.is_file():
