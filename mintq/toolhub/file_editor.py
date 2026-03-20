@@ -98,7 +98,11 @@ class FileEditorTool:
         if not resolved.is_file():
             return self._error(f"{path} does not exist.")
 
-        content = resolved.read_text()
+        try:
+            content = resolved.read_text()
+        except (UnicodeDecodeError, ValueError):
+            return self._error(f"{path} is a binary file and cannot be displayed.")
+
         num_lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
 
         header = f"File: {path}\n"
@@ -141,7 +145,10 @@ class FileEditorTool:
         if old_str == new_str:
             return self._error("old_str and new_str are identical.")
 
-        content = resolved.read_text()
+        try:
+            content = resolved.read_text()
+        except (UnicodeDecodeError, ValueError):
+            return self._error(f"{path} is a binary file and cannot be edited.")
         pattern = re.escape(old_str)
         matches = list(re.finditer(pattern, content))
 
