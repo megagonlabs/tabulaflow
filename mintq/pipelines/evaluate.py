@@ -5,8 +5,8 @@ import time
 from tqdm.asyncio import tqdm_asyncio
 from mintq import metric_registry, dataset_registry
 import mintq
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from mintq.db_connector import NL2QDBConnector
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset, DbtTaskOutput
+from mintq.db_connector import NL2QDBConnector, SQLConnector
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -32,6 +32,22 @@ async def compute_metrics_async(
     return task
 
 
+async def _build_dbt_working_connector(task: DbtTaskOutput, dataset: NL2QDataset) -> tuple[str, SQLConnector]:
+    """Create a read-only connector to the predicted DuckDB for a dbt task."""
+    original_conn = dataset.db_connectors.get(task.db)
+    global_id = original_conn.global_id if original_conn is not None else f"spider2-dbt+{task.db}"
+    conn = await SQLConnector.from_url_async(
+        global_id=global_id,
+        db_name=task.db,
+        engine_type="sync",
+        url=f"duckdb:///{task.pred_db_path}",
+        max_concurrency_per_db=4,
+        read_only=True,
+        enable_caching=False,
+    )
+    return task.db, conn
+
+
 async def evaluate_async(
     result: NL2QRunResult,
     dataset: NL2QDataset,
@@ -40,11 +56,23 @@ async def evaluate_async(
     metric_aggregators: list[BaseMetricAggregator],
     verbose: bool = True,
 ) -> NL2QRunResult:
+    dbt_db_connectors = {}
+    dbt_tasks = [
+        t for t in result.tasks if isinstance(t, DbtTaskOutput) and t.pred_db_path and os.path.exists(t.pred_db_path)
+    ]
+    if dbt_tasks:
+        pairs = await asyncio.gather(*[_build_dbt_working_connector(t, dataset) for t in dbt_tasks])
+        for db, conn in pairs:
+            dbt_db_connectors[db] = conn
+
+    def _get_db_connector(task: NL2QTaskOutput) -> NL2QDBConnector:
+        return dbt_db_connectors[task.db] if task.task_type == "dbt" else dataset.db_connectors[task.db]
+
     for i in range(0, len(result.tasks), batch_size):
         j = min(i + batch_size, len(result.tasks))
         batch = result.tasks[i:j]
         await tqdm_asyncio.gather(
-            *[compute_metrics_async(task, metrics, dataset.db_connectors[task.db]) for task in batch],
+            *[compute_metrics_async(task, metrics, _get_db_connector(task)) for task in batch],
             disable=not verbose,
         )
         if verbose:
