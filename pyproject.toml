@@ -42,6 +42,7 @@ dependencies = [
     "google-cloud-bigquery-storage>=2.36.2",
     "duckdb>=1.5.0",
     "duckdb-engine>=0.17.0",
+    "dbt-duckdb>=1.10.1",
 ]
 
 [project.optional-dependencies]
