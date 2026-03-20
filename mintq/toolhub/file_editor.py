@@ -62,10 +62,14 @@ class FileEditorTool:
 
     # -- commands -------------------------------------------------------------
 
+    def _error(self, msg: str) -> str:
+        self._metrics.error_count += 1
+        return f"Error: {msg}"
+
     def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
         if resolved.is_dir():
             if view_range:
-                return "Error: view_range is not supported for directories."
+                return self._error("view_range is not supported for directories.")
             entries: list[str] = []
             for root, dirs, files in os.walk(resolved):
                 depth = str(root).replace(str(resolved), "").count(os.sep)
@@ -84,7 +88,7 @@ class FileEditorTool:
             return f"Directory listing of {path or '.'}:\n" + "\n".join(entries)
 
         if not resolved.is_file():
-            return f"Error: {path} does not exist."
+            return self._error(f"{path} does not exist.")
 
         content = resolved.read_text()
         num_lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
@@ -99,14 +103,14 @@ class FileEditorTool:
             return self._make_numbered(content)
 
         if len(view_range) != 2:
-            return "Error: view_range must be a list of two integers [start, end]."
+            return self._error("view_range must be a list of two integers [start, end].")
         start, end = view_range
         if start < 1:
-            return f"Error: start line must be >= 1, got {start}."
+            return self._error(f"start line must be >= 1, got {start}.")
         if end == -1:
             end = num_lines
         if end < start:
-            return f"Error: end line ({end}) must be >= start line ({start})."
+            return self._error(f"end line ({end}) must be >= start line ({start}).")
 
         lines = content.split("\n")
         selected = lines[start - 1 : end]
@@ -122,9 +126,9 @@ class FileEditorTool:
 
     def _str_replace(self, resolved: Path, path: str, old_str: str, new_str: str) -> str:
         if not resolved.is_file():
-            return f"Error: {path} does not exist."
+            return self._error(f"{path} does not exist.")
         if old_str == new_str:
-            return "Error: old_str and new_str are identical."
+            return self._error("old_str and new_str are identical.")
 
         content = resolved.read_text()
         pattern = re.escape(old_str)
@@ -136,15 +140,15 @@ class FileEditorTool:
             pattern = re.escape(stripped_old)
             matches = list(re.finditer(pattern, content))
             if not matches:
-                return f"Error: old_str not found in {path}."
+                return self._error(f"old_str not found in {path}.")
             old_str, new_str = stripped_old, stripped_new
 
         if len(matches) > 1:
             line_numbers = sorted(
                 set(content.count("\n", 0, m.start()) + 1 for m in matches)
             )
-            return (
-                f"Error: old_str found {len(matches)} times in {path} "
+            return self._error(
+                f"old_str found {len(matches)} times in {path} "
                 f"(lines {line_numbers}). It must be unique — include more context."
             )
 
@@ -192,30 +196,25 @@ class FileEditorTool:
         try:
             resolved = self._resolve(path)
         except ValueError as e:
-            self._metrics.error_count += 1
-            return f"Error: {e}"
+            return self._error(str(e))
 
         if command == "view":
             self._metrics.num_view += 1
             return self._view(resolved, path, view_range)
         elif command == "write_file":
-            self._metrics.num_write_file += 1
             if file_text is None:
-                self._metrics.error_count += 1
-                return "Error: file_text is required for the write_file command."
+                return self._error("file_text is required for the write_file command.")
+            self._metrics.num_write_file += 1
             return self._write_file(resolved, path, file_text)
         elif command == "str_replace":
-            self._metrics.num_str_replace += 1
             if old_str is None:
-                self._metrics.error_count += 1
-                return "Error: old_str is required for the str_replace command."
+                return self._error("old_str is required for the str_replace command.")
             if new_str is None:
-                self._metrics.error_count += 1
-                return "Error: new_str is required for the str_replace command."
+                return self._error("new_str is required for the str_replace command.")
+            self._metrics.num_str_replace += 1
             return self._str_replace(resolved, path, old_str, new_str)
         else:
-            self._metrics.error_count += 1
-            return f"Error: unknown command '{command}'. Use view, write_file, or str_replace."
+            return self._error(f"unknown command '{command}'. Use view, write_file, or str_replace.")
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
