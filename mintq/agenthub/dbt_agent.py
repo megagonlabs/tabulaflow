@@ -61,46 +61,6 @@ Writing model SQL:
 """.strip()
 
 
-class DbtFinishTool:
-    """Finish tool for dbt agent that verifies dbt run was called."""
-
-    name: ClassVar = "finish"
-
-    def __init__(self) -> None:
-        self._metrics = _DbtFinishMetrics()
-
-    def as_pydantic_ai_tool(self) -> ToolOutput[None]:
-        def finish(ctx: RunContext) -> None:
-            """Finish the task. Only call this after `dbt run` succeeds.
-
-            Example:
-            ```python
-            finish()
-            ```
-            """
-            trajectory = Trajectory.from_pydantic_ai_messages(ctx.messages)
-            for msg in trajectory.messages[::-1]:
-                if msg.role == "assistant":
-                    for tc in msg.tool_calls[::-1]:
-                        if tc.name == "run_dbt" and tc.arguments is not None:
-                            self._metrics.num_calls += 1
-                            return None
-            self._metrics.error_no_dbt_run += 1
-            raise ModelRetry(
-                "You must run `run_dbt` at least once before finishing."
-            )
-
-        return ToolOutput(finish, name="finish")
-
-    def metrics(self) -> "_DbtFinishMetrics":
-        return self._metrics
-
-
-class _DbtFinishMetrics(BaseModel):
-    num_calls: int = 0
-    error_no_dbt_run: int = 0
-
-
 @agent_registry.register
 class DbtAgent:
     name: ClassVar = "dbt_agent"
@@ -116,15 +76,12 @@ class DbtAgent:
         return cls(config)
 
     @instrument
-    async def predict_async(
-        self, task: DbtTask, db_connector: BaseSQLDBConnector
-    ) -> DbtTaskOutput:
+    async def predict_async(self, task: DbtTask, db_connector: BaseSQLDBConnector) -> DbtTaskOutput:
         t0 = time.time()
         assert task.working_dir is not None, "working_dir must be set before calling predict_async"
 
         file_editor = FileEditorTool(task.working_dir)
         run_dbt = RunDbtTool(task.working_dir)
-        finish = DbtFinishTool()
 
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
@@ -136,7 +93,6 @@ class DbtAgent:
                 file_editor.as_pydantic_ai_tool(),
                 run_dbt.as_pydantic_ai_tool(),
             ],
-            output_type=finish.as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
@@ -144,9 +100,7 @@ class DbtAgent:
 
         result = await agent.run(task.question)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
-        trajectory = Trajectory.from_pydantic_ai_messages(
-            result.all_messages(), id="TRJY-DBT-AGENT"
-        )
+        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 
         pred_db_path = _find_duckdb_file(task.working_dir)
 
@@ -165,17 +119,11 @@ class DbtAgent:
 
         metrics: dict[str, Any] = {}
         metrics["latency_seconds"] = time.time() - t0
-        metrics["steps"] = sum(
-            1 for msg in trajectory.messages if msg.role == "assistant"
-        )
-        metrics["retry_prompt"] = sum(
-            1 for msg in trajectory.messages
-            if msg.role == "tool" and msg.is_retry_prompt
-        )
+        metrics["steps"] = sum(1 for msg in trajectory.messages if msg.role == "assistant")
+        metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {
             "file_editor": file_editor.metrics().model_dump(),
             "run_dbt": run_dbt.metrics().model_dump(),
-            "finish": finish.metrics().model_dump(),
         }
 
         return DbtTaskOutput(
