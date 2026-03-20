@@ -1,6 +1,6 @@
 """File editor tool for dbt agents.
 
-Provides ``view``, ``create``, and ``str_replace`` commands scoped to a
+Provides ``view``, ``write_file``, and ``str_replace`` commands scoped to a
 working directory.  Paths are always relative to the working directory and
 validated to prevent directory traversal.
 
@@ -22,13 +22,13 @@ MAX_RESPONSE_LINES = 500
 
 class FileEditorToolMetrics(BaseModel):
     num_view: int = 0
-    num_create: int = 0
+    num_write_file: int = 0
     num_str_replace: int = 0
     error_count: int = 0
 
 
 class FileEditorTool:
-    """File editor with ``view``, ``create``, and ``str_replace`` commands.
+    """File editor with ``view``, ``write_file``, and ``str_replace`` commands.
 
     All *path* arguments are relative to ``working_dir``.  Absolute paths and
     paths that escape the working directory (e.g. ``../../etc/passwd``) are
@@ -112,12 +112,13 @@ class FileEditorTool:
         selected = lines[start - 1 : end]
         return self._make_numbered("\n".join(selected), start_line=start)
 
-    def _create(self, resolved: Path, path: str, file_text: str) -> str:
-        if resolved.exists():
-            return f"Error: {path} already exists. Use str_replace to edit it."
+    def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
+        is_new = not resolved.exists()
         resolved.parent.mkdir(parents=True, exist_ok=True)
         resolved.write_text(file_text)
-        return f"File created: {path} ({file_text.count(chr(10)) + 1} lines)"
+        num_lines = file_text.count("\n") + (1 if file_text and not file_text.endswith("\n") else 0)
+        action = "Created" if is_new else "Wrote"
+        return f"{action}: {path} ({num_lines} lines)"
 
     def _str_replace(self, resolved: Path, path: str, old_str: str, new_str: str) -> str:
         if not resolved.is_file():
@@ -163,7 +164,7 @@ class FileEditorTool:
 
     async def __call__(
         self,
-        command: Literal["view", "create", "str_replace"],
+        command: Literal["view", "write_file", "str_replace"],
         path: str = ".",
         file_text: str | None = None,
         old_str: str | None = None,
@@ -174,16 +175,16 @@ class FileEditorTool:
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory.
-        - ``create``: Create a new file (fails if it already exists).
+        - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact string in a file. ``old_str`` must
           match exactly one location.
 
         All paths are relative to the project working directory.
 
         Args:
-            command: One of ``"view"``, ``"create"``, ``"str_replace"``.
+            command: One of ``"view"``, ``"write_file"``, ``"str_replace"``.
             path: Relative path to the file or directory.
-            file_text: Content for ``create`` command.
+            file_text: Content for ``write_file`` command.
             old_str: String to find for ``str_replace``.
             new_str: Replacement string for ``str_replace``.
             view_range: Optional ``[start_line, end_line]`` for ``view`` (1-indexed, end=-1 means EOF).
@@ -197,12 +198,12 @@ class FileEditorTool:
         if command == "view":
             self._metrics.num_view += 1
             return self._view(resolved, path, view_range)
-        elif command == "create":
-            self._metrics.num_create += 1
+        elif command == "write_file":
+            self._metrics.num_write_file += 1
             if file_text is None:
                 self._metrics.error_count += 1
-                return "Error: file_text is required for the create command."
-            return self._create(resolved, path, file_text)
+                return "Error: file_text is required for the write_file command."
+            return self._write_file(resolved, path, file_text)
         elif command == "str_replace":
             self._metrics.num_str_replace += 1
             if old_str is None:
@@ -214,7 +215,7 @@ class FileEditorTool:
             return self._str_replace(resolved, path, old_str, new_str)
         else:
             self._metrics.error_count += 1
-            return f"Error: unknown command '{command}'. Use view, create, or str_replace."
+            return f"Error: unknown command '{command}'. Use view, write_file, or str_replace."
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
