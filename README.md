@@ -857,6 +857,7 @@ March 18
 March 19
 - [ ] Support spider2-dbt
 
+- [ ] Randomization for ensembling
 - [ ] Update spider2-lite instructions
   - [ ] Quoting identifiers for snowflake?
   - [ ] Check not executable queries (both spider2-snow and spider2-lite)
