@@ -1268,10 +1268,10 @@ class DbtTask(BaseModel):
     """Relative path to the original dbt project directory (e.g. ``"data/Spider2/spider2-dbt/examples/zuora001"``)."""
     working_dir: str | None = None
     """Relative path to the working copy of the project, set by the pipeline before the agent runs (e.g. ``"output/exp123/working/zuora001"``)."""
-    gold_tables: list[DbtGoldTable]
-    """Tables to compare in evaluation, from the evaluation spec."""
     gold_db_path: str | None = None
     """Relative path to the gold ``.duckdb`` file for evaluation."""
+    gold_tables: list[DbtGoldTable]
+    """Tables to compare in evaluation, from the evaluation spec."""
     extra_info: dict[str, Any] = Field(default_factory=dict)
 
     def to_directory(self, directory: str) -> None:
