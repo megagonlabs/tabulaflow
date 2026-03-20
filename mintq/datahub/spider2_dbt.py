@@ -140,7 +140,7 @@ class Spider2DbtDatasetLoader:
         if len(duckdb_files) == 1:
             resolved = os.path.join(gold_dir, duckdb_files[0])
             if spec_name:
-                logger.warning(
+                logger.info(
                     "Gold DB mismatch for %s: spec says %s, using %s",
                     instance_id,
                     spec_name,
@@ -189,6 +189,8 @@ class Spider2DbtDatasetLoader:
             for line in f:
                 item = json.loads(line)
                 instance_id = item["instance_id"]
+                if instance_id in EXCLUDE_INSTANCES:
+                    continue
                 if databases_set is not None and instance_id not in databases_set:
                     continue
 
