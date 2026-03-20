@@ -72,9 +72,10 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
             working_db_path = os.path.join(working_dir, duckdb_files[0])
 
         original_conn = dataset.db_connectors.get(task.db)
-        existing_schema = original_conn.schema if isinstance(original_conn, SQLConnector) else None
+        original_global_id = original_conn.global_id if original_conn is not None else f"spider2-dbt+{task.db}"
+        existing_schema = original_conn.schema if original_conn is not None else None
         conn = await SQLConnector.from_url_async(
-            global_id=f"spider2-dbt-working+{task.db}",
+            global_id=original_global_id,
             db_name=task.db,
             engine_type="sync",
             url=f"duckdb:///{working_db_path}",
