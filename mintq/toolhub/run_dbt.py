@@ -49,7 +49,7 @@ class RunDbtTool:
 
     def _error(self, msg: str) -> str:
         self._metrics.error_count += 1
-        return f"Error: {msg}"
+        return f"(error: {msg})"
 
     def _increment_counter(self, command: DbtCommand) -> None:
         attr = f"num_{command}"

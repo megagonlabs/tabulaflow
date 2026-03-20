@@ -65,7 +65,7 @@ class FileEditorTool:
 
     def _error(self, msg: str) -> str:
         self._metrics.error_count += 1
-        return f"Error: {msg}"
+        return f"(error: {msg})"
 
     def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
         if resolved.is_dir():
