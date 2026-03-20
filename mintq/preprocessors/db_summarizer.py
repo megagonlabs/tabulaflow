@@ -60,6 +60,9 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
     async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> DBSummary:
         schema = db_connector.schema
+        if not schema.tables:
+            return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
+
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
 
