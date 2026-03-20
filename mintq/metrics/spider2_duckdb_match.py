@@ -83,14 +83,14 @@ class Spider2DuckdbMatch:
             logger.warning("No gold_tables specified for %s, skipping", task.qid)
             return None
 
-        pred_db_path = self._find_pred_db(task)
-        if pred_db_path is None:
+        if not task.pred_db_path or not os.path.exists(task.pred_db_path):
+            logger.info("No predicted DuckDB for %s", task.qid)
             return 0.0
 
         try:
             for gt in task.gold_tables:
                 try:
-                    pred_df = _read_duckdb_table(pred_db_path, gt.table_name)
+                    pred_df = _read_duckdb_table(task.pred_db_path, gt.table_name)
                 except Exception:
                     logger.info("Table %s not found in predicted DB for %s", gt.table_name, task.qid)
                     return 0.0
@@ -108,17 +108,3 @@ class Spider2DuckdbMatch:
         except Exception as e:
             logger.warning("Error evaluating %s: %s", task.qid, e)
             return 0.0
-
-    def _find_pred_db(self, task: DbtTaskOutput) -> str | None:
-        """Locate the predicted DuckDB file in the working directory."""
-        working_dir = task.working_dir
-        if not working_dir or not os.path.isdir(working_dir):
-            logger.info("No working_dir for %s", task.qid)
-            return None
-
-        duckdb_files = [f for f in os.listdir(working_dir) if f.endswith(".duckdb")]
-        if not duckdb_files:
-            logger.info("No .duckdb file in working_dir for %s", task.qid)
-            return None
-
-        return os.path.join(working_dir, duckdb_files[0])

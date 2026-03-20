@@ -1285,6 +1285,8 @@ class DbtTaskOutput(DbtTask):
     """Output of a dbt agent."""
 
     output_type: Literal["dbt"] = "dbt"
+    pred_db_path: str | None = None
+    """Relative path to the predicted DuckDB file produced by the agent (e.g. ``"output/exp123/working/zuora001/zuora.duckdb"``)."""
     pred_model_files: dict[str, str] = Field(default_factory=dict)
     """Maps path relative to ``working_dir`` (e.g. ``"models/my_model.sql"``) to file content."""
     dbt_run_success: bool | None = None
