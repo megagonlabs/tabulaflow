@@ -101,14 +101,17 @@ class FileEditorTool:
         content = resolved.read_text()
         num_lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
 
+        header = f"File: {path}\n"
+
         if not view_range:
             if num_lines > MAX_RESPONSE_LINES:
                 content = "\n".join(content.split("\n")[:MAX_RESPONSE_LINES])
                 return (
-                    self._make_numbered(content)
+                    header
+                    + self._make_numbered(content)
                     + f"\n\n(showing first {MAX_RESPONSE_LINES} of {num_lines} lines)"
                 )
-            return self._make_numbered(content)
+            return header + self._make_numbered(content)
 
         if len(view_range) != 2:
             return self._error("view_range must be a list of two integers [start, end].")
@@ -122,7 +125,7 @@ class FileEditorTool:
 
         lines = content.split("\n")
         selected = lines[start - 1 : end]
-        return self._make_numbered("\n".join(selected), start_line=start)
+        return header + self._make_numbered("\n".join(selected), start_line=start)
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
