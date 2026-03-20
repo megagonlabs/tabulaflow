@@ -115,6 +115,37 @@ class Spider2DbtDatasetLoader:
     def _eval_jsonl_path(self) -> str:
         return os.path.join(self.directory, "evaluation_suite", "gold", "spider2_eval.jsonl")
 
+    def _resolve_gold_db_path(self, instance_id: str, spec_name: str | None) -> str | None:
+        """Resolve the gold DuckDB path, falling back to the actual file on disk.
+
+        The eval spec ``gold`` field sometimes carries a stale filename that
+        doesn't match the file actually present in the gold directory.  When the
+        spec path doesn't exist, fall back to the single ``.duckdb`` file in the
+        gold directory (if exactly one exists).
+        """
+        gold_dir = os.path.join(self.directory, "evaluation_suite", "gold", instance_id)
+        if not os.path.isdir(gold_dir):
+            return None
+
+        if spec_name:
+            spec_path = os.path.join(gold_dir, spec_name)
+            if os.path.exists(spec_path):
+                return spec_path
+
+        duckdb_files = [f for f in os.listdir(gold_dir) if f.endswith(".duckdb")]
+        if len(duckdb_files) == 1:
+            resolved = os.path.join(gold_dir, duckdb_files[0])
+            if spec_name:
+                logger.warning(
+                    "Gold DB mismatch for %s: spec says %s, using %s",
+                    instance_id,
+                    spec_name,
+                    duckdb_files[0],
+                )
+            return resolved
+
+        return None
+
     def get_databases(self, split: str) -> list[str]:
         if split not in self.splits:
             raise ValueError(f"Split {split} not supported, only {self.splits} are supported for {self.name}")
@@ -176,10 +207,13 @@ class Spider2DbtDatasetLoader:
                         )
                     )
 
-                gold_db_name = params.get("gold")
-                gold_db_path: str | None = None
-                if gold_db_name:
-                    gold_db_path = os.path.join(self.directory, "evaluation_suite", "gold", instance_id, gold_db_name)
+                gold_db_path = self._resolve_gold_db_path(instance_id, params.get("gold"))
+                if not gold_db_path:
+                    raise FileNotFoundError(
+                        f"No gold DuckDB found for {instance_id}: "
+                        f"spec says {params.get('gold')!r}, "
+                        f"gold dir: {os.path.join(self.directory, 'evaluation_suite', 'gold', instance_id)}"
+                    )
 
                 tasks.append(
                     DbtTask(
