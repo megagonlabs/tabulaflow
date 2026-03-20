@@ -87,6 +87,10 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
         dataset.db_connectors[task.db] = conn
 
 
+EXCLUDE_INSTANCES = ["airbnb002", "biketheft001", "google_ads001", "gitcoin001"]
+"""Instances without gold DuckDB in the evaluation suite."""
+
+
 @dataset_registry.register
 class Spider2DbtDatasetLoader:
     """Loader for Spider 2.0-DBT (DuckDB dbt transformation tasks)."""
@@ -155,7 +159,8 @@ class Spider2DbtDatasetLoader:
             return []
 
         with open(jsonl_path, "r") as f:
-            return list(dict.fromkeys(json.loads(line)["instance_id"] for line in f))
+            dbs = list(dict.fromkeys(json.loads(line)["instance_id"] for line in f))
+            return [db for db in dbs if db not in EXCLUDE_INSTANCES]
 
     def _load_eval_spec(self) -> dict[str, dict[str, Any]]:
         """Load evaluation specifications keyed by instance_id."""
@@ -210,9 +215,9 @@ class Spider2DbtDatasetLoader:
                 gold_db_path = self._resolve_gold_db_path(instance_id, params.get("gold"))
                 if not gold_db_path:
                     raise FileNotFoundError(
-                        f"No gold DuckDB found for {instance_id}: "
-                        f"spec says {params.get('gold')!r}, "
-                        f"gold dir: {os.path.join(self.directory, 'evaluation_suite', 'gold', instance_id)}"
+                        f"No gold DuckDB found for {instance_id} "
+                        f"(spec says {params.get('gold')!r}). "
+                        f"If this instance lacks gold data, add it to EXCLUDE_INSTANCES."
                     )
 
                 tasks.append(
