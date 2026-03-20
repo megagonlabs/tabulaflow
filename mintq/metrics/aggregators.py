@@ -17,7 +17,7 @@ class RealScoreAggregator:
         ("bird-sql", "train"): (9428, "bird_sql_ex"),
         ("spider2-snow", "test"): (547, "spider2_ex"),
         ("spider2-lite", "test"): (547, "spider2_ex"),
-        ("spider2-dbt", "test"): (68, "spider2_ex"),
+        ("spider2-dbt", "test"): (68, "spider2_duckdb_match"),
         ("beaver", "test"): (209, "simple_ex"),
         ("arcs", "test"): (331, "simple_ex"),
         ("arcs", "test_unsampled"): (101, "simple_ex"),
@@ -30,7 +30,9 @@ class RealScoreAggregator:
         if config is None:
             return {}
         total_tasks, metric_key = config
-        values = [task.eval_metrics[metric_key] for task in result.tasks if metric_key in task.eval_metrics]
+        if all(metric_key not in task.eval_metrics for task in result.tasks):
+            return {}
+        values = [task.eval_metrics[metric_key] for task in result.tasks]
         total = sum(v for v in values if v is not None)
         return {f"{metric_key}_real": round(total / total_tasks, 4)}
 
