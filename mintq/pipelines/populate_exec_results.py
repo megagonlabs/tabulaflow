@@ -16,6 +16,9 @@ async def populate_task_async(
     timeout: int | None = None,
     force: bool = False,
 ) -> None:
+    if task.task_type == "dbt":
+        return
+
     for prefix in ["gold", "pred"]:
         all_queries = []
         if getattr(task, f"{prefix}_query", None):
