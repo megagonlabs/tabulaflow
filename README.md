@@ -857,6 +857,7 @@ March 18
 March 19
 - [ ] Support spider2-dbt
 
+- [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
 - [ ] Update spider2-lite instructions
   - [ ] Quoting identifiers for snowflake?
