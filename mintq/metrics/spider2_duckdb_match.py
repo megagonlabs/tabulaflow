@@ -92,7 +92,6 @@ class Spider2DuckdbMatch:
                 try:
                     pred_df = _read_duckdb_table(task.pred_db_path, gt.table_name)
                 except Exception:
-                    logger.info("Table %s not found in predicted DB for %s", gt.table_name, task.qid)
                     return 0.0
 
                 gold_df = _read_duckdb_table(task.gold_db_path, gt.table_name)
