@@ -148,10 +148,8 @@ class Spider2DbtDatasetLoader:
             project_dir = os.path.join(self.directory, "examples", instance_id)
             duckdb_files = [f for f in os.listdir(project_dir) if f.endswith(".duckdb")]
             if not duckdb_files:
-                raise FileNotFoundError(
-                    f"No .duckdb file found in {project_dir}. "
-                    "Run setup.py to extract the spider2-dbt databases."
-                )
+                logger.info("No .duckdb file found in %s, skipping", project_dir)
+                continue
             if len(duckdb_files) > 1:
                 logger.warning("Multiple .duckdb files in %s, using %s", project_dir, duckdb_files[0])
             db_path = os.path.join(project_dir, duckdb_files[0])
