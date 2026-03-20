@@ -423,6 +423,11 @@ test-arcs-structured-kimi:
 	uv run mintq/pipelines/populate_exec_results.py --debug
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-spider2-dbt-agent
+test-spider2-dbt-agent:
+	uv run mintq/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-spider2-agent
 test-spider2-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium

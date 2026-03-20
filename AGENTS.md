@@ -24,6 +24,7 @@ Key experiment targets (see Makefile for full list):
 make test-bird-agent           # bird-sql with sql_agent
 make test-arcs-structured      # arcs with ambig_structured_sql_agent
 make test-spider2-agent        # spider2-snow with sql_agent
+make test-spider2-dbt-agent    # spider2-dbt with dbt_agent
 make test-simple               # bird-sql, spider2-snow, beaver with simple_zero_shot
 ```
 
