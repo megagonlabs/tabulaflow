@@ -5,6 +5,7 @@ from mintq.schema import (
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
+    DbtTaskOutput,
     NumericOrNull,
 )
 from mintq.db_connector import NL2QDBConnector
@@ -47,6 +48,15 @@ class BaseStructuredAmbigNL2QMetric(Protocol):
     ) -> NumericOrNull | dict[str, NumericOrNull]: ...
 
 
+class BaseDbtMetric(Protocol):
+    name: ClassVar[str]
+    compatible_output_types: ClassVar[list[str]]
+
+    async def compute_async(
+        self, task: DbtTaskOutput, db_connector: NL2QDBConnector
+    ) -> NumericOrNull | dict[str, NumericOrNull]: ...
+
+
 class BaseMetricAggregator(Protocol):
     def aggregate(self, result: NL2QRunResult) -> dict[str, Any]: ...
 
@@ -56,6 +66,7 @@ NL2QMetric: TypeAlias = Union[
     BaseSimpleAmbigNL2QMetric,
     BaseFlatAmbigNL2QMetric,
     BaseStructuredAmbigNL2QMetric,
+    BaseDbtMetric,
 ]
 
 metric_registry = Registry[NL2QMetric]("metric")

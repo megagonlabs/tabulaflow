@@ -117,9 +117,12 @@ async def main_async() -> None:
         print("=== DEBUG MODE === ")
         for task in result.tasks:
             md_path = os.path.join(args.result_dir, "readable", task.qid, "task_readable.md")
-            print(
-                f"{md_path}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}"
-            )
+            if task.output_type == "dbt":
+                print(f"{md_path}  spider2_duckdb_match: {task.eval_metrics['spider2_duckdb_match']:.4f}")
+            else:
+                print(
+                    f"{md_path}  simple_ex: {task.eval_metrics['simple_ex']:.4f}  bird_sql_ex: {task.eval_metrics['bird_sql_ex']:.4f}"
+                )
 
 
 if __name__ == "__main__":

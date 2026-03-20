@@ -3,6 +3,7 @@ from mintq.metrics.base import (
     BaseSimpleAmbigNL2QMetric,
     BaseFlatAmbigNL2QMetric,
     BaseStructuredAmbigNL2QMetric,
+    BaseDbtMetric,
     NL2QMetric,
     metric_registry,
     BaseMetricAggregator,
@@ -28,12 +29,14 @@ from mintq.metrics.found_one import FoundOne
 from mintq.metrics.raw_pred_bird_sql_ex import RawPredBirdSQLEx
 from mintq.metrics.raw_pred_simple_ex import RawPredSimpleEx
 from mintq.metrics.schema_linking_stats import SchemaLinkingStats
+from mintq.metrics.spider2_duckdb_match import Spider2DuckdbMatch
 
 __all__ = [
     "BaseSimpleNL2QMetric",
     "BaseSimpleAmbigNL2QMetric",
     "BaseFlatAmbigNL2QMetric",
     "BaseStructuredAmbigNL2QMetric",
+    "BaseDbtMetric",
     "NL2QMetric",
     "BaseMetricAggregator",
     "SimpleAverageAggregator",
@@ -55,5 +58,6 @@ __all__ = [
     "RawPredBirdSQLEx",
     "RawPredSimpleEx",
     "SchemaLinkingStats",
+    "Spider2DuckdbMatch",
     "metric_registry",
 ]
