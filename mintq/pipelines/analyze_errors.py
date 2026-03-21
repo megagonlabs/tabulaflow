@@ -4,7 +4,7 @@ import os
 import copy
 import json
 import time
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
@@ -316,7 +316,10 @@ class Analyzer:
 
     async def analyze_async(self, result: NL2QRunResult) -> str:
         """Analyze the run result and return a markdown string containing the error analysis report."""
-        sections = []
+        sections = [
+            f"# {result.dataset} / {result.split} — {result.agent}",
+            _metrics_section(result),
+        ]
         if self.do_error_classification:
             sections.append(await self._error_categories_section(result))
         sections.append(self._error_section(result))
@@ -326,8 +329,56 @@ class Analyzer:
         if any(task.extra_pred_info.raw_pred_query is not None for task in result.tasks):
             sections.append(self._postprocess_impact_section(result))
 
-        res = "\n\n".join(sections)
-        return res
+        return "\n\n".join(sections)
+
+
+def _flatten_metrics(d: dict[str, Any], prefix: str = "") -> list[tuple[str, Any]]:
+    """Recursively flatten nested metric dicts into ``(dotted_key, leaf)`` pairs.
+
+    Leaf values are either scalars or ``{avg, sum, max, ...}`` dicts.
+    """
+    items: list[tuple[str, Any]] = []
+    for key, value in d.items():
+        full_key = f"{prefix}/{key}" if prefix else key
+        if isinstance(value, dict) and not any(k in value for k in ("avg", "sum", "max", "min")):
+            items.extend(_flatten_metrics(value, full_key))
+        else:
+            items.append((full_key, value))
+    return items
+
+
+def _metrics_section(result: NL2QRunResult) -> str:
+    """Render aggregated eval/inference metrics and usage as markdown."""
+    res = "## Aggregated Eval Metrics\n\n"
+    if result.aggregated_eval_metrics:
+        for key, value in _flatten_metrics(result.aggregated_eval_metrics):
+            if isinstance(value, dict):
+                parts = ", ".join(f"{k}: {v}" for k, v in value.items())
+                res += f"- **{key}:** {parts}\n"
+            else:
+                res += f"- **{key}:** {value}\n"
+    else:
+        res += "(none)\n"
+
+    res += "\n## Aggregated Inference Metrics\n\n"
+    if result.aggregated_inference_metrics:
+        for key, value in _flatten_metrics(result.aggregated_inference_metrics):
+            if isinstance(value, dict):
+                parts = ", ".join(f"{k}: {v}" for k, v in value.items())
+                res += f"- **{key}:** {parts}\n"
+            else:
+                res += f"- **{key}:** {value}\n"
+    else:
+        res += "(none)\n"
+
+    if result.total_usage:
+        res += "\n## Total Usage\n\n"
+        res += f"- **API Requests:** {result.total_usage.api_requests}\n"
+        res += f"- **Input Tokens:** {result.total_usage.input_tokens}\n"
+        res += f"- **Output Tokens:** {result.total_usage.output_tokens}\n"
+        res += f"- **Cost:** ${float(result.total_usage.api_cost_usd):.4f}\n"
+
+    return res
 
 
 class DbtAnalyzer:
@@ -389,6 +440,8 @@ class DbtAnalyzer:
     async def analyze_async(self, result: NL2QRunResult) -> str:
         """Analyze dbt run results and return a markdown report."""
         sections = [
+            f"# {result.dataset} / {result.split} — {result.agent}",
+            _metrics_section(result),
             self._error_section(result),
             self._num_tool_calls_section(result),
         ]
