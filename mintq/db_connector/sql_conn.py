@@ -382,7 +382,8 @@ DISTINCT_SAFE_TYPES = {
 
 # Timeout (seconds) for per-table row-count queries during schema building.
 # Views backed by expensive joins can take hours; this prevents hangs.
-_SCHEMA_COUNT_TIMEOUT = 120
+_TABLE_COUNT_TIMEOUT = 120
+_VIEW_COUNT_TIMEOUT = 10
 
 # Number of sample values used to infer JSON schema for semi-structured columns
 _JSON_SCHEMA_SAMPLE_SIZE = 1000
@@ -524,16 +525,18 @@ async def build_table_async(
         return None
 
     tbl = sqlalchemy.table(table_name, schema=schema_name)
+    count_timeout = _VIEW_COUNT_TIMEOUT if is_view else _TABLE_COUNT_TIMEOUT
     try:
         num_rows = (
             await t_eng.run_query_async(
                 select(func.count()).select_from(tbl),
-                timeout=_SCHEMA_COUNT_TIMEOUT,
+                timeout=count_timeout,
             )
         ).result[0][0]
     except (TimeoutError, asyncio.TimeoutError):
+        kind = "view" if is_view else "table"
         logger.warning(
-            f"COUNT(*) on {schema_name}.{table_name} timed out after {_SCHEMA_COUNT_TIMEOUT}s; skipping column stats"
+            f"COUNT(*) on {kind} {schema_name}.{table_name} timed out after {count_timeout}s; skipping column stats"
         )
         num_rows = None
 
