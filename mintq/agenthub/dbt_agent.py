@@ -11,9 +11,10 @@ from pydantic_ai import Agent
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from mintq.db_connector import BaseSQLDBConnector
+from mintq.formatters import BaseSQLSchemaFormatter, formatter_registry
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
-from mintq.toolhub import FileEditorTool, RunDbtTool
+from mintq.toolhub import FileEditorTool, GetTableSchemaTool, RunDbtTool
 
 logger = logging.getLogger(__name__)
 
@@ -48,6 +49,7 @@ You are an agent - please keep going until the project builds successfully, befo
 <tool_calling>
 Gathering information:
 - Use the `file_editor` tool to browse the project directory, read YAML and SQL files, and understand the project structure before making changes.
+- Use `get_table_schema` to inspect the schema of source tables in the data warehouse.
 - Batch multiple `file_editor` view calls in a single step.
 - You may use `run_dbt` to list resources or compile SQL without executing.
 
@@ -55,6 +57,7 @@ Writing model SQL:
 - Use the `file_editor` tool to create new SQL model files or edit existing ones.
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
 - If `dbt run` fails, read the error output, fix the SQL, and retry.
+- After `dbt run` succeeds, use `get_table_schema` to verify that the output tables.
 - Be THOROUGH. Make sure all models defined in the YAML files are implemented before finishing.
 </tool_calling>
 {%- if dataset_instructions %}
@@ -81,6 +84,9 @@ class DbtAgent:
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config
+        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+            **config.to_formatter_kwargs()
+        )
 
     @classmethod
     async def from_config_async(cls, config: DbtAgentConfig) -> "DbtAgent":
@@ -97,6 +103,11 @@ class DbtAgent:
 
         file_editor = FileEditorTool(task.working_dir)
         run_dbt = RunDbtTool(task.working_dir)
+        get_table_schema = GetTableSchemaTool(
+            db_connector, self.formatter,
+            compress=self.config.compress_schema,
+            add_description=self.config.use_column_description,
+        )
 
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
@@ -108,6 +119,7 @@ class DbtAgent:
             tools=[
                 file_editor.as_pydantic_ai_tool(),
                 run_dbt.as_pydantic_ai_tool(),
+                get_table_schema.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
@@ -140,6 +152,7 @@ class DbtAgent:
         metrics["tools"] = {
             "file_editor": file_editor.metrics().model_dump(),
             "run_dbt": run_dbt.metrics().model_dump(),
+            "get_table_schema": get_table_schema.metrics().model_dump(),
         }
 
         return DbtTaskOutput(
