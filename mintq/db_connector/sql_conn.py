@@ -857,7 +857,7 @@ class SQLConnector:
 
         Use after DDL mutations (e.g. ``dbt run`` creating new tables) to
         make the connector's schema reflect the current database state.
-        Bypasses the schema cache entirely.
+        Also updates the on-disk schema cache when caching is enabled.
 
         Args:
             tables: If provided, only (re-)build schemas for these tables
@@ -916,6 +916,13 @@ class SQLConnector:
                     column_stats_mode=self._column_stats_mode,
                     include_schema_names=self._include_schema_names,
                 )
+
+            if self.enable_caching and mintq_config.schema_cache_enabled:
+                schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
+                os.makedirs(schema_cache_dir, exist_ok=True)
+                cache_path = os.path.join(schema_cache_dir, f"{self.global_id}.json")
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    f.write(self.schema.model_dump_json(indent=2))
 
             logger.info(
                 f"Schema refreshed for {self.global_id}: "
