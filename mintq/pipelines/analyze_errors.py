@@ -363,22 +363,24 @@ class DbtAnalyzer:
 
         return res
 
+    @staticmethod
+    def _count_tool_calls(tool_metrics: dict[str, int]) -> int:
+        """Sum all call-count fields from a tool's metrics dict."""
+        return sum(v for k, v in tool_metrics.items() if k.startswith("num_"))
+
     def _num_tool_calls_section(self, result: NL2QRunResult) -> str:
         res = "## Tool Calls"
         tool_names = ["file_editor", "run_dbt", "get_table_schema"]
+        qid_to_db = {task.qid: task.db for task in result.tasks}
         for tool_name in tool_names:
             num_calls: list[tuple[str, int]] = []
             for task in result.tasks:
                 tools = task.inference_metrics.get("tools", {})
                 if tool_name in tools:
-                    num_calls.append((task.qid, tools[tool_name].get("num_calls", 0)
-                                      + tools[tool_name].get("num_view", 0)
-                                      + tools[tool_name].get("num_write_file", 0)
-                                      + tools[tool_name].get("num_str_replace", 0)))
+                    num_calls.append((task.qid, self._count_tool_calls(tools[tool_name])))
             if not num_calls:
                 continue
             num_calls.sort(key=lambda x: x[1], reverse=True)
-            qid_to_db = {task.qid: task.db for task in result.tasks}
             res += f"\n\n### Top 10 tasks with most {tool_name} calls"
             for q, n in num_calls[:10]:
                 res += f"\n\n[[{q} ({qid_to_db[q]})]](./readable/{q}/task_readable.md) - {n} calls"
