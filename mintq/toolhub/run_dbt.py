@@ -19,7 +19,7 @@ from pydantic_ai import Tool
 
 logger = logging.getLogger(__name__)
 
-MAX_OUTPUT_CHARS = 30_000
+MAX_OUTPUT_CHARS = 30000
 
 DbtCommand = Literal["run", "build", "test", "compile", "debug", "ls"]
 

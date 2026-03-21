@@ -18,6 +18,7 @@ from pydantic_ai import Tool
 
 SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 500
+MAX_RESPONSE_CHARS = 16000
 MAX_DIR_ENTRIES = 200
 
 
@@ -56,9 +57,24 @@ class FileEditorTool:
             raise ValueError(f"Path escapes the working directory: {path}")
         return resolved
 
-    def _make_numbered(self, content: str, start_line: int = 1) -> str:
-        """Add line numbers to content."""
+    @staticmethod
+    def _truncate_line(line: str, max_chars: int) -> str:
+        """Truncate a single line using head...tail if it exceeds *max_chars*."""
+        if len(line) <= max_chars:
+            return line
+        half = max_chars // 2
+        return line[:half] + f"...({len(line)} chars)..." + line[-half:]
+
+    def _make_numbered(
+        self,
+        content: str,
+        start_line: int = 1,
+        max_line_chars: int | None = None,
+    ) -> str:
+        """Add line numbers to content, optionally truncating long lines."""
         lines = content.split("\n")
+        if max_line_chars is not None:
+            lines = [self._truncate_line(line, max_line_chars) for line in lines]
         return "\n".join(f"{i + start_line:6}\t{line}" for i, line in enumerate(lines))
 
     # -- commands -------------------------------------------------------------
@@ -108,14 +124,21 @@ class FileEditorTool:
         header = f"File: {path}\n"
 
         if not view_range:
-            if num_lines > MAX_RESPONSE_LINES:
-                content = "\n".join(content.split("\n")[:MAX_RESPONSE_LINES])
+            all_lines = content.split("\n")
+            truncated = num_lines > MAX_RESPONSE_LINES
+            if truncated:
+                all_lines = all_lines[:MAX_RESPONSE_LINES]
+            per_line = MAX_RESPONSE_CHARS // max(len(all_lines), 1)
+            numbered = self._make_numbered(
+                "\n".join(all_lines), max_line_chars=per_line
+            )
+            if truncated:
                 return (
                     header
-                    + self._make_numbered(content)
+                    + numbered
                     + f"\n\n(showing first {MAX_RESPONSE_LINES} of {num_lines} lines)"
                 )
-            return header + self._make_numbered(content)
+            return header + numbered
 
         if len(view_range) != 2:
             return self._error("view_range must be a list of two integers [start, end].")
@@ -129,7 +152,10 @@ class FileEditorTool:
 
         lines = content.split("\n")
         selected = lines[start - 1 : end]
-        return header + self._make_numbered("\n".join(selected), start_line=start)
+        per_line = MAX_RESPONSE_CHARS // max(len(selected), 1)
+        return header + self._make_numbered(
+            "\n".join(selected), start_line=start, max_line_chars=per_line
+        )
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
@@ -178,7 +204,10 @@ class FileEditorTool:
         start = max(1, replacement_line - SNIPPET_CONTEXT_LINES)
         end = replacement_line + SNIPPET_CONTEXT_LINES + new_str.count("\n")
         snippet_lines = new_content.split("\n")[start - 1 : end]
-        snippet = self._make_numbered("\n".join(snippet_lines), start_line=start)
+        per_line = MAX_RESPONSE_CHARS // max(len(snippet_lines), 1)
+        snippet = self._make_numbered(
+            "\n".join(snippet_lines), start_line=start, max_line_chars=per_line
+        )
 
         return f"Edited {path}. Snippet:\n{snippet}"
 
