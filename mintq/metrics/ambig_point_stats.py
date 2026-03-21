@@ -6,6 +6,7 @@ import jinja2
 from mintq.schema import (
     ARCSAmbiguityType,
     FlatAmbigNL2QTaskOutput,
+    NL2QTaskOutput,
     NumericOrNull,
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
@@ -14,6 +15,8 @@ from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.schema import PredAmbiguityPoint, GoldAmbiguityPoint
 from mintq.utils import int_to_letter
+
+AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 
 
 AMBIG_POINT_MATCHING_SYSTEM_PROMPT = """
@@ -391,9 +394,10 @@ class AmbigPointStats:
 
     async def compute_async(
         self,
-        task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput,
-        db_connector: NL2QDBConnector,
+        task: NL2QTaskOutput,
+        db_connector: NL2QDBConnector | None = None,
     ) -> dict[str, NumericOrNull]:
+        assert isinstance(task, AmbigTaskOutput)
         if task.output_type == "ambig-simple":
             return await self._compute_ambig_simple_async(task)
         elif task.output_type == "ambig-flat":

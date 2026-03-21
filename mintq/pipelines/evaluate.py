@@ -5,7 +5,7 @@ import time
 from tqdm.asyncio import tqdm_asyncio
 from mintq import metric_registry, dataset_registry
 import mintq
-from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset, DbtTaskOutput
+from mintq.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from mintq.db_connector import NL2QDBConnector
 from mintq.metrics import NL2QMetric, BaseMetricAggregator
 from mintq.metrics.aggregators import (
@@ -23,7 +23,7 @@ async def compute_metrics_async(
     task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector | None
 ) -> NL2QTaskOutput:
     results = await asyncio.gather(*[
-        m.compute_async(task) if isinstance(task, DbtTaskOutput) else m.compute_async(task, db_connector)  # type: ignore
+        m.compute_async(task, db_connector)
         for m in metrics
     ])
     task.eval_metrics = {}

@@ -1,5 +1,6 @@
 from typing import ClassVar
 from mintq.schema import (
+    NL2QTaskOutput,
     SimpleAmbigNL2QTaskOutput,
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
@@ -9,6 +10,9 @@ from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.utils import get_final_pred_query
 from mintq.metrics.simple_ex import SimpleEx
+
+AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
+
 
 
 @metric_registry.register
@@ -27,9 +31,10 @@ class FoundOne:
 
     async def compute_async(
         self,
-        task: SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput,
-        db_connector: NL2QDBConnector,
+        task: NL2QTaskOutput,
+        db_connector: NL2QDBConnector | None = None,
     ) -> NumericOrNull:
+        assert isinstance(task, AmbigTaskOutput)
         pred_query = get_final_pred_query(task)
 
         if pred_query is None:

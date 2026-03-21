@@ -10,7 +10,7 @@ class Executable:
     name: ClassVar[str] = "executable"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> float:
         pred_query = get_final_pred_query(task)
         if pred_query is None:
             return 0.0

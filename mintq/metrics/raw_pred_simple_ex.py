@@ -1,6 +1,6 @@
 import copy
 from typing import ClassVar
-from mintq.schema import SimpleNL2QTaskOutput
+from mintq.schema import NL2QTaskOutput, SimpleNL2QTaskOutput
 from mintq.db_connector import NL2QDBConnector
 from mintq.metrics.base import metric_registry
 from mintq.metrics.simple_ex import SimpleEx
@@ -16,7 +16,8 @@ class RawPredSimpleEx:
         self.abs_tol = abs_tol
         self.ignore_repetitions = ignore_repetitions
 
-    async def compute_async(self, task: SimpleNL2QTaskOutput, db_connector: NL2QDBConnector) -> NumericOrNull:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> NumericOrNull:
+        assert isinstance(task, SimpleNL2QTaskOutput)
         task = copy.deepcopy(task)
         task.pred_query = task.extra_pred_info.raw_pred_query
         simple_ex = SimpleEx(abs_tol=self.abs_tol, ignore_repetitions=self.ignore_repetitions)

@@ -10,6 +10,6 @@ class GoldExecutable:
     name: ClassVar[str] = "gold_executable"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector) -> float:
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> float:
         gold_query = get_final_gold_query(task)
         return float(gold_query.exec_result.df is not None)  # type: ignore
