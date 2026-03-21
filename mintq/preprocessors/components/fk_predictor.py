@@ -6,7 +6,7 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 from mintq.schema import SQLSchema, Usage, ForeignKeySchema, TableRef
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.toolhub.run_query import RunQueryNoParamsTool
+from mintq.toolhub.run_query import RunQueryTool
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 FK_PREDICTOR_SYSTEM_PROMPT = """
@@ -62,7 +62,7 @@ class ForeignKeyPredictor:
         system_prompt = jinja2.Template(FK_PREDICTOR_SYSTEM_PROMPT).render(
             schema=self.formatter.format(schema, add_description=True)
         )
-        run_query_tool = RunQueryNoParamsTool(db_connector)
+        run_query_tool = RunQueryTool(db_connector)
         agent = Agent[None, LLMOutput](
             model=self.llm,
             output_type=LLMOutput,

@@ -20,7 +20,7 @@ from mintq.schema import (
 )
 from mintq.toolhub import (
     BaseTool,
-    RunQueryWithParamsTool,
+    RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
     GetSchemaTool,
@@ -315,7 +315,7 @@ class AmbigStructuredSQLAgent:
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)
-        tools["run_query"] = RunQueryWithParamsTool(db_connector)
+        tools["run_query"] = RunQueryTool(db_connector, allow_params=True)
         tools["finish"] = FinishTool()
         return tools
 

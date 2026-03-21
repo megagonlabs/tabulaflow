@@ -8,7 +8,7 @@ from mintq.schema import SQLSchema, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-from mintq.toolhub.run_query import RunQueryNoParamsTool
+from mintq.toolhub.run_query import RunQueryTool
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
@@ -67,7 +67,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             schema = self.compressor.compress(schema)
 
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render()
-        run_query_tool = RunQueryNoParamsTool(db_connector)
+        run_query_tool = RunQueryTool(db_connector)
 
         model_settings: dict[str, Any] = {}
         if self.openai_reasoning_effort is not None:

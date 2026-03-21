@@ -3,7 +3,7 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
-from mintq.toolhub.run_query import RunQueryWithParamsTool, LLMParameter
+from mintq.toolhub.run_query import RunQueryTool, LLMParameter
 from mintq.db_connector.sql_conn import SQLConnector
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -42,7 +42,7 @@ async def db_connector(sql_engine: Any) -> SQLConnector:
 @pytest.mark.asyncio
 async def test_run_query_successful(db_connector: SQLConnector) -> None:
     """Test a successful query execution."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=10)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=10)
     result: str = await tool("SELECT * FROM users ORDER BY id")
 
     assert "(warning:" not in result.lower()
@@ -58,7 +58,7 @@ async def test_run_query_successful(db_connector: SQLConnector) -> None:
 @pytest.mark.asyncio
 async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
     """Test query execution with parameters."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=10)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=10)
     result: str = await tool(
         "SELECT * FROM users WHERE age > :min_age ORDER BY id",
         parameters=[LLMParameter(parameter_name="min_age", parameter_value=25)],
@@ -72,7 +72,7 @@ async def test_run_query_with_parameters(db_connector: SQLConnector) -> None:
 @pytest.mark.asyncio
 async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
     """Test query that returns empty results."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=10)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=10)
     result: str = await tool("SELECT * FROM users WHERE age > 100")
 
     assert "warning: query executed successfully, but results are empty" in result
@@ -82,7 +82,7 @@ async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
 @pytest.mark.asyncio
 async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
     """Test query that returns a column with all null values."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=10)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=10)
     result: str = await tool("SELECT NULL as all_null FROM users")
 
     assert "warning: a column is entirely null" in result
@@ -92,7 +92,7 @@ async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
 @pytest.mark.asyncio
 async def test_run_query_failed(db_connector: SQLConnector) -> None:
     """Test query that fails due to SQL error."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=10)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=10)
     result: str = await tool("SELECT * FROM nonexistent_table")
 
     # print(result)
@@ -107,7 +107,7 @@ async def test_run_query_failed(db_connector: SQLConnector) -> None:
 @pytest.mark.asyncio
 async def test_run_query_timeout(db_connector: SQLConnector) -> None:
     """Test query timeout."""
-    tool = RunQueryWithParamsTool(db_connector, timeout=1)
+    tool = RunQueryTool(db_connector, allow_params=True, timeout=1)
 
     # Create a query that takes a long time
     # For SQLite, we can simulate a long query by doing many cross joins

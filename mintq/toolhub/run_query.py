@@ -42,18 +42,28 @@ class LLMParameter(BaseModel):
     parameter_value: int | float | str = Field(description="The intended value of the parameter.")
 
 
-class RunQueryWithParamsTool:
+class RunQueryTool:
+    """Unified run_query tool with optional parameter support.
+
+    When ``allow_params=True``, the tool schema exposed to the LLM includes
+    a ``parameters`` argument.  When ``False`` (the default), only ``query``
+    is exposed.
+    """
+
     name: ClassVar = "run_query"
 
     def __init__(
         self,
         db_connector: BaseSQLDBConnector,
+        *,
+        allow_params: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
     ):
         self.db_connector = db_connector
+        self.allow_params = allow_params
         self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -61,7 +71,7 @@ class RunQueryWithParamsTool:
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
-    async def __call__(self, query: str, parameters: list[LLMParameter] = []) -> str:
+    async def _run_with_params(self, query: str, parameters: list[LLMParameter] = []) -> str:
         """Execute a SQL query and return the results.
 
         Returning large result sets is safe — the display is automatically truncated,
@@ -80,81 +90,12 @@ class RunQueryWithParamsTool:
 
         Args:
             query: The SQL query to execute.
-            parameters: The parameters to use in the query. A list of dictionaries, each containing a `parameter_name` and a `parameter_value` field.
+            parameters: The parameters to use in the query. A list of dictionaries,
+                each containing a `parameter_name` and a `parameter_value` field.
         """
-        self._metrics.num_calls += 1
-        db_connector = self.db_connector
-        exec_result = await db_connector.run_query_async(
-            query,
-            parameters={p.parameter_name: p.parameter_value for p in parameters},
-            timeout=self.timeout,
-        )
-        self._last_pred_query = PredQuery(
-            query=query,
-            parameter_names=[p.parameter_name for p in parameters],
-            parameter_values={p.parameter_name: p.parameter_value for p in parameters},
-            exec_result=exec_result,
-        )
-        if exec_result.df is None:
-            assert exec_result.error is not None
-            if exec_result.error.exc_type == "ReadOnlyViolationError":
-                self._metrics.error_read_only_violation += 1
-                return f"(query failed: {exec_result.error.message})"
-            elif exec_result.error.exc_type == "TimeoutError":
-                self._metrics.error_timeout += 1
-                return "(query timed out)"
-            else:
-                self._metrics.error_query_failed += 1
-                return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
+        return await self._execute(query, parameters)
 
-        df = exec_result.df
-        if df.empty:
-            return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
-
-        res = format_df(
-            df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
-        )
-        res += f"\n({len(df)} rows)"
-        res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
-
-        for hint in _detect_result_hints(df):
-            res += f"\n({hint})"
-        if df.isnull().all().any():
-            res += "\n(warning: a column is entirely null, the query might be incorrect)"
-        return res
-
-    def as_pydantic_ai_tool(self) -> Tool:
-        return Tool(self.__call__, name=self.name)
-
-    def metrics(self) -> RunQueryToolMetrics:
-        return self._metrics
-
-    def last_pred_query(self) -> PredQuery:
-        if self._last_pred_query is None:
-            raise ValueError("No query has been executed")
-        return self._last_pred_query
-
-
-class RunQueryNoParamsTool:
-    name: ClassVar = "run_query"
-
-    def __init__(
-        self,
-        db_connector: BaseSQLDBConnector,
-        timeout: int | None | object = _UNSET,
-        max_visible_rows: int = 20,
-        max_cell_width: int = 200,
-        floatfmt: str = ".8g",
-    ):
-        self.db_connector = db_connector
-        self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
-        self.max_visible_rows = max_visible_rows
-        self.max_cell_width = max_cell_width
-        self.floatfmt = floatfmt
-        self._metrics = RunQueryToolMetrics()
-        self._last_pred_query: PredQuery | None = None
-
-    async def __call__(self, query: str) -> str:
+    async def _run_no_params(self, query: str) -> str:
         """Execute a SQL query and return the results.
 
         Returning large result sets is safe — the display is automatically truncated,
@@ -166,14 +107,20 @@ class RunQueryNoParamsTool:
         Args:
             query: The SQL query to execute.
         """
+        return await self._execute(query, [])
+
+    async def _execute(self, query: str, parameters: list[LLMParameter]) -> str:
         self._metrics.num_calls += 1
-        db_connector = self.db_connector
-        exec_result = await db_connector.run_query_async(
+        param_dict = {p.parameter_name: p.parameter_value for p in parameters}
+        exec_result = await self.db_connector.run_query_async(
             query,
+            parameters=param_dict,
             timeout=self.timeout,
         )
         self._last_pred_query = PredQuery(
             query=query,
+            parameter_names=[p.parameter_name for p in parameters],
+            parameter_values=param_dict,
             exec_result=exec_result,
         )
         if exec_result.df is None:
@@ -200,10 +147,18 @@ class RunQueryNoParamsTool:
 
         for hint in _detect_result_hints(df):
             res += f"\n({hint})"
+        # if df.isnull().all().any():
+        #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
         return res
 
+    async def __call__(self, query: str, parameters: list[LLMParameter] | None = None) -> str:
+        if parameters is not None:
+            return await self._run_with_params(query, parameters)
+        return await self._run_no_params(query)
+
     def as_pydantic_ai_tool(self) -> Tool:
-        return Tool(self.__call__, name=self.name)
+        fn = self._run_with_params if self.allow_params else self._run_no_params
+        return Tool(fn, name=self.name)
 
     def metrics(self) -> RunQueryToolMetrics:
         return self._metrics

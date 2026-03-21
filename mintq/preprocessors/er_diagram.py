@@ -8,7 +8,7 @@ from mintq.schema import SQLSchema, TableRef, Usage
 from mintq.db_connector import BaseSQLDBConnector
 from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-from mintq.toolhub.run_query import RunQueryNoParamsTool
+from mintq.toolhub.run_query import RunQueryTool
 
 ER_DIAGRAM_SYNTHESIS_PROMPT = """
 You are an AI database expert tasked with generating an ER diagram given a physical database schema.
@@ -144,7 +144,7 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
             schema = self.compressor.compress(schema)
 
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()
-        run_query_tool = RunQueryNoParamsTool(db_connector)
+        run_query_tool = RunQueryTool(db_connector)
         agent = Agent[None, ERDiagram](
             model=self.llm,
             output_type=ERDiagram,

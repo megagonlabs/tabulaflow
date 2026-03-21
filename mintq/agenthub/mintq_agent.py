@@ -16,7 +16,7 @@ from mintq.toolhub import (
     BaseTool,
     GetColumnJsonSchemaTool,
     GetTableSchemaTool,
-    RunQueryNoParamsTool,
+    RunQueryTool,
     FinishTool,
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -131,7 +131,7 @@ class MintqAgent:
                 add_description=self.config.use_column_description,
             ),
             "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
-            "run_query": RunQueryNoParamsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
 

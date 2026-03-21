@@ -1,6 +1,6 @@
 from mintq.toolhub.base import BaseTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
-from mintq.toolhub.run_query import RunQueryWithParamsTool, RunQueryNoParamsTool
+from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.finish import FinishTool
 from mintq.toolhub.ask_user import AskUserTool
 from mintq.toolhub.get_schema import GetSchemaTool, GetSchemaTool
@@ -13,8 +13,7 @@ from mintq.toolhub.run_dbt import RunDbtTool
 __all__ = [
     "BaseTool",
     "SearchKeywordsTool",
-    "RunQueryWithParamsTool",
-    "RunQueryNoParamsTool",
+    "RunQueryTool",
     "FinishTool",
     "AskUserTool",
     "GetSchemaTool",

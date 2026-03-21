@@ -14,7 +14,7 @@ from mintq.schema import (
 from mintq.preprocessors import SchemaCompressor
 from mintq.toolhub import (
     BaseTool,
-    RunQueryNoParamsTool,
+    RunQueryTool,
     FinishTool,
 )
 from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
@@ -113,7 +113,7 @@ class MiniAgent:
         )
 
         tools: dict[str, BaseTool] = {
-            "run_query": RunQueryNoParamsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
 

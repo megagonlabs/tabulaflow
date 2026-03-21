@@ -26,7 +26,7 @@ from mintq.schema import (
 from mintq.preprocessors import ERDiagramSynthesizer, QuestionEmbedder, SchemaPreprocessor
 from mintq.toolhub import (
     BaseTool,
-    RunQueryNoParamsTool,
+    RunQueryTool,
     SearchKeywordsTool,
     FinishTool,
 )
@@ -196,7 +196,7 @@ class SchemaLinker:
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryNoParamsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
@@ -511,7 +511,7 @@ class SQLAgent:
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
             # "get_column_description": GetColumnDescriptionTool(linked_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryNoParamsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(

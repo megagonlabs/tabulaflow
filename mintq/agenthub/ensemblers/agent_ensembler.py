@@ -19,7 +19,7 @@ from mintq.toolhub import (
     BaseTool,
     GetColumnJsonSchemaTool,
     GetTableSchemaTool,
-    RunQueryNoParamsTool,
+    RunQueryTool,
 )
 
 
@@ -225,7 +225,7 @@ class AgentEnsembler:
             candidates=candidate_strs,
         )
 
-        run_query_tool = RunQueryNoParamsTool(db_connector)
+        run_query_tool = RunQueryTool(db_connector)
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector, self.formatter,
