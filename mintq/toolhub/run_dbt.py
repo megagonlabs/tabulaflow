@@ -31,6 +31,7 @@ class RunDbtToolMetrics(BaseModel):
     error_count: int = 0
     num_run_success: int = 0
     num_run_failure: int = 0
+    last_run_success: bool | None = None
 
 
 class RunDbtTool:
@@ -125,7 +126,9 @@ class RunDbtTool:
 
         exit_code = proc.returncode
         if command in ("run", "build"):
-            if exit_code == 0:
+            success = exit_code == 0
+            self._metrics.last_run_success = success
+            if success:
                 self._metrics.num_run_success += 1
             else:
                 self._metrics.num_run_failure += 1

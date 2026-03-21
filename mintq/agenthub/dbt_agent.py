@@ -155,7 +155,7 @@ class DbtAgent:
             "get_table_schema": get_table_schema.metrics().model_dump(),
         }
 
-        dbt_run_success = run_dbt.metrics().num_run_success > 0
+        dbt_run_success = run_dbt.metrics().last_run_success
 
         return DbtTaskOutput(
             **task.model_dump(),
