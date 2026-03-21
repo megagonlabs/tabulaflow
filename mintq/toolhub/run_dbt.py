@@ -10,6 +10,7 @@ import asyncio
 import logging
 import shutil
 import sys
+from collections.abc import Awaitable, Callable
 from pathlib import Path
 from typing import ClassVar, Literal
 
@@ -46,12 +47,17 @@ class RunDbtTool:
 
     name: ClassVar = "run_dbt"
 
-    def __init__(self, working_dir: str) -> None:
+    def __init__(
+        self,
+        working_dir: str,
+        pre_run_hook: Callable[[], Awaitable[None]] | None = None,
+    ) -> None:
         self._working_dir = Path(working_dir).resolve()
         if not self._working_dir.is_dir():
             raise ValueError(f"working_dir is not a directory: {working_dir}")
         self._dbt_path = self._find_dbt()
         self._metrics = RunDbtToolMetrics()
+        self._pre_run_hook = pre_run_hook
 
     @staticmethod
     def _find_dbt() -> str:
@@ -121,6 +127,9 @@ class RunDbtTool:
             cmd_parts += ["--exclude", exclude]
 
         logger.debug("run_dbt: %s", " ".join(cmd_parts))
+
+        if self._pre_run_hook is not None:
+            await self._pre_run_hook()
 
         try:
             proc = await asyncio.create_subprocess_exec(

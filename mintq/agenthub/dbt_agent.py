@@ -102,7 +102,7 @@ class DbtAgent:
         db_document = db_summary.db_summary_markdown
 
         file_editor = FileEditorTool(task.working_dir)
-        run_dbt = RunDbtTool(task.working_dir)
+        run_dbt = RunDbtTool(task.working_dir, pre_run_hook=getattr(db_connector, "dispose_engine_async", None))
         get_table_schema = GetTableSchemaTool(
             db_connector, self.formatter,
             compress=self.config.compress_schema,

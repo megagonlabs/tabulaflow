@@ -819,9 +819,6 @@ class SQLConnector:
             execute queries.
         """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
-        if read_only and str(url).startswith("duckdb"):
-            connect_args = engine_kwargs.setdefault("connect_args", {})
-            connect_args.setdefault("read_only", True)
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
@@ -851,6 +848,20 @@ class SQLConnector:
             _include_schema_names=include_schema_names,
             _column_stats_mode=mintq_config.column_stats_mode,
         )
+
+    async def dispose_engine_async(self) -> None:
+        """Close all pooled connections in the underlying SQLAlchemy engine.
+
+        DuckDB holds a file-level lock even for ``read_only=True``
+        connections, which prevents an external process (e.g. ``dbt run``)
+        from acquiring a write lock.  Calling this method releases the lock
+        while keeping the connector usable — ``schema`` remains in memory
+        and SQLAlchemy will transparently create new connections on demand.
+        """
+        if self._t_eng.engine_type == "async":
+            await self._t_eng.engine.dispose()  # type: ignore
+        else:
+            self._t_eng.engine.dispose()
 
     async def refresh_schema_async(
         self,
