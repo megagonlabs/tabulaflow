@@ -5,11 +5,11 @@ from mintq.formatters import BaseSQLSchemaFormatter
 from mintq.schema import SQLSchema
 
 
-class GetSchemaToolMetrics(BaseModel):
+class BasicGetSchemaToolMetrics(BaseModel):
     num_calls: int = 0
 
 
-class GetSchemaTool:
+class BasicGetSchemaTool:
     """Tool that retrieves the full database schema.
 
     Formats and returns the complete schema using the configured formatter.
@@ -25,7 +25,7 @@ class GetSchemaTool:
     def __init__(self, schema: SQLSchema, formatter: BaseSQLSchemaFormatter):
         self.schema = schema
         self.formatter = formatter
-        self._metrics = GetSchemaToolMetrics()
+        self._metrics = BasicGetSchemaToolMetrics()
 
     async def __call__(self) -> str:
         """
@@ -42,5 +42,5 @@ class GetSchemaTool:
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
 
-    def metrics(self) -> GetSchemaToolMetrics:
+    def metrics(self) -> BasicGetSchemaToolMetrics:
         return self._metrics
