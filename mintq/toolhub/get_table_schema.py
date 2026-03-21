@@ -27,8 +27,6 @@ class GetTableSchemaTool:
         formatter: The formatter used to render table schema as text.
         compress: Whether to compress the schema (merge structurally identical tables).
         add_description: Whether to include column descriptions in output.
-        allow_refresh: Whether to allow refreshing the schema from the database
-            when a requested table is not found.
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_range or
             column_regex_filter to narrow down.
@@ -40,9 +38,9 @@ class GetTableSchemaTool:
         self,
         db_connector: BaseSQLDBConnector,
         formatter: BaseSQLSchemaFormatter,
+        *,
         compress: bool = True,
         add_description: bool = True,
-        allow_refresh: bool = True,
         max_columns: int | None = 50,
     ):
         self.db_connector = db_connector
@@ -50,7 +48,6 @@ class GetTableSchemaTool:
         self._compressor = SchemaCompressor() if compress else None
         self._compressed_schema: SQLSchema | None = None
         self.add_description = add_description
-        self.allow_refresh = allow_refresh
         self.max_columns = max_columns
         self._metrics = GetTableSchemaToolMetrics()
 
@@ -113,6 +110,7 @@ class GetTableSchemaTool:
         self,
         schema_name: str | None,
         table_name: str,
+        refresh: bool = False,
         column_regex_filter: str | None = None,
         column_range: list[int] | None = None,
     ) -> str:
@@ -122,6 +120,9 @@ class GetTableSchemaTool:
             schema_name: The name of the schema to which the table belongs,
                 or None if schema is not applicable.
             table_name: The name of the table.
+            refresh: If True, re-introspect this table from the live database
+                before returning. Use when a table was newly created or
+                altered by DDL or dbt run.
             column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
                 Only columns whose names match the pattern are returned.
                 Can be combined with column_range to paginate within filtered results.
@@ -134,16 +135,15 @@ class GetTableSchemaTool:
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
-        if table is None and self.allow_refresh:
+        if refresh:
             try:
-                await self.db_connector.refresh_schema_async(
-                    [TableRef(schema_name=schema_name, table_name=table_name)]
-                )
+                await self.db_connector.refresh_schema_async([TableRef(schema_name=schema_name, table_name=table_name)])
                 self._invalidate_schema()
                 table = self._find_table(schema_name, table_name)
             except Exception as e:
-                self._metrics.error_table_not_found += 1
-                return f"(error: {e})"
+                if table is None:
+                    self._metrics.error_table_not_found += 1
+                    return f"(error: {e})"
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
