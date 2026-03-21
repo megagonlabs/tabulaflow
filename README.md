@@ -856,6 +856,15 @@ March 18
 
 March 19
 - [x] Support spider2-dbt
+- [x] Fix bugs
+  - [x] Fix gold db path mismatch
+  - [x] Gold db missing - send email to Spider 2.0 authors
+  - [x] Fix file_editor crash on binary file
+  - [x] Fix dbt binary path
+  - [x] Fix duckdb lock conflict
+- [x] refresh_schema_async
+- [x] get_table_schema with compress and refresh
+  
 
 - [ ] spider2-dbt prompt: do not modify starter files?
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
