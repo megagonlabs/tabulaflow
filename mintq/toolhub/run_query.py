@@ -43,11 +43,19 @@ class LLMParameter(BaseModel):
 
 
 class RunQueryTool:
-    """Unified run_query tool with optional parameter support.
+    """Execute a SQL query against the database and return formatted results.
 
     When ``allow_params=True``, the tool schema exposed to the LLM includes
-    a ``parameters`` argument.  When ``False`` (the default), only ``query``
-    is exposed.
+    a ``parameters`` argument for parameterized queries (e.g. ``:threshold``).
+    When ``False`` (the default), only the ``query`` argument is exposed.
+
+    Args:
+        db_connector: Database connector to execute queries against.
+        allow_params: Whether to expose the ``parameters`` argument to the LLM.
+        timeout: Query timeout in seconds. Defaults to ``mintq_config.query_timeout``.
+        max_visible_rows: Maximum rows shown in the formatted output.
+        max_cell_width: Maximum character width per cell in the formatted output.
+        floatfmt: Float format string passed to tabulate.
     """
 
     name: ClassVar = "run_query"
