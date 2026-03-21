@@ -865,7 +865,7 @@ March 19
 - [x] refresh_schema_async
 - [x] get_table_schema with compress and refresh
   
-
+- [ ] Replace db_connector with kwarg in metrics/base.py?
 - [ ] spider2-dbt prompt: do not modify starter files?
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
