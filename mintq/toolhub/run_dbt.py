@@ -106,6 +106,7 @@ class RunDbtTool:
         cmd_parts = [
             self._dbt_path,
             command,
+            "--no-use-colors",
             "--project-dir",
             str(self._working_dir),
             "--profiles-dir",
