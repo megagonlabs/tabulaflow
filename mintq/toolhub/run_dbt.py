@@ -120,7 +120,7 @@ class RunDbtTool:
                 )
             cmd_parts += ["--exclude", exclude]
 
-        logger.info("run_dbt: %s", " ".join(cmd_parts))
+        logger.debug("run_dbt: %s", " ".join(cmd_parts))
 
         try:
             proc = await asyncio.create_subprocess_exec(
