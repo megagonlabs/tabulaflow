@@ -27,6 +27,8 @@ class GetTableSchemaTool:
         formatter: The formatter used to render table schema as text.
         compress: Whether to compress the schema (merge structurally identical tables).
         add_description: Whether to include column descriptions in output.
+        allow_refresh: Whether to allow refreshing the schema from the database
+            when a requested table is not found.
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_range or
             column_regex_filter to narrow down.
@@ -40,6 +42,7 @@ class GetTableSchemaTool:
         formatter: BaseSQLSchemaFormatter,
         compress: bool = True,
         add_description: bool = True,
+        allow_refresh: bool = True,
         max_columns: int | None = 50,
     ):
         self.db_connector = db_connector
@@ -47,6 +50,7 @@ class GetTableSchemaTool:
         self._compressor = SchemaCompressor() if compress else None
         self._compressed_schema: SQLSchema | None = None
         self.add_description = add_description
+        self.allow_refresh = allow_refresh
         self.max_columns = max_columns
         self._metrics = GetTableSchemaToolMetrics()
 
@@ -130,7 +134,7 @@ class GetTableSchemaTool:
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
-        if table is None:
+        if table is None and self.allow_refresh:
             try:
                 await self.db_connector.refresh_schema_async(
                     [TableRef(schema_name=schema_name, table_name=table_name)]
