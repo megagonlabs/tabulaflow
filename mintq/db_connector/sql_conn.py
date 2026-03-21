@@ -754,6 +754,7 @@ class SQLConnector:
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
     _column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+    _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
 
     @classmethod
     async def from_url_async(
@@ -867,59 +868,60 @@ class SQLConnector:
         Returns:
             The updated :class:`SQLSchema`.
         """
-        if tables is not None:
-            async_inspector = AsyncInspector(self._t_eng)
-            view_names_by_schema: dict[str | None, set[str]] = {}
-            for ref in tables:
-                if ref.schema_name not in view_names_by_schema:
-                    raw_views = await async_inspector.get_view_names(schema=ref.schema_name)
-                    view_names_by_schema[ref.schema_name] = {
-                        _denorm(self._t_eng, v) for v in raw_views
-                    }
+        async with self._schema_lock:
+            if tables is not None:
+                async_inspector = AsyncInspector(self._t_eng)
+                view_names_by_schema: dict[str | None, set[str]] = {}
+                for ref in tables:
+                    if ref.schema_name not in view_names_by_schema:
+                        raw_views = await async_inspector.get_view_names(schema=ref.schema_name)
+                        view_names_by_schema[ref.schema_name] = {
+                            _denorm(self._t_eng, v) for v in raw_views
+                        }
 
-            new_tables = await asyncio.gather(*[
-                build_table_async(
-                    self._t_eng,
-                    ref.table_name,
-                    ref.schema_name,
-                    is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                    column_stats_mode=self._column_stats_mode,
+                new_tables = await asyncio.gather(*[
+                    build_table_async(
+                        self._t_eng,
+                        ref.table_name,
+                        ref.schema_name,
+                        is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
+                        column_stats_mode=self._column_stats_mode,
+                    )
+                    for ref in tables
+                ])
+
+                requested = {
+                    (ref.schema_name, ref.table_name) for ref in tables
+                }
+                kept = [
+                    t for t in self.schema.tables
+                    if (t.schema_name, t.name) not in requested
+                ]
+                for t in new_tables:
+                    if t is not None:
+                        kept.append(t)
+
+                self.schema = SQLSchema(
+                    name=self.schema.name,
+                    dialect=self.schema.dialect,
+                    tables=kept,
                 )
-                for ref in tables
-            ])
+            else:
+                self.schema = await build_schema_async(
+                    self._t_eng,
+                    self.schema.name,
+                    self.schema.dialect,  # type: ignore[arg-type]
+                    self._group_date_partitioned_tables,
+                    self._group_table_regexes,
+                    column_stats_mode=self._column_stats_mode,
+                    include_schema_names=self._include_schema_names,
+                )
 
-            requested = {
-                (ref.schema_name, ref.table_name) for ref in tables
-            }
-            kept = [
-                t for t in self.schema.tables
-                if (t.schema_name, t.name) not in requested
-            ]
-            for t in new_tables:
-                if t is not None:
-                    kept.append(t)
-
-            self.schema = SQLSchema(
-                name=self.schema.name,
-                dialect=self.schema.dialect,
-                tables=kept,
+            logger.info(
+                f"Schema refreshed for {self.global_id}: "
+                f"{len(self.schema.tables)} tables"
             )
-        else:
-            self.schema = await build_schema_async(
-                self._t_eng,
-                self.schema.name,
-                self.schema.dialect,  # type: ignore[arg-type]
-                self._group_date_partitioned_tables,
-                self._group_table_regexes,
-                column_stats_mode=self._column_stats_mode,
-                include_schema_names=self._include_schema_names,
-            )
-
-        logger.info(
-            f"Schema refreshed for {self.global_id}: "
-            f"{len(self.schema.tables)} tables"
-        )
-        return self.schema
+            return self.schema
 
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
