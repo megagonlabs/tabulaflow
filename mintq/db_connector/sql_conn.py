@@ -819,6 +819,9 @@ class SQLConnector:
             execute queries.
         """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
+        if read_only and str(url).startswith("duckdb"):
+            connect_args = engine_kwargs.setdefault("connect_args", {})
+            connect_args.setdefault("read_only", True)
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:

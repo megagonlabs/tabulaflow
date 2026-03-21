@@ -81,7 +81,7 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
             url=f"duckdb:///{working_db_path}",
             max_concurrency_per_db=4,
             schema=existing_schema,
-            read_only=False,
+            read_only=True,
             enable_caching=False,
         )
         dataset.db_connectors[task.db] = conn
