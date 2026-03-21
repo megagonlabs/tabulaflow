@@ -155,10 +155,13 @@ class DbtAgent:
             "get_table_schema": get_table_schema.metrics().model_dump(),
         }
 
+        dbt_run_success = run_dbt.metrics().num_run_success > 0
+
         return DbtTaskOutput(
             **task.model_dump(),
             pred_db_path=pred_db_path,
             pred_model_files=pred_model_files,
+            dbt_run_success=dbt_run_success,
             trajectory=trajectory,
             usage=usage,
             inference_metrics=metrics,

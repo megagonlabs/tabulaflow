@@ -29,6 +29,8 @@ class RunDbtToolMetrics(BaseModel):
     num_debug: int = 0
     num_ls: int = 0
     error_count: int = 0
+    num_run_success: int = 0
+    num_run_failure: int = 0
 
 
 class RunDbtTool:
@@ -122,6 +124,11 @@ class RunDbtTool:
             )
 
         exit_code = proc.returncode
+        if command in ("run", "build"):
+            if exit_code == 0:
+                self._metrics.num_run_success += 1
+            else:
+                self._metrics.num_run_failure += 1
         header = f"dbt {command} exited with code {exit_code}\n"
         return header + output
 
