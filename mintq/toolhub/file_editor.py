@@ -196,7 +196,7 @@ class FileEditorTool:
         """Edit files in the dbt project directory.
 
         Commands:
-        - ``view``: View a file (with optional line range) or list a directory.
+        - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact string in a file. ``old_str`` must
           match exactly one location.
@@ -209,7 +209,8 @@ class FileEditorTool:
             file_text: Content for ``write_file`` command.
             old_str: String to find for ``str_replace``.
             new_str: Replacement string for ``str_replace``.
-            view_range: Optional ``[start_line, end_line]`` for ``view`` (1-indexed, end=-1 means EOF).
+            view_range: Optional ``[start_line, end_line]`` for ``view`` on
+                files only (1-indexed, end=-1 means EOF).
         """
         try:
             resolved = self._resolve(path)
