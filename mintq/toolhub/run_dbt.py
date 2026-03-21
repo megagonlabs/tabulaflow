@@ -8,6 +8,8 @@ and prevents arbitrary shell execution.
 
 import asyncio
 import logging
+import shutil
+import sys
 from pathlib import Path
 from typing import ClassVar, Literal
 
@@ -48,7 +50,25 @@ class RunDbtTool:
         self._working_dir = Path(working_dir).resolve()
         if not self._working_dir.is_dir():
             raise ValueError(f"working_dir is not a directory: {working_dir}")
+        self._dbt_path = self._find_dbt()
         self._metrics = RunDbtToolMetrics()
+
+    @staticmethod
+    def _find_dbt() -> str:
+        """Locate the ``dbt`` binary.
+
+        Checks ``PATH`` first (covers global installs, Homebrew, conda,
+        activated venvs, etc.), then falls back to the current Python
+        environment's ``bin/`` directory for cases where the venv is not
+        activated but dbt is installed in it.
+        """
+        found = shutil.which("dbt")
+        if found:
+            return found
+        venv_dbt = Path(sys.prefix) / "bin" / "dbt"
+        if venv_dbt.is_file():
+            return str(venv_dbt)
+        return "dbt"
 
     def _error(self, msg: str) -> str:
         self._metrics.error_count += 1
@@ -78,7 +98,7 @@ class RunDbtTool:
         self._increment_counter(command)
 
         cmd_parts = [
-            "dbt",
+            self._dbt_path,
             command,
             "--project-dir",
             str(self._working_dir),
