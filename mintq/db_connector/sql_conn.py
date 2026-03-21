@@ -17,7 +17,7 @@ import sqlalchemy
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
-from sqlalchemy import create_engine, select, func, distinct, inspect
+from sqlalchemy import create_engine, event, select, func, distinct, inspect
 from mintq.schema import (
     ErrorInfo,
     SQLDialect,
@@ -823,6 +823,17 @@ class SQLConnector:
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
             engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)  # type: ignore
+
+        # DuckDB prints a noisy progress bar to stdout for long-running
+        # queries; suppress it so it doesn't pollute pipeline logs.
+        if str(url).startswith("duckdb"):
+            sync_engine = engine.sync_engine if engine_type == "async" else engine
+            event.listen(
+                sync_engine,
+                "connect",
+                lambda dbapi_conn, _rec: dbapi_conn.execute("PRAGMA enable_progress_bar=false"),
+            )
+            
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
