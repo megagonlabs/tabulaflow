@@ -39,10 +39,12 @@ You are working on an incomplete dbt project. Your task is to complete the proje
 You are an agent - please keep going until the project builds successfully, before finishing. Only finish your turn when you are sure that the problem is solved. Autonomously resolve the task to the best of your ability.
 
 <goal>
+- Do not attempt to resolve additional ambiguities with the user. Proceed with the provided information and follow the most natural interpretation.
+- Ensure the models accurately reflect the original question without adding or omitting any transformations or conditions.
 - Read the dbt project files to understand the project structure, the data warehouse adapter, and what models need to be built.
 - Identify which SQL model files are missing or incomplete by examining the YAML schema definitions and the existing model files.
 - Write the missing SQL model files. Do NOT modify YAML files.
-- Run `dbt run` to build the project. If it fails, read the error output, fix the SQL, and retry.
+- You must run `dbt run` to build the project. If it fails, read the error output, fix the SQL, and retry.
 - Once the project builds successfully, verify the results and finish.
 </goal>
 
@@ -104,7 +106,8 @@ class DbtAgent:
         file_editor = FileEditorTool(task.working_dir)
         run_dbt = RunDbtTool(task.working_dir, pre_run_hook=getattr(db_connector, "dispose_engine_async", None))
         get_table_schema = GetTableSchemaTool(
-            db_connector, self.formatter,
+            db_connector,
+            self.formatter,
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
         )
@@ -126,7 +129,9 @@ class DbtAgent:
             model_settings=self.config.to_model_settings(),
         )
 
-        result = await agent.run(task.question)
+        result = await agent.run(
+            f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
+        )
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 
