@@ -11,7 +11,7 @@ from mintq.schema import (
     Usage,
     Trajectory,
 )
-from mintq.preprocessors import DBSummarizer, SchemaCompressor
+from mintq.preprocessors import DBSummarizer
 from mintq.toolhub import (
     BaseTool,
     GetColumnJsonSchemaTool,
@@ -103,8 +103,6 @@ class MintqAgent:
         config: MintqAgentConfig,
     ):
         self.config = config
-        self.compressor = SchemaCompressor() if config.compress_schema else None
-
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
@@ -126,14 +124,13 @@ class MintqAgent:
             db_document=db_summary.db_summary_markdown,
             task_document=task.document,
         )
-        schema = db_connector.schema
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                schema, self.formatter, add_description=self.config.use_column_description
+                db_connector, self.formatter,
+                compress=self.config.compress_schema,
+                add_description=self.config.use_column_description,
             ),
-            "get_column_json_schema": GetColumnJsonSchemaTool(schema),
+            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
             "run_query": RunQueryNoParamsTool(db_connector),
             "finish": FinishTool(),
         }

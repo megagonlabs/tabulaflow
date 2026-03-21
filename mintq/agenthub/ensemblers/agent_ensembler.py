@@ -13,7 +13,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.base import BaseSQLSchemaFormatter, formatter_registry
 from mintq.formatters.utils import format_df
 from mintq.pipelines.populate_exec_results import populate_task_async
-from mintq.preprocessors import DBSummarizer, SchemaCompressor
+from mintq.preprocessors import DBSummarizer
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Trajectory, Usage
 from mintq.toolhub import (
     BaseTool,
@@ -126,7 +126,6 @@ class AgentEnsembler:
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
-        self.compressor = SchemaCompressor() if config.compress_schema else None
         self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
@@ -226,17 +225,14 @@ class AgentEnsembler:
             candidates=candidate_strs,
         )
 
-        # Set up agent tools (same as mintq_agent)
-        schema = db_connector.schema
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
-
         run_query_tool = RunQueryNoParamsTool(db_connector)
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                schema, self.formatter, add_description=self.config.use_column_description
+                db_connector, self.formatter,
+                compress=self.config.compress_schema,
+                add_description=self.config.use_column_description,
             ),
-            "get_column_json_schema": GetColumnJsonSchemaTool(schema),
+            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
             "run_query": run_query_tool,
         }
 

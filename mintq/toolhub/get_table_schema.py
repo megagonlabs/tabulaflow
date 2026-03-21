@@ -2,8 +2,10 @@ import re
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
+from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
+from mintq.preprocessors.components.schema_compressor import SchemaCompressor
+from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
 from mintq.toolhub.utils import equals_ci
 
 
@@ -21,9 +23,9 @@ class GetTableSchemaTool:
     schema using the configured formatter.
 
     Attributes:
-        schema: The SQL schema containing all available tables. Can be a
-            compressed schema produced by SchemaCompressor.
+        db_connector: Database connector providing live schema access and refresh.
         formatter: The formatter used to render table schema as text.
+        compress: Whether to compress the schema (merge structurally identical tables).
         add_description: Whether to include column descriptions in output.
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_range or
@@ -34,16 +36,30 @@ class GetTableSchemaTool:
 
     def __init__(
         self,
-        schema: SQLSchema,
+        db_connector: BaseSQLDBConnector,
         formatter: BaseSQLSchemaFormatter,
+        compress: bool = True,
         add_description: bool = True,
         max_columns: int | None = 50,
     ):
-        self.schema = schema
+        self.db_connector = db_connector
         self.formatter = formatter
+        self._compressor = SchemaCompressor() if compress else None
+        self._compressed_schema: SQLSchema | None = None
         self.add_description = add_description
         self.max_columns = max_columns
         self._metrics = GetTableSchemaToolMetrics()
+
+    def _invalidate_schema(self) -> None:
+        self._compressed_schema = None
+
+    @property
+    def schema(self) -> SQLSchema:
+        """Return the (optionally compressed) schema, building it lazily."""
+        if self._compressed_schema is None:
+            schema = self.db_connector.schema
+            self._compressed_schema = self._compressor.compress(schema) if self._compressor else schema
+        return self._compressed_schema
 
     def _find_table(self, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
         """Find a table by schema name and table name (case-insensitive).
@@ -114,6 +130,15 @@ class GetTableSchemaTool:
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
+        if table is None:
+            try:
+                await self.db_connector.refresh_schema_async(
+                    [TableRef(schema_name=schema_name, table_name=table_name)]
+                )
+                self._invalidate_schema()
+                table = self._find_table(schema_name, table_name)
+            except Exception:
+                pass
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
