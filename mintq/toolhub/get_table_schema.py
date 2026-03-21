@@ -137,8 +137,9 @@ class GetTableSchemaTool:
                 )
                 self._invalidate_schema()
                 table = self._find_table(schema_name, table_name)
-            except Exception:
-                pass
+            except Exception as e:
+                self._metrics.error_table_not_found += 1
+                return f"(error: {e})"
         if table is None:
             self._metrics.error_table_not_found += 1
             return f"(table {table_name} in schema {schema_name} not found)"
