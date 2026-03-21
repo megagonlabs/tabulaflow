@@ -855,8 +855,9 @@ March 18
 - [x] Exp 266: new db summary: gpt-5.3-codex on spider2-lite: simple_ex 0.6851, spider2_ex 0.6740, cost $84.18
 
 March 19
-- [ ] Support spider2-dbt
+- [x] Support spider2-dbt
 
+- [ ] spider2-dbt prompt: do not modify starter files?
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
 - [ ] Update spider2-lite instructions
