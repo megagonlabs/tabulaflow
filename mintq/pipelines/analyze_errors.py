@@ -330,6 +330,69 @@ class Analyzer:
         return res
 
 
+class DbtAnalyzer:
+    """Analyzer for dbt task results."""
+
+    def __init__(self) -> None:
+        pass
+
+    def _task_link(self, task: NL2QTaskOutput) -> str:
+        return f"[[{task.qid} ({task.db})]](./readable/{task.qid}/task_readable.md)"
+
+    def _error_section(self, result: NL2QRunResult) -> str:
+        res = "## Error Tasks"
+
+        res += "\n\n### dbt run Failed:"
+        failed = [task for task in result.tasks if not getattr(task, "dbt_run_success", True)]
+        if failed:
+            res += "\n\n" + "\n".join(f" {self._task_link(task)}" for task in failed)
+        else:
+            res += "\n\n(none)"
+
+        res += "\n\n### dbt run Succeeded but spider2_duckdb_match = 0.0:"
+        wrong = [
+            task
+            for task in result.tasks
+            if getattr(task, "dbt_run_success", False)
+            and task.eval_metrics.get("spider2_duckdb_match") == 0.0
+        ]
+        if wrong:
+            res += "\n\n" + "\n".join(f" {self._task_link(task)}" for task in wrong)
+        else:
+            res += "\n\n(none)"
+
+        return res
+
+    def _num_tool_calls_section(self, result: NL2QRunResult) -> str:
+        res = "## Tool Calls"
+        tool_names = ["file_editor", "run_dbt", "get_table_schema"]
+        for tool_name in tool_names:
+            num_calls: list[tuple[str, int]] = []
+            for task in result.tasks:
+                tools = task.inference_metrics.get("tools", {})
+                if tool_name in tools:
+                    num_calls.append((task.qid, tools[tool_name].get("num_calls", 0)
+                                      + tools[tool_name].get("num_view", 0)
+                                      + tools[tool_name].get("num_write_file", 0)
+                                      + tools[tool_name].get("num_str_replace", 0)))
+            if not num_calls:
+                continue
+            num_calls.sort(key=lambda x: x[1], reverse=True)
+            qid_to_db = {task.qid: task.db for task in result.tasks}
+            res += f"\n\n### Top 10 tasks with most {tool_name} calls"
+            for q, n in num_calls[:10]:
+                res += f"\n\n[[{q} ({qid_to_db[q]})]](./readable/{q}/task_readable.md) - {n} calls"
+        return res
+
+    async def analyze_async(self, result: NL2QRunResult) -> str:
+        """Analyze dbt run results and return a markdown report."""
+        sections = [
+            self._error_section(result),
+            self._num_tool_calls_section(result),
+        ]
+        return "\n\n".join(sections)
+
+
 async def main_async() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--result_dir", default="output/test/")
@@ -346,16 +409,24 @@ async def main_async() -> None:
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())
 
-    if not all(task.output_type == "simple" for task in result.tasks):
-        raise ValueError("Only simple tasks are supported for now.")
+    output_types = set(task.output_type for task in result.tasks)
 
-    analyzer = Analyzer(classifier_llm=args.classifier_llm, do_error_classification=args.do_error_classification)
-    t0 = time.time()
-    error_analysis = await analyzer.analyze_async(result)
-    print(f"Analysis finished in {time.time() - t0:.2f} seconds")
+    if output_types == {"dbt"}:
+        dbt_analyzer = DbtAnalyzer()
+        t0 = time.time()
+        error_analysis = await dbt_analyzer.analyze_async(result)
+        print(f"Analysis finished in {time.time() - t0:.2f} seconds")
+    else:
+        analyzer = Analyzer(
+            classifier_llm=args.classifier_llm, do_error_classification=args.do_error_classification
+        )
+        t0 = time.time()
+        error_analysis = await analyzer.analyze_async(result)
+        print(f"Analysis finished in {time.time() - t0:.2f} seconds")
+        print(f"Total cost USD: {analyzer.usage().api_cost_usd:.6f}")
+
     with open(os.path.join(args.result_dir, "analysis.md"), "w") as f:
         f.write(error_analysis)
-    print(f"Total cost USD: {analyzer.usage().api_cost_usd:.6f}")
     print(f"Saved error report to {os.path.join(args.result_dir, 'analysis.md')}")
 
 
