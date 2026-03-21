@@ -20,7 +20,7 @@ from mintq.toolhub import (
     RunQueryWithParamsTool,
     SearchKeywordsTool,
     FinishTool,
-    BasicGetSchemaTool,
+    GetSchemaTool,
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import (
@@ -283,7 +283,7 @@ class AmbigFlatSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = BasicGetSchemaTool(schema, self.formatter)
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)

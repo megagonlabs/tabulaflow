@@ -193,7 +193,7 @@ class SchemaLinker:
         db_connector = ctx.db_connector
 
         tools: dict[str, BaseTool] = {
-            # "get_schema": BasicGetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
+            # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),
@@ -508,7 +508,7 @@ class SQLAgent:
         linked_er_diagram = ctx.er_diagram.trim(linked_schema.get_all_table_refs(), case_insensitive=True)  # type: ignore
 
         tools: dict[str, BaseTool] = {
-            # "get_schema": BasicGetSchemaTool(linked_schema, self.formatter),
+            # "get_schema": GetSchemaTool(linked_schema, self.formatter),
             # "get_column_description": GetColumnDescriptionTool(linked_schema),
             "search_keywords": SearchKeywordsTool(db_connector),
             "run_query": RunQueryNoParamsTool(db_connector),

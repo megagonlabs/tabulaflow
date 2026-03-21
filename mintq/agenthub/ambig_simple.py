@@ -11,7 +11,7 @@ from mintq.toolhub import (
     SearchKeywordsTool,
     FinishTool,
     AskUserTool,
-    BasicGetSchemaTool,
+    GetSchemaTool,
     GetColumnDescriptionTool,
 )
 from mintq.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
@@ -85,7 +85,7 @@ class AmbigSimpleSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = BasicGetSchemaTool(schema, self.formatter)
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)
