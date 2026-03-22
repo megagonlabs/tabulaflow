@@ -85,8 +85,6 @@ class FileEditorTool:
 
     def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
         if resolved.is_dir():
-            if view_range:
-                return self._error("view_range is not supported for directories.")
             entries: list[str] = []
             for root, dirs, files in os.walk(resolved):
                 depth = str(root).replace(str(resolved), "").count(os.sep)
@@ -103,6 +101,21 @@ class FileEditorTool:
                     if not f.startswith("."):
                         entries.append(os.path.join(rel, f))
             total = len(entries)
+
+            if view_range:
+                if len(view_range) != 2:
+                    return self._error("view_range must be a list of two integers [start, end].")
+                start, end = view_range
+                if start < 1:
+                    return self._error(f"start must be >= 1, got {start}.")
+                if end == -1:
+                    end = total
+                if end < start:
+                    return self._error(f"end ({end}) must be >= start ({start}).")
+                selected = entries[start - 1 : end]
+                header = f"Directory listing of {path or '.'} (entries {start}-{min(end, total)} of {total}):\n"
+                return header + "\n".join(selected)
+
             if total > MAX_DIR_ENTRIES:
                 entries = entries[:MAX_DIR_ENTRIES]
                 return (
@@ -238,8 +251,9 @@ class FileEditorTool:
             file_text: Content for ``write_file`` command.
             old_str: String to find for ``str_replace``.
             new_str: Replacement string for ``str_replace``.
-            view_range: Optional ``[start_line, end_line]`` for ``view`` on
-                files only (1-indexed, end=-1 means EOF).
+            view_range: Optional ``[start, end]`` for ``view`` (1-indexed,
+                end=-1 means last). For files, selects a line range; for
+                directories, selects an entry range for pagination.
         """
         try:
             resolved = self._resolve(path)
