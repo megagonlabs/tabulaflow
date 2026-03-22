@@ -1,6 +1,7 @@
 import argparse
 import os
 import mintq
+from mintq.metrics.utils import get_default_metric
 from mintq.schema import NL2QRunResult
 
 
@@ -8,7 +9,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("result_dir_a")
     parser.add_argument("result_dir_b")
-    parser.add_argument("--metric", default="simple_ex")
+    parser.add_argument("--metric", default=None)
     args = parser.parse_args()
     print(args)
     print()
@@ -20,6 +21,8 @@ def main():
     with open(os.path.join(args.result_dir_b, "result.json"), "r") as f:
         result_b = NL2QRunResult.model_validate_json(f.read())
 
+    metric = args.metric or get_default_metric(result_a.dataset)
+
     a_better = []
     b_better = []
 
@@ -28,8 +31,8 @@ def main():
             raise ValueError(
                 f"Only results with the same set of task qids can be compared: {task_a.qid} != {task_b.qid}"
             )
-        metric_a = task_a.eval_metrics[args.metric]
-        metric_b = task_b.eval_metrics[args.metric]
+        metric_a = task_a.eval_metrics[metric]
+        metric_b = task_b.eval_metrics[metric]
         if metric_a > metric_b:
             a_better.append(task_a)
         elif metric_a < metric_b:

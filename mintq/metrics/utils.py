@@ -2,6 +2,26 @@ from io import StringIO
 import pandas as pd
 from mintq.schema import NL2QTaskOutput, PredQuery, GoldQuery
 
+DATASET_DEFAULT_METRICS: dict[str, str] = {
+    "bird-sql": "bird_sql_ex",
+    "spider2-snow": "spider2_ex",
+    "spider2-lite": "spider2_ex",
+    "spider2-dbt": "spider2_duckdb_match",
+    "beaver": "simple_ex",
+    "arcs": "simple_ex",
+    "ambrosia-s": "simple_ex",
+}
+
+
+def get_default_metric(dataset: str) -> str:
+    """Returns the default evaluation metric name for a dataset."""
+    metric = DATASET_DEFAULT_METRICS.get(dataset)
+    if metric is None:
+        raise ValueError(
+            f"No default metric for dataset '{dataset}'. Specify --metric explicitly."
+        )
+    return metric
+
 
 def _roundtrip_df_via_csv(df: pd.DataFrame | None) -> pd.DataFrame | None:
     if df is None:
