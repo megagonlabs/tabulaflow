@@ -2,7 +2,9 @@
 
 import logging
 import os
+import shutil
 import time
+from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
@@ -44,7 +46,7 @@ You are an agent - please keep going until the project builds successfully, befo
 - Read the dbt project files to understand the project structure, the data warehouse adapter, and what models need to be built.
 - Identify which SQL model files are missing or incomplete by examining the YAML schema definitions and the existing model files.
 - Write the missing SQL model files. Do NOT modify YAML files.
-- You must run `dbt run` to build the project. If it fails, read the error output, fix the SQL, and retry.
+- You must run `dbt run` to build the project. If it fails, fix the SQL and retry.
 - Once the project builds successfully, verify the results and finish.
 </goal>
 
@@ -58,8 +60,9 @@ Gathering information:
 Writing model SQL:
 - Use the `file_editor` tool to create new SQL model files or edit existing ones.
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
-- If `dbt run` fails, read the error output, fix the SQL, and retry.
-- After `dbt run` succeeds, use `get_table_schema` to verify that the output tables.
+- Each `dbt run` starts from a fresh copy of the original source database. Any views or tables created by previous runs are automatically rolled back.
+  If a run fails, just fix the SQL files and re-run — there is no need to manually clean up database state.
+- After `dbt run` succeeds, use `get_table_schema` to verify the output tables.
 - Be THOROUGH. Make sure all models defined in the YAML files are implemented before finishing.
 </tool_calling>
 {%- if dataset_instructions %}
@@ -104,7 +107,21 @@ class DbtAgent:
         db_document = db_summary.db_summary_markdown
 
         file_editor = FileEditorTool(task.working_dir)
-        run_dbt = RunDbtTool(task.working_dir, pre_run_hook=getattr(db_connector, "dispose_engine_async", None))
+
+        async def _pre_run_hook() -> None:
+            dispose_engine = getattr(db_connector, "dispose_engine_async", None)
+            if dispose_engine is not None:
+                await dispose_engine()
+            # Restore DuckDB files from pristine backup before each dbt run
+            # to prevent unrecoverable corruption caused by previous dbt runs.
+            db_files = list(Path(task.working_dir).resolve().glob("*.duckdb"))
+            for db_file in db_files:
+                backup = db_file.with_suffix(".duckdb.pristine")
+                if not backup.exists():
+                    shutil.copy2(db_file, backup)
+                shutil.copy2(backup, db_file)
+
+        run_dbt = RunDbtTool(task.working_dir, pre_run_hook=_pre_run_hook)
         get_table_schema = GetTableSchemaTool(
             db_connector,
             self.formatter,

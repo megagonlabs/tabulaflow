@@ -162,6 +162,7 @@ class RunDbtTool:
                 self._metrics.num_run_success += 1
             else:
                 self._metrics.num_run_failure += 1
+
         header = f"dbt {command} exited with code {exit_code}\n"
         return header + output
 
