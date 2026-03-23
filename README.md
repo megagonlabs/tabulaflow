@@ -865,8 +865,24 @@ March 19
 - [x] refresh_schema_async
 - [x] get_table_schema with compress and refresh
   
-- [ ] Replace db_connector with kwarg in metrics/base.py?
-- [ ] spider2-dbt prompt: do not modify starter files?
+March 20 - 21
+- [x] Revise dbt agent
+  - [x] schema refresh
+  - [x] duckdb progress bar
+  - [x] no color for dbt
+  - [x] view count timeout
+  - [x] per-line truncation
+  - [x] always start from fresh copy
+  - [x] view_range for viewing dirs
+  - [x] dbt deps
+  - [x] dbt instructions
+    - [x] time-sensitive -> unsolvable
+    - [x] keep data type
+    - [x] ambiguity interpretation
+- [x] Single class for run_query tool
+- [x] Refactor metrics
+  
+- [ ] bash tool for dbt agent
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
 - [ ] Update spider2-lite instructions
