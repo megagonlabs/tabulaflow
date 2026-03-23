@@ -155,6 +155,9 @@ class DbtAgent:
 
         pred_db_path = _find_duckdb_file(task.working_dir)
 
+        await db_connector.refresh_schema_async()
+        pred_db_schema = db_connector.schema
+
         pred_model_files: dict[str, str] = {}
         models_dir = os.path.join(task.working_dir, "models")
         if os.path.isdir(models_dir):
@@ -183,6 +186,7 @@ class DbtAgent:
         return DbtTaskOutput(
             **task.model_dump(),
             pred_db_path=pred_db_path,
+            pred_db_schema=pred_db_schema,
             pred_model_files=pred_model_files,
             dbt_run_success=dbt_run_success,
             trajectory=trajectory,
