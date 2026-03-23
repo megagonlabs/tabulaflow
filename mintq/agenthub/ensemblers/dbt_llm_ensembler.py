@@ -1,29 +1,24 @@
 """LLM-based ensembler for DBT tasks (multi-choice only).
 
-Presents candidate model files, build status, and output table previews
+Presents candidate model files, build status, and output table schemas
 to an LLM and asks it to select the best candidate.
 """
 
 import logging
-import os
 from typing import Any, ClassVar
 
-import duckdb
 import jinja2
-import pandas as pd
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 
 from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.utils import instrument
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.utils import format_df
+from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
 
 logger = logging.getLogger(__name__)
-
-_TABLE_PREVIEW_MAX_ROWS = 10
 
 DBT_LLM_ENSEMBLE_SYSTEM_PROMPT = """
 You are a helpful AI data engineering expert proficient in dbt (data build tool) and SQL.
@@ -55,14 +50,10 @@ DBT_CANDIDATE_TEMPLATE = """
 </file>
 {%- endfor %}
 </model_files>
-{%- if table_previews %}
-<output_tables>
-{%- for table_name, preview in table_previews.items() %}
-<table name="{{ table_name }}">
-{{ preview }}
-</table>
-{%- endfor %}
-</output_tables>
+{%- if output_schema %}
+<output_schema>
+{{ output_schema }}
+</output_schema>
 {%- endif %}
 </candidate>
 """.strip()
@@ -83,24 +74,7 @@ Select the number of the best candidate.
 """.strip()
 
 
-def _read_duckdb_table_safe(db_path: str, table_name: str) -> pd.DataFrame | None:
-    """Read a table from a DuckDB file, returning None on any failure."""
-    try:
-        con = duckdb.connect(database=db_path, read_only=True)
-        try:
-            return con.execute(f"SELECT * FROM {table_name}").fetchdf()
-        finally:
-            con.close()
-    except Exception:
-        return None
 
-
-def _format_table_preview(df: pd.DataFrame) -> str:
-    if df.empty:
-        return "(empty table)"
-    preview = format_df(df, max_visible_rows=_TABLE_PREVIEW_MAX_ROWS)
-    preview += f"\n({len(df)} rows)"
-    return preview
 
 
 class DbtLLMEnsemblerConfig(BaseModel):
@@ -133,21 +107,11 @@ class DbtLLMEnsembler:
 
     def __init__(self, config: DbtLLMEnsemblerConfig):
         self.config = config
+        self.formatter = SQLDDLSchemaFormatter()
 
     @classmethod
     async def from_config_async(cls, config: DbtLLMEnsemblerConfig) -> "DbtLLMEnsembler":
         return cls(config)
-
-    def _get_table_previews(self, output: DbtTaskOutput, task: DbtTask) -> dict[str, str]:
-        """Read gold tables from the candidate's DuckDB and return formatted previews."""
-        previews: dict[str, str] = {}
-        if not output.pred_db_path or not os.path.exists(output.pred_db_path):
-            return previews
-        for gt in task.gold_tables:
-            df = _read_duckdb_table_safe(output.pred_db_path, gt.table_name)
-            if df is not None:
-                previews[gt.table_name] = _format_table_preview(df)
-        return previews
 
     def _deduplicate_candidates(self, candidates: list[DbtTaskOutput]) -> list[DbtTaskOutput]:
         """Deduplicate candidates with identical model file contents."""
@@ -187,6 +151,7 @@ class DbtLLMEnsembler:
             return DbtTaskOutput(
                 **task.model_dump(),
                 pred_db_path=best.pred_db_path,
+                pred_db_schema=best.pred_db_schema,
                 pred_model_files=best.pred_model_files,
                 dbt_run_success=best.dbt_run_success,
                 dbt_run_log=best.dbt_run_log,
@@ -199,12 +164,12 @@ class DbtLLMEnsembler:
         # Build candidate descriptions
         candidate_strs: list[str] = []
         for i, output in enumerate(candidates):
-            table_previews = self._get_table_previews(output, task)
+            output_schema = self.formatter.format(output.pred_db_schema) if output.pred_db_schema else ""
             candidate_str = jinja2.Template(DBT_CANDIDATE_TEMPLATE).render(
                 number=i + 1,
                 dbt_run_success=output.dbt_run_success,
                 model_files=output.pred_model_files,
-                table_previews=table_previews,
+                output_schema=output_schema,
             )
             candidate_strs.append(candidate_str)
 
@@ -249,6 +214,7 @@ class DbtLLMEnsembler:
         return DbtTaskOutput(
             **task.model_dump(),
             pred_db_path=best_output.pred_db_path,
+            pred_db_schema=best_output.pred_db_schema,
             pred_model_files=best_output.pred_model_files,
             dbt_run_success=best_output.dbt_run_success,
             dbt_run_log=best_output.dbt_run_log,
