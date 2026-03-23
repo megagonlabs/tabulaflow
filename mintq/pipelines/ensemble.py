@@ -177,6 +177,8 @@ async def main_async() -> None:
     parser.add_argument(
         "--deduplicate_results",
         type=bool_flag,
+        nargs="?",
+        const=True,
         default=True,
         help="Deduplicate candidates with identical results (llm/agent ensembler, default true).",
     )

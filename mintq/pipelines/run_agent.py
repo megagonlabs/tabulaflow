@@ -260,19 +260,19 @@ async def main_async() -> None:
     parser.add_argument("--temperature", default=None, type=float)
     parser.add_argument("--max_steps", default=None, type=int)
     parser.add_argument("--openai_reasoning_effort", default=None)
-    parser.add_argument("--use_column_description", type=bool_flag, default=None)
+    parser.add_argument("--use_column_description", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("-n", "--num_majority_voting_candidates", default=None, type=int)
 
     # sql agent
-    parser.add_argument("--do_schema_linking", type=bool_flag, default=None)
-    parser.add_argument("--do_postprocessing", type=bool_flag, default=None)
+    parser.add_argument("--do_schema_linking", type=bool_flag, nargs="?", const=True, default=None)
+    parser.add_argument("--do_postprocessing", type=bool_flag, nargs="?", const=True, default=None)
     parser.add_argument("--num_few_shot_examples", default=None, type=int)
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")
 
     # mintq/dbt agent
     parser.add_argument("--db_summarizer_llm", default=None)
-    parser.add_argument("--use_bash_tool", type=bool_flag, default=None)
+    parser.add_argument("--use_bash_tool", type=bool_flag, nargs="?", const=True, default=None)
 
     # question embedder
     parser.add_argument("--question_embedder_embedding_llm", default=None)
