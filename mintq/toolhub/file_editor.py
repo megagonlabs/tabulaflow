@@ -83,92 +83,93 @@ class FileEditorTool:
         self._metrics.error_count += 1
         return f"(error: {msg})"
 
-    def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
-        if resolved.is_dir():
-            entries: list[str] = []
-            for root, dirs, files in os.walk(resolved):
-                depth = str(root).replace(str(resolved), "").count(os.sep)
-                if depth >= 2:
-                    dirs.clear()
-                    continue
-                dirs[:] = sorted(d for d in dirs if not d.startswith("."))
-                rel = os.path.relpath(root, self._working_dir)
-                if rel == ".":
-                    rel = ""
-                for d in sorted(dirs):
-                    entries.append(os.path.join(rel, d) + "/")
-                for f in sorted(files):
-                    if not f.startswith("."):
-                        entries.append(os.path.join(rel, f))
-            total = len(entries)
+    def _parse_range(self, view_range: list[int] | None, total: int) -> tuple[int, int] | str:
+        """Parse and validate a 1-indexed [start, end] range.
 
-            if view_range:
-                if len(view_range) != 2:
-                    return self._error("view_range must be a list of two integers [start, end].")
-                start, end = view_range
-                if start < 1:
-                    return self._error(f"start must be >= 1, got {start}.")
-                if end == -1:
-                    end = total
-                if end < start:
-                    return self._error(f"end ({end}) must be >= start ({start}).")
-                selected = entries[start - 1 : end]
-                header = f"Directory listing of {path or '.'} (entries {start}-{min(end, total)} of {total}):\n"
-                return header + "\n".join(selected)
+        Returns (start, end) as 0-indexed inclusive bounds, or an error string.
+        """
+        if not view_range:
+            return (0, total - 1)
+        if len(view_range) != 2:
+            return self._error("view_range must be a list of two integers [start, end].")
+        start, end = view_range
+        if start < 1:
+            return self._error(f"start must be >= 1, got {start}.")
+        if end == -1:
+            end = total
+        if end < start:
+            return self._error(f"end ({end}) must be >= start ({start}).")
+        return (start - 1, end - 1)
 
-            if total > MAX_DIR_ENTRIES:
-                entries = entries[:MAX_DIR_ENTRIES]
-                return (
-                    f"Directory listing of {path or '.'}:\n" + "\n".join(entries)
-                    + f"\n\n(showing first {MAX_DIR_ENTRIES} of {total} entries)"
-                )
-            return f"Directory listing of {path or '.'}:\n" + "\n".join(entries)
+    def _view_dir(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
+        entries: list[str] = []
+        for root, dirs, files in os.walk(resolved):
+            depth = str(root).replace(str(resolved), "").count(os.sep)
+            if depth >= 2:
+                dirs.clear()
+                continue
+            dirs[:] = sorted(d for d in dirs if not d.startswith("."))
+            rel = os.path.relpath(root, self._working_dir)
+            if rel == ".":
+                rel = ""
+            for d in sorted(dirs):
+                entries.append(os.path.join(rel, d) + "/")
+            for f in sorted(files):
+                if not f.startswith("."):
+                    entries.append(os.path.join(rel, f))
 
-        if not resolved.is_file():
-            return self._error(f"{path} does not exist.")
+        total = len(entries)
+        result = self._parse_range(view_range, total)
+        if isinstance(result, str):
+            return result
+        lo, hi = result
 
+        selected = entries[lo : hi + 1]
+        label = path or "."
+        if view_range:
+            header = f"Directory listing of {label} (entries {lo + 1}-{min(hi + 1, total)} of {total}):\n"
+        elif total > MAX_DIR_ENTRIES:
+            selected = entries[:MAX_DIR_ENTRIES]
+            header = f"Directory listing of {label}:\n"
+            return header + "\n".join(selected) + f"\n\n(showing first {MAX_DIR_ENTRIES} of {total} entries)"
+        else:
+            header = f"Directory listing of {label}:\n"
+        return header + "\n".join(selected)
+
+    def _view_file(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
         try:
             content = resolved.read_text()
         except (UnicodeDecodeError, ValueError):
             return self._error(f"{path} is a binary file and cannot be displayed.")
 
-        num_lines = content.count("\n") + (1 if content and not content.endswith("\n") else 0)
-
+        lines = content.split("\n")
+        num_lines = len(lines) - (1 if content.endswith("\n") else 0)
         header = f"File: {path}\n"
 
-        if not view_range:
-            all_lines = content.split("\n")
-            truncated = num_lines > MAX_RESPONSE_LINES
-            if truncated:
-                all_lines = all_lines[:MAX_RESPONSE_LINES]
-            per_line = MAX_RESPONSE_CHARS // max(len(all_lines), 1)
-            numbered = self._make_numbered(
-                "\n".join(all_lines), max_line_chars=per_line
-            )
-            if truncated:
-                return (
-                    header
-                    + numbered
-                    + f"\n\n(showing first {MAX_RESPONSE_LINES} of {num_lines} lines)"
-                )
-            return header + numbered
+        result = self._parse_range(view_range, num_lines)
+        if isinstance(result, str):
+            return result
+        lo, hi = result
 
-        if len(view_range) != 2:
-            return self._error("view_range must be a list of two integers [start, end].")
-        start, end = view_range
-        if start < 1:
-            return self._error(f"start line must be >= 1, got {start}.")
-        if end == -1:
-            end = num_lines
-        if end < start:
-            return self._error(f"end line ({end}) must be >= start line ({start}).")
+        if not view_range and num_lines > MAX_RESPONSE_LINES:
+            selected = lines[:MAX_RESPONSE_LINES]
+            per_line = MAX_RESPONSE_CHARS // max(len(selected), 1)
+            numbered = self._make_numbered("\n".join(selected), max_line_chars=per_line)
+            return header + numbered + f"\n\n(showing first {MAX_RESPONSE_LINES} of {num_lines} lines)"
 
-        lines = content.split("\n")
-        selected = lines[start - 1 : end]
+        selected = lines[lo : hi + 1]
         per_line = MAX_RESPONSE_CHARS // max(len(selected), 1)
-        return header + self._make_numbered(
-            "\n".join(selected), start_line=start, max_line_chars=per_line
+        numbered = self._make_numbered(
+            "\n".join(selected), start_line=lo + 1, max_line_chars=per_line
         )
+        return header + numbered
+
+    def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
+        if resolved.is_dir():
+            return self._view_dir(resolved, path, view_range)
+        if not resolved.is_file():
+            return self._error(f"{path} does not exist.")
+        return self._view_file(resolved, path, view_range)
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
