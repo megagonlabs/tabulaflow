@@ -166,10 +166,10 @@ class ExecuteBashTool:
             or self._closed
             or (self._process and self._process.poll() is not None)
         ):
-            self._close_internal()
+            await self._close_internal()
             await self._initialize()
 
-    def _close_internal(self) -> None:
+    async def _close_internal(self) -> None:
         """Tear down PTY, process, and event loop reader."""
         if self._closed and not self._initialized:
             return
@@ -179,13 +179,18 @@ class ExecuteBashTool:
                     self._write_pty(b"exit\n")
                 except Exception:
                     pass
-                try:
-                    self._process.wait(timeout=2)
-                except subprocess.TimeoutExpired:
+                deadline = time.time() + 2
+                while self._process.poll() is None and time.time() < deadline:
+                    await asyncio.sleep(0.1)
+                if self._process.poll() is None:
                     try:
                         os.killpg(os.getpgid(self._process.pid), signal.SIGTERM)
-                        self._process.wait(timeout=1)
-                    except (subprocess.TimeoutExpired, ProcessLookupError):
+                    except (ProcessLookupError, PermissionError):
+                        pass
+                    deadline = time.time() + 1
+                    while self._process.poll() is None and time.time() < deadline:
+                        await asyncio.sleep(0.1)
+                    if self._process.poll() is None:
                         try:
                             os.killpg(
                                 os.getpgid(self._process.pid), signal.SIGKILL
@@ -478,7 +483,7 @@ class ExecuteBashTool:
                 command. Use when the session is in an unrecoverable state.
         """
         if reset:
-            self._close_internal()
+            await self._close_internal()
         if is_input:
             self._metrics.num_input_calls += 1
         else:
@@ -487,7 +492,7 @@ class ExecuteBashTool:
 
     async def close(self) -> None:
         """Terminate the bash session and clean up resources."""
-        self._close_internal()
+        await self._close_internal()
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
