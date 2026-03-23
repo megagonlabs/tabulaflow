@@ -1,5 +1,5 @@
 from mintq.toolhub.base import BaseTool
-from mintq.toolhub.bash import ExecuteBashTool
+from mintq.toolhub.execute_bash import ExecuteBashTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.finish import FinishTool

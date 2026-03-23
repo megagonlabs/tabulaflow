@@ -2,17 +2,20 @@ import asyncio
 
 import pytest
 
-from mintq.toolhub.bash import ExecuteBashTool
+from mintq.toolhub.execute_bash import ExecuteBashTool
 
 
 @pytest.fixture
 async def bash():
-    tool = ExecuteBashTool(timeout=10, max_output_chars=5000)
+    tool = ExecuteBashTool(
+        no_change_timeout=3,
+        max_output_chars=5000,
+    )
     yield tool
     await tool.close()
 
 
-class TestBashToolBasic:
+class TestBasic:
     async def test_simple_echo(self, bash: ExecuteBashTool):
         result = await bash("echo hello")
         assert "hello" in result
@@ -44,51 +47,71 @@ class TestBashToolBasic:
         assert "line3" in result
 
 
-class TestBashToolTimeout:
-    async def test_timeout_returns_minus_one(self, bash: ExecuteBashTool):
-        bash._timeout = 2
-        result = await bash("sleep 30")
+class TestTimeout:
+    async def test_no_change_timeout(self, bash: ExecuteBashTool):
+        result = await bash("sleep 60")
         assert "exit_code: -1" in result
-        assert "timed out" in result.lower()
+
+    async def test_no_change_timeout_disabled_with_per_call_timeout(
+        self, bash: ExecuteBashTool
+    ):
+        """When per-call timeout is set, no-change timeout is skipped."""
+        result = await bash("sleep 60", timeout=5)
+        assert "exit_code: -1" in result
+        assert "timed out after 5" in result.lower()
+
+    async def test_per_call_hard_timeout(self, bash: ExecuteBashTool):
+        result = await bash("for i in $(seq 1 100); do echo $i; sleep 0.5; done", timeout=3)
+        assert "exit_code: -1" in result
+        assert "timed out after 3" in result.lower()
 
     async def test_interrupt_after_timeout(self, bash: ExecuteBashTool):
-        bash._timeout = 2
-        await bash("sleep 30")
+        await bash("sleep 60")
         result = await bash("C-c", is_input=True)
-        # After C-c, exit_code should be non-negative (SIGINT = 130)
         assert "exit_code:" in result
 
     async def test_session_usable_after_interrupt(self, bash: ExecuteBashTool):
-        bash._timeout = 2
-        await bash("sleep 30")
+        await bash("sleep 60")
         await bash("C-c", is_input=True)
-        # Allow sentinel to be processed
         await asyncio.sleep(0.5)
         result = await bash("echo recovered")
         assert "recovered" in result
         assert "[exit_code: 0]" in result
 
 
-class TestBashToolInput:
+class TestInput:
     async def test_input_error_when_no_command_running(self, bash: ExecuteBashTool):
         result = await bash("hello", is_input=True)
         assert "error" in result.lower()
 
     async def test_send_stdin_to_running_process(self, bash: ExecuteBashTool):
-        bash._timeout = 2
         await bash("read line; echo got:$line")
         result = await bash("my_input", is_input=True)
         assert "got:my_input" in result
 
 
-class TestBashToolTruncation:
+class TestTruncation:
     async def test_output_truncated(self, bash: ExecuteBashTool):
         bash._max_output_chars = 200
         result = await bash("seq 1 10000")
         assert "truncated" in result
 
 
-class TestBashToolSessionRestart:
+class TestReset:
+    async def test_reset_restores_clean_session(self, bash: ExecuteBashTool):
+        await bash("export RESET_TEST_VAR=before")
+        result = await bash("echo $RESET_TEST_VAR", reset=True)
+        assert "before" not in result
+        assert "[exit_code: 0]" in result
+
+    async def test_reset_after_stuck_command(self, bash: ExecuteBashTool):
+        await bash("sleep 60")
+        result = await bash("echo fresh", reset=True)
+        assert "fresh" in result
+        assert "[exit_code: 0]" in result
+
+
+class TestSessionRestart:
     async def test_restart_after_exit(self, bash: ExecuteBashTool):
         await bash("exit 0")
         result = await bash("echo restarted")
@@ -96,7 +119,7 @@ class TestBashToolSessionRestart:
         assert "[exit_code: 0]" in result
 
 
-class TestBashToolMetrics:
+class TestMetrics:
     async def test_metrics_count(self, bash: ExecuteBashTool):
         await bash("echo a")
         await bash("echo b")
@@ -112,7 +135,7 @@ class TestBashToolMetrics:
         assert m.num_errors == 1
 
 
-class TestBashToolPydanticAi:
+class TestPydanticAi:
     def test_as_pydantic_ai_tool(self):
         tool = ExecuteBashTool()
         pai_tool = tool.as_pydantic_ai_tool()
