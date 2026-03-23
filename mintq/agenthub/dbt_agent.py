@@ -3,6 +3,7 @@
 import logging
 import os
 import shutil
+import sys
 import time
 from pathlib import Path
 from typing import Any, ClassVar
@@ -141,7 +142,17 @@ class DbtAgent:
         )
 
         if self.config.use_bash_tool:
-            bash_tool = ExecuteBashTool(working_dir=task.working_dir)
+            dbt_path = shutil.which("dbt") or str(Path(sys.prefix) / "bin" / "dbt")
+            if not os.path.isfile(dbt_path):
+                raise RuntimeError(
+                    "dbt not found on PATH or in the current Python environment. "
+                    "Install dbt or activate the correct virtualenv."
+                )
+            dbt_bin_dir = str(Path(dbt_path).parent)
+            bash_tool = ExecuteBashTool(
+                working_dir=task.working_dir,
+                init_commands=[f'export PATH="{dbt_bin_dir}:$PATH"'],
+            )
             run_tool = bash_tool
         else:
             run_dbt = RunDbtTool(task.working_dir, pre_run_hook=_pre_run_hook)
