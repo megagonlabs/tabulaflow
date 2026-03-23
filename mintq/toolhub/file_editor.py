@@ -63,6 +63,8 @@ class FileEditorTool:
         if len(line) <= max_chars:
             return line
         half = max_chars // 2
+        if half == 0:
+            return f"...({len(line)} chars)..."
         return line[:half] + f"...({len(line)} chars)..." + line[-half:]
 
     def _make_numbered(
@@ -158,10 +160,16 @@ class FileEditorTool:
             return header + numbered + f"\n\n(showing first {MAX_RESPONSE_LINES} of {num_lines} lines)"
 
         selected = lines[lo : hi + 1]
+        truncated = False
+        if len(selected) > MAX_RESPONSE_LINES:
+            selected = selected[:MAX_RESPONSE_LINES]
+            truncated = True
         per_line = MAX_RESPONSE_CHARS // max(len(selected), 1)
         numbered = self._make_numbered(
             "\n".join(selected), start_line=lo + 1, max_line_chars=per_line
         )
+        if truncated:
+            return header + numbered + f"\n\n(showing {MAX_RESPONSE_LINES} of {hi - lo + 1} lines in range)"
         return header + numbered
 
     def _view(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
