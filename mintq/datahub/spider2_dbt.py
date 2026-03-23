@@ -27,9 +27,16 @@ logger = logging.getLogger(__name__)
 _DUCKDB_PATH_RE = re.compile(r"""path:\s*['"]?\.?/?([^'"\s]+\.duckdb)['"]?""")
 
 
+# The gold evaluation databases were generated on 2024-09-08. Many dbt models
+# use current_timestamp / current_date for time-dependent computations (e.g.
+# account_active_months, date spines, past-due amounts). Running at any other
+# date produces values that differ from the gold, causing duckdb_match to fail.
 SPIDER2_DBT_DATASET_INSTRUCTIONS = """
 - **Time-Dependent Models:**
-  - Treat the current date as **2024-09-08** for time-dependent models.
+  - Treat the current date as **2024-09-08**.
+    Some models reference `current_timestamp`, `dbt.current_timestamp_backcompat()`, or `current_date` to compute time-dependent values.
+    To match the gold evaluation data, you MUST replace every such reference in the project model SQL files with the literal date `cast('2024-09-08' as timestamp)` (or `cast('2024-09-08' as date)` where a date is expected).
+    Do NOT leave any `current_timestamp` or `current_date` calls in the SQL.
 """.strip()
 
 

@@ -314,7 +314,7 @@ async def main_async() -> None:
         if args.dataset == "spider2-snow":
             parser.set_defaults(databases=["AIRLINES"])
         elif args.dataset == "spider2-dbt":
-            parser.set_defaults(databases=["nba001"])
+            parser.set_defaults(databases=["zuora001"])
     args = parser.parse_args()
     print(args)
     print()
