@@ -16,7 +16,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, formatter_registry
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
-from mintq.toolhub import FileEditorTool, GetTableSchemaTool, RunDbtTool
+from mintq.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +24,7 @@ logger = logging.getLogger(__name__)
 class DbtAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
     refresh_schema_on_finish: bool = False
+    use_bash_tool: bool = False
 
 
 def _find_duckdb_file(directory: str) -> str | None:
@@ -56,15 +57,23 @@ Gathering information:
 - Use the `file_editor` tool to browse the project directory, read YAML and SQL files, and understand the project structure before making changes.
 - Use `get_table_schema` to inspect the schema of source tables in the data warehouse.
 - Batch multiple `file_editor` view calls in a single step.
+{%- if use_bash_tool %}
+- You may use `execute_bash` to run shell commands such as `dbt list`, `dbt compile`, or `dbt run`.
+{%- else %}
 - You may use `run_dbt` to list resources or compile SQL without executing.
+{%- endif %}
 
 Writing model SQL:
 - Read ALL existing SQL model files carefully and follow their patterns exactly in your new models.
 - Column names in your output MUST match the YAML schema definitions exactly.
 - Use the `file_editor` tool to create new SQL model files or edit existing ones.
+{%- if use_bash_tool %}
+- After writing all required SQL, use `execute_bash` to run `dbt run` to build the project.
+{%- else %}
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
 - Each `dbt run` starts from a fresh copy of the original source database. Any views or tables created by previous runs are automatically rolled back.
   If a run fails, just fix the SQL files and re-run — there is no need to manually clean up database state.
+{%- endif %}
 - After `dbt run` succeeds, use `get_table_schema` with `refresh=True` to verify the output tables.
 - Be THOROUGH. Make sure all models defined in the YAML files are implemented before finishing.
 </tool_calling>
@@ -124,23 +133,31 @@ class DbtAgent:
                     shutil.copy2(db_file, backup)
                 shutil.copy2(backup, db_file)
 
-        run_dbt = RunDbtTool(task.working_dir, pre_run_hook=_pre_run_hook)
         get_table_schema = GetTableSchemaTool(
             db_connector,
             self.formatter,
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
         )
+
+        if self.config.use_bash_tool:
+            bash_tool = ExecuteBashTool(working_dir=task.working_dir)
+            run_tool = bash_tool
+        else:
+            run_dbt = RunDbtTool(task.working_dir, pre_run_hook=_pre_run_hook)
+            run_tool = run_dbt
+
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
             db_document=db_document,
+            use_bash_tool=self.config.use_bash_tool,
         )
 
         agent = Agent[None, None](  # type: ignore
             model=self.config.llm,
             tools=[
                 file_editor.as_pydantic_ai_tool(),
-                run_dbt.as_pydantic_ai_tool(),
+                run_tool.as_pydantic_ai_tool(),
                 get_table_schema.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
@@ -179,11 +196,11 @@ class DbtAgent:
         metrics["retry_prompt"] = sum(1 for msg in trajectory.messages if msg.role == "tool" and msg.is_retry_prompt)
         metrics["tools"] = {
             "file_editor": file_editor.metrics().model_dump(),
-            "run_dbt": run_dbt.metrics().model_dump(),
+            run_tool.name: run_tool.metrics().model_dump(),
             "get_table_schema": get_table_schema.metrics().model_dump(),
         }
 
-        dbt_run_success = run_dbt.metrics().last_run_success
+        dbt_run_success = run_dbt.metrics().last_run_success if not self.config.use_bash_tool else None
 
         return DbtTaskOutput(
             **task.model_dump(),
