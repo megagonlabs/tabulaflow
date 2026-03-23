@@ -425,7 +425,7 @@ test-arcs-structured-kimi:
 
 .PHONY: test-spider2-dbt-agent
 test-spider2-dbt-agent:
-	uv run mintq/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug
+	uv run mintq/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug  --llm openai-responses:gpt-5.3-codex --openai_reasoning_effort medium
 	uv run mintq/pipelines/evaluate.py --debug
 
 .PHONY: test-spider2-agent
