@@ -854,7 +854,14 @@ March 18
 - [x] Fix mypy errors
 - [x] Exp 266: new db summary: gpt-5.3-codex on spider2-lite: simple_ex 0.6851, spider2_ex 0.6740, cost $84.18
 
-March 19
+March 19 
+- [x] dbt data loader
+- [x] spider2_duckdb_match metric
+- [x] dbt agent
+  - [x] file_editor tool
+  - [x] run_dbt tool
+
+March 20
 - [x] Support spider2-dbt
 - [x] Fix bugs
   - [x] Fix gold db path mismatch
@@ -865,7 +872,7 @@ March 19
 - [x] refresh_schema_async
 - [x] get_table_schema with compress and refresh
   
-March 20 - 21
+March 21 - 22
 - [x] Revise dbt agent
   - [x] schema refresh
   - [x] duckdb progress bar
