@@ -23,6 +23,7 @@ logger = logging.getLogger(__name__)
 
 class DbtAgentConfig(BasicAgentConfig):
     db_summarizer_llm: str = "openai-responses:gpt-5.4"
+    refresh_schema_on_finish: bool = False
 
 
 def _find_duckdb_file(directory: str) -> str | None:
@@ -155,7 +156,8 @@ class DbtAgent:
 
         pred_db_path = _find_duckdb_file(task.working_dir)
 
-        await db_connector.refresh_schema_async()
+        if self.config.refresh_schema_on_finish:
+            await db_connector.refresh_schema_async()
         pred_db_schema = db_connector.schema
 
         pred_model_files: dict[str, str] = {}
