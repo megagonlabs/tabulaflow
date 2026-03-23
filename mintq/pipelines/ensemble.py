@@ -14,14 +14,74 @@ import mintq
 from mintq.agenthub.ensemblers.majority_ensembler import MajorityEnsembler, MajorityEnsemblerConfig
 from mintq.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemblerConfig
 from mintq.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
+from mintq.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsembler, DbtLLMEnsemblerConfig
 from mintq.metrics import SimpleInferenceMetricsAggregator
-from mintq.schema import NL2QRunResult, NL2QDataset, NL2QTaskOutput, SimpleNL2QTask, SimpleNL2QTaskOutput
+from mintq.schema import (
+    NL2QRunResult,
+    NL2QDataset,
+    NL2QTaskOutput,
+)
 from mintq.pipelines.utils import bool_flag
 from mintq.utils import tqdm_gather_with_exceptions
 
-Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler
+Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 
 logger = logging.getLogger(__name__)
+
+
+async def _ensemble_tasks_async(
+    ensembler: Ensembler,
+    results: list[NL2QRunResult],
+    dataset: NL2QDataset,
+    batch_size: int,
+    verbose: bool = True,
+) -> tuple[list[NL2QTaskOutput], int]:
+    """Ensemble NL2Q tasks. Returns (outputs, num_failed)."""
+    qid_to_outputs: dict[str, list] = collections.defaultdict(list)
+    for result in results:
+        for task_output in result.tasks:
+            qid_to_outputs[task_output.qid].append(task_output)
+
+    tasks = []
+    task_output_groups: list[list] = []
+    for task in dataset.tasks:
+        outputs = qid_to_outputs.get(task.qid, [])
+        if not outputs:
+            raise ValueError(f"No outputs found for task {task.qid}")
+        tasks.append(task)
+        task_output_groups.append(outputs)
+
+    ensembled_outputs: list[NL2QTaskOutput] = []
+    num_failed = 0
+    for i in range(0, len(tasks), batch_size):
+        j = min(i + batch_size, len(tasks))
+        batch_tasks = tasks[i:j]
+        batch_groups = task_output_groups[i:j]
+
+        batch_results = await tqdm_gather_with_exceptions(
+            *[
+                ensembler.ensemble_async(task, dataset.db_connectors[task.db], outputs)  # type: ignore[arg-type]
+                for task, outputs in zip(batch_tasks, batch_groups)
+            ],
+            return_exceptions=True,
+            disable=not verbose,
+        )
+
+        for task, group, output in zip(batch_tasks, batch_groups, batch_results):
+            if isinstance(output, Exception):
+                tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
+                logger.error(f"Error ensembling task {task.qid}: {tb_str}")
+                ensembled_outputs.append(group[0])
+                num_failed += 1
+            elif isinstance(output, BaseException):
+                raise output
+            else:
+                ensembled_outputs.append(output)
+
+        if verbose:
+            print(f"{j}/{len(tasks)} tasks ensembled ({num_failed} failed)")
+
+    return ensembled_outputs, num_failed
 
 
 async def ensemble_async(
@@ -31,7 +91,7 @@ async def ensemble_async(
     batch_size: int,
     verbose: bool = True,
 ) -> NL2QRunResult:
-    """Ensemble multiple run results into a single result via majority voting.
+    """Ensemble multiple run results into a single result.
 
     Args:
         ensembler: The ensembler instance.
@@ -43,57 +103,11 @@ async def ensemble_async(
     Returns:
         A new NL2QRunResult with ensembled predictions.
     """
-    # Build a mapping from qid to list of task outputs across all results
-    qid_to_outputs: dict[str, list[SimpleNL2QTaskOutput]] = collections.defaultdict(list)
-    for result in results:
-        for task_output in result.tasks:
-            assert isinstance(task_output, SimpleNL2QTaskOutput), (
-                f"Ensemble only supports SimpleNL2QTaskOutput, got {type(task_output)}"
-            )
-            qid_to_outputs[task_output.qid].append(task_output)
-
-    # Use the first result's task order as the canonical order
-    tasks: list[SimpleNL2QTask] = []
-    task_output_groups: list[list[SimpleNL2QTaskOutput]] = []
-    for task_output in results[0].tasks:
-        outputs = qid_to_outputs.get(task_output.qid, [])
-        if not outputs:
-            continue
-        task = SimpleNL2QTask(**{k: v for k, v in task_output.model_dump().items() if k in SimpleNL2QTask.model_fields})
-        tasks.append(task)
-        task_output_groups.append(outputs)
-
-    # Run ensemble in batches
     start_time = datetime.datetime.now()
-    ensembled_outputs: list[NL2QTaskOutput] = []
-    num_failed = 0
-    for i in range(0, len(tasks), batch_size):
-        j = min(i + batch_size, len(tasks))
-        batch_tasks = tasks[i:j]
-        batch_groups = task_output_groups[i:j]
 
-        batch_results = await tqdm_gather_with_exceptions(
-            *[
-                ensembler.ensemble_async(task, dataset.db_connectors[task.db], outputs)
-                for task, outputs in zip(batch_tasks, batch_groups)
-            ],
-            return_exceptions=True,
-            disable=not verbose,
-        )
-
-        for task, output in zip(batch_tasks, batch_results):
-            if isinstance(output, Exception):
-                tb_str = "".join(traceback.format_exception(type(output), output, output.__traceback__))
-                logger.error(f"Error ensembling task {task.qid}: {tb_str}")
-                ensembled_outputs.append(SimpleNL2QTaskOutput(**task.model_dump(), pred_query=None))
-                num_failed += 1
-            elif isinstance(output, BaseException):
-                raise output
-            else:
-                ensembled_outputs.append(output)
-
-        if verbose:
-            print(f"{j}/{len(tasks)} tasks ensembled ({num_failed} failed)")
+    ensembled_outputs, num_failed = await _ensemble_tasks_async(
+        ensembler, results, dataset, batch_size, verbose
+    )
 
     end_time = datetime.datetime.now()
 
@@ -118,32 +132,31 @@ async def ensemble_async(
     return res
 
 
+def _build_llm_kwargs(args: argparse.Namespace) -> dict[str, Any]:
+    """Extract common LLM-related kwargs from CLI args."""
+    kwargs: dict[str, Any] = {"result_dirs": args.result_dirs}
+    if args.llm is not None:
+        kwargs["llm"] = args.llm
+    if args.temperature is not None:
+        kwargs["temperature"] = args.temperature
+    if args.openai_reasoning_effort is not None:
+        kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
+    if args.deduplicate_results is not None:
+        kwargs["deduplicate_results"] = args.deduplicate_results
+    return kwargs
+
+
 def parse_ensembler(args: argparse.Namespace) -> Ensembler:
     """Build an ensembler instance from parsed CLI arguments."""
     if args.ensembler == "llm_ensembler":
-        kwargs: dict[str, Any] = {"result_dirs": args.result_dirs}
-        if args.llm is not None:
-            kwargs["llm"] = args.llm
-        if args.temperature is not None:
-            kwargs["temperature"] = args.temperature
-        if args.openai_reasoning_effort is not None:
-            kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
-        if args.deduplicate_results is not None:
-            kwargs["deduplicate_results"] = args.deduplicate_results
-        return LLMEnsembler(LLMEnsemblerConfig(**kwargs))
+        return LLMEnsembler(LLMEnsemblerConfig(**_build_llm_kwargs(args)))
     elif args.ensembler == "agent_ensembler":
-        kwargs = {"result_dirs": args.result_dirs}
-        if args.llm is not None:
-            kwargs["llm"] = args.llm
-        if args.temperature is not None:
-            kwargs["temperature"] = args.temperature
-        if args.openai_reasoning_effort is not None:
-            kwargs["openai_reasoning_effort"] = args.openai_reasoning_effort
-        if args.deduplicate_results is not None:
-            kwargs["deduplicate_results"] = args.deduplicate_results
+        kwargs = _build_llm_kwargs(args)
         if args.max_steps is not None:
             kwargs["max_steps"] = args.max_steps
         return AgentEnsembler(AgentEnsemblerConfig(**kwargs))
+    elif args.ensembler == "dbt_llm_ensembler":
+        return DbtLLMEnsembler(DbtLLMEnsemblerConfig(**_build_llm_kwargs(args)))
     else:
         return MajorityEnsembler(MajorityEnsemblerConfig(result_dirs=args.result_dirs))
 
@@ -154,7 +167,7 @@ async def main_async() -> None:
     parser.add_argument("--output_dir", required=True, help="Path to save ensembled result.")
     parser.add_argument(
         "--ensembler",
-        choices=["majority_ensembler", "llm_ensembler", "agent_ensembler"],
+        choices=["majority_ensembler", "llm_ensembler", "agent_ensembler", "dbt_llm_ensembler"],
         default="majority_ensembler",
         help="Ensembler strategy.",
     )
