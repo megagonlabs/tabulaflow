@@ -230,6 +230,9 @@ def parse_agent_config(agent_cls: type[NL2QAgent], args: argparse.Namespace) -> 
     if agent_cls.name in ("mintq_agent", "dbt_agent"):
         if args.db_summarizer_llm is not None:
             kwargs["db_summarizer_llm"] = args.db_summarizer_llm
+    if agent_cls.name == "dbt_agent":
+        if args.use_bash_tool is not None:
+            kwargs["use_bash_tool"] = args.use_bash_tool
     if args.temperature is not None:
         kwargs["temperature"] = args.temperature
     if args.max_steps is not None:
@@ -267,8 +270,9 @@ async def main_async() -> None:
     parser.add_argument("--few_shot_dataset", default="bird-sql")
     parser.add_argument("--few_shot_split", default="train")
 
-    # mintq agent
+    # mintq/dbt agent
     parser.add_argument("--db_summarizer_llm", default=None)
+    parser.add_argument("--use_bash_tool", type=bool_flag, default=None)
 
     # question embedder
     parser.add_argument("--question_embedder_embedding_llm", default=None)
