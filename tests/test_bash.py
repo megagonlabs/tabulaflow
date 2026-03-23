@@ -30,6 +30,7 @@ class TestBasic:
         result = await bash("pwd")
         assert "/tmp" in result
         assert "[exit_code: 0]" in result
+        assert "[Current working directory: /tmp]" in result
 
     async def test_env_var_persists(self, bash: ExecuteBashTool):
         await bash("export MY_TEST_VAR=foobar123")

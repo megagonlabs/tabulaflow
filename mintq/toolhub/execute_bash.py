@@ -57,13 +57,16 @@ def _find_ps1_matches(text: str) -> list[re.Match[str]]:
     return matches
 
 
-def _parse_exit_code(match: re.Match[str]) -> int:
-    """Extract integer exit code from a PS1 metadata match."""
+def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
+    """Extract exit code and cwd from a PS1 metadata match."""
     try:
         data = json.loads(match.group(1))
-        return int(data.get("exit_code", -1))
+        return {
+            "exit_code": int(data.get("exit_code", -1)),
+            "cwd": data.get("cwd", ""),
+        }
     except (json.JSONDecodeError, ValueError, TypeError):
-        return -1
+        return {"exit_code": -1, "cwd": ""}
 
 
 class BashToolMetrics(BaseModel):
@@ -390,7 +393,7 @@ class ExecuteBashTool:
                 ps1_n > initial_ps1_n
                 or screen.rstrip().endswith(_PS1_END.strip())
             ) and ps1s:
-                exit_code = _parse_exit_code(ps1s[-1])
+                meta = _parse_ps1_metadata(ps1s[-1])
                 before_first = ps1_n == 1
                 raw = self._extract_between_ps1s(
                     screen, ps1s, before_first=before_first
@@ -400,7 +403,10 @@ class ExecuteBashTool:
                 self._prev_status = "completed"
                 self._prev_output = ""
                 self._clear_screen()
-                return f"{out}\n[exit_code: {exit_code}]"
+                result = f"{out}\n[exit_code: {meta['exit_code']}]"
+                if meta["cwd"]:
+                    result += f"\n[Current working directory: {meta['cwd']}]"
+                return result
 
             # 2) No-change timeout (skipped when per-call timeout is set,
             #    since the caller explicitly chose to wait longer)
