@@ -58,6 +58,8 @@ Gathering information:
 - You may use `run_dbt` to list resources or compile SQL without executing.
 
 Writing model SQL:
+- Read ALL existing SQL model files carefully and follow their patterns exactly in your new models.
+- Column names in your output MUST match the YAML schema definitions exactly.
 - Use the `file_editor` tool to create new SQL model files or edit existing ones.
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
 - Each `dbt run` starts from a fresh copy of the original source database. Any views or tables created by previous runs are automatically rolled back.
@@ -128,7 +130,6 @@ class DbtAgent:
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
         )
-
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
             db_document=db_document,

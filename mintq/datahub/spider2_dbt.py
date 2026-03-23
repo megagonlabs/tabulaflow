@@ -34,6 +34,8 @@ _DUCKDB_PATH_RE = re.compile(r"""path:\s*['"]?\.?/?([^'"\s]+\.duckdb)['"]?""")
 SPIDER2_DBT_DATASET_INSTRUCTIONS = """
 - **Interpreting Ambiguities:**
   - When the task is ambiguous, follow the most natural interpretation based on the starting files. Pay close attention to YAML column descriptions and existing SQL patterns.
+- **Follow Existing Patterns:**
+  - Read ALL existing SQL files carefully. Your new models must follow the same patterns, conventions, macro usage, and coding style.
 """.strip()
 
 
