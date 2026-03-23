@@ -62,7 +62,7 @@ Writing model SQL:
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
 - Each `dbt run` starts from a fresh copy of the original source database. Any views or tables created by previous runs are automatically rolled back.
   If a run fails, just fix the SQL files and re-run — there is no need to manually clean up database state.
-- After `dbt run` succeeds, use `get_table_schema` to verify the output tables.
+- After `dbt run` succeeds, use `get_table_schema` with `refresh=True` to verify the output tables.
 - Be THOROUGH. Make sure all models defined in the YAML files are implemented before finishing.
 </tool_calling>
 {%- if dataset_instructions %}
