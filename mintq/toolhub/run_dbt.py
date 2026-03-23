@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 
 MAX_OUTPUT_CHARS = 30000
 
-DbtCommand = Literal["run", "build", "test", "compile", "debug", "ls"]
+DbtCommand = Literal["run", "build", "test", "compile", "debug", "ls", "deps"]
 
 
 class RunDbtToolMetrics(BaseModel):
@@ -31,6 +31,7 @@ class RunDbtToolMetrics(BaseModel):
     num_compile: int = 0
     num_debug: int = 0
     num_ls: int = 0
+    num_deps: int = 0
     error_count: int = 0
     num_run_success: int = 0
     num_run_failure: int = 0
@@ -94,7 +95,7 @@ class RunDbtTool:
 
         Args:
             command: The dbt subcommand to run. One of ``"run"``, ``"build"``,
-                ``"test"``, ``"compile"``, ``"debug"``, ``"ls"``.
+                ``"test"``, ``"compile"``, ``"debug"``, ``"ls"``, ``"deps"``.
             select: Optional ``--select`` node selector (e.g. ``"my_model"``
                 or ``"tag:daily"``).  Applies to ``run``, ``build``, ``test``,
                 ``compile``, and ``ls``.

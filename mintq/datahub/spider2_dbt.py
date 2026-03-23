@@ -27,6 +27,12 @@ logger = logging.getLogger(__name__)
 _DUCKDB_PATH_RE = re.compile(r"""path:\s*['"]?\.?/?([^'"\s]+\.duckdb)['"]?""")
 
 
+SPIDER2_DBT_DATASET_INSTRUCTIONS = """
+- **Time-Dependent Models:**
+  - Treat the current date as **2024-09-08** for time-dependent models.
+""".strip()
+
+
 def _db_name_from_profiles(project_dir: str) -> str:
     """Extract the ``.duckdb`` filename from ``profiles.yml``."""
     profiles_path = os.path.join(project_dir, "profiles.yml")
@@ -227,6 +233,7 @@ class Spider2DbtDatasetLoader:
                         qid=instance_id,
                         db=instance_id,
                         question=item["instruction"],
+                        dataset_instructions=SPIDER2_DBT_DATASET_INSTRUCTIONS,
                         project_dir=project_dir,
                         gold_tables=gold_tables,
                         gold_db_path=gold_db_path,
