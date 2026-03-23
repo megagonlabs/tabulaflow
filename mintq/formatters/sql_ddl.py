@@ -169,8 +169,8 @@ class SQLDDLSchemaFormatter:
         # Format as single /* */ block
         lines.append("/*\n" + "\n".join(info_parts) + "\n*/")
 
-        # CREATE TABLE statement
-        create_stmt = f"CREATE TABLE {table_name} ("
+        kind = "VIEW" if table.is_view else "TABLE"
+        create_stmt = f"CREATE {kind} {table_name} ("
 
         # Filter columns if pk_fk_column_only
         columns = [col for col in table.columns if not pk_fk_column_only or col.primary_key_type or col.foreign_keys]
