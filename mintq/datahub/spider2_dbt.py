@@ -37,6 +37,10 @@ SPIDER2_DBT_DATASET_INSTRUCTIONS = """
     Do NOT leave any `current_timestamp` or `current_date` calls in the SQL.
 """.strip()
 
+# - **Data Types:**
+#   - Do NOT cast source columns to different types (e.g. do NOT cast VARCHAR to TIMESTAMP using `dbt.type_timestamp()`). Keep the original data formats from the source tables.
+
+
 
 def _db_name_from_profiles(project_dir: str) -> str:
     """Extract the ``.duckdb`` filename from ``profiles.yml``."""
