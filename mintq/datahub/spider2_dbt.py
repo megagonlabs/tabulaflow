@@ -32,15 +32,16 @@ _DUCKDB_PATH_RE = re.compile(r"""path:\s*['"]?\.?/?([^'"\s]+\.duckdb)['"]?""")
 # account_active_months, date spines, past-due amounts). Running at any other
 # date produces values that differ from the gold, causing duckdb_match to fail.
 SPIDER2_DBT_DATASET_INSTRUCTIONS = """
+- **Data Types:**
+  - Do NOT cast source columns to different types (e.g. do NOT cast VARCHAR to TIMESTAMP using `dbt.type_timestamp()`). Keep the original data formats from the source tables unless explicitly requested.
+- **Interpreting Ambiguities:**
+  - When the task is ambiguous, follow the most natural interpretation based on the starting files. Pay close attention to YAML column descriptions and existing SQL patterns.
 """.strip()
 
 # - **Time-Dependent Models:**
 #   - You must treat the current date as **2024-09-08** to match the gold evaluation data.
 #     Do NOT leave any `current_timestamp` or `current_date` calls in the SQL.
 
-
-# - **Data Types:**
-#   - Do NOT cast source columns to different types (e.g. do NOT cast VARCHAR to TIMESTAMP using `dbt.type_timestamp()`). Keep the original data formats from the source tables.
 
 
 
