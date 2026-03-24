@@ -44,6 +44,17 @@ class RunDbtTool:
     The tool automatically sets ``--project-dir`` and ``--profiles-dir`` to
     the working directory, ensuring dbt always operates on the correct
     project.  Only a fixed set of subcommands is allowed.
+
+    An optional ``pre_run_hook`` can be supplied (e.g. to restore a pristine
+    database before each build).  The hook is invoked only before ``run`` and
+    ``build`` commands, which re-materialise all models; read-only commands
+    such as ``test``, ``ls``, and ``compile`` skip the hook so they operate
+    on the database state left by the most recent build.
+
+    Attributes:
+        working_dir: Path to the dbt project directory.
+        pre_run_hook: Optional async callback invoked before ``run`` and
+            ``build`` commands (e.g. to restore a pristine database).
     """
 
     name: ClassVar = "run_dbt"
@@ -130,7 +141,7 @@ class RunDbtTool:
 
         logger.debug("run_dbt: %s", " ".join(cmd_parts))
 
-        if self._pre_run_hook is not None:
+        if self._pre_run_hook is not None and command in ("run", "build"):
             await self._pre_run_hook()
 
         try:
