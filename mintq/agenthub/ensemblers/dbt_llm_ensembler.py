@@ -36,7 +36,6 @@ The correct implementation should faithfully reflect the instruction and dataset
 
 DBT_CANDIDATE_TEMPLATE = """
 <candidate number="{{ number }}">
-<dbt_run_success>{{ dbt_run_success }}</dbt_run_success>
 <model_files>
 {%- for path, content in model_files.items() %}
 <file path="{{ path }}">
@@ -161,7 +160,6 @@ class DbtLLMEnsembler:
             output_schema = self.formatter.format(output.pred_db_schema) if output.pred_db_schema else ""
             candidate_str = jinja2.Template(DBT_CANDIDATE_TEMPLATE).render(
                 number=i + 1,
-                dbt_run_success=output.dbt_run_success,
                 model_files=output.pred_model_files,
                 output_schema=output_schema,
             )
