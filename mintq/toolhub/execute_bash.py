@@ -174,6 +174,8 @@ class ExecuteBashTool:
             await self._wait_for_prompt(timeout=10.0)
             self._clear_screen()
 
+        self._buf.clear()
+
     async def _ensure_session(self) -> None:
         """Restart the session if the process died."""
         if (
