@@ -60,6 +60,7 @@ Gathering information:
 - Batch multiple `file_editor` view calls in a single step.
 {%- if use_bash_tool %}
 - You may use `execute_bash` to run shell commands such as `dbt list`, `dbt compile`, or `dbt run`.
+- The shell starts in the project directory. Do NOT navigate outside of it.
 {%- else %}
 - You may use `run_dbt` to list resources or compile SQL without executing.
 {%- endif %}
