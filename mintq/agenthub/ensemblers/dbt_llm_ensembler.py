@@ -32,12 +32,6 @@ The correct implementation should faithfully reflect the instruction and dataset
 {{ dataset_instructions }}
 </dataset_instructions>
 {%- endif %}
-{%- if db_document %}
-
-<db_document>
-{{ db_document }}
-</db_document>
-{%- endif %}
 """.strip()
 
 DBT_CANDIDATE_TEMPLATE = """
