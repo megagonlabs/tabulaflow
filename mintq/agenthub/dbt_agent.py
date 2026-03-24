@@ -141,7 +141,7 @@ class DbtAgent:
             self.formatter,
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
-            dispose_on_finish=self.config.use_bash_tool,
+            disconnect_on_finish=self.config.use_bash_tool,
         )
 
         if self.config.use_bash_tool:

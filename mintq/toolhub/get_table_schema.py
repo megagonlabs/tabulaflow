@@ -30,9 +30,9 @@ class GetTableSchemaTool:
         max_columns: If set, reject requests whose resulting columns exceed
             this limit, prompting the agent to use column_range or
             column_regex_filter to narrow down.
-        dispose_on_finish: If True, dispose the db engine after each call to
-            release file locks (e.g. DuckDB). Useful when an external process
-            like ``dbt run`` needs exclusive access to the database file.
+        disconnect_on_finish: If True, disconnect after each call to release
+            file locks (e.g. DuckDB). Useful when an external process like
+            ``dbt run`` needs exclusive access to the database file.
     """
 
     name: ClassVar = "get_table_schema"
@@ -45,7 +45,7 @@ class GetTableSchemaTool:
         compress: bool = True,
         add_description: bool = True,
         max_columns: int | None = 50,
-        dispose_on_finish: bool = False,
+        disconnect_on_finish: bool = False,
     ):
         self.db_connector = db_connector
         self.formatter = formatter
@@ -53,7 +53,7 @@ class GetTableSchemaTool:
         self._compressed_schema: SQLSchema | None = None
         self.add_description = add_description
         self.max_columns = max_columns
-        self._dispose_on_finish = dispose_on_finish
+        self._disconnect_on_finish = disconnect_on_finish
         self._metrics = GetTableSchemaToolMetrics()
 
     def _invalidate_schema(self) -> None:
@@ -199,7 +199,7 @@ class GetTableSchemaTool:
                 table.model_copy(update={"columns": []}), add_description=self.add_description
             )
 
-        if self._dispose_on_finish:
+        if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()
 
         return res
