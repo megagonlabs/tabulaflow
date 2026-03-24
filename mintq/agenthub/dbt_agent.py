@@ -70,6 +70,9 @@ Writing model SQL:
 - Column names in your output MUST match the YAML schema definitions exactly.
 - Use the `file_editor` tool to create new SQL model files or edit existing ones.
 {%- if use_bash_tool %}
+- Before the first `dbt run`, back up all database files (e.g. `cp *.duckdb *.duckdb.bak`).
+  Before each subsequent `dbt run`, restore from the backup (e.g. `cp *.duckdb.bak *.duckdb`) so that every run starts from a clean state.
+  A failed `dbt run` can corrupt the database, making it unrecoverable without a backup.
 - After writing all required SQL, use `execute_bash` to run `dbt run` to build the project.
 {%- else %}
 - After writing all required SQL, use `run_dbt` to build the project. You may use the `select` parameter to build specific models.
