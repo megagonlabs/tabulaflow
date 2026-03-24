@@ -888,6 +888,12 @@ March 21 - 22
     - [x] ambiguity interpretation
 - [x] Single class for run_query tool
 - [x] Refactor metrics
+
+March 23
+- [x] execute_bash tool
+- [x] dbt_llm_ensembler
+- [x] Revise dbt agent
+
   
 - [ ] bash tool for dbt agent
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
