@@ -180,6 +180,8 @@ class ExecuteBashTool:
             await self._wait_for_prompt(timeout=10.0)
             self._clear_screen()
 
+        # Let the event loop drain any remaining PTY output, then clear
+        await asyncio.sleep(0.1)
         self._buf.clear()
 
     async def _ensure_session(self) -> None:
