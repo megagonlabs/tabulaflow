@@ -40,6 +40,9 @@ SPIDER2_DBT_DATASET_INSTRUCTIONS = """
   - When multiple tables contain similar information, prefer the source with more complete coverage.
     Check row counts and date ranges before committing to a source table.
   - Be consistent: if you use a particular data source for one model, use the same source for all models that compute the same metric.
+- **Percentage and Ratio Columns:**
+  - Follow existing SQL patterns to determine whether a value should be on a 0-1 or 0-100 scale.
+  - If the scale cannot be determined from existing SQL, by default percentage should be on a 0-100 scale (i.e. multiply by 100) while ratio or rate should be on a 0-1 scale.
 """.strip()
 
 
