@@ -169,6 +169,12 @@ class ExecuteBashTool:
         await self._wait_for_prompt(timeout=5.0)
         self._clear_screen()
 
+        # Re-apply working directory after bash init (e.g. direnv may override cwd)
+        abs_wd = os.path.abspath(self._working_dir)
+        self._write_pty(f'cd {abs_wd!r}\n'.encode())
+        await self._wait_for_prompt(timeout=5.0)
+        self._clear_screen()
+
         for cmd in self._init_commands:
             self._write_pty(cmd.encode() + b"\n")
             await self._wait_for_prompt(timeout=10.0)
