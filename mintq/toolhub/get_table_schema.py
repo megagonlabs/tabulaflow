@@ -33,9 +33,9 @@ class GetTableSchemaTool:
         disconnect_on_finish: If True, disconnect after each call to release
             file locks (e.g. DuckDB). Useful when an external process like
             ``dbt run`` needs exclusive access to the database file.
-        enable_refresh: If True, honour the ``refresh`` parameter from the LLM.
-            When False (default), ``refresh`` is silently ignored to prevent
-            unnecessary live re-introspection.
+        enable_refresh: If True, expose and honour the ``refresh`` parameter
+            in the tool schema sent to the LLM.  When False (default), the
+            parameter is hidden from the LLM entirely.
     """
 
     name: ClassVar = "get_table_schema"
@@ -116,7 +116,7 @@ class GetTableSchemaTool:
             columns = columns[max(start - 1, 0) : end]
         return columns
 
-    async def __call__(
+    async def _with_refresh(
         self,
         schema_name: str | None,
         table_name: str,
@@ -142,10 +142,44 @@ class GetTableSchemaTool:
                 Applied after column_regex_filter. Only provide if the table is
                 too large.
         """
+        return await self._execute(schema_name, table_name, refresh, column_regex_filter, column_range)
+
+    async def _no_refresh(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        column_regex_filter: str | None = None,
+        column_range: list[int] | None = None,
+    ) -> str:
+        """Get the full schema of a table, with optional column filtering and pagination for very large tables.
+
+        Args:
+            schema_name: The name of the schema to which the table belongs,
+                or None if schema is not applicable.
+            table_name: The name of the table.
+            column_regex_filter: Regex pattern to filter columns by name (case-insensitive).
+                Only columns whose names match the pattern are returned.
+                Can be combined with column_range to paginate within filtered results.
+                Only provide if the table is too large.
+            column_range: Optional [start, end] range (1-indexed, inclusive) to
+                select a slice of columns. Use end=-1 for the last column.
+                Applied after column_regex_filter. Only provide if the table is
+                too large.
+        """
+        return await self._execute(schema_name, table_name, False, column_regex_filter, column_range)
+
+    async def _execute(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        refresh: bool,
+        column_regex_filter: str | None,
+        column_range: list[int] | None,
+    ) -> str:
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
-        if refresh and self._enable_refresh:
+        if refresh:
             try:
                 await self.db_connector.refresh_schema_async([TableRef(schema_name=schema_name, table_name=table_name)])
                 self._invalidate_schema()
@@ -209,8 +243,19 @@ class GetTableSchemaTool:
 
         return res
 
+    async def __call__(
+        self,
+        schema_name: str | None,
+        table_name: str,
+        refresh: bool = False,
+        column_regex_filter: str | None = None,
+        column_range: list[int] | None = None,
+    ) -> str:
+        return await self._execute(schema_name, table_name, refresh if self._enable_refresh else False, column_regex_filter, column_range)
+
     def as_pydantic_ai_tool(self) -> Tool:
-        return Tool(self.__call__, name=self.name)
+        fn = self._with_refresh if self._enable_refresh else self._no_refresh
+        return Tool(fn, name=self.name)
 
     def metrics(self) -> GetTableSchemaToolMetrics:
         return self._metrics

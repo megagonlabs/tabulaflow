@@ -45,13 +45,13 @@ class LLMParameter(BaseModel):
 class RunQueryTool:
     """Execute a SQL query against the database and return formatted results.
 
-    When ``allow_params=True``, the tool schema exposed to the LLM includes
+    When ``enable_params=True``, the tool schema exposed to the LLM includes
     a ``parameters`` argument for parameterized queries (e.g. ``:threshold``).
     When ``False`` (the default), only the ``query`` argument is exposed.
 
     Args:
         db_connector: Database connector to execute queries against.
-        allow_params: Whether to expose the ``parameters`` argument to the LLM.
+        enable_params: Whether to expose the ``parameters`` argument to the LLM.
         timeout: Query timeout in seconds. Defaults to ``mintq_config.query_timeout``.
         max_visible_rows: Maximum rows shown in the formatted output.
         max_cell_width: Maximum character width per cell in the formatted output.
@@ -64,7 +64,7 @@ class RunQueryTool:
         self,
         db_connector: BaseSQLDBConnector,
         *,
-        allow_params: bool = False,
+        enable_params: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -72,7 +72,7 @@ class RunQueryTool:
         disconnect_on_finish: bool = False,
     ):
         self.db_connector = db_connector
-        self.allow_params = allow_params
+        self.enable_params = enable_params
         self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -172,7 +172,7 @@ class RunQueryTool:
         return await self._run_no_params(query)
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn = self._run_with_params if self.allow_params else self._run_no_params
+        fn = self._run_with_params if self.enable_params else self._run_no_params
         return Tool(fn, name=self.name)
 
     def metrics(self) -> RunQueryToolMetrics:
