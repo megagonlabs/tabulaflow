@@ -181,6 +181,10 @@ class DbtAgent:
             model_settings=self.config.to_model_settings(),
         )
 
+        dispose_engine = getattr(db_connector, "dispose_engine_async", None)
+        if dispose_engine is not None:
+            await dispose_engine()
+
         result = await agent.run(
             f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
         )
