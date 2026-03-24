@@ -69,6 +69,7 @@ class RunQueryTool:
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
+        disconnect_on_finish: bool = False,
     ):
         self.db_connector = db_connector
         self.allow_params = allow_params
@@ -76,6 +77,7 @@ class RunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
+        self._disconnect_on_finish = disconnect_on_finish
         self._metrics = RunQueryToolMetrics()
         self._last_pred_query: PredQuery | None = None
 
@@ -120,44 +122,49 @@ class RunQueryTool:
     async def _execute(self, query: str, parameters: list[LLMParameter]) -> str:
         self._metrics.num_calls += 1
         param_dict = {p.parameter_name: p.parameter_value for p in parameters}
-        exec_result = await self.db_connector.run_query_async(
-            query,
-            parameters=param_dict,
-            timeout=self.timeout,
-        )
-        self._last_pred_query = PredQuery(
-            query=query,
-            parameter_names=[p.parameter_name for p in parameters],
-            parameter_values=param_dict,
-            exec_result=exec_result,
-        )
-        if exec_result.df is None:
-            assert exec_result.error is not None
-            if exec_result.error.exc_type == "ReadOnlyViolationError":
-                self._metrics.error_read_only_violation += 1
-                return f"(query failed: {exec_result.error.message})"
-            elif exec_result.error.exc_type == "TimeoutError":
-                self._metrics.error_timeout += 1
-                return "(query timed out)"
-            else:
-                self._metrics.error_query_failed += 1
-                return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
+        try:
+            exec_result = await self.db_connector.run_query_async(
+                query,
+                parameters=param_dict,
+                timeout=self.timeout,
+            )
+            self._last_pred_query = PredQuery(
+                query=query,
+                parameter_names=[p.parameter_name for p in parameters],
+                parameter_values=param_dict,
+                exec_result=exec_result,
+            )
+            if exec_result.df is None:
+                assert exec_result.error is not None
+                if exec_result.error.exc_type == "ReadOnlyViolationError":
+                    self._metrics.error_read_only_violation += 1
+                    return f"(query failed: {exec_result.error.message})"
+                elif exec_result.error.exc_type == "TimeoutError":
+                    self._metrics.error_timeout += 1
+                    return "(query timed out)"
+                else:
+                    self._metrics.error_query_failed += 1
+                    return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
-        df = exec_result.df
-        if df.empty:
-            return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
+            df = exec_result.df
+            if df.empty:
+                return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
 
-        res = format_df(
-            df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
-        )
-        res += f"\n({len(df)} rows)"
-        res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
+            res = format_df(
+                df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
+            )
+            res += f"\n({len(df)} rows)"
+            res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
-        for hint in _detect_result_hints(df):
-            res += f"\n({hint})"
-        # if df.isnull().all().any():
-        #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
-        return res
+            for hint in _detect_result_hints(df):
+                res += f"\n({hint})"
+            # if df.isnull().all().any():
+            #     res += "\n(warning: a column is entirely null, the query might be incorrect)"
+
+            return res
+        finally:
+            if self._disconnect_on_finish:
+                await self.db_connector.disconnect_async()
 
     async def __call__(self, query: str, parameters: list[LLMParameter] | None = None) -> str:
         if parameters is not None:

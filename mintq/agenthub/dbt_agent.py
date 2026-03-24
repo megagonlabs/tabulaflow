@@ -142,9 +142,12 @@ class DbtAgent:
             self.formatter,
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
-            disconnect_on_finish=self.config.use_bash_tool,
+            disconnect_on_finish=True,
         )
-        run_query = RunQueryTool(db_connector, timeout=30, max_visible_rows=20)
+        run_query = RunQueryTool(
+            db_connector, timeout=30, max_visible_rows=20,
+            disconnect_on_finish=True,
+        )
 
         if self.config.use_bash_tool:
             dbt_path = shutil.which("dbt") or str(Path(sys.prefix) / "bin" / "dbt")
