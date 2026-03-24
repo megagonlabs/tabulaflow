@@ -315,9 +315,9 @@ async def main_async() -> None:
 
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
-        if args.dataset == "spider2-snow":
+        if args.dataset == "spider2-snow" and not args.qids:
             parser.set_defaults(databases=["AIRLINES"])
-        elif args.dataset == "spider2-dbt":
+        elif args.dataset == "spider2-dbt" and not args.qids:
             parser.set_defaults(databases=["zuora001"])
     args = parser.parse_args()
     print(args)
