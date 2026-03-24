@@ -1,6 +1,18 @@
-from mintq.pipelines.run_agent import run_agent_async
-from mintq.pipelines.populate_exec_results import populate_exec_results_async
-from mintq.pipelines.evaluate import evaluate_async
+def __getattr__(name: str):
+    if name == "run_agent_async":
+        from mintq.pipelines.run_agent import run_agent_async
+
+        return run_agent_async
+    if name == "populate_exec_results_async":
+        from mintq.pipelines.populate_exec_results import populate_exec_results_async
+
+        return populate_exec_results_async
+    if name == "evaluate_async":
+        from mintq.pipelines.evaluate import evaluate_async
+
+        return evaluate_async
+    raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
 
 __all__ = [
     "run_agent_async",
