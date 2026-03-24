@@ -36,6 +36,10 @@ SPIDER2_DBT_DATASET_INSTRUCTIONS = """
   - When the task is ambiguous, follow the most natural interpretation based on the starting files. Pay close attention to YAML column descriptions and existing SQL patterns.
 - **Follow Existing Patterns:**
   - Read ALL existing SQL files carefully. Your new models must follow the same patterns, conventions, macro usage, and coding style.
+- **Choosing Between Overlapping Data Sources:**
+  - When multiple tables contain similar information, prefer the source with more complete coverage.
+    Check row counts and date ranges before committing to a source table.
+  - Be consistent: if you use a particular data source for one model, use the same source for all models that compute the same metric.
 """.strip()
 
 
