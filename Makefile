@@ -433,6 +433,11 @@ test-spider2-dbt-bash-agent:
 	uv run mintq/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug --use_bash_tool --llm openai-responses:gpt-5.3-codex --openai_reasoning_effort medium
 	uv run mintq/pipelines/evaluate.py --debug
 
+.PHONY: test-spider2-dbt-bash-agent-qids
+test-spider2-dbt-bash-agent-qids:
+	uv run mintq/pipelines/run_agent.py --agent dbt_agent --dataset spider2-dbt --debug --use_bash_tool --llm openai-responses:gpt-5.3-codex --openai_reasoning_effort medium --qids $(QIDS)
+	uv run mintq/pipelines/evaluate.py --debug
+
 .PHONY: test-spider2-agent
 test-spider2-agent:
 	uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset spider2-snow --debug --llm openai-responses:gpt-5-mini --openai_reasoning_effort medium
