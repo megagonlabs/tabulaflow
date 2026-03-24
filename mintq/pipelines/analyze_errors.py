@@ -134,6 +134,25 @@ DEFAULT_CATEGORIES: list[ErrorCategory] = [
     # The error is not easy to fix. The difference between the prediction and the gold query is not obvious. Only applicable if spider2_ex = 0.0.
     # """.strip(),
     # ),
+    ErrorCategory(
+        name="gold_ask_for_aggregated_pred_return_separte",
+        description="""
+The gold query asks for an aggregated value (e.g., COUNT, SUM, AVG) but the predicted query returns satified entities in separate rows.
+Example: "How many students studied maths?" The gold query returns 20 in a single row, but the predicted query returns 20 separate rows for each satisfied student.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="gold_ask_for_aggregated_pred_return_separte_strict",
+        description="""
+A stricter version of the `gold_ask_for_aggregated_pred_return_separte` category.
+Only applicable if the gold query returns a single value N and the predicted query returns N separate rows. The two N values must be the same.
+""".strip(),
+    ),
+    ErrorCategory(
+        name="does_not_apply",
+        description="""
+The task does not apply to any other category.""".strip(),
+    ),
 ]
 
 ##### Remove #####
@@ -174,6 +193,10 @@ class LLMErrorClassifier:
             task_and_output=task.to_markdown(),
             categories=json.dumps([{"name": c.name, "description": c.description} for c in self.categories], indent=2),
         )
+        if len(prompt) > 100000:
+            print(f"<prompt>{prompt}</prompt>")
+            raise ValueError("Prompt is too long. Please shorten the prompt.")
+        return []
 
         output_type = list[Literal[tuple(c.name for c in self.categories)]]  # type: ignore
         agent = Agent[None, output_type](  # type: ignore
