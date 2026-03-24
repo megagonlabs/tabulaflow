@@ -714,11 +714,14 @@ async def build_schema_async(
         # Capture Snowflake's "failed to reflect" warnings; let all others pass through normally
         warnings.filterwarnings("always", message="Failed to reflect", category=SAWarning)
         warnings.filterwarnings("always", message="Did not recognize type", category=SAWarning)
-        task_results = await asyncio.gather(*tasks)
+        task_results = await asyncio.gather(*tasks, return_exceptions=True)
 
     tables = []
     for group, table in zip(all_groups, task_results):
         if table is None:
+            continue
+        if isinstance(table, BaseException):
+            logger.warning(f"Skipping table {group[0]}: {table}")
             continue
         tables.append(table)
         for table_name in group[1:]:
