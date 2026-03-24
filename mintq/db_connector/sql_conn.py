@@ -832,13 +832,20 @@ class SQLConnector:
 
         # DuckDB prints a noisy progress bar to stdout for long-running
         # queries; suppress it so it doesn't pollute pipeline logs.
+        # Also set file_search_path so relative paths inside views
+        # (e.g. read_csv_auto('data/foo.csv')) resolve against the
+        # database file's directory rather than the process CWD.
         if str(url).startswith("duckdb"):
+            url_str = str(url)
+            db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
             sync_engine = engine.sync_engine if engine_type == "async" else engine
-            event.listen(
-                sync_engine,
-                "connect",
-                lambda dbapi_conn, _rec: dbapi_conn.execute("PRAGMA enable_progress_bar=false"),
-            )
+
+            def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
+                dbapi_conn.execute("PRAGMA enable_progress_bar=false")
+                if db_dir:
+                    dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
+
+            event.listen(sync_engine, "connect", _duckdb_on_connect)
             
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
