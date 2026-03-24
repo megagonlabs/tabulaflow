@@ -200,9 +200,7 @@ class GetTableSchemaTool:
             )
 
         if self._dispose_on_finish:
-            dispose = getattr(self.db_connector, "dispose_engine_async", None)
-            if dispose is not None:
-                await dispose()
+            await self.db_connector.disconnect_async()
 
         return res
 

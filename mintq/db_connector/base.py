@@ -17,6 +17,13 @@ class BaseSQLDBConnector(Protocol):
         timeout: int | None = None,
     ) -> ExecResult: ...
 
+    async def disconnect_async(self) -> None:
+        """Close active connections, releasing any held resources (e.g. file locks).
+
+        The connector remains usable — new connections are created on demand.
+        """
+        ...
+
     async def refresh_schema_async(
         self,
         tables: list[TableRef] | None = None,

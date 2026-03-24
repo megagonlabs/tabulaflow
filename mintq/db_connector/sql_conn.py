@@ -863,7 +863,7 @@ class SQLConnector:
             _column_stats_mode=mintq_config.column_stats_mode,
         )
 
-    async def dispose_engine_async(self) -> None:
+    async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
 
         DuckDB holds a file-level lock even for ``read_only=True``
