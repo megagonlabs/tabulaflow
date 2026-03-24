@@ -16,6 +16,7 @@ import signal
 import subprocess
 import time
 from collections import deque
+from collections.abc import Callable
 from typing import ClassVar
 
 from pydantic import BaseModel
@@ -33,6 +34,7 @@ _PS1_REGEX = re.compile(
     re.DOTALL | re.MULTILINE,
 )
 
+_ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|\([A-Z])")
 _MAX_OUTPUT_CHARS = 30000
 _NO_CHANGE_TIMEOUT = 30
 _POLL_INTERVAL = 0.5
@@ -87,11 +89,24 @@ class ExecuteBashTool:
         no_change_timeout: int = _NO_CHANGE_TIMEOUT,
         max_output_chars: int = _MAX_OUTPUT_CHARS,
         init_commands: list[str] | None = None,
+        command_filter: Callable[[str], bool] | None = None,
     ) -> None:
+        """Initialize the bash tool.
+
+        Args:
+            working_dir: Initial working directory for the shell session.
+            no_change_timeout: Seconds with no new output before returning.
+            max_output_chars: Maximum characters in returned output.
+            init_commands: Commands to run at session startup (e.g. PATH setup).
+            command_filter: Optional guard function. Called with each new
+                command string before execution. Return ``True`` to allow,
+                ``False`` to block the command.
+        """
         self._working_dir = working_dir or os.getcwd()
         self._no_change_timeout = no_change_timeout
         self._max_output_chars = max_output_chars
         self._init_commands = init_commands or []
+        self._command_filter = command_filter
         self._metrics = BashToolMetrics()
 
         self._process: subprocess.Popen | None = None
@@ -254,8 +269,9 @@ class ExecuteBashTool:
             self._buf.append(lines[-1])
 
     def _read_screen(self) -> str:
-        """Snapshot the current buffer, stripping carriage returns."""
-        return "".join(self._buf).replace("\r", "")
+        """Snapshot the current buffer, stripping ANSI escapes and \\r."""
+        raw = "".join(self._buf).replace("\r", "")
+        return _ANSI_ESCAPE.sub("", raw)
 
     def _clear_screen(self) -> None:
         """Truncate the buffer to the last PS1 block."""
@@ -349,6 +365,11 @@ class ExecuteBashTool:
     ) -> str:
         await self._ensure_session()
         command = command.strip()
+
+        if command and not is_input and self._command_filter is not None:
+            if not self._command_filter(command):
+                self._metrics.num_errors += 1
+                return "(error: command is not allowed.)"
 
         running = self._prev_status in ("no_change_timeout", "hard_timeout")
 

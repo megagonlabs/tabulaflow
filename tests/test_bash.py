@@ -136,6 +136,33 @@ class TestMetrics:
         assert m.num_errors == 1
 
 
+class TestCommandFilter:
+    async def test_filter_blocks_command(self):
+        tool = ExecuteBashTool(
+            command_filter=lambda cmd: not cmd.strip().startswith("rm "),
+        )
+        try:
+            result = await tool("rm -rf /tmp/something")
+            assert "error" in result.lower()
+            assert "not allowed" in result
+            assert tool.metrics().num_errors == 1
+
+            result = await tool("echo safe")
+            assert "safe" in result
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
+    async def test_filter_does_not_block_input(self):
+        tool = ExecuteBashTool(command_filter=lambda cmd: False, no_change_timeout=3)
+        try:
+            result = await tool("hello", is_input=True)
+            assert "error" in result.lower()
+            assert "not allowed" not in result
+        finally:
+            await tool.close()
+
+
 class TestPydanticAi:
     def test_as_pydantic_ai_tool(self):
         tool = ExecuteBashTool()
