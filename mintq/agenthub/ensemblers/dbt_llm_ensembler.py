@@ -132,7 +132,7 @@ class DbtLLMEnsembler:
 
         # Filter out candidates where dbt run failed
         if self.config.skip_failed_runs:
-            candidates = [o for o in candidates if o.dbt_run_success is True]
+            candidates = [o for o in candidates if o.dbt_run_success is not False]
 
         # Filter out candidates with no model files
         candidates = [o for o in candidates if o.pred_model_files]
