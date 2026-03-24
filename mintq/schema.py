@@ -774,17 +774,15 @@ class ExecResult(BaseModel):
     def to_markdown(self) -> str:
         if self.df is None:
             return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
-        df = self.df
-        truncated = False
-        if len(df) > 10:
-            df = pd.concat([df.head(5), df.tail(5)], ignore_index=True)
-            truncated = True
-        result = df.to_markdown(index=False)
-        if truncated:
-            result += f"\n\n*... truncated ({len(self.df)} rows total)*"
+        from mintq.formatters.utils import format_df
+
+        result = format_df(self.df)
+        n = len(self.df)
+        if n > 10:
+            result += f"\n\n*... truncated ({n} rows total)*"
         else:
-            result += f"\n\n*{len(self.df)} rows*"
-        return result  # type: ignore
+            result += f"\n\n*{n} rows*"
+        return result
 
 
 class GoldQuery(BaseModel):

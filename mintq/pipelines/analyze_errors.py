@@ -193,10 +193,6 @@ class LLMErrorClassifier:
             task_and_output=task.to_markdown(),
             categories=json.dumps([{"name": c.name, "description": c.description} for c in self.categories], indent=2),
         )
-        if len(prompt) > 100000:
-            print(f"<prompt>{prompt}</prompt>")
-            raise ValueError("Prompt is too long. Please shorten the prompt.")
-        return []
 
         output_type = list[Literal[tuple(c.name for c in self.categories)]]  # type: ignore
         agent = Agent[None, output_type](  # type: ignore
