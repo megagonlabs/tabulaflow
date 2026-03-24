@@ -782,6 +782,8 @@ class ExecResult(BaseModel):
         result = df.to_markdown(index=False)
         if truncated:
             result += f"\n\n*... truncated ({len(self.df)} rows total)*"
+        else:
+            result += f"\n\n*{len(self.df)} rows*"
         return result  # type: ignore
 
 
