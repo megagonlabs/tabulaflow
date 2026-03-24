@@ -143,6 +143,7 @@ class DbtAgent:
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
             disconnect_on_finish=True,
+            enable_refresh=True,
         )
         run_query = RunQueryTool(
             db_connector, timeout=30, max_visible_rows=20,

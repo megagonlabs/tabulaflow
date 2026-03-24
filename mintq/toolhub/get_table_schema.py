@@ -33,6 +33,9 @@ class GetTableSchemaTool:
         disconnect_on_finish: If True, disconnect after each call to release
             file locks (e.g. DuckDB). Useful when an external process like
             ``dbt run`` needs exclusive access to the database file.
+        enable_refresh: If True, honour the ``refresh`` parameter from the LLM.
+            When False (default), ``refresh`` is silently ignored to prevent
+            unnecessary live re-introspection.
     """
 
     name: ClassVar = "get_table_schema"
@@ -46,6 +49,7 @@ class GetTableSchemaTool:
         add_description: bool = True,
         max_columns: int | None = 50,
         disconnect_on_finish: bool = False,
+        enable_refresh: bool = False,
     ):
         self.db_connector = db_connector
         self.formatter = formatter
@@ -54,6 +58,7 @@ class GetTableSchemaTool:
         self.add_description = add_description
         self.max_columns = max_columns
         self._disconnect_on_finish = disconnect_on_finish
+        self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
 
     def _invalidate_schema(self) -> None:
@@ -140,7 +145,7 @@ class GetTableSchemaTool:
         self._metrics.num_calls += 1
 
         table = self._find_table(schema_name, table_name)
-        if refresh:
+        if refresh and self._enable_refresh:
             try:
                 await self.db_connector.refresh_schema_async([TableRef(schema_name=schema_name, table_name=table_name)])
                 self._invalidate_schema()
