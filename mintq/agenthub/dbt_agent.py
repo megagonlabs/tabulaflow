@@ -17,7 +17,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters import BaseSQLSchemaFormatter, formatter_registry
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
-from mintq.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool
+from mintq.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool, RunQueryTool
 
 logger = logging.getLogger(__name__)
 
@@ -57,6 +57,7 @@ You are an agent - please keep going until the project builds successfully, befo
 Gathering information:
 - Use the `file_editor` tool to browse the project directory, read YAML and SQL files, and understand the project structure before making changes.
 - Use `get_table_schema` to inspect the schema of source tables in the data warehouse.
+- Use `run_query` to run exploratory SQL queries against the source database (e.g. to check row counts, date ranges, or compare overlapping data sources before choosing one).
 - Batch multiple `file_editor` view calls in a single step.
 {%- if use_bash_tool %}
 - You may use `execute_bash` to run shell commands such as `dbt list`, `dbt compile`, or `dbt run`.
@@ -143,6 +144,7 @@ class DbtAgent:
             add_description=self.config.use_column_description,
             disconnect_on_finish=self.config.use_bash_tool,
         )
+        run_query = RunQueryTool(db_connector, timeout=30, max_visible_rows=20)
 
         if self.config.use_bash_tool:
             dbt_path = shutil.which("dbt") or str(Path(sys.prefix) / "bin" / "dbt")
@@ -171,6 +173,7 @@ class DbtAgent:
             model=self.config.llm,
             tools=[
                 file_editor.as_pydantic_ai_tool(),
+                run_query.as_pydantic_ai_tool(),
                 run_tool.as_pydantic_ai_tool(),
                 get_table_schema.as_pydantic_ai_tool(),
             ],
@@ -214,6 +217,7 @@ class DbtAgent:
             "file_editor": file_editor.metrics().model_dump(),
             run_tool.name: run_tool.metrics().model_dump(),
             "get_table_schema": get_table_schema.metrics().model_dump(),
+            "run_query": run_query.metrics().model_dump(),
         }
 
         dbt_run_success = run_dbt.metrics().last_run_success if not self.config.use_bash_tool else None
