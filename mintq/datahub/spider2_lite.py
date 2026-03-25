@@ -66,7 +66,7 @@ SPIDER2_LITE_DATASET_INSTRUCTIONS = """
   - Do not concatenate columns in the results unless explicitly requested.
 - **Rows to Return:**
   - Return exactly the rows requested as the final result in the question, no more and no fewer. Be careful to handle duplicates appropriately.
-  - When the question asks for an aggregated value (e.g., "how many", "what is the total"), return the aggregated result (e.g., COUNT, SUM, AVG) rather than listing individual rows.
+  - When the question asks for an aggregated value (e.g., "how many", "change in percentage"), return the final aggregated result rather than listing individual rows.
 - **No Empty Results:**
   - The final SQL query **must return at least one row**. Empty results are not allowed.
   - Common causes of unexpected empty results include insufficient exploration of alternative columns, misinterpreting value formats or encodings, applying overly restrictive filters, or misinterpreting the question. When you get empty results, systematically explore alternative columns and interpretations before giving up.
