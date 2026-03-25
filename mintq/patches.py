@@ -22,7 +22,16 @@ from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
 from pydantic_ai.models.anthropic import AnthropicModel
 from pydantic_ai.providers.anthropic import AnthropicProvider
 from pydantic_ai.embeddings.base import EmbeddingModel
+from pydantic_ai.usage import UsageLimits
 from mintq.config import mintq_config
+
+
+# =====================================================================================
+# |     Disable the default pydantic_ai request_limit of 50.                         |
+# |     Step limiting is handled by max_steps_processor in agenthub/utils.py instead. |
+# =====================================================================================
+
+UsageLimits.__init__.__kwdefaults__["request_limit"] = None  # type: ignore[union-attr]
 
 
 # =====================================================================================================
