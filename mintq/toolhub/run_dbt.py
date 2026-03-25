@@ -128,15 +128,11 @@ class RunDbtTool:
         supports_selection = command in ("run", "build", "test", "compile", "ls")
         if select:
             if not supports_selection:
-                return self._error(
-                    f"--select is not supported for 'dbt {command}'."
-                )
+                return self._error(f"--select is not supported for 'dbt {command}'.")
             cmd_parts += ["--select", select]
         if exclude:
             if not supports_selection:
-                return self._error(
-                    f"--exclude is not supported for 'dbt {command}'."
-                )
+                return self._error(f"--exclude is not supported for 'dbt {command}'.")
             cmd_parts += ["--exclude", exclude]
 
         logger.debug("run_dbt: %s", " ".join(cmd_parts))
@@ -154,17 +150,12 @@ class RunDbtTool:
             stdout_bytes, _ = await proc.communicate()
             output = stdout_bytes.decode("utf-8", errors="replace")
         except FileNotFoundError:
-            return self._error(
-                "dbt command not found. Ensure dbt is installed and on PATH."
-            )
+            return self._error("dbt command not found. Ensure dbt is installed and on PATH.")
         except Exception as e:
             return self._error(f"Failed to execute dbt: {e}")
 
         if len(output) > MAX_OUTPUT_CHARS:
-            output = (
-                output[:MAX_OUTPUT_CHARS]
-                + f"\n\n(output truncated at {MAX_OUTPUT_CHARS} chars)"
-            )
+            output = output[:MAX_OUTPUT_CHARS] + f"\n\n(output truncated at {MAX_OUTPUT_CHARS} chars)"
 
         exit_code = proc.returncode
         if command in ("run", "build"):

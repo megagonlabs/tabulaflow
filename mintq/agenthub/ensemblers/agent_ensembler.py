@@ -228,7 +228,8 @@ class AgentEnsembler:
         run_query_tool = RunQueryTool(db_connector)
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                db_connector, self.formatter,
+                db_connector,
+                self.formatter,
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),

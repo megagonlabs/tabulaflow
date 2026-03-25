@@ -14,7 +14,6 @@ from mintq.metrics.simple_ex import SimpleEx
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 
 
-
 @metric_registry.register
 class FoundOne:
     """

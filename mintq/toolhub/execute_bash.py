@@ -162,16 +162,14 @@ class ExecuteBashTool:
         self._loop.add_reader(master_fd, self._on_data)
         self._initialized = True
 
-        init_cmd = (
-            f'set +H; export PROMPT_COMMAND=\'export PS1="{ps1}"\'; export PS2=""'
-        )
+        init_cmd = f'set +H; export PROMPT_COMMAND=\'export PS1="{ps1}"\'; export PS2=""'
         self._write_pty(init_cmd.encode() + b"\n")
         await self._wait_for_prompt(timeout=5.0)
         self._clear_screen()
 
         # Re-apply working directory after bash init (e.g. direnv may override cwd)
         abs_wd = os.path.abspath(self._working_dir)
-        self._write_pty(f'cd {abs_wd!r}\n'.encode())
+        self._write_pty(f"cd {abs_wd!r}\n".encode())
         await self._wait_for_prompt(timeout=5.0)
         self._clear_screen()
 
@@ -186,11 +184,7 @@ class ExecuteBashTool:
 
     async def _ensure_session(self) -> None:
         """Restart the session if the process died."""
-        if (
-            not self._initialized
-            or self._closed
-            or (self._process and self._process.poll() is not None)
-        ):
+        if not self._initialized or self._closed or (self._process and self._process.poll() is not None):
             await self._close_internal()
             await self._initialize()
 
@@ -217,9 +211,7 @@ class ExecuteBashTool:
                         await asyncio.sleep(0.1)
                     if self._process.poll() is None:
                         try:
-                            os.killpg(
-                                os.getpgid(self._process.pid), signal.SIGKILL
-                            )
+                            os.killpg(os.getpgid(self._process.pid), signal.SIGKILL)
                         except (ProcessLookupError, PermissionError):
                             pass
         except Exception:
@@ -353,11 +345,7 @@ class ExecuteBashTool:
         if len(text) <= self._max_output_chars:
             return text
         half = self._max_output_chars // 2
-        return (
-            text[:half]
-            + f"\n\n... (output truncated: {len(text)} chars total) ...\n\n"
-            + text[-half:]
-        )
+        return text[:half] + f"\n\n... (output truncated: {len(text)} chars total) ...\n\n" + text[-half:]
 
     def _get_output(self, command: str, raw: str) -> str:
         """Diff against prev_output, strip command echo, rstrip."""
@@ -370,9 +358,7 @@ class ExecuteBashTool:
 
     # -- main execution loop ---------------------------------------------------
 
-    async def _execute(
-        self, command: str, is_input: bool, timeout: float | None
-    ) -> str:
+    async def _execute(self, command: str, is_input: bool, timeout: float | None) -> str:
         await self._ensure_session()
         command = command.strip()
 
@@ -394,16 +380,10 @@ class ExecuteBashTool:
         initial = self._read_screen()
         initial_ps1_n = len(_find_ps1_matches(initial))
 
-        if (
-            running
-            and not initial.rstrip().endswith(_PS1_END.strip())
-            and not is_input
-            and command
-        ):
+        if running and not initial.rstrip().endswith(_PS1_END.strip()) and not is_input and command:
             self._metrics.num_errors += 1
             return (
-                "(error: previous command is still running. "
-                "Use is_input=true to interact, or send C-c to interrupt.)"
+                "(error: previous command is still running. Use is_input=true to interact, or send C-c to interrupt.)"
             )
 
         if command:
@@ -425,15 +405,10 @@ class ExecuteBashTool:
                 last_change = time.time()
 
             # 1) Completed — new PS1 appeared
-            if (
-                ps1_n > initial_ps1_n
-                or screen.rstrip().endswith(_PS1_END.strip())
-            ) and ps1s:
+            if (ps1_n > initial_ps1_n or screen.rstrip().endswith(_PS1_END.strip())) and ps1s:
                 meta = _parse_ps1_metadata(ps1s[-1])
                 before_first = ps1_n == 1
-                raw = self._extract_between_ps1s(
-                    screen, ps1s, before_first=before_first
-                )
+                raw = self._extract_between_ps1s(screen, ps1s, before_first=before_first)
                 out = self._truncate(self._get_output(command, raw))
 
                 self._prev_status = "completed"
@@ -446,9 +421,7 @@ class ExecuteBashTool:
 
             # 2) No-change timeout (skipped when per-call timeout is set,
             #    since the caller explicitly chose to wait longer)
-            if timeout is None and (
-                time.time() - last_change >= self._no_change_timeout
-            ):
+            if timeout is None and (time.time() - last_change >= self._no_change_timeout):
                 raw = self._extract_between_ps1s(screen, ps1s)
                 out = self._truncate(self._get_output(command, raw))
 

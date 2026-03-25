@@ -146,7 +146,9 @@ class DbtAgent:
             enable_refresh=True,
         )
         run_query = RunQueryTool(
-            db_connector, timeout=30, max_visible_rows=20,
+            db_connector,
+            timeout=30,
+            max_visible_rows=20,
             disconnect_on_finish=True,
         )
 

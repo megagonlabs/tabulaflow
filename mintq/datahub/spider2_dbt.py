@@ -50,12 +50,9 @@ SPIDER2_DBT_DATASET_INSTRUCTIONS = """
 #   - Do NOT cast source columns to different types (e.g. do NOT cast VARCHAR to TIMESTAMP using `dbt.type_timestamp()`). Keep the original data formats from the source tables unless explicitly requested.
 
 
-
 # - **Time-Dependent Models:**
 #   - You must treat the current date as **2024-09-08** to match the gold evaluation data.
 #     Do NOT leave any `current_timestamp` or `current_date` calls in the SQL.
-
-
 
 
 def _db_name_from_profiles(project_dir: str) -> str:

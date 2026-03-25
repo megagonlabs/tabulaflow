@@ -188,9 +188,7 @@ class Spider2LiteDatasetLoader:
                     continue
 
                 if item.get("external_knowledge"):
-                    document_file = os.path.join(
-                        self.directory, "resource", "documents", item["external_knowledge"]
-                    )
+                    document_file = os.path.join(self.directory, "resource", "documents", item["external_knowledge"])
                     if os.path.exists(document_file):
                         with open(document_file, "r") as docf:
                             document = docf.read()
@@ -215,9 +213,7 @@ class Spider2LiteDatasetLoader:
                         gold_exec_results.append(pd.read_csv(rf))
 
                 condition_cols = eval_standard.get(item["instance_id"], {}).get("condition_cols", [])
-                if not condition_cols or not isinstance(
-                    condition_cols[0] if condition_cols else None, list
-                ):
+                if not condition_cols or not isinstance(condition_cols[0] if condition_cols else None, list):
                     condition_cols = [condition_cols for _ in range(max(1, len(gold_exec_results)))]
 
                 if gold_exec_results:

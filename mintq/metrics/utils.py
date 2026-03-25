@@ -17,9 +17,7 @@ def get_default_metric(dataset: str) -> str:
     """Returns the default evaluation metric name for a dataset."""
     metric = DATASET_DEFAULT_METRICS.get(dataset)
     if metric is None:
-        raise ValueError(
-            f"No default metric for dataset '{dataset}'. Specify --metric explicitly."
-        )
+        raise ValueError(f"No default metric for dataset '{dataset}'. Specify --metric explicitly.")
     return metric
 
 

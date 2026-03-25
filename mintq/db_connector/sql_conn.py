@@ -262,7 +262,12 @@ async def load_schema_with_cache_async(
         dialect_map: dict[str, str] = {"postgresql": "postgres"}
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
-        if enable_caching and mintq_config.schema_cache_enabled and not mintq_config.schema_cache_overwrite and os.path.exists(cache_path):
+        if (
+            enable_caching
+            and mintq_config.schema_cache_enabled
+            and not mintq_config.schema_cache_overwrite
+            and os.path.exists(cache_path)
+        ):
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
@@ -846,7 +851,7 @@ class SQLConnector:
                     dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
 
             event.listen(sync_engine, "connect", _duckdb_on_connect)
-            
+
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
         if schema is None:
@@ -913,28 +918,23 @@ class SQLConnector:
                 for ref in tables:
                     if ref.schema_name not in view_names_by_schema:
                         raw_views = await async_inspector.get_view_names(schema=ref.schema_name)
-                        view_names_by_schema[ref.schema_name] = {
-                            _denorm(self._t_eng, v) for v in raw_views
-                        }
+                        view_names_by_schema[ref.schema_name] = {_denorm(self._t_eng, v) for v in raw_views}
 
-                new_tables = await asyncio.gather(*[
-                    build_table_async(
-                        self._t_eng,
-                        ref.table_name,
-                        ref.schema_name,
-                        is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                        column_stats_mode=self._column_stats_mode,
-                    )
-                    for ref in tables
-                ])
+                new_tables = await asyncio.gather(
+                    *[
+                        build_table_async(
+                            self._t_eng,
+                            ref.table_name,
+                            ref.schema_name,
+                            is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
+                            column_stats_mode=self._column_stats_mode,
+                        )
+                        for ref in tables
+                    ]
+                )
 
-                requested = {
-                    (ref.schema_name, ref.table_name) for ref in tables
-                }
-                kept = [
-                    t for t in self.schema.tables
-                    if (t.schema_name, t.name) not in requested
-                ]
+                requested = {(ref.schema_name, ref.table_name) for ref in tables}
+                kept = [t for t in self.schema.tables if (t.schema_name, t.name) not in requested]
                 for t in new_tables:
                     if t is not None:
                         kept.append(t)
@@ -962,10 +962,7 @@ class SQLConnector:
                 with open(cache_path, "w", encoding="utf-8") as f:
                     f.write(self.schema.model_dump_json(indent=2))
 
-            logger.info(
-                f"Schema refreshed for {self.global_id}: "
-                f"{len(self.schema.tables)} tables"
-            )
+            logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")
             return self.schema
 
     @staticmethod

@@ -22,10 +22,7 @@ from mintq.utils import pprint_dict
 async def compute_metrics_async(
     task: NL2QTaskOutput, metrics: list[NL2QMetric], db_connector: NL2QDBConnector | None
 ) -> NL2QTaskOutput:
-    results = await asyncio.gather(*[
-        m.compute_async(task, db_connector)
-        for m in metrics
-    ])
+    results = await asyncio.gather(*[m.compute_async(task, db_connector) for m in metrics])
     task.eval_metrics = {}
     for m, r in zip(metrics, results):
         if isinstance(r, dict):

@@ -67,9 +67,6 @@ Select the number of the best candidate.
 """.strip()
 
 
-
-
-
 class DbtLLMEnsemblerConfig(BaseModel):
     result_dirs: list[str]
     llm: str = "openai-responses:gpt-5-mini"

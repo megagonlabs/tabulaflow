@@ -11,7 +11,9 @@ class SchemaLinkingStats:
     name: ClassVar[str] = "schema_linking_stats"
     compatible_output_types: ClassVar[list[str]] = ["simple", "ambig-simple", "ambig-flat", "ambig-structured"]
 
-    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> dict[str, NumericOrNull]:
+    async def compute_async(
+        self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None
+    ) -> dict[str, NumericOrNull]:
         if db_connector is None:
             raise ValueError("SchemaLinkingStats requires a db_connector")
 

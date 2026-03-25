@@ -49,9 +49,7 @@ class FileEditorTool:
         """Resolve a relative path against working_dir and validate it."""
         p = Path(path)
         if p.is_absolute():
-            raise ValueError(
-                f"Path must be relative to the working directory, got absolute path: {path}"
-            )
+            raise ValueError(f"Path must be relative to the working directory, got absolute path: {path}")
         resolved = (self._working_dir / p).resolve()
         if not str(resolved).startswith(str(self._working_dir)):
             raise ValueError(f"Path escapes the working directory: {path}")
@@ -165,9 +163,7 @@ class FileEditorTool:
             selected = selected[:MAX_RESPONSE_LINES]
             truncated = True
         per_line = MAX_RESPONSE_CHARS // max(len(selected), 1)
-        numbered = self._make_numbered(
-            "\n".join(selected), start_line=lo + 1, max_line_chars=per_line
-        )
+        numbered = self._make_numbered("\n".join(selected), start_line=lo + 1, max_line_chars=per_line)
         if truncated:
             return header + numbered + f"\n\n(showing {MAX_RESPONSE_LINES} of {hi - lo + 1} lines in range)"
         return header + numbered
@@ -210,9 +206,7 @@ class FileEditorTool:
             old_str, new_str = stripped_old, stripped_new
 
         if len(matches) > 1:
-            line_numbers = sorted(
-                set(content.count("\n", 0, m.start()) + 1 for m in matches)
-            )
+            line_numbers = sorted(set(content.count("\n", 0, m.start()) + 1 for m in matches))
             return self._error(
                 f"old_str found {len(matches)} times in {path} "
                 f"(lines {line_numbers}). It must be unique — include more context."
@@ -227,9 +221,7 @@ class FileEditorTool:
         end = replacement_line + SNIPPET_CONTEXT_LINES + new_str.count("\n")
         snippet_lines = new_content.split("\n")[start - 1 : end]
         per_line = MAX_RESPONSE_CHARS // max(len(snippet_lines), 1)
-        snippet = self._make_numbered(
-            "\n".join(snippet_lines), start_line=start, max_line_chars=per_line
-        )
+        snippet = self._make_numbered("\n".join(snippet_lines), start_line=start, max_line_chars=per_line)
 
         return f"Edited {path}. Snippet:\n{snippet}"
 

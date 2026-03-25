@@ -2,10 +2,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from mintq.formatters import BaseSQLSchemaFormatter
-from mintq.db_connector.base import BaseSQLDBConnector
-from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.schema import SQLSchema, SQLTableSchema, TableRef
-from mintq.toolhub.utils import equals_ci
+from mintq.schema import SQLSchema
 
 
 class GetSchemaToolMetrics(BaseModel):

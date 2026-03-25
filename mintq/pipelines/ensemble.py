@@ -105,9 +105,7 @@ async def ensemble_async(
     """
     start_time = datetime.datetime.now()
 
-    ensembled_outputs, num_failed = await _ensemble_tasks_async(
-        ensembler, results, dataset, batch_size, verbose
-    )
+    ensembled_outputs, num_failed = await _ensemble_tasks_async(ensembler, results, dataset, batch_size, verbose)
 
     end_time = datetime.datetime.now()
 

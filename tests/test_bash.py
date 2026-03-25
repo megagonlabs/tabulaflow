@@ -53,9 +53,7 @@ class TestTimeout:
         result = await bash("sleep 60")
         assert "exit_code: -1" in result
 
-    async def test_no_change_timeout_disabled_with_per_call_timeout(
-        self, bash: ExecuteBashTool
-    ):
+    async def test_no_change_timeout_disabled_with_per_call_timeout(self, bash: ExecuteBashTool):
         """When per-call timeout is set, no-change timeout is skipped."""
         result = await bash("sleep 60", timeout=5)
         assert "exit_code: -1" in result

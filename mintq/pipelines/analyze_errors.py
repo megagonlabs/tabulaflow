@@ -423,8 +423,7 @@ class DbtAnalyzer:
         wrong = [
             task
             for task in result.tasks
-            if getattr(task, "dbt_run_success", False)
-            and task.eval_metrics.get("spider2_duckdb_match") == 0.0
+            if getattr(task, "dbt_run_success", False) and task.eval_metrics.get("spider2_duckdb_match") == 0.0
         ]
         if wrong:
             res += "\n\n" + "\n".join(f" {self._task_link(task)}" for task in wrong)
@@ -491,9 +490,7 @@ async def main_async() -> None:
         error_analysis = await dbt_analyzer.analyze_async(result)
         print(f"Analysis finished in {time.time() - t0:.2f} seconds")
     else:
-        analyzer = Analyzer(
-            classifier_llm=args.classifier_llm, do_error_classification=args.do_error_classification
-        )
+        analyzer = Analyzer(classifier_llm=args.classifier_llm, do_error_classification=args.do_error_classification)
         t0 = time.time()
         error_analysis = await analyzer.analyze_async(result)
         print(f"Analysis finished in {time.time() - t0:.2f} seconds")
