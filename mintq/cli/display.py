@@ -2,12 +2,17 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 from rich.console import Console
 from rich.panel import Panel
 from rich.syntax import Syntax
 from rich.table import Table
+from rich.text import Text
 
 import pandas as pd
+
+from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
 def print_banner(console: Console, *, model: str, agent: str) -> None:
@@ -80,3 +85,226 @@ def render_chart(console: Console, df: pd.DataFrame) -> None:
 
     chart_str = plt.build()
     console.print(Panel(chart_str, title="[bold blue]Chart[/bold blue]", border_style="blue"))
+
+
+# ---------------------------------------------------------------------------
+# Schema rendering
+# ---------------------------------------------------------------------------
+
+
+def _qualified_name(tbl: SQLTableSchema) -> str:
+    """Return schema.table if schema_name is set, otherwise just table."""
+    if tbl.schema_name:
+        return f"{tbl.schema_name}.{tbl.name}"
+    return tbl.name
+
+
+def _is_multi_schema(schema: SQLSchema) -> bool:
+    """True if tables span more than one distinct schema namespace."""
+    schemas = {t.schema_name for t in schema.tables}
+    schemas.discard(None)
+    return len(schemas) > 1
+
+
+def _display_name(tbl: SQLTableSchema, multi_schema: bool) -> str:
+    if multi_schema and tbl.schema_name:
+        return f"{tbl.schema_name}.{tbl.name}"
+    return tbl.name
+
+
+def _format_rows(n: int | None) -> str:
+    if n is None:
+        return ""
+    return f"{n:,}"
+
+
+def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> None:
+    """Render database-level schema overview."""
+    multi = _is_multi_schema(schema)
+    total_cols = schema.num_total_columns()
+    dialect = schema.dialect or ""
+    subtitle = ", ".join(
+        s for s in [dialect, f"{len(schema.tables)} tables", f"{total_cols} columns"] if s
+    )
+
+    if multi:
+        grouped: dict[str | None, list[SQLTableSchema]] = defaultdict(list)
+        for tbl in schema.tables:
+            grouped[tbl.schema_name].append(tbl)
+
+        for schema_name, tables in sorted(grouped.items(), key=lambda kv: kv[0] or ""):
+            title = f"[bold]{alias}[/bold].[bold cyan]{schema_name}[/bold cyan]" if schema_name else f"[bold]{alias}[/bold]"
+            table = Table(title=title, show_header=True, header_style="bold magenta", caption=f"[dim]{subtitle}[/dim]")
+            table.add_column("Table")
+            table.add_column("Rows", justify="right")
+            table.add_column("Cols", justify="right")
+            table.add_column("Description", max_width=50)
+
+            for tbl in tables:
+                table.add_row(
+                    tbl.name,
+                    _format_rows(tbl.num_rows),
+                    str(len(tbl.columns)),
+                    (tbl.description or "")[:50],
+                )
+            console.print(table)
+    else:
+        table = Table(
+            title=f"[bold]{alias}[/bold]",
+            show_header=True,
+            header_style="bold magenta",
+            caption=f"[dim]{subtitle}[/dim]",
+        )
+        table.add_column("Table")
+        table.add_column("Rows", justify="right")
+        table.add_column("Cols", justify="right")
+        table.add_column("Description", max_width=50)
+
+        for tbl in schema.tables:
+            table.add_row(
+                tbl.name,
+                _format_rows(tbl.num_rows),
+                str(len(tbl.columns)),
+                (tbl.description or "")[:50],
+            )
+        console.print(table)
+
+
+def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: bool = False) -> None:
+    """Render column-level detail for a single table."""
+    display = _display_name(tbl, multi_schema)
+    row_info = f", {tbl.num_rows:,} rows" if tbl.num_rows is not None else ""
+    title = f"[bold]{display}[/bold][dim]{row_info}[/dim]"
+
+    if tbl.description:
+        title += f"\n[dim]{tbl.description}[/dim]"
+
+    pk_set = set(tbl.primary_key)
+    fk_col_set = {col for fk in tbl.foreign_keys for col in fk.columns}
+
+    table = Table(title=title, show_header=True, header_style="bold magenta", show_lines=True)
+    table.add_column("Column")
+    table.add_column("Type")
+    table.add_column("Key", justify="center")
+    table.add_column("Null", justify="center")
+    table.add_column("Examples", max_width=40)
+
+    for col in tbl.columns:
+        key_parts: list[str] = []
+        if col.name in pk_set:
+            key_parts.append("[bold yellow]PK[/bold yellow]")
+        if col.name in fk_col_set:
+            key_parts.append("[cyan]FK[/cyan]")
+        key = " ".join(key_parts)
+
+        null_str = "[green]✓[/green]" if col.nullable else "[dim]✗[/dim]"
+
+        examples_str = ""
+        if col.examples:
+            examples_str = ", ".join(str(e) for e in col.examples[:5])
+            if len(examples_str) > 40:
+                examples_str = examples_str[:37] + "..."
+
+        name_style = "bold" if col.name in pk_set else ""
+        name_text = Text(col.name, style=name_style)
+
+        table.add_row(name_text, col.dtype or "", key, null_str, f"[dim]{examples_str}[/dim]")
+
+    console.print(table)
+
+    if tbl.foreign_keys:
+        console.print()
+        for fk in tbl.foreign_keys:
+            src = ", ".join(fk.columns)
+            tgt_table = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
+            tgt = ", ".join(fk.foreign_columns)
+            console.print(f"  [cyan]FK[/cyan] {src} → {tgt_table}({tgt})")
+
+
+def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSchema) -> None:
+    """Render full metadata for a single column."""
+    display = _qualified_name(tbl)
+    pk_set = set(tbl.primary_key)
+
+    lines: list[str] = []
+    lines.append(f"[bold]Type:[/bold]        {col.dtype}")
+
+    if col.name in pk_set:
+        pk_label = "composite" if col.primary_key_type == "composite" else "yes"
+        lines.append(f"[bold]Primary key:[/bold] {pk_label}")
+
+    null_detail = "yes" if col.nullable else "no"
+    if col.null_ratio is not None:
+        null_detail += f" ({col.null_ratio:.1%} null)"
+    lines.append(f"[bold]Nullable:[/bold]    {null_detail}")
+
+    if col.num_unique is not None:
+        unique_detail = f"{col.num_unique:,} values"
+        if col.unique_ratio is not None:
+            unique_detail += f" ({col.unique_ratio:.1%})"
+        lines.append(f"[bold]Unique:[/bold]      {unique_detail}")
+
+    if col.examples:
+        ex_str = ", ".join(str(e) for e in col.examples[:8])
+        lines.append(f"[bold]Examples:[/bold]    [dim]{ex_str}[/dim]")
+
+    if col.description:
+        lines.append(f"[bold]Description:[/bold] {col.description}")
+
+    fk_refs = [fk for fk in col.foreign_keys]
+    for fk in fk_refs:
+        tgt = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
+        lines.append(f"[bold]FK →[/bold]         {tgt}({', '.join(fk.foreign_columns)})")
+
+    body = "\n".join(lines)
+    console.print(Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style="magenta"))
+
+
+def resolve_table(
+    schema: SQLSchema, name: str
+) -> SQLTableSchema | list[SQLTableSchema] | None:
+    """Resolve a table name, supporting optional schema.table syntax.
+
+    Returns:
+        A single table on exact/unambiguous match, a list if ambiguous across
+        schemas, or None if not found.
+    """
+    schema_part: str | None = None
+    table_part: str = name
+    if "." in name:
+        schema_part, table_part = name.rsplit(".", 1)
+
+    exact: list[SQLTableSchema] = []
+    ci_matches: list[SQLTableSchema] = []
+
+    for tbl in schema.tables:
+        if schema_part is not None:
+            schema_match = (
+                tbl.schema_name == schema_part
+                or (tbl.schema_name is not None and tbl.schema_name.lower() == schema_part.lower())
+            )
+            if not schema_match:
+                continue
+
+        if tbl.name == table_part:
+            exact.append(tbl)
+        elif tbl.name.lower() == table_part.lower():
+            ci_matches.append(tbl)
+
+    candidates = exact or ci_matches
+    if len(candidates) == 1:
+        return candidates[0]
+    if len(candidates) > 1:
+        return candidates
+    return None
+
+
+def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
+    """Resolve a column name with case-insensitive fallback."""
+    for col in tbl.columns:
+        if col.name == name:
+            return col
+    for col in tbl.columns:
+        if col.name.lower() == name.lower():
+            return col
+    return None

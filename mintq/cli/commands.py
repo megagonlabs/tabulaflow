@@ -157,6 +157,16 @@ async def _cmd_use(args: list[str], session: ChatSession, console: Console) -> b
 
 
 async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -> bool:
+    from mintq.cli.display import (
+        render_schema_overview,
+        render_table_detail,
+        render_column_detail,
+        resolve_table,
+        resolve_column,
+        _is_multi_schema,
+        _display_name,
+    )
+
     conn = session.connections.active_connector
     if conn is None:
         console.print("[red]No active connection.[/red] Use /connect first.")
@@ -167,16 +177,36 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
         console.print("[dim]Schema not available.[/dim]")
         return False
 
-    if args:
-        table_name = args[0]
-        tbl = next((t for t in schema.tables if t.name == table_name), None)
-        if tbl is None:
-            console.print(f"[red]Table not found:[/red] {table_name}")
-            return False
-        _print_table_detail(console, tbl)
-    else:
-        _print_schema_overview(console, schema, session.connections.active_alias or "")
+    multi = _is_multi_schema(schema)
+    alias = session.connections.active_alias or ""
 
+    if not args:
+        render_schema_overview(console, schema, alias)
+        return False
+
+    result = resolve_table(schema, args[0])
+    if result is None:
+        console.print(f"[red]Table not found:[/red] {args[0]}")
+        return False
+    if isinstance(result, list):
+        console.print(f"[red]Ambiguous table name:[/red] {args[0]}. Matches:")
+        for t in result:
+            console.print(f"  [dim]{_display_name(t, multi=True)}[/dim]")
+        console.print("[dim]Use the qualified name: /schema <schema>.<table>[/dim]")
+        return False
+
+    tbl = result
+
+    if len(args) < 2:
+        render_table_detail(console, tbl, multi_schema=multi)
+        return False
+
+    col = resolve_column(tbl, args[1])
+    if col is None:
+        console.print(f"[red]Column not found:[/red] {args[1]} in {_display_name(tbl, multi)}")
+        return False
+
+    render_column_detail(console, tbl, col)
     return False
 
 
@@ -282,34 +312,6 @@ def _alias_from_url(url: str) -> str:
     return url
 
 
-def _print_schema_overview(console: Console, schema: object, alias: str) -> None:
-    from mintq.schema import SQLSchema
-
-    assert isinstance(schema, SQLSchema)
-    table = Table(title=f"[bold]{alias}[/bold]", show_header=True, header_style="bold magenta")
-    table.add_column("Table")
-    table.add_column("Columns", justify="right")
-
-    for tbl in schema.tables:
-        table.add_row(tbl.name, str(len(tbl.columns)))
-
-    console.print(table)
-
-
-def _print_table_detail(console: Console, tbl: object) -> None:
-    from mintq.schema import SQLTableSchema
-
-    assert isinstance(tbl, SQLTableSchema)
-    table = Table(title=f"[bold]{tbl.name}[/bold]", show_header=True, header_style="bold magenta", show_lines=True)
-    table.add_column("Column")
-    table.add_column("Type")
-
-    for col in tbl.columns:
-        table.add_row(col.name, col.type or "")
-
-    console.print(table)
-
-
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/quit": (_cmd_quit, "Exit the chat"),
@@ -319,7 +321,7 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
     "/use": (_cmd_use, "Switch active database: /use <alias>"),
-    "/schema": (_cmd_schema, "Show schema: /schema [table]"),
+    "/schema": (_cmd_schema, "Show schema: /schema [table] [column]"),
     "/mode": (_cmd_mode, "Toggle output mode: /mode <nl|sql|table|chart|all>"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
