@@ -8,9 +8,10 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 
+from mintq.cli.agent import ChatAgent
 from mintq.cli.commands import handle_command, COMMAND_PREFIX
 from mintq.cli.connections import ConnectionManager
-from mintq.cli.display import print_banner
+from mintq.cli.display import print_banner, render_nl, render_sql, render_table
 
 DATA_DIR = Path.home() / ".mintq"
 
@@ -25,6 +26,7 @@ class ChatSession:
         self.agent_name = agent
         self.connections = ConnectionManager()
         self.output_modes: set[str] = {"nl", "sql", "table"}
+        self.chat_agent = ChatAgent(model=model)
 
     @property
     def prompt_text(self) -> str:
@@ -36,6 +38,10 @@ class ChatSession:
 
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
+    import mintq
+
+    mintq.configure()
+
     session = ChatSession(model=model, agent=agent)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     prompt_session: PromptSession[str] = PromptSession(
@@ -61,5 +67,21 @@ async def run_chat(model: str, agent: str) -> None:
                 break
             continue
 
-        # TODO: step 4 — send to agent, display results
-        console.print("[dim italic](agent integration coming soon)[/dim italic]")
+        connector = session.connections.active_connector
+        if connector is None:
+            console.print("[red]No database connected.[/red] Use /connect first.")
+            continue
+
+        try:
+            result = await session.chat_agent.run(text, connector, console)
+        except Exception as e:
+            console.print(f"[red]Agent error:[/red] {e}")
+            continue
+
+        console.print()
+        if "nl" in session.output_modes and result.text:
+            render_nl(console, result.text)
+        if "sql" in session.output_modes and result.sql:
+            render_sql(console, result.sql)
+        if "table" in session.output_modes and result.df is not None and not result.df.empty:
+            render_table(console, result.df)

@@ -318,3 +318,10 @@ def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
         if col.name.lower() == name.lower():
             return col
     return None
+
+
+def render_agent_progress(console: Console) -> object:
+    """Create a progress display for streaming agent execution."""
+    from mintq.cli.agent import AgentProgressDisplay
+
+    return AgentProgressDisplay(console)
