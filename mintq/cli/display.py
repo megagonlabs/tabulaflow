@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-from rich.console import Console
+from rich.console import Console, Group
 from rich.panel import Panel
 from rich.syntax import Syntax
-from rich.table import Table
+from rich.table import Table, box
 from rich.text import Text
 
 import pandas as pd
@@ -118,6 +118,24 @@ def _format_rows(n: int | None) -> str:
     return f"{n:,}"
 
 
+def _build_overview_table(tables: list[SQLTableSchema]) -> Table:
+    """Build a borderless table of table names, rows, cols, description."""
+    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold magenta", padding=(0, 2))
+    inner.add_column("Table")
+    inner.add_column("Rows", justify="right")
+    inner.add_column("Cols", justify="right")
+    inner.add_column("Description", max_width=50)
+
+    for tbl in tables:
+        inner.add_row(
+            tbl.name,
+            _format_rows(tbl.num_rows),
+            str(len(tbl.columns)),
+            (tbl.description or "")[:50],
+        )
+    return inner
+
+
 def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> None:
     """Render database-level schema overview."""
     multi = _is_multi_schema(schema)
@@ -132,62 +150,41 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
         for tbl in schema.tables:
             grouped[tbl.schema_name].append(tbl)
 
+        parts: list[Panel] = []
         for schema_name, tables in sorted(grouped.items(), key=lambda kv: kv[0] or ""):
-            title = f"[bold]{alias}[/bold].[bold cyan]{schema_name}[/bold cyan]" if schema_name else f"[bold]{alias}[/bold]"
-            table = Table(title=title, show_header=True, header_style="bold magenta", caption=f"[dim]{subtitle}[/dim]")
-            table.add_column("Table")
-            table.add_column("Rows", justify="right")
-            table.add_column("Cols", justify="right")
-            table.add_column("Description", max_width=50)
-
-            for tbl in tables:
-                table.add_row(
-                    tbl.name,
-                    _format_rows(tbl.num_rows),
-                    str(len(tbl.columns)),
-                    (tbl.description or "")[:50],
-                )
-            console.print(table)
-    else:
-        table = Table(
-            title=f"[bold]{alias}[/bold]",
-            show_header=True,
-            header_style="bold magenta",
-            caption=f"[dim]{subtitle}[/dim]",
-        )
-        table.add_column("Table")
-        table.add_column("Rows", justify="right")
-        table.add_column("Cols", justify="right")
-        table.add_column("Description", max_width=50)
-
-        for tbl in schema.tables:
-            table.add_row(
-                tbl.name,
-                _format_rows(tbl.num_rows),
-                str(len(tbl.columns)),
-                (tbl.description or "")[:50],
+            section_title = (
+                f"[bold]{alias}[/bold].[bold cyan]{schema_name}[/bold cyan]"
+                if schema_name
+                else f"[bold]{alias}[/bold]"
             )
-        console.print(table)
+            inner = _build_overview_table(tables)
+            parts.append(Panel(inner, title=section_title, border_style="cyan"))
+
+        for p in parts:
+            console.print(p)
+        console.print(f"  [dim]{subtitle}[/dim]")
+    else:
+        title = f"[bold]{alias}[/bold]"
+        inner = _build_overview_table(schema.tables)
+        footer = Text(subtitle, style="dim")
+        console.print(Panel(Group(inner, footer), title=title, border_style="cyan"))
 
 
 def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: bool = False) -> None:
-    """Render column-level detail for a single table."""
+    """Render column-level detail for a single table inside a panel."""
     display = _display_name(tbl, multi_schema)
-    row_info = f", {tbl.num_rows:,} rows" if tbl.num_rows is not None else ""
+    row_info = f" ({tbl.num_rows:,} rows)" if tbl.num_rows is not None else ""
     title = f"[bold]{display}[/bold][dim]{row_info}[/dim]"
-
-    if tbl.description:
-        title += f"\n[dim]{tbl.description}[/dim]"
 
     pk_set = set(tbl.primary_key)
     fk_col_set = {col for fk in tbl.foreign_keys for col in fk.columns}
 
-    table = Table(title=title, show_header=True, header_style="bold magenta", show_lines=True)
-    table.add_column("Column")
-    table.add_column("Type")
-    table.add_column("Key", justify="center")
-    table.add_column("Null", justify="center")
-    table.add_column("Examples", max_width=40)
+    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold magenta", padding=(0, 2))
+    inner.add_column("Column")
+    inner.add_column("Type")
+    inner.add_column("Key", justify="center")
+    inner.add_column("Null", justify="center")
+    inner.add_column("Examples", max_width=40)
 
     for col in tbl.columns:
         key_parts: list[str] = []
@@ -208,17 +205,30 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
         name_style = "bold" if col.name in pk_set else ""
         name_text = Text(col.name, style=name_style)
 
-        table.add_row(name_text, col.dtype or "", key, null_str, f"[dim]{examples_str}[/dim]")
+        inner.add_row(name_text, col.dtype or "", key, null_str, f"[dim]{examples_str}[/dim]")
 
-    console.print(table)
+    parts: list[Table | Text] = [inner]
 
     if tbl.foreign_keys:
-        console.print()
-        for fk in tbl.foreign_keys:
+        fk_text = Text()
+        fk_text.append("\n")
+        for i, fk in enumerate(tbl.foreign_keys):
             src = ", ".join(fk.columns)
             tgt_table = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
             tgt = ", ".join(fk.foreign_columns)
-            console.print(f"  [cyan]FK[/cyan] {src} → {tgt_table}({tgt})")
+            if i > 0:
+                fk_text.append("\n")
+            fk_text.append("  FK ", style="cyan bold")
+            fk_text.append(f"{src} → {tgt_table}({tgt})")
+        parts.append(fk_text)
+
+    if tbl.description:
+        desc_text = Text()
+        desc_text.append("\n  ")
+        desc_text.append(tbl.description, style="dim italic")
+        parts.append(desc_text)
+
+    console.print(Panel(Group(*parts), title=title, border_style="magenta"))
 
 
 def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSchema) -> None:
