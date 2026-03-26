@@ -2715,10 +2715,13 @@ dependencies = [
     { name = "mcp", extra = ["cli"] },
     { name = "openinference-instrumentation-litellm" },
     { name = "pandas" },
+    { name = "plotext" },
+    { name = "prompt-toolkit" },
     { name = "pyarrow" },
     { name = "pydantic" },
     { name = "pydantic-ai" },
     { name = "pymysql" },
+    { name = "rich" },
     { name = "snowflake-connector-python" },
     { name = "snowflake-sqlalchemy" },
     { name = "sqlalchemy", extra = ["asyncio"] },
@@ -2727,6 +2730,7 @@ dependencies = [
     { name = "sqlparse" },
     { name = "tabulate" },
     { name = "tqdm" },
+    { name = "typer" },
 ]
 
 [package.optional-dependencies]
@@ -2772,10 +2776,13 @@ requires-dist = [
     { name = "mcp", extras = ["cli"], specifier = ">=1.9.4" },
     { name = "openinference-instrumentation-litellm", specifier = ">=0.1.21" },
     { name = "pandas", specifier = ">=2.2.3" },
+    { name = "plotext", specifier = ">=5.3.2" },
+    { name = "prompt-toolkit", specifier = ">=3.0.50" },
     { name = "pyarrow", specifier = ">=21.0.0" },
     { name = "pydantic", specifier = ">=2.11.3" },
     { name = "pydantic-ai", specifier = "==1.52.0" },
     { name = "pymysql", specifier = ">=1.1.1" },
+    { name = "rich", specifier = ">=14.0.0" },
     { name = "snowflake-connector-python", specifier = ">=3.14.1" },
     { name = "snowflake-sqlalchemy", specifier = ">=1.7.3" },
     { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.40" },
@@ -2784,6 +2791,7 @@ requires-dist = [
     { name = "sqlparse", specifier = ">=0.5.3" },
     { name = "tabulate", specifier = ">=0.9.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "typer", specifier = ">=0.15.0" },
 ]
 provides-extras = ["plot"]
 
@@ -3620,6 +3628,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/23/e8/21db9c9987b0e728855bd57bff6984f67952bea55d6f75e055c46b5383e8/platformdirs-4.4.0.tar.gz", hash = "sha256:ca753cf4d81dc309bc67b0ea38fd15dc97bc30ce419a7f58d13eb3bf14c4febf", size = 21634, upload_time = "2025-08-26T14:32:04.268Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/40/4b/2028861e724d3bd36227adfa20d3fd24c3fc6d52032f4a93c133be5d17ce/platformdirs-4.4.0-py3-none-any.whl", hash = "sha256:abd01743f24e5287cd7a5db3752faf1a2d65353f38ec26d98e25a6db65958c85", size = 18654, upload_time = "2025-08-26T14:32:02.735Z" },
+]
+
+[[package]]
+name = "plotext"
+version = "5.3.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/c9/d7/f75f397af966fe252d0d34ffd3cae765317fce2134f925f95e7d6725d1ce/plotext-5.3.2.tar.gz", hash = "sha256:52d1e932e67c177bf357a3f0fe6ce14d1a96f7f7d5679d7b455b929df517068e", size = 61967, upload_time = "2024-09-24T15:13:37.728Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/f6/1e/12fe7c40cd2099a1f454518754ed229b01beaf3bbb343127f0cc13ce6c22/plotext-5.3.2-py3-none-any.whl", hash = "sha256:394362349c1ddbf319548cfac17ca65e6d5dfc03200c40dfdc0503b3e95a2283", size = 64047, upload_time = "2024-09-24T15:13:36.296Z" },
 ]
 
 [[package]]
