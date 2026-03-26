@@ -24,6 +24,9 @@ class ConnectionManager:
             return None
         return self._connections.get(self._active)
 
+    def has(self, alias: str) -> bool:
+        return alias in self._connections
+
     def add(self, alias: str, connector: BaseSQLDBConnector) -> None:
         self._connections[alias] = connector
         if self._active is None:

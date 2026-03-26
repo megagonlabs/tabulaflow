@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import os
 import shlex
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
+from urllib.parse import urlparse, urlunparse
 
 from rich.console import Console
 from rich.table import Table
@@ -12,6 +14,15 @@ if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
 
 COMMAND_PREFIX = "/"
+
+_ASYNC_DRIVERS = {"aiosqlite", "asyncmy", "asyncpg"}
+
+_FILE_EXTENSIONS: dict[str, str] = {
+    ".sqlite": "sqlite+aiosqlite",
+    ".sqlite3": "sqlite+aiosqlite",
+    ".db": "sqlite+aiosqlite",
+    ".duckdb": "duckdb",
+}
 
 
 async def handle_command(text: str, session: ChatSession, console: Console) -> bool:
@@ -53,30 +64,52 @@ async def _cmd_clear(args: list[str], session: ChatSession, console: Console) ->
 
 async def _cmd_connect(args: list[str], session: ChatSession, console: Console) -> bool:
     if not args:
-        console.print("[red]Usage:[/red] /connect <url> [alias]")
+        console.print(
+            "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
+            "[dim]  /connect ./data/schools.sqlite\n"
+            "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
+            "  /connect snowflake://user@account/db\n"
+            "  /connect duckdb:///path/to/db.duckdb[/dim]"
+        )
         return False
 
-    url = args[0]
+    raw = args[0]
+    url = _normalize_url(raw)
     alias = args[1] if len(args) > 1 else _alias_from_url(url)
+    engine_type = _infer_engine_type(url)
+
+    if session.connections.has(alias):
+        console.print(
+            f"[red]Alias already in use:[/red] {alias}. "
+            "Disconnect first or provide a different alias: /connect <url> <alias>"
+        )
+        return False
+
+    url = await _prompt_password_if_needed(url, console)
 
     from mintq.db_connector import SQLConnector
 
+    global_id = f"cli+{_sanitize_global_id(url)}"
     with console.status(f"[cyan]Connecting to {alias}...[/cyan]"):
-        try:
+        try: 
             connector = await SQLConnector.from_url_async(
-                global_id=alias,
+                global_id=global_id,
                 db_name=alias,
-                engine_type="sqlalchemy",
+                engine_type=engine_type,
                 url=url,
                 read_only=True,
+                enable_caching=False,
             )
         except Exception as e:
             console.print(f"[red]Connection failed:[/red] {e}")
             return False
 
     n_tables = len(connector.schema.tables) if connector.schema else 0
+    dialect = connector.language or "unknown"
     session.connections.add(alias, connector)
-    console.print(f"[green]✓[/green] Connected to [bold]{alias}[/bold] ({n_tables} tables)")
+    console.print(
+        f"[green]✓[/green] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)"
+    )
     return False
 
 
@@ -188,14 +221,64 @@ async def _cmd_agent(args: list[str], session: ChatSession, console: Console) ->
     return False
 
 
+def _sanitize_global_id(url: str) -> str:
+    """Strip credentials from a URL to produce a stable, safe cache key."""
+    parsed = urlparse(url)
+    if parsed.hostname:
+        clean_netloc = parsed.hostname + (f":{parsed.port}" if parsed.port else "")
+        return urlunparse(parsed._replace(netloc=clean_netloc))
+    return url
+
+
+def _normalize_url(raw: str) -> str:
+    """Expand a bare file path into a SQLAlchemy URL, or return as-is."""
+    for ext, scheme in _FILE_EXTENSIONS.items():
+        if raw.endswith(ext):
+            abspath = os.path.abspath(raw)
+            return f"{scheme}:///{abspath}"
+    return raw
+
+
+def _infer_engine_type(url: str) -> Literal["async", "sync"]:
+    """Decide async vs sync engine based on the URL scheme/driver."""
+    scheme = url.split("://", 1)[0] if "://" in url else url
+    parts = scheme.split("+")
+    driver = parts[1] if len(parts) > 1 else parts[0]
+    if driver in _ASYNC_DRIVERS:
+        return "async"
+    return "sync"
+
+
+async def _prompt_password_if_needed(url: str, console: Console) -> str:
+    """If URL has a username but no password, prompt interactively."""
+    parsed = urlparse(url)
+    if parsed.username and not parsed.password and parsed.hostname:
+        from prompt_toolkit import prompt as pt_prompt
+
+        console.print(f"[dim]Authenticating as[/dim] [bold]{parsed.username}[/bold]")
+        password = await pt_prompt(
+            "  Password: ",
+            is_password=True,
+            async_=True,
+        )
+        replaced = parsed._replace(
+            netloc=f"{parsed.username}:{password}@{parsed.hostname}"
+            + (f":{parsed.port}" if parsed.port else "")
+        )
+        return urlunparse(replaced)
+    return url
+
+
 def _alias_from_url(url: str) -> str:
     """Derive a short alias from a database URL."""
-    if "///" in url:
-        path = url.split("///")[-1]
-        return path.rsplit("/", 1)[-1].split(".")[0]
-    if "//" in url:
-        parts = url.split("/")
-        return parts[-1] if parts[-1] else parts[-2]
+    if ":///" in url:
+        path = url.split("///", 1)[-1]
+        return os.path.splitext(os.path.basename(path))[0]
+    parsed = urlparse(url)
+    if parsed.path and parsed.path.strip("/"):
+        return parsed.path.strip("/").rsplit("/", 1)[-1]
+    if parsed.hostname:
+        return parsed.hostname
     return url
 
 
