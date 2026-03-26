@@ -25,7 +25,7 @@ class ChatSession:
         self.model = model
         self.agent_name = agent
         self.connections = ConnectionManager()
-        self.output_modes: set[str] = {"nl", "sql", "table"}
+        self.output_modes: set[str] = {"nl"}
         self.chat_agent = ChatAgent(model=model)
 
     @property

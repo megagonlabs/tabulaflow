@@ -247,6 +247,8 @@ class AgentProgressDisplay:
         self._update()
 
     def finish(self) -> None:
+        self._streaming_text = ""
+        self._update()
         self._live.stop()
 
     def tool_start(self, name: str, args_summary: str) -> None:
