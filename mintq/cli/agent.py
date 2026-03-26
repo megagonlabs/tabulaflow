@@ -134,7 +134,7 @@ class ChatAgent:
                 run_query_tool.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
-            model_settings={"temperature": 0.0},
+            model_settings={},
         )
 
         history_key = self._history_key(connector)
@@ -184,7 +184,7 @@ def _handle_stream_event(
         progress.tool_start(tool_name, args_summary)
 
     elif isinstance(event, FunctionToolResultEvent):
-        tool_name = event.tool_name
+        tool_name = event.result.tool_name
         result_summary = _summarize_result(tool_name, run_query_tool)
         progress.tool_end(tool_name, result_summary)
 
