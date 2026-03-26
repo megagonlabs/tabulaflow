@@ -20,8 +20,9 @@ from pydantic_ai.run import AgentRunResultEvent
 from rich.console import Console
 
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.sql_basic import SQLBasicSchemaFormatter
+from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors import DBSummarizer
+from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.toolhub import GetTableSchemaTool, RunQueryTool
 
 logger = logging.getLogger(__name__)
@@ -71,22 +72,37 @@ class ChatAgent:
     _db_summaries: dict[str, str] = field(default_factory=dict)
     _message_history: dict[str, list[ModelMessage]] = field(default_factory=dict)
 
-    async def _get_db_summary(
+    _SUMMARIZE_MIN_TABLES = 20
+
+    async def _get_db_document(
         self,
         connector: BaseSQLDBConnector,
         console: Console,
     ) -> str:
-        """Get or create a DB summary, with console progress."""
+        """Build a database document for the system prompt.
+
+        For small databases (< _SUMMARIZE_MIN_TABLES tables), formats the
+        compressed schema directly using SQLDDLSchemaFormatter.  For larger
+        databases, runs the LLM-based DBSummarizer.
+        """
         cache_key = connector.global_id
         if cache_key in self._db_summaries:
             return self._db_summaries[cache_key]
 
-        summarizer = DBSummarizer(llm=self.summarizer_model)
-        with console.status("[cyan]Summarizing database...[/cyan]"):
-            summary = await summarizer.preprocess_async(connector)
+        schema = connector.schema
+        if len(schema.tables) < self._SUMMARIZE_MIN_TABLES:
+            compressor = SchemaCompressor()
+            compressed = compressor.compress(schema)
+            formatter = SQLDDLSchemaFormatter()
+            doc = formatter.format(compressed, add_description=True)
+        else:
+            summarizer = DBSummarizer(llm=self.summarizer_model)
+            with console.status("[cyan]Summarizing database...[/cyan]"):
+                summary = await summarizer.preprocess_async(connector)
+            doc = summary.db_summary_markdown
 
-        self._db_summaries[cache_key] = summary.db_summary_markdown
-        return summary.db_summary_markdown
+        self._db_summaries[cache_key] = doc
+        return doc
 
     def _history_key(self, connector: BaseSQLDBConnector) -> str:
         return connector.global_id
@@ -100,16 +116,16 @@ class ChatAgent:
         """Run the agent on a user question, streaming progress to the console."""
         from mintq.cli.display import render_agent_progress
 
-        db_summary = await self._get_db_summary(connector, console)
+        db_document = await self._get_db_document(connector, console)
 
         system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
             language=connector.language or "SQL",
-            db_document=db_summary,
+            db_document=db_document,
         )
 
-        formatter = SQLBasicSchemaFormatter()
+        formatter = SQLDDLSchemaFormatter()
         run_query_tool = RunQueryTool(connector)
-        get_table_schema_tool = GetTableSchemaTool(connector, formatter)
+        get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
 
         agent: Agent[None, str] = Agent(
             model=self.model,
