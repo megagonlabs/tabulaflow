@@ -89,7 +89,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
     from mintq.db_connector import SQLConnector
 
-    global_id = f"cli+{_sanitize_global_id(url)}"
+    global_id = f"cli+{alias}"
     with console.status(f"[cyan]Connecting to {alias}...[/cyan]"):
         try: 
             connector = await SQLConnector.from_url_async(
@@ -249,15 +249,6 @@ async def _cmd_agent(args: list[str], session: ChatSession, console: Console) ->
     session.agent_name = args[0]
     console.print(f"[green]✓[/green] Agent set to [bold]{session.agent_name}[/bold]")
     return False
-
-
-def _sanitize_global_id(url: str) -> str:
-    """Strip credentials from a URL to produce a stable, safe cache key."""
-    parsed = urlparse(url)
-    if parsed.hostname:
-        clean_netloc = parsed.hostname + (f":{parsed.port}" if parsed.port else "")
-        return urlunparse(parsed._replace(netloc=clean_netloc))
-    return url
 
 
 def _normalize_url(raw: str) -> str:
