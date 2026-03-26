@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
@@ -9,6 +11,8 @@ from rich.console import Console
 from mintq.cli.commands import handle_command, COMMAND_PREFIX
 from mintq.cli.connections import ConnectionManager
 from mintq.cli.display import print_banner
+
+DATA_DIR = Path.home() / ".mintq"
 
 console = Console()
 
@@ -33,8 +37,9 @@ class ChatSession:
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
     session = ChatSession(model=model, agent=agent)
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
     prompt_session: PromptSession[str] = PromptSession(
-        history=FileHistory(".mintq_history"),
+        history=FileHistory(str(DATA_DIR / "history")),
     )
 
     print_banner(console, model=model, agent=agent)
