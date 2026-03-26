@@ -821,7 +821,7 @@ March 10
 March 11
 - [x] test whether null_ratio is useful - no improvement
 - [x] Exp 253: claude-sonnet-4-5 (spider2-snow test): simple_ex 0.5827, spider2_ex 0.5735, cost $479.20
-- [x] gpt-5.3-codex (spider2-snow test): simple_ex 0.7004, spider2_ex 0.6985, cost $92.15
+- [x] Exp 254: gpt-5.3-codex (spider2-snow test): simple_ex 0.7004, spider2_ex 0.6985, cost $92.15
 - [x] Exp 255: agent_ensembler: 5x_gpt-5_dedup spider2_ex 0.6691, mixed_dedup spider2_ex 0.7132
 
 March 16
@@ -894,7 +894,8 @@ March 23
 - [x] dbt_llm_ensembler
 - [x] Revise dbt agent
 
-  
+
+- [ ] Use OpenAI plain text tool!!!
 - [ ] bash tool for dbt agent
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
@@ -1021,4 +1022,36 @@ docker run -d --name postgres_github_repos \
   -p 5441:5432 \
   -v /home/yanlin/github_repos.sql:/docker-entrypoint-initdb.d/github_repos.sql \
   postgres
+```
+
+
+```python
+async def main():
+    db_connector = await SQLConnector.from_url_async(
+        "sqlite+aiosqlite://test.db",
+        # postgres+asyncpg://localhost:5432/test
+        # snowflake://...
+        # duckdb://...
+    )
+    db_connector.schema  # A SQLSchema object
+
+    await db_connector.run_query_async("SELECT ...", parameters, timeout=120)
+```
+```python
+from pydantic_ai import Agent
+
+class MyText2SQLAgent:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
+        schema_str = self.formatter.format(db_connector.schema)
+        agent = Agent(
+            model="gpt-4.1",
+            instructions=f"Translate to a SQL query. Database schema: {schema_str}",
+            tools=[
+                run_query_tool.as_pydantic_ai_tool(),
+                get_table_schema_tool.as_pydantic_ai_tool()
+            ]
+        )
+        result = await agent.run(task.question)
+        sql_query = result.output
+        return SimpleNL2QTaskOutput(pred_query=PredQuery(query=sql_query))
 ```
