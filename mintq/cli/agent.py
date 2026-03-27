@@ -334,10 +334,12 @@ class AgentProgressDisplay:
                 label = self._steps[i][2]
                 self._steps[i] = ("done", name, f"{label} → {result_summary}")
                 break
+        self._status_text = "Thinking..."
         self._update()
 
     def text_delta(self, delta: str) -> None:
         self._streaming_text += delta
+        self._status_text = None
         self._update()
 
     def _update(self) -> None:
@@ -347,19 +349,21 @@ class AgentProgressDisplay:
 
         parts: list[object] = []
 
-        if self._status_text and not self._steps:
-            from mintq.cli.theme import ACCENT
+        from mintq.cli.theme import ACCENT
 
-            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style=ACCENT))
-
+        has_running = False
         for status, _name, label in self._steps:
             if status == "running":
+                has_running = True
                 parts.append(Spinner("dots", text=Text(label, style="dim"), style="dim"))
             else:
                 line = Text()
                 line.append("✓ ", style="dim")
                 line.append(label, style="dim")
                 parts.append(line)
+
+        if self._status_text and not has_running:
+            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style=ACCENT))
 
         if self._streaming_text:
             display = self._streaming_text
