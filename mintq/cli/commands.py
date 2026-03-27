@@ -91,7 +91,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     from mintq.db_connector.sql_conn import SQLConnector
 
     global_id = f"cli+{alias}"
-    with console.status(f"[{ACCENT}]Connecting to {alias}...[/{ACCENT}]"):
+    with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
         try: 
             connector = await SQLConnector.from_url_async(
                 global_id=global_id,
