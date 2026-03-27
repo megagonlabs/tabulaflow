@@ -11,6 +11,8 @@ from rich.syntax import Syntax
 from rich.table import Table, box
 from rich.text import Text
 
+from mintq.cli.theme import ACCENT, ACCENT_BOLD
+
 if TYPE_CHECKING:
     import pandas as pd
     from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
@@ -24,8 +26,8 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
             f"[bold]Interactive SQL Chat[/bold]\n"
             f"[dim]model:[/dim] {model}  [dim]agent:[/dim] {agent}\n"
             f"[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
-            title="[bold cyan]mintq[/bold cyan]",
-            border_style="cyan",
+            title=f"[{ACCENT_BOLD}]mintq[/{ACCENT_BOLD}]",
+            border_style=ACCENT,
         )
     )
     console.print()
@@ -39,7 +41,7 @@ def render_sql(console: Console, sql: str) -> None:
 
 def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None:
     """Render a DataFrame as a Rich table."""
-    table = Table(show_header=True, header_style="bold magenta", show_lines=True)
+    table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True)
     for col in df.columns:
         table.add_column(str(col))
 
@@ -62,7 +64,7 @@ def render_nl(console: Console, text: str) -> None:
     layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
     layout.add_column(width=2, no_wrap=True, vertical="top")
     layout.add_column(ratio=1)
-    layout.add_row(Text("◆", style="bold magenta"), Markdown(text))
+    layout.add_row(Text("◆", style=ACCENT_BOLD), Markdown(text))
     console.print(layout)
 
 
@@ -111,7 +113,7 @@ def _format_rows(n: int | None) -> str:
 
 def _build_overview_table(tables: list[SQLTableSchema]) -> Table:
     """Build a borderless table of table names, rows, cols, description."""
-    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold magenta", padding=(0, 2))
+    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style=ACCENT_BOLD, padding=(0, 2))
     inner.add_column("Table")
     inner.add_column("Rows", justify="right")
     inner.add_column("Cols", justify="right")
@@ -144,12 +146,12 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
         parts: list[Panel] = []
         for schema_name, tables in sorted(grouped.items(), key=lambda kv: kv[0] or ""):
             section_title = (
-                f"[bold]{alias}[/bold].[bold cyan]{schema_name}[/bold cyan]"
+                f"[bold]{alias}[/bold].[{ACCENT_BOLD}]{schema_name}[/{ACCENT_BOLD}]"
                 if schema_name
                 else f"[bold]{alias}[/bold]"
             )
             inner = _build_overview_table(tables)
-            parts.append(Panel(inner, title=section_title, border_style="cyan"))
+            parts.append(Panel(inner, title=section_title, border_style=ACCENT))
 
         for p in parts:
             console.print(p)
@@ -158,7 +160,7 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
         title = f"[bold]{alias}[/bold]"
         inner = _build_overview_table(schema.tables)
         footer = Text(subtitle, style="dim")
-        console.print(Panel(Group(inner, footer), title=title, border_style="cyan"))
+        console.print(Panel(Group(inner, footer), title=title, border_style=ACCENT))
 
 
 def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: bool = False) -> None:
@@ -170,7 +172,7 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
     pk_set = set(tbl.primary_key)
     fk_col_set = {col for fk in tbl.foreign_keys for col in fk.columns}
 
-    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style="bold magenta", padding=(0, 2))
+    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style=ACCENT_BOLD, padding=(0, 2))
     inner.add_column("Column")
     inner.add_column("Type")
     inner.add_column("Key", justify="center")
@@ -182,7 +184,7 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
         if col.name in pk_set:
             key_parts.append("[bold yellow]PK[/bold yellow]")
         if col.name in fk_col_set:
-            key_parts.append("[cyan]FK[/cyan]")
+            key_parts.append(f"[{ACCENT}]FK[/{ACCENT}]")
         key = " ".join(key_parts)
 
         null_str = "[green]✓[/green]" if col.nullable else "[dim]✗[/dim]"
@@ -209,7 +211,7 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
             tgt = ", ".join(fk.foreign_columns)
             if i > 0:
                 fk_text.append("\n")
-            fk_text.append("  FK ", style="cyan bold")
+            fk_text.append("  FK ", style=ACCENT_BOLD)
             fk_text.append(f"{src} → {tgt_table}({tgt})")
         parts.append(fk_text)
 
@@ -219,7 +221,7 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
         desc_text.append(tbl.description, style="dim italic")
         parts.append(desc_text)
 
-    console.print(Panel(Group(*parts), title=title, border_style="magenta"))
+    console.print(Panel(Group(*parts), title=title, border_style=ACCENT))
 
 
 def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSchema) -> None:
@@ -258,7 +260,7 @@ def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSc
         lines.append(f"[bold]FK →[/bold]         {tgt}({', '.join(fk.foreign_columns)})")
 
     body = "\n".join(lines)
-    console.print(Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style="magenta"))
+    console.print(Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style=ACCENT))
 
 
 def resolve_table(

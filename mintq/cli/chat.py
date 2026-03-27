@@ -6,11 +6,13 @@ from pathlib import Path
 from typing import TYPE_CHECKING
 
 from prompt_toolkit import PromptSession
+from prompt_toolkit.formatted_text import AnyFormattedText
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 
 from mintq.cli.commands import handle_command, COMMAND_PREFIX
 from mintq.cli.display import print_banner, view_result
+from mintq.cli.theme import ACCENT_BOLD
 
 if TYPE_CHECKING:
     from mintq.cli.agent import ChatAgent, ChatResult
@@ -36,11 +38,8 @@ class ChatSession:
         self.last_result: ChatResult | None = None
 
     @property
-    def prompt_text(self) -> str:
-        active = self.connections.active_alias
-        if active:
-            return f"[{active}] ❯ "
-        return "❯ "
+    def prompt_parts(self) -> list[tuple[str, str]]:
+        return [("class:prompt-bar", "┃"), ("", " ")]
 
 
 def _init_session_sync(model: str, agent: str) -> ChatSession:
@@ -55,9 +54,12 @@ async def run_chat(model: str, agent: str) -> None:
     logging.basicConfig(level=logging.WARNING)
     logging.getLogger("mintq").setLevel(logging.CRITICAL)
 
+    from prompt_toolkit.styles import Style
+
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     prompt_session: PromptSession[str] = PromptSession(
         history=FileHistory(str(DATA_DIR / "history")),
+        style=Style.from_dict({"prompt-bar": ACCENT_BOLD}),
     )
 
     import asyncio
@@ -68,11 +70,19 @@ async def run_chat(model: str, agent: str) -> None:
     init_task = loop.run_in_executor(None, _init_session_sync, model, agent)
     session: ChatSession | None = None
 
+    def _continuation(width: int, _line_number: int, _is_soft_wrap: bool) -> AnyFormattedText:
+        pad = " " * (width - 2)
+        return [("", pad), ("class:prompt-bar", "┃"), ("", " ")]
+
+    default_prompt: AnyFormattedText = [("class:prompt-bar", "┃"), ("", " ")]
+
     while True:
         console.print()
-        prompt_text = session.prompt_text if session else "❯ "
+        prompt = session.prompt_parts if session else default_prompt
         try:
-            user_input = await prompt_session.prompt_async(prompt_text)
+            user_input = await prompt_session.prompt_async(
+                prompt, prompt_continuation=_continuation,
+            )
         except (EOFError, KeyboardInterrupt):
             console.print()
             break

@@ -10,6 +10,8 @@ from urllib.parse import urlparse, urlunparse
 from rich.console import Console
 from rich.table import Table
 
+from mintq.cli.theme import ACCENT, ACCENT_BOLD
+
 if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
 
@@ -40,7 +42,7 @@ async def handle_command(text: str, session: ChatSession, console: Console) -> b
 
 
 async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> bool:
-    table = Table(title="Commands", show_header=True, header_style="bold cyan", show_lines=False)
+    table = Table(title="Commands", show_header=True, header_style=ACCENT_BOLD, show_lines=False)
     table.add_column("Command", style="bold")
     table.add_column("Description")
 
@@ -89,7 +91,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     from mintq.db_connector.sql_conn import SQLConnector
 
     global_id = f"cli+{alias}"
-    with console.status(f"[cyan]Connecting to {alias}...[/cyan]"):
+    with console.status(f"[{ACCENT}]Connecting to {alias}...[/{ACCENT}]"):
         try: 
             connector = await SQLConnector.from_url_async(
                 global_id=global_id,
@@ -130,7 +132,7 @@ async def _cmd_databases(args: list[str], session: ChatSession, console: Console
         console.print("[dim]No databases connected. Use /connect <url> to add one.[/dim]")
         return False
 
-    table = Table(show_header=True, header_style="bold magenta")
+    table = Table(show_header=True, header_style=ACCENT_BOLD)
     table.add_column("Alias", style="bold")
     table.add_column("Active")
     table.add_column("Tables")

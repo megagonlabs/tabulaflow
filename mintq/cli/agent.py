@@ -348,7 +348,9 @@ class AgentProgressDisplay:
         parts: list[object] = []
 
         if self._status_text and not self._steps:
-            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style="cyan"))
+            from mintq.cli.theme import ACCENT
+
+            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style=ACCENT))
 
         for status, _name, label in self._steps:
             if status == "running":
