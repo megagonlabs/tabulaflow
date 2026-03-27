@@ -59,6 +59,7 @@ def render_sql(console: Console, sql: str) -> None:
     syntax = Syntax(
         sql.strip(), "sql", theme="solarized-dark",
         padding=(1, 1), line_numbers=True,
+        background_color="default",
     )
     console.print(syntax)
 
