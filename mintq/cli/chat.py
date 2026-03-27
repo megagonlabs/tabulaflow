@@ -50,9 +50,23 @@ def _init_session_sync(model: str, agent: str) -> ChatSession:
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
     import logging
+    from logging.handlers import RotatingFileHandler
 
-    logging.basicConfig(level=logging.WARNING)
-    logging.getLogger("mintq").setLevel(logging.CRITICAL)
+    log_dir = DATA_DIR / "logs"
+    log_dir.mkdir(parents=True, exist_ok=True)
+    log_path = log_dir / "cli.log"
+
+    # Route all Python logging to file only. Keep terminal output reserved for
+    # explicit user-facing messages rendered by Rich.
+    root = logging.getLogger()
+    root.handlers.clear()
+    root.setLevel(logging.DEBUG)
+    file_handler = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3)
+    file_handler.setFormatter(
+        logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
+    )
+    root.addHandler(file_handler)
+    logging.captureWarnings(True)
 
     from prompt_toolkit.styles import Style
 
