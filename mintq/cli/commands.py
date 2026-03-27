@@ -303,6 +303,39 @@ def _alias_from_url(url: str) -> str:
     return url
 
 
+async def _cmd_view(args: list[str], session: ChatSession, console: Console) -> bool:
+    if session.last_result is None:
+        console.print("[dim]No result to display. Ask a question first.[/dim]")
+        return False
+
+    from mintq.cli.display import view_result
+
+    await view_result(console, session.last_result)
+    return False
+
+
+async def _cmd_sql(args: list[str], session: ChatSession, console: Console) -> bool:
+    if session.last_result is None or session.last_result.sql is None:
+        console.print("[dim]No SQL to display.[/dim]")
+        return False
+
+    from mintq.cli.display import render_sql
+
+    render_sql(console, session.last_result.sql)
+    return False
+
+
+async def _cmd_result_table(args: list[str], session: ChatSession, console: Console) -> bool:
+    if session.last_result is None or session.last_result.df is None or session.last_result.df.empty:
+        console.print("[dim]No table to display.[/dim]")
+        return False
+
+    from mintq.cli.display import render_table
+
+    render_table(console, session.last_result.df)
+    return False
+
+
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/quit": (_cmd_quit, "Exit the chat"),
@@ -316,6 +349,9 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/mode": (_cmd_mode, "Toggle output mode: /mode <nl|sql|table|chart|all>"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
+    "/view": (_cmd_view, "View last result (Tab/Shift+Tab to cycle views)"),
+    "/sql": (_cmd_sql, "Show SQL of last result"),
+    "/table": (_cmd_result_table, "Show table of last result"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}

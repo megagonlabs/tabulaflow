@@ -8,10 +8,10 @@ from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 
-from mintq.cli.agent import ChatAgent
+from mintq.cli.agent import ChatAgent, ChatResult
 from mintq.cli.commands import handle_command, COMMAND_PREFIX
 from mintq.cli.connections import ConnectionManager
-from mintq.cli.display import print_banner, render_nl, render_sql, render_table
+from mintq.cli.display import print_banner, view_result
 
 DATA_DIR = Path.home() / ".mintq"
 
@@ -27,6 +27,7 @@ class ChatSession:
         self.connections = ConnectionManager()
         self.output_modes: set[str] = {"nl"}
         self.chat_agent = ChatAgent(model=model)
+        self.last_result: ChatResult | None = None
 
     @property
     def prompt_text(self) -> str:
@@ -78,10 +79,6 @@ async def run_chat(model: str, agent: str) -> None:
             console.print(f"[red]Agent error:[/red] {e}")
             continue
 
+        session.last_result = result
         console.print()
-        if "nl" in session.output_modes and result.text:
-            render_nl(console, result.text)
-        if "sql" in session.output_modes and result.sql:
-            render_sql(console, result.sql)
-        if "table" in session.output_modes and result.df is not None and not result.df.empty:
-            render_table(console, result.df)
+        await view_result(console, result)

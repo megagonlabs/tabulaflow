@@ -36,18 +36,20 @@ def render_sql(console: Console, sql: str) -> None:
     console.print(Panel(syntax, title="[bold yellow]SQL[/bold yellow]", border_style="yellow"))
 
 
-def render_table(console: Console, df: pd.DataFrame, max_rows: int = 50) -> None:
+def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None:
     """Render a DataFrame as a Rich table."""
     table = Table(show_header=True, header_style="bold magenta", show_lines=True)
     for col in df.columns:
         table.add_column(str(col))
 
+    truncated = len(df) > max_rows
     display_df = df.head(max_rows)
     for _, row in display_df.iterrows():
         table.add_row(*(str(v) for v in row))
 
-    if len(df) > max_rows:
-        table.caption = f"[dim]Showing {max_rows} of {len(df)} rows[/dim]"
+    if truncated:
+        table.add_row(*["[dim]...[/dim]"] * len(df.columns))
+        table.caption = f"[dim]{len(df)} rows total (truncated)[/dim]"
 
     console.print(table)
 
@@ -325,3 +327,113 @@ def render_agent_progress(console: Console) -> object:
     from mintq.cli.agent import AgentProgressDisplay
 
     return AgentProgressDisplay(console)
+
+
+# ---------------------------------------------------------------------------
+# Result viewer — Tab/Shift+Tab cycling between NL / SQL / Table views
+# ---------------------------------------------------------------------------
+
+_VIEW_NAMES = ["nl", "sql", "table"]
+
+
+def _capture_rich(console: Console, render_fn: object, *args: object) -> str:
+    """Render a Rich callable to an ANSI string."""
+    from io import StringIO
+
+    buf = StringIO()
+    capture_console = Console(file=buf, force_terminal=True, width=console.width)
+    render_fn(capture_console, *args)  # type: ignore[operator]
+    return buf.getvalue()
+
+
+async def view_result(console: Console, result: object) -> None:
+    """Launch an interactive viewer to cycle through NL / SQL / Table views."""
+    from mintq.cli.agent import ChatResult
+
+    assert isinstance(result, ChatResult)
+
+    views: dict[str, str | None] = {}
+    if result.text:
+        views["nl"] = _capture_rich(console, render_nl, result.text)
+    if result.sql:
+        views["sql"] = _capture_rich(console, render_sql, result.sql)
+    if result.df is not None and not result.df.empty:
+        views["table"] = _capture_rich(console, render_table, result.df)
+
+    available = [v for v in _VIEW_NAMES if v in views]
+    if not available:
+        console.print("[dim]No results to display.[/dim]")
+        return
+
+    if len(available) == 1:
+        console.print(views[available[0]], end="")
+        return
+
+    from prompt_toolkit.application import Application
+    from prompt_toolkit.formatted_text import ANSI
+    from prompt_toolkit.key_binding import KeyBindings
+    from prompt_toolkit.layout import Layout, HSplit, Window, FormattedTextControl
+
+    current_idx = [0]
+
+    def _render_tab_bar() -> str:
+        from io import StringIO as _StringIO
+
+        buf = _StringIO()
+        bar_console = Console(file=buf, force_terminal=True, width=console.width)
+        parts = Text()
+        for i, name in enumerate(available):
+            if i > 0:
+                parts.append("  ")
+            if i == current_idx[0]:
+                parts.append(f" {name} ", style="bold reverse")
+            else:
+                parts.append(f" {name} ", style="dim")
+        parts.append("    ")
+        parts.append("Tab: next  Shift+Tab: prev  Enter: done", style="italic dim")
+        bar_console.print(parts)
+        return buf.getvalue()
+
+    def _get_content() -> ANSI:
+        view_key = available[current_idx[0]]
+        content = views[view_key] or ""
+        tab_bar = _render_tab_bar()
+        return ANSI(content + tab_bar)
+
+    kb = KeyBindings()
+
+    @kb.add("tab")
+    def _next(event: object) -> None:
+        current_idx[0] = (current_idx[0] + 1) % len(available)
+        app.invalidate()
+
+    @kb.add("s-tab")
+    def _prev(event: object) -> None:
+        current_idx[0] = (current_idx[0] - 1) % len(available)
+        app.invalidate()
+
+    @kb.add("enter")
+    @kb.add("q")
+    @kb.add("escape")
+    def _exit(event: object) -> None:
+        event.app.exit()  # type: ignore[union-attr]
+
+    content_control = FormattedTextControl(
+        text=_get_content,
+        focusable=False,
+    )
+
+    layout = Layout(
+        HSplit([
+            Window(content=content_control, wrap_lines=True),
+        ])
+    )
+
+    app: Application[None] = Application(
+        layout=layout,
+        key_bindings=kb,
+        full_screen=False,
+        erase_when_done=False,
+    )
+
+    await app.run_async()
