@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import TYPE_CHECKING
 
 from rich.console import Console, Group
 from rich.panel import Panel
@@ -10,9 +11,9 @@ from rich.syntax import Syntax
 from rich.table import Table, box
 from rich.text import Text
 
-import pandas as pd
-
-from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
+if TYPE_CHECKING:
+    import pandas as pd
+    from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
 def print_banner(console: Console, *, model: str, agent: str) -> None:

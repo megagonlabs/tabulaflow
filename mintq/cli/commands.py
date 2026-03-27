@@ -86,7 +86,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
     url = await _prompt_password_if_needed(url, console)
 
-    from mintq.db_connector import SQLConnector
+    from mintq.db_connector.sql_conn import SQLConnector
 
     global_id = f"cli+{alias}"
     with console.status(f"[cyan]Connecting to {alias}...[/cyan]"):

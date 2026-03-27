@@ -5,25 +5,16 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
 
 import jinja2
-import pandas as pd
-from pydantic_ai import Agent
-from pydantic_ai.messages import (
-    FunctionToolCallEvent,
-    FunctionToolResultEvent,
-    ModelMessage,
-    PartDeltaEvent,
-    TextPartDelta,
-)
-from pydantic_ai.run import AgentRunResultEvent
 from rich.console import Console
 
-from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-from mintq.preprocessors import DBSummarizer
-from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.toolhub import GetColumnJsonSchemaTool, GetTableSchemaTool, RenderPlotextChartTool, RunQueryTool
+if TYPE_CHECKING:
+    import pandas as pd
+    from pydantic_ai.messages import ModelMessage
+
+    from mintq.db_connector.base import BaseSQLDBConnector
 
 logger = logging.getLogger(__name__)
 
@@ -110,6 +101,10 @@ class ChatAgent:
         if cache_key in self._db_summaries:
             return self._db_summaries[cache_key]
 
+        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from mintq.preprocessors.components.schema_compressor import SchemaCompressor
+        from mintq.preprocessors.db_summarizer import DBSummarizer
+
         schema = connector.schema
         if len(schema.tables) < self._SUMMARIZE_MIN_TABLES:
             compressor = SchemaCompressor()
@@ -135,7 +130,15 @@ class ChatAgent:
         console: Console,
     ) -> ChatResult:
         """Run the agent on a user question, streaming progress to the console."""
+        from pydantic_ai import Agent
+        from pydantic_ai.run import AgentRunResultEvent
+
         from mintq.cli.display import render_agent_progress
+        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
+        from mintq.toolhub.get_table_schema import GetTableSchemaTool
+        from mintq.toolhub.render_chart import RenderPlotextChartTool
+        from mintq.toolhub.run_query import RunQueryTool
 
         db_document = await self._get_db_document(connector, console)
 
@@ -205,10 +208,12 @@ class ChatAgent:
 def _handle_stream_event(
     event: object,
     progress: AgentProgressDisplay,
-    run_query_tool: RunQueryTool,
-    get_table_schema_tool: GetTableSchemaTool,
+    run_query_tool: object,
+    get_table_schema_tool: object,
 ) -> None:
     """Dispatch a single stream event to the progress display."""
+    from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
+
     if isinstance(event, FunctionToolCallEvent):
         tool_name = event.part.tool_name
         args = event.part.args
@@ -273,8 +278,8 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
 
 def _summarize_result(
     tool_name: str,
-    run_query_tool: RunQueryTool,
-    get_table_schema_tool: GetTableSchemaTool,
+    run_query_tool: object,
+    get_table_schema_tool: object,
 ) -> str:
     if tool_name == "run_query":
         try:

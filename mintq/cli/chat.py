@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 
-from mintq.cli.agent import ChatAgent, ChatResult
 from mintq.cli.commands import handle_command, COMMAND_PREFIX
-from mintq.cli.connections import ConnectionManager
 from mintq.cli.display import print_banner, view_result
+
+if TYPE_CHECKING:
+    from mintq.cli.agent import ChatAgent, ChatResult
+    from mintq.cli.connections import ConnectionManager
 
 DATA_DIR = Path.home() / ".mintq"
 
@@ -22,11 +25,14 @@ class ChatSession:
     """Holds state for a single interactive session."""
 
     def __init__(self, model: str, agent: str) -> None:
+        from mintq.cli.agent import ChatAgent
+        from mintq.cli.connections import ConnectionManager
+
         self.model = model
         self.agent_name = agent
-        self.connections = ConnectionManager()
+        self.connections: ConnectionManager = ConnectionManager()
         self.output_modes: set[str] = {"nl"}
-        self.chat_agent = ChatAgent(model=model)
+        self.chat_agent: ChatAgent = ChatAgent(model=model)
         self.last_result: ChatResult | None = None
 
     @property
@@ -37,28 +43,41 @@ class ChatSession:
         return "❯ "
 
 
+def _init_session_sync(model: str, agent: str) -> ChatSession:
+    """Initialize ChatSession (runs heavy imports)."""
+    return ChatSession(model=model, agent=agent)
+
+
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
     import logging
 
-    import mintq
+    logging.basicConfig(level=logging.WARNING)
+    logging.getLogger("mintq").setLevel(logging.CRITICAL)
 
-    mintq.configure(log_level=logging.CRITICAL)
-
-    session = ChatSession(model=model, agent=agent)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
     prompt_session: PromptSession[str] = PromptSession(
         history=FileHistory(str(DATA_DIR / "history")),
     )
 
+    import asyncio
+
     print_banner(console, model=model, agent=agent)
 
+    loop = asyncio.get_running_loop()
+    init_task = loop.run_in_executor(None, _init_session_sync, model, agent)
+    session: ChatSession | None = None
+
     while True:
+        prompt_text = session.prompt_text if session else "❯ "
         try:
-            user_input = await prompt_session.prompt_async(session.prompt_text)
+            user_input = await prompt_session.prompt_async(prompt_text)
         except (EOFError, KeyboardInterrupt):
             console.print()
             break
+
+        if session is None:
+            session = await init_task
 
         text = user_input.strip()
         if not text:

@@ -1,13 +1,26 @@
-from mintq import patches  # noqa: F401
 import logging
 import os
 from importlib.metadata import version
 
-from mintq.agenthub.base import agent_registry
-from mintq.datahub.base import dataset_registry
-from mintq.metrics.base import metric_registry
-from mintq.formatters.base import formatter_registry
-from mintq.preprocessors.base import preprocessor_registry
+
+def __getattr__(name: str) -> object:
+    """Lazy-load registries on first access to avoid heavy imports at startup."""
+    _lazy = {
+        "agent_registry": ("mintq.agenthub.base", "agent_registry"),
+        "dataset_registry": ("mintq.datahub.base", "dataset_registry"),
+        "metric_registry": ("mintq.metrics.base", "metric_registry"),
+        "formatter_registry": ("mintq.formatters.base", "formatter_registry"),
+        "preprocessor_registry": ("mintq.preprocessors.base", "preprocessor_registry"),
+    }
+    if name in _lazy:
+        module_path, attr = _lazy[name]
+        import importlib
+
+        mod = importlib.import_module(module_path)
+        val = getattr(mod, attr)
+        globals()[name] = val
+        return val
+    raise AttributeError(f"module 'mintq' has no attribute {name!r}")
 
 logger = logging.getLogger(__name__)
 
@@ -22,6 +35,7 @@ def configure(*, log_level: int | None = None) -> None:
         log_level: Override the mintq logger level. If None, uses the
             level from ``MINTQ_LOG_LEVEL`` env var (default INFO).
     """
+    import mintq.patches  # noqa: F401
     from mintq.config import mintq_config
 
     _register_custom_model_prices()
