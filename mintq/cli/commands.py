@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shlex
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse, urlunparse
 
 from rich.console import Console
@@ -25,6 +25,27 @@ _FILE_EXTENSIONS: dict[str, str] = {
     ".db": "sqlite+aiosqlite",
     ".duckdb": "duckdb",
 }
+
+
+def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
+    """Build connector engine kwargs based on URL scheme."""
+    scheme = url.split("://", 1)[0].split("+", 1)[0].lower()
+    if scheme != "bigquery":
+        return {}
+
+    google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get(
+        "GCP_BILLING_PROJECT"
+    )
+    if not google_cloud_project:
+        raise ValueError(
+            "BigQuery billing project required: set GOOGLE_CLOUD_PROJECT (or GCP_BILLING_PROJECT)."
+        )
+
+    engine_kwargs: dict[str, Any] = {"billing_project_id": google_cloud_project}
+    google_application_credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if google_application_credentials:
+        engine_kwargs["credentials_path"] = google_application_credentials
+    return engine_kwargs
 
 
 async def handle_command(text: str, session: ChatSession, console: Console) -> bool:
@@ -69,6 +90,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
             "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
             "[dim]  /connect ./data/schools.sqlite\n"
             "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
+            "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
             "  /connect snowflake://user@account/db\n"
             "  /connect duckdb:///path/to/db.duckdb[/dim]"
         )
@@ -87,6 +109,11 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         return False
 
     url = await _prompt_password_if_needed(url, console)
+    try:
+        engine_kwargs = _engine_kwargs_for_url(url)
+    except ValueError as e:
+        console.print(f"[red]Connection failed:[/red] {e}")
+        return False
 
     from mintq.db_connector.sql_conn import SQLConnector
 
@@ -101,6 +128,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
                 read_only=True,
                 enable_schema_caching=True,
                 enable_query_caching=False,
+                **engine_kwargs,
             )
         except Exception as e:
             console.print(f"[red]Connection failed:[/red] {e}")
