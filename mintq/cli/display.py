@@ -54,14 +54,25 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
     console.print()
 
 
-def render_sql(console: Console, sql: str) -> None:
-    """Render a SQL query with syntax highlighting."""
+def render_sql(console: Console, sql: str, max_lines: int = 20) -> None:
+    """Render a SQL query with syntax highlighting and optional truncation."""
+    stripped = sql.strip()
+    all_lines = stripped.splitlines()
+    total_lines = len(all_lines)
+    truncated = total_lines > max_lines
+
+    display_sql = "\n".join(all_lines[:max_lines]) if truncated else stripped
     syntax = Syntax(
-        sql.strip(), "sql", theme="solarized-dark",
-        padding=(1, 1), line_numbers=True,
+        display_sql,
+        "sql",
+        theme="solarized-dark",
+        padding=(1, 1),
+        line_numbers=True,
         background_color="default",
     )
     console.print(syntax)
+    if truncated:
+        console.print(f"[dim]{total_lines} lines total (truncated to {max_lines})[/dim]")
 
 
 def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None:
