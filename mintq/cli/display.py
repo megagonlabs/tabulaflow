@@ -46,7 +46,10 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
 
 def render_sql(console: Console, sql: str) -> None:
     """Render a SQL query with syntax highlighting."""
-    syntax = Syntax(sql.strip(), "sql", theme="monokai", padding=1)
+    syntax = Syntax(
+        sql.strip(), "sql", theme="solarized-dark",
+        padding=(1, 1), line_numbers=True,
+    )
     console.print(syntax)
 
 
