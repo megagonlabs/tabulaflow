@@ -12,18 +12,22 @@ from mintq.preprocessors.base import preprocessor_registry
 logger = logging.getLogger(__name__)
 
 
-def configure() -> None:
+def configure(*, log_level: int | None = None) -> None:
     """Set up logging, tracing, and instrumentation.
 
     Call this once from your entry point before running any pipeline.
     Reads configuration from environment variables and ``mintq_config``.
+
+    Args:
+        log_level: Override the mintq logger level. If None, uses the
+            level from ``MINTQ_LOG_LEVEL`` env var (default INFO).
     """
     from mintq.config import mintq_config
-
+î
     _register_custom_model_prices()
 
     logging.basicConfig(level=logging.WARNING)
-    logging.getLogger("mintq").setLevel(mintq_config.log_level)
+    logging.getLogger("mintq").setLevel(log_level if log_level is not None else mintq_config.log_level)
 
     logger.info("MINTQ Configuration: %s", mintq_config)
 

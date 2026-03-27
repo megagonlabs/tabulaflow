@@ -33,7 +33,7 @@ class ChatSession:
     def prompt_text(self) -> str:
         active = self.connections.active_alias
         if active:
-            return f"[{active}] ❯ "
+            return f"[{active}] ❯ "î
         return "❯ "
 
 
@@ -43,8 +43,7 @@ async def run_chat(model: str, agent: str) -> None:
 
     import mintq
 
-    mintq.configure()
-    logging.getLogger("mintq").setLevel(logging.CRITICAL)
+    mintq.configure(log_level=logging.CRITICAL)
 
     session = ChatSession(model=model, agent=agent)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
