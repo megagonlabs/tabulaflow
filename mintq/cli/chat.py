@@ -33,7 +33,7 @@ class ChatSession:
     def prompt_text(self) -> str:
         active = self.connections.active_alias
         if active:
-            return f"[{active}] ❯ "î
+            return f"[{active}] ❯ "
         return "❯ "
 
 
