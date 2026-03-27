@@ -55,7 +55,7 @@ async def run_chat(model: str, agent: str) -> None:
         try:
             user_input = await prompt_session.prompt_async(session.prompt_text)
         except (EOFError, KeyboardInterrupt):
-            console.print("\n[dim]Goodbye![/dim]")
+            console.print()
             break
 
         text = user_input.strip()

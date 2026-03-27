@@ -51,9 +51,8 @@ async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> 
     return False
 
 
-async def _cmd_quit(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_exit(args: list[str], session: ChatSession, console: Console) -> bool:
     await session.connections.disconnect_all()
-    console.print("[dim]Goodbye![/dim]")
     return True
 
 
@@ -338,7 +337,7 @@ async def _cmd_result_table(args: list[str], session: ChatSession, console: Cons
 
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
-    "/quit": (_cmd_quit, "Exit the chat"),
+    "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Clear the screen"),
     "/connect": (_cmd_connect, "Connect to a database: /connect <url> [alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect [alias]"),

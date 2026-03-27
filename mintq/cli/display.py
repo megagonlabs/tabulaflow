@@ -22,7 +22,7 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
         Panel.fit(
             f"[bold]Interactive SQL Chat[/bold]\n"
             f"[dim]model:[/dim] {model}  [dim]agent:[/dim] {agent}\n"
-            f"[dim]Type [bold]/help[/bold] for commands, [bold]/quit[/bold] to exit[/dim]",
+            f"[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
             title="[bold cyan]mintq[/bold cyan]",
             border_style="cyan",
         )
