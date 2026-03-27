@@ -370,7 +370,7 @@ async def view_result(console: Console, result: object) -> None:
         return
 
     if len(available) == 1:
-        console.print(views[available[0]], end="")
+        console.print(Text.from_ansi(views[available[0]]), end="")
         return
 
     from prompt_toolkit.application import Application
