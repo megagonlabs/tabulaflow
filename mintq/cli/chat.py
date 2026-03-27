@@ -39,9 +39,12 @@ class ChatSession:
 
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
+    import logging
+
     import mintq
 
     mintq.configure()
+    logging.getLogger("mintq").setLevel(logging.CRITICAL)
 
     session = ChatSession(model=model, agent=agent)
     DATA_DIR.mkdir(parents=True, exist_ok=True)
