@@ -242,14 +242,14 @@ async def load_schema_with_cache_async(
     group_date_partitioned_tables: bool = True,
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
-    enable_caching: bool = True,
+    enable_schema_caching: bool = True,
 ) -> SQLSchema:
     """Loads the database schema, utilizing a cache if available and enabled.
 
     Args:
-        enable_caching: If False, skip schema cache read/write regardless of
-            global config.  Useful for mutable databases where cached schemas
-            would be stale.
+        enable_schema_caching: If False, skip schema cache read/write
+            regardless of global config.  Useful for mutable databases
+            where cached schemas would be stale.
     """
     schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
@@ -263,7 +263,7 @@ async def load_schema_with_cache_async(
         dialect = dialect_map.get(sqlalchemy_dialect, sqlalchemy_dialect)
 
         if (
-            enable_caching
+            enable_schema_caching
             and mintq_config.schema_cache_enabled
             and not mintq_config.schema_cache_overwrite
             and os.path.exists(cache_path)
@@ -271,7 +271,7 @@ async def load_schema_with_cache_async(
             with open(cache_path, "r", encoding="utf-8") as f:
                 return SQLSchema.model_validate_json(f.read())
 
-        if enable_caching and mintq_config.schema_cache_required:
+        if enable_schema_caching and mintq_config.schema_cache_required:
             raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
 
         schema = await build_schema_async(
@@ -287,7 +287,7 @@ async def load_schema_with_cache_async(
             await t_eng.engine.dispose()  # type: ignore
         else:
             t_eng.engine.dispose()
-        if enable_caching and mintq_config.schema_cache_enabled:
+        if enable_schema_caching and mintq_config.schema_cache_enabled:
             with open(cache_path, "w", encoding="utf-8") as f:
                 f.write(schema.model_dump_json(indent=2))
         return schema
@@ -760,7 +760,8 @@ class SQLConnector:
     language: SQLDialect
     _t_eng: ThrottledEngine
     read_only: bool = True
-    enable_caching: bool = True
+    enable_schema_caching: bool = True
+    enable_query_caching: bool = True
     _group_date_partitioned_tables: bool = True
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
@@ -780,7 +781,8 @@ class SQLConnector:
         group_date_partitioned_tables: bool = True,
         group_table_regexes: list[str] = [],
         read_only: bool = True,
-        enable_caching: bool = True,
+        enable_schema_caching: bool = True,
+        enable_query_caching: bool = True,
         include_schema_names: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
@@ -819,9 +821,11 @@ class SQLConnector:
             read_only: If ``True`` (the default), write statements (INSERT,
                 UPDATE, DELETE, DROP, etc.) are rejected before reaching the
                 database, returning an :class:`ExecResult` with an error.
-            enable_caching: If ``False``, skip schema and query result
-                caching for this connector regardless of global config.
-                Use for mutable databases where cached results would be stale.
+            enable_schema_caching: If ``False``, skip schema cache
+                read/write for this connector regardless of global config.
+            enable_query_caching: If ``False``, skip query result caching
+                for this connector regardless of global config. Useful for
+                interactive use where fresh results are always needed.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -862,7 +866,7 @@ class SQLConnector:
                 group_date_partitioned_tables,
                 group_table_regexes,
                 include_schema_names=include_schema_names,
-                enable_caching=enable_caching,
+                enable_schema_caching=enable_schema_caching,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(
@@ -871,7 +875,8 @@ class SQLConnector:
             language,
             t_eng,
             read_only=read_only,
-            enable_caching=enable_caching,
+            enable_schema_caching=enable_schema_caching,
+            enable_query_caching=enable_query_caching,
             _group_date_partitioned_tables=group_date_partitioned_tables,
             _group_table_regexes=list(group_table_regexes),
             _include_schema_names=include_schema_names,
@@ -955,7 +960,7 @@ class SQLConnector:
                     include_schema_names=self._include_schema_names,
                 )
 
-            if self.enable_caching and mintq_config.schema_cache_enabled:
+            if self.enable_schema_caching and mintq_config.schema_cache_enabled:
                 schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
                 os.makedirs(schema_cache_dir, exist_ok=True)
                 cache_path = os.path.join(schema_cache_dir, f"{self.global_id}.json")
@@ -1020,7 +1025,7 @@ class SQLConnector:
 
         # --- query result cache lookup ---
         params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
-        caching_on = self.enable_caching and mintq_config.query_cache_enabled
+        caching_on = self.enable_query_caching and mintq_config.query_cache_enabled
         use_cache = caching_on and not mintq_config.query_cache_overwrite
 
         cache_hash: str | None = None

@@ -99,7 +99,8 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
                 engine_type=engine_type,
                 url=url,
                 read_only=True,
-                enable_caching=False,
+                enable_schema_caching=True,
+                enable_query_caching=False,
             )
         except Exception as e:
             console.print(f"[red]Connection failed:[/red] {e}")

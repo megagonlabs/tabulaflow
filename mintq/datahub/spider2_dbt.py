@@ -110,7 +110,8 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
             max_concurrency_per_db=4,
             schema=existing_schema,
             read_only=True,
-            enable_caching=False,
+            enable_schema_caching=False,
+            enable_query_caching=False,
         )
         dataset.db_connectors[task.db] = conn
 
