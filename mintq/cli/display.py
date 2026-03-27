@@ -7,11 +7,22 @@ from typing import TYPE_CHECKING
 
 from rich.console import Console, Group
 from rich.panel import Panel
+from rich.style import Style
 from rich.syntax import Syntax
 from rich.table import Table, box
 from rich.text import Text
+from rich.theme import Theme
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
+
+MINTQ_THEME = Theme({
+    "markdown.item.bullet": Style(bold=True),
+    "markdown.item.number": Style(bold=True),
+    "markdown.code": Style(bold=True, color="white", bgcolor="grey11"),
+    "markdown.code_block": Style(color="white", bgcolor="grey11"),
+    "markdown.block_quote": Style(color=ACCENT),
+    "markdown.list": Style(color=ACCENT),
+})
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -61,11 +72,13 @@ def render_nl(console: Console, text: str) -> None:
     """Render a natural language answer."""
     from rich.markdown import Markdown
 
+    console.push_theme(MINTQ_THEME)
     layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
     layout.add_column(width=2, no_wrap=True, vertical="top")
     layout.add_column(ratio=1)
     layout.add_row(Text("◆", style=ACCENT_BOLD), Markdown(text))
     console.print(layout)
+    console.pop_theme()
 
 
 def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict) -> None:
@@ -332,7 +345,7 @@ def _capture_rich(console: Console, render_fn: object, *args: object) -> str:
     from io import StringIO
 
     buf = StringIO()
-    capture_console = Console(file=buf, force_terminal=True, width=console.width)
+    capture_console = Console(file=buf, force_terminal=True, width=console.width, theme=MINTQ_THEME)
     render_fn(capture_console, *args)  # type: ignore[operator]
     return buf.getvalue()
 
