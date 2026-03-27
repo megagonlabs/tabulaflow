@@ -322,6 +322,8 @@ class AgentProgressDisplay:
         self._live.stop()
 
     def tool_start(self, name: str, args_summary: str) -> None:
+        if self._status_text and self._status_text != "Thinking...":
+            self._steps.append(("done", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
         self._steps.append(("running", name, label))
         self._streaming_text = ""
