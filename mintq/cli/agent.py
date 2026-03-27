@@ -221,9 +221,9 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
         return str(args)[:80]
 
     if tool_name == "run_query":
-        query = args.get("query", "")
-        if len(query) > 60:
-            query = query[:57] + "..."
+        query = " ".join(args.get("query", "").split())
+        if len(query) > 40:
+            query = query[:37] + "..."
         return query
     if tool_name == "get_table_schema":
         parts = []
