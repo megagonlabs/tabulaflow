@@ -79,9 +79,11 @@ def render_plotext(
 
     from mintq.cli.theme import ACCENT_RGB
 
+    effective_width = min(width, 80)
+
     plt.clear_figure()
     plt.theme("dark")
-    plt.plotsize(width, None)
+    plt.plotsize(effective_width, None)
 
     plt.axes_color("default")
     plt.ticks_color("default")
