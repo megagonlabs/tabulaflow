@@ -425,6 +425,7 @@ async def view_result(console: Console, result: object) -> None:
     content_control = FormattedTextControl(
         text=_get_content,
         focusable=False,
+        show_cursor=False,
     )
 
     layout = Layout(

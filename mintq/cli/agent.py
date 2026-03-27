@@ -156,7 +156,7 @@ class ChatAgent:
                     answer_text = event.result.output
                     break
 
-                _handle_stream_event(event, progress, run_query_tool)
+                _handle_stream_event(event, progress, run_query_tool, get_table_schema_tool)
 
         finally:
             progress.finish()
@@ -175,6 +175,7 @@ def _handle_stream_event(
     event: object,
     progress: AgentProgressDisplay,
     run_query_tool: RunQueryTool,
+    get_table_schema_tool: GetTableSchemaTool,
 ) -> None:
     """Dispatch a single stream event to the progress display."""
     if isinstance(event, FunctionToolCallEvent):
@@ -185,7 +186,7 @@ def _handle_stream_event(
 
     elif isinstance(event, FunctionToolResultEvent):
         tool_name = event.result.tool_name
-        result_summary = _summarize_result(tool_name, run_query_tool)
+        result_summary = _summarize_result(tool_name, run_query_tool, get_table_schema_tool)
         progress.tool_end(tool_name, result_summary)
 
     elif isinstance(event, PartDeltaEvent):
@@ -218,7 +219,11 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
     return str(args)[:80]
 
 
-def _summarize_result(tool_name: str, run_query_tool: RunQueryTool) -> str:
+def _summarize_result(
+    tool_name: str,
+    run_query_tool: RunQueryTool,
+    get_table_schema_tool: GetTableSchemaTool,
+) -> str:
     if tool_name == "run_query":
         try:
             pred = run_query_tool.last_pred_query()
@@ -228,6 +233,10 @@ def _summarize_result(tool_name: str, run_query_tool: RunQueryTool) -> str:
                 return "error"
         except ValueError:
             pass
+    if tool_name == "get_table_schema":
+        n = get_table_schema_tool.last_columns_returned
+        if n is not None:
+            return f"{n} columns"
     return "done"
 
 

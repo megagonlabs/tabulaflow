@@ -60,6 +60,7 @@ class GetTableSchemaTool:
         self._disconnect_on_finish = disconnect_on_finish
         self._enable_refresh = enable_refresh
         self._metrics = GetTableSchemaToolMetrics()
+        self.last_columns_returned: int | None = None
 
     def _invalidate_schema(self) -> None:
         self._compressed_schema = None
@@ -228,6 +229,8 @@ class GetTableSchemaTool:
             res += self.formatter.format_table(
                 table.model_copy(update={"columns": []}), add_description=self.add_description
             )
+
+        self.last_columns_returned = len(selected_columns)
 
         if self._disconnect_on_finish:
             await self.db_connector.disconnect_async()
