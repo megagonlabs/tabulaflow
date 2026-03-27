@@ -69,6 +69,7 @@ async def run_chat(model: str, agent: str) -> None:
     session: ChatSession | None = None
 
     while True:
+        console.print()
         prompt_text = session.prompt_text if session else "❯ "
         try:
             user_input = await prompt_session.prompt_async(prompt_text)

@@ -352,11 +352,11 @@ class AgentProgressDisplay:
 
         for status, _name, label in self._steps:
             if status == "running":
-                parts.append(Spinner("dots", text=label, style="cyan"))
+                parts.append(Spinner("dots", text=Text(label, style="dim"), style="dim"))
             else:
                 line = Text()
-                line.append("✓ ", style="green")
-                line.append(label)
+                line.append("✓ ", style="dim")
+                line.append(label, style="dim")
                 parts.append(line)
 
         if self._streaming_text:
