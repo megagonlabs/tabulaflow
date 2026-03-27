@@ -89,7 +89,7 @@ class ChatAgent:
     async def _get_db_document(
         self,
         connector: BaseSQLDBConnector,
-        console: Console,
+        progress: AgentProgressDisplay,
     ) -> str:
         """Build a database document for the system prompt.
 
@@ -112,9 +112,9 @@ class ChatAgent:
             formatter = SQLDDLSchemaFormatter()
             doc = formatter.format(compressed, add_description=True)
         else:
+            progress.set_status("Summarizing database...")
             summarizer = DBSummarizer(llm=self.summarizer_model)
-            with console.status("[cyan]Summarizing database...[/cyan]"):
-                summary = await summarizer.preprocess_async(connector)
+            summary = await summarizer.preprocess_async(connector)
             doc = summary.db_summary_markdown
 
         self._db_summaries[cache_key] = doc
@@ -140,41 +140,40 @@ class ChatAgent:
         from mintq.toolhub.render_chart import RenderPlotextChartTool
         from mintq.toolhub.run_query import RunQueryTool
 
-        db_document = await self._get_db_document(connector, console)
-
-        system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
-            language=connector.language or "SQL",
-            db_document=db_document,
-        )
-
-        formatter = SQLDDLSchemaFormatter()
-        run_query_tool = RunQueryTool(connector)
-        get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
-        get_column_json_schema_tool = GetColumnJsonSchemaTool(connector.schema)
-        render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
-
-        agent: Agent[None, str] = Agent(
-            model=self.model,
-            tools=[
-                get_table_schema_tool.as_pydantic_ai_tool(),
-                get_column_json_schema_tool.as_pydantic_ai_tool(),
-                run_query_tool.as_pydantic_ai_tool(),
-                render_chart_tool.as_pydantic_ai_tool(),
-            ],
-            instructions=system_prompt,
-            model_settings={},
-        )
-
-        history_key = self._history_key(connector)
-        message_history = self._message_history.get(history_key)
-
-        answer_text = ""
-        last_sql: str | None = None
-
         progress = render_agent_progress(console)
         progress.start()
 
         try:
+            db_document = await self._get_db_document(connector, progress)
+
+            system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+                language=connector.language or "SQL",
+                db_document=db_document,
+            )
+
+            formatter = SQLDDLSchemaFormatter()
+            run_query_tool = RunQueryTool(connector)
+            get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
+            get_column_json_schema_tool = GetColumnJsonSchemaTool(connector.schema)
+            render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
+
+            agent: Agent[None, str] = Agent(
+                model=self.model,
+                tools=[
+                    get_table_schema_tool.as_pydantic_ai_tool(),
+                    get_column_json_schema_tool.as_pydantic_ai_tool(),
+                    run_query_tool.as_pydantic_ai_tool(),
+                    render_chart_tool.as_pydantic_ai_tool(),
+                ],
+                instructions=system_prompt,
+                model_settings={},
+            )
+
+            history_key = self._history_key(connector)
+            message_history = self._message_history.get(history_key)
+
+            answer_text = ""
+            last_sql: str | None = None
             async for event in agent.run_stream_events(
                 question,
                 message_history=message_history,
@@ -306,10 +305,15 @@ class AgentProgressDisplay:
         self._console = console
         self._steps: list[tuple[str, str, str]] = []
         self._streaming_text = ""
-        self._live = Live(console=console, refresh_per_second=8)
+        self._status_text: str | None = "Thinking..."
+        self._live = Live(console=console, refresh_per_second=12)
 
     def start(self) -> None:
         self._live.start()
+        self._update()
+
+    def set_status(self, text: str) -> None:
+        self._status_text = text
         self._update()
 
     def finish(self) -> None:
@@ -321,6 +325,7 @@ class AgentProgressDisplay:
         label = f"{name}({args_summary})" if args_summary else name
         self._steps.append(("running", name, label))
         self._streaming_text = ""
+        self._status_text = None
         self._update()
 
     def tool_end(self, name: str, result_summary: str) -> None:
@@ -336,22 +341,29 @@ class AgentProgressDisplay:
         self._update()
 
     def _update(self) -> None:
+        from rich.console import Group
+        from rich.spinner import Spinner
         from rich.text import Text
 
-        lines = Text()
+        parts: list[object] = []
+
+        if self._status_text and not self._steps:
+            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style="cyan"))
+
         for status, _name, label in self._steps:
             if status == "running":
-                lines.append("  ⠋ ", style="cyan")
+                parts.append(Spinner("dots", text=label, style="cyan"))
             else:
-                lines.append("  ✓ ", style="green")
-            lines.append(label)
-            lines.append("\n")
+                line = Text()
+                line.append("✓ ", style="green")
+                line.append(label)
+                parts.append(line)
 
         if self._streaming_text:
-            lines.append("\n")
             display = self._streaming_text
             if len(display) > 500:
                 display = "..." + display[-497:]
-            lines.append(display, style="dim")
+            parts.append(Text())
+            parts.append(Text(display, style="dim"))
 
-        self._live.update(lines)
+        self._live.update(Group(*parts) if parts else Text())
