@@ -58,7 +58,11 @@ def render_nl(console: Console, text: str) -> None:
     """Render a natural language answer."""
     from rich.markdown import Markdown
 
-    console.print(Markdown(text))
+    layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
+    layout.add_column(width=2, no_wrap=True, vertical="top")
+    layout.add_column(ratio=1)
+    layout.add_row(Text("◆", style="bold magenta"), Markdown(text))
+    console.print(layout)
 
 
 def render_chart(console: Console, df: pd.DataFrame) -> None:

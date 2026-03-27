@@ -33,8 +33,8 @@ class ChatSession:
     def prompt_text(self) -> str:
         active = self.connections.active_alias
         if active:
-            return f"mintq [{active}]> "
-        return "mintq> "
+            return f"[{active}] ❯ "
+        return "❯ "
 
 
 async def run_chat(model: str, agent: str) -> None:
