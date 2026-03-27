@@ -435,4 +435,4 @@ async def view_result(console: Console, result: object) -> None:
     await app.run_async()
 
     view_key = available[current_idx[0]]
-    console.print(Text.from_ansi(views[view_key] or ""), end="")
+    console.print(Text.from_ansi(views[view_key] or ""))

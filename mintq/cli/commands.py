@@ -109,7 +109,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     dialect = connector.language or "unknown"
     session.connections.add(alias, connector)
     console.print(
-        f"[green]✓[/green] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)"
+        f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)"
     )
     return False
 
@@ -120,7 +120,7 @@ async def _cmd_disconnect(args: list[str], session: ChatSession, console: Consol
         console.print("[red]No active connection.[/red]")
         return False
     if await session.connections.remove(alias):
-        console.print(f"[green]✓[/green] Disconnected from [bold]{alias}[/bold]")
+        console.print(f"[{ACCENT}]✓[/{ACCENT}] Disconnected from [bold]{alias}[/bold]")
     else:
         console.print(f"[red]No connection named:[/red] {alias}")
     return False
@@ -151,7 +151,7 @@ async def _cmd_use(args: list[str], session: ChatSession, console: Console) -> b
         console.print("[red]Usage:[/red] /use <alias>")
         return False
     if session.connections.use(args[0]):
-        console.print(f"[green]✓[/green] Switched to [bold]{args[0]}[/bold]")
+        console.print(f"[{ACCENT}]✓[/{ACCENT}] Switched to [bold]{args[0]}[/bold]")
     else:
         console.print(f"[red]No connection named:[/red] {args[0]}")
     return False
@@ -239,7 +239,7 @@ async def _cmd_model(args: list[str], session: ChatSession, console: Console) ->
         console.print(f"[dim]Current model:[/dim] {session.model}")
         return False
     session.model = args[0]
-    console.print(f"[green]✓[/green] Model set to [bold]{session.model}[/bold]")
+    console.print(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]")
     return False
 
 
@@ -248,7 +248,7 @@ async def _cmd_agent(args: list[str], session: ChatSession, console: Console) ->
         console.print(f"[dim]Current agent:[/dim] {session.agent_name}")
         return False
     session.agent_name = args[0]
-    console.print(f"[green]✓[/green] Agent set to [bold]{session.agent_name}[/bold]")
+    console.print(f"[{ACCENT}]✓[/{ACCENT}] Agent set to [bold]{session.agent_name}[/bold]")
     return False
 
 
