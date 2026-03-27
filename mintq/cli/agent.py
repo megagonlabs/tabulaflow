@@ -23,7 +23,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors import DBSummarizer
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.toolhub import GetTableSchemaTool, RunQueryTool
+from mintq.toolhub import GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 
 logger = logging.getLogger(__name__)
 
@@ -139,11 +139,13 @@ class ChatAgent:
         formatter = SQLDDLSchemaFormatter()
         run_query_tool = RunQueryTool(connector)
         get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
+        get_column_json_schema_tool = GetColumnJsonSchemaTool(connector.schema)
 
         agent: Agent[None, str] = Agent(
             model=self.model,
             tools=[
                 get_table_schema_tool.as_pydantic_ai_tool(),
+                get_column_json_schema_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
@@ -229,6 +231,16 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
             parts.append(str(args["schema_name"]))
         parts.append(str(args.get("table_name", "")))
         return ".".join(parts)
+    if tool_name == "get_column_json_schema":
+        parts = []
+        if args.get("schema_name"):
+            parts.append(str(args["schema_name"]))
+        parts.append(str(args.get("table_name", "")))
+        parts.append(str(args.get("column_name", "")))
+        label = ".".join(parts)
+        if args.get("path"):
+            label += f", path={args['path']}"
+        return label
     return str(args)[:80]
 
 
