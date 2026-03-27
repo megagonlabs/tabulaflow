@@ -13,10 +13,10 @@ app = typer.Typer(
 @app.command()
 def chat(
     model: str = typer.Option(
-        "openai-responses:gpt-5.3-codex",
+        "openai-responses:gpt-5.4",
         "--model",
         "-m",
-        help="LLM identifier (e.g. openai-responses:gpt-5.3-codex).",
+        help="LLM identifier (e.g. openai-responses:gpt-5.4).",
     ),
     agent: str = typer.Option(
         "mintq_agent",
