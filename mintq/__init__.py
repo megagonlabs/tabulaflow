@@ -23,7 +23,7 @@ def configure(*, log_level: int | None = None) -> None:
             level from ``MINTQ_LOG_LEVEL`` env var (default INFO).
     """
     from mintq.config import mintq_config
-î
+
     _register_custom_model_prices()
 
     logging.basicConfig(level=logging.WARNING)
