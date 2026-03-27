@@ -65,40 +65,16 @@ def render_nl(console: Console, text: str) -> None:
     console.print(layout)
 
 
-def render_chart(console: Console, df: pd.DataFrame) -> None:
-    """Render a simple auto-detected chart using plotext."""
-    import plotext as plt
+def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict) -> None:
+    """Render a plotext chart from a Vega-Lite spec and DataFrame."""
+    from mintq.toolhub.render_chart import parse_vegalite_spec, render_plotext
 
-    numeric_cols = df.select_dtypes(include="number").columns.tolist()
-    if not numeric_cols:
-        console.print("[dim]No numeric columns to chart.[/dim]")
-        return
-
-    non_numeric = [c for c in df.columns if c not in numeric_cols]
-
-    plt.clear_figure()
-    plt.theme("dark")
-    plt.plotsize(console.width, None)
-
-    if non_numeric and len(numeric_cols) >= 1:
-        labels = [str(v) for v in df[non_numeric[0]].tolist()]
-        values = df[numeric_cols[0]].tolist()
-        plt.bar(labels, values)
-        plt.xlabel(non_numeric[0])
-        plt.ylabel(numeric_cols[0])
-    elif len(numeric_cols) == 1:
-        values = df[numeric_cols[0]].tolist()
-        plt.bar(list(range(len(values))), values)
-        plt.ylabel(numeric_cols[0])
-    else:
-        x = df[numeric_cols[0]].tolist()
-        y = df[numeric_cols[1]].tolist()
-        plt.scatter(x, y)
-        plt.xlabel(numeric_cols[0])
-        plt.ylabel(numeric_cols[1])
-
-    chart_str = plt.build()
-    console.print(Text.from_ansi(chart_str))
+    try:
+        mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
+        chart_str = render_plotext(mark, x_field, y_field, title, df, console.width)
+        console.print(Text.from_ansi(chart_str))
+    except Exception as e:
+        console.print(f"[dim]Chart error: {e}[/dim]")
 
 
 # ---------------------------------------------------------------------------
@@ -367,11 +343,12 @@ async def view_result(console: Console, result: object) -> None:
     views: dict[str, str | None] = {}
     if result.text:
         views["response"] = _capture_rich(console, render_nl, result.text)
-    if result.sql:
-        views["sql"] = _capture_rich(console, render_sql, result.sql)
+    if result.chart_spec is not None and result.chart_df is not None:
+        views["chart"] = _capture_rich(console, render_chart, result.chart_df, result.chart_spec)
     if result.df is not None and not result.df.empty:
         views["data"] = _capture_rich(console, render_table, result.df)
-        views["chart"] = _capture_rich(console, render_chart, result.df)
+    if result.sql:
+        views["sql"] = _capture_rich(console, render_sql, result.sql)
 
     available = [v for v in _VIEW_NAMES if v in views]
     if not available:

@@ -23,7 +23,7 @@ from mintq.db_connector import BaseSQLDBConnector
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors import DBSummarizer
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.toolhub import GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from mintq.toolhub import GetColumnJsonSchemaTool, GetTableSchemaTool, RenderPlotextChartTool, RunQueryTool
 
 logger = logging.getLogger(__name__)
 
@@ -50,6 +50,12 @@ Writing the task query:
 - You may execute intermediate or exploratory queries multiple times; however, the final query (the last one executed) must be complete and fully constructed. In the final query, do not split the logic into multiple dependent queries (for example, first retrieving an ID and then using that ID in a subsequent query—this is not allowed).
 - For complex queries with multiple CTEs, build incrementally: execute and verify each CTE's output before adding the next. Do NOT jump straight to the full assembled query.
 - Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
+
+Visualization:
+- After running the final query, call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
+- Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
+- Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
+- Prefer bar for categorical comparisons, line for time series, point for correlations.
 </tool_calling>
 
 {%- if db_document %}
@@ -68,6 +74,8 @@ class ChatResult:
     text: str
     sql: str | None = None
     df: pd.DataFrame | None = None
+    chart_spec: dict | None = None
+    chart_df: pd.DataFrame | None = None
 
 
 @dataclass
@@ -140,6 +148,7 @@ class ChatAgent:
         run_query_tool = RunQueryTool(connector)
         get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
         get_column_json_schema_tool = GetColumnJsonSchemaTool(connector.schema)
+        render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
 
         agent: Agent[None, str] = Agent(
             model=self.model,
@@ -147,6 +156,7 @@ class ChatAgent:
                 get_table_schema_tool.as_pydantic_ai_tool(),
                 get_column_json_schema_tool.as_pydantic_ai_tool(),
                 run_query_tool.as_pydantic_ai_tool(),
+                render_chart_tool.as_pydantic_ai_tool(),
             ],
             instructions=system_prompt,
             model_settings={},
@@ -183,7 +193,13 @@ class ChatAgent:
         except ValueError:
             last_df = None
 
-        return ChatResult(text=answer_text, sql=last_sql, df=last_df)
+        return ChatResult(
+            text=answer_text,
+            sql=last_sql,
+            df=last_df,
+            chart_spec=render_chart_tool.last_vegalite_spec,
+            chart_df=render_chart_tool.last_chart_df,
+        )
 
 
 def _handle_stream_event(
@@ -241,6 +257,17 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
         if args.get("path"):
             label += f", path={args['path']}"
         return label
+    if tool_name == "render_chart":
+        spec_str = args.get("vegalite_spec", "")
+        try:
+            spec = json.loads(spec_str) if isinstance(spec_str, str) else spec_str
+            mark = spec.get("mark", "") if isinstance(spec, dict) else ""
+            if isinstance(mark, dict):
+                mark = mark.get("type", "")
+            title = spec.get("title", "") if isinstance(spec, dict) else ""
+            return str(title) if title else str(mark)
+        except (json.JSONDecodeError, TypeError):
+            return "chart"
     return str(args)[:80]
 
 

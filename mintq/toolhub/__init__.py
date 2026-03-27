@@ -10,6 +10,7 @@ from mintq.toolhub.get_column_description import GetColumnDescriptionTool
 from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from mintq.toolhub.file_editor import FileEditorTool
 from mintq.toolhub.run_dbt import RunDbtTool
+from mintq.toolhub.render_chart import RenderPlotextChartTool
 
 __all__ = [
     "BaseTool",
@@ -25,4 +26,5 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "FileEditorTool",
     "RunDbtTool",
+    "RenderPlotextChartTool",
 ]
