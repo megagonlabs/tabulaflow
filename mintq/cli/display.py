@@ -383,7 +383,7 @@ async def view_result(console: Console, result: object) -> None:
             else:
                 parts.append(f" {name} ", style="dim")
         parts.append("    ")
-        parts.append("Tab: next  Shift+Tab: prev  Enter: done", style="italic dim")
+        parts.append("←/→: switch  Enter: done", style="italic dim")
         bar_console.print(parts)
         return buf.getvalue()
 
@@ -396,11 +396,13 @@ async def view_result(console: Console, result: object) -> None:
     kb = KeyBindings()
 
     @kb.add("tab")
+    @kb.add("right")
     def _next(event: object) -> None:
         current_idx[0] = (current_idx[0] + 1) % len(available)
         app.invalidate()
 
     @kb.add("s-tab")
+    @kb.add("left")
     def _prev(event: object) -> None:
         current_idx[0] = (current_idx[0] - 1) % len(available)
         app.invalidate()

@@ -77,6 +77,8 @@ def render_plotext(
     """
     import plotext as plt
 
+    from mintq.cli.theme import ACCENT_RGB
+
     plt.clear_figure()
     plt.theme("dark")
     plt.plotsize(width, None)
@@ -84,12 +86,14 @@ def render_plotext(
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()
 
+    color = ACCENT_RGB
+
     if mark == "bar":
-        plt.bar([str(v) for v in x_data], y_data)
+        plt.bar([str(v) for v in x_data], y_data, color=color)
     elif mark == "line":
-        plt.plot(x_data, y_data)
+        plt.plot(x_data, y_data, color=color)
     elif mark == "scatter":
-        plt.scatter(x_data, y_data)
+        plt.scatter(x_data, y_data, color=color)
 
     if title:
         plt.title(title)
