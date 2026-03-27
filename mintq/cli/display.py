@@ -29,15 +29,25 @@ if TYPE_CHECKING:
     from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
+_LOGO = """\
+ ███╗   ███╗ ██╗ ███╗   ██╗ ████████╗  ██████╗
+ ████╗ ████║ ██║ ████╗  ██║ ╚══██╔══╝ ██╔═══██╗
+ ██╔████╔██║ ██║ ██╔██╗ ██║    ██║    ██║   ██║
+ ██║╚██╔╝██║ ██║ ██║╚██╗██║    ██║    ██║▄▄ ██║
+ ██║ ╚═╝ ██║ ██║ ██║ ╚████║    ██║    ╚██████╔╝
+ ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═══╝    ╚═╝     ╚══▀▀═╝"""
+
+
 def print_banner(console: Console, *, model: str, agent: str) -> None:
     """Print the welcome banner."""
+    console.print()
+    console.print(Text(_LOGO, style=ACCENT_BOLD))
     console.print()
     console.print(
         Panel.fit(
             f"[bold]Interactive SQL Chat[/bold]\n"
-            f"[dim]model:[/dim] {model}  [dim]agent:[/dim] {agent}\n"
+            f"[dim]model:[/dim] {model}\n"
             f"[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
-            title=f"[{ACCENT_BOLD}]mintq[/{ACCENT_BOLD}]",
             border_style=ACCENT,
         )
     )
