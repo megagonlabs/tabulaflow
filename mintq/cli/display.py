@@ -74,14 +74,22 @@ def render_chart(console: Console, df: pd.DataFrame) -> None:
         console.print("[dim]No numeric columns to chart.[/dim]")
         return
 
+    non_numeric = [c for c in df.columns if c not in numeric_cols]
+
     plt.clear_figure()
     plt.theme("dark")
+    plt.plotsize(console.width, None)
 
-    if len(numeric_cols) == 1:
+    if non_numeric and len(numeric_cols) >= 1:
+        labels = [str(v) for v in df[non_numeric[0]].tolist()]
         values = df[numeric_cols[0]].tolist()
-        labels = [str(v) for v in df.iloc[:, 0].tolist()] if df.shape[1] > 1 else None
-        plt.bar(labels or list(range(len(values))), values)
-        plt.title(numeric_cols[0])
+        plt.bar(labels, values)
+        plt.xlabel(non_numeric[0])
+        plt.ylabel(numeric_cols[0])
+    elif len(numeric_cols) == 1:
+        values = df[numeric_cols[0]].tolist()
+        plt.bar(list(range(len(values))), values)
+        plt.ylabel(numeric_cols[0])
     else:
         x = df[numeric_cols[0]].tolist()
         y = df[numeric_cols[1]].tolist()
@@ -90,7 +98,7 @@ def render_chart(console: Console, df: pd.DataFrame) -> None:
         plt.ylabel(numeric_cols[1])
 
     chart_str = plt.build()
-    console.print(chart_str)
+    console.print(Text.from_ansi(chart_str))
 
 
 # ---------------------------------------------------------------------------
@@ -337,7 +345,7 @@ def render_agent_progress(console: Console) -> object:
 # Result viewer — Tab/Shift+Tab cycling between NL / SQL / Table views
 # ---------------------------------------------------------------------------
 
-_VIEW_NAMES = ["nl", "sql", "table"]
+_VIEW_NAMES = ["response", "chart", "data", "sql"]
 
 
 def _capture_rich(console: Console, render_fn: object, *args: object) -> str:
@@ -358,11 +366,12 @@ async def view_result(console: Console, result: object) -> None:
 
     views: dict[str, str | None] = {}
     if result.text:
-        views["nl"] = _capture_rich(console, render_nl, result.text)
+        views["response"] = _capture_rich(console, render_nl, result.text)
     if result.sql:
         views["sql"] = _capture_rich(console, render_sql, result.sql)
     if result.df is not None and not result.df.empty:
-        views["table"] = _capture_rich(console, render_table, result.df)
+        views["data"] = _capture_rich(console, render_table, result.df)
+        views["chart"] = _capture_rich(console, render_chart, result.df)
 
     available = [v for v in _VIEW_NAMES if v in views]
     if not available:

@@ -345,12 +345,12 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/db": (_cmd_databases, "Alias for /databases"),
     "/use": (_cmd_use, "Switch active database: /use <alias>"),
     "/schema": (_cmd_schema, "Show schema: /schema [table] [column]"),
-    "/mode": (_cmd_mode, "Toggle output mode: /mode <nl|sql|table|chart|all>"),
+    "/mode": (_cmd_mode, "Toggle output mode: /mode <response|chart|data|sql|all>"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
     "/view": (_cmd_view, "View last result (Tab/Shift+Tab to cycle views)"),
     "/sql": (_cmd_sql, "Show SQL of last result"),
-    "/table": (_cmd_result_table, "Show table of last result"),
+    "/data": (_cmd_result_table, "Show data table of last result"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}
