@@ -33,7 +33,7 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
 def render_sql(console: Console, sql: str) -> None:
     """Render a SQL query with syntax highlighting."""
     syntax = Syntax(sql.strip(), "sql", theme="monokai", padding=1)
-    console.print(Panel(syntax, title="[bold yellow]SQL[/bold yellow]", border_style="yellow"))
+    console.print(syntax)
 
 
 def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None:
@@ -58,7 +58,7 @@ def render_nl(console: Console, text: str) -> None:
     """Render a natural language answer."""
     from rich.markdown import Markdown
 
-    console.print(Panel(Markdown(text), title="[bold green]Answer[/bold green]", border_style="green"))
+    console.print(Markdown(text))
 
 
 def render_chart(console: Console, df: pd.DataFrame) -> None:
@@ -86,7 +86,7 @@ def render_chart(console: Console, df: pd.DataFrame) -> None:
         plt.ylabel(numeric_cols[1])
 
     chart_str = plt.build()
-    console.print(Panel(chart_str, title="[bold blue]Chart[/bold blue]", border_style="blue"))
+    console.print(chart_str)
 
 
 # ---------------------------------------------------------------------------
