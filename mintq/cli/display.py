@@ -379,9 +379,9 @@ async def view_result(console: Console, result: object) -> None:
             if i > 0:
                 parts.append("  ")
             if i == current_idx[0]:
-                parts.append(f" {name} ", style="bold reverse")
+                parts.append(f" {name} ", style=f"bold white on {ACCENT}")
             else:
-                parts.append(f" {name} ", style="dim")
+                parts.append(f" {name} ")
         parts.append("    ")
         parts.append("←/→: switch  Enter: done", style="italic dim")
         bar_console.print(parts)
@@ -391,7 +391,7 @@ async def view_result(console: Console, result: object) -> None:
         view_key = available[current_idx[0]]
         content = views[view_key] or ""
         tab_bar = _render_tab_bar()
-        return ANSI(content + tab_bar)
+        return ANSI(content + "\n" + tab_bar)
 
     kb = KeyBindings()
 

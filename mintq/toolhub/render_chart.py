@@ -83,6 +83,11 @@ def render_plotext(
     plt.theme("dark")
     plt.plotsize(width, None)
 
+    from mintq.cli.theme import ACCENT_DIM_RGB
+
+    plt.axes_color("default")
+    plt.ticks_color(ACCENT_DIM_RGB)
+
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()
 
