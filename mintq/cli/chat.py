@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from pathlib import Path
+from contextlib import contextmanager
 from typing import TYPE_CHECKING
 
 from prompt_toolkit import PromptSession
@@ -21,6 +22,22 @@ if TYPE_CHECKING:
 DATA_DIR = Path.home() / ".mintq"
 
 console = Console()
+
+
+@contextmanager
+def _suppress_native_stderr() -> object:
+    """Silence native writes to stderr (fd=2) during interactive actions."""
+    import os
+
+    saved_fd = os.dup(2)
+    devnull_fd = os.open(os.devnull, os.O_WRONLY)
+    try:
+        os.dup2(devnull_fd, 2)
+        yield
+    finally:
+        os.dup2(saved_fd, 2)
+        os.close(saved_fd)
+        os.close(devnull_fd)
 
 
 class ChatSession:
@@ -50,6 +67,8 @@ def _init_session_sync(model: str, agent: str) -> ChatSession:
 async def run_chat(model: str, agent: str) -> None:
     """Main chat loop driven by prompt_toolkit."""
     import logging
+    import os
+    import sys
     from logging.handlers import RotatingFileHandler
 
     log_dir = DATA_DIR / "logs"
@@ -67,6 +86,32 @@ async def run_chat(model: str, agent: str) -> None:
     )
     root.addHandler(file_handler)
     logging.captureWarnings(True)
+
+    # Silence noisy third-party loggers in interactive mode.
+    for name in (
+        "LiteLLM",
+        "litellm",
+        "httpx",
+        "httpcore",
+        "urllib3",
+        "grpc",
+        "google",
+        "google.auth",
+        "google.api_core",
+    ):
+        logger = logging.getLogger(name)
+        logger.handlers.clear()
+        logger.propagate = True
+        logger.setLevel(logging.CRITICAL)
+
+    # Some native libraries (e.g., grpc/absl) write directly to stderr and
+    # bypass Python logging. Redirect stderr to the same log file to keep the
+    # interactive UI clean.
+    os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
+    os.environ.setdefault("GLOG_minloglevel", "3")
+    stderr_stream = open(log_path, "a", encoding="utf-8", buffering=1)
+    original_stderr = sys.stderr
+    sys.stderr = stderr_stream
 
     from prompt_toolkit.styles import Style
 
@@ -90,41 +135,47 @@ async def run_chat(model: str, agent: str) -> None:
 
     default_prompt: AnyFormattedText = [("class:prompt-bar", "┃"), ("", " ")]
 
-    while True:
-        console.print()
-        prompt = session.prompt_parts if session else default_prompt
-        try:
-            user_input = await prompt_session.prompt_async(
-                prompt, prompt_continuation=_continuation,
-            )
-        except (EOFError, KeyboardInterrupt):
+    try:
+        while True:
             console.print()
-            break
-
-        if session is None:
-            session = await init_task
-
-        text = user_input.strip()
-        if not text:
-            continue
-
-        if text.startswith(COMMAND_PREFIX):
-            should_quit = await handle_command(text, session, console)
-            if should_quit:
+            prompt = session.prompt_parts if session else default_prompt
+            try:
+                user_input = await prompt_session.prompt_async(
+                    prompt, prompt_continuation=_continuation,
+                )
+            except (EOFError, KeyboardInterrupt):
+                console.print()
                 break
-            continue
 
-        connector = session.connections.active_connector
-        if connector is None:
-            console.print("[red]No database connected.[/red] Use /connect first.")
-            continue
+            if session is None:
+                session = await init_task
 
-        try:
-            result = await session.chat_agent.run(text, connector, console)
-        except Exception as e:
-            console.print(f"[red]Agent error:[/red] {e}")
-            continue
+            text = user_input.strip()
+            if not text:
+                continue
 
-        session.last_result = result
-        console.print()
-        await view_result(console, result)
+            if text.startswith(COMMAND_PREFIX):
+                with _suppress_native_stderr():
+                    should_quit = await handle_command(text, session, console)
+                if should_quit:
+                    break
+                continue
+
+            connector = session.connections.active_connector
+            if connector is None:
+                console.print("[red]No database connected.[/red] Use /connect first.")
+                continue
+
+            try:
+                with _suppress_native_stderr():
+                    result = await session.chat_agent.run(text, connector, console)
+            except Exception as e:
+                console.print(f"[red]Agent error:[/red] {e}")
+                continue
+
+            session.last_result = result
+            console.print()
+            await view_result(console, result)
+    finally:
+        sys.stderr = original_stderr
+        stderr_stream.close()
