@@ -898,9 +898,10 @@ March 23
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
 - [ ] Support Neo4j and cypherbench
+- [ ] Support CSV files and Excel files
+- [ ] mintq-cli
 - [ ] Support redis
 - [ ] Support mongodb
-- [ ] mintq-cli
 - [ ] Documentation
 - [ ] spider2-lite submission
 - [ ] spider2-dbt submission
