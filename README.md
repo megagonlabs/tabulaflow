@@ -895,6 +895,19 @@ March 23
 - [x] Revise dbt agent
 
 
+Release plan
+- [ ] Support Neo4j and cypherbench
+- [ ] Support redis
+- [ ] Support mongodb
+- [ ] mintq-cli
+- [ ] Documentation
+- [ ] spider2-lite submission
+- [ ] spider2-dbt submission
+- [ ] spider2-snow submission
+- [ ] Support DAComp
+- [ ] Tuning on BIRD-SQL
+
+
 - [ ] Use OpenAI plain text tool!!!
 - [ ] bash tool for dbt agent
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
