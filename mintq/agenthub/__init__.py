@@ -6,6 +6,16 @@ from mintq.agenthub.base import (
     NL2QAgent,
     agent_registry,
 )
+from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
+from mintq.agenthub.direct_prompting import DirectPrompting
+from mintq.agenthub.mini_agent import MiniAgent
+from mintq.agenthub.sql_agent import SQLAgent
+from mintq.agenthub.mintq_agent import MintqAgent
+from mintq.agenthub.ambig_simple import AmbigSimpleSQLAgent
+from mintq.agenthub.ambig_flat import AmbigFlatSQLAgent
+from mintq.agenthub.ambig_structured import AmbigStructuredSQLAgent
+from mintq.agenthub.dbt_agent import DbtAgent
+from mintq.agenthub.utils import BasicAgentConfig
 
 __all__ = [
     "BaseSimpleSQLAgent",
@@ -26,28 +36,3 @@ __all__ = [
     "DbtAgent",
     "agent_registry",
 ]
-
-
-def __getattr__(name: str) -> object:
-    """Lazy-load agent classes to avoid circular imports."""
-    _lazy = {
-        "SimpleZeroShotNL2Q": "mintq.agenthub.simple_zero_shot",
-        "SimpleZeroShotNL2QConfig": "mintq.agenthub.simple_zero_shot",
-        "DirectPrompting": "mintq.agenthub.direct_prompting",
-        "MiniAgent": "mintq.agenthub.mini_agent",
-        "SQLAgent": "mintq.agenthub.sql_agent",
-        "MintqAgent": "mintq.agenthub.mintq_agent",
-        "AmbigSimpleSQLAgent": "mintq.agenthub.ambig_simple",
-        "AmbigFlatSQLAgent": "mintq.agenthub.ambig_flat",
-        "AmbigStructuredSQLAgent": "mintq.agenthub.ambig_structured",
-        "DbtAgent": "mintq.agenthub.dbt_agent",
-        "BasicAgentConfig": "mintq.agenthub.utils",
-    }
-    if name in _lazy:
-        import importlib
-
-        mod = importlib.import_module(_lazy[name])
-        val = getattr(mod, name)
-        globals()[name] = val
-        return val
-    raise AttributeError(f"module 'mintq.agenthub' has no attribute {name!r}")
