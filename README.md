@@ -896,6 +896,7 @@ March 23
 
 
 Release plan
+- [ ] Run N candidates on spider2-snow and spider2-lite
 - [ ] Support Neo4j and cypherbench
 - [ ] Support redis
 - [ ] Support mongodb
