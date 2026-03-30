@@ -45,7 +45,6 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
     console.print()
     console.print(
         Panel.fit(
-            f"[bold]Interactive SQL Chat[/bold]\n"
             f"[dim]model:[/dim] {model}\n"
             f"[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
             border_style=ACCENT,
