@@ -302,6 +302,11 @@ class PropertyGraphSchema(BaseModel):
         return results
 
 
+# ---------------------------------------------------------------------------
+# SQL schema (MySQL, PostgreSQL, Snowflake, BigQuery, etc.)
+# ---------------------------------------------------------------------------
+
+
 class ForeignKeySchema(BaseModel):
     columns: list[str]
     foreign_schema_name: str | None = None
