@@ -51,9 +51,14 @@ ORDER BY type, source, target
 """.strip()
 
 
-def _parse_type_label(raw: str) -> str:
-    """Parse nodeType/relType from ``db.schema`` procedures (e.g. ``":`Person`"`` -> ``"Person"``)."""
-    return raw.strip().lstrip(":").strip("`").strip()
+def _parse_type_labels(raw: str) -> list[str]:
+    """Parse nodeType/relType from ``db.schema`` procedures into individual labels.
+
+    Handles compound multi-label types like ``":`Resource`:`Noun`"`` by splitting
+    on the backtick-colon separator and returning each label individually.
+    """
+    parts = raw.strip().split(":`")
+    return [p.strip().lstrip(":").strip("`").strip() for p in parts if p.strip().strip(":`")]
 
 
 @dataclass
@@ -242,17 +247,23 @@ class Neo4jConnector:
             if label not in nodes:
                 nodes[label] = NodeSchema(label=label)
 
+        node_prop_seen: dict[str, set[str]] = {}
         for record in await self._run_cypher(_NODE_TYPE_PROPERTIES_QUERY):
             if record["propertyName"] is None:
                 continue
-            label = _parse_type_label(record["nodeType"])
+            labels = _parse_type_labels(record["nodeType"])
             prop_name: str = record["propertyName"]
             prop_types: list[str] = record["propertyTypes"] or []
             dtype = prop_types[0] if prop_types else "UNKNOWN"
 
-            if label not in nodes:
-                nodes[label] = NodeSchema(label=label)
-            nodes[label].properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
+            for label in labels:
+                if label not in nodes:
+                    nodes[label] = NodeSchema(label=label)
+                if label not in node_prop_seen:
+                    node_prop_seen[label] = set()
+                if prop_name not in node_prop_seen[label]:
+                    node_prop_seen[label].add(prop_name)
+                    nodes[label].properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
 
         for record in await self._run_cypher(_REL_PATTERNS_QUERY):
             source: str = record["source"]
@@ -267,16 +278,23 @@ class Neo4jConnector:
                 if lbl not in nodes:
                     nodes[lbl] = NodeSchema(label=lbl)
 
+        rel_prop_seen: dict[str, set[str]] = {}
         for record in await self._run_cypher(_REL_TYPE_PROPERTIES_QUERY):
             if record["propertyName"] is None:
                 continue
-            rel_type = _parse_type_label(record["relType"])
-            prop_name: str = record["propertyName"]
-            prop_types: list[str] = record["propertyTypes"] or []
+            rel_types = _parse_type_labels(record["relType"])
+            prop_name = record["propertyName"]
+            prop_types = record["propertyTypes"] or []
             dtype = prop_types[0] if prop_types else "UNKNOWN"
-            for key, rel in rels.items():
-                if key[0] == rel_type:
-                    rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
+            for rel_type in rel_types:
+                if rel_type not in rel_prop_seen:
+                    rel_prop_seen[rel_type] = set()
+                if prop_name in rel_prop_seen[rel_type]:
+                    continue
+                rel_prop_seen[rel_type].add(prop_name)
+                for key, rel in rels.items():
+                    if key[0] == rel_type:
+                        rel.properties.append(GraphPropertySchema(name=prop_name, dtype=dtype))
 
         sorted_nodes = sorted(nodes.values(), key=lambda n: n.label)
         sorted_rels = sorted(rels.values(), key=lambda r: (r.label, r.source_label, r.target_label))
