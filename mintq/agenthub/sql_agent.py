@@ -10,7 +10,7 @@ import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import logging
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
     ExtraPredInfo,
     NL2QDataset,
@@ -447,7 +447,7 @@ class SQLAgent:
         return preprocessed_schema
 
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
         schema_preprocessor = SchemaPreprocessor()

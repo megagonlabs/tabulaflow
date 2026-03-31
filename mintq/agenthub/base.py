@@ -12,7 +12,7 @@ from mintq.schema import (
     Usage,
     Trajectory,
 )
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import BaseSQLDBConnector, NL2QDBConnector
 from mintq.registry import Registry
 
 BaseAgentConfig: TypeAlias = BaseModel
@@ -24,7 +24,7 @@ class BaseSimpleSQLAgent(Protocol):
     output_type: ClassVar[str]
     config_cls: ClassVar[type[BaseAgentConfig]]
 
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput: ...
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput: ...
 
 
 class UserFreeTextQuestion(BaseModel):

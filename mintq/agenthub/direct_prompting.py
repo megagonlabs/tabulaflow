@@ -1,10 +1,15 @@
 import jinja2
 import time
-from typing import ClassVar
+from typing import ClassVar, Final
 from pydantic_ai import Agent
 import logging
-from mintq.db_connector import BaseSQLDBConnector
+
+import mintq.formatters  # noqa: F401 — register sql_*, cypher, … formatters
+
+from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
+    PropertyGraphSchema,
+    SQLSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
     PredQuery,
@@ -12,7 +17,7 @@ from mintq.schema import (
     Trajectory,
 )
 from mintq.preprocessors import SchemaCompressor
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
     instrument,
@@ -75,22 +80,31 @@ class DirectPrompting:
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
-        )
-
     @classmethod
     async def from_config_async(cls, config: BasicAgentConfig) -> "DirectPrompting":
         return cls(config)
 
+    def _format_schema_for_prompt(self, db_connector: NL2QDBConnector) -> str:
+        schema = db_connector.schema
+        if isinstance(schema, PropertyGraphSchema):
+            fmt_name = self.config.schema_formatter if self.config.schema_formatter in ("cypher",) else "cypher"
+            formatter = formatter_registry.get_class(fmt_name)()
+            return formatter.format(schema, add_description=True)
+        if isinstance(schema, SQLSchema):
+            working = schema
+            if self.compressor is not None and self.config.compress_schema:
+                working = self.compressor.compress(working)
+            sql_formatter = formatter_registry.get_class(self.config.schema_formatter)(
+                **self.config.to_formatter_kwargs()
+            )
+            return sql_formatter.format(working, add_description=self.config.use_column_description)
+        raise TypeError(f"Unsupported schema type for DirectPrompting: {type(schema)!r}")
+
     @instrument
-    async def predict_async(self, task: SimpleNL2QTask, db_connector: BaseSQLDBConnector) -> SimpleNL2QTaskOutput:
+    async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
         t0 = time.time()
 
-        schema = db_connector.schema
-        if self.config.compress_schema:
-            schema = SchemaCompressor().compress(schema)
-        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
+        schema_str = self._format_schema_for_prompt(db_connector)
 
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
@@ -106,7 +120,7 @@ class DirectPrompting:
         )
         result = await agent.run(format_question(task))
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
-        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")
+        trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")
         pred_query = PredQuery(query=extract_code(result.output))
 
         metrics = {}
