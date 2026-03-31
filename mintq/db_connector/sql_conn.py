@@ -988,6 +988,7 @@ class SQLConnector:
         Returns:
             A :class:`SQLConnector` backed by a temporary DuckDB database.
         """
+        seen: set[str] = set()
         resolved: list[str] = []
         for p in file_paths:
             abs_p = os.path.abspath(p)
@@ -996,7 +997,9 @@ class SQLConnector:
             ext = os.path.splitext(abs_p)[1].lower()
             if ext not in DATA_FILE_EXTENSIONS:
                 raise ValueError(f"Unsupported file format: {ext}")
-            resolved.append(abs_p)
+            if abs_p not in seen:
+                seen.add(abs_p)
+                resolved.append(abs_p)
         if not resolved:
             raise ValueError("At least one file path is required")
 
