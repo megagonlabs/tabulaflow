@@ -26,7 +26,7 @@ class CypherSchemaFormatter:
         The relationships:
         (:Person)-[:ACTED_IN]->(:Movie)
         (:Person)-[:DIRECTED]->(:Movie)
-        
+
         Relationship properties:
         ACTED_IN {roles: LIST OF STRING}
     """
@@ -38,23 +38,19 @@ class CypherSchemaFormatter:
         schema: PropertyGraphSchema,
         add_description: bool = False,
     ) -> str:
-        header = f"Database: {schema.name} (Query Language: cypher)"
+        def _section(title: str, lines: list[str]) -> str:
+            return "\n".join([title] + (lines or ["(none)"]))
 
         node_lines = [self.format_node(n, add_description) for n in schema.nodes]
+        rel_lines = [self.format_relationship(r) for r in schema.relationships]
         rel_prop_lines = self._format_relationship_properties(schema.relationships, add_description)
-        rel_pattern_lines = [self.format_relationship(r) for r in schema.relationships]
 
-        parts = [header]
-
-        node_section = ["Node properties:"] + (node_lines or ["(none)"])
-        rel_prop_section = ["Relationship properties:"] + (rel_prop_lines or ["(none)"])
-        rel_section = ["The relationships:"] + (rel_pattern_lines or ["(none)"])
-
-        parts.append("\n".join(node_section))
-        parts.append("\n".join(rel_section))
-        parts.append("\n".join(rel_prop_section))
-
-        return "\n\n".join(parts)
+        return "\n\n".join([
+            f"Database: {schema.name} (Query Language: cypher)",
+            _section("Node properties:", node_lines),
+            _section("The relationships:", rel_lines),
+            _section("Relationship properties:", rel_prop_lines),
+        ])
 
     def format_node(self, node: NodeSchema, add_description: bool = False) -> str:
         line = node.label
