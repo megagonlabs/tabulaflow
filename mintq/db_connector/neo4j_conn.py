@@ -102,6 +102,7 @@ class Neo4jConnector:
         url: str,
         auth: tuple[str, str] | neo4j.Auth | None = None,
         database: str | None = None,
+        db_name: str | None = None,
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
         enable_schema_caching: bool = True,
@@ -116,6 +117,8 @@ class Neo4jConnector:
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
+            db_name: Human-readable database name used in ``schema.name``.
+                Auto-detected from the server if not provided.
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Block write statements when ``True``.
@@ -131,7 +134,7 @@ class Neo4jConnector:
         )
         await driver.verify_connectivity()
 
-        schema_name = database or await cls._fetch_default_db_name(driver) or "N/A"
+        schema_name = db_name or database or await cls._fetch_default_db_name(driver) or "N/A"
 
         connector = cls(
             global_id=global_id,
