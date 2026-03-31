@@ -1,6 +1,6 @@
 import jinja2
 import time
-from typing import ClassVar, Final
+from typing import ClassVar
 from pydantic_ai import Agent
 import logging
 
@@ -89,7 +89,7 @@ class DirectPrompting:
         if isinstance(schema, PropertyGraphSchema):
             fmt_name = self.config.schema_formatter if self.config.schema_formatter in ("cypher",) else "cypher"
             formatter = formatter_registry.get_class(fmt_name)()
-            return formatter.format(schema, add_description=True)
+            return formatter.format(schema)
         if isinstance(schema, SQLSchema):
             working = schema
             if self.compressor is not None and self.config.compress_schema:
