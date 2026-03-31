@@ -332,12 +332,30 @@ async def _cmd_agent(args: list[str], session: ChatSession, console: Console) ->
     return False
 
 
+_ASYNC_DRIVER_UPGRADES: dict[str, str] = {
+    "sqlite": "sqlite+aiosqlite",
+    "postgresql": "postgresql+asyncpg",
+    "postgres": "postgresql+asyncpg",
+    "mysql": "mysql+asyncmy",
+}
+
+
 def _normalize_url(raw: str) -> str:
-    """Expand a bare file path into a SQLAlchemy URL, or return as-is."""
+    """Expand a bare file path into a SQLAlchemy URL, or return as-is.
+
+    Also upgrades bare dialect URLs (no explicit ``+driver``) to use an
+    async driver when one is available as a mintq dependency.
+    """
     for ext, scheme in _FILE_EXTENSIONS.items():
         if raw.endswith(ext):
             abspath = os.path.abspath(raw)
             return f"{scheme}:///{abspath}"
+
+    if "://" in raw:
+        scheme, rest = raw.split("://", 1)
+        if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
+            return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
+
     return raw
 
 
