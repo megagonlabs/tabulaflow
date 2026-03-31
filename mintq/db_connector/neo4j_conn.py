@@ -1,4 +1,5 @@
 import logging
+import os
 import re
 import time
 from dataclasses import dataclass
@@ -7,6 +8,7 @@ from typing import Any, Mapping
 import neo4j
 import pandas as pd
 
+from mintq.config import mintq_config
 from mintq.schema import (
     ErrorInfo,
     ExecResult,
@@ -69,6 +71,7 @@ class Neo4jConnector:
     _driver: neo4j.AsyncDriver
     _database: str
     read_only: bool = True
+    enable_schema_caching: bool = True
 
     @classmethod
     async def from_url_async(
@@ -80,6 +83,7 @@ class Neo4jConnector:
         database: str = "neo4j",
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
+        enable_schema_caching: bool = True,
         **driver_kwargs: Any,
     ) -> "Neo4jConnector":
         """Create a connector from a Neo4j Bolt URL.
@@ -93,6 +97,8 @@ class Neo4jConnector:
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Block write statements when ``True``.
+            enable_schema_caching: If ``False``, skip schema cache
+                read/write regardless of global config.
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
@@ -110,10 +116,11 @@ class Neo4jConnector:
             _driver=driver,
             _database=database,
             read_only=read_only,
+            enable_schema_caching=enable_schema_caching,
         )
 
         if schema is None:
-            await connector.refresh_schema_async()
+            await connector._load_schema_async()
 
         return connector
 
@@ -165,8 +172,45 @@ class Neo4jConnector:
     async def disconnect_async(self) -> None:
         await self._driver.close()
 
-    async def refresh_schema_async(self) -> PropertyGraphSchema:
+    def _schema_cache_path(self) -> str:
+        cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
+        os.makedirs(cache_dir, exist_ok=True)
+        return os.path.join(cache_dir, f"{self.global_id}.json")
+
+    async def _load_schema_async(self) -> PropertyGraphSchema:
+        """Load schema from cache or introspect, respecting cache config."""
+        cache_path = self._schema_cache_path()
+
+        if (
+            self.enable_schema_caching
+            and mintq_config.schema_cache_enabled
+            and not mintq_config.schema_cache_overwrite
+            and os.path.exists(cache_path)
+        ):
+            with open(cache_path, "r", encoding="utf-8") as f:
+                self.schema = PropertyGraphSchema.model_validate_json(f.read())
+                return self.schema
+
+        if self.enable_schema_caching and mintq_config.schema_cache_required:
+            raise FileNotFoundError(f"Schema cache required but not found at {cache_path}")
+
         self.schema = await self._build_schema()
+
+        if self.enable_schema_caching and mintq_config.schema_cache_enabled:
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(self.schema.model_dump_json(indent=2))
+
+        return self.schema
+
+    async def refresh_schema_async(self) -> PropertyGraphSchema:
+        """Re-introspect the live database, bypassing cache on read."""
+        self.schema = await self._build_schema()
+
+        if self.enable_schema_caching and mintq_config.schema_cache_enabled:
+            cache_path = self._schema_cache_path()
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(self.schema.model_dump_json(indent=2))
+
         return self.schema
 
     async def _build_schema(self) -> PropertyGraphSchema:
