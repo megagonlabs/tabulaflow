@@ -338,6 +338,7 @@ class Spider2LiteDatasetLoader:
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
             group_date_partitioned_tables=True,
+            enable_query_caching=True,
             **engine_kwargs,
         )
 
@@ -360,6 +361,7 @@ class Spider2LiteDatasetLoader:
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
             group_date_partitioned_tables=True,
+            enable_query_caching=True,
         )
 
     async def _build_sqlite_connector(self, db_name: str) -> SQLConnector:
@@ -379,6 +381,7 @@ class Spider2LiteDatasetLoader:
             "async",
             url,
             max_concurrency_per_db=4,
+            enable_query_caching=True,
         )
 
     async def get_db_connectors_async(

@@ -46,6 +46,7 @@ async def get_db_connector() -> SQLConnector:
         db_name="postgres_example_hr_matching_curation",
         engine_type="async",
         url="postgresql+asyncpg://postgres:postgres@10.0.171.151:5432/hr_matching_curation",
+        enable_query_caching=True,
     )
     return db_connector
 

@@ -155,6 +155,7 @@ WHERE prcp > monthly_avg_temp
         "NOAA_DATA",
         "async",
         "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
+        enable_query_caching=True,
     )
     db_connector.schema.name = "weather"
     db_connector.schema.tables = [t for t in db_connector.schema.tables if t.name != "gsod2020_orig"]

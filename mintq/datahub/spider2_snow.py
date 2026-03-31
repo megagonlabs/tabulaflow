@@ -256,6 +256,7 @@ class Spider2SnowDatasetLoader:
             connect_args=connect_args,
             group_date_partitioned_tables=True,
             group_table_regexes=GROUP_TABLE_REGEXES.get(db_name, []),
+            enable_query_caching=True,
         )
 
     async def get_db_connectors_async(

@@ -833,7 +833,7 @@ class SQLConnector:
     _t_eng: ThrottledEngine
     read_only: bool = True
     enable_schema_caching: bool = True
-    enable_query_caching: bool = True
+    enable_query_caching: bool = False
     _group_date_partitioned_tables: bool = True
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
@@ -855,7 +855,7 @@ class SQLConnector:
         group_table_regexes: list[str] = [],
         read_only: bool = True,
         enable_schema_caching: bool = True,
-        enable_query_caching: bool = True,
+        enable_query_caching: bool = False,
         include_schema_names: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":

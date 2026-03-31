@@ -46,6 +46,7 @@ async def get_db_connector() -> SQLConnector:
         db_name="postgres_github_repos",
         engine_type="async",
         url="postgresql+asyncpg://postgres:postgres@10.0.175.210:5441/github_repos",
+        enable_query_caching=True,
     )
     return db_connector
 

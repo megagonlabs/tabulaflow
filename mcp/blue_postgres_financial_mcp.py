@@ -46,6 +46,7 @@ async def get_db_connector() -> SQLConnector:
         db_name="postgres_financial",
         engine_type="async",
         url="postgresql+asyncpg://postgres:postgres@10.0.175.210:5440/financial",
+        enable_query_caching=True,
     )
     column_meaning_directory = "data/BIRD-SQL_column_meaning"
     with open(os.path.join(column_meaning_directory, "dev_column_meaning.json"), "r") as f:
