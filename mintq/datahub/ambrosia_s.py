@@ -51,6 +51,16 @@ AMBROSIA_DATASET_INSTRUCTIONS = """
 class AmbrosiaSDatasetLoader:
     name: ClassVar = "ambrosia-s"
     splits: ClassVar = ["test", "few_shot_examples"]
+    default_metrics: ClassVar = [
+        "simple_ex",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+        "ambig_point_stats",
+        "gold_ambig_point_stats",
+        "found_one",
+    ]
 
     def __init__(
         self,

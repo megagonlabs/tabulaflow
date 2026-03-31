@@ -125,6 +125,11 @@ class Spider2DbtDatasetLoader:
 
     name: ClassVar = "spider2-dbt"
     splits: ClassVar = ["test"]
+    default_metrics: ClassVar = [
+        "spider2_duckdb_match",
+        "executable",
+        "pred_success",
+    ]
 
     def __init__(
         self,

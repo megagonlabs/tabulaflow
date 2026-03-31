@@ -7,6 +7,7 @@ from mintq.registry import Registry
 class BaseNL2QDatasetLoader(Protocol):
     name: ClassVar[str]
     splits: ClassVar[list[str]]
+    default_metrics: ClassVar[list[str]]
 
     def get_databases(self, split: str) -> list[str]: ...
 

@@ -61,6 +61,15 @@ class CypherBenchDatasetLoader:
 
     name: ClassVar = "cypherbench"
     splits: ClassVar = ["test", "train"]
+    default_metrics: ClassVar = [
+        "simple_ex",
+        "cypherbench_ex",
+        "psjs",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+    ]
 
     def __init__(
         self,

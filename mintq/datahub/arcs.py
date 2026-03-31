@@ -110,6 +110,16 @@ ARCS_TAXONOMY = """
 class ARCSDatasetLoader:
     name: ClassVar = "arcs"
     splits: ClassVar = ["test", "test_unsampled"]
+    default_metrics: ClassVar = [
+        "simple_ex",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+        "ambig_point_stats",
+        "gold_ambig_point_stats",
+        "found_one",
+    ]
 
     def __init__(
         self,

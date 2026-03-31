@@ -80,7 +80,7 @@ async def main_async() -> None:
     )
 
     unique_output_types = list(dict.fromkeys([task.output_type for task in result.tasks]))
-    metric_names = args.metrics or metric_registry.list_names()
+    metric_names = args.metrics or dataset_loader.default_metrics
     metrics = []
     for m in metric_names:
         metric_cls = metric_registry.get_class(m)

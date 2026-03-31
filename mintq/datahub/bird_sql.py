@@ -69,6 +69,18 @@ BIRD_DATASET_INSTRUCTIONS = """
 class BirdSQLDatasetLoader:
     name: ClassVar = "bird-sql"
     splits: ClassVar = ["train", "dev", "dev_20251106"]
+    default_metrics: ClassVar = [
+        "bird_sql_ex",
+        "simple_ex",
+        "bird_sql_ex_soft",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+        "raw_pred_bird_sql_ex",
+        "raw_pred_simple_ex",
+        "schema_linking_stats",
+    ]
 
     def __init__(
         self,

@@ -83,6 +83,15 @@ class Spider2SnowDatasetLoader:
 
     name: ClassVar = "spider2-snow"
     splits: ClassVar = ["test"]
+    default_metrics: ClassVar = [
+        "spider2_ex",
+        "simple_ex",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+        "schema_linking_stats",
+    ]
 
     def __init__(
         self,

@@ -12,6 +12,13 @@ from mintq.datahub.base import dataset_registry
 class BeaverDatasetLoader:
     name: ClassVar = "beaver"
     splits: ClassVar = ["test"]
+    default_metrics: ClassVar = [
+        "simple_ex",
+        "executable",
+        "gold_executable",
+        "gold_result_not_empty",
+        "pred_success",
+    ]
 
     def __init__(
         self,
