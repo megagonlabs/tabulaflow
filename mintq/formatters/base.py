@@ -1,5 +1,14 @@
-from typing import Protocol, ClassVar, TypeAlias
-from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
+from typing import Protocol, ClassVar, TypeAlias, Union
+from mintq.schema import (
+    SQLDialect,
+    SQLSchema,
+    SQLTableSchema,
+    SQLColumnSchema,
+    PropertyGraphSchema,
+    NodeSchema,
+    RelationshipSchema,
+    GraphPropertySchema,
+)
 from mintq.registry import Registry
 
 
@@ -22,6 +31,18 @@ class BaseSQLSchemaFormatter(Protocol):
     def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str: ...
 
 
-NL2QFormatter: TypeAlias = BaseSQLSchemaFormatter
+class BasePropertyGraphSchemaFormatter(Protocol):
+    name: ClassVar[str]
+
+    def format(self, schema: PropertyGraphSchema, add_description: bool = False) -> str: ...
+
+    def format_node(self, node: NodeSchema, add_description: bool = False) -> str: ...
+
+    def format_relationship(self, rel: RelationshipSchema) -> str: ...
+
+    def format_property(self, prop: GraphPropertySchema) -> str: ...
+
+
+NL2QFormatter: TypeAlias = Union[BaseSQLSchemaFormatter, BasePropertyGraphSchemaFormatter]
 
 formatter_registry = Registry[NL2QFormatter]("formatter")
