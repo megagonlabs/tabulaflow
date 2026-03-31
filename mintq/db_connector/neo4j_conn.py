@@ -91,7 +91,8 @@ class Neo4jConnector:
         Args:
             global_id: Globally unique identifier for this connection.
             db_name: Human-readable name used in ``schema.name``.
-            url: Bolt URL (e.g. ``"bolt://localhost:7687"``).
+            url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
+                ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
             database: Neo4j database name.  ``None`` uses the server default.
             schema: Pre-loaded schema.  If ``None``, the schema is
