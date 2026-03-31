@@ -25,6 +25,8 @@ from mintq.metrics.found_one import FoundOne
 from mintq.metrics.raw_pred_bird_sql_ex import RawPredBirdSQLEx
 from mintq.metrics.raw_pred_simple_ex import RawPredSimpleEx
 from mintq.metrics.schema_linking_stats import SchemaLinkingStats
+from mintq.metrics.psjs import PSJS
+from mintq.metrics.cypherbench_ex import CypherBenchEx
 from mintq.metrics.spider2_duckdb_match import Spider2DuckdbMatch
 
 __all__ = [
@@ -36,6 +38,7 @@ __all__ = [
     "SimpleInferenceMetricsAggregator",
     "ByDBAggregator",
     "ByAmbigPointNumAggregator",
+    "CypherBenchEx",
     "BirdSQLEx",
     "BirdSQLExSoft",
     "Executable",
@@ -49,6 +52,7 @@ __all__ = [
     "FoundOne",
     "RawPredBirdSQLEx",
     "RawPredSimpleEx",
+    "PSJS",
     "SchemaLinkingStats",
     "Spider2DuckdbMatch",
     "metric_registry",

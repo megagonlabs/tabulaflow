@@ -10,6 +10,7 @@ DATASET_DEFAULT_METRICS: dict[str, str] = {
     "beaver": "simple_ex",
     "arcs": "simple_ex",
     "ambrosia-s": "simple_ex",
+    "cypherbench": "cypherbench_ex",
 }
 
 
