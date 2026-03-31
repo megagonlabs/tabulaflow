@@ -70,14 +70,30 @@ class Neo4jConnector:
     language: NonSQLLanguage
     _driver: neo4j.AsyncDriver
     _database: str | None
+    _schema_name: str
     read_only: bool = True
     enable_schema_caching: bool = True
+
+    @staticmethod
+    async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:
+        """Try to get the default database name from the server (Neo4j 4.x+).
+
+        Returns ``None`` on older servers that don't support ``SHOW DEFAULT DATABASE``.
+        """
+        try:
+            async with driver.session(database="system") as session:
+                result = await session.run("SHOW DEFAULT DATABASE")
+                record = await result.single()
+                if record:
+                    return record["name"]
+        except Exception:
+            pass
+        return None
 
     @classmethod
     async def from_url_async(
         cls,
         global_id: str,
-        db_name: str,
         url: str,
         auth: tuple[str, str] | neo4j.Auth | None = None,
         database: str | None = None,
@@ -90,7 +106,6 @@ class Neo4jConnector:
 
         Args:
             global_id: Globally unique identifier for this connection.
-            db_name: Human-readable name used in ``schema.name``.
             url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
@@ -110,12 +125,15 @@ class Neo4jConnector:
         )
         await driver.verify_connectivity()
 
+        schema_name = database or await cls._fetch_default_db_name(driver) or "N/A"
+
         connector = cls(
             global_id=global_id,
-            schema=schema or PropertyGraphSchema(name=db_name),
+            schema=schema or PropertyGraphSchema(name=schema_name),
             language="cypher",
             _driver=driver,
             _database=database,
+            _schema_name=schema_name,
             read_only=read_only,
             enable_schema_caching=enable_schema_caching,
         )
@@ -263,7 +281,7 @@ class Neo4jConnector:
         sorted_rels = sorted(rels.values(), key=lambda r: (r.label, r.source_label, r.target_label))
 
         return PropertyGraphSchema(
-            name=self.schema.name,
+            name=self._schema_name,
             nodes=sorted_nodes,
             relationships=sorted_rels,
         )
