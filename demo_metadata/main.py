@@ -154,7 +154,6 @@ WHERE prcp > monthly_avg_temp
         "demo+NOAA_DATA",
         "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
         "NOAA_DATA",
-        "async",
         enable_query_caching=True,
     )
     db_connector.schema.name = "weather"

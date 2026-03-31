@@ -36,6 +36,7 @@ from mintq.db_connector.sql_conn import (
     TEXT_TYPES,
     ThrottledEngine,
     _JSON_SCHEMA_SAMPLE_SIZE,
+    _is_async_url,
 )
 from mintq.db_connector.utils import infer_json_schema, looks_like_json
 from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
@@ -75,12 +76,7 @@ def _build_mysql_url(dataset: str, db_name: str) -> str:
         raise ValueError(f"Unknown MySQL dataset: {dataset}")
 
 
-DATASET_ENGINE_TYPE: dict[str, str] = {
-    "spider2-snow": "sync",
-    "bird-sql": "async",
-    "arcs": "async",
-    "beaver": "async",
-}
+_SUPPORTED_DATASETS = ["spider2-snow", "bird-sql", "arcs", "beaver"]
 
 DATASET_ENGINE_KWARGS: dict[str, dict] = {
     "spider2-snow": {
@@ -188,7 +184,7 @@ async def main() -> None:
     parser.add_argument(
         "--dataset",
         required=True,
-        choices=list(DATASET_ENGINE_TYPE.keys()),
+        choices=_SUPPORTED_DATASETS,
         help="Dataset prefix (determines connection method).",
     )
     parser.add_argument(
@@ -242,7 +238,6 @@ async def main() -> None:
         logger.warning("No cached schemas found for dataset '%s'", args.dataset)
         sys.exit(0)
 
-    engine_type = DATASET_ENGINE_TYPE[args.dataset]
     engine_kwargs = DATASET_ENGINE_KWARGS.get(args.dataset, {})
 
     logger.info(
@@ -265,20 +260,21 @@ async def main() -> None:
         with open(cache_path, "r", encoding="utf-8") as f:
             schema = SQLSchema.model_validate_json(f.read())
 
-        # Create engine and ThrottledEngine
         url = _build_url(args.dataset, db_name)
-        if engine_type == "async":
+        is_async = _is_async_url(url)
+        if is_async:
             engine = create_async_engine(url, pool_size=4, **engine_kwargs)
         else:
             engine = create_engine(url, pool_size=4, **engine_kwargs)  # type: ignore
 
         db_semaphore = asyncio.Semaphore(4)
+        engine_type = "async" if is_async else "sync"
         t_eng = ThrottledEngine(engine_type, engine, None, db_semaphore)
 
         try:
             updated = await backfill_one_db(schema, t_eng, force=args.force)
         finally:
-            if engine_type == "async":
+            if is_async:
                 await engine.dispose()  # type: ignore
             else:
                 engine.dispose()  # type: ignore

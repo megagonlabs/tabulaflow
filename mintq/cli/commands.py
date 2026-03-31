@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import os
 import shlex
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 from urllib.parse import urlparse, urlunparse
 
 from rich.console import Console
@@ -16,8 +16,6 @@ if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
 
 COMMAND_PREFIX = "/"
-
-_ASYNC_DRIVERS = {"aiosqlite", "asyncmy", "asyncpg"}
 
 _FILE_EXTENSIONS: dict[str, str] = {
     ".sqlite": "sqlite+aiosqlite",
@@ -154,7 +152,6 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     raw = args[0]
     url = _normalize_url(raw)
     alias = args[1] if len(args) > 1 else _alias_from_url(url)
-    engine_type = _infer_engine_type(url)
 
     if session.connections.has(alias):
         console.print(
@@ -177,9 +174,8 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         try:
             connector = await SQLConnector.from_url_async(
                 global_id=global_id,
-                db_name=alias,
-                engine_type=engine_type,
                 url=url,
+                db_name=alias,
                 read_only=True,
                 enable_schema_caching=True,
                 enable_query_caching=False,
@@ -343,16 +339,6 @@ def _normalize_url(raw: str) -> str:
             abspath = os.path.abspath(raw)
             return f"{scheme}:///{abspath}"
     return raw
-
-
-def _infer_engine_type(url: str) -> Literal["async", "sync"]:
-    """Decide async vs sync engine based on the URL scheme/driver."""
-    scheme = url.split("://", 1)[0] if "://" in url else url
-    parts = scheme.split("+")
-    driver = parts[1] if len(parts) > 1 else parts[0]
-    if driver in _ASYNC_DRIVERS:
-        return "async"
-    return "sync"
 
 
 async def _prompt_password_if_needed(url: str, console: Console) -> str:

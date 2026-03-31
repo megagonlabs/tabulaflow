@@ -333,7 +333,6 @@ class Spider2LiteDatasetLoader:
             f"spider2-lite+{db_name}",
             url,
             project,
-            "sync",
             max_concurrency_per_db=8,
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
@@ -356,7 +355,6 @@ class Spider2LiteDatasetLoader:
             f"spider2-lite+{db_name}",
             f"{base_url}/{db_name}",
             db_name,
-            "sync",
             max_concurrency_per_db=2,
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
@@ -379,7 +377,6 @@ class Spider2LiteDatasetLoader:
             f"spider2-lite+{db_name}",
             url,
             db_name,
-            "async",
             max_concurrency_per_db=4,
             enable_query_caching=True,
         )

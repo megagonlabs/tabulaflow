@@ -250,7 +250,6 @@ class Spider2SnowDatasetLoader:
             f"spider2-snow+{db_name}",
             f"{base_url}/{db_name}",
             db_name,
-            "sync",
             max_concurrency_per_db=2,
             dbms_semaphore=self._dbms_semaphore,
             connect_args=connect_args,

@@ -62,6 +62,15 @@ class QueryResult:
     latency_seconds: float
 
 
+_ASYNC_DRIVERS = frozenset({"aiosqlite", "asyncpg", "aiomysql", "aiopg", "asyncmy"})
+
+
+def _is_async_url(url: str | SQLAlchemyURL) -> bool:
+    """Return ``True`` if the URL uses a known async SQLAlchemy driver."""
+    driver = str(url).split("://", 1)[0]  # e.g. "sqlite+aiosqlite"
+    return any(d in driver for d in _ASYNC_DRIVERS)
+
+
 @dataclass
 class ThrottledEngine:
     engine_type: Literal["async", "sync"]
@@ -847,7 +856,6 @@ class SQLConnector:
         global_id: str,
         url: str | SQLAlchemyURL,
         db_name: str,
-        engine_type: Literal["async", "sync"],
         max_concurrency_per_db: int = 8,
         dbms_semaphore: asyncio.Semaphore | None = None,
         schema: SQLSchema | None = None,
@@ -870,8 +878,6 @@ class SQLConnector:
                 used as the cache key when loading the schema.
             url: The database URL (string or :class:`SQLAlchemyURL`).
             db_name: Human-readable database name used in ``schema.name``.
-            engine_type: Whether to create an ``"async"`` or ``"sync"``
-                SQLAlchemy engine.
             max_concurrency_per_db: Maximum number of concurrent queries
                 allowed against this database.  Also used as the engine's
                 ``pool_size``.  Defaults to ``8``.
@@ -907,6 +913,7 @@ class SQLConnector:
             execute queries.
         """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
+        engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
         else:
@@ -1019,9 +1026,8 @@ class SQLConnector:
         url = f"duckdb:///{db_path}"
         connector = await cls.from_url_async(
             global_id=global_id,
-            db_name=db_name,
-            engine_type="sync",
             url=url,
+            db_name=db_name,
             read_only=read_only,
             enable_schema_caching=enable_schema_caching,
             enable_query_caching=enable_query_caching,

@@ -63,7 +63,6 @@ async def main() -> None:
         "test+city_stats",
         f"sqlite:///{db_path}",
         "city_stats",
-        "sync",
     )
     model = await SimpleZeroShotNL2Q.from_config_async(
         SimpleZeroShotNL2QConfig(

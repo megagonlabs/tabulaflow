@@ -194,9 +194,8 @@ WHERE c.name = 'Italy';"""
             *[
                 SQLConnector.from_url_async(
                     global_id=f"bird-sql+{name}",
-                    db_name=name,
-                    engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(db_dir, name, f'{name}.sqlite')}",
+                    db_name=name,
                     max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
                 )

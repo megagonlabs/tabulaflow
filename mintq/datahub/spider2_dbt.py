@@ -104,9 +104,8 @@ async def prepare_working_env_async(dataset: NL2QDataset, result_dir: str) -> No
         existing_schema = original_conn.schema if original_conn is not None else None
         conn = await SQLConnector.from_url_async(
             global_id=original_global_id,
-            db_name=task.db,
-            engine_type="sync",
             url=f"duckdb:///{working_db_path}",
+            db_name=task.db,
             max_concurrency_per_db=4,
             schema=existing_schema,
             read_only=True,
@@ -291,9 +290,8 @@ class Spider2DbtDatasetLoader:
             url = f"duckdb:///{db_path}"
             conn = await SQLConnector.from_url_async(
                 global_id=f"spider2-dbt+{instance_id}",
-                db_name=instance_id,
-                engine_type="sync",
                 url=url,
+                db_name=instance_id,
                 max_concurrency_per_db=4,
                 dbms_semaphore=self._dbms_semaphore,
                 read_only=True,

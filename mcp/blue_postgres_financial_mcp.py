@@ -43,9 +43,8 @@ class GetHSchemaTool:
 async def get_db_connector() -> SQLConnector:
     db_connector = await SQLConnector.from_url_async(
         global_id="blue+postgres_financial",
-        db_name="postgres_financial",
-        engine_type="async",
         url="postgresql+asyncpg://postgres:postgres@10.0.175.210:5440/financial",
+        db_name="postgres_financial",
         enable_query_caching=True,
     )
     column_meaning_directory = "data/BIRD-SQL_column_meaning"

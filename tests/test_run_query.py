@@ -33,9 +33,8 @@ async def sql_engine() -> AsyncGenerator[Any, None]:
 async def db_connector(sql_engine: Any) -> SQLConnector:
     return await SQLConnector.from_url_async(
         global_id="test_sqlite",
-        db_name="test_db",
-        engine_type="async",
         url=sql_engine.url,
+        db_name="test_db",
     )
 
 

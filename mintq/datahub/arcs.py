@@ -184,9 +184,8 @@ class ARCSDatasetLoader:
             *[
                 SQLConnector.from_url_async(
                     global_id=f"arcs+{name}",
-                    db_name=name,
-                    engine_type="async",
                     url=f"sqlite+aiosqlite:///{os.path.join(self.directory, 'databases', 'sqlite', f'{name}.sqlite')}",
+                    db_name=name,
                     max_concurrency_per_db=self.max_concurrency,
                     dbms_semaphore=self._dbms_semaphore,
                 )
