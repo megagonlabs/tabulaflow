@@ -80,7 +80,6 @@ class Neo4jConnector:
         database: str = "neo4j",
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
-        max_connection_pool_size: int = 100,
         **driver_kwargs: Any,
     ) -> "Neo4jConnector":
         """Create a connector from a Neo4j Bolt URL.
@@ -94,14 +93,12 @@ class Neo4jConnector:
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Block write statements when ``True``.
-            max_connection_pool_size: Driver connection pool size.
             **driver_kwargs: Extra keyword arguments for
                 ``neo4j.AsyncGraphDatabase.driver``.
         """
         driver = neo4j.AsyncGraphDatabase.driver(
             url,
             auth=auth,
-            max_connection_pool_size=max_connection_pool_size,
             **driver_kwargs,
         )
         await driver.verify_connectivity()
