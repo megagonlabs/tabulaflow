@@ -2713,6 +2713,7 @@ dependencies = [
     { name = "litellm" },
     { name = "logfire" },
     { name = "mcp", extra = ["cli"] },
+    { name = "neo4j" },
     { name = "openinference-instrumentation-litellm" },
     { name = "pandas" },
     { name = "plotext" },
@@ -2774,6 +2775,7 @@ requires-dist = [
     { name = "logfire", specifier = ">=3.16.0" },
     { name = "matplotlib", marker = "extra == 'plot'" },
     { name = "mcp", extras = ["cli"], specifier = ">=1.9.4" },
+    { name = "neo4j", specifier = ">=5.28.0" },
     { name = "openinference-instrumentation-litellm", specifier = ">=0.1.21" },
     { name = "pandas", specifier = ">=2.2.3" },
     { name = "plotext", specifier = ">=5.3.2" },
@@ -3078,6 +3080,18 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/87/76/9ca8f4d03f02b8289807d0c91eeb01fa6b7fdd6273769d5bd1f94773b40b/narwhals-2.7.0.tar.gz", hash = "sha256:e3fff7f1610fd3318ede78c969bc5954ce710d585eefdb689586fb69da3da43c", size = 569315, upload_time = "2025-10-06T09:39:37.69Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/74/0d/bc630dfd34ad2150d40f9392e94d3803980e71a47e10a709ce9bfcd40ffe/narwhals-2.7.0-py3-none-any.whl", hash = "sha256:010791aa0cee86d90bf2b658264aaec3eeea34fb4ddf2e83746ea4940bcffae3", size = 412767, upload_time = "2025-10-06T09:39:35.564Z" },
+]
+
+[[package]]
+name = "neo4j"
+version = "6.1.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pytz" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1b/01/d6ce65e4647f6cb2b9cca3b813978f7329b54b4e36660aaec1ddf0ccce7a/neo4j-6.1.0.tar.gz", hash = "sha256:b5dde8c0d8481e7b6ae3733569d990dd3e5befdc5d452f531ad1884ed3500b84", size = 239629, upload_time = "2026-01-12T11:27:34.777Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/70/5c/ee71e2dd955045425ef44283f40ba1da67673cf06404916ca2950ac0cd39/neo4j-6.1.0-py3-none-any.whl", hash = "sha256:3bd93941f3a3559af197031157220af9fd71f4f93a311db687bd69ffa417b67d", size = 325326, upload_time = "2026-01-12T11:27:33.196Z" },
 ]
 
 [[package]]
