@@ -31,6 +31,9 @@ SPIDER2_SNOW_DATASET_INSTRUCTIONS = """
   - Always enclose schema, table and column names in double quotes (e.g., `SELECT "col_name" FROM "SCHEMA_NAME"."TABLE_NAME"`).
   - In CTEs and subqueries, ensure both table and column aliases are wrapped in double quotes (e.g., `WITH "filtered_data" AS ...`, `SELECT ... AS "col_name"`) so they can be referenced consistently using double quotes.
   - `LATERAL FLATTEN` output columns (`VALUE`, `KEY`, ...) are uppercase. When double-quoting these names, always use uppercase (e.g., `"f"."VALUE"`).
+  - If an identifier itself contains a double quote, escape it with two double quotes (e.g., to reference a table named `Client"Data`, write `"Client""Data"`).
+- **Time Period Comparisons:**
+  - When comparing an incomplete period (e.g., the current year-to-date) against a completed one (e.g., last year), restrict both sides to the same date range. Never compare an unfinished period directly to a finished one.
 - **Percentage Values:**
   - Do not round percentage values unless explicitly requested.
   - If the question asks for a "percentage", express the result on a 0-100 scale (i.e. multiply the fraction by 100).
