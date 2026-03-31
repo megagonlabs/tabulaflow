@@ -331,9 +331,9 @@ class Spider2LiteDatasetLoader:
         url = f"bigquery://{project}/{datasets[0]}"
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
+            url,
             project,
             "sync",
-            url,
             max_concurrency_per_db=8,
             dbms_semaphore=self._bq_semaphore,
             include_schema_names=datasets,
@@ -354,9 +354,9 @@ class Spider2LiteDatasetLoader:
         }
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
+            f"{base_url}/{db_name}",
             db_name,
             "sync",
-            f"{base_url}/{db_name}",
             max_concurrency_per_db=2,
             dbms_semaphore=self._sf_semaphore,
             connect_args=connect_args,
@@ -377,9 +377,9 @@ class Spider2LiteDatasetLoader:
         url = f"sqlite+aiosqlite:///{db_path}"
         return await SQLConnector.from_url_async(
             f"spider2-lite+{db_name}",
+            url,
             db_name,
             "async",
-            url,
             max_concurrency_per_db=4,
             enable_query_caching=True,
         )

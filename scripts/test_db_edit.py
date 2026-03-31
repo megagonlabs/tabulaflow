@@ -61,9 +61,9 @@ async def main() -> None:
     create_db(db_path)
     db_connector = await SQLConnector.from_url_async(
         "test+city_stats",
+        f"sqlite:///{db_path}",
         "city_stats",
         "sync",
-        f"sqlite:///{db_path}",
     )
     model = await SimpleZeroShotNL2Q.from_config_async(
         SimpleZeroShotNL2QConfig(

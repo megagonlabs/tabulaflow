@@ -21,9 +21,9 @@ async def main() -> None:
             print(f"===\n{task.gold_query.query}\n===")
             db_connector = await SQLConnector.from_url_async(
                 f"bird-sql+{task.db}",
+                f"sqlite:///{os.path.join('data', 'BIRD-SQL', 'dev_20240627', 'dev_databases', task.db, f'{task.db}.sqlite')}",
                 task.db,
                 "sync",
-                f"sqlite:///{os.path.join('data', 'BIRD-SQL', 'dev_20240627', 'dev_databases', task.db, f'{task.db}.sqlite')}",
             )
             exec_result = await db_connector.run_query_async(task.gold_query.query)
             print(f"=== SYNC EXEC RESULT ===\n{exec_result.to_readable()}\n=== END OF SYNC EXEC RESULT ===\n")
@@ -33,9 +33,9 @@ async def main() -> None:
 
             db_connector = await SQLConnector.from_url_async(
                 f"bird-sql+{task.db}",
+                f"sqlite+aiosqlite:///{os.path.join('data', 'BIRD-SQL', 'dev_20240627', 'dev_databases', task.db, f'{task.db}.sqlite')}",
                 task.db,
                 "async",
-                f"sqlite+aiosqlite:///{os.path.join('data', 'BIRD-SQL', 'dev_20240627', 'dev_databases', task.db, f'{task.db}.sqlite')}",
             )
             exec_result = await db_connector.run_query_async(task.gold_query.query)
             print(f"=== ASYNC EXEC RESULT ===\n{exec_result.to_readable()}\n=== END OF ASYNC EXEC RESULT ===\n")

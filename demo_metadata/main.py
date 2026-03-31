@@ -152,9 +152,9 @@ WHERE prcp > monthly_avg_temp
     t0 = time.time()
     db_connector = await SQLConnector.from_url_async(
         "demo+NOAA_DATA",
+        "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
         "NOAA_DATA",
         "async",
-        "postgresql+asyncpg://postgres:postgres@localhost:6432/weather",
         enable_query_caching=True,
     )
     db_connector.schema.name = "weather"
