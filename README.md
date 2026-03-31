@@ -911,6 +911,9 @@ Release plan
 
 
 - [ ] Use OpenAI plain text tool!!!
+- [ ] Analyze spider2-snow:
+  - unfinished period like the current year to a finished one
+  - If the identifier name itself contains a double quote, escape it by using **two double quotes**. To query a table named `Client"Data`, write: `SELECT * FROM "Client""Data"`
 - [ ] bash tool for dbt agent
 - [ ] Answer asking for number but instead pred query returns separate rows - analyze trivial errors
 - [ ] Randomization for ensembling
