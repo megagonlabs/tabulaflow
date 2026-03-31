@@ -238,6 +238,70 @@ SQLDialect: TypeAlias = Literal[
 NonSQLLanguage: TypeAlias = Literal["cypher", "mongo"]
 
 
+# ---------------------------------------------------------------------------
+# Property-graph schema (Neo4j, Neptune, etc.)
+# ---------------------------------------------------------------------------
+
+
+class GraphPropertySchema(BaseModel):
+    """A single property on a node type or relationship type."""
+
+    name: str
+    dtype: str
+    """Database-reported type string (e.g. ``"STRING"``, ``"INTEGER"``, ``"LIST OF STRING"``)."""
+    description: str | None = None
+
+
+class NodeSchema(BaseModel):
+    """Schema for one node label."""
+
+    label: str
+    description: str | None = None
+    properties: list[GraphPropertySchema] = Field(default_factory=list)
+
+
+class RelationshipSchema(BaseModel):
+    """Schema for one (label, source, target) relationship pattern."""
+
+    label: str
+    source_label: str
+    target_label: str
+    description: str | None = None
+    properties: list[GraphPropertySchema] = Field(default_factory=list)
+
+
+class PropertyGraphSchema(BaseModel):
+    """Property-graph schema usable with any graph database."""
+
+    name: str
+    nodes: list[NodeSchema] = Field(default_factory=list)
+    relationships: list[RelationshipSchema] = Field(default_factory=list)
+
+    def get_node(self, label: str) -> NodeSchema:
+        for n in self.nodes:
+            if n.label == label:
+                return n
+        raise ValueError(f"Node type {label!r} not found.")
+
+    def get_relationships(
+        self,
+        label: str | None = None,
+        source_label: str | None = None,
+        target_label: str | None = None,
+    ) -> list[RelationshipSchema]:
+        """Return relationship types matching the given filters (all optional)."""
+        results: list[RelationshipSchema] = []
+        for rt in self.relationships:
+            if label is not None and rt.label != label:
+                continue
+            if source_label is not None and rt.source_label != source_label:
+                continue
+            if target_label is not None and rt.target_label != target_label:
+                continue
+            results.append(rt)
+        return results
+
+
 class ForeignKeySchema(BaseModel):
     columns: list[str]
     foreign_schema_name: str | None = None
