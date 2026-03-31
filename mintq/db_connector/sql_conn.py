@@ -62,7 +62,16 @@ class QueryResult:
     latency_seconds: float
 
 
-_ASYNC_DRIVERS = frozenset({"aiosqlite", "asyncpg", "aiomysql", "aiopg", "asyncmy"})
+_ASYNC_DRIVERS = frozenset({
+    "aiosqlite",
+    "asyncpg",
+    "aiomysql",
+    "aiopg",
+    "asyncmy",
+    "aioodbc",
+    "psycopg_async",
+    "oracledb_async",
+})
 
 
 def _is_async_url(url: str | SQLAlchemyURL) -> bool:
