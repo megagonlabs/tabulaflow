@@ -177,5 +177,7 @@ async def run_chat(model: str, agent: str) -> None:
             console.print()
             await view_result(console, result)
     finally:
+        if session is not None:
+            await session.connections.disconnect_all()
         sys.stderr = original_stderr
         stderr_stream.close()
