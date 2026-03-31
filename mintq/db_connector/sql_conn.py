@@ -977,7 +977,8 @@ class SQLConnector:
         ``.parquet``, ``.json``, ``.jsonl``, ``.ndjson``.
 
         Args:
-            global_id: Unique identifier for this connection.
+            global_id: Globally unique identifier for this connection, also
+                used as the cache key when loading the schema.
             file_paths: Paths to data files to load.
             db_name: Display name for the database. Defaults to the first
                 file's stem.

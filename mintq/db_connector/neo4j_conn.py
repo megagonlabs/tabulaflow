@@ -105,7 +105,8 @@ class Neo4jConnector:
         """Create a connector from a Neo4j Bolt URL.
 
         Args:
-            global_id: Globally unique identifier for this connection.
+            global_id: Globally unique identifier for this connection, also
+                used as the cache key when loading the schema.
             url: Neo4j URL (e.g. ``"neo4j://localhost:7687"``,
                 ``"bolt://localhost:7687"``, ``"neo4j+s://host"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
