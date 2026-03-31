@@ -22,11 +22,13 @@ class CypherSchemaFormatter:
         Node properties:
         Person {name: STRING, born: INTEGER}
         Movie {title: STRING, released: INTEGER, tagline: STRING}
-        Relationship properties:
-        ACTED_IN {roles: LIST OF STRING}
+
         The relationships:
         (:Person)-[:ACTED_IN]->(:Movie)
         (:Person)-[:DIRECTED]->(:Movie)
+        
+        Relationship properties:
+        ACTED_IN {roles: LIST OF STRING}
     """
 
     name: ClassVar[str] = "cypher"
@@ -42,15 +44,17 @@ class CypherSchemaFormatter:
         rel_prop_lines = self._format_relationship_properties(schema.relationships, add_description)
         rel_pattern_lines = [self.format_relationship(r) for r in schema.relationships]
 
-        sections = [header, ""]
-        sections.append("Node properties:")
-        sections.extend(node_lines if node_lines else ["(none)"])
-        sections.append("Relationship properties:")
-        sections.extend(rel_prop_lines if rel_prop_lines else ["(none)"])
-        sections.append("The relationships:")
-        sections.extend(rel_pattern_lines if rel_pattern_lines else ["(none)"])
+        parts = [header]
 
-        return "\n\n".join(sections)
+        node_section = ["Node properties:"] + (node_lines or ["(none)"])
+        rel_prop_section = ["Relationship properties:"] + (rel_prop_lines or ["(none)"])
+        rel_section = ["The relationships:"] + (rel_pattern_lines or ["(none)"])
+
+        parts.append("\n".join(node_section))
+        parts.append("\n".join(rel_section))
+        parts.append("\n".join(rel_prop_section))
+
+        return "\n\n".join(parts)
 
     def format_node(self, node: NodeSchema, add_description: bool = False) -> str:
         line = node.label
