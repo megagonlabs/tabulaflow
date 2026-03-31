@@ -26,6 +26,18 @@ _FILE_EXTENSIONS: dict[str, str] = {
     ".duckdb": "duckdb",
 }
 
+_DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
+
+
+def _is_data_file(path: str) -> bool:
+    """Check if a path looks like a supported data file."""
+    return os.path.splitext(path)[1].lower() in _DATA_FILE_EXTENSIONS
+
+
+def _alias_from_files(file_paths: list[str]) -> str:
+    """Derive a short alias from data file paths."""
+    return os.path.splitext(os.path.basename(file_paths[0]))[0]
+
 
 def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
     """Build connector engine kwargs based on URL scheme."""
@@ -89,6 +101,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         console.print(
             "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
             "[dim]  /connect ./data/schools.sqlite\n"
+            "  /connect ./sales.csv\n"
+            "  /connect ./sales.csv ./inventory.csv mydb\n"
+            "  /connect ./report.xlsx\n"
             "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
             "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
             "  /connect snowflake://user@account/db\n"
@@ -96,6 +111,46 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         )
         return False
 
+    # --- Data file connections (CSV, Excel, Parquet, etc.) ---
+    file_args = [a for a in args if _is_data_file(a)]
+    if file_args:
+        non_file_args = [a for a in args if not _is_data_file(a)]
+        alias = non_file_args[0] if non_file_args else _alias_from_files(file_args)
+
+        if session.connections.has(alias):
+            console.print(
+                f"[red]Alias already in use:[/red] {alias}. "
+                "Disconnect first or provide a different alias: /connect <files...> <alias>"
+            )
+            return False
+
+        from mintq.db_connector.sql_conn import SQLConnector
+
+        global_id = f"cli+{alias}"
+        file_label = ", ".join(os.path.basename(f) for f in file_args)
+        with console.status(f"[dim]Loading {file_label}...[/dim]", spinner_style=ACCENT):
+            try:
+                connector = await SQLConnector.from_files_async(
+                    global_id=global_id,
+                    file_paths=file_args,
+                    db_name=alias,
+                    read_only=True,
+                    enable_schema_caching=False,
+                    enable_query_caching=False,
+                )
+            except Exception as e:
+                console.print(f"[red]Failed to load files:[/red] {e}")
+                return False
+
+        n_tables = len(connector.schema.tables)
+        session.connections.add(alias, connector)
+        console.print(
+            f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as "
+            f"[bold]{alias}[/bold] (duckdb, {n_tables} table{'s' if n_tables != 1 else ''})"
+        )
+        return False
+
+    # --- URL / database-file connections ---
     raw = args[0]
     url = _normalize_url(raw)
     alias = args[1] if len(args) > 1 else _alias_from_url(url)
@@ -119,7 +174,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
     global_id = f"cli+{alias}"
     with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
-        try: 
+        try:
             connector = await SQLConnector.from_url_async(
                 global_id=global_id,
                 db_name=alias,

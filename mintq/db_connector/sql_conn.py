@@ -3,6 +3,7 @@ import hashlib
 import json
 import re
 import logging
+import tempfile
 import warnings
 from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
 import dataclasses
@@ -742,6 +743,61 @@ async def build_schema_async(
     return SQLSchema(name=db_name, dialect=dialect, tables=tables)
 
 
+DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
+
+
+def _table_name_from_path(file_path: str) -> str:
+    """Derive a clean SQL table name from a file path."""
+    stem = os.path.splitext(os.path.basename(file_path))[0]
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", stem)
+    name = re.sub(r"_+", "_", name).strip("_")
+    if name and name[0].isdigit():
+        name = f"t_{name}"
+    return name.lower() or "data"
+
+
+def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> None:
+    """Create DuckDB tables from data files (runs synchronously)."""
+    import duckdb
+
+    conn = duckdb.connect(db_path)
+    try:
+        needs_spatial = any(os.path.splitext(p)[1].lower() in (".xlsx", ".xls") for p in file_paths)
+        if needs_spatial:
+            conn.install_extension("spatial")
+            conn.load_extension("spatial")
+
+        used_names: set[str] = set()
+        for file_path in file_paths:
+            base_name = _table_name_from_path(file_path)
+            name = base_name
+            suffix = 2
+            while name in used_names:
+                name = f"{base_name}_{suffix}"
+                suffix += 1
+            used_names.add(name)
+
+            ext = os.path.splitext(file_path)[1].lower()
+            escaped = file_path.replace("'", "''")
+
+            if ext == ".csv":
+                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}')"
+            elif ext == ".tsv":
+                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}', delim='\\t')"
+            elif ext in (".xlsx", ".xls"):
+                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM st_read('{escaped}')"
+            elif ext == ".parquet":
+                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_parquet('{escaped}')"
+            elif ext in (".json", ".jsonl", ".ndjson"):
+                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto('{escaped}')"
+            else:
+                raise ValueError(f"Unsupported file format: {ext}")
+
+            conn.execute(sql)
+    finally:
+        conn.close()
+
+
 @dataclass
 class SQLConnector:
     """Database connector that wraps a SQLAlchemy engine with concurrency
@@ -766,6 +822,7 @@ class SQLConnector:
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
     _column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+    _temp_db_path: str | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
 
     @classmethod
@@ -883,6 +940,73 @@ class SQLConnector:
             _column_stats_mode=mintq_config.column_stats_mode,
         )
 
+    @classmethod
+    async def from_files_async(
+        cls,
+        global_id: str,
+        file_paths: list[str],
+        *,
+        db_name: str | None = None,
+        read_only: bool = True,
+        enable_schema_caching: bool = False,
+        enable_query_caching: bool = False,
+    ) -> "SQLConnector":
+        """Create a connector from CSV, Excel, Parquet, or JSON files.
+
+        Each file is loaded into a DuckDB table backed by a temporary database
+        file. Table names are derived from filenames. The temp file is cleaned
+        up when :meth:`disconnect_async` is called.
+
+        Supported formats: ``.csv``, ``.tsv``, ``.xlsx``, ``.xls``,
+        ``.parquet``, ``.json``, ``.jsonl``, ``.ndjson``.
+
+        Args:
+            global_id: Unique identifier for this connection.
+            file_paths: Paths to data files to load.
+            db_name: Display name for the database. Defaults to the first
+                file's stem.
+            read_only: If True, block write statements.
+            enable_schema_caching: Whether to cache the inferred schema.
+            enable_query_caching: Whether to cache query results.
+
+        Returns:
+            A :class:`SQLConnector` backed by a temporary DuckDB database.
+        """
+        resolved: list[str] = []
+        for p in file_paths:
+            abs_p = os.path.abspath(p)
+            if not os.path.isfile(abs_p):
+                raise FileNotFoundError(f"File not found: {p}")
+            ext = os.path.splitext(abs_p)[1].lower()
+            if ext not in DATA_FILE_EXTENSIONS:
+                raise ValueError(f"Unsupported file format: {ext}")
+            resolved.append(abs_p)
+        if not resolved:
+            raise ValueError("At least one file path is required")
+
+        if db_name is None:
+            db_name = _table_name_from_path(resolved[0])
+
+        fd, db_path = tempfile.mkstemp(suffix=".duckdb")
+        os.close(fd)
+        os.unlink(db_path)
+
+        loop = asyncio.get_running_loop()
+        await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)
+
+        url = f"duckdb:///{db_path}"
+        connector = await cls.from_url_async(
+            global_id=global_id,
+            db_name=db_name,
+            engine_type="sync",
+            url=url,
+            read_only=read_only,
+            enable_schema_caching=enable_schema_caching,
+            enable_query_caching=enable_query_caching,
+        )
+        connector._temp_db_path = db_path
+        return connector
+
     async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
 
@@ -891,11 +1015,20 @@ class SQLConnector:
         from acquiring a write lock.  Calling this method releases the lock
         while keeping the connector usable — ``schema`` remains in memory
         and SQLAlchemy will transparently create new connections on demand.
+
+        If this connector was created via :meth:`from_files_async`, the
+        temporary DuckDB file is also deleted.
         """
         if self._t_eng.engine_type == "async":
             await self._t_eng.engine.dispose()  # type: ignore
         else:
             self._t_eng.engine.dispose()
+        if self._temp_db_path is not None:
+            try:
+                os.unlink(self._temp_db_path)
+            except OSError:
+                pass
+            self._temp_db_path = None
 
     async def refresh_schema_async(
         self,
