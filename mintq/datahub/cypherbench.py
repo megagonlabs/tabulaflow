@@ -62,8 +62,8 @@ class CypherBenchDatasetLoader:
     name: ClassVar = "cypherbench"
     splits: ClassVar = ["test", "train"]
     default_metrics: ClassVar = [
-        "simple_ex",
         "cypherbench_ex",
+        "simple_ex",
         "psjs",
         "executable",
         "gold_executable",
