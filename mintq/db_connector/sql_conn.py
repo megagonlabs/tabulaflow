@@ -868,7 +868,7 @@ class SQLConnector:
         Args:
             global_id: A globally unique identifier for this database connection, also
                 used as the cache key when loading the schema.
-            db_name: The name of the database to connect to.
+            db_name: Human-readable database name used in ``schema.name``.
             engine_type: Whether to create an ``"async"`` or ``"sync"``
                 SQLAlchemy engine.
             url: The database URL (string or :class:`SQLAlchemyURL`).
