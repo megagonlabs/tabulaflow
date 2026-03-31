@@ -107,6 +107,8 @@ class SQLBasicSchemaFormatter:
             res += f" {self._quote_if_needed(table.name)}"
         if table.num_rows is not None:
             res += f" ({table.num_rows} rows)"
+        if add_description and table.description:
+            res += f" -- {table.description}"
         res = f"=== {res} ===\n"
 
         composite_fks = []

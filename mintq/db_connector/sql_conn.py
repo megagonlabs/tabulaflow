@@ -746,21 +746,35 @@ async def build_schema_async(
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
 
 
-def _table_name_from_path(file_path: str) -> str:
-    """Derive a clean SQL table name from a file path."""
-    stem = os.path.splitext(os.path.basename(file_path))[0]
+def _table_name_from_path(file_path: str, *, include_ext: bool = False) -> str:
+    """Derive a clean SQL table name from a file path.
+
+    Args:
+        file_path: Path to the data file.
+        include_ext: If True, append the file extension as a suffix
+            (e.g. ``sales.csv`` → ``sales_csv``).
+    """
+    basename = os.path.basename(file_path)
+    stem, ext = os.path.splitext(basename)
     name = re.sub(r"[^a-zA-Z0-9_]", "_", stem)
     name = re.sub(r"_+", "_", name).strip("_")
+    if include_ext and ext:
+        name = f"{name}_{ext.lstrip('.').lower()}" if name else ext.lstrip(".").lower()
     if name and name[0].isdigit():
         name = f"t_{name}"
     return name.lower() or "data"
 
 
-def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> None:
-    """Create DuckDB tables from data files (runs synchronously)."""
+def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, str]:
+    """Create DuckDB tables from data files (runs synchronously).
+
+    Returns:
+        Mapping of table name → source file path.
+    """
     import duckdb
 
     conn = duckdb.connect(db_path)
+    table_file_map: dict[str, str] = {}
     try:
         needs_spatial = any(os.path.splitext(p)[1].lower() in (".xlsx", ".xls") for p in file_paths)
         if needs_spatial:
@@ -769,13 +783,14 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> None:
 
         used_names: set[str] = set()
         for file_path in file_paths:
-            base_name = _table_name_from_path(file_path)
+            base_name = _table_name_from_path(file_path, include_ext=False)
             name = base_name
             suffix = 2
             while name in used_names:
                 name = f"{base_name}_{suffix}"
                 suffix += 1
             used_names.add(name)
+            table_file_map[name] = file_path
 
             ext = os.path.splitext(file_path)[1].lower()
             escaped = file_path.replace("'", "''")
@@ -796,6 +811,7 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> None:
             conn.execute(sql)
     finally:
         conn.close()
+    return table_file_map
 
 
 @dataclass
@@ -992,7 +1008,9 @@ class SQLConnector:
         os.unlink(db_path)
 
         loop = asyncio.get_running_loop()
-        await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)
+        table_file_map: dict[str, str] = await loop.run_in_executor(
+            None, _load_files_into_duckdb, db_path, resolved
+        )
 
         url = f"duckdb:///{db_path}"
         connector = await cls.from_url_async(
@@ -1005,6 +1023,12 @@ class SQLConnector:
             enable_query_caching=enable_query_caching,
         )
         connector._temp_db_path = db_path
+
+        for table in connector.schema.tables:
+            source_file = table_file_map.get(table.name)
+            if source_file:
+                table.description = f"Imported from {os.path.basename(source_file)}"
+
         return connector
 
     async def disconnect_async(self) -> None:
