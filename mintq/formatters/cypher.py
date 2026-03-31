@@ -79,7 +79,7 @@ class CypherSchemaFormatter:
         seen: set[str] = set()
         lines: list[str] = []
         for rel in relationships:
-            if rel.label in seen:
+            if rel.label in seen or not (rel.properties or (add_description and rel.description)):
                 continue
             seen.add(rel.label)
             line = rel.label
