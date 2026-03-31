@@ -53,9 +53,13 @@ _CYPHERBENCH_TRAIN_GRAPHS: list[str] = [
     "terrorist_attack",
 ]
 
+# (see ``https://github.com/megagonlabs/cypherbench/blob/main/cypherbench/baseline/zero_shot_nl2cypher.py``)
 _CYPHERBENCH_DATASET_INSTRUCTIONS = """
-- Answer using **Cypher** for the Neo4j property graph named in each task.
-- Return only the Cypher query as your executable answer unless the task says otherwise.
+- Translate the question to a **Cypher** query for the Neo4j property graph named in each task, using only the provided schema.
+- Output the Cypher on a **single line**.
+- Prefer **graph pattern matching** in the `MATCH` clause when possible.
+- Avoid listing the same entity multiple times in the result rows; if several distinct entities share the same name, repeat that name as separate rows as needed.
+- Do **not** return node objects; return entity **names** or **scalar properties** instead.
 """.strip()
 
 
