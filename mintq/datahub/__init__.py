@@ -6,6 +6,7 @@ from mintq.datahub.spider2_dbt import Spider2DbtDatasetLoader
 from mintq.datahub.beaver import BeaverDatasetLoader
 from mintq.datahub.arcs import ARCSDatasetLoader
 from mintq.datahub.ambrosia_s import AmbrosiaSDatasetLoader
+from mintq.datahub.cypherbench import CypherBenchDatasetLoader
 
 
 __all__ = [
@@ -18,5 +19,6 @@ __all__ = [
     "BeaverDatasetLoader",
     "ARCSDatasetLoader",
     "AmbrosiaSDatasetLoader",
+    "CypherBenchDatasetLoader",
     "dataset_registry",
 ]

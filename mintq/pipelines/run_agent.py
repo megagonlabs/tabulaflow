@@ -312,6 +312,8 @@ async def main_async() -> None:
         parser.set_defaults(split="test", num_few_shot_examples=0)
     elif args.dataset == "arcs":
         parser.set_defaults(split="test", schema_formatter="sql_basic")
+    elif args.dataset == "cypherbench":
+        parser.set_defaults(split="test", num_few_shot_examples=0)
 
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
@@ -319,6 +321,8 @@ async def main_async() -> None:
             parser.set_defaults(databases=["AIRLINES"])
         elif args.dataset == "spider2-dbt" and not args.qids:
             parser.set_defaults(databases=["zuora001"])
+        elif args.dataset == "cypherbench" and not args.qids:
+            parser.set_defaults(databases=["nba"])
     args = parser.parse_args()
     print(args)
     print()

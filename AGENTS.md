@@ -84,6 +84,7 @@ Managed via `direnv` (`.envrc` file, not committed):
 | `beaver` | Beaver MySQL |
 | `arcs` | ARCS ambiguous NL2SQL |
 | `ambrosia-s` | AMBROSIA structured |
+| `cypherbench` | CypherBench text-to-Cypher (Neo4j; splits: `test`, `train`; data: clone HF `megagonlabs/cypherbench` to `data/cypherbench`) |
 
 ## Tmux Sessions
 
