@@ -69,7 +69,7 @@ class Neo4jConnector:
     schema: PropertyGraphSchema
     language: NonSQLLanguage
     _driver: neo4j.AsyncDriver
-    _database: str
+    _database: str | None
     read_only: bool = True
     enable_schema_caching: bool = True
 
@@ -80,7 +80,7 @@ class Neo4jConnector:
         db_name: str,
         url: str,
         auth: tuple[str, str] | neo4j.Auth | None = None,
-        database: str = "neo4j",
+        database: str | None = None,
         schema: PropertyGraphSchema | None = None,
         read_only: bool = True,
         enable_schema_caching: bool = True,
@@ -93,7 +93,7 @@ class Neo4jConnector:
             db_name: Human-readable name used in ``schema.name``.
             url: Bolt URL (e.g. ``"bolt://localhost:7687"``).
             auth: ``(username, password)`` tuple or ``neo4j.Auth`` object.
-            database: Neo4j database name.  Defaults to ``"neo4j"``.
+            database: Neo4j database name.  ``None`` uses the server default.
             schema: Pre-loaded schema.  If ``None``, the schema is
                 introspected automatically.
             read_only: Block write statements when ``True``.
