@@ -31,7 +31,7 @@ from mintq.config import mintq_config
 # |     Step limiting is handled by max_steps_processor in agenthub/utils.py instead. |
 # =====================================================================================
 
-UsageLimits.__init__.__kwdefaults__["request_limit"] = None  # type: ignore[union-attr]
+UsageLimits.__init__.__kwdefaults__["request_limit"] = None  # type: ignore[index]
 
 
 # =====================================================================================================

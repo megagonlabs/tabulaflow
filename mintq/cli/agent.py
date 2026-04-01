@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from pydantic_ai.messages import ModelMessage
 
     from mintq.db_connector.base import BaseSQLDBConnector
+    from mintq.toolhub.run_query import RunQueryTool
+    from mintq.toolhub.get_table_schema import GetTableSchemaTool
 
 logger = logging.getLogger(__name__)
 
@@ -66,7 +68,7 @@ class ChatResult:
     text: str
     sql: str | None = None
     df: pd.DataFrame | None = None
-    chart_spec: dict | None = None
+    chart_spec: dict[str, object] | None = None
     chart_df: pd.DataFrame | None = None
 
 
@@ -208,8 +210,8 @@ class ChatAgent:
 def _handle_stream_event(
     event: object,
     progress: AgentProgressDisplay,
-    run_query_tool: object,
-    get_table_schema_tool: object,
+    run_query_tool: RunQueryTool,
+    get_table_schema_tool: GetTableSchemaTool,
 ) -> None:
     """Dispatch a single stream event to the progress display."""
     from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
@@ -221,16 +223,16 @@ def _handle_stream_event(
         progress.tool_start(tool_name, args_summary)
 
     elif isinstance(event, FunctionToolResultEvent):
-        tool_name = event.result.tool_name
-        result_summary = _summarize_result(tool_name, run_query_tool, get_table_schema_tool)
-        progress.tool_end(tool_name, result_summary)
+        result_tool_name = event.result.tool_name or ""
+        result_summary = _summarize_result(result_tool_name, run_query_tool, get_table_schema_tool)
+        progress.tool_end(result_tool_name, result_summary)
 
     elif isinstance(event, PartDeltaEvent):
         if isinstance(event.delta, TextPartDelta):
             progress.text_delta(event.delta.content_delta)
 
 
-def _summarize_args(tool_name: str, args: str | dict | None) -> str:
+def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str:
     if args is None:
         return ""
     if isinstance(args, str):
@@ -242,7 +244,7 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
         return str(args)[:80]
 
     if tool_name == "run_query":
-        query = " ".join(args.get("query", "").split())
+        query = " ".join(str(args.get("query", "")).split())
         if len(query) > 40:
             query = query[:37] + "..."
         return query
@@ -278,8 +280,8 @@ def _summarize_args(tool_name: str, args: str | dict | None) -> str:
 
 def _summarize_result(
     tool_name: str,
-    run_query_tool: object,
-    get_table_schema_tool: object,
+    run_query_tool: RunQueryTool,
+    get_table_schema_tool: GetTableSchemaTool,
 ) -> str:
     if tool_name == "run_query":
         try:
@@ -375,4 +377,4 @@ class AgentProgressDisplay:
             parts.append(Text())
             parts.append(Text(display, style="dim"))
 
-        self._live.update(Group(*parts) if parts else Text())
+        self._live.update(Group(*parts) if parts else Text())  # type: ignore[arg-type]

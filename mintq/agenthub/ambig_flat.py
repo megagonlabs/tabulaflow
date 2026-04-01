@@ -6,7 +6,7 @@ from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
 from mintq.schema import (
     AmbigNL2QTask,
     FlatAmbigNL2QTaskOutput,
@@ -122,7 +122,7 @@ class AmbigFlatSQLAgent:
         config: AmbigFlatSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
@@ -283,7 +283,7 @@ class AmbigFlatSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)  # type: ignore[arg-type]
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["search_keywords"] = SearchKeywordsTool(db_connector)
@@ -302,7 +302,7 @@ class AmbigFlatSQLAgent:
             task=task,
             db_connector=db_connector,
             preprocessed_schema=db_connector.schema,
-            schema_formatter=self.formatter,
+            schema_formatter=self.formatter,  # type: ignore[arg-type]
             usage=Usage.create(llm=self.config.llm),
             tools=tools,
             trajectories=[],

@@ -90,7 +90,7 @@ class Neo4jConnector:
                 result = await session.run("SHOW DEFAULT DATABASE")
                 record = await result.single()
                 if record:
-                    return record["name"]
+                    return str(record["name"])
         except Exception:
             pass
         return None

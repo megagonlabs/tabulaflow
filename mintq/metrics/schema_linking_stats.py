@@ -1,5 +1,5 @@
 from typing import ClassVar
-from mintq.schema import NL2QTaskOutput, NumericOrNull
+from mintq.schema import NL2QTaskOutput, NumericOrNull, SQLSchema
 from mintq.metrics.base import metric_registry
 from mintq.utils import extract_all_source_columns
 from mintq.db_connector import NL2QDBConnector
@@ -19,9 +19,13 @@ class SchemaLinkingStats:
 
         gold_query = get_final_gold_query(task, check_exec_result=False)
 
+        schema = db_connector.schema
+        if not isinstance(schema, SQLSchema):
+            raise TypeError(f"SchemaLinkingStats requires a SQL schema, got {type(schema)!r}")
+
         res: dict[str, NumericOrNull] = {
             "linked_percentage": len(task.extra_pred_info.linked_schema or [])
-            / len(db_connector.schema.get_all_column_refs()),
+            / len(schema.get_all_column_refs()),
         }
 
         # We rely on the gold query to extract the ground-truth linked schema.

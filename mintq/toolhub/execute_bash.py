@@ -109,7 +109,7 @@ class ExecuteBashTool:
         self._command_filter = command_filter
         self._metrics = BashToolMetrics()
 
-        self._process: subprocess.Popen | None = None
+        self._process: subprocess.Popen[bytes] | None = None
         self._pty_fd: int | None = None
         self._buf: deque[str] = deque(maxlen=_HISTORY_LIMIT + 50)
         self._loop: asyncio.AbstractEventLoop | None = None

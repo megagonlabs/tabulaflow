@@ -106,7 +106,7 @@ def render_plotext(
     plt.xlabel(x_field)
     plt.ylabel(y_field)
 
-    return plt.build()
+    return str(plt.build())
 
 
 class RenderPlotextChartTool:

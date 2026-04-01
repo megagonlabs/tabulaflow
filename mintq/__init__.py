@@ -1,6 +1,14 @@
 import logging
 import os
 from importlib.metadata import version
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from mintq.agenthub.base import agent_registry as agent_registry
+    from mintq.datahub.base import dataset_registry as dataset_registry
+    from mintq.formatters.base import formatter_registry as formatter_registry
+    from mintq.metrics.base import metric_registry as metric_registry
+    from mintq.preprocessors.base import preprocessor_registry as preprocessor_registry
 
 
 def __getattr__(name: str) -> object:

@@ -1,4 +1,4 @@
-def __getattr__(name: str):
+def __getattr__(name: str) -> object:
     if name == "run_agent_async":
         from mintq.pipelines.run_agent import run_agent_async
 

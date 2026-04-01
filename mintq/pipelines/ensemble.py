@@ -37,13 +37,13 @@ async def _ensemble_tasks_async(
     verbose: bool = True,
 ) -> tuple[list[NL2QTaskOutput], int]:
     """Ensemble NL2Q tasks. Returns (outputs, num_failed)."""
-    qid_to_outputs: dict[str, list] = collections.defaultdict(list)
+    qid_to_outputs: dict[str, list[NL2QTaskOutput]] = collections.defaultdict(list)
     for result in results:
         for task_output in result.tasks:
             qid_to_outputs[task_output.qid].append(task_output)
 
     tasks = []
-    task_output_groups: list[list] = []
+    task_output_groups: list[list[NL2QTaskOutput]] = []
     for task in dataset.tasks:
         outputs = qid_to_outputs.get(task.qid, [])
         if not outputs:
@@ -60,7 +60,7 @@ async def _ensemble_tasks_async(
 
         batch_results = await tqdm_gather_with_exceptions(
             *[
-                ensembler.ensemble_async(task, dataset.db_connectors[task.db], outputs)  # type: ignore[arg-type]
+                ensembler.ensemble_async(task, dataset.db_connectors[task.db], outputs)
                 for task, outputs in zip(batch_tasks, batch_groups)
             ],
             return_exceptions=True,

@@ -89,7 +89,7 @@ class DirectPrompting:
         if isinstance(schema, PropertyGraphSchema):
             fmt_name = self.config.schema_formatter if self.config.schema_formatter in ("cypher",) else "cypher"
             formatter = formatter_registry.get_class(fmt_name)()
-            return formatter.format(schema)
+            return formatter.format(schema)  # type: ignore[arg-type]
         if isinstance(schema, SQLSchema):
             working = schema
             if self.compressor is not None and self.config.compress_schema:
@@ -97,7 +97,7 @@ class DirectPrompting:
             sql_formatter = formatter_registry.get_class(self.config.schema_formatter)(
                 **self.config.to_formatter_kwargs()
             )
-            return sql_formatter.format(working, add_description=self.config.use_column_description)
+            return sql_formatter.format(working, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
         raise TypeError(f"Unsupported schema type for DirectPrompting: {type(schema)!r}")
 
     @instrument

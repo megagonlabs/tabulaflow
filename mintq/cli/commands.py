@@ -65,7 +65,7 @@ async def handle_command(text: str, session: ChatSession, console: Console) -> b
         console.print(f"[red]Unknown command:[/red] {cmd}. Type [bold]/help[/bold] for available commands.")
         return False
 
-    return await handler(args, session, console)
+    return await handler(args, session, console)  # type: ignore[operator, no-any-return]
 
 
 async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> bool:
@@ -266,7 +266,7 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
     if isinstance(result, list):
         console.print(f"[red]Ambiguous table name:[/red] {args[0]}. Matches:")
         for t in result:
-            console.print(f"  [dim]{_display_name(t, multi=True)}[/dim]")
+            console.print(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
         console.print("[dim]Use the qualified name: /schema <schema>.<table>[/dim]")
         return False
 
@@ -357,13 +357,13 @@ async def _prompt_password_if_needed(url: str, console: Console) -> str:
     """If URL has a username but no password, prompt interactively."""
     parsed = urlparse(url)
     if parsed.username and not parsed.password and parsed.hostname:
-        from prompt_toolkit import prompt as pt_prompt
+        from prompt_toolkit import PromptSession as _PromptSession
 
         console.print(f"[dim]Authenticating as[/dim] [bold]{parsed.username}[/bold]")
-        password = await pt_prompt(
+        _ps: _PromptSession[str] = _PromptSession()
+        password = await _ps.prompt_async(
             "  Password: ",
             is_password=True,
-            async_=True,
         )
         replaced = parsed._replace(
             netloc=f"{parsed.username}:{password}@{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")

@@ -3,7 +3,7 @@ import time
 from typing import ClassVar, Literal
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.toolhub import (
     BaseTool,
@@ -61,7 +61,7 @@ class AmbigSimpleSQLAgent:
         config: AmbigSimpleSQLAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.compressor = SchemaCompressor() if config.compress_schema else None
@@ -85,7 +85,7 @@ class AmbigSimpleSQLAgent:
         if self.compressor is not None:
             schema = self.compressor.compress(schema)
         tools: dict[str, BaseTool] = {}
-        tools["get_schema"] = GetSchemaTool(schema, self.formatter)
+        tools["get_schema"] = GetSchemaTool(schema, self.formatter)  # type: ignore[arg-type]
         if self.config.use_column_description:
             tools["get_column_description"] = GetColumnDescriptionTool(schema)
         tools["ask_user"] = AskUserTool(user_simulator, patience=user_patience)

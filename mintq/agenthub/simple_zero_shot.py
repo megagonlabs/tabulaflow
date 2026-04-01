@@ -87,12 +87,12 @@ class SimpleZeroShotNL2Q:
 
         schema = db_connector.schema
         if self.config.compress_schema:
-            schema = SchemaCompressor().compress(schema)
+            schema = SchemaCompressor().compress(schema)  # type: ignore[arg-type]
 
         if isinstance(schema, PropertyGraphSchema):
-            schema_str = self.formatter.format(schema)
+            schema_str = self.formatter.format(schema)  # type: ignore[arg-type]
         elif isinstance(schema, SQLSchema):
-            schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
+            schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
         else:
             raise TypeError(f"Unsupported schema type for SimpleZeroShotNL2Q: {type(schema)!r}")
         if len(schema_str) > SCHEMA_MAX_CHARS:

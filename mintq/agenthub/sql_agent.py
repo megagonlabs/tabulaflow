@@ -30,7 +30,7 @@ from mintq.toolhub import (
     SearchKeywordsTool,
     FinishTool,
 )
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
     get_max_steps_processor,
@@ -195,8 +195,8 @@ class SchemaLinker:
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
-            "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryTool(db_connector),
+            "search_keywords": SearchKeywordsTool(db_connector),  # type: ignore[arg-type]
+            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
@@ -411,7 +411,7 @@ class SQLAgent:
         self.few_shot_dataset = few_shot_dataset
         self.few_shot_embeddings = few_shot_embeddings
 
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
         self.schema_linker = SchemaLinker(config) if config.do_schema_linking else None
@@ -476,7 +476,7 @@ class SQLAgent:
             task=task,
             db_connector=db_connector,
             preprocessed_schema=preprocessed_schema,
-            schema_formatter=self.formatter,
+            schema_formatter=self.formatter,  # type: ignore[arg-type]
             usage=Usage.create(llm=self.config.llm),
             tools={},
             trajectories=[],
@@ -510,14 +510,14 @@ class SQLAgent:
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
             # "get_column_description": GetColumnDescriptionTool(linked_schema),
-            "search_keywords": SearchKeywordsTool(db_connector),
-            "run_query": RunQueryTool(db_connector),
+            "search_keywords": SearchKeywordsTool(db_connector),  # type: ignore[arg-type]
+            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
             dataset_instructions=task.dataset_instructions,
-            schema=self.formatter.format(linked_schema, add_description=self.config.use_column_description),
+            schema=self.formatter.format(linked_schema, add_description=self.config.use_column_description),  # type: ignore[arg-type, call-arg]
             er_diagram=ctx.er_diagram_formatter.format(linked_er_diagram),  # type: ignore
             document=task.document,
             examples=examples,

@@ -14,7 +14,7 @@ from pydantic_ai import Agent
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter, formatter_registry
+from mintq.formatters import BaseSQLSchemaFormatter, NL2QFormatter, formatter_registry
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
 from mintq.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool, RunQueryTool
@@ -107,7 +107,7 @@ class DbtAgent:
 
     def __init__(self, config: DbtAgentConfig):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -119,18 +119,19 @@ class DbtAgent:
     async def predict_async(self, task: DbtTask, db_connector: BaseSQLDBConnector) -> DbtTaskOutput:
         t0 = time.time()
         assert task.working_dir is not None, "working_dir must be set before calling predict_async"
+        working_dir: str = task.working_dir
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
         db_summary = await db_summarizer.preprocess_async(db_connector)
         db_document = db_summary.db_summary_markdown
 
-        file_editor = FileEditorTool(task.working_dir)
+        file_editor = FileEditorTool(working_dir)
 
         async def _pre_run_hook() -> None:
             await db_connector.disconnect_async()
             # Restore DuckDB files from pristine backup before each dbt run
             # to prevent unrecoverable corruption caused by previous dbt runs.
-            db_files = list(Path(task.working_dir).resolve().glob("*.duckdb"))
+            db_files = list(Path(working_dir).resolve().glob("*.duckdb"))
             for db_file in db_files:
                 backup = db_file.with_suffix(".duckdb.pristine")
                 if not backup.exists():
@@ -139,7 +140,7 @@ class DbtAgent:
 
         get_table_schema = GetTableSchemaTool(
             db_connector,
-            self.formatter,
+            self.formatter,  # type: ignore[arg-type]
             compress=self.config.compress_schema,
             add_description=self.config.use_column_description,
             disconnect_on_finish=True,
@@ -160,14 +161,12 @@ class DbtAgent:
                     "Install dbt or activate the correct virtualenv."
                 )
             dbt_bin_dir = str(Path(dbt_path).parent)
-            bash_tool = ExecuteBashTool(
-                working_dir=task.working_dir,
+            run_tool: ExecuteBashTool | RunDbtTool = ExecuteBashTool(
+                working_dir=working_dir,
                 init_commands=[f'export PATH="{dbt_bin_dir}:$PATH"'],
             )
-            run_tool = bash_tool
         else:
-            run_dbt = RunDbtTool(task.working_dir, pre_run_hook=_pre_run_hook)
-            run_tool = run_dbt
+            run_tool = RunDbtTool(working_dir, pre_run_hook=_pre_run_hook)
 
         system_prompt = jinja2.Template(DBT_AGENT_SYSTEM_PROMPT).render(
             dataset_instructions=task.dataset_instructions,
@@ -226,7 +225,7 @@ class DbtAgent:
             "run_query": run_query.metrics().model_dump(),
         }
 
-        dbt_run_success = run_dbt.metrics().last_run_success if not self.config.use_bash_tool else None
+        dbt_run_success = run_tool.metrics().last_run_success if isinstance(run_tool, RunDbtTool) else None
 
         return DbtTaskOutput(
             **task.model_dump(),

@@ -10,7 +10,7 @@ from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.ensemblers.majority_ensembler import _normalize_value
 from mintq.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.base import BaseSQLSchemaFormatter, formatter_registry
+from mintq.formatters.base import BaseSQLSchemaFormatter, NL2QFormatter, formatter_registry
 from mintq.utils import format_df
 from mintq.pipelines.populate_exec_results import populate_task_async
 from mintq.preprocessors import DBSummarizer
@@ -126,7 +126,7 @@ class AgentEnsembler:
 
     def __init__(self, config: AgentEnsemblerConfig):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -229,7 +229,7 @@ class AgentEnsembler:
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
                 db_connector,
-                self.formatter,
+                self.formatter,  # type: ignore[arg-type]
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 from contextlib import contextmanager
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Iterator
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import AnyFormattedText
@@ -25,7 +25,7 @@ console = Console()
 
 
 @contextmanager
-def _suppress_native_stderr() -> object:
+def _suppress_native_stderr() -> Iterator[None]:
     """Silence native writes to stderr (fd=2) during interactive actions."""
     import os
 
@@ -139,8 +139,8 @@ async def run_chat(model: str, agent: str) -> None:
             prompt = session.prompt_parts if session else default_prompt
             try:
                 user_input = await prompt_session.prompt_async(
-                    prompt,
-                    prompt_continuation=_continuation,
+                    prompt,  # type: ignore[arg-type]
+                    prompt_continuation=_continuation,  # type: ignore[arg-type]
                 )
             except (EOFError, KeyboardInterrupt):
                 console.print()

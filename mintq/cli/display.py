@@ -9,7 +9,8 @@ from rich.console import Console, Group
 from rich.panel import Panel
 from rich.style import Style
 from rich.syntax import Syntax
-from rich.table import Table, box
+from rich import box
+from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
@@ -28,6 +29,7 @@ MINTQ_THEME = Theme(
 
 if TYPE_CHECKING:
     import pandas as pd
+    from mintq.cli.agent import AgentProgressDisplay
     from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
 
 
@@ -106,7 +108,7 @@ def render_nl(console: Console, text: str) -> None:
     console.pop_theme()
 
 
-def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict) -> None:
+def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict[str, object]) -> None:
     """Render a plotext chart from a Vega-Lite spec and DataFrame."""
     from mintq.toolhub.render_chart import parse_vegalite_spec, render_plotext
 
@@ -346,7 +348,7 @@ def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
     return None
 
 
-def render_agent_progress(console: Console) -> object:
+def render_agent_progress(console: Console) -> AgentProgressDisplay:
     """Create a progress display for streaming agent execution."""
     from mintq.cli.agent import AgentProgressDisplay
 
@@ -392,7 +394,7 @@ async def view_result(console: Console, result: object) -> None:
         return
 
     if len(available) == 1:
-        console.print(Text.from_ansi(views[available[0]]), end="")
+        console.print(Text.from_ansi(views[available[0]] or ""), end="")
         return
 
     from prompt_toolkit.application import Application
@@ -444,7 +446,7 @@ async def view_result(console: Console, result: object) -> None:
     @kb.add("q")
     @kb.add("escape")
     def _exit(event: object) -> None:
-        event.app.exit()  # type: ignore[union-attr]
+        event.app.exit()  # type: ignore[attr-defined]
 
     content_control = FormattedTextControl(
         text=_get_content,

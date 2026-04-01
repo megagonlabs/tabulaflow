@@ -19,7 +19,7 @@ from mintq.toolhub import (
     RunQueryTool,
     FinishTool,
 )
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
     get_max_steps_processor,
@@ -103,7 +103,7 @@ class MintqAgent:
         config: MintqAgentConfig,
     ):
         self.config = config
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -126,13 +126,13 @@ class MintqAgent:
         )
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                db_connector,
-                self.formatter,
+                db_connector,  # type: ignore[arg-type]
+                self.formatter,  # type: ignore[arg-type]
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),
-            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
-            "run_query": RunQueryTool(db_connector),
+            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),  # type: ignore[arg-type]
+            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
             "finish": FinishTool(),
         }
 

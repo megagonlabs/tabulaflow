@@ -120,7 +120,7 @@ def examples() -> list[ExampleCase]:
 async def test_spider2_ex(examples: list[ExampleCase]) -> None:
     spider2_ex = Spider2Ex()
     for example in examples:
-        score = await spider2_ex.compute_async(example.task, None)  # type: ignore[arg-type]
+        score = await spider2_ex.compute_async(example.task, None)
         assert score == example.spider2_ex_expected_score
 
 
@@ -128,5 +128,5 @@ async def test_spider2_ex(examples: list[ExampleCase]) -> None:
 async def test_simple_ex(examples: list[ExampleCase]) -> None:
     simple_ex = SimpleEx()
     for example in examples:
-        score = await simple_ex.compute_async(example.task, None)  # type: ignore[arg-type]
+        score = await simple_ex.compute_async(example.task, None)
         assert score == example.simple_ex_expected_score

@@ -17,7 +17,7 @@ from mintq.toolhub import (
     RunQueryTool,
     FinishTool,
 )
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter
+from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
     get_max_steps_processor,
@@ -88,7 +88,7 @@ class MiniAgent:
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-        self.formatter: BaseSQLSchemaFormatter = formatter_registry.get_class(config.schema_formatter)(
+        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
             **config.to_formatter_kwargs()
         )
 
@@ -102,8 +102,8 @@ class MiniAgent:
 
         schema = db_connector.schema
         if self.config.compress_schema:
-            schema = SchemaCompressor().compress(schema)
-        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)
+            schema = SchemaCompressor().compress(schema)  # type: ignore[arg-type]
+        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
 
         system_prompt = jinja2.Template(MINI_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
@@ -113,7 +113,7 @@ class MiniAgent:
         )
 
         tools: dict[str, BaseTool] = {
-            "run_query": RunQueryTool(db_connector),
+            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
             "finish": FinishTool(),
         }
 
