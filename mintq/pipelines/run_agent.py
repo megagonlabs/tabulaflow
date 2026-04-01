@@ -313,9 +313,7 @@ async def main_async() -> None:
     elif args.dataset == "arcs":
         parser.set_defaults(split="test", schema_formatter="sql_basic")
     elif args.dataset == "cypherbench":
-        parser.set_defaults(split="test", num_few_shot_examples=0)
-        if args.agent == "direct_prompting":
-            parser.set_defaults(schema_formatter="cypher", compress_schema=False)
+        parser.set_defaults(split="test", num_few_shot_examples=0, schema_formatter="cypher")
 
     if args.debug:
         parser.set_defaults(batch_size=2, overwrite=True, result_dir="output/test/")
