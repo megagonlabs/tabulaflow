@@ -5,6 +5,7 @@ from pydantic_ai import Agent
 import logging
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
+    SQLSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
     PredQuery,
@@ -98,11 +99,13 @@ class MiniAgent:
 
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+        if not isinstance(db_connector.schema, SQLSchema):
+            raise TypeError(f"MiniAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
         schema = db_connector.schema
         if self.config.compress_schema:
-            schema = SchemaCompressor().compress(schema)  # type: ignore[arg-type]
+            schema = SchemaCompressor().compress(schema)
         schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
 
         system_prompt = jinja2.Template(MINI_AGENT_SYSTEM_PROMPT).render(
@@ -113,7 +116,7 @@ class MiniAgent:
         )
 
         tools: dict[str, BaseTool] = {
-            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
 

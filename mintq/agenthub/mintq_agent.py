@@ -5,6 +5,7 @@ from pydantic_ai import Agent
 import logging
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
+    SQLSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
     PredQuery,
@@ -113,6 +114,8 @@ class MintqAgent:
 
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+        if not isinstance(db_connector.schema, SQLSchema):
+            raise TypeError(f"MintqAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
         db_summarizer = DBSummarizer(llm=self.config.db_summarizer_llm)
@@ -126,13 +129,13 @@ class MintqAgent:
         )
         tools: dict[str, BaseTool] = {
             "get_table_schema": GetTableSchemaTool(
-                db_connector,  # type: ignore[arg-type]
+                db_connector,
                 self.formatter,  # type: ignore[arg-type]
                 compress=self.config.compress_schema,
                 add_description=self.config.use_column_description,
             ),
-            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),  # type: ignore[arg-type]
-            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
+            "get_column_json_schema": GetColumnJsonSchemaTool(db_connector.schema),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
 

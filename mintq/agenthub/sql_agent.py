@@ -196,7 +196,7 @@ class SchemaLinker:
             # "get_schema": GetSchemaTool(ctx.preprocessed_schema, ctx.schema_formatter),
             # "get_column_description": GetColumnDescriptionTool(ctx.preprocessed_schema),
             "search_keywords": SearchKeywordsTool(db_connector),  # type: ignore[arg-type]
-            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
@@ -448,6 +448,8 @@ class SQLAgent:
 
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
+        if not isinstance(db_connector.schema, SQLSchema):
+            raise TypeError(f"SQLAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
         schema_preprocessor = SchemaPreprocessor()
@@ -510,8 +512,8 @@ class SQLAgent:
         tools: dict[str, BaseTool] = {
             # "get_schema": GetSchemaTool(linked_schema, self.formatter),
             # "get_column_description": GetColumnDescriptionTool(linked_schema),
-            "search_keywords": SearchKeywordsTool(db_connector),  # type: ignore[arg-type]
-            "run_query": RunQueryTool(db_connector),  # type: ignore[arg-type]
+            "search_keywords": SearchKeywordsTool(db_connector),
+            "run_query": RunQueryTool(db_connector),
             "finish": FinishTool(),
         }
         system_prompt = jinja2.Template(SQL_AGENT_SYSTEM_PROMPT).render(
