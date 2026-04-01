@@ -2,54 +2,21 @@
 
 from typing import ClassVar
 
-import pandas as pd
-from pydantic import BaseModel, Field
 from pydantic_ai import Tool
 
 from mintq.config import mintq_config
 from mintq.db_connector.db_registry import DBRegistry
-from mintq.toolhub.utils import format_sqlalchemy_error_msg
-from mintq.utils import format_df
+from mintq.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 
 _UNSET = object()
-
-
-def _detect_result_hints(df: pd.DataFrame) -> list[str]:
-    """Detect common problematic result patterns and return actionable hints."""
-    hints: list[str] = []
-    cols_lower = [str(c).lower() for c in df.columns]
-
-    if cols_lower == ["anonymous block"]:
-        hints.append(
-            "hint: The result contains only an 'anonymous block' column — this means the anonymous block "
-            "(DECLARE … BEGIN … END) executed but did not return the inner query's result set. "
-            "To fix this, declare a RESULTSET variable, assign it with `res := (EXECUTE IMMEDIATE :sql);`, "
-            "and add `RETURN TABLE(res);` before END."
-        )
-
-    return hints
-
-
-class RegistryRunQueryToolMetrics(BaseModel):
-    num_calls: int = 0
-    error_timeout: int = 0
-    error_query_failed: int = 0
-    error_read_only_violation: int = 0
-
-
-class LLMParameter(BaseModel):
-    parameter_name: str = Field(
-        description="The parameter name that corresponds to the placeholder in the query (e.g. :name in SQL, $name in Cypher)."
-    )
-    parameter_value: int | float | str = Field(description="The intended value of the parameter.")
 
 
 class RegistryRunQueryTool:
     """Execute a query against any registered database.
 
     The agent specifies which database to target via ``db_alias``.  The tool
-    resolves the alias through a ``DBRegistry`` and executes the query on
-    the corresponding connector.
+    resolves the alias through a ``DBRegistry`` and delegates execution to a
+    per-alias ``RunQueryTool`` instance.
     """
 
     name: ClassVar = "run_query"
@@ -83,7 +50,24 @@ class RegistryRunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._metrics = RegistryRunQueryToolMetrics()
+        self._tools: dict[str, RunQueryTool] = {}
+
+    def _get_tool(self, db_alias: str) -> RunQueryTool:
+        """Return a cached ``RunQueryTool`` for ``db_alias``, creating one if needed."""
+        tool = self._tools.get(db_alias)
+        if tool is not None:
+            return tool
+        connector = self.registry.get(db_alias)
+        tool = RunQueryTool(
+            connector,
+            enable_params=self.enable_params,
+            timeout=self.timeout,
+            max_visible_rows=self.max_visible_rows,
+            max_cell_width=self.max_cell_width,
+            floatfmt=self.floatfmt,
+        )
+        self._tools[db_alias] = tool
+        return tool
 
     async def _run_with_params(
         self,
@@ -122,57 +106,12 @@ class RegistryRunQueryTool:
         query: str,
         parameters: list[LLMParameter],
     ) -> str:
-        self._metrics.num_calls += 1
-
         try:
-            connector = self.registry.get(db_alias)
+            tool = self._get_tool(db_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
-
-        param_dict = {p.parameter_name: p.parameter_value for p in parameters}
-        try:
-            exec_result = await connector.run_query_async(
-                query,
-                parameters=param_dict,
-                timeout=self.timeout,
-            )
-            if exec_result.df is None:
-                assert exec_result.error is not None
-                if exec_result.error.exc_type == "ReadOnlyViolationError":
-                    self._metrics.error_read_only_violation += 1
-                    return f"(query failed: {exec_result.error.message})"
-                elif exec_result.error.exc_type == "TimeoutError":
-                    self._metrics.error_timeout += 1
-                    return "(query timed out)"
-                else:
-                    self._metrics.error_query_failed += 1
-                    return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
-
-            df = exec_result.df
-            if df.empty:
-                return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
-
-            res = format_df(
-                df,
-                max_visible_rows=self.max_visible_rows,
-                max_cell_width=self.max_cell_width,
-                floatfmt=self.floatfmt,
-            )
-            res += f"\n({len(df)} rows)"
-            res += (
-                f"\n\n(display configuration: max_visible_rows={self.max_visible_rows}, "
-                f"max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. "
-                f"Full execution results have been recorded.)"
-            )
-
-            for hint in _detect_result_hints(df):
-                res += f"\n({hint})"
-
-            return res
-        except Exception as e:
-            self._metrics.error_query_failed += 1
-            return f"(query failed: {e})"
+        return await tool(query, parameters)
 
     async def __call__(
         self,
@@ -188,5 +127,6 @@ class RegistryRunQueryTool:
         fn = self._run_with_params if self.enable_params else self._run_no_params
         return Tool(fn, name=self.name)
 
-    def metrics(self) -> RegistryRunQueryToolMetrics:
-        return self._metrics
+    def metrics(self) -> dict[str, RunQueryToolMetrics]:
+        """Return per-alias metrics."""
+        return {alias: tool.metrics() for alias, tool in self._tools.items()}
