@@ -11,7 +11,7 @@ import litellm
 from pydantic import BaseModel, Field, field_serializer, model_validator, AfterValidator, ConfigDict, field_validator
 from pydantic.types import StringConstraints
 import pydantic_ai
-from typing import Any, Literal, Annotated, TypeAlias, Union, get_args
+from typing import Any, Literal, Annotated, Protocol, TypeAlias, Union, get_args, overload
 import pandas as pd
 import pyarrow.feather as feather
 import logging
@@ -1716,3 +1716,62 @@ class NL2QRunResult(BaseModel):
         summaries = [task.to_summary(eval_metrics) for task in self.tasks]
         df = pd.DataFrame([summary.data() for summary in summaries], columns=summaries[0].fields())
         df.to_csv(path, index=False)
+
+
+# ---------------------------------------------------------------------------
+# User interaction types
+# ---------------------------------------------------------------------------
+
+
+class UserFreeTextQuestion(BaseModel):
+    type: Literal["free_text"] = "free_text"
+    question: str
+
+
+class UserMultipleChoiceQuestion(BaseModel):
+    type: Literal["multiple_choice"] = "multiple_choice"
+    question: str
+    options: list[str]
+
+
+class UserValueQuestion(BaseModel):
+    type: Literal["value"] = "value"
+    question: str
+    value_dtype: Literal["int", "float", "str"]
+    value_operator_options: list[Literal["<", ">", "<=", ">=", "=", "<>"]]
+
+
+class UserFreeTextAnswer(BaseModel):
+    answer_free_text: str
+
+
+class UserMultipleChoiceAnswer(BaseModel):
+    answer_index: int
+
+
+class UserValueAnswer(BaseModel):
+    operator: Literal["<", ">", "<=", ">=", "=", "<>"]
+    value: int | float | str
+
+
+UserQuestion: TypeAlias = Annotated[
+    Union[UserFreeTextQuestion, UserMultipleChoiceQuestion, UserValueQuestion], Field(discriminator="type")
+]
+UserAnswer: TypeAlias = Union[UserFreeTextAnswer, UserMultipleChoiceAnswer, UserValueAnswer]
+
+
+class BaseUserSimulator(Protocol):
+    @overload
+    async def ask_async(self, question: UserFreeTextQuestion) -> UserFreeTextAnswer | None: ...
+    @overload
+    async def ask_async(self, question: UserMultipleChoiceQuestion) -> UserMultipleChoiceAnswer | None: ...
+    @overload
+    async def ask_async(self, question: UserValueQuestion) -> UserValueAnswer | None: ...
+
+    async def ask_async(self, question: UserQuestion) -> UserAnswer | None: ...
+
+    def usage(self) -> Usage: ...
+
+    def trajectory(self) -> Trajectory: ...
+
+    def user_effort(self) -> float: ...

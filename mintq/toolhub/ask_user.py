@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import Tool, RunContext, ToolDefinition
 from pydantic import BaseModel
-from mintq.agenthub.base import BaseUserSimulator, UserFreeTextQuestion
+from mintq.schema import BaseUserSimulator, UserFreeTextQuestion
 
 
 class AskUserToolMetrics(BaseModel):
