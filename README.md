@@ -895,6 +895,18 @@ March 23
 - [x] Revise dbt agent
 
 
+March 30
+- [x] Support csv, excel, parquet files with SQLConnector.from_files_async
+- [x] PropertyGraphSchema
+- [x] Neo4jConnector
+
+March 31
+- [x] Support cypherbench
+  - [x] cypherbench dataset loader
+  - [x] cypherbench metrics
+- [ ] Fix mypy
+- [ ] Data registry
+
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
 - [ ] Support Neo4j and cypherbench
