@@ -9,6 +9,7 @@ from mintq.toolhub.get_schema import GetSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.render_chart import RenderPlotextChartTool
 from mintq.toolhub.run_dbt import RunDbtTool
+from mintq.toolhub.registry_run_query import RegistryRunQueryTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
 
@@ -22,6 +23,7 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "GetSchemaTool",
     "GetTableSchemaTool",
+    "RegistryRunQueryTool",
     "RenderPlotextChartTool",
     "RunDbtTool",
     "RunQueryTool",
