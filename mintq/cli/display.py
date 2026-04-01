@@ -30,7 +30,14 @@ MINTQ_THEME = Theme(
 if TYPE_CHECKING:
     import pandas as pd
     from mintq.cli.agent import AgentProgressDisplay
-    from mintq.schema import SQLSchema, SQLTableSchema, SQLColumnSchema
+    from mintq.schema import (
+        NodeSchema,
+        PropertyGraphSchema,
+        RelationshipSchema,
+        SQLColumnSchema,
+        SQLSchema,
+        SQLTableSchema,
+    )
 
 
 _LOGO = """\
@@ -56,8 +63,8 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
     console.print()
 
 
-def render_sql(console: Console, sql: str, max_lines: int = 20) -> None:
-    """Render a SQL query with syntax highlighting and optional truncation."""
+def render_sql(console: Console, sql: str, max_lines: int = 20, *, lexer: str = "sql") -> None:
+    """Render a query with syntax highlighting and optional truncation."""
     stripped = sql.strip()
     all_lines = stripped.splitlines()
     total_lines = len(all_lines)
@@ -66,7 +73,7 @@ def render_sql(console: Console, sql: str, max_lines: int = 20) -> None:
     display_sql = "\n".join(all_lines[:max_lines]) if truncated else stripped
     syntax = Syntax(
         display_sql,
-        "sql",
+        lexer,
         theme="solarized-dark",
         padding=(1, 1),
         line_numbers=True,
@@ -348,6 +355,53 @@ def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
     return None
 
 
+def render_property_graph_overview(console: Console, schema: PropertyGraphSchema, alias: str) -> None:
+    """Render full property-graph schema (Cypher / Text2Cypher style)."""
+    from mintq.formatters.cypher import CypherSchemaFormatter
+
+    body = CypherSchemaFormatter().format(schema)
+    console.print(Panel(body, title=f"[bold]{alias}[/bold] · cypher", border_style=ACCENT))
+
+
+def resolve_graph_node_label(schema: PropertyGraphSchema, name: str) -> NodeSchema | None:
+    """Resolve a node label (case-insensitive)."""
+    for node in schema.nodes:
+        if node.label.lower() == name.lower():
+            return node
+    return None
+
+
+def resolve_graph_rel_patterns(schema: PropertyGraphSchema, name: str) -> list[RelationshipSchema]:
+    """Return relationship patterns whose type matches *name* (case-insensitive)."""
+    return [r for r in schema.relationships if r.label.lower() == name.lower()]
+
+
+def render_graph_node_detail(console: Console, node: NodeSchema) -> None:
+    """Render properties for a single node label."""
+    from mintq.formatters.cypher import CypherSchemaFormatter
+
+    fmt = CypherSchemaFormatter()
+    console.print(Panel(fmt.format_node(node), title=f"[bold]:{node.label}[/bold]", border_style=ACCENT))
+
+
+def render_graph_reltype_detail(console: Console, rel_type: str, patterns: list[RelationshipSchema]) -> None:
+    """Render all (source)-[REL]->(target) patterns for a relationship type."""
+    lines = [f"(:{p.source_label})-[:{p.label}]->(:{p.target_label})" for p in patterns]
+    body = "\n".join(lines)
+    props_extra = ""
+    for p in patterns:
+        if p.properties:
+            props_extra = "\n\n" + "\n".join(f"  {x.name}: {x.dtype}" for x in p.properties)
+            break
+    console.print(
+        Panel(
+            body + props_extra,
+            title=f"[bold]:{rel_type}[/bold] patterns",
+            border_style=ACCENT,
+        )
+    )
+
+
 def render_agent_progress(console: Console) -> AgentProgressDisplay:
     """Create a progress display for streaming agent execution."""
     from mintq.cli.agent import AgentProgressDisplay
@@ -362,13 +416,13 @@ def render_agent_progress(console: Console) -> AgentProgressDisplay:
 _VIEW_NAMES = ["response", "chart", "data", "sql"]
 
 
-def _capture_rich(console: Console, render_fn: object, *args: object) -> str:
+def _capture_rich(console: Console, render_fn: object, *args: object, **kwargs: object) -> str:
     """Render a Rich callable to an ANSI string."""
     from io import StringIO
 
     buf = StringIO()
     capture_console = Console(file=buf, force_terminal=True, width=console.width, theme=MINTQ_THEME)
-    render_fn(capture_console, *args)  # type: ignore[operator]
+    render_fn(capture_console, *args, **kwargs)  # type: ignore[operator]
     return buf.getvalue()
 
 
@@ -386,7 +440,7 @@ async def view_result(console: Console, result: object) -> None:
     if result.df is not None and not result.df.empty:
         views["data"] = _capture_rich(console, render_table, result.df)
     if result.sql:
-        views["sql"] = _capture_rich(console, render_sql, result.sql)
+        views["sql"] = _capture_rich(console, render_sql, result.sql, lexer=getattr(result, "query_lexer", "sql"))
 
     available = [v for v in _VIEW_NAMES if v in views]
     if not available:

@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector.base import NL2QDBConnector
 
 
 @dataclass
 class ConnectionManager:
     """Tracks multiple named database connections."""
 
-    _connections: dict[str, BaseSQLDBConnector] = field(default_factory=dict)
+    _connections: dict[str, NL2QDBConnector] = field(default_factory=dict)
     _active: str | None = None
 
     @property
@@ -19,7 +19,7 @@ class ConnectionManager:
         return self._active
 
     @property
-    def active_connector(self) -> BaseSQLDBConnector | None:
+    def active_connector(self) -> NL2QDBConnector | None:
         if self._active is None:
             return None
         return self._connections.get(self._active)
@@ -27,7 +27,7 @@ class ConnectionManager:
     def has(self, alias: str) -> bool:
         return alias in self._connections
 
-    def add(self, alias: str, connector: BaseSQLDBConnector) -> None:
+    def add(self, alias: str, connector: NL2QDBConnector) -> None:
         self._connections[alias] = connector
         if self._active is None:
             self._active = alias
@@ -47,7 +47,7 @@ class ConnectionManager:
         self._active = alias
         return True
 
-    def list_all(self) -> dict[str, BaseSQLDBConnector]:
+    def list_all(self) -> dict[str, NL2QDBConnector]:
         return dict(self._connections)
 
     async def disconnect_all(self) -> None:

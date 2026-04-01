@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import logging
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, cast
 
 import jinja2
 from rich.console import Console
@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from pydantic_ai.messages import ModelMessage
 
-    from mintq.db_connector.base import BaseSQLDBConnector
+    from mintq.db_connector.base import BaseSQLDBConnector, NL2QDBConnector
     from mintq.toolhub.run_query import RunQueryTool
     from mintq.toolhub.get_table_schema import GetTableSchemaTool
 
@@ -35,9 +35,14 @@ You are an agent - please keep going until the task is solved.
 
 <tool_calling>
 Gathering information:
+{%- if graph %}
+- The full property-graph schema (node labels, relationship patterns, properties) is in <db_document>. Read it before writing Cypher.
+- You may use `run_query` to run exploratory Cypher (e.g. counts, sample paths) when that helps clarify the graph.
+{%- else %}
 - Always use the `get_table_schema` tool to get the schema of the relevant tables before constructing the query.
 - You may use the `get_column_json_schema` tool to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
 - You may use `run_query` to inspect some sample values to determine the data format if necessary.
+{%- endif %}
 
 Writing the task query:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
@@ -70,35 +75,53 @@ class ChatResult:
     df: pd.DataFrame | None = None
     chart_spec: dict[str, object] | None = None
     chart_df: pd.DataFrame | None = None
+    query_lexer: str = "sql"
 
 
 @dataclass
 class ChatAgent:
-    """Streaming agent for interactive SQL chat.
+    """Streaming agent for interactive database chat.
 
-    Manages DB summarization (cached per connector) and runs a pydantic-ai
-    agent with get_table_schema + run_query tools, streaming events to the
-    console.
+    For SQL, may cache a schema document or LLM-produced DB summary. For Neo4j,
+    the prompt uses the live Cypher schema text only (no summarizer).
     """
 
     model: str
     summarizer_model: str = "openai-responses:gpt-5-mini"
     max_steps: int = 20
+    # SQL: formatted schema or LLM DB summary. Neo4j uses _neo4j_schema_prompt_cache instead.
     _db_summaries: dict[str, str] = field(default_factory=dict)
+    # Neo4j: memoized CypherSchemaFormatter output only (no DBSummarizer).
+    _neo4j_schema_prompt_cache: dict[str, str] = field(default_factory=dict)
     _message_history: dict[str, list[ModelMessage]] = field(default_factory=dict)
 
     _SUMMARIZE_MIN_TABLES = 20
+
+    def _neo4j_schema_prompt(self, connector: object) -> str:
+        """Format property-graph schema for the system prompt (no LLM summarization)."""
+        from mintq.db_connector import Neo4jConnector
+        from mintq.formatters.cypher import CypherSchemaFormatter
+
+        assert isinstance(connector, Neo4jConnector)
+        key = connector.global_id
+        if key in self._neo4j_schema_prompt_cache:
+            return self._neo4j_schema_prompt_cache[key]
+        doc = CypherSchemaFormatter().format(connector.schema)
+        self._neo4j_schema_prompt_cache[key] = doc
+        return doc
 
     async def _get_db_document(
         self,
         connector: BaseSQLDBConnector,
         progress: AgentProgressDisplay,
     ) -> str:
-        """Build a database document for the system prompt.
+        """Build a database document for the SQL system prompt.
 
         For small databases (< _SUMMARIZE_MIN_TABLES tables), formats the
-        compressed schema directly using SQLDDLSchemaFormatter.  For larger
+        compressed schema directly using SQLDDLSchemaFormatter. For larger
         databases, runs the LLM-based DBSummarizer.
+
+        Not used for Neo4j; see ``_neo4j_schema_prompt``.
         """
         cache_key = connector.global_id
         if cache_key in self._db_summaries:
@@ -123,16 +146,98 @@ class ChatAgent:
         self._db_summaries[cache_key] = doc
         return doc
 
-    def _history_key(self, connector: BaseSQLDBConnector) -> str:
+    def _history_key(self, connector: NL2QDBConnector) -> str:
         return connector.global_id
+
+    async def _run_graph(
+        self,
+        question: str,
+        connector: object,
+        console: Console,
+    ) -> ChatResult:
+        """Run the agent for a Neo4j property graph (Cypher only)."""
+        from mintq.db_connector import Neo4jConnector
+        from pydantic_ai import Agent
+        from pydantic_ai.run import AgentRunResultEvent
+
+        from mintq.cli.display import render_agent_progress
+        from mintq.toolhub.render_chart import RenderPlotextChartTool
+        from mintq.toolhub.run_query import RunQueryTool
+
+        assert isinstance(connector, Neo4jConnector)
+
+        progress = render_agent_progress(console)
+        progress.start()
+
+        try:
+            db_document = self._neo4j_schema_prompt(connector)
+
+            system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
+                language="Cypher",
+                db_document=db_document,
+                graph=True,
+            )
+
+            run_query_tool = RunQueryTool(connector)
+            render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
+
+            agent: Agent[None, str] = Agent(
+                model=self.model,
+                tools=[
+                    run_query_tool.as_pydantic_ai_tool(),
+                    render_chart_tool.as_pydantic_ai_tool(),
+                ],
+                instructions=system_prompt,
+                model_settings={},
+            )
+
+            history_key = self._history_key(connector)
+            message_history = self._message_history.get(history_key)
+
+            answer_text = ""
+            async for event in agent.run_stream_events(
+                question,
+                message_history=message_history,
+            ):
+                if isinstance(event, AgentRunResultEvent):
+                    self._message_history[history_key] = list(event.result.all_messages())
+                    answer_text = event.result.output
+                    break
+
+                _handle_stream_event_graph(event, progress, run_query_tool)
+
+        finally:
+            progress.finish()
+
+        try:
+            pred = run_query_tool.last_pred_query()
+            last_cypher = pred.query
+            last_df = pred.exec_result.df if pred.exec_result else None
+        except ValueError:
+            last_cypher = None
+            last_df = None
+
+        return ChatResult(
+            text=answer_text,
+            sql=last_cypher,
+            df=last_df,
+            chart_spec=render_chart_tool.last_vegalite_spec,
+            chart_df=render_chart_tool.last_chart_df,
+            query_lexer="cypher",
+        )
 
     async def run(
         self,
         question: str,
-        connector: BaseSQLDBConnector,
+        connector: NL2QDBConnector,
         console: Console,
     ) -> ChatResult:
         """Run the agent on a user question, streaming progress to the console."""
+        from mintq.db_connector import Neo4jConnector
+
+        if isinstance(connector, Neo4jConnector):
+            return await self._run_graph(question, connector, console)
+
         from pydantic_ai import Agent
         from pydantic_ai.run import AgentRunResultEvent
 
@@ -140,24 +245,28 @@ class ChatAgent:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
         from mintq.toolhub.get_table_schema import GetTableSchemaTool
+        from mintq.db_connector.base import BaseSQLDBConnector
         from mintq.toolhub.render_chart import RenderPlotextChartTool
         from mintq.toolhub.run_query import RunQueryTool
+
+        sql_connector = cast(BaseSQLDBConnector, connector)
 
         progress = render_agent_progress(console)
         progress.start()
 
         try:
-            db_document = await self._get_db_document(connector, progress)
+            db_document = await self._get_db_document(sql_connector, progress)
 
             system_prompt = jinja2.Template(SYSTEM_PROMPT).render(
-                language=connector.language or "SQL",
+                language=sql_connector.language or "SQL",
                 db_document=db_document,
+                graph=False,
             )
 
             formatter = SQLDDLSchemaFormatter()
-            run_query_tool = RunQueryTool(connector)
-            get_table_schema_tool = GetTableSchemaTool(connector, formatter, compress=True)
-            get_column_json_schema_tool = GetColumnJsonSchemaTool(connector.schema)
+            run_query_tool = RunQueryTool(sql_connector)
+            get_table_schema_tool = GetTableSchemaTool(sql_connector, formatter, compress=True)
+            get_column_json_schema_tool = GetColumnJsonSchemaTool(sql_connector.schema)
             render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
 
             agent: Agent[None, str] = Agent(
@@ -172,7 +281,7 @@ class ChatAgent:
                 model_settings={},
             )
 
-            history_key = self._history_key(connector)
+            history_key = self._history_key(sql_connector)
             message_history = self._message_history.get(history_key)
 
             answer_text = ""
@@ -204,7 +313,45 @@ class ChatAgent:
             df=last_df,
             chart_spec=render_chart_tool.last_vegalite_spec,
             chart_df=render_chart_tool.last_chart_df,
+            query_lexer="sql",
         )
+
+
+def _handle_stream_event_graph(
+    event: object,
+    progress: AgentProgressDisplay,
+    run_query_tool: RunQueryTool,
+) -> None:
+    """Dispatch stream events when only run_query (+ chart) tools are registered."""
+    from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
+
+    if isinstance(event, FunctionToolCallEvent):
+        tool_name = event.part.tool_name
+        args = event.part.args
+        args_summary = _summarize_args(tool_name, args)
+        progress.tool_start(tool_name, args_summary)
+
+    elif isinstance(event, FunctionToolResultEvent):
+        result_tool_name = event.result.tool_name or ""
+        result_summary = _summarize_result_graph(result_tool_name, run_query_tool)
+        progress.tool_end(result_tool_name, result_summary)
+
+    elif isinstance(event, PartDeltaEvent):
+        if isinstance(event.delta, TextPartDelta):
+            progress.text_delta(event.delta.content_delta)
+
+
+def _summarize_result_graph(tool_name: str, run_query_tool: RunQueryTool) -> str:
+    if tool_name == "run_query":
+        try:
+            pred = run_query_tool.last_pred_query()
+            if pred.exec_result and pred.exec_result.df is not None:
+                return f"{len(pred.exec_result.df)} rows"
+            if pred.exec_result and pred.exec_result.error:
+                return "error"
+        except ValueError:
+            pass
+    return "done"
 
 
 def _handle_stream_event(

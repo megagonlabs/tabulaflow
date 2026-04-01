@@ -4,13 +4,14 @@ from __future__ import annotations
 
 import os
 import shlex
-from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse, urlunparse
+from typing import TYPE_CHECKING, Any, cast
+from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from rich.console import Console
 from rich.table import Table
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
+from mintq.schema import SQLSchema
 
 if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
@@ -101,7 +102,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
             "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
             "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
             "  /connect snowflake://user@account/db\n"
-            "  /connect duckdb:///path/to/db.duckdb[/dim]"
+            "  /connect duckdb:///path/to/db.duckdb\n"
+            "  /connect neo4j://neo4j:password@localhost:7687\n"
+            "  /connect bolt://localhost:7687?database=neo4j myalias[/dim]"
         )
         return False
 
@@ -157,6 +160,37 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         return False
 
     url = await _prompt_password_if_needed(url, console)
+
+    global_id = f"cli+{alias}"
+    if _is_neo4j_bolt_url(url):
+        from mintq.db_connector.neo4j_conn import Neo4jConnector
+
+        driver_url, neo4j_database = _neo4j_driver_url_and_database(url)
+        with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
+            try:
+                neo_connector = await Neo4jConnector.from_url_async(
+                    global_id=global_id,
+                    url=driver_url,
+                    database=neo4j_database,
+                    db_name=alias,
+                    read_only=True,
+                    auth=("neo4j", "cypherbench"),
+                    enable_schema_caching=True,
+                )
+            except Exception as e:
+                console.print(f"[red]Connection failed:[/red] {e}")
+                return False
+
+        n_labels = len(neo_connector.schema.nodes)
+        n_patterns = len(neo_connector.schema.relationships)
+        session.connections.add(alias, neo_connector)
+        console.print(
+            f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] "
+            f"(cypher, {n_labels} label{'s' if n_labels != 1 else ''}, "
+            f"{n_patterns} rel pattern{'s' if n_patterns != 1 else ''})"
+        )
+        return False
+
     try:
         engine_kwargs = _engine_kwargs_for_url(url)
     except ValueError as e:
@@ -165,7 +199,6 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
     from mintq.db_connector.sql_conn import SQLConnector
 
-    global_id = f"cli+{alias}"
     with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
         try:
             connector = await SQLConnector.from_url_async(
@@ -206,15 +239,24 @@ async def _cmd_databases(args: list[str], session: ChatSession, console: Console
         console.print("[dim]No databases connected. Use /connect <url> to add one.[/dim]")
         return False
 
+    from mintq.db_connector import Neo4jConnector
+
     table = Table(show_header=True, header_style=ACCENT_BOLD)
     table.add_column("Alias", style="bold")
     table.add_column("Active")
-    table.add_column("Tables")
+    table.add_column("Schema")
 
     for alias, conn in connections.items():
         is_active = "●" if alias == session.connections.active_alias else ""
-        n_tables = str(len(conn.schema.tables)) if conn.schema else "?"
-        table.add_row(alias, f"[green]{is_active}[/green]", n_tables)
+        if isinstance(conn, Neo4jConnector) and conn.schema:
+            n_lab = len(conn.schema.nodes)
+            n_rel = len(conn.schema.relationships)
+            summary = f"{n_lab} labels, {n_rel} rel patterns"
+        elif conn.schema and hasattr(conn.schema, "tables"):
+            summary = f"{len(conn.schema.tables)} tables"
+        else:
+            summary = "?"
+        table.add_row(alias, f"[green]{is_active}[/green]", summary)
 
     console.print(table)
     return False
@@ -240,7 +282,13 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
         resolve_column,
         _is_multi_schema,
         _display_name,
+        render_property_graph_overview,
+        render_graph_node_detail,
+        render_graph_reltype_detail,
+        resolve_graph_node_label,
+        resolve_graph_rel_patterns,
     )
+    from mintq.db_connector import Neo4jConnector
 
     conn = session.connections.active_connector
     if conn is None:
@@ -252,14 +300,32 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
         console.print("[dim]Schema not available.[/dim]")
         return False
 
-    multi = _is_multi_schema(schema)
+    if isinstance(conn, Neo4jConnector):
+        graph_schema = conn.schema
+        alias = session.connections.active_alias or ""
+        if not args:
+            render_property_graph_overview(console, graph_schema, alias)
+            return False
+        node = resolve_graph_node_label(graph_schema, args[0])
+        if node is not None:
+            render_graph_node_detail(console, node)
+            return False
+        rel_patterns = resolve_graph_rel_patterns(graph_schema, args[0])
+        if rel_patterns:
+            render_graph_reltype_detail(console, args[0], rel_patterns)
+            return False
+        console.print(f"[red]Unknown label or relationship type:[/red] {args[0]}")
+        return False
+
+    sql_schema = cast(SQLSchema, schema)
+    multi = _is_multi_schema(sql_schema)
     alias = session.connections.active_alias or ""
 
     if not args:
-        render_schema_overview(console, schema, alias)
+        render_schema_overview(console, sql_schema, alias)
         return False
 
-    result = resolve_table(schema, args[0])
+    result = resolve_table(sql_schema, args[0])
     if result is None:
         console.print(f"[red]Table not found:[/red] {args[0]}")
         return False
@@ -334,6 +400,30 @@ _ASYNC_DRIVER_UPGRADES: dict[str, str] = {
 }
 
 
+def _is_neo4j_bolt_url(url: str) -> bool:
+    """True if *url* uses a Neo4j Python driver scheme (Bolt / routing)."""
+    if "://" not in url:
+        return False
+    scheme = url.split("://", 1)[0].lower()
+    return scheme == "neo4j" or scheme.startswith("neo4j+") or scheme == "bolt" or scheme.startswith("bolt+")
+
+
+def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
+    """Strip ``database`` / ``db`` query params for the driver URI; return Neo4j database name."""
+    parsed = urlparse(url)
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    database: str | None = None
+    kept: list[tuple[str, str]] = []
+    for k, v in pairs:
+        if k.lower() in ("database", "db"):
+            if database is None and v:
+                database = v
+            continue
+        kept.append((k, v))
+    new_query = urlencode(kept) if kept else ""
+    return urlunparse(parsed._replace(query=new_query)), database
+
+
 def _normalize_url(raw: str) -> str:
     """Expand a bare file path into a SQLAlchemy URL, or return as-is.
 
@@ -403,7 +493,7 @@ async def _cmd_sql(args: list[str], session: ChatSession, console: Console) -> b
 
     from mintq.cli.display import render_sql
 
-    render_sql(console, session.last_result.sql)
+    render_sql(console, session.last_result.sql, lexer=session.last_result.query_lexer)
     return False
 
 

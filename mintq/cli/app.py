@@ -4,7 +4,7 @@ import typer
 
 app = typer.Typer(
     name="mintq",
-    help="Minimalist Text-to-Query toolkit — interactive SQL chat.",
+    help="Minimalist Text-to-Query toolkit — interactive SQL / Cypher chat.",
     no_args_is_help=True,
     rich_markup_mode="rich",
 )
@@ -25,7 +25,7 @@ def chat(
         help="Agent name from the mintq agent registry.",
     ),
 ) -> None:
-    """Start an interactive SQL chat session."""
+    """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
 
     from mintq.cli.chat import run_chat
