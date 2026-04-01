@@ -182,12 +182,26 @@ def _sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+def _coerce_for_arrow(df: pd.DataFrame) -> pd.DataFrame:
+    """Cast columns that Arrow/Feather cannot handle (e.g. Neo4j graph objects) to str."""
+    import pyarrow as pa
+
+    df = df.copy()
+    for col in df.columns:
+        try:
+            pa.array(df[col])
+        except (pa.ArrowInvalid, pa.ArrowTypeError, pa.ArrowNotImplementedError):
+            df[col] = df[col].map(lambda v: str(v) if v is not None else None)
+    return df
+
+
 def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     """Serialize a DataFrame as Feather bytes in a single JSON payload."""
     if df is None:
         return None
     if df.columns.empty:
         df = pd.DataFrame({"_empty": pd.Series([], dtype="object")}).iloc[:0]
+    df = _coerce_for_arrow(df)
     buffer = io.BytesIO()
     feather.write_feather(df, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
