@@ -184,6 +184,6 @@ class CypherBenchDatasetLoader:
             split=split,
             databases=dbs,
             subsample_size=subsample_size,
-            tasks=tasks,
+            tasks=tasks,  # type: ignore
             db_connectors=db_connectors,
         )
