@@ -157,12 +157,16 @@ class Neo4jConnector:
         query: str,
         parameters: Mapping[str, Any] | None = None,
         timeout: float | None = None,
-    ) -> list[dict[str, Any]]:
+        *,
+        return_df: bool = False,
+    ) -> list[dict[str, Any]] | pd.DataFrame:
         async with self._driver.session(database=self._database) as session:
             result = await session.run(
                 neo4j.Query(query, timeout=timeout),
                 parameters=dict(parameters) if parameters else {},
             )
+            if return_df:
+                return await result.to_df(expand=False, parse_dates=True)
             return await result.data()
 
     async def run_query_async(
@@ -184,15 +188,8 @@ class Neo4jConnector:
 
         t0 = time.time()
         try:
-            async with self._driver.session(database=self._database) as session:
-                result = await session.run(
-                    neo4j.Query(query_str, timeout=timeout),
-                    parameters=dict(parameters) if parameters else {},
-                )
-                keys = list(result.keys())
-                records = await result.data()
+            df = await self._run_cypher(query_str, parameters, timeout, return_df=True)
             latency = time.time() - t0
-            df = pd.DataFrame(records, columns=keys)
             return ExecResult(df=df, latency_seconds=latency)
         except Exception as e:
             return ExecResult(
