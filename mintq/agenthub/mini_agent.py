@@ -3,8 +3,12 @@ import time
 from typing import ClassVar
 from pydantic_ai import Agent
 import logging
+
+import mintq.formatters  # noqa: F401 — register sql_*, cypher, … formatters
+
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
+    PropertyGraphSchema,
     SQLSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
@@ -18,7 +22,7 @@ from mintq.toolhub import (
     RunQueryTool,
     FinishTool,
 )
-from mintq.formatters.base import formatter_registry, NL2QFormatter
+from mintq.formatters.base import formatter_registry
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import (
     get_max_steps_processor,
@@ -89,24 +93,27 @@ class MiniAgent:
         self.config = config
         self.compressor = SchemaCompressor() if config.compress_schema else None
 
-        self.formatter: NL2QFormatter = formatter_registry.get_class(config.schema_formatter)(
-            **config.to_formatter_kwargs()
-        )
-
     @classmethod
     async def from_config_async(cls, config: BasicAgentConfig) -> "MiniAgent":
         return cls(config)
 
+    def _format_schema_for_prompt(self, db_connector: NL2QDBConnector) -> str:
+        schema = db_connector.schema
+        if isinstance(schema, SQLSchema) and self.compressor is not None:
+            schema = self.compressor.compress(schema)
+        kwargs = self.config.to_formatter_kwargs() if isinstance(schema, SQLSchema) else {}
+        formatter = formatter_registry.get_class(self.config.schema_formatter)(**kwargs)
+        if isinstance(schema, PropertyGraphSchema):
+            return formatter.format(schema)  # type: ignore[arg-type]
+        if isinstance(schema, SQLSchema):
+            return formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
+        raise TypeError(f"Unsupported schema type for MiniAgent: {type(schema)!r}")
+
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:
-        if not isinstance(db_connector.schema, SQLSchema):
-            raise TypeError(f"MiniAgent requires a SQL db connector, got {type(db_connector)!r}")
         t0 = time.time()
 
-        schema = db_connector.schema
-        if self.config.compress_schema:
-            schema = SchemaCompressor().compress(schema)
-        schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
+        schema_str = self._format_schema_for_prompt(db_connector)
 
         system_prompt = jinja2.Template(MINI_AGENT_SYSTEM_PROMPT).render(
             language=db_connector.language,
