@@ -52,7 +52,7 @@ class RunQueryTool:
     a ``parameters`` argument for parameterized queries.
     When ``False`` (the default), only the ``query`` argument is exposed.
 
-    Args:
+    Attributes:
         db_connector: Database connector to execute queries against.
         enable_params: Whether to expose the ``parameters`` argument to the LLM.
         timeout: Query timeout in seconds. Defaults to ``mintq_config.query_timeout``.
