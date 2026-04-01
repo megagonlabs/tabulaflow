@@ -13,7 +13,6 @@ from pydantic.types import StringConstraints
 import pydantic_ai
 from typing import Any, Literal, Annotated, Protocol, TypeAlias, Union, get_args, overload
 import pandas as pd
-import pyarrow.feather as feather
 import logging
 import math
 import itertools
@@ -203,6 +202,7 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
         df = pd.DataFrame({"_empty": pd.Series([], dtype="object")}).iloc[:0]
     df = _coerce_for_arrow(df)
     buffer = io.BytesIO()
+    import pyarrow.feather as feather
     feather.write_feather(df, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
@@ -219,6 +219,7 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
     if isinstance(v, dict) and v.get("format") == _DF_SERIALIZATION_FORMAT:
         raw = base64.b64decode(v["feather_base64"])
         buffer = io.BytesIO(raw)
+        import pyarrow.feather as feather
         df = feather.read_feather(buffer)
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
