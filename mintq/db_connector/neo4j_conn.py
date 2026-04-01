@@ -187,9 +187,15 @@ class Neo4jConnector:
 
         t0 = time.time()
         try:
-            records = await self._run_cypher(query, parameters, timeout)
+            async with self._driver.session(database=self._database) as session:
+                result = await session.run(
+                    neo4j.Query(query_str, timeout=timeout),
+                    parameters=dict(parameters) if parameters else {},
+                )
+                keys = list(result.keys())
+                records = await result.data()
             latency = time.time() - t0
-            df = pd.DataFrame(records) if records else pd.DataFrame()
+            df = pd.DataFrame(records, columns=keys)
             return ExecResult(df=df, latency_seconds=latency)
         except Exception as e:
             return ExecResult(
