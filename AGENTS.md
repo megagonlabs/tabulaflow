@@ -105,5 +105,8 @@ bash exp/123_xxx.sh &>> log/123.out &
 
 ## Guidelines
 
+- Think from first principles.
+- Fail fast.
+- Fix the root cause, don't just mask the symptom.
 - Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
 - Use Google style for all Python docstrings.
