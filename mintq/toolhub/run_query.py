@@ -2,7 +2,7 @@ from typing import ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
-from mintq.db_connector import BaseSQLDBConnector
+from mintq.db_connector import NL2QDBConnector
 from mintq.schema import PredQuery
 from mintq.utils import format_df
 from mintq.toolhub.utils import format_sqlalchemy_error_msg
@@ -37,16 +37,19 @@ class RunQueryToolMetrics(BaseModel):
 
 class LLMParameter(BaseModel):
     parameter_name: str = Field(
-        description="The parameter name that corresponds to the :<parameter_name> placeholder in the query."
+        description="The parameter name that corresponds to the placeholder in the query (e.g. :name in SQL, $name in Cypher)."
     )
     parameter_value: int | float | str = Field(description="The intended value of the parameter.")
 
 
 class RunQueryTool:
-    """Execute a SQL query against the database and return formatted results.
+    """Execute a query against the database and return formatted results.
+
+    Supports both SQL connectors (SQLite, Snowflake, MySQL, …) and property
+    graph connectors (Neo4j via Cypher).
 
     When ``enable_params=True``, the tool schema exposed to the LLM includes
-    a ``parameters`` argument for parameterized queries (e.g. ``:threshold``).
+    a ``parameters`` argument for parameterized queries.
     When ``False`` (the default), only the ``query`` argument is exposed.
 
     Args:
@@ -62,7 +65,7 @@ class RunQueryTool:
 
     def __init__(
         self,
-        db_connector: BaseSQLDBConnector,
+        db_connector: NL2QDBConnector,
         *,
         enable_params: bool = False,
         timeout: int | None | object = _UNSET,
@@ -82,13 +85,13 @@ class RunQueryTool:
         self._last_pred_query: PredQuery | None = None
 
     async def _run_with_params(self, query: str, parameters: list[LLMParameter] = []) -> str:
-        """Execute a SQL query and return the results.
+        """Execute a query against the database and return the results.
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported.
+        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
 
         Example:
         ```python
@@ -99,23 +102,23 @@ class RunQueryTool:
         ```
 
         Args:
-            query: The SQL query to execute.
+            query: The query to execute.
             parameters: The parameters to use in the query. A list of dictionaries,
                 each containing a `parameter_name` and a `parameter_value` field.
         """
         return await self._execute(query, parameters)
 
     async def _run_no_params(self, query: str) -> str:
-        """Execute a SQL query and return the results.
+        """Execute a query against the database and return the results.
 
         Returning large result sets is safe — the display is automatically truncated,
         and full execution results are always recorded.
 
         Procedural / anonymous blocks (e.g. ``DECLARE … BEGIN … END``,
-        ``EXECUTE IMMEDIATE``) are supported.
+        ``EXECUTE IMMEDIATE``) are supported for SQL dialects.
 
         Args:
-            query: The SQL query to execute.
+            query: The query to execute.
         """
         return await self._execute(query, [])
 
