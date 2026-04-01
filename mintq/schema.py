@@ -186,6 +186,8 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     """Serialize a DataFrame as Feather bytes in a single JSON payload."""
     if df is None:
         return None
+    if df.columns.empty:
+        df = pd.DataFrame({"_empty": pd.Series([], dtype="object")}).iloc[:0]
     buffer = io.BytesIO()
     feather.write_feather(df, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
@@ -203,7 +205,10 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
     if isinstance(v, dict) and v.get("format") == _DF_SERIALIZATION_FORMAT:
         raw = base64.b64decode(v["feather_base64"])
         buffer = io.BytesIO(raw)
-        return feather.read_feather(buffer)
+        df = feather.read_feather(buffer)
+        if list(df.columns) == ["_empty"] and df.empty:
+            return pd.DataFrame()
+        return df
 
     # Backward compatibility for old cached/result JSON payloads.
     dtypes = v["schema"]["dtypes"]
