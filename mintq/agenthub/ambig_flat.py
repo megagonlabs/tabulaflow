@@ -6,7 +6,7 @@ from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
+from mintq.formatters.base import formatter_registry, NL2QFormatter
 from mintq.schema import (
     AmbigNL2QTask,
     FlatAmbigNL2QTaskOutput,

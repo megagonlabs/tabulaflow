@@ -3,7 +3,7 @@ import time
 from typing import ClassVar, Literal
 from pydantic_ai import Agent
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.base import formatter_registry, BaseSQLSchemaFormatter, NL2QFormatter
+from mintq.formatters.base import formatter_registry, NL2QFormatter
 from mintq.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.toolhub import (
     BaseTool,

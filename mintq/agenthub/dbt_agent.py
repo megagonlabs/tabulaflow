@@ -14,7 +14,7 @@ from pydantic_ai import Agent
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
 from mintq.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters import BaseSQLSchemaFormatter, NL2QFormatter, formatter_registry
+from mintq.formatters import NL2QFormatter, formatter_registry
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
 from mintq.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool, RunQueryTool
