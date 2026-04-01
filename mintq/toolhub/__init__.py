@@ -1,24 +1,40 @@
+from typing import TYPE_CHECKING
+
 from mintq.toolhub.base import BaseTool
+
+if TYPE_CHECKING:
+    from mintq.toolhub.ask_user import AskUserTool as AskUserTool
+    from mintq.toolhub.execute_bash import ExecuteBashTool as ExecuteBashTool
+    from mintq.toolhub.file_editor import FileEditorTool as FileEditorTool
+    from mintq.toolhub.finish import FinishTool as FinishTool
+    from mintq.toolhub.get_column_description import GetColumnDescriptionTool as GetColumnDescriptionTool
+    from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool as GetColumnJsonSchemaTool
+    from mintq.toolhub.get_schema import GetSchemaTool as GetSchemaTool
+    from mintq.toolhub.get_table_schema import GetTableSchemaTool as GetTableSchemaTool
+    from mintq.toolhub.render_chart import RenderPlotextChartTool as RenderPlotextChartTool
+    from mintq.toolhub.run_dbt import RunDbtTool as RunDbtTool
+    from mintq.toolhub.run_query import RunQueryTool as RunQueryTool
+    from mintq.toolhub.search_keywords import SearchKeywordsTool as SearchKeywordsTool
 
 __all__ = [
     "BaseTool",
-    "ExecuteBashTool",
-    "SearchKeywordsTool",
-    "RunQueryTool",
-    "FinishTool",
     "AskUserTool",
-    "GetSchemaTool",
-    "GetTableSchemaTool",
+    "ExecuteBashTool",
+    "FileEditorTool",
+    "FinishTool",
     "GetColumnDescriptionTool",
     "GetColumnJsonSchemaTool",
-    "FileEditorTool",
-    "RunDbtTool",
+    "GetSchemaTool",
+    "GetTableSchemaTool",
     "RenderPlotextChartTool",
+    "RunDbtTool",
+    "RunQueryTool",
+    "SearchKeywordsTool",
 ]
 
 
 def __getattr__(name: str) -> object:
-    """Lazy-load tool classes to avoid circular imports."""
+    """Lazy-load tool classes to avoid circular imports between toolhub and agenthub."""
     _lazy = {
         "ExecuteBashTool": "mintq.toolhub.execute_bash",
         "SearchKeywordsTool": "mintq.toolhub.search_keywords",

@@ -862,7 +862,7 @@ class ExecResult(BaseModel):
     def to_markdown(self) -> str:
         if self.df is None:
             return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
-        from mintq.formatters.utils import format_df
+        from mintq.utils import format_df
 
         result = format_df(self.df)
         n = len(self.df)

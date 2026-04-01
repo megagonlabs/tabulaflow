@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from mintq.formatters.utils import format_json_schema
+from mintq.utils import format_json_schema
 from mintq.schema import SQLSchema
 from mintq.toolhub.utils import equals_ci
 

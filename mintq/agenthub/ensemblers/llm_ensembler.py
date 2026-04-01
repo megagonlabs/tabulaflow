@@ -10,7 +10,7 @@ from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.ensemblers.majority_ensembler import _normalize_value
 from mintq.agenthub.utils import instrument
 from mintq.db_connector import BaseSQLDBConnector
-from mintq.formatters.utils import format_df
+from mintq.utils import format_df
 from mintq.pipelines.populate_exec_results import populate_task_async
 from mintq.preprocessors import DBSummarizer
 from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Usage, Trajectory

@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from mintq.formatters.utils import format_df
+from mintq.utils import format_df
 
 
 class TestFormatDf:

@@ -2,7 +2,7 @@ from typing import Any
 
 import pytest
 
-from mintq.formatters.utils import format_json_schema
+from mintq.utils import format_json_schema
 from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
 from mintq.toolhub.get_column_json_schema import (
     GetColumnJsonSchemaTool,
