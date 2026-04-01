@@ -904,8 +904,8 @@ March 31
 - [x] Support cypherbench
   - [x] cypherbench dataset loader
   - [x] cypherbench metrics
-- [ ] Fix mypy
-- [ ] Data registry
+- [x] Fix mypy
+- [x] DBRegistry
 
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
@@ -921,7 +921,7 @@ Release plan
 - [ ] Support DAComp
 - [ ] Tuning on BIRD-SQL
 
-
+- [ ] Rename db_connector to connectors?
 - [ ] Use OpenAI plain text tool!!!
 - [ ] Analyze spider2-snow:
   - unfinished period like the current year to a finished one
