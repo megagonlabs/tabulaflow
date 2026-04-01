@@ -81,9 +81,7 @@ async def run_chat(model: str, agent: str) -> None:
     root.handlers.clear()
     root.setLevel(logging.DEBUG)
     file_handler = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3)
-    file_handler.setFormatter(
-        logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s")
-    )
+    file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
     root.addHandler(file_handler)
     logging.captureWarnings(True)
 
@@ -141,7 +139,8 @@ async def run_chat(model: str, agent: str) -> None:
             prompt = session.prompt_parts if session else default_prompt
             try:
                 user_input = await prompt_session.prompt_async(
-                    prompt, prompt_continuation=_continuation,
+                    prompt,
+                    prompt_continuation=_continuation,
                 )
             except (EOFError, KeyboardInterrupt):
                 console.print()

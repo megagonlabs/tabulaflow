@@ -67,9 +67,7 @@ def _normalize_cell(v: Any) -> Any:
 
 def _df_to_tuples(df: pd.DataFrame) -> list[tuple[Any, ...]]:
     """Convert a DataFrame to ``list[tuple]`` with normalised cell values."""
-    return [
-        tuple(_normalize_cell(v) for v in row) for row in df.itertuples(index=False, name=None)
-    ]
+    return [tuple(_normalize_cell(v) for v in row) for row in df.itertuples(index=False, name=None)]
 
 
 # ---------------------------------------------------------------------------
@@ -100,9 +98,7 @@ def _multiset_eq(l1: list[Any], l2: list[Any]) -> bool:
     return True
 
 
-def _get_constraint_permutation(
-    tab1_sets_by_columns: list[set[Any]], result2: list[tuple[Any, ...]]
-) -> product:  # type: ignore[type-arg]
+def _get_constraint_permutation(tab1_sets_by_columns: list[set[Any]], result2: list[tuple[Any, ...]]) -> product:  # type: ignore[type-arg]
     num_cols = len(result2[0])
     perm_constraints: list[set[int]] = [set(range(num_cols)) for _ in range(num_cols)]
     if num_cols <= 3:

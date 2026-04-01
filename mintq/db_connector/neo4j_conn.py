@@ -178,10 +178,7 @@ class Neo4jConnector:
             return ExecResult(
                 error=ErrorInfo(
                     exc_type="ReadOnlyViolationError",
-                    message=(
-                        f"Write statement blocked (read_only=True): "
-                        f"{match.group('keyword').upper()} ..."
-                    ),
+                    message=(f"Write statement blocked (read_only=True): {match.group('keyword').upper()} ..."),
                 ),
             )
 
@@ -280,9 +277,7 @@ class Neo4jConnector:
             target: str = record["target"]
             key = (rel_type, source, target)
             if key not in rels:
-                rels[key] = RelationshipSchema(
-                    label=rel_type, source_label=source, target_label=target
-                )
+                rels[key] = RelationshipSchema(label=rel_type, source_label=source, target_label=target)
             for lbl in (source, target):
                 if lbl not in nodes:
                     nodes[lbl] = NodeSchema(label=lbl)

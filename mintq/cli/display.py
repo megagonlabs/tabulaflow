@@ -15,14 +15,16 @@ from rich.theme import Theme
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
-MINTQ_THEME = Theme({
-    "markdown.item.bullet": Style(bold=True),
-    "markdown.item.number": Style(bold=True),
-    "markdown.code": Style(bold=True, color="white", bgcolor="grey11"),
-    "markdown.code_block": Style(color="white", bgcolor="grey11"),
-    "markdown.block_quote": Style(color=ACCENT),
-    "markdown.list": Style(color=ACCENT),
-})
+MINTQ_THEME = Theme(
+    {
+        "markdown.item.bullet": Style(bold=True),
+        "markdown.item.number": Style(bold=True),
+        "markdown.code": Style(bold=True, color="white", bgcolor="grey11"),
+        "markdown.code_block": Style(color="white", bgcolor="grey11"),
+        "markdown.block_quote": Style(color=ACCENT),
+        "markdown.list": Style(color=ACCENT),
+    }
+)
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -45,8 +47,7 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
     console.print()
     console.print(
         Panel.fit(
-            f"[dim]model:[/dim] {model}\n"
-            f"[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
+            f"[dim]model:[/dim] {model}\n[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
             border_style=ACCENT,
         )
     )
@@ -171,9 +172,7 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
     multi = _is_multi_schema(schema)
     total_cols = schema.num_total_columns()
     dialect = schema.dialect or ""
-    subtitle = ", ".join(
-        s for s in [dialect, f"{len(schema.tables)} tables", f"{total_cols} columns"] if s
-    )
+    subtitle = ", ".join(s for s in [dialect, f"{len(schema.tables)} tables", f"{total_cols} columns"] if s)
 
     if multi:
         grouped: dict[str | None, list[SQLTableSchema]] = defaultdict(list)
@@ -300,9 +299,7 @@ def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSc
     console.print(Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style=ACCENT))
 
 
-def resolve_table(
-    schema: SQLSchema, name: str
-) -> SQLTableSchema | list[SQLTableSchema] | None:
+def resolve_table(schema: SQLSchema, name: str) -> SQLTableSchema | list[SQLTableSchema] | None:
     """Resolve a table name, supporting optional schema.table syntax.
 
     Returns:
@@ -319,9 +316,8 @@ def resolve_table(
 
     for tbl in schema.tables:
         if schema_part is not None:
-            schema_match = (
-                tbl.schema_name == schema_part
-                or (tbl.schema_name is not None and tbl.schema_name.lower() == schema_part.lower())
+            schema_match = tbl.schema_name == schema_part or (
+                tbl.schema_name is not None and tbl.schema_name.lower() == schema_part.lower()
             )
             if not schema_match:
                 continue
@@ -457,9 +453,11 @@ async def view_result(console: Console, result: object) -> None:
     )
 
     layout = Layout(
-        HSplit([
-            Window(content=content_control, wrap_lines=True),
-        ])
+        HSplit(
+            [
+                Window(content=content_control, wrap_lines=True),
+            ]
+        )
     )
 
     app: Application[None] = Application(

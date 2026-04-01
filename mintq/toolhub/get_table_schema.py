@@ -247,8 +247,12 @@ class GetTableSchemaTool:
         column_regex_filter: str | None = None,
     ) -> str:
         return await self._execute(
-            schema_name, table_name, refresh if self._enable_refresh else False,
-            column_regex_filter, column_offset, column_limit,
+            schema_name,
+            table_name,
+            refresh if self._enable_refresh else False,
+            column_regex_filter,
+            column_offset,
+            column_limit,
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

@@ -62,16 +62,18 @@ class QueryResult:
     latency_seconds: float
 
 
-_ASYNC_DRIVERS = frozenset({
-    "aiosqlite",
-    "asyncpg",
-    "aiomysql",
-    "aiopg",
-    "asyncmy",
-    "aioodbc",
-    "psycopg_async",
-    "oracledb_async",
-})
+_ASYNC_DRIVERS = frozenset(
+    {
+        "aiosqlite",
+        "asyncpg",
+        "aiomysql",
+        "aiopg",
+        "asyncmy",
+        "aioodbc",
+        "psycopg_async",
+        "oracledb_async",
+    }
+)
 
 
 def _is_async_url(url: str | SQLAlchemyURL) -> bool:
@@ -1028,9 +1030,7 @@ class SQLConnector:
         os.unlink(db_path)
 
         loop = asyncio.get_running_loop()
-        table_file_map: dict[str, str] = await loop.run_in_executor(
-            None, _load_files_into_duckdb, db_path, resolved
-        )
+        table_file_map: dict[str, str] = await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)
 
         url = f"duckdb:///{db_path}"
         connector = await cls.from_url_async(

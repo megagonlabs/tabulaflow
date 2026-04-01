@@ -24,9 +24,7 @@ def _split_by_union(cypher: str) -> list[str]:
     pattern = r"\bUNION\b"
 
     if cypher.strip().startswith("CALL"):
-        inner_query_match = re.search(
-            r"CALL\s*\{(.*?)\}\s*(WITH|RETURN|WHERE|UNWIND)", cypher, re.DOTALL
-        )
+        inner_query_match = re.search(r"CALL\s*\{(.*?)\}\s*(WITH|RETURN|WHERE|UNWIND)", cypher, re.DOTALL)
         if inner_query_match:
             inner_query = inner_query_match.group(1)
             return [q.strip() for q in re.split(pattern, inner_query)]
@@ -61,9 +59,7 @@ def _extract_match_cypher(cypher: str) -> str | None:
     clauses = _split_cypher_into_clauses(cypher)
     match_clauses = []
     for clause in clauses:
-        if not any(
-            clause.startswith(kw) for kw in ["MATCH", "OPTIONAL MATCH", "WITH", "WHERE"]
-        ):
+        if not any(clause.startswith(kw) for kw in ["MATCH", "OPTIONAL MATCH", "WITH", "WHERE"]):
             break
         if clause.startswith("WITH"):
             if " as " in clause.lower():
@@ -100,9 +96,7 @@ def _add_variables(match_cypher: str) -> str:
     for i, clause in enumerate(clauses):
         if clause.startswith("MATCH") or clause.startswith("OPTIONAL MATCH"):
             clause = re.sub(r"(\[)(:.*?)(\])", replace_relationship, clause)
-            clauses[i] = re.sub(
-                r"(\(:)([A-Za-z]+)(\s*\{.*?\})?\)", replace_node, clause
-            )
+            clauses[i] = re.sub(r"(\(:)([A-Za-z]+)(\s*\{.*?\})?\)", replace_node, clause)
 
     return " ".join(clauses)
 
@@ -128,13 +122,10 @@ def _get_ps_cypher(cypher: str, return_var: str = "elemId") -> str:
         if match_cypher:
             match_cypher = _add_variables(match_cypher)
             node_vars = _extract_node_variables(match_cypher)
-            node_expr = " + ".join(
-                f"collect(distinct elementId({var}))" for var in node_vars
-            )
+            node_expr = " + ".join(f"collect(distinct elementId({var}))" for var in node_vars)
             node_expr = node_expr if node_expr else "[]"
             ps_cyphers.append(
-                f"{match_cypher} WITH {node_expr} AS elemIds "
-                f"UNWIND elemIds AS elemId RETURN elemId AS {return_var}"
+                f"{match_cypher} WITH {node_expr} AS elemIds UNWIND elemIds AS elemId RETURN elemId AS {return_var}"
             )
 
     if len(ps_cyphers) == 0:
@@ -156,15 +147,9 @@ class PSJS:
     name: ClassVar[str] = "psjs"
     compatible_output_types: ClassVar[list[str]] = ["simple"]
 
-    async def compute_async(
-        self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None
-    ) -> NumericOrNull:
-        pred_query = get_final_pred_query(
-            task, check_exec_result=False, roundtrip_exec_result_csv=False
-        )
-        gold_query = get_final_gold_query(
-            task, check_exec_result=False, roundtrip_exec_result_csv=False
-        )
+    async def compute_async(self, task: NL2QTaskOutput, db_connector: NL2QDBConnector | None = None) -> NumericOrNull:
+        pred_query = get_final_pred_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
+        gold_query = get_final_gold_query(task, check_exec_result=False, roundtrip_exec_result_csv=False)
 
         if pred_query is None or gold_query.query is None:
             return 0.0
@@ -176,9 +161,7 @@ class PSJS:
             return 1.0
 
         if not isinstance(db_connector, Neo4jConnector):
-            raise TypeError(
-                f"PSJS requires a Neo4jConnector, got {type(db_connector)}"
-            )
+            raise TypeError(f"PSJS requires a Neo4jConnector, got {type(db_connector)}")
 
         target_ps_cypher = _get_ps_cypher(target_cypher, return_var="elemId1")
         pred_ps_cypher = _get_ps_cypher(pred_cypher, return_var="elemId2")

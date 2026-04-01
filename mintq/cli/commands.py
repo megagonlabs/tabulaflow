@@ -43,13 +43,9 @@ def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
     if scheme != "bigquery":
         return {}
 
-    google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get(
-        "GCP_BILLING_PROJECT"
-    )
+    google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_BILLING_PROJECT")
     if not google_cloud_project:
-        raise ValueError(
-            "BigQuery billing project required: set GOOGLE_CLOUD_PROJECT (or GCP_BILLING_PROJECT)."
-        )
+        raise ValueError("BigQuery billing project required: set GOOGLE_CLOUD_PROJECT (or GCP_BILLING_PROJECT).")
 
     engine_kwargs: dict[str, Any] = {"billing_project_id": google_cloud_project}
     google_application_credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
@@ -188,9 +184,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     n_tables = len(connector.schema.tables) if connector.schema else 0
     dialect = connector.language or "unknown"
     session.connections.add(alias, connector)
-    console.print(
-        f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)"
-    )
+    console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)")
     return False
 
 
@@ -372,8 +366,7 @@ async def _prompt_password_if_needed(url: str, console: Console) -> str:
             async_=True,
         )
         replaced = parsed._replace(
-            netloc=f"{parsed.username}:{password}@{parsed.hostname}"
-            + (f":{parsed.port}" if parsed.port else "")
+            netloc=f"{parsed.username}:{password}@{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")
         )
         return urlunparse(replaced)
     return url

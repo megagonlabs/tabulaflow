@@ -22,6 +22,7 @@ def __getattr__(name: str) -> object:
         return val
     raise AttributeError(f"module 'mintq' has no attribute {name!r}")
 
+
 logger = logging.getLogger(__name__)
 
 
