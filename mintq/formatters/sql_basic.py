@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass, field
 from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.formatters.utils import flatten_multiline, format_ratio_as_percent
+from mintq.utils import flatten_multiline, format_ratio_as_percent
 from mintq.formatters.sql_ddl import _DIALECT_QUOTING, _DEFAULT_QUOTING
 
 

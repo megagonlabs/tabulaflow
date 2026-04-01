@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass, field
 from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.formatters.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent
+from mintq.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent
 
 _DIALECT_QUOTING: dict[str, tuple[str, bool]] = {
     "bigquery": ("`", False),
