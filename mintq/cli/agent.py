@@ -12,7 +12,7 @@ from rich.console import Console
 
 if TYPE_CHECKING:
     import pandas as pd
-    from pydantic_ai import Agent as PydanticAgent
+    from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage
 
     from mintq.db_connector.base import NL2QDBConnector
@@ -77,29 +77,54 @@ class ChatResult:
 
 
 @dataclass
+class Toolset:
+    """Typed bundle of agent tools."""
+
+    run_query: RegistryRunQueryTool
+    get_column_json_schema: RegistryGetColumnJsonSchemaTool
+    get_table_schema: RegistryGetTableSchemaTool
+    render_chart: RenderPlotextChartTool
+
+
+@dataclass
 class ChatAgent:
     """Streaming agent for interactive database chat.
 
     Uses registry-based tools so the agent targets databases by alias.
     """
 
+    registry: DBRegistry
+    console_width: int
     model: str
     max_steps: int = 20
     _message_history: list[ModelMessage] = field(default_factory=list)
-    _system_prompt: str | None = None
-    _runtime_agent: PydanticAgent[None, str] | None = None
-    _query_history: QueryHistory | None = None
-    _run_query_tool: RegistryRunQueryTool | None = None
-    _get_column_json_schema_tool: RegistryGetColumnJsonSchemaTool | None = None
-    _get_table_schema_tool: RegistryGetTableSchemaTool | None = None
-    _render_chart_tool: RenderPlotextChartTool | None = None
+    _system_prompt: str = SYSTEM_PROMPT
+    _pydantic_ai_agent: Agent[None, str] | None = None
+    _query_history: QueryHistory = field(init=False)
+    _tools: Toolset = field(init=False)
+
+    def __post_init__(self) -> None:
+        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
+        from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
+        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
+        from mintq.toolhub.render_chart import RenderPlotextChartTool
+
+        self._query_history = QueryHistory()
+        self._tools = Toolset(
+            run_query=RegistryRunQueryTool(self.registry, history=self._query_history),
+            get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
+            get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), compress=True),
+            render_chart=RenderPlotextChartTool(history=self._query_history, width=self.console_width),
+        )
+        self._build_agent()
 
     def set_model(self, model: str) -> None:
-        """Update model and invalidate the bound runtime agent."""
+        """Update model and rebuild the bound runtime agent."""
         if self.model == model:
             return
         self.model = model
-        self._runtime_agent = None
+        self._build_agent()
 
     @staticmethod
     def database_info(connector: "NL2QDBConnector") -> str:
@@ -127,58 +152,25 @@ class ChatAgent:
         content = "\n".join(lines)
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
-    async def _ensure_runtime_initialized(
-        self,
-        registry: DBRegistry,
-        console: Console,
-        progress: AgentProgressDisplay,
-    ) -> None:
-        """Initialize prompt/tools once and bind the runtime agent if missing."""
+    def _build_agent(self) -> None:
+        """Build the pydantic-ai agent with current model and tools."""
         from pydantic_ai import Agent
 
-        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-        from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-        from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
-        from mintq.toolhub.render_chart import RenderPlotextChartTool
-
-        if self._system_prompt is None:
-            self._system_prompt = SYSTEM_PROMPT
-
-        if self._run_query_tool is None:
-            self._query_history = QueryHistory()
-            self._run_query_tool = RegistryRunQueryTool(registry, history=self._query_history)
-            self._render_chart_tool = RenderPlotextChartTool(history=self._query_history, width=console.width)
-            formatter = SQLDDLSchemaFormatter()
-            self._get_table_schema_tool = RegistryGetTableSchemaTool(
-                registry,
-                formatter,
-                compress=True,
-            )
-            self._get_column_json_schema_tool = RegistryGetColumnJsonSchemaTool(registry)
-
-        if self._runtime_agent is None:
-            assert self._run_query_tool is not None
-            assert self._render_chart_tool is not None
-            assert self._get_table_schema_tool is not None
-            assert self._get_column_json_schema_tool is not None
-            assert self._system_prompt is not None
-            self._runtime_agent = Agent(
-                model=self.model,
-                tools=[
-                    self._run_query_tool.as_pydantic_ai_tool(),
-                    self._get_table_schema_tool.as_pydantic_ai_tool(),
-                    self._get_column_json_schema_tool.as_pydantic_ai_tool(),
-                    self._render_chart_tool.as_pydantic_ai_tool(),
-                ],
-                instructions=self._system_prompt,
-                model_settings={},
-            )
+        self._pydantic_ai_agent = Agent(
+            model=self.model,
+            tools=[
+                self._tools.run_query.as_pydantic_ai_tool(),
+                self._tools.get_table_schema.as_pydantic_ai_tool(),
+                self._tools.get_column_json_schema.as_pydantic_ai_tool(),
+                self._tools.render_chart.as_pydantic_ai_tool(),
+            ],
+            instructions=self._system_prompt,
+            model_settings={},
+        )
 
     async def run(
         self,
         question: str,
-        registry: DBRegistry,
         console: Console,
     ) -> ChatResult:
         """Run the agent on a user question, streaming progress to the console."""
@@ -190,14 +182,10 @@ class ChatAgent:
         progress.start()
 
         try:
-            await self._ensure_runtime_initialized(registry, console, progress)
-            assert self._runtime_agent is not None
-            assert self._run_query_tool is not None
-            assert self._query_history is not None
-            assert self._render_chart_tool is not None
+            assert self._pydantic_ai_agent is not None
 
             answer_text = ""
-            async for event in self._runtime_agent.run_stream_events(
+            async for event in self._pydantic_ai_agent.run_stream_events(
                 question,
                 message_history=self._message_history or None,
             ):
@@ -206,7 +194,7 @@ class ChatAgent:
                     answer_text = event.result.output
                     break
 
-                _handle_stream_event(event, progress, self._query_history, self._get_table_schema_tool)
+                _handle_stream_event(event, progress, self._query_history, self._tools.get_table_schema)
 
         finally:
             progress.finish()

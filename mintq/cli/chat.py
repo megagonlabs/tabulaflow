@@ -43,13 +43,13 @@ def _suppress_native_stderr() -> Iterator[None]:
 class ChatSession:
     """Holds state for a single interactive session."""
 
-    def __init__(self, model: str, agent: str) -> None:
+    def __init__(self, model: str, agent: str, console_width: int) -> None:
         from mintq.cli.agent import ChatAgent
         from mintq.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
         self.registry: DBRegistry = DBRegistry()
-        self.chat_agent: ChatAgent = ChatAgent(model=model)
+        self.chat_agent: ChatAgent = ChatAgent(registry=self.registry, console_width=console_width, model=model)
         self.last_result: ChatResult | None = None
 
     @property
@@ -66,9 +66,9 @@ class ChatSession:
         return [("class:prompt-bar", "┃"), ("", " ")]
 
 
-def _init_session_sync(model: str, agent: str) -> ChatSession:
+def _init_session_sync(model: str, agent: str, console_width: int) -> ChatSession:
     """Initialize ChatSession (runs heavy imports)."""
-    return ChatSession(model=model, agent=agent)
+    return ChatSession(model=model, agent=agent, console_width=console_width)
 
 
 async def run_chat(model: str, agent: str) -> None:
@@ -125,7 +125,7 @@ async def run_chat(model: str, agent: str) -> None:
     print_banner(console, model=model, agent=agent)
 
     loop = asyncio.get_running_loop()
-    init_task = loop.run_in_executor(None, _init_session_sync, model, agent)
+    init_task = loop.run_in_executor(None, _init_session_sync, model, agent, console.width)
     session: ChatSession | None = None
 
     def _continuation(width: int, _line_number: int, _is_soft_wrap: bool) -> AnyFormattedText:
@@ -172,7 +172,7 @@ async def run_chat(model: str, agent: str) -> None:
 
             try:
                 with _suppress_native_stderr():
-                    result = await session.chat_agent.run(text, session.registry, console)
+                    result = await session.chat_agent.run(text, console)
             except Exception as e:
                 console.print(f"[red]Agent error:[/red] {e}")
                 continue
