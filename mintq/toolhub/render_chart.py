@@ -124,8 +124,6 @@ class RenderPlotextChartTool:
     def __init__(self, history: QueryHistory | None = None, *, width: int = 120) -> None:
         self._history = history or QueryHistory()
         self._width = width
-        self.last_vegalite_spec: dict[str, Any] | None = None
-        self.last_chart_df: pd.DataFrame | None = None
 
     async def __call__(self, record_id: str | None = None, *, vegalite_spec: str) -> str:
         """Render a terminal chart from a stored query result using a Vega-Lite specification.
@@ -189,8 +187,7 @@ class RenderPlotextChartTool:
         except Exception as e:
             return f"(error rendering chart: {e})"
 
-        self.last_vegalite_spec = spec
-        self.last_chart_df = df
+        self._history.attach_chart(record.record_id, spec)
 
         return f"Chart rendered from {record.record_id}: {mark} chart with {len(df)} data points (x={x_col}, y={y_col})"
 

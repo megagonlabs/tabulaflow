@@ -1,7 +1,7 @@
 """Run-query tool backed by a DBRegistry, letting agents target any source."""
 
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import Any, ClassVar, Literal
 
 from pydantic_ai import Tool
 
@@ -19,8 +19,10 @@ class QueryRecord:
     """Metadata for a query executed through the registry tool."""
 
     record_id: str
+    connector_type: Literal["sql", "property_graph"]
     db_alias: str
     pred_query: PredQuery
+    vegalite_spec: dict[str, Any] | None = None
 
 
 class QueryHistory:
@@ -30,10 +32,14 @@ class QueryHistory:
         self._records: dict[str, QueryRecord] = {}
         self._next_query_id = 1
 
-    def add(self, db_alias: str, pred_query: PredQuery) -> QueryRecord:
+    def add(
+        self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
+    ) -> QueryRecord:
         """Store a query and assign it the next opaque record ID."""
         record_id = f"Q{self._next_query_id}"
-        record = QueryRecord(record_id=record_id, db_alias=db_alias, pred_query=pred_query)
+        record = QueryRecord(
+            record_id=record_id, connector_type=connector_type, db_alias=db_alias, pred_query=pred_query
+        )
         pred_query.id = record.record_id
         self._records[record_id] = record
         self._next_query_id += 1
@@ -51,6 +57,10 @@ class QueryHistory:
         if not self._records:
             raise ValueError("No query has been executed")
         return self._records[f"Q{self._next_query_id - 1}"]
+
+    def attach_chart(self, record_id: str, vegalite_spec: dict[str, Any]) -> None:
+        """Attach a Vega-Lite spec to an existing query record."""
+        self.get(record_id).vegalite_spec = vegalite_spec
 
 
 class RegistryRunQueryTool:
@@ -159,7 +169,7 @@ class RegistryRunQueryTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         result = await tool(query, parameters)
         pred_query = tool.last_pred_query()
-        record = self._history.add(db_alias, pred_query)
+        record = self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
         return f"[record_id={record.record_id}]\n{result}"
 
     async def __call__(

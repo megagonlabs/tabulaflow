@@ -310,57 +310,52 @@ class ChatAgent:
 
         return _build_chat_result(
             answer_text,
-            self._run_query_tool,
             self._query_history,
-            self._render_chart_tool,
-            registry,
         )
 
 
 def _build_chat_result(
     answer_text: str,
-    run_query_tool: RegistryRunQueryTool,
     query_history: QueryHistory,
-    render_chart_tool: object,
-    registry: DBRegistry,
 ) -> ChatResult:
     """Parse ``[[result:Q<id>]]`` from the answer and build a ChatResult."""
-    from mintq.toolhub.render_chart import RenderPlotextChartTool
-
-    assert isinstance(render_chart_tool, RenderPlotextChartTool)
-
+    selected_record = None
     query: str | None = None
     df: pd.DataFrame | None = None
+    chart_spec: dict[str, object] | None = None
+    chart_df: pd.DataFrame | None = None
     query_lexer = "sql"
 
     match = _QUERY_REF_RE.search(answer_text)
     if match:
         record_id = match.group(1)
         try:
-            record = run_query_tool.get_query_record(record_id)
-            pred = record.pred_query
-            query = pred.query
-            df = pred.exec_result.df if pred.exec_result else None
-            connector = registry.get(record.db_alias)
-            query_lexer = "cypher" if connector.connector_type == "property_graph" else "sql"
+            selected_record = query_history.get(record_id)
         except (KeyError, ValueError):
             pass
         display_text = _QUERY_REF_RE.sub("", answer_text).strip()
     else:
         display_text = answer_text
         try:
-            pred = query_history.last().pred_query
-            query = pred.query
-            df = pred.exec_result.df if pred.exec_result else None
+            selected_record = query_history.last()
         except ValueError:
             pass
+
+    if selected_record is not None:
+        pred = selected_record.pred_query
+        query = pred.query
+        df = pred.exec_result.df if pred.exec_result else None
+        query_lexer = "cypher" if selected_record.connector_type == "property_graph" else "sql"
+        chart_spec = selected_record.vegalite_spec
+        if chart_spec is not None and pred.exec_result is not None and pred.exec_result.df is not None:
+            chart_df = pred.exec_result.df
 
     return ChatResult(
         text=display_text,
         query=query,
         df=df,
-        chart_spec=render_chart_tool.last_vegalite_spec,
-        chart_df=render_chart_tool.last_chart_df,
+        chart_spec=chart_spec,
+        chart_df=chart_df,
         query_lexer=query_lexer,
     )
 
