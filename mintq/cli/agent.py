@@ -87,7 +87,7 @@ class ChatResult:
     """Result of a single chat turn."""
 
     text: str
-    sql: str | None = None
+    query: str | None = None
     df: pd.DataFrame | None = None
     chart_spec: dict[str, object] | None = None
     chart_df: pd.DataFrame | None = None
@@ -286,7 +286,7 @@ def _build_chat_result(
 
     assert isinstance(render_chart_tool, RenderPlotextChartTool)
 
-    sql: str | None = None
+    query: str | None = None
     df: pd.DataFrame | None = None
     query_lexer = "sql"
 
@@ -296,7 +296,7 @@ def _build_chat_result(
         try:
             record = run_query_tool.get_query_record(record_id)
             pred = record.pred_query
-            sql = pred.query
+            query = pred.query
             df = pred.exec_result.df if pred.exec_result else None
             connector = registry.get(record.db_alias)
             query_lexer = "cypher" if connector.connector_type == "property_graph" else "sql"
@@ -307,14 +307,14 @@ def _build_chat_result(
         display_text = answer_text
         try:
             pred = query_history.last().pred_query
-            sql = pred.query
+            query = pred.query
             df = pred.exec_result.df if pred.exec_result else None
         except ValueError:
             pass
 
     return ChatResult(
         text=display_text,
-        sql=sql,
+        query=query,
         df=df,
         chart_spec=render_chart_tool.last_vegalite_spec,
         chart_df=render_chart_tool.last_chart_df,

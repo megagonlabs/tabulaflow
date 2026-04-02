@@ -476,13 +476,13 @@ async def _cmd_view(args: list[str], session: ChatSession, console: Console) -> 
 
 
 async def _cmd_sql(args: list[str], session: ChatSession, console: Console) -> bool:
-    if session.last_result is None or session.last_result.sql is None:
+    if session.last_result is None or session.last_result.query is None:
         console.print("[dim]No SQL to display.[/dim]")
         return False
 
     from mintq.cli.display import render_sql
 
-    render_sql(console, session.last_result.sql, lexer=session.last_result.query_lexer)
+    render_sql(console, session.last_result.query, lexer=session.last_result.query_lexer)
     return False
 
 

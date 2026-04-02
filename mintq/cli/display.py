@@ -439,8 +439,13 @@ async def view_result(console: Console, result: object) -> None:
         views["chart"] = _capture_rich(console, render_chart, result.chart_df, result.chart_spec)
     if result.df is not None and not result.df.empty:
         views["data"] = _capture_rich(console, render_table, result.df)
-    if result.sql:
-        views["sql"] = _capture_rich(console, render_sql, result.sql, lexer=getattr(result, "query_lexer", "sql"))
+    if result.query:
+        views["sql"] = _capture_rich(
+            console,
+            render_sql,
+            result.query,
+            lexer=getattr(result, "query_lexer", "sql"),
+        )
 
     available = [v for v in _VIEW_NAMES if v in views]
     if not available:
