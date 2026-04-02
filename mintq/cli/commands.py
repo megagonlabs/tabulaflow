@@ -368,29 +368,6 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
     return False
 
 
-async def _cmd_mode(args: list[str], session: ChatSession, console: Console) -> bool:
-    valid = {"nl", "sql", "table", "chart", "all"}
-    if not args:
-        console.print(f"[dim]Active modes:[/dim] {', '.join(sorted(session.output_modes))}")
-        console.print(f"[dim]Usage:[/dim] /mode <{'|'.join(sorted(valid))}>")
-        return False
-
-    mode = args[0].lower()
-    if mode == "all":
-        session.output_modes = {"nl", "sql", "table", "chart"}
-    elif mode in valid:
-        if mode in session.output_modes:
-            session.output_modes.discard(mode)
-            console.print(f"[yellow]−[/yellow] Disabled [bold]{mode}[/bold]")
-        else:
-            session.output_modes.add(mode)
-            console.print(f"[green]+[/green] Enabled [bold]{mode}[/bold]")
-    else:
-        console.print(f"[red]Invalid mode:[/red] {mode}. Choose from {', '.join(sorted(valid))}")
-
-    return False
-
-
 async def _cmd_model(args: list[str], session: ChatSession, console: Console) -> bool:
     if not args:
         console.print(f"[dim]Current model:[/dim] {session.model}")
@@ -530,7 +507,6 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
     "/schema": (_cmd_schema, "Show schema: /schema [alias] [table] [column]"),
-    "/mode": (_cmd_mode, "Toggle output mode: /mode <response|chart|data|sql|all>"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
     "/view": (_cmd_view, "View last result (Tab/Shift+Tab to cycle views)"),

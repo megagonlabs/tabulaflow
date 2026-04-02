@@ -49,7 +49,6 @@ class ChatSession:
 
         self.agent_name = agent
         self.registry: DBRegistry = DBRegistry()
-        self.output_modes: set[str] = {"nl"}
         self.chat_agent: ChatAgent = ChatAgent(model=model)
         self.last_result: ChatResult | None = None
 
@@ -175,7 +174,7 @@ async def run_chat(model: str, agent: str) -> None:
 
             session.last_result = result
             console.print()
-            await view_result(console, result)
+            await view_result(console, result, enabled_modes=session.output_modes)
     finally:
         if session is not None:
             await session.registry.disconnect_all_async()
