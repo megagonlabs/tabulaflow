@@ -82,7 +82,7 @@ async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> 
 
 
 async def _cmd_exit(args: list[str], session: ChatSession, console: Console) -> bool:
-    await session.connections.disconnect_all()
+    await session.registry.disconnect_all_async()
     return True
 
 
@@ -114,7 +114,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         non_file_args = [a for a in args if not _is_data_file(a)]
         alias = non_file_args[0] if non_file_args else _alias_from_files(file_args)
 
-        if session.connections.has(alias):
+        if session.registry.has(alias):
             console.print(
                 f"[red]Alias already in use:[/red] {alias}. "
                 "Disconnect first or provide a different alias: /connect <files...> <alias>"
@@ -140,7 +140,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
                 return False
 
         n_tables = len(connector.schema.tables)
-        session.connections.add(alias, connector)
+        session.registry.register(alias, connector)
         console.print(
             f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as "
             f"[bold]{alias}[/bold] (duckdb, {n_tables} table{'s' if n_tables != 1 else ''})"
@@ -152,7 +152,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     url = _normalize_url(raw)
     alias = args[1] if len(args) > 1 else _alias_from_url(url)
 
-    if session.connections.has(alias):
+    if session.registry.has(alias):
         console.print(
             f"[red]Alias already in use:[/red] {alias}. "
             "Disconnect first or provide a different alias: /connect <url> <alias>"
@@ -183,7 +183,7 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
         n_labels = len(neo_connector.schema.nodes)
         n_patterns = len(neo_connector.schema.relationships)
-        session.connections.add(alias, neo_connector)
+        session.registry.register(alias, neo_connector)
         console.print(
             f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] "
             f"(cypher, {n_labels} label{'s' if n_labels != 1 else ''}, "
@@ -216,17 +216,23 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
     n_tables = len(connector.schema.tables) if connector.schema else 0
     dialect = connector.language or "unknown"
-    session.connections.add(alias, connector)
+    session.registry.register(alias, connector)
     console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)")
     return False
 
 
 async def _cmd_disconnect(args: list[str], session: ChatSession, console: Console) -> bool:
-    alias = args[0] if args else session.connections.active_alias
-    if alias is None:
-        console.print("[red]No active connection.[/red]")
-        return False
-    if await session.connections.remove(alias):
+    aliases = session.registry.list_aliases()
+    if not args:
+        if len(aliases) == 1:
+            alias = aliases[0]
+        else:
+            console.print("[red]Usage:[/red] /disconnect <alias>")
+            return False
+    else:
+        alias = args[0]
+
+    if await session.registry.unregister_async(alias):
         console.print(f"[{ACCENT}]✓[/{ACCENT}] Disconnected from [bold]{alias}[/bold]")
     else:
         console.print(f"[red]No connection named:[/red] {alias}")
@@ -234,8 +240,8 @@ async def _cmd_disconnect(args: list[str], session: ChatSession, console: Consol
 
 
 async def _cmd_databases(args: list[str], session: ChatSession, console: Console) -> bool:
-    connections = session.connections.list_all()
-    if not connections:
+    aliases = session.registry.list_aliases()
+    if not aliases:
         console.print("[dim]No databases connected. Use /connect <url> to add one.[/dim]")
         return False
 
@@ -243,11 +249,10 @@ async def _cmd_databases(args: list[str], session: ChatSession, console: Console
 
     table = Table(show_header=True, header_style=ACCENT_BOLD)
     table.add_column("Alias", style="bold")
-    table.add_column("Active")
     table.add_column("Schema")
 
-    for alias, conn in connections.items():
-        is_active = "●" if alias == session.connections.active_alias else ""
+    for alias in aliases:
+        conn = session.registry.get(alias)
         if isinstance(conn, Neo4jConnector) and conn.schema:
             n_lab = len(conn.schema.nodes)
             n_rel = len(conn.schema.relationships)
@@ -256,21 +261,25 @@ async def _cmd_databases(args: list[str], session: ChatSession, console: Console
             summary = f"{len(conn.schema.tables)} tables"
         else:
             summary = "?"
-        table.add_row(alias, f"[green]{is_active}[/green]", summary)
+        table.add_row(alias, summary)
 
     console.print(table)
     return False
 
 
-async def _cmd_use(args: list[str], session: ChatSession, console: Console) -> bool:
-    if not args:
-        console.print("[red]Usage:[/red] /use <alias>")
-        return False
-    if session.connections.use(args[0]):
-        console.print(f"[{ACCENT}]✓[/{ACCENT}] Switched to [bold]{args[0]}[/bold]")
-    else:
-        console.print(f"[red]No connection named:[/red] {args[0]}")
-    return False
+def _resolve_alias(args: list[str], session: ChatSession) -> tuple[str | None, list[str]]:
+    """Resolve the database alias from command args.
+
+    If the first arg matches a registered alias, consume it. If there is
+    exactly one connected database, use it implicitly. Returns
+    ``(alias, remaining_args)`` or ``(None, args)`` on ambiguity.
+    """
+    if args and session.registry.has(args[0]):
+        return args[0], args[1:]
+    aliases = session.registry.list_aliases()
+    if len(aliases) == 1:
+        return aliases[0], args
+    return None, args
 
 
 async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -> bool:
@@ -290,11 +299,21 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
     )
     from mintq.db_connector import Neo4jConnector
 
-    conn = session.connections.active_connector
-    if conn is None:
-        console.print("[red]No active connection.[/red] Use /connect first.")
+    aliases = session.registry.list_aliases()
+    if not aliases:
+        console.print("[red]No database connected.[/red] Use /connect first.")
         return False
 
+    alias, rest = _resolve_alias(args, session)
+    if alias is None:
+        if not args:
+            console.print("[dim]Multiple databases connected. Specify alias: /schema <alias> [table] [column][/dim]")
+            console.print(f"[dim]Available: {', '.join(aliases)}[/dim]")
+        else:
+            console.print(f"[red]Unknown alias or table:[/red] {args[0]}. Available databases: {', '.join(aliases)}")
+        return False
+
+    conn = session.registry.get(alias)
     schema = conn.schema
     if schema is None:
         console.print("[dim]Schema not available.[/dim]")
@@ -302,49 +321,47 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
 
     if isinstance(conn, Neo4jConnector):
         graph_schema = conn.schema
-        alias = session.connections.active_alias or ""
-        if not args:
+        if not rest:
             render_property_graph_overview(console, graph_schema, alias)
             return False
-        node = resolve_graph_node_label(graph_schema, args[0])
+        node = resolve_graph_node_label(graph_schema, rest[0])
         if node is not None:
             render_graph_node_detail(console, node)
             return False
-        rel_patterns = resolve_graph_rel_patterns(graph_schema, args[0])
+        rel_patterns = resolve_graph_rel_patterns(graph_schema, rest[0])
         if rel_patterns:
-            render_graph_reltype_detail(console, args[0], rel_patterns)
+            render_graph_reltype_detail(console, rest[0], rel_patterns)
             return False
-        console.print(f"[red]Unknown label or relationship type:[/red] {args[0]}")
+        console.print(f"[red]Unknown label or relationship type:[/red] {rest[0]}")
         return False
 
     sql_schema = cast(SQLSchema, schema)
     multi = _is_multi_schema(sql_schema)
-    alias = session.connections.active_alias or ""
 
-    if not args:
+    if not rest:
         render_schema_overview(console, sql_schema, alias)
         return False
 
-    result = resolve_table(sql_schema, args[0])
+    result = resolve_table(sql_schema, rest[0])
     if result is None:
-        console.print(f"[red]Table not found:[/red] {args[0]}")
+        console.print(f"[red]Table not found:[/red] {rest[0]}")
         return False
     if isinstance(result, list):
-        console.print(f"[red]Ambiguous table name:[/red] {args[0]}. Matches:")
+        console.print(f"[red]Ambiguous table name:[/red] {rest[0]}. Matches:")
         for t in result:
             console.print(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
-        console.print("[dim]Use the qualified name: /schema <schema>.<table>[/dim]")
+        console.print("[dim]Use the qualified name: /schema [alias] <schema>.<table>[/dim]")
         return False
 
     tbl = result
 
-    if len(args) < 2:
+    if len(rest) < 2:
         render_table_detail(console, tbl, multi_schema=multi)
         return False
 
-    col = resolve_column(tbl, args[1])
+    col = resolve_column(tbl, rest[1])
     if col is None:
-        console.print(f"[red]Column not found:[/red] {args[1]} in {_display_name(tbl, multi)}")
+        console.print(f"[red]Column not found:[/red] {rest[1]} in {_display_name(tbl, multi)}")
         return False
 
     render_column_detail(console, tbl, col)
@@ -425,11 +442,7 @@ def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
 
 
 def _normalize_url(raw: str) -> str:
-    """Expand a bare file path into a SQLAlchemy URL, or return as-is.
-
-    Also upgrades bare dialect URLs (no explicit ``+driver``) to use an
-    async driver when one is available as a mintq dependency.
-    """
+    """Expand a bare file path into a SQLAlchemy URL, or return as-is."""
     for ext, scheme in _FILE_EXTENSIONS.items():
         if raw.endswith(ext):
             abspath = os.path.abspath(raw)
@@ -516,8 +529,7 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect [alias]"),
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
-    "/use": (_cmd_use, "Switch active database: /use <alias>"),
-    "/schema": (_cmd_schema, "Show schema: /schema [table] [column]"),
+    "/schema": (_cmd_schema, "Show schema: /schema [alias] [table] [column]"),
     "/mode": (_cmd_mode, "Toggle output mode: /mode <response|chart|data|sql|all>"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),

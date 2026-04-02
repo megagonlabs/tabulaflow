@@ -17,7 +17,7 @@ from mintq.cli.theme import ACCENT_BOLD
 
 if TYPE_CHECKING:
     from mintq.cli.agent import ChatAgent, ChatResult
-    from mintq.cli.connections import ConnectionManager
+    from mintq.db_connector.db_registry import DBRegistry
 
 DATA_DIR = Path.home() / ".mintq"
 
@@ -45,11 +45,11 @@ class ChatSession:
 
     def __init__(self, model: str, agent: str) -> None:
         from mintq.cli.agent import ChatAgent
-        from mintq.cli.connections import ConnectionManager
+        from mintq.db_connector.db_registry import DBRegistry
 
         self.model = model
         self.agent_name = agent
-        self.connections: ConnectionManager = ConnectionManager()
+        self.registry: DBRegistry = DBRegistry()
         self.output_modes: set[str] = {"nl"}
         self.chat_agent: ChatAgent = ChatAgent(model=model)
         self.last_result: ChatResult | None = None
@@ -75,8 +75,6 @@ async def run_chat(model: str, agent: str) -> None:
     log_dir.mkdir(parents=True, exist_ok=True)
     log_path = log_dir / "cli.log"
 
-    # Route all Python logging to file only. Keep terminal output reserved for
-    # explicit user-facing messages rendered by Rich.
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(logging.DEBUG)
@@ -85,7 +83,6 @@ async def run_chat(model: str, agent: str) -> None:
     root.addHandler(file_handler)
     logging.captureWarnings(True)
 
-    # Silence noisy third-party loggers in interactive mode.
     for name in (
         "LiteLLM",
         "litellm",
@@ -102,9 +99,6 @@ async def run_chat(model: str, agent: str) -> None:
         logger.propagate = True
         logger.setLevel(logging.CRITICAL)
 
-    # Some native libraries (e.g., grpc/absl) write directly to stderr and
-    # bypass Python logging. Redirect stderr to the same log file to keep the
-    # interactive UI clean.
     os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
     os.environ.setdefault("GLOG_minloglevel", "3")
     stderr_stream = open(log_path, "a", encoding="utf-8", buffering=1)
@@ -160,14 +154,13 @@ async def run_chat(model: str, agent: str) -> None:
                     break
                 continue
 
-            connector = session.connections.active_connector
-            if connector is None:
+            if not session.registry.list_aliases():
                 console.print("[red]No database connected.[/red] Use /connect first.")
                 continue
 
             try:
                 with _suppress_native_stderr():
-                    result = await session.chat_agent.run(text, connector, console)
+                    result = await session.chat_agent.run(text, session.registry, console)
             except Exception as e:
                 console.print(f"[red]Agent error:[/red] {e}")
                 continue
@@ -177,6 +170,6 @@ async def run_chat(model: str, agent: str) -> None:
             await view_result(console, result)
     finally:
         if session is not None:
-            await session.connections.disconnect_all()
+            await session.registry.disconnect_all_async()
         sys.stderr = original_stderr
         stderr_stream.close()

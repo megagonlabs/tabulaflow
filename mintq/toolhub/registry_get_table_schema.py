@@ -49,6 +49,7 @@ class RegistryGetTableSchemaTool:
         self.max_columns = max_columns
         self.enable_refresh = enable_refresh
         self._tools: dict[str, GetTableSchemaTool] = {}
+        self._last_columns_returned: int | None = None
 
     def _get_tool(self, db_alias: str) -> GetTableSchemaTool:
         """Return a cached ``GetTableSchemaTool`` for ``db_alias``, creating one if needed."""
@@ -139,7 +140,9 @@ class RegistryGetTableSchemaTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         except TypeError as e:
             return f"(error: {e})"
-        return await tool(schema_name, table_name, refresh, column_offset, column_limit, column_regex_filter)
+        result = await tool(schema_name, table_name, refresh, column_offset, column_limit, column_regex_filter)
+        self._last_columns_returned = tool.last_columns_returned
+        return result
 
     async def __call__(
         self,
@@ -164,6 +167,10 @@ class RegistryGetTableSchemaTool:
     def as_pydantic_ai_tool(self) -> Tool:
         fn = self._with_refresh if self.enable_refresh else self._no_refresh
         return Tool(fn, name=self.name)
+
+    @property
+    def last_columns_returned(self) -> int | None:
+        return self._last_columns_returned
 
     def metrics(self) -> GetTableSchemaToolMetrics:
         """Return aggregated metrics across all aliases."""

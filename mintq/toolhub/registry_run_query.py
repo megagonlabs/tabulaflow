@@ -54,6 +54,7 @@ class RegistryRunQueryTool:
         self.floatfmt = floatfmt
         self._tools: dict[str, RunQueryTool] = {}
         self._query_history: dict[int, PredQuery] = {}
+        self._query_db_alias: dict[int, str] = {}
         self._next_query_id: int = 1
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
@@ -120,8 +121,9 @@ class RegistryRunQueryTool:
         query_id = self._next_query_id
         pred_query.id = f"Q{query_id}"
         self._query_history[query_id] = pred_query
+        self._query_db_alias[query_id] = db_alias
         self._next_query_id += 1
-        return f"[query_id=Q{query_id}]\n\n{result}"
+        return f"[query_id=Q{query_id}]\n{result}"
 
     async def __call__(
         self,
@@ -154,3 +156,27 @@ class RegistryRunQueryTool:
             return self._query_history[query_id]
         except KeyError:
             raise KeyError(f"No query with id {query_id}") from None
+
+    def get_query_db_alias(self, query_id: int) -> str:
+        """Return the ``db_alias`` that was used for a previously executed query.
+
+        Args:
+            query_id: The integer ID assigned to the query at execution time.
+
+        Raises:
+            KeyError: If no query with ``query_id`` exists.
+        """
+        try:
+            return self._query_db_alias[query_id]
+        except KeyError:
+            raise KeyError(f"No query with id {query_id}") from None
+
+    def last_pred_query(self) -> PredQuery:
+        """Return the most recently executed ``PredQuery``.
+
+        Raises:
+            ValueError: If no query has been executed yet.
+        """
+        if not self._query_history:
+            raise ValueError("No query has been executed")
+        return self._query_history[self._next_query_id - 1]

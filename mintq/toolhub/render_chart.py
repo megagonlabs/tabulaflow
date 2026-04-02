@@ -3,12 +3,19 @@
 from __future__ import annotations
 
 import json
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Protocol
 
 import pandas as pd
 from pydantic_ai import Tool
 
-from mintq.toolhub.run_query import RunQueryTool
+from mintq.schema import PredQuery
+
+
+class _QueryToolLike(Protocol):
+    """Minimal interface for a tool that tracks the last executed query."""
+
+    def last_pred_query(self) -> PredQuery: ...
+
 
 _SUPPORTED_MARKS = {"bar", "line", "point", "rect"}
 
@@ -120,7 +127,7 @@ class RenderPlotextChartTool:
 
     name: ClassVar = "render_chart"
 
-    def __init__(self, run_query_tool: RunQueryTool, *, width: int = 120) -> None:
+    def __init__(self, run_query_tool: _QueryToolLike, *, width: int = 120) -> None:
         self._run_query_tool = run_query_tool
         self._width = width
         self.last_vegalite_spec: dict[str, Any] | None = None
