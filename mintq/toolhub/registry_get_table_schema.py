@@ -8,6 +8,7 @@ from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.formatters.base import BaseSQLSchemaFormatter
 from mintq.toolhub.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
+from mintq.toolhub.utils import sum_tool_metrics
 
 
 class RegistryGetTableSchemaTool:
@@ -165,6 +166,6 @@ class RegistryGetTableSchemaTool:
         fn = self._with_refresh if self.enable_refresh else self._no_refresh
         return Tool(fn, name=self.name)
 
-    def metrics(self) -> dict[str, GetTableSchemaToolMetrics]:
-        """Return per-alias metrics."""
-        return {alias: tool.metrics() for alias, tool in self._tools.items()}
+    def metrics(self) -> GetTableSchemaToolMetrics:
+        """Return aggregated metrics across all aliases."""
+        return sum_tool_metrics((t.metrics() for t in self._tools.values()), GetTableSchemaToolMetrics)

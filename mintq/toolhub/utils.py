@@ -1,4 +1,25 @@
 import re
+from typing import Iterable, TypeVar
+
+from pydantic import BaseModel
+
+_M = TypeVar("_M", bound=BaseModel)
+
+
+def sum_tool_metrics(metrics_iter: Iterable[_M], cls: type[_M]) -> _M:
+    """Sum numeric fields across multiple metrics instances.
+
+    Args:
+        metrics_iter: Iterable of metrics objects to aggregate.
+        cls: The metrics class to instantiate for the result.
+    """
+    totals: dict[str, int | float] = {}
+    for m in metrics_iter:
+        for field_name in m.model_fields:
+            val = getattr(m, field_name)
+            if isinstance(val, (int, float)):
+                totals[field_name] = totals.get(field_name, 0) + val
+    return cls(**totals)
 
 
 def equals_ci(a: str | None, b: str | None) -> bool:

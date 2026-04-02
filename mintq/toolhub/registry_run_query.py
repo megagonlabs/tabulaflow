@@ -7,6 +7,7 @@ from pydantic_ai import Tool
 from mintq.config import mintq_config
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
+from mintq.toolhub.utils import sum_tool_metrics
 
 _UNSET = object()
 
@@ -127,6 +128,6 @@ class RegistryRunQueryTool:
         fn = self._run_with_params if self.enable_params else self._run_no_params
         return Tool(fn, name=self.name)
 
-    def metrics(self) -> dict[str, RunQueryToolMetrics]:
-        """Return per-alias metrics."""
-        return {alias: tool.metrics() for alias, tool in self._tools.items()}
+    def metrics(self) -> RunQueryToolMetrics:
+        """Return aggregated metrics across all aliases."""
+        return sum_tool_metrics((t.metrics() for t in self._tools.values()), RunQueryToolMetrics)
