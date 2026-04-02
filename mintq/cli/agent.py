@@ -13,10 +13,13 @@ from rich.console import Console
 
 if TYPE_CHECKING:
     import pandas as pd
+    from pydantic_ai import Agent as PydanticAgent
     from pydantic_ai.messages import ModelMessage
 
     from mintq.db_connector.db_registry import DBRegistry
+    from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
     from mintq.toolhub.registry_run_query import QueryHistory
+    from mintq.toolhub.render_chart import RenderPlotextChartTool
     from mintq.toolhub.registry_run_query import RegistryRunQueryTool
     from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 
@@ -106,8 +109,122 @@ class ChatAgent:
     max_steps: int = 20
     _db_summaries: dict[str, str] = field(default_factory=dict)
     _message_history: list[ModelMessage] = field(default_factory=list)
+    _system_prompt: str | None = None
+    _runtime_agent: PydanticAgent[None, str] | None = None
+    _runtime_model: str | None = None
+    _query_history: QueryHistory | None = None
+    _run_query_tool: RegistryRunQueryTool | None = None
+    _get_column_json_schema_tool: RegistryGetColumnJsonSchemaTool | None = None
+    _get_table_schema_tool: RegistryGetTableSchemaTool | None = None
+    _render_chart_tool: RenderPlotextChartTool | None = None
 
     _SUMMARIZE_MIN_TABLES = 20
+
+    def add_registry_notice(self, alias: str, info: str) -> None:
+        """Append a synthetic user message about a newly registered database."""
+        from pydantic_ai.messages import ModelRequest, UserPromptPart
+
+        content = (
+            "A new database has been registered and is now available.\n"
+            f"- alias: {alias}\n"
+            f"- info: {info}\n"
+            "Use this alias in tool calls via db_alias."
+        )
+        self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+
+    async def _ensure_runtime_initialized(
+        self,
+        registry: DBRegistry,
+        console: Console,
+        progress: AgentProgressDisplay,
+    ) -> None:
+        """Initialize prompt/tools once; rebuild only model binding when needed."""
+        from pydantic_ai import Agent
+
+        from mintq.db_connector import Neo4jConnector
+        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
+        from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
+        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
+        from mintq.toolhub.render_chart import RenderPlotextChartTool
+
+        if self._system_prompt is None:
+            aliases = registry.list_aliases()
+            has_sql = False
+            has_graph = False
+            db_infos: list[dict[str, str]] = []
+            db_doc_parts: list[str] = []
+
+            for alias in aliases:
+                conn = registry.get(alias)
+                if isinstance(conn, Neo4jConnector):
+                    has_graph = True
+                    n_labels = len(conn.schema.nodes)
+                    n_rels = len(conn.schema.relationships)
+                    db_infos.append(
+                        {
+                            "alias": alias,
+                            "info": f"cypher, {n_labels} labels, {n_rels} rel patterns",
+                        }
+                    )
+                else:
+                    has_sql = True
+                    schema = conn.schema
+                    dialect = getattr(schema, "dialect", "sql")
+                    n_tables = len(schema.tables)
+                    db_infos.append(
+                        {
+                            "alias": alias,
+                            "info": f"{dialect}, {n_tables} tables",
+                        }
+                    )
+
+                doc = await self._get_db_document(alias, conn, progress)
+                if doc:
+                    header = f"## Database: {alias}"
+                    db_doc_parts.append(f"{header}\n\n{doc}")
+
+            db_document = "\n\n".join(db_doc_parts) if db_doc_parts else None
+            single_alias = aliases[0] if len(aliases) == 1 else None
+
+            self._system_prompt = SYSTEM_PROMPT_TEMPLATE.render(
+                databases=db_infos,
+                single_alias=single_alias,
+                has_sql=has_sql,
+                has_graph=has_graph,
+                db_document=db_document,
+            )
+
+        if self._run_query_tool is None:
+            self._query_history = QueryHistory()
+            self._run_query_tool = RegistryRunQueryTool(registry, history=self._query_history)
+            self._render_chart_tool = RenderPlotextChartTool(history=self._query_history, width=console.width)
+            formatter = SQLDDLSchemaFormatter()
+            self._get_table_schema_tool = RegistryGetTableSchemaTool(
+                registry,
+                formatter,
+                compress=True,
+            )
+            self._get_column_json_schema_tool = RegistryGetColumnJsonSchemaTool(registry)
+
+        if self._runtime_agent is None or self._runtime_model != self.model:
+            assert self._run_query_tool is not None
+            assert self._render_chart_tool is not None
+            assert self._get_table_schema_tool is not None
+            assert self._get_column_json_schema_tool is not None
+            assert self._system_prompt is not None
+            self._runtime_agent = Agent(
+                model=self.model,
+                tools=[
+                    self._run_query_tool.as_pydantic_ai_tool(),
+                    self._get_table_schema_tool.as_pydantic_ai_tool(),
+                    self._get_column_json_schema_tool.as_pydantic_ai_tool(),
+                    self._render_chart_tool.as_pydantic_ai_tool(),
+                ],
+                instructions=self._system_prompt,
+                model_settings={},
+            )
+            self._runtime_model = self.model
 
     async def _get_db_document(
         self,
@@ -162,96 +279,22 @@ class ChatAgent:
         console: Console,
     ) -> ChatResult:
         """Run the agent on a user question, streaming progress to the console."""
-        from pydantic_ai import Agent
         from pydantic_ai.run import AgentRunResultEvent
 
         from mintq.cli.display import render_agent_progress
-        from mintq.db_connector import Neo4jConnector
-        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-        from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-        from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
-        from mintq.toolhub.render_chart import RenderPlotextChartTool
 
         progress = render_agent_progress(console)
         progress.start()
 
         try:
-            aliases = registry.list_aliases()
-            has_sql = False
-            has_graph = False
-            db_infos: list[dict[str, str]] = []
-            db_doc_parts: list[str] = []
-
-            for alias in aliases:
-                conn = registry.get(alias)
-                if isinstance(conn, Neo4jConnector):
-                    has_graph = True
-                    n_labels = len(conn.schema.nodes)
-                    n_rels = len(conn.schema.relationships)
-                    db_infos.append(
-                        {
-                            "alias": alias,
-                            "info": f"cypher, {n_labels} labels, {n_rels} rel patterns",
-                        }
-                    )
-                else:
-                    has_sql = True
-                    schema = conn.schema
-                    dialect = getattr(schema, "dialect", "sql")
-                    n_tables = len(schema.tables)
-                    db_infos.append(
-                        {
-                            "alias": alias,
-                            "info": f"{dialect}, {n_tables} tables",
-                        }
-                    )
-
-                doc = await self._get_db_document(alias, conn, progress)
-                if doc:
-                    header = f"## Database: {alias}"
-                    db_doc_parts.append(f"{header}\n\n{doc}")
-
-            db_document = "\n\n".join(db_doc_parts) if db_doc_parts else None
-            single_alias = aliases[0] if len(aliases) == 1 else None
-
-            system_prompt = SYSTEM_PROMPT_TEMPLATE.render(
-                databases=db_infos,
-                single_alias=single_alias,
-                has_sql=has_sql,
-                has_graph=has_graph,
-                db_document=db_document,
-            )
-
-            query_history = QueryHistory()
-            run_query_tool = RegistryRunQueryTool(registry, history=query_history)
-            render_chart_tool = RenderPlotextChartTool(history=query_history, width=console.width)
-
-            tools = [run_query_tool.as_pydantic_ai_tool()]
-
-            get_table_schema_tool: RegistryGetTableSchemaTool | None = None
-            if has_sql:
-                formatter = SQLDDLSchemaFormatter()
-                get_table_schema_tool = RegistryGetTableSchemaTool(
-                    registry,
-                    formatter,
-                    compress=True,
-                )
-                get_column_json_schema_tool = RegistryGetColumnJsonSchemaTool(registry)
-                tools.append(get_table_schema_tool.as_pydantic_ai_tool())
-                tools.append(get_column_json_schema_tool.as_pydantic_ai_tool())
-
-            tools.append(render_chart_tool.as_pydantic_ai_tool())
-
-            agent: Agent[None, str] = Agent(
-                model=self.model,
-                tools=tools,
-                instructions=system_prompt,
-                model_settings={},
-            )
+            await self._ensure_runtime_initialized(registry, console, progress)
+            assert self._runtime_agent is not None
+            assert self._run_query_tool is not None
+            assert self._query_history is not None
+            assert self._render_chart_tool is not None
 
             answer_text = ""
-            async for event in agent.run_stream_events(
+            async for event in self._runtime_agent.run_stream_events(
                 question,
                 message_history=self._message_history or None,
             ):
@@ -260,16 +303,16 @@ class ChatAgent:
                     answer_text = event.result.output
                     break
 
-                _handle_stream_event(event, progress, query_history, get_table_schema_tool)
+                _handle_stream_event(event, progress, self._query_history, self._get_table_schema_tool)
 
         finally:
             progress.finish()
 
         return _build_chat_result(
             answer_text,
-            run_query_tool,
-            query_history,
-            render_chart_tool,
+            self._run_query_tool,
+            self._query_history,
+            self._render_chart_tool,
             registry,
         )
 

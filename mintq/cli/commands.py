@@ -11,6 +11,7 @@ from rich.console import Console
 from rich.table import Table
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
+
 if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
     from mintq.schema import SQLSchema
@@ -140,10 +141,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
 
         n_tables = len(connector.schema.tables)
         session.registry.register(alias, connector)
-        console.print(
-            f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as "
-            f"[bold]{alias}[/bold] (duckdb, {n_tables} table{'s' if n_tables != 1 else ''})"
-        )
+        info = f"duckdb, {n_tables} table{'s' if n_tables != 1 else ''}"
+        session.chat_agent.add_registry_notice(alias, info)
+        console.print(f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})")
         return False
 
     # --- URL / database-file connections ---
@@ -183,11 +183,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
         n_labels = len(neo_connector.schema.nodes)
         n_patterns = len(neo_connector.schema.relationships)
         session.registry.register(alias, neo_connector)
-        console.print(
-            f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] "
-            f"(cypher, {n_labels} label{'s' if n_labels != 1 else ''}, "
-            f"{n_patterns} rel pattern{'s' if n_patterns != 1 else ''})"
-        )
+        info = f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
+        session.chat_agent.add_registry_notice(alias, info)
+        console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
         return False
 
     try:
@@ -216,7 +214,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     n_tables = len(connector.schema.tables) if connector.schema else 0
     dialect = connector.language or "unknown"
     session.registry.register(alias, connector)
-    console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({dialect}, {n_tables} tables)")
+    info = f"{dialect}, {n_tables} tables"
+    session.chat_agent.add_registry_notice(alias, info)
+    console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
     return False
 
 
