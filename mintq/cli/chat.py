@@ -4,14 +4,13 @@ from __future__ import annotations
 
 from pathlib import Path
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Iterator
+from typing import TYPE_CHECKING, Awaitable, Callable, Iterator
 
 from prompt_toolkit import PromptSession
 from prompt_toolkit.formatted_text import AnyFormattedText
 from prompt_toolkit.history import FileHistory
 from rich.console import Console
 
-from mintq.cli.commands import handle_command, COMMAND_PREFIX
 from mintq.cli.display import print_banner, view_result
 from mintq.cli.theme import ACCENT_BOLD
 
@@ -20,6 +19,7 @@ if TYPE_CHECKING:
     from mintq.db_connector.db_registry import DBRegistry
 
 DATA_DIR = Path.home() / ".mintq"
+COMMAND_PREFIX = "/"
 
 console = Console()
 
@@ -133,6 +133,7 @@ async def run_chat(model: str, agent: str) -> None:
         return [("", pad), ("class:prompt-bar", "┃"), ("", " ")]
 
     default_prompt: AnyFormattedText = [("class:prompt-bar", "┃"), ("", " ")]
+    command_handler: Callable[[str, "ChatSession", Console], Awaitable[bool]] | None = None
 
     try:
         while True:
@@ -155,8 +156,12 @@ async def run_chat(model: str, agent: str) -> None:
                 continue
 
             if text.startswith(COMMAND_PREFIX):
+                if command_handler is None:
+                    from mintq.cli.commands import handle_command as imported_handle_command
+
+                    command_handler = imported_handle_command
                 with _suppress_native_stderr():
-                    should_quit = await handle_command(text, session, console)
+                    should_quit = await command_handler(text, session, console)
                 if should_quit:
                     break
                 continue

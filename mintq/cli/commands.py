@@ -11,10 +11,9 @@ from rich.console import Console
 from rich.table import Table
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
-from mintq.schema import SQLSchema
-
 if TYPE_CHECKING:
     from mintq.cli.chat import ChatSession
+    from mintq.schema import SQLSchema
 
 COMMAND_PREFIX = "/"
 
@@ -335,7 +334,7 @@ async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -
         console.print(f"[red]Unknown label or relationship type:[/red] {rest[0]}")
         return False
 
-    sql_schema = cast(SQLSchema, schema)
+    sql_schema = cast("SQLSchema", schema)
     multi = _is_multi_schema(sql_schema)
 
     if not rest:
