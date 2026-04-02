@@ -6,6 +6,7 @@ from pydantic_ai import Tool
 
 from mintq.config import mintq_config
 from mintq.db_connector.db_registry import DBRegistry
+from mintq.schema import PredQuery
 from mintq.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 from mintq.toolhub.utils import sum_tool_metrics
 
@@ -52,6 +53,8 @@ class RegistryRunQueryTool:
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
         self._tools: dict[str, RunQueryTool] = {}
+        self._query_history: dict[int, PredQuery] = {}
+        self._next_query_id: int = 1
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
         """Return a cached ``RunQueryTool`` for ``db_alias``, creating one if needed."""
@@ -112,7 +115,13 @@ class RegistryRunQueryTool:
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
-        return await tool(query, parameters)
+        result = await tool(query, parameters)
+        pred_query = tool.last_pred_query()
+        query_id = self._next_query_id
+        pred_query.id = f"Q{query_id}"
+        self._query_history[query_id] = pred_query
+        self._next_query_id += 1
+        return f"[query_id=Q{query_id}]\n\n{result}"
 
     async def __call__(
         self,
@@ -131,3 +140,17 @@ class RegistryRunQueryTool:
     def metrics(self) -> RunQueryToolMetrics:
         """Return aggregated metrics across all aliases."""
         return sum_tool_metrics((t.metrics() for t in self._tools.values()), RunQueryToolMetrics)
+
+    def get_query(self, query_id: int) -> PredQuery:
+        """Return the ``PredQuery`` for a previously executed query.
+
+        Args:
+            query_id: The integer ID assigned to the query at execution time.
+
+        Raises:
+            KeyError: If no query with ``query_id`` exists.
+        """
+        try:
+            return self._query_history[query_id]
+        except KeyError:
+            raise KeyError(f"No query with id {query_id}") from None
