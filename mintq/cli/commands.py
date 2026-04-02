@@ -139,10 +139,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
                 console.print(f"[red]Failed to load files:[/red] {e}")
                 return False
 
-        n_tables = len(connector.schema.tables)
         session.registry.register(alias, connector)
-        info = f"duckdb, {n_tables} table{'s' if n_tables != 1 else ''}"
-        session.chat_agent.add_registry_notice(alias, info)
+        info = session.chat_agent.database_info(connector)
+        session.chat_agent.add_database([(alias, connector)])
         console.print(f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})")
         return False
 
@@ -180,11 +179,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
                 console.print(f"[red]Connection failed:[/red] {e}")
                 return False
 
-        n_labels = len(neo_connector.schema.nodes)
-        n_patterns = len(neo_connector.schema.relationships)
         session.registry.register(alias, neo_connector)
-        info = f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
-        session.chat_agent.add_registry_notice(alias, info)
+        info = session.chat_agent.database_info(neo_connector)
+        session.chat_agent.add_database([(alias, neo_connector)])
         console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
         return False
 
@@ -211,11 +208,9 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
             console.print(f"[red]Connection failed:[/red] {e}")
             return False
 
-    n_tables = len(connector.schema.tables) if connector.schema else 0
-    dialect = connector.language or "unknown"
     session.registry.register(alias, connector)
-    info = f"{dialect}, {n_tables} tables"
-    session.chat_agent.add_registry_notice(alias, info)
+    info = session.chat_agent.database_info(connector)
+    session.chat_agent.add_database([(alias, connector)])
     console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
     return False
 

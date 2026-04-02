@@ -8,7 +8,6 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
-import jinja2
 from rich.console import Console
 
 if TYPE_CHECKING:
@@ -16,6 +15,7 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent as PydanticAgent
     from pydantic_ai.messages import ModelMessage
 
+    from mintq.db_connector.base import NL2QDBConnector
     from mintq.db_connector.db_registry import DBRegistry
     from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
     from mintq.toolhub.registry_run_query import QueryHistory
@@ -27,23 +27,13 @@ logger = logging.getLogger(__name__)
 
 _QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)\]\]")
 
-SYSTEM_PROMPT_TEMPLATE = jinja2.Template(
-    """\
+SYSTEM_PROMPT = """\
 You are the mintq agent, a helpful database assistant that answers the user's question by querying the database.
 You are an agent - please keep going until the task is solved.
-
-<available_databases>
-{% for db in databases -%}
-- {{ db.alias }} ({{ db.info }})
-{% endfor -%}
-</available_databases>
 
 <goal>
 - If the question is ambiguous, pick the most natural interpretation and proceed. Only ask for clarifications if you are truly blocked.
 - All database tools require a `db_alias` parameter to specify which database to target.
-{%- if single_alias %}
-- The only connected database is "{{ single_alias }}", so always use db_alias="{{ single_alias }}".
-{%- endif %}
 - Your final response should be a clear concise natural language answer summarizing the results.
 - Do not put the query in the final response unless explicitly asked to.
 - Do not include the query execution results in the final response. The execution results will be rendered in a separate view to the user.
@@ -52,15 +42,11 @@ You are an agent - please keep going until the task is solved.
 
 <tool_calling>
 Gathering information:
-{%- if has_graph %}
 - For graph databases, the schema is provided in <db_document>. Read it before writing Cypher.
 - You may use `run_query` to run exploratory Cypher queries when that helps clarify the graph.
-{%- endif %}
-{%- if has_sql %}
 - For SQL databases, always use `get_table_schema` to get the schema of relevant tables before constructing the query.
 - You may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
 - You may use `run_query` to inspect some sample values to determine the data format if necessary.
-{%- endif %}
 
 Writing the task query:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
@@ -75,14 +61,7 @@ Visualization:
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
 </tool_calling>
-
-{%- if db_document %}
-
-<db_document>
-{{ db_document }}
-</db_document>
-{%- endif %}"""
-)
+""".strip()
 
 
 @dataclass
@@ -105,9 +84,7 @@ class ChatAgent:
     """
 
     model: str
-    summarizer_model: str = "openai-responses:gpt-5-mini"
     max_steps: int = 20
-    _db_summaries: dict[str, str] = field(default_factory=dict)
     _message_history: list[ModelMessage] = field(default_factory=list)
     _system_prompt: str | None = None
     _runtime_agent: PydanticAgent[None, str] | None = None
@@ -117,8 +94,6 @@ class ChatAgent:
     _get_table_schema_tool: RegistryGetTableSchemaTool | None = None
     _render_chart_tool: RenderPlotextChartTool | None = None
 
-    _SUMMARIZE_MIN_TABLES = 20
-
     def set_model(self, model: str) -> None:
         """Update model and invalidate the bound runtime agent."""
         if self.model == model:
@@ -126,16 +101,30 @@ class ChatAgent:
         self.model = model
         self._runtime_agent = None
 
-    def add_registry_notice(self, alias: str, info: str) -> None:
-        """Append a synthetic user message about a newly registered database."""
+    @staticmethod
+    def database_info(connector: "NL2QDBConnector") -> str:
+        """Build a concise database summary string for agent/user display."""
+        from mintq.db_connector import Neo4jConnector
+
+        if isinstance(connector, Neo4jConnector):
+            n_labels = len(connector.schema.nodes)
+            n_patterns = len(connector.schema.relationships)
+            return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
+
+        n_tables = len(connector.schema.tables) if connector.schema else 0
+        dialect = connector.language or "unknown"
+        return f"{dialect}, {n_tables} tables"
+
+    def add_database(self, databases: list[tuple[str, "NL2QDBConnector"]]) -> None:
+        """Append a synthetic user message about newly registered databases."""
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
-        content = (
-            "A new database has been registered and is now available.\n"
-            f"- alias: {alias}\n"
-            f"- info: {info}\n"
-            "Use this alias in tool calls via db_alias."
-        )
+        if not databases:
+            return
+        lines = ["Databases registered and now available (use these aliases in db_alias):"]
+        for alias, connector in databases:
+            lines.append(f"- {alias}: {self.database_info(connector)}")
+        content = "\n".join(lines)
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     async def _ensure_runtime_initialized(
@@ -147,7 +136,6 @@ class ChatAgent:
         """Initialize prompt/tools once and bind the runtime agent if missing."""
         from pydantic_ai import Agent
 
-        from mintq.db_connector import Neo4jConnector
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
         from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
@@ -155,51 +143,7 @@ class ChatAgent:
         from mintq.toolhub.render_chart import RenderPlotextChartTool
 
         if self._system_prompt is None:
-            aliases = registry.list_aliases()
-            has_sql = False
-            has_graph = False
-            db_infos: list[dict[str, str]] = []
-            db_doc_parts: list[str] = []
-
-            for alias in aliases:
-                conn = registry.get(alias)
-                if isinstance(conn, Neo4jConnector):
-                    has_graph = True
-                    n_labels = len(conn.schema.nodes)
-                    n_rels = len(conn.schema.relationships)
-                    db_infos.append(
-                        {
-                            "alias": alias,
-                            "info": f"cypher, {n_labels} labels, {n_rels} rel patterns",
-                        }
-                    )
-                else:
-                    has_sql = True
-                    schema = conn.schema
-                    dialect = getattr(schema, "dialect", "sql")
-                    n_tables = len(schema.tables)
-                    db_infos.append(
-                        {
-                            "alias": alias,
-                            "info": f"{dialect}, {n_tables} tables",
-                        }
-                    )
-
-                doc = await self._get_db_document(alias, conn, progress)
-                if doc:
-                    header = f"## Database: {alias}"
-                    db_doc_parts.append(f"{header}\n\n{doc}")
-
-            db_document = "\n\n".join(db_doc_parts) if db_doc_parts else None
-            single_alias = aliases[0] if len(aliases) == 1 else None
-
-            self._system_prompt = SYSTEM_PROMPT_TEMPLATE.render(
-                databases=db_infos,
-                single_alias=single_alias,
-                has_sql=has_sql,
-                has_graph=has_graph,
-                db_document=db_document,
-            )
+            self._system_prompt = SYSTEM_PROMPT
 
         if self._run_query_tool is None:
             self._query_history = QueryHistory()
@@ -230,52 +174,6 @@ class ChatAgent:
                 instructions=self._system_prompt,
                 model_settings={},
             )
-
-    async def _get_db_document(
-        self,
-        alias: str,
-        connector: object,
-        progress: AgentProgressDisplay,
-    ) -> str | None:
-        """Build a schema document for a single database.
-
-        Returns the formatted schema text, or None if no document should be
-        included in the system prompt (e.g. large SQL databases where the agent
-        should use tools instead).
-        """
-        from mintq.db_connector import Neo4jConnector
-        from mintq.db_connector.base import BaseSQLDBConnector
-
-        cache_key = getattr(connector, "global_id", alias)
-        if cache_key in self._db_summaries:
-            return self._db_summaries[cache_key]
-
-        if isinstance(connector, Neo4jConnector):
-            from mintq.formatters.cypher import CypherSchemaFormatter
-
-            doc = CypherSchemaFormatter().format(connector.schema)
-            self._db_summaries[cache_key] = doc
-            return doc
-
-        from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-        from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-        from mintq.preprocessors.db_summarizer import DBSummarizer
-
-        sql_conn: BaseSQLDBConnector = connector  # type: ignore[assignment]
-        schema = sql_conn.schema
-        if len(schema.tables) < self._SUMMARIZE_MIN_TABLES:
-            compressor = SchemaCompressor()
-            compressed = compressor.compress(schema)
-            formatter = SQLDDLSchemaFormatter()
-            doc = formatter.format(compressed, add_description=True)
-        else:
-            progress.set_status(f"Summarizing {alias}...")
-            summarizer = DBSummarizer(llm=self.summarizer_model)
-            summary = await summarizer.preprocess_async(sql_conn)
-            doc = summary.db_summary_markdown
-
-        self._db_summaries[cache_key] = doc
-        return doc
 
     async def run(
         self,
