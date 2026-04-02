@@ -1,0 +1,97 @@
+"""Get-column-json-schema tool backed by a DBRegistry."""
+
+from typing import ClassVar
+
+from pydantic_ai import Tool
+
+from mintq.db_connector.base import BaseSQLDBConnector
+from mintq.db_connector.db_registry import DBRegistry
+from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
+from mintq.toolhub.utils import sum_tool_metrics
+
+
+class RegistryGetColumnJsonSchemaTool:
+    """Retrieve the JSON schema of a column from any registered SQL database.
+
+    The agent specifies which database to target via ``db_alias``.  The tool
+    resolves the alias through a ``DBRegistry`` and delegates to a per-alias
+    ``GetColumnJsonSchemaTool`` instance.
+    """
+
+    name: ClassVar = "get_column_json_schema"
+
+    def __init__(
+        self,
+        registry: DBRegistry,
+        *,
+        include_examples: bool = True,
+        max_example_chars: int = 1000,
+    ):
+        """Initialize the tool.
+
+        Args:
+            registry: The database registry containing available connectors.
+            include_examples: Whether to include example values in the output.
+            max_example_chars: Character budget for example values.
+        """
+        self.registry = registry
+        self.include_examples = include_examples
+        self.max_example_chars = max_example_chars
+        self._tools: dict[str, GetColumnJsonSchemaTool] = {}
+
+    def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
+        """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, creating one if needed."""
+        tool = self._tools.get(db_alias)
+        if tool is not None:
+            return tool
+        connector = self.registry.get(db_alias)
+        if not isinstance(connector, BaseSQLDBConnector):
+            raise TypeError(
+                f"get_column_json_schema is only supported for SQL connectors, not {type(connector).__name__}"
+            )
+        tool = GetColumnJsonSchemaTool(
+            connector.schema,
+            include_examples=self.include_examples,
+            max_example_chars=self.max_example_chars,
+        )
+        self._tools[db_alias] = tool
+        return tool
+
+    async def __call__(
+        self,
+        db_alias: str,
+        schema_name: str | None,
+        table_name: str,
+        column_name: str,
+        path: str | None = None,
+    ) -> str:
+        """Get the JSON schema of a column, describing its internal structure.
+
+        Useful for semi-structured column types such as VARIANT, OBJECT, ARRAY,
+        JSON, and JSONB that store nested or complex data.
+
+        When called without a path, returns a shallow overview of the schema.
+        To drill into a specific sub-structure, provide a dot-separated path.
+
+        Args:
+            db_alias: Alias of the target database (see ``list_databases``).
+            schema_name: The name of the schema, or None if not applicable.
+            table_name: The name of the table.
+            column_name: The name of the column.
+            path: Optional dot-separated path to a nested sub-schema.
+        """
+        try:
+            tool = self._get_tool(db_alias)
+        except ValueError:
+            available = ", ".join(self.registry.list_aliases()) or "(none)"
+            return f"(unknown db_alias: {db_alias!r}; available: {available})"
+        except TypeError as e:
+            return f"(error: {e})"
+        return await tool(schema_name, table_name, column_name, path)
+
+    def as_pydantic_ai_tool(self) -> Tool:
+        return Tool(self.__call__, name=self.name)
+
+    def metrics(self) -> GetColumnJsonSchemaToolMetrics:
+        """Return aggregated metrics across all aliases."""
+        return sum_tool_metrics((t.metrics() for t in self._tools.values()), GetColumnJsonSchemaToolMetrics)
