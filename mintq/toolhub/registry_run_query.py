@@ -23,6 +23,36 @@ class QueryRecord:
     pred_query: PredQuery
 
 
+class QueryHistory:
+    """In-memory store of queries executed during a session."""
+
+    def __init__(self) -> None:
+        self._records: dict[str, QueryRecord] = {}
+        self._next_query_id = 1
+
+    def add(self, db_alias: str, pred_query: PredQuery) -> QueryRecord:
+        """Store a query and assign it the next opaque record ID."""
+        record_id = f"Q{self._next_query_id}"
+        record = QueryRecord(record_id=record_id, db_alias=db_alias, pred_query=pred_query)
+        pred_query.id = record.record_id
+        self._records[record_id] = record
+        self._next_query_id += 1
+        return record
+
+    def get(self, query_id: str) -> QueryRecord:
+        """Return a previously stored query record."""
+        try:
+            return self._records[query_id]
+        except KeyError:
+            raise KeyError(f"No query with id {query_id}") from None
+
+    def last(self) -> QueryRecord:
+        """Return the most recently stored query record."""
+        if not self._records:
+            raise ValueError("No query has been executed")
+        return self._records[f"Q{self._next_query_id - 1}"]
+
+
 class RegistryRunQueryTool:
     """Execute a query against any registered database.
 
@@ -42,6 +72,7 @@ class RegistryRunQueryTool:
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
         floatfmt: str = ".8g",
+        history: QueryHistory | None = None,
     ):
         """Initialize the tool.
 
@@ -55,6 +86,8 @@ class RegistryRunQueryTool:
             max_cell_width: Maximum character width per cell in the formatted
                 output.
             floatfmt: Float format string passed to tabulate.
+            history: Optional shared query-history store. If not provided, the
+                tool creates its own in-memory history.
         """
         self.registry = registry
         self.enable_params = enable_params
@@ -63,8 +96,7 @@ class RegistryRunQueryTool:
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
         self._tools: dict[str, RunQueryTool] = {}
-        self._query_history: dict[str, QueryRecord] = {}
-        self._next_query_id: int = 1
+        self._history = history or QueryHistory()
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
         """Return a cached ``RunQueryTool`` for ``db_alias``, creating one if needed."""
@@ -127,11 +159,7 @@ class RegistryRunQueryTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         result = await tool(query, parameters)
         pred_query = tool.last_pred_query()
-        query_id = f"Q{self._next_query_id}"
-        record = QueryRecord(record_id=query_id, db_alias=db_alias, pred_query=pred_query)
-        pred_query.id = record.record_id
-        self._query_history[query_id] = record
-        self._next_query_id += 1
+        record = self._history.add(db_alias, pred_query)
         return f"[query_id={record.record_id}]\n{result}"
 
     async def __call__(
@@ -161,17 +189,4 @@ class RegistryRunQueryTool:
         Raises:
             KeyError: If no query with ``query_id`` exists.
         """
-        try:
-            return self._query_history[query_id]
-        except KeyError:
-            raise KeyError(f"No query with id {query_id}") from None
-
-    def last_pred_query(self) -> PredQuery:
-        """Return the most recently executed ``PredQuery``.
-
-        Raises:
-            ValueError: If no query has been executed yet.
-        """
-        if not self._query_history:
-            raise ValueError("No query has been executed")
-        return self._query_history[f"Q{self._next_query_id - 1}"].pred_query
+        return self._history.get(query_id)

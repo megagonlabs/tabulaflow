@@ -12,7 +12,7 @@ from mintq.toolhub.run_dbt import RunDbtTool
 from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
 from mintq.toolhub.registry_get_schema import RegistryGetSchemaTool
 from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from mintq.toolhub.registry_run_query import RegistryRunQueryTool
+from mintq.toolhub.registry_run_query import QueryHistory, QueryRecord, RegistryRunQueryTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
 
@@ -29,6 +29,8 @@ __all__ = [
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetSchemaTool",
     "RegistryGetTableSchemaTool",
+    "QueryHistory",
+    "QueryRecord",
     "RegistryRunQueryTool",
     "RenderPlotextChartTool",
     "RunDbtTool",

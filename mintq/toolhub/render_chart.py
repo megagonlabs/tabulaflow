@@ -3,18 +3,12 @@
 from __future__ import annotations
 
 import json
-from typing import Any, ClassVar, Protocol
+from typing import Any, ClassVar
 
 import pandas as pd
 from pydantic_ai import Tool
 
-from mintq.schema import PredQuery
-
-
-class _QueryToolLike(Protocol):
-    """Minimal interface for a tool that tracks the last executed query."""
-
-    def last_pred_query(self) -> PredQuery: ...
+from mintq.toolhub.registry_run_query import QueryHistory
 
 
 _SUPPORTED_MARKS = {"bar", "line", "point", "rect"}
@@ -127,8 +121,8 @@ class RenderPlotextChartTool:
 
     name: ClassVar = "render_chart"
 
-    def __init__(self, run_query_tool: _QueryToolLike, *, width: int = 120) -> None:
-        self._run_query_tool = run_query_tool
+    def __init__(self, history: QueryHistory | None = None, *, width: int = 120) -> None:
+        self._history = history or QueryHistory()
         self._width = width
         self.last_vegalite_spec: dict[str, Any] | None = None
         self.last_chart_df: pd.DataFrame | None = None
@@ -161,7 +155,7 @@ class RenderPlotextChartTool:
             return f"(error: {e})"
 
         try:
-            pred = self._run_query_tool.last_pred_query()
+            pred = self._history.last().pred_query
         except ValueError:
             return "(error: no query has been executed yet — run a query first)"
 

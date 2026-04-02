@@ -16,6 +16,7 @@ if TYPE_CHECKING:
     from pydantic_ai.messages import ModelMessage
 
     from mintq.db_connector.db_registry import DBRegistry
+    from mintq.toolhub.registry_run_query import QueryHistory
     from mintq.toolhub.registry_run_query import RegistryRunQueryTool
     from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 
@@ -168,7 +169,7 @@ class ChatAgent:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
         from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-        from mintq.toolhub.registry_run_query import RegistryRunQueryTool
+        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
         from mintq.toolhub.render_chart import RenderPlotextChartTool
 
         progress = render_agent_progress(console)
@@ -221,8 +222,9 @@ class ChatAgent:
                 db_document=db_document,
             )
 
-            run_query_tool = RegistryRunQueryTool(registry)
-            render_chart_tool = RenderPlotextChartTool(run_query_tool, width=console.width)
+            query_history = QueryHistory()
+            run_query_tool = RegistryRunQueryTool(registry, history=query_history)
+            render_chart_tool = RenderPlotextChartTool(history=query_history, width=console.width)
 
             tools = [run_query_tool.as_pydantic_ai_tool()]
 
@@ -257,7 +259,7 @@ class ChatAgent:
                     answer_text = event.result.output
                     break
 
-                _handle_stream_event(event, progress, run_query_tool, get_table_schema_tool)
+                _handle_stream_event(event, progress, query_history, get_table_schema_tool)
 
         finally:
             progress.finish()
@@ -265,6 +267,7 @@ class ChatAgent:
         return _build_chat_result(
             answer_text,
             run_query_tool,
+            query_history,
             render_chart_tool,
             registry,
         )
@@ -273,6 +276,7 @@ class ChatAgent:
 def _build_chat_result(
     answer_text: str,
     run_query_tool: RegistryRunQueryTool,
+    query_history: QueryHistory,
     render_chart_tool: object,
     registry: DBRegistry,
 ) -> ChatResult:
@@ -301,7 +305,7 @@ def _build_chat_result(
     else:
         display_text = answer_text
         try:
-            pred = run_query_tool.last_pred_query()
+            pred = query_history.last().pred_query
             sql = pred.query
             df = pred.exec_result.df if pred.exec_result else None
         except ValueError:
@@ -325,7 +329,7 @@ def _build_chat_result(
 def _handle_stream_event(
     event: object,
     progress: AgentProgressDisplay,
-    run_query_tool: RegistryRunQueryTool,
+    query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
 ) -> None:
     """Dispatch a single stream event to the progress display."""
@@ -339,7 +343,7 @@ def _handle_stream_event(
 
     elif isinstance(event, FunctionToolResultEvent):
         result_tool_name = event.result.tool_name or ""
-        result_summary = _summarize_result(result_tool_name, run_query_tool, get_table_schema_tool)
+        result_summary = _summarize_result(result_tool_name, query_history, get_table_schema_tool)
         progress.tool_end(result_tool_name, result_summary)
 
     elif isinstance(event, PartDeltaEvent):
@@ -399,12 +403,12 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
 
 def _summarize_result(
     tool_name: str,
-    run_query_tool: RegistryRunQueryTool,
+    query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
 ) -> str:
     if tool_name == "run_query":
         try:
-            pred = run_query_tool.last_pred_query()
+            pred = query_history.last().pred_query
             if pred.exec_result and pred.exec_result.df is not None:
                 return f"{len(pred.exec_result.df)} rows"
             if pred.exec_result and pred.exec_result.error:
