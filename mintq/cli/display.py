@@ -63,16 +63,16 @@ def print_banner(console: Console, *, model: str, agent: str) -> None:
     console.print()
 
 
-def render_sql(console: Console, sql: str, max_lines: int = 20, *, lexer: str = "sql") -> None:
+def render_query(console: Console, query: str, max_lines: int = 20, *, lexer: str = "sql") -> None:
     """Render a query with syntax highlighting and optional truncation."""
-    stripped = sql.strip()
+    stripped = query.strip()
     all_lines = stripped.splitlines()
     total_lines = len(all_lines)
     truncated = total_lines > max_lines
 
-    display_sql = "\n".join(all_lines[:max_lines]) if truncated else stripped
+    display_query = "\n".join(all_lines[:max_lines]) if truncated else stripped
     syntax = Syntax(
-        display_sql,
+        display_query,
         lexer,
         theme="solarized-dark",
         padding=(1, 1),
@@ -410,10 +410,10 @@ def render_agent_progress(console: Console) -> AgentProgressDisplay:
 
 
 # ---------------------------------------------------------------------------
-# Result viewer — Tab/Shift+Tab cycling between NL / SQL / Table views
+# Result viewer — Tab/Shift+Tab cycling between response / chart / data / query views
 # ---------------------------------------------------------------------------
 
-_VIEW_NAMES = ["response", "chart", "data", "sql"]
+_VIEW_NAMES = ["response", "chart", "data", "query"]
 
 
 def _capture_rich(console: Console, render_fn: object, *args: object, **kwargs: object) -> str:
@@ -427,7 +427,7 @@ def _capture_rich(console: Console, render_fn: object, *args: object, **kwargs: 
 
 
 async def view_result(console: Console, result: object) -> None:
-    """Launch an interactive viewer to cycle through NL / SQL / Table views."""
+    """Launch an interactive viewer to cycle through response, chart, data, and query views."""
     from mintq.cli.agent import ChatResult
 
     assert isinstance(result, ChatResult)
@@ -440,9 +440,9 @@ async def view_result(console: Console, result: object) -> None:
     if result.df is not None and not result.df.empty:
         views["data"] = _capture_rich(console, render_table, result.df)
     if result.query:
-        views["sql"] = _capture_rich(
+        views["query"] = _capture_rich(
             console,
-            render_sql,
+            render_query,
             result.query,
             lexer=getattr(result, "query_lexer", "sql"),
         )

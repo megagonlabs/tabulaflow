@@ -1,4 +1,4 @@
-"""CLI chat agent — streaming pydantic-ai agent for interactive SQL chat."""
+"""CLI chat agent for interactive query chat."""
 
 from __future__ import annotations
 
