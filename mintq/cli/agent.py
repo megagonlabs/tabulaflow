@@ -111,7 +111,6 @@ class ChatAgent:
     _message_history: list[ModelMessage] = field(default_factory=list)
     _system_prompt: str | None = None
     _runtime_agent: PydanticAgent[None, str] | None = None
-    _runtime_model: str | None = None
     _query_history: QueryHistory | None = None
     _run_query_tool: RegistryRunQueryTool | None = None
     _get_column_json_schema_tool: RegistryGetColumnJsonSchemaTool | None = None
@@ -119,6 +118,13 @@ class ChatAgent:
     _render_chart_tool: RenderPlotextChartTool | None = None
 
     _SUMMARIZE_MIN_TABLES = 20
+
+    def set_model(self, model: str) -> None:
+        """Update model and invalidate the bound runtime agent."""
+        if self.model == model:
+            return
+        self.model = model
+        self._runtime_agent = None
 
     def add_registry_notice(self, alias: str, info: str) -> None:
         """Append a synthetic user message about a newly registered database."""
@@ -138,7 +144,7 @@ class ChatAgent:
         console: Console,
         progress: AgentProgressDisplay,
     ) -> None:
-        """Initialize prompt/tools once; rebuild only model binding when needed."""
+        """Initialize prompt/tools once and bind the runtime agent if missing."""
         from pydantic_ai import Agent
 
         from mintq.db_connector import Neo4jConnector
@@ -207,7 +213,7 @@ class ChatAgent:
             )
             self._get_column_json_schema_tool = RegistryGetColumnJsonSchemaTool(registry)
 
-        if self._runtime_agent is None or self._runtime_model != self.model:
+        if self._runtime_agent is None:
             assert self._run_query_tool is not None
             assert self._render_chart_tool is not None
             assert self._get_table_schema_tool is not None
@@ -224,7 +230,6 @@ class ChatAgent:
                 instructions=self._system_prompt,
                 model_settings={},
             )
-            self._runtime_model = self.model
 
     async def _get_db_document(
         self,

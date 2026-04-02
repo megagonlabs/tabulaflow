@@ -59,7 +59,7 @@ class ChatSession:
 
     def set_model(self, model: str) -> None:
         """Update the runtime chat agent model."""
-        self.chat_agent.model = model
+        self.chat_agent.set_model(model)
 
     @property
     def prompt_parts(self) -> list[tuple[str, str]]:
