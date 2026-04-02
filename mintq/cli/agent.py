@@ -44,7 +44,7 @@ You are an agent - please keep going until the task is solved.
 - Your final response should be a clear concise natural language answer summarizing the results.
 - Do not put the query in the final response unless explicitly asked to.
 - Do not include the query execution results in the final response. The execution results will be rendered in a separate view to the user.
-- IMPORTANT: In your final response, include [[result:Q<id>]] to reference the query whose results answer the user's question. Use the query_id shown in each tool response (e.g. [[result:Q3]]). This tells the system which query and data to display alongside your answer.
+- IMPORTANT: In your final response, include [[result:Q<id>]] to reference the query whose results answer the user's question. Use the record_id shown in each tool response (e.g. [[result:Q3]]). This tells the system which query and data to display alongside your answer.
 </goal>
 
 <tool_calling>
@@ -291,9 +291,9 @@ def _build_chat_result(
 
     match = _QUERY_REF_RE.search(answer_text)
     if match:
-        query_id = match.group(1)
+        record_id = match.group(1)
         try:
-            record = run_query_tool.get_query_record(query_id)
+            record = run_query_tool.get_query_record(record_id)
             pred = record.pred_query
             sql = pred.query
             df = pred.exec_result.df if pred.exec_result else None

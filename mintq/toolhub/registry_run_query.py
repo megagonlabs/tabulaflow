@@ -39,12 +39,12 @@ class QueryHistory:
         self._next_query_id += 1
         return record
 
-    def get(self, query_id: str) -> QueryRecord:
+    def get(self, record_id: str) -> QueryRecord:
         """Return a previously stored query record."""
         try:
-            return self._records[query_id]
+            return self._records[record_id]
         except KeyError:
-            raise KeyError(f"No query with id {query_id}") from None
+            raise KeyError(f"No query with id {record_id}") from None
 
     def last(self) -> QueryRecord:
         """Return the most recently stored query record."""
@@ -160,7 +160,7 @@ class RegistryRunQueryTool:
         result = await tool(query, parameters)
         pred_query = tool.last_pred_query()
         record = self._history.add(db_alias, pred_query)
-        return f"[query_id={record.record_id}]\n{result}"
+        return f"[record_id={record.record_id}]\n{result}"
 
     async def __call__(
         self,
@@ -180,13 +180,13 @@ class RegistryRunQueryTool:
         """Return aggregated metrics across all aliases."""
         return sum_tool_metrics((t.metrics() for t in self._tools.values()), RunQueryToolMetrics)
 
-    def get_query_record(self, query_id: str) -> QueryRecord:
+    def get_query_record(self, record_id: str) -> QueryRecord:
         """Return the record for a previously executed query.
 
         Args:
-            query_id: The string ID assigned to the query at execution time.
+            record_id: The string ID assigned to the query record at execution time.
 
         Raises:
-            KeyError: If no query with ``query_id`` exists.
+            KeyError: If no query with ``record_id`` exists.
         """
-        return self._history.get(query_id)
+        return self._history.get(record_id)
