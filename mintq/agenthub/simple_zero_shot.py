@@ -10,10 +10,8 @@ from mintq.preprocessors import SchemaCompressor
 from mintq.formatters import formatter_registry
 from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
-    PropertyGraphSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
-    SQLSchema,
     Trajectory,
     SystemMessage,
     UserMessage,
@@ -86,15 +84,15 @@ class SimpleZeroShotNL2Q:
         t0 = time.time()
 
         schema = db_connector.schema
-        if self.config.compress_schema:
+        if self.config.compress_schema and db_connector.connector_type == "sql":
             schema = SchemaCompressor().compress(schema)  # type: ignore[arg-type]
 
-        if isinstance(schema, PropertyGraphSchema):
+        if db_connector.connector_type == "property_graph":
             schema_str = self.formatter.format(schema)  # type: ignore[arg-type]
-        elif isinstance(schema, SQLSchema):
+        elif db_connector.connector_type == "sql":
             schema_str = self.formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
         else:
-            raise TypeError(f"Unsupported schema type for SimpleZeroShotNL2Q: {type(schema)!r}")
+            raise TypeError(f"Unsupported connector type for SimpleZeroShotNL2Q: {db_connector.connector_type!r}")
         if len(schema_str) > SCHEMA_MAX_CHARS:
             logger.warning(
                 f"Schema {db_connector.global_id} is too long ({len(schema_str)} chars), truncating to {SCHEMA_MAX_CHARS} chars."

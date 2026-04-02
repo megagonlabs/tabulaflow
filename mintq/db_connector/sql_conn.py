@@ -5,7 +5,7 @@ import re
 import logging
 import tempfile
 import warnings
-from typing import Any, Sequence, Mapping, Literal, AsyncGenerator
+from typing import Any, ClassVar, Sequence, Mapping, Literal, AsyncGenerator
 import dataclasses
 from dataclasses import dataclass
 import collections
@@ -847,6 +847,7 @@ class SQLConnector:
     access) are fully supported.
     """
 
+    connector_type: ClassVar = "sql"
     global_id: str
     schema: SQLSchema
     language: SQLDialect

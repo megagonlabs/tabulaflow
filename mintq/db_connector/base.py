@@ -1,9 +1,10 @@
-from typing import Any, Protocol, Sequence, Mapping, TypeAlias, Union
+from typing import Any, ClassVar, Literal, Protocol, Sequence, Mapping, TypeAlias, Union
 import sqlalchemy
 from mintq.schema import SQLDialect, NonSQLLanguage, SQLSchema, PropertyGraphSchema, ExecResult, TableRef
 
 
 class BaseSQLDBConnector(Protocol):
+    connector_type: ClassVar[Literal["sql"]]
     global_id: str
     schema: SQLSchema
     language: SQLDialect
@@ -31,6 +32,7 @@ class BaseSQLDBConnector(Protocol):
 
 
 class BasePropertyGraphDBConnector(Protocol):
+    connector_type: ClassVar[Literal["property_graph"]]
     global_id: str
     schema: PropertyGraphSchema
     language: NonSQLLanguage

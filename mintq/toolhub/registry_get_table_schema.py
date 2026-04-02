@@ -4,7 +4,6 @@ from typing import ClassVar
 
 from pydantic_ai import Tool
 
-from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.formatters.base import BaseSQLSchemaFormatter
 from mintq.toolhub.get_table_schema import GetTableSchemaTool, GetTableSchemaToolMetrics
@@ -57,8 +56,8 @@ class RegistryGetTableSchemaTool:
         if tool is not None:
             return tool
         connector = self.registry.get(db_alias)
-        if not isinstance(connector, BaseSQLDBConnector):
-            raise TypeError(f"get_table_schema is only supported for SQL connectors, not {type(connector).__name__}")
+        if connector.connector_type != "sql":
+            raise TypeError(f"get_table_schema is only supported for SQL connectors, not {connector.connector_type!r}")
         tool = GetTableSchemaTool(
             connector,
             self.formatter,

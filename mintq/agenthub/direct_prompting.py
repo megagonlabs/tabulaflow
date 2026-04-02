@@ -7,15 +7,7 @@ import logging
 import mintq.formatters  # noqa: F401 — register sql_*, cypher, … formatters
 
 from mintq.db_connector import NL2QDBConnector
-from mintq.schema import (
-    PropertyGraphSchema,
-    SQLSchema,
-    SimpleNL2QTask,
-    SimpleNL2QTaskOutput,
-    PredQuery,
-    Usage,
-    Trajectory,
-)
+from mintq.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from mintq.preprocessors import SchemaCompressor
 from mintq.formatters.base import formatter_registry
 from mintq.agenthub.base import agent_registry, BaseAgentConfig
@@ -86,15 +78,15 @@ class DirectPrompting:
 
     def _format_schema_for_prompt(self, db_connector: NL2QDBConnector) -> str:
         schema = db_connector.schema
-        if isinstance(schema, SQLSchema) and self.compressor is not None:
-            schema = self.compressor.compress(schema)
-        kwargs = self.config.to_formatter_kwargs() if isinstance(schema, SQLSchema) else {}
-        formatter = formatter_registry.get_class(self.config.schema_formatter)(**kwargs)
-        if isinstance(schema, PropertyGraphSchema):
-            return formatter.format(schema)  # type: ignore[arg-type]
-        if isinstance(schema, SQLSchema):
+        if db_connector.connector_type == "sql":
+            if self.compressor is not None:
+                schema = self.compressor.compress(schema)  # type: ignore[arg-type]
+            formatter = formatter_registry.get_class(self.config.schema_formatter)(**self.config.to_formatter_kwargs())
             return formatter.format(schema, add_description=self.config.use_column_description)  # type: ignore[arg-type, call-arg]
-        raise TypeError(f"Unsupported schema type for DirectPrompting: {type(schema)!r}")
+        if db_connector.connector_type == "property_graph":
+            formatter = formatter_registry.get_class(self.config.schema_formatter)()
+            return formatter.format(schema)  # type: ignore[arg-type]
+        raise TypeError(f"Unsupported connector type for DirectPrompting: {db_connector.connector_type!r}")
 
     @instrument
     async def predict_async(self, task: SimpleNL2QTask, db_connector: NL2QDBConnector) -> SimpleNL2QTaskOutput:

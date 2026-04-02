@@ -5,7 +5,6 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from mintq.db_connector.base import BaseSQLDBConnector, BasePropertyGraphDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.formatters.cypher import CypherSchemaFormatter
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -100,19 +99,19 @@ class RegistryGetSchemaTool:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
 
-        if isinstance(connector, BaseSQLDBConnector):
+        if connector.connector_type == "sql":
             if refresh:
                 await connector.refresh_schema_async()
                 self._compressed_cache.pop(db_alias, None)
             schema = self._get_compressed_sql_schema(db_alias, connector.schema)
             self._sql_formatter.set_dialect(schema.dialect)
             result = self._sql_formatter.format(schema, add_description=True)
-        elif isinstance(connector, BasePropertyGraphDBConnector):
+        elif connector.connector_type == "property_graph":
             if refresh:
                 await connector.refresh_schema_async()
             result = self._graph_formatter.format(connector.schema)
         else:
-            return f"(unsupported connector type: {type(connector).__name__})"
+            return f"(unsupported connector type: {connector.connector_type!r})"
 
         return self._truncate(result)
 
