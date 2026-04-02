@@ -1,5 +1,6 @@
 """Run-query tool backed by a DBRegistry, letting agents target any source."""
 
+from dataclasses import dataclass
 from typing import ClassVar
 
 from pydantic_ai import Tool
@@ -11,6 +12,15 @@ from mintq.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetr
 from mintq.toolhub.utils import sum_tool_metrics
 
 _UNSET = object()
+
+
+@dataclass
+class QueryRecord:
+    """Metadata for a query executed through the registry tool."""
+
+    record_id: str
+    db_alias: str
+    pred_query: PredQuery
 
 
 class RegistryRunQueryTool:
@@ -53,8 +63,7 @@ class RegistryRunQueryTool:
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
         self._tools: dict[str, RunQueryTool] = {}
-        self._query_history: dict[int, PredQuery] = {}
-        self._query_db_alias: dict[int, str] = {}
+        self._query_history: dict[str, QueryRecord] = {}
         self._next_query_id: int = 1
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
@@ -118,12 +127,12 @@ class RegistryRunQueryTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         result = await tool(query, parameters)
         pred_query = tool.last_pred_query()
-        query_id = self._next_query_id
-        pred_query.id = f"Q{query_id}"
-        self._query_history[query_id] = pred_query
-        self._query_db_alias[query_id] = db_alias
+        query_id = f"Q{self._next_query_id}"
+        record = QueryRecord(record_id=query_id, db_alias=db_alias, pred_query=pred_query)
+        pred_query.id = record.record_id
+        self._query_history[query_id] = record
         self._next_query_id += 1
-        return f"[query_id=Q{query_id}]\n{result}"
+        return f"[query_id={record.record_id}]\n{result}"
 
     async def __call__(
         self,
@@ -143,31 +152,17 @@ class RegistryRunQueryTool:
         """Return aggregated metrics across all aliases."""
         return sum_tool_metrics((t.metrics() for t in self._tools.values()), RunQueryToolMetrics)
 
-    def get_query(self, query_id: int) -> PredQuery:
-        """Return the ``PredQuery`` for a previously executed query.
+    def get_query_record(self, query_id: str) -> QueryRecord:
+        """Return the record for a previously executed query.
 
         Args:
-            query_id: The integer ID assigned to the query at execution time.
+            query_id: The string ID assigned to the query at execution time.
 
         Raises:
             KeyError: If no query with ``query_id`` exists.
         """
         try:
             return self._query_history[query_id]
-        except KeyError:
-            raise KeyError(f"No query with id {query_id}") from None
-
-    def get_query_db_alias(self, query_id: int) -> str:
-        """Return the ``db_alias`` that was used for a previously executed query.
-
-        Args:
-            query_id: The integer ID assigned to the query at execution time.
-
-        Raises:
-            KeyError: If no query with ``query_id`` exists.
-        """
-        try:
-            return self._query_db_alias[query_id]
         except KeyError:
             raise KeyError(f"No query with id {query_id}") from None
 
@@ -179,4 +174,4 @@ class RegistryRunQueryTool:
         """
         if not self._query_history:
             raise ValueError("No query has been executed")
-        return self._query_history[self._next_query_id - 1]
+        return self._query_history[f"Q{self._next_query_id - 1}"].pred_query

@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QUERY_REF_RE = re.compile(r"\[\[result:Q(\d+)\]\]")
+_QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)\]\]")
 
 SYSTEM_PROMPT_TEMPLATE = jinja2.Template(
     """\
@@ -287,13 +287,13 @@ def _build_chat_result(
 
     match = _QUERY_REF_RE.search(answer_text)
     if match:
-        query_id = int(match.group(1))
+        query_id = match.group(1)
         try:
-            pred = run_query_tool.get_query(query_id)
+            record = run_query_tool.get_query_record(query_id)
+            pred = record.pred_query
             sql = pred.query
             df = pred.exec_result.df if pred.exec_result else None
-            db_alias = run_query_tool.get_query_db_alias(query_id)
-            connector = registry.get(db_alias)
+            connector = registry.get(record.db_alias)
             query_lexer = "cypher" if connector.connector_type == "property_graph" else "sql"
         except (KeyError, ValueError):
             pass
