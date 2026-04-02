@@ -111,7 +111,7 @@ def render_plotext(
 
 
 class RenderPlotextChartTool:
-    """Render a terminal chart from the last query result.
+    """Render a terminal chart from a stored query result.
 
     Accepts a Vega-Lite spec (JSON string), extracts the core fields
     (mark, encoding.x, encoding.y, title), validates against the
@@ -127,11 +127,13 @@ class RenderPlotextChartTool:
         self.last_vegalite_spec: dict[str, Any] | None = None
         self.last_chart_df: pd.DataFrame | None = None
 
-    async def __call__(self, vegalite_spec: str) -> str:
-        """Render a terminal chart from the last query result using a Vega-Lite specification.
+    async def __call__(self, record_id: str | None = None, *, vegalite_spec: str) -> str:
+        """Render a terminal chart from a stored query result using a Vega-Lite specification.
 
-        Call this after run_query to visualize the result. Only simple
-        Vega-Lite specs are supported (single mark with x/y encoding).
+        Call this after ``run_query`` to visualize a result. When
+        ``record_id`` is omitted, the most recent query result is used.
+        Only simple Vega-Lite specs are supported (single mark with x/y
+        encoding).
 
         Supported marks: bar, line, point, rect.
 
@@ -139,6 +141,8 @@ class RenderPlotextChartTool:
             {"mark": "bar", "encoding": {"x": {"field": "status", "type": "nominal"}, "y": {"field": "count", "type": "quantitative"}}, "title": "Schools by Status"}
 
         Args:
+            record_id: Optional query-history record ID (e.g. ``"Q3"``).
+                If omitted, use the most recent query result.
             vegalite_spec: A Vega-Lite JSON specification string.
         """
         try:
@@ -155,16 +159,20 @@ class RenderPlotextChartTool:
             return f"(error: {e})"
 
         try:
-            pred = self._history.last().pred_query
+            record = self._history.get(record_id) if record_id else self._history.last()
+        except KeyError:
+            return f"(error: unknown record_id {record_id!r})"
         except ValueError:
             return "(error: no query has been executed yet — run a query first)"
 
+        pred = record.pred_query
+
         if pred.exec_result is None or pred.exec_result.df is None:
-            return "(error: last query returned no data)"
+            return f"(error: query {record.record_id} returned no data)"
 
         df = pred.exec_result.df
         if df.empty:
-            return "(error: last query result is empty)"
+            return f"(error: query {record.record_id} result is empty)"
 
         available = list(df.columns)
 
@@ -184,7 +192,7 @@ class RenderPlotextChartTool:
         self.last_vegalite_spec = spec
         self.last_chart_df = df
 
-        return f"Chart rendered: {mark} chart with {len(df)} data points (x={x_col}, y={y_col})"
+        return f"Chart rendered from {record.record_id}: {mark} chart with {len(df)} data points (x={x_col}, y={y_col})"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

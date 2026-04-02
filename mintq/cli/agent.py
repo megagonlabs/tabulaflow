@@ -67,6 +67,7 @@ Writing the task query:
 
 Visualization:
 - After running the final query, call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
+- `render_chart` accepts an optional `record_id`. Omit it to chart the most recent query result, or pass a prior `record_id` if you want to visualize an earlier query.
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
