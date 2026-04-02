@@ -47,12 +47,20 @@ class ChatSession:
         from mintq.cli.agent import ChatAgent
         from mintq.db_connector.db_registry import DBRegistry
 
-        self.model = model
         self.agent_name = agent
         self.registry: DBRegistry = DBRegistry()
         self.output_modes: set[str] = {"nl"}
         self.chat_agent: ChatAgent = ChatAgent(model=model)
         self.last_result: ChatResult | None = None
+
+    @property
+    def model(self) -> str:
+        """Return the active model used by the runtime chat agent."""
+        return self.chat_agent.model
+
+    def set_model(self, model: str) -> None:
+        """Update the runtime chat agent model."""
+        self.chat_agent.model = model
 
     @property
     def prompt_parts(self) -> list[tuple[str, str]]:

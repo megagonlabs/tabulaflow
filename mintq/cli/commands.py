@@ -395,7 +395,7 @@ async def _cmd_model(args: list[str], session: ChatSession, console: Console) ->
     if not args:
         console.print(f"[dim]Current model:[/dim] {session.model}")
         return False
-    session.model = args[0]
+    session.set_model(args[0])
     console.print(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]")
     return False
 
