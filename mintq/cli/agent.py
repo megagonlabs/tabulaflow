@@ -123,7 +123,7 @@ class ChatAgent:
             get_db_document=RegistryGetDBDocumentTool(self.registry),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), compress=True),
-            render_chart=RenderPlotextChartTool(history=self._query_history, width=self.console_width),
+            render_chart=RenderPlotextChartTool(history=self._query_history),
         )
         self._build_agent()
 

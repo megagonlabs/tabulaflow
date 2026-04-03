@@ -70,7 +70,6 @@ def render_plotext(
     y_field: str,
     title: str,
     df: pd.DataFrame,
-    width: int,
 ) -> str:
     """Render a plotext chart and return the built string.
 
@@ -80,7 +79,7 @@ def render_plotext(
 
     from mintq.cli.theme import ACCENT_RGB
 
-    effective_width = min(width, 60)
+    effective_width = 60
     effective_height = 25
 
     plt.clear_figure()
@@ -121,9 +120,8 @@ class RenderPlotextChartTool:
 
     name: ClassVar = "render_chart"
 
-    def __init__(self, history: QueryHistory | None = None, *, width: int = 120) -> None:
+    def __init__(self, history: QueryHistory | None = None) -> None:
         self._history = history or QueryHistory()
-        self._width = width
 
     async def __call__(self, record_id: str | None = None, *, vegalite_spec: str) -> str:
         """Render a terminal chart from a stored query result using a Vega-Lite specification.
@@ -183,7 +181,7 @@ class RenderPlotextChartTool:
             return f"(error: column '{y_field}' not found. Available: {available})"
 
         try:
-            render_plotext(mark, x_col, y_col, title, df, self._width)
+            render_plotext(mark, x_col, y_col, title, df)
         except Exception as e:
             return f"(error rendering chart: {e})"
 
