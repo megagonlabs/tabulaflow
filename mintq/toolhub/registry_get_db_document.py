@@ -6,7 +6,6 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 
 from mintq.db_connector.db_registry import DBRegistry
-from mintq.formatters.cypher import CypherSchemaFormatter
 from mintq.preprocessors.db_summarizer import DBSummarizer
 
 _DEFAULT_MAX_CHARS = 50000
@@ -50,19 +49,18 @@ class RegistryGetDBDocumentTool:
         self.db_summarizer_llm = db_summarizer_llm
         self.enable_refresh = enable_refresh
         self.max_chars = max_chars
-        self._graph_formatter = CypherSchemaFormatter()
         self._metrics = RegistryGetDBDocumentToolMetrics()
-        self._sql_document_cache: dict[str, str] = {}
+        self._document_cache: dict[str, str] = {}
 
-    async def _get_sql_document(self, db_alias: str) -> str:
-        cached = self._sql_document_cache.get(db_alias)
+    async def _get_document(self, db_alias: str) -> str:
+        cached = self._document_cache.get(db_alias)
         if cached is not None:
             return cached
         connector = self.registry.get(db_alias)
         db_summarizer = DBSummarizer(llm=self.db_summarizer_llm)
         db_summary = await db_summarizer.preprocess_async(connector)
         document = db_summary.db_summary_markdown
-        self._sql_document_cache[db_alias] = document
+        self._document_cache[db_alias] = document
         return document
 
     def _truncate(self, text: str) -> str:
@@ -98,17 +96,14 @@ class RegistryGetDBDocumentTool:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
 
-        if connector.connector_type == "sql":
-            if refresh:
-                await connector.refresh_schema_async()
-                self._sql_document_cache.pop(db_alias, None)
-            result = await self._get_sql_document(db_alias)
-        elif connector.connector_type == "property_graph":
-            if refresh:
-                await connector.refresh_schema_async()
-            result = self._graph_formatter.format(connector.schema)
-        else:
-            return f"(unsupported connector type: {connector.connector_type!r})"
+        if refresh:
+            await connector.refresh_schema_async()
+            self._document_cache.pop(db_alias, None)
+
+        try:
+            result = await self._get_document(db_alias)
+        except TypeError as e:
+            return f"(error: {e})"
 
         return self._truncate(result)
 

@@ -1,13 +1,15 @@
-from typing import Any, ClassVar, Literal
-from pydantic import BaseModel
 import jinja2
+from pydantic import BaseModel
 from pydantic_ai import Agent
-from mintq.formatters.base import BaseSQLSchemaFormatter
-from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.schema import SQLSchema, Usage
-from mintq.db_connector import BaseSQLDBConnector
-from mintq.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+
+from typing import Any, ClassVar, Literal
+
+from mintq.db_connector import NL2QDBConnector
+from mintq.formatters.cypher import CypherSchemaFormatter
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+from mintq.preprocessors.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
+from mintq.preprocessors.components.schema_compressor import SchemaCompressor
+from mintq.schema import Usage
 from mintq.toolhub.run_query import RunQueryTool
 
 SUMMARIZATION_PROMPT = """
@@ -16,18 +18,18 @@ The purpose of the summary is to help database experts explore the database and 
 
 <requirements>
 - The summary should be in markdown format.
-- The summary should be around 1000 - 4000 words, depending on the complexity of the database.
+- The summary should be around 800 - 4000 words, depending on database complexity.
 - The title should be in the format "Database: `<database_name>`".
 - Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
 - Describe the core entities and the relationships within the database.
-- When referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
+- For SQL databases: when referring to tables, use schema-qualified table names (e.g. `schema.table`) if a schema is present.
 </requirements>
 """.strip()
 
 
-def format_user_prompt(schema: SQLSchema, formatter: BaseSQLSchemaFormatter) -> str:
-    return "Generate a summary for the following database:\n" + formatter.format(schema, add_description=True)
+def format_user_prompt(formatted_schema: str) -> str:
+    return "Generate a summary for the following database:\n" + formatted_schema
 
 
 class DBSummary(BaseModel):
@@ -45,10 +47,11 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         llm: str = "openai-responses:gpt-5.4",
         compress_schema: bool = True,
         openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
-    ):
+    ) -> None:
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
-        self.formatter = SQLDDLSchemaFormatter(max_total_columns=200)
+        self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200)
+        self.graph_formatter = CypherSchemaFormatter()
         self.openai_reasoning_effort = openai_reasoning_effort
         self._usage = Usage.create(llm=llm)
 
@@ -58,15 +61,26 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
     def _get_cache_id_suffix(self) -> str:
         return "_" + self.llm.replace(":", "--")
 
-    async def _preprocess_impl_async(self, db_connector: BaseSQLDBConnector) -> DBSummary:
-        schema = db_connector.schema
-        if not schema.tables:
-            return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
-
-        if self.compressor is not None:
-            schema = self.compressor.compress(schema)
-
+    async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> DBSummary:
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render()
+
+        if db_connector.connector_type == "sql":
+            schema = db_connector.schema
+            if not schema.tables:
+                return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
+            if self.compressor is not None:
+                schema = self.compressor.compress(schema)
+            user_prompt = format_user_prompt(self.sql_formatter.format(schema, add_description=True))
+        elif db_connector.connector_type == "property_graph":
+            graph_schema = db_connector.schema
+            if not graph_schema.nodes and not graph_schema.relationships:
+                return DBSummary(
+                    db_summary_markdown=f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
+                )
+            user_prompt = format_user_prompt(self.graph_formatter.format(graph_schema))
+        else:
+            raise TypeError(f"Unsupported connector type for DBSummarizer: {db_connector.connector_type!r}")
+
         run_query_tool = RunQueryTool(db_connector)
 
         model_settings: dict[str, Any] = {}
@@ -81,7 +95,6 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             tools=[run_query_tool.as_pydantic_ai_tool()],
             model_settings=model_settings,
         )
-        user_prompt = format_user_prompt(schema, self.formatter)
         result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output  # type: ignore
