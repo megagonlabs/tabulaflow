@@ -17,12 +17,14 @@ if TYPE_CHECKING:
 
     from mintq.db_connector.base import NL2QDBConnector
     from mintq.db_connector.db_registry import DBRegistry
-    from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-    from mintq.toolhub import RegistryGetDBDocumentTool
-    from mintq.toolhub.registry_run_query import QueryHistory
-    from mintq.toolhub.render_chart import RenderPlotextChartTool
-    from mintq.toolhub.registry_run_query import RegistryRunQueryTool
-    from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
+    from mintq.toolhub import (
+        QueryHistory,
+        RegistryGetColumnJsonSchemaTool,
+        RegistryGetDBDocumentTool,
+        RegistryGetTableSchemaTool,
+        RegistryRunQueryTool,
+        RenderPlotextChartTool,
+    )
 
 logger = logging.getLogger(__name__)
 
@@ -107,11 +109,14 @@ class ChatAgent:
 
     def __post_init__(self) -> None:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-        from mintq.toolhub import RegistryGetDBDocumentTool
-        from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
-        from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-        from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
-        from mintq.toolhub.render_chart import RenderPlotextChartTool
+        from mintq.toolhub import (
+            QueryHistory,
+            RegistryGetColumnJsonSchemaTool,
+            RegistryGetDBDocumentTool,
+            RegistryGetTableSchemaTool,
+            RegistryRunQueryTool,
+            RenderPlotextChartTool,
+        )
 
         self._query_history = QueryHistory()
         self._tools = Toolset(
