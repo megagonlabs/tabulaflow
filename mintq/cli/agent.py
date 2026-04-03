@@ -463,7 +463,7 @@ class AgentProgressDisplay:
                 parts.append(Spinner("dots", text=Text(label, style="dim"), style="dim"))
             else:
                 line = Text()
-                line.append("✓ ", style="dim")
+                line.append("→ ", style="dim")
                 line.append(label, style="dim")
                 parts.append(line)
 
