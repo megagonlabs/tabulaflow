@@ -179,7 +179,7 @@ async def run_chat(model: str, agent: str) -> None:
 
             session.last_result = result
             console.print()
-            await view_result(console, result, enabled_modes=session.output_modes)
+            await view_result(console, result)
     finally:
         if session is not None:
             await session.registry.disconnect_all_async()
