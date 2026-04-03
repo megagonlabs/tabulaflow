@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from mintq.db_connector.base import NL2QDBConnector
     from mintq.db_connector.db_registry import DBRegistry
     from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
+    from mintq.toolhub import RegistryGetDBDocumentTool
     from mintq.toolhub.registry_run_query import QueryHistory
     from mintq.toolhub.render_chart import RenderPlotextChartTool
     from mintq.toolhub.registry_run_query import RegistryRunQueryTool
@@ -42,7 +43,7 @@ You are an agent - please keep going until the task is solved.
 
 <tool_calling>
 Gathering information:
-- For graph databases, the schema is provided in <db_document>. Read it before writing Cypher.
+- For graph databases, call `get_db_document` and read it before writing Cypher.
 - You may use `run_query` to run exploratory Cypher queries when that helps clarify the graph.
 - For SQL databases, always use `get_table_schema` to get the schema of relevant tables before constructing the query.
 - You may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
@@ -81,6 +82,7 @@ class Toolset:
     """Typed bundle of agent tools."""
 
     run_query: RegistryRunQueryTool
+    get_db_document: RegistryGetDBDocumentTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
     render_chart: RenderPlotextChartTool
@@ -105,6 +107,7 @@ class ChatAgent:
 
     def __post_init__(self) -> None:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from mintq.toolhub import RegistryGetDBDocumentTool
         from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
         from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
         from mintq.toolhub.registry_run_query import QueryHistory, RegistryRunQueryTool
@@ -113,6 +116,7 @@ class ChatAgent:
         self._query_history = QueryHistory()
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history),
+            get_db_document=RegistryGetDBDocumentTool(self.registry),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), compress=True),
             render_chart=RenderPlotextChartTool(history=self._query_history, width=self.console_width),
@@ -160,6 +164,7 @@ class ChatAgent:
             model=self.model,
             tools=[
                 self._tools.run_query.as_pydantic_ai_tool(),
+                self._tools.get_db_document.as_pydantic_ai_tool(),
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
@@ -307,6 +312,9 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
             parts.append(str(args["schema_name"]))
         parts.append(str(args.get("table_name", "")))
         return f"{db_prefix}{'.'.join(parts)}"
+    if tool_name == "get_db_document":
+        refresh = bool(args.get("refresh", False))
+        return f"{db_prefix}{'refresh' if refresh else 'cached'}"
     if tool_name == "get_column_json_schema":
         parts = []
         if args.get("schema_name"):
