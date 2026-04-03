@@ -27,9 +27,22 @@ The purpose of the summary is to help database experts explore the database and 
 </requirements>
 """.strip()
 
+_USER_PROMPT_MAX_CHARS = 400000
+
 
 def format_user_prompt(formatted_schema: str) -> str:
     return "Generate a summary for the following database:\n" + formatted_schema
+
+
+def truncate_user_prompt(user_prompt: str, max_chars: int = _USER_PROMPT_MAX_CHARS) -> str:
+    """Truncate user prompt to avoid exceeding model context limits."""
+    if len(user_prompt) <= max_chars:
+        return user_prompt
+    note = "\n\n[truncated: schema text exceeded prompt budget]"
+    cutoff = max_chars - len(note)
+    if cutoff <= 0:
+        return note[:max_chars]
+    return user_prompt[:cutoff] + note
 
 
 class DBSummary(BaseModel):
@@ -95,6 +108,6 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             tools=[run_query_tool.as_pydantic_ai_tool()],
             model_settings=model_settings,
         )
-        result = await agent.run(user_prompt)
+        result = await agent.run(truncate_user_prompt(user_prompt))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output  # type: ignore
