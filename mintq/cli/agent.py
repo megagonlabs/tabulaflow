@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 import json
 import logging
 import re
@@ -19,6 +20,7 @@ if TYPE_CHECKING:
     from mintq.db_connector.db_registry import DBRegistry
     from mintq.toolhub import (
         QueryHistory,
+        QueryRecord,
         RegistryGetColumnJsonSchemaTool,
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
@@ -28,7 +30,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)\]\]")
+_QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)(?::([^\]]+))?\]\]")
 
 SYSTEM_PROMPT = """\
 You are the mintq agent, a helpful database assistant that answers the user's question by querying the database.
@@ -40,7 +42,10 @@ You are an agent - please keep going until the task is solved.
 - Your final response should be a clear concise natural language answer summarizing the results.
 - Do not put the query in the final response unless explicitly asked to.
 - Do not include the query execution results in the final response. The execution results will be rendered in a separate view to the user.
-- IMPORTANT: In your final response, include [[result:Q<id>]] to reference the query whose results answer the user's question. Use the record_id shown in each tool response (e.g. [[result:Q3]]). This tells the system which query and data to display alongside your answer.
+- IMPORTANT: In your final response, include one or more result references so the system knows which query outputs to display.
+  - Basic form: [[result:Q<id>]] (e.g. [[result:Q3]]).
+  - Optional labeled form: [[result:Q<id>:<label>]] (e.g. [[result:Q3:num_players]]).
+  - Use labels when returning multiple records in one answer.
 </goal>
 
 <tool_calling>
@@ -68,15 +73,35 @@ Visualization:
 
 
 @dataclass
+class ChatResultRecord:
+    """Display-ready data for one referenced query record."""
+
+    record_id: str
+    label: str | None
+    query: str | None
+    df: pd.DataFrame | None
+    chart_spec: dict[str, object] | None
+    query_lexer: str = "sql"
+
+
+@dataclass
 class ChatResult:
-    """Result of a single chat turn."""
+    """Display-ready result of a single chat turn."""
 
     text: str
-    query: str | None = None
-    df: pd.DataFrame | None = None
-    chart_spec: dict[str, object] | None = None
-    chart_df: pd.DataFrame | None = None
-    query_lexer: str = "sql"
+    records: list[ChatResultRecord] = field(default_factory=list)
+    primary_record_index: int | None = 0
+
+    @property
+    def primary_record(self) -> ChatResultRecord | None:
+        """Return the selected default record."""
+        if not self.records:
+            return None
+        if self.primary_record_index is None:
+            return None
+        if self.primary_record_index < 0 or self.primary_record_index >= len(self.records):
+            return None
+        return self.records[self.primary_record_index]
 
 
 @dataclass
@@ -218,45 +243,55 @@ def _build_chat_result(
     answer_text: str,
     query_history: QueryHistory,
 ) -> ChatResult:
-    """Parse ``[[result:Q<id>]]`` from the answer and build a ChatResult."""
-    selected_record = None
-    query: str | None = None
-    df: pd.DataFrame | None = None
-    chart_spec: dict[str, object] | None = None
-    chart_df: pd.DataFrame | None = None
-    query_lexer = "sql"
+    """Parse ``[[result:Q<id>[:label]]]`` markers from the answer and build a ChatResult."""
+    display_text, refs = _extract_result_refs(answer_text)
 
-    match = _QUERY_REF_RE.search(answer_text)
-    if match:
+    records = _records_from_refs(refs, query_history)
+    primary_record_index: int | None = 0 if records else None
+
+    return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
+
+
+def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
+    """Return cleaned text and ordered ``(record_id, label)`` references."""
+    refs: list[tuple[str, str | None]] = []
+    for match in _QUERY_REF_RE.finditer(answer_text):
         record_id = match.group(1)
+        raw_label = match.group(2)
+        label = raw_label.strip() if raw_label is not None else None
+        refs.append((record_id, label or None))
+    cleaned = _QUERY_REF_RE.sub("", answer_text).strip()
+    return cleaned, refs
+
+
+def _records_from_refs(
+    refs: Iterable[tuple[str, str | None]],
+    query_history: QueryHistory,
+) -> list[ChatResultRecord]:
+    """Resolve referenced IDs into display-ready records, preserving order."""
+    records: list[ChatResultRecord] = []
+    for record_id, label in refs:
         try:
-            selected_record = query_history.get(record_id)
+            query_record = query_history.get(record_id)
         except (KeyError, ValueError):
-            pass
-        display_text = _QUERY_REF_RE.sub("", answer_text).strip()
-    else:
-        display_text = answer_text
-        try:
-            selected_record = query_history.last()
-        except ValueError:
-            pass
+            continue
+        records.append(_chat_result_record_from_query_record(query_record, label))
+    return records
 
-    if selected_record is not None:
-        pred = selected_record.pred_query
-        query = pred.query
-        df = pred.exec_result.df if pred.exec_result else None
-        query_lexer = "cypher" if selected_record.connector_type == "property_graph" else "sql"
-        chart_spec = selected_record.vegalite_spec
-        if chart_spec is not None and pred.exec_result is not None and pred.exec_result.df is not None:
-            chart_df = pred.exec_result.df
 
-    return ChatResult(
-        text=display_text,
-        query=query,
-        df=df,
-        chart_spec=chart_spec,
-        chart_df=chart_df,
-        query_lexer=query_lexer,
+def _chat_result_record_from_query_record(
+    query_record: QueryRecord,
+    label: str | None,
+) -> ChatResultRecord:
+    """Convert query-history metadata into a UI record."""
+    pred = query_record.pred_query
+    return ChatResultRecord(
+        record_id=query_record.record_id,
+        label=label,
+        query=pred.query,
+        df=pred.exec_result.df if pred.exec_result else None,
+        chart_spec=query_record.vegalite_spec,
+        query_lexer="cypher" if query_record.connector_type == "property_graph" else "sql",
     )
 
 

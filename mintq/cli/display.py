@@ -413,9 +413,6 @@ def render_agent_progress(console: Console) -> AgentProgressDisplay:
 # Result viewer — Tab/Shift+Tab cycling between response / chart / data / query views
 # ---------------------------------------------------------------------------
 
-_VIEW_NAMES = ["response", "chart", "data", "query"]
-
-
 def _capture_rich(console: Console, render_fn: object, *args: object, **kwargs: object) -> str:
     """Render a Rich callable to an ANSI string."""
     from io import StringIO
@@ -433,21 +430,44 @@ async def view_result(console: Console, result: object) -> None:
     assert isinstance(result, ChatResult)
 
     views: dict[str, str | None] = {}
+    chart_keys: list[str] = []
+    data_keys: list[str] = []
+    query_keys: list[str] = []
     if result.text:
         views["response"] = _capture_rich(console, render_nl, result.text)
-    if result.chart_spec is not None and result.chart_df is not None:
-        views["chart"] = _capture_rich(console, render_chart, result.chart_df, result.chart_spec)
-    if result.df is not None and not result.df.empty:
-        views["data"] = _capture_rich(console, render_table, result.df)
-    if result.query:
-        views["query"] = _capture_rich(
-            console,
-            render_query,
-            result.query,
-            lexer=getattr(result, "query_lexer", "sql"),
-        )
 
-    available = [v for v in _VIEW_NAMES if v in views]
+    used_labels: set[str] = set()
+    for record in result.records:
+        base_label = record.label or record.record_id
+        label = _unique_record_label(base_label, used_labels)
+        used_labels.add(label)
+
+        if record.chart_spec is not None and record.df is not None:
+            key = f"chart[{label}]"
+            views[key] = _capture_rich(console, render_chart, record.df, record.chart_spec)
+            chart_keys.append(key)
+        if record.df is not None and not record.df.empty:
+            key = f"data[{label}]"
+            views[key] = _capture_rich(console, render_table, record.df)
+            data_keys.append(key)
+        if record.query:
+            key = f"query[{label}]"
+            views[key] = _capture_rich(
+                console,
+                render_query,
+                record.query,
+                lexer=record.query_lexer,
+            )
+            query_keys.append(key)
+
+    ordered_keys: list[str] = []
+    if "response" in views:
+        ordered_keys.append("response")
+    ordered_keys.extend(chart_keys)
+    ordered_keys.extend(data_keys)
+    ordered_keys.extend(query_keys)
+
+    available = ordered_keys
     if not available:
         console.print("[dim]No results to display.[/dim]")
         return
@@ -532,3 +552,15 @@ async def view_result(console: Console, result: object) -> None:
 
     view_key = available[current_idx[0]]
     console.print(Text.from_ansi(views[view_key] or ""))
+
+
+def _unique_record_label(base_label: str, used: set[str]) -> str:
+    """Return a unique label suitable for view names."""
+    if base_label not in used:
+        return base_label
+    i = 2
+    while True:
+        candidate = f"{base_label}_{i}"
+        if candidate not in used:
+            return candidate
+        i += 1

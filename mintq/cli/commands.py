@@ -470,28 +470,6 @@ async def _cmd_view(args: list[str], session: ChatSession, console: Console) -> 
     return False
 
 
-async def _cmd_query(args: list[str], session: ChatSession, console: Console) -> bool:
-    if session.last_result is None or session.last_result.query is None:
-        console.print("[dim]No query to display.[/dim]")
-        return False
-
-    from mintq.cli.display import render_query
-
-    render_query(console, session.last_result.query, lexer=session.last_result.query_lexer)
-    return False
-
-
-async def _cmd_result_table(args: list[str], session: ChatSession, console: Console) -> bool:
-    if session.last_result is None or session.last_result.df is None or session.last_result.df.empty:
-        console.print("[dim]No table to display.[/dim]")
-        return False
-
-    from mintq.cli.display import render_table
-
-    render_table(console, session.last_result.df)
-    return False
-
-
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
@@ -504,9 +482,6 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
     "/view": (_cmd_view, "View last result (Tab/Shift+Tab to cycle views)"),
-    "/query": (_cmd_query, "Show query of last result"),
-    "/sql": (_cmd_query, "Alias for /query"),
-    "/data": (_cmd_result_table, "Show data table of last result"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}
