@@ -1,15 +1,15 @@
-"""Rich renderers for CLI output."""
+"""Rich renderable builders and CLI display helpers."""
 
 from __future__ import annotations
 
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
-from rich.console import Console, Group
+from rich.console import Group
 from rich.panel import Panel
 from rich.style import Style
-from rich.syntax import Syntax
 from rich import box
+from rich.syntax import Syntax
 from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
@@ -29,7 +29,8 @@ MINTQ_THEME = Theme(
 
 if TYPE_CHECKING:
     import pandas as pd
-    from mintq.cli.agent import AgentProgressDisplay
+    from rich.console import RenderableType
+
     from mintq.schema import (
         NodeSchema,
         PropertyGraphSchema,
@@ -49,22 +50,31 @@ _LOGO = """\
  ╚═╝     ╚═╝ ╚═╝ ╚═╝  ╚═══╝    ╚═╝     ╚══▀▀═╝"""
 
 
-def print_banner(console: Console, *, model: str, agent: str) -> None:
-    """Print the welcome banner."""
-    console.print()
-    console.print(Text(_LOGO, style=ACCENT_BOLD))
-    console.print()
-    console.print(
+def build_banner(*, model: str) -> RenderableType:
+    """Build the welcome banner as a Rich renderable."""
+    return Group(
+        Text(_LOGO, style=ACCENT_BOLD),
+        Text(),
         Panel.fit(
             f"[dim]model:[/dim] {model}\n[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]",
             border_style=ACCENT,
-        )
+        ),
     )
-    console.print()
 
 
-def render_query(console: Console, query: str, max_lines: int = 20, *, lexer: str = "sql") -> None:
-    """Render a query with syntax highlighting and optional truncation."""
+def build_nl(text: str) -> RenderableType:
+    """Build a natural language answer renderable."""
+    from rich.markdown import Markdown
+
+    layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
+    layout.add_column(width=2, no_wrap=True, vertical="top")
+    layout.add_column(ratio=1)
+    layout.add_row(Text("◆", style=ACCENT_BOLD), Markdown(text, style="default"))
+    return layout
+
+
+def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> RenderableType:
+    """Build a syntax-highlighted query renderable."""
     stripped = query.strip()
     all_lines = stripped.splitlines()
     total_lines = len(all_lines)
@@ -79,13 +89,13 @@ def render_query(console: Console, query: str, max_lines: int = 20, *, lexer: st
         line_numbers=True,
         background_color="default",
     )
-    console.print(syntax)
     if truncated:
-        console.print(f"[dim]{total_lines} lines total (truncated to {max_lines})[/dim]")
+        return Group(syntax, Text(f"{total_lines} lines total (truncated to {max_lines})", style="dim"))
+    return syntax
 
 
-def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None:
-    """Render a DataFrame as a Rich table."""
+def build_table(df: pd.DataFrame, max_rows: int = 10) -> RenderableType:
+    """Build a DataFrame as a Rich table renderable."""
     table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True)
     for col in df.columns:
         table.add_column(str(col))
@@ -99,32 +109,86 @@ def render_table(console: Console, df: pd.DataFrame, max_rows: int = 10) -> None
         table.add_row(*["[dim]...[/dim]"] * len(df.columns))
         table.caption = f"[dim]{len(df)} rows total (truncated)[/dim]"
 
-    console.print(table)
+    return table
 
 
-def render_nl(console: Console, text: str) -> None:
-    """Render a natural language answer."""
-    from rich.markdown import Markdown
-
-    console.push_theme(MINTQ_THEME)
-    layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
-    layout.add_column(width=2, no_wrap=True, vertical="top")
-    layout.add_column(ratio=1)
-    layout.add_row(Text("◆", style=ACCENT_BOLD), Markdown(text))
-    console.print(layout)
-    console.pop_theme()
-
-
-def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict[str, object]) -> None:
-    """Render a plotext chart from a Vega-Lite spec and DataFrame."""
+def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80) -> RenderableType:
+    """Build a plotext chart renderable from a Vega-Lite spec and DataFrame."""
     from mintq.toolhub.render_chart import parse_vegalite_spec, render_plotext
 
     try:
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
-        chart_str = render_plotext(mark, x_field, y_field, title, df, console.width)
-        console.print(Text.from_ansi(chart_str))
+        chart_str = render_plotext(mark, x_field, y_field, title, df, width)
+        return Text.from_ansi(chart_str)
     except Exception as e:
-        console.print(f"[dim]Chart error: {e}[/dim]")
+        return Text(f"Chart error: {e}", style="dim")
+
+
+# ---------------------------------------------------------------------------
+# Result view building — used by TUI widgets
+# ---------------------------------------------------------------------------
+
+
+def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict[str, RenderableType]]:
+    """Build ordered view keys and their renderables from a ChatResult.
+
+    Returns:
+        (ordered_keys, views) where ordered_keys defines tab order and
+        views maps key -> Rich renderable.
+    """
+    from mintq.cli.agent import ChatResult
+
+    assert isinstance(result, ChatResult)
+
+    views: dict[str, RenderableType] = {}
+    chart_keys: list[str] = []
+    data_keys: list[str] = []
+    query_keys: list[str] = []
+
+    if result.text:
+        views["response"] = build_nl(result.text)
+
+    use_labels = len(result.records) > 1
+    used_labels: set[str] = set()
+    for record in result.records:
+        base_label = record.label or record.record_id
+        label = _unique_record_label(base_label, used_labels)
+        used_labels.add(label)
+
+        chart_key = f"chart[{label}]" if use_labels else "chart"
+        data_key = f"data[{label}]" if use_labels else "data"
+        query_key = f"query[{label}]" if use_labels else "query"
+
+        if record.chart_spec is not None and record.df is not None:
+            views[chart_key] = build_chart(record.df, record.chart_spec, width)
+            chart_keys.append(chart_key)
+        if record.df is not None and not record.df.empty:
+            views[data_key] = build_table(record.df)
+            data_keys.append(data_key)
+        if record.query:
+            views[query_key] = build_query(record.query, lexer=record.query_lexer)
+            query_keys.append(query_key)
+
+    ordered_keys: list[str] = []
+    if "response" in views:
+        ordered_keys.append("response")
+    ordered_keys.extend(chart_keys)
+    ordered_keys.extend(data_keys)
+    ordered_keys.extend(query_keys)
+
+    return ordered_keys, views
+
+
+def _unique_record_label(base_label: str, used: set[str]) -> str:
+    """Return a unique label suitable for view names."""
+    if base_label not in used:
+        return base_label
+    i = 2
+    while True:
+        candidate = f"{base_label}_{i}"
+        if candidate not in used:
+            return candidate
+        i += 1
 
 
 # ---------------------------------------------------------------------------
@@ -133,14 +197,12 @@ def render_chart(console: Console, df: pd.DataFrame, vegalite_spec: dict[str, ob
 
 
 def _qualified_name(tbl: SQLTableSchema) -> str:
-    """Return schema.table if schema_name is set, otherwise just table."""
     if tbl.schema_name:
         return f"{tbl.schema_name}.{tbl.name}"
     return tbl.name
 
 
 def _is_multi_schema(schema: SQLSchema) -> bool:
-    """True if tables span more than one distinct schema namespace."""
     schemas = {t.schema_name for t in schema.tables}
     schemas.discard(None)
     return len(schemas) > 1
@@ -159,7 +221,6 @@ def _format_rows(n: int | None) -> str:
 
 
 def _build_overview_table(tables: list[SQLTableSchema]) -> Table:
-    """Build a borderless table of table names, rows, cols, description."""
     inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style=ACCENT_BOLD, padding=(0, 2))
     inner.add_column("Table")
     inner.add_column("Rows", justify="right")
@@ -176,8 +237,8 @@ def _build_overview_table(tables: list[SQLTableSchema]) -> Table:
     return inner
 
 
-def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> None:
-    """Render database-level schema overview."""
+def build_schema_overview(schema: SQLSchema, alias: str) -> RenderableType:
+    """Build database-level schema overview renderable."""
     multi = _is_multi_schema(schema)
     total_cols = schema.num_total_columns()
     dialect = schema.dialect or ""
@@ -188,7 +249,7 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
         for tbl in schema.tables:
             grouped[tbl.schema_name].append(tbl)
 
-        parts: list[Panel] = []
+        parts: list[RenderableType] = []
         for schema_name, tables in sorted(grouped.items(), key=lambda kv: kv[0] or ""):
             section_title = (
                 f"[bold]{alias}[/bold].[{ACCENT_BOLD}]{schema_name}[/{ACCENT_BOLD}]"
@@ -198,18 +259,17 @@ def render_schema_overview(console: Console, schema: SQLSchema, alias: str) -> N
             inner = _build_overview_table(tables)
             parts.append(Panel(inner, title=section_title, border_style=ACCENT))
 
-        for p in parts:
-            console.print(p)
-        console.print(f"  [dim]{subtitle}[/dim]")
+        parts.append(Text(f"  {subtitle}", style="dim"))
+        return Group(*parts)
     else:
         title = f"[bold]{alias}[/bold]"
         inner = _build_overview_table(schema.tables)
         footer = Text(subtitle, style="dim")
-        console.print(Panel(Group(inner, footer), title=title, border_style=ACCENT))
+        return Panel(Group(inner, footer), title=title, border_style=ACCENT)
 
 
-def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: bool = False) -> None:
-    """Render column-level detail for a single table inside a panel."""
+def build_table_detail(tbl: SQLTableSchema, multi_schema: bool = False) -> RenderableType:
+    """Build column-level detail renderable for a single table."""
     display = _display_name(tbl, multi_schema)
     row_info = f" ({tbl.num_rows:,} rows)" if tbl.num_rows is not None else ""
     title = f"[bold]{display}[/bold][dim]{row_info}[/dim]"
@@ -266,11 +326,11 @@ def render_table_detail(console: Console, tbl: SQLTableSchema, multi_schema: boo
         desc_text.append(tbl.description, style="dim italic")
         parts.append(desc_text)
 
-    console.print(Panel(Group(*parts), title=title, border_style=ACCENT))
+    return Panel(Group(*parts), title=title, border_style=ACCENT)
 
 
-def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSchema) -> None:
-    """Render full metadata for a single column."""
+def build_column_detail(tbl: SQLTableSchema, col: SQLColumnSchema) -> RenderableType:
+    """Build full metadata renderable for a single column."""
     display = _qualified_name(tbl)
     pk_set = set(tbl.primary_key)
 
@@ -299,22 +359,17 @@ def render_column_detail(console: Console, tbl: SQLTableSchema, col: SQLColumnSc
     if col.description:
         lines.append(f"[bold]Description:[/bold] {col.description}")
 
-    fk_refs = [fk for fk in col.foreign_keys]
+    fk_refs = list(col.foreign_keys)
     for fk in fk_refs:
         tgt = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
         lines.append(f"[bold]FK →[/bold]         {tgt}({', '.join(fk.foreign_columns)})")
 
     body = "\n".join(lines)
-    console.print(Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style=ACCENT))
+    return Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style=ACCENT)
 
 
 def resolve_table(schema: SQLSchema, name: str) -> SQLTableSchema | list[SQLTableSchema] | None:
-    """Resolve a table name, supporting optional schema.table syntax.
-
-    Returns:
-        A single table on exact/unambiguous match, a list if ambiguous across
-        schemas, or None if not found.
-    """
+    """Resolve a table name, supporting optional schema.table syntax."""
     schema_part: str | None = None
     table_part: str = name
     if "." in name:
@@ -355,16 +410,15 @@ def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
     return None
 
 
-def render_property_graph_overview(console: Console, schema: PropertyGraphSchema, alias: str) -> None:
-    """Render full property-graph schema (Cypher / Text2Cypher style)."""
+def build_property_graph_overview(schema: PropertyGraphSchema, alias: str) -> RenderableType:
+    """Build full property-graph schema renderable."""
     from mintq.formatters.cypher import CypherSchemaFormatter
 
     body = CypherSchemaFormatter().format(schema)
-    console.print(Panel(body, title=f"[bold]{alias}[/bold] · cypher", border_style=ACCENT))
+    return Panel(body, title=f"[bold]{alias}[/bold] · cypher", border_style=ACCENT)
 
 
 def resolve_graph_node_label(schema: PropertyGraphSchema, name: str) -> NodeSchema | None:
-    """Resolve a node label (case-insensitive)."""
     for node in schema.nodes:
         if node.label.lower() == name.lower():
             return node
@@ -372,20 +426,17 @@ def resolve_graph_node_label(schema: PropertyGraphSchema, name: str) -> NodeSche
 
 
 def resolve_graph_rel_patterns(schema: PropertyGraphSchema, name: str) -> list[RelationshipSchema]:
-    """Return relationship patterns whose type matches *name* (case-insensitive)."""
     return [r for r in schema.relationships if r.label.lower() == name.lower()]
 
 
-def render_graph_node_detail(console: Console, node: NodeSchema) -> None:
-    """Render properties for a single node label."""
+def build_graph_node_detail(node: NodeSchema) -> RenderableType:
     from mintq.formatters.cypher import CypherSchemaFormatter
 
     fmt = CypherSchemaFormatter()
-    console.print(Panel(fmt.format_node(node), title=f"[bold]:{node.label}[/bold]", border_style=ACCENT))
+    return Panel(fmt.format_node(node), title=f"[bold]:{node.label}[/bold]", border_style=ACCENT)
 
 
-def render_graph_reltype_detail(console: Console, rel_type: str, patterns: list[RelationshipSchema]) -> None:
-    """Render all (source)-[REL]->(target) patterns for a relationship type."""
+def build_graph_reltype_detail(rel_type: str, patterns: list[RelationshipSchema]) -> RenderableType:
     lines = [f"(:{p.source_label})-[:{p.label}]->(:{p.target_label})" for p in patterns]
     body = "\n".join(lines)
     props_extra = ""
@@ -393,179 +444,8 @@ def render_graph_reltype_detail(console: Console, rel_type: str, patterns: list[
         if p.properties:
             props_extra = "\n\n" + "\n".join(f"  {x.name}: {x.dtype}" for x in p.properties)
             break
-    console.print(
-        Panel(
-            body + props_extra,
-            title=f"[bold]:{rel_type}[/bold] patterns",
-            border_style=ACCENT,
-        )
+    return Panel(
+        body + props_extra,
+        title=f"[bold]:{rel_type}[/bold] patterns",
+        border_style=ACCENT,
     )
-
-
-def render_agent_progress(console: Console) -> AgentProgressDisplay:
-    """Create a progress display for streaming agent execution."""
-    from mintq.cli.agent import AgentProgressDisplay
-
-    return AgentProgressDisplay(console)
-
-
-# ---------------------------------------------------------------------------
-# Result viewer — Tab/Shift+Tab cycling between response / chart / data / query views
-# ---------------------------------------------------------------------------
-
-def _capture_rich(console: Console, render_fn: object, *args: object, **kwargs: object) -> str:
-    """Render a Rich callable to an ANSI string."""
-    from io import StringIO
-
-    buf = StringIO()
-    capture_console = Console(file=buf, force_terminal=True, width=console.width, theme=MINTQ_THEME)
-    render_fn(capture_console, *args, **kwargs)  # type: ignore[operator]
-    return buf.getvalue()
-
-
-async def view_result(console: Console, result: object) -> None:
-    """Launch an interactive viewer to cycle through response, chart, data, and query views."""
-    from mintq.cli.agent import ChatResult
-
-    assert isinstance(result, ChatResult)
-
-    views: dict[str, str | None] = {}
-    chart_keys: list[str] = []
-    data_keys: list[str] = []
-    query_keys: list[str] = []
-    if result.text:
-        views["response"] = _capture_rich(console, render_nl, result.text)
-
-    use_labels = len(result.records) > 1
-    used_labels: set[str] = set()
-    for record in result.records:
-        base_label = record.label or record.record_id
-        label = _unique_record_label(base_label, used_labels)
-        used_labels.add(label)
-
-        chart_key = f"chart[{label}]" if use_labels else "chart"
-        data_key = f"data[{label}]" if use_labels else "data"
-        query_key = f"query[{label}]" if use_labels else "query"
-
-        if record.chart_spec is not None and record.df is not None:
-            key = chart_key
-            views[key] = _capture_rich(console, render_chart, record.df, record.chart_spec)
-            chart_keys.append(key)
-        if record.df is not None and not record.df.empty:
-            key = data_key
-            views[key] = _capture_rich(console, render_table, record.df)
-            data_keys.append(key)
-        if record.query:
-            key = query_key
-            views[key] = _capture_rich(
-                console,
-                render_query,
-                record.query,
-                lexer=record.query_lexer,
-            )
-            query_keys.append(key)
-
-    ordered_keys: list[str] = []
-    if "response" in views:
-        ordered_keys.append("response")
-    ordered_keys.extend(chart_keys)
-    ordered_keys.extend(data_keys)
-    ordered_keys.extend(query_keys)
-
-    available = ordered_keys
-    if not available:
-        console.print("[dim]No results to display.[/dim]")
-        return
-
-    if len(available) == 1:
-        console.print(Text.from_ansi(views[available[0]] or ""))
-        return
-
-    from prompt_toolkit.application import Application
-    from prompt_toolkit.formatted_text import ANSI
-    from prompt_toolkit.key_binding import KeyBindings
-    from prompt_toolkit.layout import Layout, HSplit, Window, FormattedTextControl
-
-    current_idx = [0]
-
-    def _render_tab_bar() -> str:
-        from io import StringIO as _StringIO
-
-        buf = _StringIO()
-        bar_console = Console(file=buf, force_terminal=True, width=console.width)
-        parts = Text()
-        for i, name in enumerate(available):
-            if i > 0:
-                parts.append("  ")
-            if i == current_idx[0]:
-                parts.append(f" {name} ", style=f"bold white on {ACCENT}")
-            else:
-                parts.append(f" {name} ")
-        parts.append("    ")
-        parts.append("←/→: switch  Enter: done", style="italic dim")
-        bar_console.print(parts)
-        return buf.getvalue()
-
-    def _get_content() -> ANSI:
-        view_key = available[current_idx[0]]
-        content = views[view_key] or ""
-        tab_bar = _render_tab_bar()
-        return ANSI(content + "\n" + tab_bar)
-
-    kb = KeyBindings()
-
-    @kb.add("tab")
-    @kb.add("right")
-    def _next(event: object) -> None:
-        current_idx[0] = (current_idx[0] + 1) % len(available)
-        app.invalidate()
-
-    @kb.add("s-tab")
-    @kb.add("left")
-    def _prev(event: object) -> None:
-        current_idx[0] = (current_idx[0] - 1) % len(available)
-        app.invalidate()
-
-    @kb.add("enter")
-    @kb.add("q")
-    @kb.add("escape")
-    def _exit(event: object) -> None:
-        event.app.exit()  # type: ignore[attr-defined]
-
-    content_control = FormattedTextControl(
-        text=_get_content,
-        focusable=False,
-        show_cursor=False,
-    )
-
-    layout = Layout(
-        HSplit(
-            [
-                Window(content=content_control, wrap_lines=True),
-            ]
-        )
-    )
-
-    app: Application[None] = Application(
-        layout=layout,
-        key_bindings=kb,
-        full_screen=False,
-        erase_when_done=True,
-    )
-
-    await app.run_async()
-
-    view_key = available[current_idx[0]]
-    console.print(Text.from_ansi(views[view_key] or ""))
-
-
-def _unique_record_label(base_label: str, used: set[str]) -> str:
-    """Return a unique label suitable for view names."""
-    if base_label not in used:
-        return base_label
-    i = 2
-    while True:
-        candidate = f"{base_label}_{i}"
-        if candidate not in used:
-            return candidate
-        i += 1

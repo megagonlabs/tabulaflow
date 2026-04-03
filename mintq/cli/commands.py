@@ -7,13 +7,13 @@ import shlex
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
-from rich.console import Console
+from rich.console import RenderableType
 from rich.table import Table
+from rich.text import Text
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
-    from mintq.cli.chat import ChatSession
     from mintq.schema import SQLSchema
 
 COMMAND_PREFIX = "/"
@@ -28,18 +28,67 @@ _FILE_EXTENSIONS: dict[str, str] = {
 _DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
 
 
+# ---------------------------------------------------------------------------
+# Command result
+# ---------------------------------------------------------------------------
+
+
+class CommandResult:
+    """Result of a slash command execution."""
+
+    def __init__(
+        self,
+        *,
+        output: RenderableType | None = None,
+        should_quit: bool = False,
+        should_clear: bool = False,
+        password_prompt: str | None = None,
+    ) -> None:
+        self.output = output
+        self.should_quit = should_quit
+        self.should_clear = should_clear
+        self.password_prompt = password_prompt
+
+
+# ---------------------------------------------------------------------------
+# Session interface (avoids circular import with tui.py)
+# ---------------------------------------------------------------------------
+
+
+class SessionState:
+    """Holds state for a single interactive session."""
+
+    def __init__(self, model: str, agent: str) -> None:
+        from mintq.cli.agent import ChatAgent
+        from mintq.db_connector.db_registry import DBRegistry
+
+        self.agent_name = agent
+        self.registry: DBRegistry = DBRegistry()
+        self.chat_agent: ChatAgent = ChatAgent(registry=self.registry, model=model)
+        self.last_result: object | None = None
+
+    @property
+    def model(self) -> str:
+        return self.chat_agent.model
+
+    def set_model(self, model: str) -> None:
+        self.chat_agent.set_model(model)
+
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+
+
 def _is_data_file(path: str) -> bool:
-    """Check if a path looks like a supported data file."""
     return os.path.splitext(path)[1].lower() in _DATA_FILE_EXTENSIONS
 
 
 def _alias_from_files(file_paths: list[str]) -> str:
-    """Derive a short alias from data file paths."""
     return os.path.splitext(os.path.basename(file_paths[0]))[0]
 
 
 def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
-    """Build connector engine kwargs based on URL scheme."""
     scheme = url.split("://", 1)[0].split("+", 1)[0].lower()
     if scheme != "bigquery":
         return {}
@@ -55,21 +104,96 @@ def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
     return engine_kwargs
 
 
-async def handle_command(text: str, session: ChatSession, console: Console) -> bool:
-    """Dispatch a slash command. Returns True if the session should quit."""
+_ASYNC_DRIVER_UPGRADES: dict[str, str] = {
+    "sqlite": "sqlite+aiosqlite",
+    "postgresql": "postgresql+asyncpg",
+    "postgres": "postgresql+asyncpg",
+    "mysql": "mysql+asyncmy",
+}
+
+
+def _is_neo4j_bolt_url(url: str) -> bool:
+    if "://" not in url:
+        return False
+    scheme = url.split("://", 1)[0].lower()
+    return scheme == "neo4j" or scheme.startswith("neo4j+") or scheme == "bolt" or scheme.startswith("bolt+")
+
+
+def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
+    parsed = urlparse(url)
+    pairs = parse_qsl(parsed.query, keep_blank_values=True)
+    database: str | None = None
+    kept: list[tuple[str, str]] = []
+    for k, v in pairs:
+        if k.lower() in ("database", "db"):
+            if database is None and v:
+                database = v
+            continue
+        kept.append((k, v))
+    new_query = urlencode(kept) if kept else ""
+    return urlunparse(parsed._replace(query=new_query)), database
+
+
+def _normalize_url(raw: str) -> str:
+    for ext, scheme in _FILE_EXTENSIONS.items():
+        if raw.endswith(ext):
+            abspath = os.path.abspath(raw)
+            return f"{scheme}:///{abspath}"
+
+    if "://" in raw:
+        scheme, rest = raw.split("://", 1)
+        if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
+            return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
+
+    return raw
+
+
+def _alias_from_url(url: str) -> str:
+    if ":///" in url:
+        path = url.split("///", 1)[-1]
+        return os.path.splitext(os.path.basename(path))[0]
+    parsed = urlparse(url)
+    if parsed.path and parsed.path.strip("/"):
+        return parsed.path.strip("/").rsplit("/", 1)[-1]
+    if parsed.hostname:
+        return parsed.hostname
+    return url
+
+
+def _resolve_alias(args: list[str], session: SessionState) -> tuple[str | None, list[str]]:
+    if args and session.registry.has(args[0]):
+        return args[0], args[1:]
+    aliases = session.registry.list_aliases()
+    if len(aliases) == 1:
+        return aliases[0], args
+    return None, args
+
+
+def _url_needs_password(url: str) -> bool:
+    """Check if URL has a username but no password."""
+    parsed = urlparse(url)
+    return bool(parsed.username and not parsed.password and parsed.hostname)
+
+
+# ---------------------------------------------------------------------------
+# Command dispatch
+# ---------------------------------------------------------------------------
+
+
+async def handle_command(text: str, session: SessionState) -> CommandResult:
+    """Dispatch a slash command. Returns a CommandResult."""
     parts = shlex.split(text)
     cmd = parts[0].lower()
     args = parts[1:]
 
     handler = COMMANDS.get(cmd)
     if handler is None:
-        console.print(f"[red]Unknown command:[/red] {cmd}. Type [bold]/help[/bold] for available commands.")
-        return False
+        return CommandResult(output=Text(f"Unknown command: {cmd}. Type /help for available commands.", style="red"))
 
-    return await handler(args, session, console)  # type: ignore[operator, no-any-return]
+    return await handler(args, session)  # type: ignore[operator, no-any-return]
 
 
-async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_help(args: list[str], session: SessionState) -> CommandResult:
     table = Table(title="Commands", show_header=True, header_style=ACCENT_BOLD, show_lines=False)
     table.add_column("Command", style="bold")
     table.add_column("Description")
@@ -77,73 +201,74 @@ async def _cmd_help(args: list[str], session: ChatSession, console: Console) -> 
     for cmd, (_, description) in _COMMAND_HELP.items():
         table.add_row(cmd, description)
 
-    console.print(table)
-    return False
+    return CommandResult(output=table)
 
 
-async def _cmd_exit(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_exit(args: list[str], session: SessionState) -> CommandResult:
     await session.registry.disconnect_all_async()
-    return True
+    return CommandResult(should_quit=True)
 
 
-async def _cmd_clear(args: list[str], session: ChatSession, console: Console) -> bool:
-    console.clear()
-    return False
+async def _cmd_clear(args: list[str], session: SessionState) -> CommandResult:
+    return CommandResult(should_clear=True)
 
 
-async def _cmd_connect(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if not args:
-        console.print(
-            "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
-            "[dim]  /connect ./data/schools.sqlite\n"
-            "  /connect ./sales.csv\n"
-            "  /connect ./sales.csv ./inventory.csv mydb\n"
-            "  /connect ./report.xlsx\n"
-            "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
-            "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
-            "  /connect snowflake://user@account/db\n"
-            "  /connect duckdb:///path/to/db.duckdb\n"
-            "  /connect neo4j://neo4j:password@localhost:7687\n"
-            "  /connect bolt://localhost:7687?database=neo4j myalias[/dim]"
+        return CommandResult(
+            output=Text.from_markup(
+                "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
+                "[dim]  /connect ./data/schools.sqlite\n"
+                "  /connect ./sales.csv\n"
+                "  /connect ./sales.csv ./inventory.csv mydb\n"
+                "  /connect ./report.xlsx\n"
+                "  /connect sqlite+aiosqlite:///path/to/db.sqlite\n"
+                "  /connect bigquery://bigquery-public-data/noaa_gsod\n"
+                "  /connect snowflake://user@account/db\n"
+                "  /connect duckdb:///path/to/db.duckdb\n"
+                "  /connect neo4j://neo4j:password@localhost:7687\n"
+                "  /connect bolt://localhost:7687?database=neo4j myalias[/dim]"
+            )
         )
-        return False
 
-    # --- Data file connections (CSV, Excel, Parquet, etc.) ---
+    # --- Data file connections ---
     file_args = [a for a in args if _is_data_file(a)]
     if file_args:
         non_file_args = [a for a in args if not _is_data_file(a)]
         alias = non_file_args[0] if non_file_args else _alias_from_files(file_args)
 
         if session.registry.has(alias):
-            console.print(
-                f"[red]Alias already in use:[/red] {alias}. "
-                "Disconnect first or provide a different alias: /connect <files...> <alias>"
+            return CommandResult(
+                output=Text.from_markup(
+                    f"[red]Alias already in use:[/red] {alias}. "
+                    "Disconnect first or provide a different alias: /connect <files...> <alias>"
+                )
             )
-            return False
 
         from mintq.db_connector.sql_conn import SQLConnector
 
         global_id = f"cli+{alias}"
         file_label = ", ".join(os.path.basename(f) for f in file_args)
-        with console.status(f"[dim]Loading {file_label}...[/dim]", spinner_style=ACCENT):
-            try:
-                connector = await SQLConnector.from_files_async(
-                    global_id=global_id,
-                    file_paths=file_args,
-                    db_name=alias,
-                    read_only=True,
-                    enable_schema_caching=False,
-                    enable_query_caching=False,
-                )
-            except Exception as e:
-                console.print(f"[red]Failed to load files:[/red] {e}")
-                return False
+        try:
+            connector = await SQLConnector.from_files_async(
+                global_id=global_id,
+                file_paths=file_args,
+                db_name=alias,
+                read_only=True,
+                enable_schema_caching=False,
+                enable_query_caching=False,
+            )
+        except Exception as e:
+            return CommandResult(output=Text.from_markup(f"[red]Failed to load files:[/red] {e}"))
 
         session.registry.register(alias, connector)
         info = session.chat_agent.database_info(connector)
         session.chat_agent.add_database([(alias, connector)])
-        console.print(f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})")
-        return False
+        return CommandResult(
+            output=Text.from_markup(
+                f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})"
+            )
+        )
 
     # --- URL / database-file connections ---
     raw = args[0]
@@ -151,93 +276,104 @@ async def _cmd_connect(args: list[str], session: ChatSession, console: Console) 
     alias = args[1] if len(args) > 1 else _alias_from_url(url)
 
     if session.registry.has(alias):
-        console.print(
-            f"[red]Alias already in use:[/red] {alias}. "
-            "Disconnect first or provide a different alias: /connect <url> <alias>"
+        return CommandResult(
+            output=Text.from_markup(
+                f"[red]Alias already in use:[/red] {alias}. "
+                "Disconnect first or provide a different alias: /connect <url> <alias>"
+            )
         )
-        return False
 
-    url = await _prompt_password_if_needed(url, console)
+    # Check if password prompt is needed
+    if _url_needs_password(url):
+        return CommandResult(password_prompt=f"connect:{url}:{alias}")
 
+    return await _execute_connect(url, alias, session)
+
+
+async def execute_connect_with_password(url: str, alias: str, password: str, session: SessionState) -> CommandResult:
+    """Complete a connection that required a password prompt."""
+    parsed = urlparse(url)
+    replaced = parsed._replace(
+        netloc=f"{parsed.username}:{password}@{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")
+    )
+    url = urlunparse(replaced)
+    return await _execute_connect(url, alias, session)
+
+
+async def _execute_connect(url: str, alias: str, session: SessionState) -> CommandResult:
+    """Execute the actual database connection."""
     global_id = f"cli+{alias}"
+
     if _is_neo4j_bolt_url(url):
         from mintq.db_connector.neo4j_conn import Neo4jConnector
 
         driver_url, neo4j_database = _neo4j_driver_url_and_database(url)
-        with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
-            try:
-                neo_connector = await Neo4jConnector.from_url_async(
-                    global_id=global_id,
-                    url=driver_url,
-                    database=neo4j_database,
-                    db_name=alias,
-                    read_only=True,
-                    auth=("neo4j", "cypherbench"),
-                    enable_schema_caching=True,
-                )
-            except Exception as e:
-                console.print(f"[red]Connection failed:[/red] {e}")
-                return False
+        try:
+            neo_connector = await Neo4jConnector.from_url_async(
+                global_id=global_id,
+                url=driver_url,
+                database=neo4j_database,
+                db_name=alias,
+                read_only=True,
+                auth=("neo4j", "cypherbench"),
+                enable_schema_caching=True,
+            )
+        except Exception as e:
+            return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
         session.registry.register(alias, neo_connector)
         info = session.chat_agent.database_info(neo_connector)
         session.chat_agent.add_database([(alias, neo_connector)])
-        console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
-        return False
+        return CommandResult(
+            output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
+        )
 
     try:
         engine_kwargs = _engine_kwargs_for_url(url)
     except ValueError as e:
-        console.print(f"[red]Connection failed:[/red] {e}")
-        return False
+        return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
     from mintq.db_connector.sql_conn import SQLConnector
 
-    with console.status(f"[dim]Connecting to {alias}...[/dim]", spinner_style=ACCENT):
-        try:
-            connector = await SQLConnector.from_url_async(
-                global_id=global_id,
-                url=url,
-                db_name=alias,
-                read_only=True,
-                enable_schema_caching=True,
-                enable_query_caching=False,
-                **engine_kwargs,
-            )
-        except Exception as e:
-            console.print(f"[red]Connection failed:[/red] {e}")
-            return False
+    try:
+        connector = await SQLConnector.from_url_async(
+            global_id=global_id,
+            url=url,
+            db_name=alias,
+            read_only=True,
+            enable_schema_caching=True,
+            enable_query_caching=False,
+            **engine_kwargs,
+        )
+    except Exception as e:
+        return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
     session.registry.register(alias, connector)
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
-    console.print(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
-    return False
+    return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})"))
 
 
-async def _cmd_disconnect(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResult:
     aliases = session.registry.list_aliases()
     if not args:
         if len(aliases) == 1:
             alias = aliases[0]
         else:
-            console.print("[red]Usage:[/red] /disconnect <alias>")
-            return False
+            return CommandResult(output=Text.from_markup("[red]Usage:[/red] /disconnect <alias>"))
     else:
         alias = args[0]
 
     if await session.registry.unregister_async(alias):
-        console.print(f"[{ACCENT}]✓[/{ACCENT}] Disconnected from [bold]{alias}[/bold]")
+        return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Disconnected from [bold]{alias}[/bold]"))
     else:
-        console.print(f"[red]No connection named:[/red] {alias}")
-    return False
+        return CommandResult(output=Text.from_markup(f"[red]No connection named:[/red] {alias}"))
 
 
-async def _cmd_databases(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_databases(args: list[str], session: SessionState) -> CommandResult:
     aliases = session.registry.list_aliases()
     if not aliases:
-        console.print("[dim]No databases connected. Use /connect <url> to add one.[/dim]")
-        return False
+        return CommandResult(output=Text("No databases connected. Use /connect <url> to add one.", style="dim"))
 
     from mintq.db_connector import Neo4jConnector
 
@@ -257,217 +393,115 @@ async def _cmd_databases(args: list[str], session: ChatSession, console: Console
             summary = "?"
         table.add_row(alias, summary)
 
-    console.print(table)
-    return False
+    return CommandResult(output=table)
 
 
-def _resolve_alias(args: list[str], session: ChatSession) -> tuple[str | None, list[str]]:
-    """Resolve the database alias from command args.
-
-    If the first arg matches a registered alias, consume it. If there is
-    exactly one connected database, use it implicitly. Returns
-    ``(alias, remaining_args)`` or ``(None, args)`` on ambiguity.
-    """
-    if args and session.registry.has(args[0]):
-        return args[0], args[1:]
-    aliases = session.registry.list_aliases()
-    if len(aliases) == 1:
-        return aliases[0], args
-    return None, args
-
-
-async def _cmd_schema(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
     from mintq.cli.display import (
-        render_schema_overview,
-        render_table_detail,
-        render_column_detail,
-        resolve_table,
-        resolve_column,
-        _is_multi_schema,
         _display_name,
-        render_property_graph_overview,
-        render_graph_node_detail,
-        render_graph_reltype_detail,
+        _is_multi_schema,
+        build_column_detail,
+        build_graph_node_detail,
+        build_graph_reltype_detail,
+        build_property_graph_overview,
+        build_schema_overview,
+        build_table_detail,
+        resolve_column,
         resolve_graph_node_label,
         resolve_graph_rel_patterns,
+        resolve_table,
     )
     from mintq.db_connector import Neo4jConnector
 
     aliases = session.registry.list_aliases()
     if not aliases:
-        console.print("[red]No database connected.[/red] Use /connect first.")
-        return False
+        return CommandResult(output=Text.from_markup("[red]No database connected.[/red] Use /connect first."))
 
     alias, rest = _resolve_alias(args, session)
     if alias is None:
         if not args:
-            console.print("[dim]Multiple databases connected. Specify alias: /schema <alias> [table] [column][/dim]")
-            console.print(f"[dim]Available: {', '.join(aliases)}[/dim]")
+            return CommandResult(
+                output=Text.from_markup(
+                    "[dim]Multiple databases connected. Specify alias: /schema <alias> [table] [column][/dim]\n"
+                    f"[dim]Available: {', '.join(aliases)}[/dim]"
+                )
+            )
         else:
-            console.print(f"[red]Unknown alias or table:[/red] {args[0]}. Available databases: {', '.join(aliases)}")
-        return False
+            return CommandResult(
+                output=Text.from_markup(
+                    f"[red]Unknown alias or table:[/red] {args[0]}. Available databases: {', '.join(aliases)}"
+                )
+            )
 
     conn = session.registry.get(alias)
     schema = conn.schema
     if schema is None:
-        console.print("[dim]Schema not available.[/dim]")
-        return False
+        return CommandResult(output=Text("Schema not available.", style="dim"))
 
     if isinstance(conn, Neo4jConnector):
         graph_schema = conn.schema
         if not rest:
-            render_property_graph_overview(console, graph_schema, alias)
-            return False
+            return CommandResult(output=build_property_graph_overview(graph_schema, alias))
         node = resolve_graph_node_label(graph_schema, rest[0])
         if node is not None:
-            render_graph_node_detail(console, node)
-            return False
+            return CommandResult(output=build_graph_node_detail(node))
         rel_patterns = resolve_graph_rel_patterns(graph_schema, rest[0])
         if rel_patterns:
-            render_graph_reltype_detail(console, rest[0], rel_patterns)
-            return False
-        console.print(f"[red]Unknown label or relationship type:[/red] {rest[0]}")
-        return False
+            return CommandResult(output=build_graph_reltype_detail(rest[0], rel_patterns))
+        return CommandResult(output=Text.from_markup(f"[red]Unknown label or relationship type:[/red] {rest[0]}"))
 
     sql_schema = cast("SQLSchema", schema)
     multi = _is_multi_schema(sql_schema)
 
     if not rest:
-        render_schema_overview(console, sql_schema, alias)
-        return False
+        return CommandResult(output=build_schema_overview(sql_schema, alias))
 
     result = resolve_table(sql_schema, rest[0])
     if result is None:
-        console.print(f"[red]Table not found:[/red] {rest[0]}")
-        return False
+        return CommandResult(output=Text.from_markup(f"[red]Table not found:[/red] {rest[0]}"))
     if isinstance(result, list):
-        console.print(f"[red]Ambiguous table name:[/red] {rest[0]}. Matches:")
+        lines = [f"[red]Ambiguous table name:[/red] {rest[0]}. Matches:"]
         for t in result:
-            console.print(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
-        console.print("[dim]Use the qualified name: /schema [alias] <schema>.<table>[/dim]")
-        return False
+            lines.append(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
+        lines.append("[dim]Use the qualified name: /schema [alias] <schema>.<table>[/dim]")
+        return CommandResult(output=Text.from_markup("\n".join(lines)))
 
     tbl = result
 
     if len(rest) < 2:
-        render_table_detail(console, tbl, multi_schema=multi)
-        return False
+        return CommandResult(output=build_table_detail(tbl, multi_schema=multi))
 
     col = resolve_column(tbl, rest[1])
     if col is None:
-        console.print(f"[red]Column not found:[/red] {rest[1]} in {_display_name(tbl, multi)}")
-        return False
+        return CommandResult(
+            output=Text.from_markup(f"[red]Column not found:[/red] {rest[1]} in {_display_name(tbl, multi)}")
+        )
 
-    render_column_detail(console, tbl, col)
-    return False
+    return CommandResult(output=build_column_detail(tbl, col))
 
 
-async def _cmd_model(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
     if not args:
-        console.print(f"[dim]Current model:[/dim] {session.model}")
-        return False
+        return CommandResult(output=Text.from_markup(f"[dim]Current model:[/dim] {session.model}"))
     session.set_model(args[0])
-    console.print(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]")
-    return False
+    return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]"))
 
 
-async def _cmd_agent(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_agent(args: list[str], session: SessionState) -> CommandResult:
     if not args:
-        console.print(f"[dim]Current agent:[/dim] {session.agent_name}")
-        return False
+        return CommandResult(output=Text.from_markup(f"[dim]Current agent:[/dim] {session.agent_name}"))
     session.agent_name = args[0]
-    console.print(f"[{ACCENT}]✓[/{ACCENT}] Agent set to [bold]{session.agent_name}[/bold]")
-    return False
+    return CommandResult(
+        output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Agent set to [bold]{session.agent_name}[/bold]")
+    )
 
 
-_ASYNC_DRIVER_UPGRADES: dict[str, str] = {
-    "sqlite": "sqlite+aiosqlite",
-    "postgresql": "postgresql+asyncpg",
-    "postgres": "postgresql+asyncpg",
-    "mysql": "mysql+asyncmy",
-}
-
-
-def _is_neo4j_bolt_url(url: str) -> bool:
-    """True if *url* uses a Neo4j Python driver scheme (Bolt / routing)."""
-    if "://" not in url:
-        return False
-    scheme = url.split("://", 1)[0].lower()
-    return scheme == "neo4j" or scheme.startswith("neo4j+") or scheme == "bolt" or scheme.startswith("bolt+")
-
-
-def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
-    """Strip ``database`` / ``db`` query params for the driver URI; return Neo4j database name."""
-    parsed = urlparse(url)
-    pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    database: str | None = None
-    kept: list[tuple[str, str]] = []
-    for k, v in pairs:
-        if k.lower() in ("database", "db"):
-            if database is None and v:
-                database = v
-            continue
-        kept.append((k, v))
-    new_query = urlencode(kept) if kept else ""
-    return urlunparse(parsed._replace(query=new_query)), database
-
-
-def _normalize_url(raw: str) -> str:
-    """Expand a bare file path into a SQLAlchemy URL, or return as-is."""
-    for ext, scheme in _FILE_EXTENSIONS.items():
-        if raw.endswith(ext):
-            abspath = os.path.abspath(raw)
-            return f"{scheme}:///{abspath}"
-
-    if "://" in raw:
-        scheme, rest = raw.split("://", 1)
-        if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
-            return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
-
-    return raw
-
-
-async def _prompt_password_if_needed(url: str, console: Console) -> str:
-    """If URL has a username but no password, prompt interactively."""
-    parsed = urlparse(url)
-    if parsed.username and not parsed.password and parsed.hostname:
-        from prompt_toolkit import PromptSession as _PromptSession
-
-        console.print(f"[dim]Authenticating as[/dim] [bold]{parsed.username}[/bold]")
-        _ps: _PromptSession[str] = _PromptSession()
-        password = await _ps.prompt_async(
-            "  Password: ",
-            is_password=True,
-        )
-        replaced = parsed._replace(
-            netloc=f"{parsed.username}:{password}@{parsed.hostname}" + (f":{parsed.port}" if parsed.port else "")
-        )
-        return urlunparse(replaced)
-    return url
-
-
-def _alias_from_url(url: str) -> str:
-    """Derive a short alias from a database URL."""
-    if ":///" in url:
-        path = url.split("///", 1)[-1]
-        return os.path.splitext(os.path.basename(path))[0]
-    parsed = urlparse(url)
-    if parsed.path and parsed.path.strip("/"):
-        return parsed.path.strip("/").rsplit("/", 1)[-1]
-    if parsed.hostname:
-        return parsed.hostname
-    return url
-
-
-async def _cmd_view(args: list[str], session: ChatSession, console: Console) -> bool:
+async def _cmd_view(args: list[str], session: SessionState) -> CommandResult:
     if session.last_result is None:
-        console.print("[dim]No result to display. Ask a question first.[/dim]")
-        return False
-
-    from mintq.cli.display import view_result
-
-    await view_result(console, session.last_result)
-    return False
+        return CommandResult(output=Text("No result to display. Ask a question first.", style="dim"))
+    # In the TUI, the result is already displayed in an AgentResultWidget.
+    # This command is kept for compatibility but is a no-op in the TUI.
+    return CommandResult(output=Text("Use arrow keys on a result widget to switch tabs.", style="dim"))
 
 
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
@@ -481,7 +515,7 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/schema": (_cmd_schema, "Show schema: /schema [alias] [table] [column]"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
     "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
-    "/view": (_cmd_view, "View last result (Tab/Shift+Tab to cycle views)"),
+    "/view": (_cmd_view, "View last result (use arrow keys on result widget)"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}

@@ -28,9 +28,9 @@ def chat(
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
 
-    from mintq.cli.chat import run_chat
+    from mintq.cli.tui import run_tui
 
-    asyncio.run(run_chat(model=model, agent=agent))
+    asyncio.run(run_tui(model=model, agent=agent))
 
 
 def main() -> None:

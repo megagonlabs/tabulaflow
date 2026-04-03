@@ -7,9 +7,7 @@ import json
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING
-
-from rich.console import Console
+from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -72,6 +70,28 @@ Visualization:
 """.strip()
 
 
+# ---------------------------------------------------------------------------
+# Progress sink protocol
+# ---------------------------------------------------------------------------
+
+
+@runtime_checkable
+class ProgressSink(Protocol):
+    """Interface for displaying agent execution progress."""
+
+    def start(self) -> None: ...
+    def finish(self) -> None: ...
+    def tool_start(self, name: str, args_summary: str) -> None: ...
+    def tool_end(self, name: str, result_summary: str) -> None: ...
+    def text_delta(self, delta: str) -> None: ...
+    def set_status(self, text: str) -> None: ...
+
+
+# ---------------------------------------------------------------------------
+# Data classes
+# ---------------------------------------------------------------------------
+
+
 @dataclass
 class ChatResultRecord:
     """Display-ready data for one referenced query record."""
@@ -94,7 +114,6 @@ class ChatResult:
 
     @property
     def primary_record(self) -> ChatResultRecord | None:
-        """Return the selected default record."""
         if not self.records:
             return None
         if self.primary_record_index is None:
@@ -117,13 +136,9 @@ class Toolset:
 
 @dataclass
 class ChatAgent:
-    """Streaming agent for interactive database chat.
-
-    Uses registry-based tools so the agent targets databases by alias.
-    """
+    """Streaming agent for interactive database chat."""
 
     registry: DBRegistry
-    console_width: int
     model: str
     _message_history: list[ModelMessage] = field(default_factory=list)
     _system_prompt: str = SYSTEM_PROMPT
@@ -160,8 +175,8 @@ class ChatAgent:
         self._build_agent()
 
     @staticmethod
-    def database_info(connector: "NL2QDBConnector") -> str:
-        """Build a concise database summary string for agent/user display."""
+    def database_info(connector: NL2QDBConnector) -> str:
+        """Build a concise database summary string."""
         from mintq.db_connector import Neo4jConnector
 
         if isinstance(connector, Neo4jConnector):
@@ -173,7 +188,7 @@ class ChatAgent:
         dialect = connector.language or "unknown"
         return f"{dialect}, {n_tables} tables"
 
-    def add_database(self, databases: list[tuple[str, "NL2QDBConnector"]]) -> None:
+    def add_database(self, databases: list[tuple[str, NL2QDBConnector]]) -> None:
         """Append a synthetic user message about newly registered databases."""
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
@@ -186,7 +201,6 @@ class ChatAgent:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
-        """Build the pydantic-ai agent with current model and tools."""
         from pydantic_ai import Agent
 
         self._pydantic_ai_agent = Agent(
@@ -202,17 +216,10 @@ class ChatAgent:
             model_settings={"openai_service_tier": "priority"},
         )
 
-    async def run(
-        self,
-        question: str,
-        console: Console,
-    ) -> ChatResult:
-        """Run the agent on a user question, streaming progress to the console."""
+    async def run(self, question: str, progress: ProgressSink) -> ChatResult:
+        """Run the agent on a user question, streaming progress to the sink."""
         from pydantic_ai.run import AgentRunResultEvent
 
-        from mintq.cli.display import render_agent_progress
-
-        progress = render_agent_progress(console)
         progress.start()
 
         try:
@@ -233,27 +240,20 @@ class ChatAgent:
         finally:
             progress.finish()
 
-        return _build_chat_result(
-            answer_text,
-            self._query_history,
-        )
+        return _build_chat_result(answer_text, self._query_history)
 
 
 def _build_chat_result(
     answer_text: str,
     query_history: QueryHistory,
 ) -> ChatResult:
-    """Parse ``[[result:Q<id>[:label]]]`` markers from the answer and build a ChatResult."""
     display_text, refs = _extract_result_refs(answer_text)
-
     records = _records_from_refs(refs, query_history)
     primary_record_index: int | None = 0 if records else None
-
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
 
 
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    """Return cleaned text and ordered ``(record_id, label)`` references."""
     refs: list[tuple[str, str | None]] = []
     for match in _QUERY_REF_RE.finditer(answer_text):
         record_id = match.group(1)
@@ -268,7 +268,6 @@ def _records_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
 ) -> list[ChatResultRecord]:
-    """Resolve referenced IDs into display-ready records, preserving order."""
     records: list[ChatResultRecord] = []
     for record_id, label in refs:
         try:
@@ -283,7 +282,6 @@ def _chat_result_record_from_query_record(
     query_record: QueryRecord,
     label: str | None,
 ) -> ChatResultRecord:
-    """Convert query-history metadata into a UI record."""
     pred = query_record.pred_query
     return ChatResultRecord(
         record_id=query_record.record_id,
@@ -296,17 +294,16 @@ def _chat_result_record_from_query_record(
 
 
 # ---------------------------------------------------------------------------
-# Stream event handlers for progress display
+# Stream event handlers
 # ---------------------------------------------------------------------------
 
 
 def _handle_stream_event(
     event: object,
-    progress: AgentProgressDisplay,
+    progress: ProgressSink,
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
 ) -> None:
-    """Dispatch a single stream event to the progress display."""
     from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
 
     if isinstance(event, FunctionToolCallEvent):
@@ -397,84 +394,3 @@ def _summarize_result(
         if n is not None:
             return f"{n} columns"
     return "done"
-
-
-class AgentProgressDisplay:
-    """Tracks and renders agent execution progress via Rich Live."""
-
-    def __init__(self, console: Console) -> None:
-        from rich.live import Live
-
-        self._console = console
-        self._steps: list[tuple[str, str, str]] = []
-        self._streaming_text = ""
-        self._status_text: str | None = "Thinking..."
-        self._live = Live(console=console, refresh_per_second=12)
-
-    def start(self) -> None:
-        self._live.start()
-        self._update()
-
-    def set_status(self, text: str) -> None:
-        self._status_text = text
-        self._update()
-
-    def finish(self) -> None:
-        self._streaming_text = ""
-        self._update()
-        self._live.stop()
-
-    def tool_start(self, name: str, args_summary: str) -> None:
-        if self._status_text and self._status_text != "Thinking...":
-            self._steps.append(("done", "__status__", self._status_text))
-        label = f"{name}({args_summary})" if args_summary else name
-        self._steps.append(("running", name, label))
-        self._streaming_text = ""
-        self._status_text = None
-        self._update()
-
-    def tool_end(self, name: str, result_summary: str) -> None:
-        for i in range(len(self._steps) - 1, -1, -1):
-            if self._steps[i][1] == name and self._steps[i][0] == "running":
-                label = self._steps[i][2]
-                self._steps[i] = ("done", name, f"{label} → {result_summary}")
-                break
-        self._status_text = "Thinking..."
-        self._update()
-
-    def text_delta(self, delta: str) -> None:
-        self._streaming_text += delta
-        self._status_text = None
-        self._update()
-
-    def _update(self) -> None:
-        from rich.console import Group
-        from rich.spinner import Spinner
-        from rich.text import Text
-
-        parts: list[object] = []
-
-        from mintq.cli.theme import ACCENT
-
-        has_running = False
-        for status, _name, label in self._steps:
-            if status == "running":
-                has_running = True
-                parts.append(Spinner("dots", text=Text(label, style="dim"), style="dim"))
-            else:
-                line = Text()
-                line.append("→ ", style="dim")
-                line.append(label, style="dim")
-                parts.append(line)
-
-        if self._status_text and not has_running:
-            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style=ACCENT))
-
-        if self._streaming_text:
-            display = self._streaming_text
-            if len(display) > 500:
-                display = "..." + display[-497:]
-            parts.append(Text())
-            parts.append(Text(display, style="dim"))
-
-        self._live.update(Group(*parts) if parts else Text())  # type: ignore[arg-type]

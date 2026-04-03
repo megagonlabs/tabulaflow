@@ -69,7 +69,10 @@ class RegistryGetSchemaTool:
         if len(text) <= self.max_chars:
             return text
         self._metrics.truncated += 1
-        return text[: self.max_chars] + "\n\n(schema truncated — for SQL databases, use get_table_schema to inspect individual tables)"
+        return (
+            text[: self.max_chars]
+            + "\n\n(schema truncated — for SQL databases, use get_table_schema to inspect individual tables)"
+        )
 
     async def _with_refresh(self, db_alias: str, refresh: bool = False) -> str:
         """Get the full schema of a registered database.

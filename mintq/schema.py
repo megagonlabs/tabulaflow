@@ -203,6 +203,7 @@ def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
     df = _coerce_for_arrow(df)
     buffer = io.BytesIO()
     import pyarrow.feather as feather
+
     feather.write_feather(df, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
@@ -220,6 +221,7 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
         raw = base64.b64decode(v["feather_base64"])
         buffer = io.BytesIO(raw)
         import pyarrow.feather as feather
+
         df = feather.read_feather(buffer)
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
