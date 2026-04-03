@@ -38,7 +38,7 @@ class RegistryGetDBDocumentTool:
         *,
         db_summarizer_llm: str = "openai-responses:gpt-5.4",
         summary_max_words: int = 2000,
-        min_items_for_summary: int = 0,
+        min_items_for_summary: int = 5,
         enable_refresh: bool = False,
     ) -> None:
         """Initialize the tool.
