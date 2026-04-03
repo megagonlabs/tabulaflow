@@ -18,7 +18,7 @@ The purpose of the summary is to help database experts explore the database and 
 
 <requirements>
 - The summary should be in markdown format.
-- The summary should be around 800 - 4000 words, depending on database complexity.
+- The summary should be up to {{ max_summary_words }} words. Use fewer words for simple databases and more words only when complexity justifies it.
 - The title should be in the format "Database: `<database_name>`".
 - Your output should contain only the summary without further suggestions or explanations. Do not append "end of summary" at the end.
 - Keep the content clear, precise, and concise.
@@ -60,12 +60,14 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         llm: str = "openai-responses:gpt-5.4",
         compress_schema: bool = True,
         openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
+        max_summary_words: int = 4000,
     ) -> None:
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
         self.sql_formatter = SQLDDLSchemaFormatter(max_total_columns=200)
         self.graph_formatter = CypherSchemaFormatter()
         self.openai_reasoning_effort = openai_reasoning_effort
+        self.max_summary_words = max_summary_words
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -75,7 +77,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         return "_" + self.llm.replace(":", "--")
 
     async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> DBSummary:
-        system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render()
+        system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)
 
         if db_connector.connector_type == "sql":
             schema = db_connector.schema
