@@ -181,7 +181,6 @@ async def run_chat(model: str, agent: str) -> None:
                 continue
 
             session.last_result = result
-            console.print()
             await view_result(console, result)
     finally:
         if session is not None:
