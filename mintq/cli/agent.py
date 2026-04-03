@@ -100,7 +100,6 @@ class ChatAgent:
     registry: DBRegistry
     console_width: int
     model: str
-    max_steps: int = 20
     _message_history: list[ModelMessage] = field(default_factory=list)
     _system_prompt: str = SYSTEM_PROMPT
     _pydantic_ai_agent: Agent[None, str] | None = None
