@@ -199,7 +199,7 @@ class ChatAgent:
                 self._tools.render_chart.as_pydantic_ai_tool(),
             ],
             instructions=self._system_prompt,
-            model_settings={},
+            model_settings={"openai_service_tier": "priority"},
         )
 
     async def run(
