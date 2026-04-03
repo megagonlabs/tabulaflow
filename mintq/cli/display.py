@@ -436,22 +436,27 @@ async def view_result(console: Console, result: object) -> None:
     if result.text:
         views["response"] = _capture_rich(console, render_nl, result.text)
 
+    use_labels = len(result.records) > 1
     used_labels: set[str] = set()
     for record in result.records:
         base_label = record.label or record.record_id
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
+        chart_key = f"chart[{label}]" if use_labels else "chart"
+        data_key = f"data[{label}]" if use_labels else "data"
+        query_key = f"query[{label}]" if use_labels else "query"
+
         if record.chart_spec is not None and record.df is not None:
-            key = f"chart[{label}]"
+            key = chart_key
             views[key] = _capture_rich(console, render_chart, record.df, record.chart_spec)
             chart_keys.append(key)
         if record.df is not None and not record.df.empty:
-            key = f"data[{label}]"
+            key = data_key
             views[key] = _capture_rich(console, render_table, record.df)
             data_keys.append(key)
         if record.query:
-            key = f"query[{label}]"
+            key = query_key
             views[key] = _capture_rich(
                 console,
                 render_query,
