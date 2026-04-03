@@ -155,6 +155,9 @@ async def run_chat(model: str, agent: str) -> None:
             if not text:
                 continue
 
+            # Keep a visual gap between the user's prompt line and subsequent output.
+            console.print()
+
             if text.startswith(COMMAND_PREFIX):
                 if command_handler is None:
                     from mintq.cli.commands import handle_command as imported_handle_command
