@@ -10,7 +10,6 @@ from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.schema import Usage
-from mintq.toolhub.run_query import RunQueryTool
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
@@ -77,6 +76,8 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         return "_" + self.llm.replace(":", "--")
 
     async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> DBSummary:
+        from mintq.toolhub.run_query import RunQueryTool
+
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)
 
         if db_connector.connector_type == "sql":
