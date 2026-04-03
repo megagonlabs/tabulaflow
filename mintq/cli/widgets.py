@@ -8,7 +8,6 @@ from rich.console import Group
 from rich.spinner import Spinner
 from rich.text import Text
 from textual.containers import Horizontal
-from textual.message import Message
 from textual.reactive import reactive
 from textual.widget import Widget
 from textual.widgets import Static
@@ -190,17 +189,16 @@ class AgentResultWidget(Widget):
     }
     """
 
-    current_tab: reactive[int] = reactive(0)
-
-    class TabChanged(Message):
-        """Sent when the active tab changes."""
+    current_tab: reactive[int] = reactive(0, init=False)
 
     def __init__(self, result: ChatResult, width: int = 80) -> None:
         super().__init__()
         from mintq.cli.display import build_result_views
 
         self._ordered_keys, self._views = build_result_views(result, width)
-        self._content = Static()
+        self._content = Static(id="result-content")
+        self._tab_labels: list[Static] = []
+        self._mounted = False
 
     @property
     def has_tabs(self) -> bool:
@@ -208,32 +206,35 @@ class AgentResultWidget(Widget):
 
     def compose(self) -> object:
         if self.has_tabs:
-            yield self._build_tab_bar()
+            self._tab_labels = []
+            labels: list[Static] = []
+            for i, key in enumerate(self._ordered_keys):
+                cls = "tab-active" if i == 0 else "tab-inactive"
+                label_widget = Static(f" {key} ", classes=cls)
+                label_widget._tab_index = i  # type: ignore[attr-defined]
+                self._tab_labels.append(label_widget)
+                labels.append(label_widget)
+
+            hint = Static(" ←/→ switch ", classes="tab-inactive")
+            labels.append(hint)
+            yield Horizontal(*labels, classes="tab-bar")
+
         yield self._content
 
     def on_mount(self) -> None:
+        self._mounted = True
         self._update_content()
 
     def watch_current_tab(self) -> None:
+        if not self._mounted:
+            return
         self._update_content()
-        if self.has_tabs:
-            tab_bar = self.query_one(".tab-bar", Horizontal)
-            tab_bar.remove()
-            self.mount(self._build_tab_bar(), before=self._content)
+        self._update_tab_styles()
 
-    def _build_tab_bar(self) -> Horizontal:
-        labels: list[Static] = []
-        for i, key in enumerate(self._ordered_keys):
-            cls = "tab-active" if i == self.current_tab else "tab-inactive"
-            label_widget = Static(f" {key} ", classes=cls)
-            label_widget._tab_index = i  # type: ignore[attr-defined]
-            labels.append(label_widget)
-
-        hint = Static(" ←/→ switch ", classes="tab-inactive")
-        labels.append(hint)
-
-        bar = Horizontal(*labels, classes="tab-bar")
-        return bar
+    def _update_tab_styles(self) -> None:
+        for i, label in enumerate(self._tab_labels):
+            label.remove_class("tab-active", "tab-inactive")
+            label.add_class("tab-active" if i == self.current_tab else "tab-inactive")
 
     def _update_content(self) -> None:
         if not self._ordered_keys:
@@ -249,7 +250,6 @@ class AgentResultWidget(Widget):
         from textual.events import Click
 
         assert isinstance(event, Click)
-        # Walk up from the click target to find a tab label
         widget = self.app.get_widget_at(event.screen_x, event.screen_y)[0]
         if hasattr(widget, "_tab_index"):
             self.current_tab = widget._tab_index  # type: ignore[attr-defined]

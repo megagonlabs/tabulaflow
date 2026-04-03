@@ -36,7 +36,7 @@ class MintqApp(App[None]):
         self._model = model
         self._agent = agent
         self._session: SessionState | None = None
-        self._running = False
+        self._agent_busy = False
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
@@ -95,7 +95,7 @@ class MintqApp(App[None]):
 
         event.input.clear()
 
-        if self._running:
+        if self._agent_busy:
             return
 
         chat_log = self.query_one("#chat-log", VerticalScroll)
@@ -116,7 +116,7 @@ class MintqApp(App[None]):
         chat_log.mount(UserMessage(text))
         chat_log.scroll_end(animate=False)
 
-        self._running = True
+        self._agent_busy = True
         self.run_worker(self._run_agent(text, session, chat_log), exclusive=True)
 
     async def _handle_slash_command(
@@ -170,7 +170,7 @@ class MintqApp(App[None]):
             chat_log.scroll_end(animate=False)
             return
         finally:
-            self._running = False
+            self._agent_busy = False
 
         await progress.remove()
 
