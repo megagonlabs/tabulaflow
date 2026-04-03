@@ -169,6 +169,11 @@ class AgentResultWidget(Widget):
     AgentResultWidget {
         padding: 0 1;
         height: auto;
+        border-left: blank;
+    }
+
+    AgentResultWidget:focus-within {
+        border-left: thick $accent;
     }
 
     AgentResultWidget .tab-bar {
@@ -269,4 +274,36 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
+        ("up", "focus_prev_result", "Previous result"),
+        ("down", "focus_next_result", "Next result"),
+        ("k", "focus_prev_result", "Previous result"),
+        ("j", "focus_next_result", "Next result"),
+        ("escape", "focus_input", "Back to input"),
+        ("i", "focus_input", "Back to input"),
     ]
+
+    def action_focus_prev_result(self) -> None:
+        """Focus the previous AgentResultWidget."""
+        results = list(self.app.query(AgentResultWidget))
+        try:
+            idx = results.index(self)
+        except ValueError:
+            return
+        if idx > 0:
+            results[idx - 1].focus()
+            results[idx - 1].scroll_visible()
+
+    def action_focus_next_result(self) -> None:
+        """Focus the next AgentResultWidget."""
+        results = list(self.app.query(AgentResultWidget))
+        try:
+            idx = results.index(self)
+        except ValueError:
+            return
+        if idx < len(results) - 1:
+            results[idx + 1].focus()
+            results[idx + 1].scroll_visible()
+
+    def action_focus_input(self) -> None:
+        """Return focus to the input bar."""
+        self.app.query_one("#input-bar").focus()

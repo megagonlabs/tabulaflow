@@ -29,6 +29,7 @@ class MintqApp(App[None]):
 
     BINDINGS = [
         ("ctrl+c", "quit", "Quit"),
+        ("escape", "toggle_focus", "Toggle focus"),
     ]
 
     def __init__(self, *, model: str, agent: str) -> None:
@@ -82,6 +83,18 @@ class MintqApp(App[None]):
 
         os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
         os.environ.setdefault("GLOG_minloglevel", "3")
+
+    def action_toggle_focus(self) -> None:
+        """Toggle focus between input bar and result widgets."""
+        inp = self.query_one("#input-bar", Input)
+        if inp.has_focus:
+            # Jump to the last result widget
+            results = self.query(AgentResultWidget)
+            if results:
+                results.last().focus()
+                results.last().scroll_visible()
+        else:
+            inp.focus()
 
     def _ensure_session(self) -> SessionState:
         if self._session is None:
