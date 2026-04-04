@@ -41,11 +41,13 @@ class MintqApp(App[None]):
     ]
 
     def __init__(self, *, model: str, agent: str) -> None:
+        import asyncio
+
         super().__init__()
         self._model = model
         self._agent = agent
         self._session: SessionState | None = None
-        self._session_initializing = False
+        self._session_lock = asyncio.Lock()
         self._agent_busy = False
 
     def compose(self) -> ComposeResult:
@@ -61,6 +63,7 @@ class MintqApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
         chat_log.mount(BannerWidget(model=self._model))
         self.query_one("#input-bar", Input).focus()
+        self.run_worker(self._ensure_session())
 
     def _setup_logging(self) -> None:
         from logging.handlers import RotatingFileHandler
@@ -115,11 +118,14 @@ class MintqApp(App[None]):
             return self._session
         import asyncio
 
-        loop = asyncio.get_running_loop()
-        self._session = await loop.run_in_executor(
-            None, SessionState, self._model, self._agent
-        )
-        return self._session
+        async with self._session_lock:
+            if self._session is not None:
+                return self._session
+            loop = asyncio.get_running_loop()
+            self._session = await loop.run_in_executor(
+                None, SessionState, self._model, self._agent
+            )
+            return self._session
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         text = event.value.strip()

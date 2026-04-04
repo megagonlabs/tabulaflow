@@ -281,7 +281,7 @@ class AgentResultWidget(Widget):
     }
 
     AgentResultWidget:focus-within {
-        border-left: thick $accent;
+        border-left: thick #3EB489;
     }
 
     AgentResultWidget .tab-bar {
@@ -289,9 +289,13 @@ class AgentResultWidget(Widget):
         margin: 0 0 1 0;
     }
 
+    AgentResultWidget .tab-bar Static {
+        width: auto;
+    }
+
     AgentResultWidget .tab-active {
-        background: $accent;
-        color: $text;
+        background: #3EB489;
+        color: #000000;
         text-style: bold;
         padding: 0 1;
     }
