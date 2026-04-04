@@ -17,6 +17,7 @@ from mintq.cli.widgets import (
     AgentResultWidget,
     BannerWidget,
     HistoryInput,
+    SpinnerWidget,
     SystemMessage,
     UserMessage,
 )
@@ -135,8 +136,7 @@ class MintqApp(App[None]):
         if text.startswith(COMMAND_PREFIX):
             chat_log.mount(UserMessage(text))
             chat_log.scroll_end(animate=False)
-            session = await self._ensure_session()
-            await self._handle_slash_command(text, session, chat_log)
+            self.run_worker(self._handle_slash_command(text, chat_log))
             return
 
         session = await self._ensure_session()
@@ -157,17 +157,43 @@ class MintqApp(App[None]):
     async def _handle_slash_command(
         self,
         text: str,
+        chat_log: VerticalScroll,
+    ) -> None:
+        parts = text.split()
+        cmd = parts[0].lower() if parts else ""
+        slow = cmd in {"/connect", "/disconnect"}
+
+        spinner: SpinnerWidget | None = None
+        if slow:
+            label = "Connecting..." if cmd == "/connect" else "Disconnecting..."
+            spinner = SpinnerWidget(label)
+            chat_log.mount(spinner)
+            chat_log.scroll_end(animate=False)
+
+        try:
+            session = await self._ensure_session()
+            result = await handle_command(text, session)
+        finally:
+            if spinner is not None:
+                await spinner.remove()
+
+        self._show_command_result(result, session, chat_log)
+
+    def _show_command_result(
+        self,
+        result: object,
         session: SessionState,
         chat_log: VerticalScroll,
     ) -> None:
-        result = await handle_command(text, session)
+        from mintq.cli.commands import CommandResult
+
+        assert isinstance(result, CommandResult)
 
         if result.should_quit:
             self.exit()
             return
 
         if result.password_prompt:
-            # For now, show a message that password connections need env vars
             msg = SystemMessage(
                 "[dim]Password-protected connections: include the password in the URL "
                 "or set it via environment variables.[/dim]"
@@ -177,7 +203,7 @@ class MintqApp(App[None]):
             return
 
         if result.should_clear:
-            await chat_log.remove_children()
+            chat_log.remove_children()
             chat_log.mount(BannerWidget(model=session.model))
             return
 

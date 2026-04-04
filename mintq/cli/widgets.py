@@ -146,6 +146,27 @@ class SystemMessage(Static):
     """
 
 
+class SpinnerWidget(Widget):
+    """Simple animated spinner with a label."""
+
+    DEFAULT_CSS = """
+    SpinnerWidget {
+        padding: 0 1;
+        height: auto;
+    }
+    """
+
+    def __init__(self, label: str = "Loading...") -> None:
+        super().__init__()
+        self._spinner = Spinner("dots", text=Text(label, style="dim"), style=ACCENT)
+
+    def on_mount(self) -> None:
+        self.set_interval(1 / 12, self.refresh)
+
+    def render(self) -> RenderableType:
+        return self._spinner
+
+
 # ---------------------------------------------------------------------------
 # Agent progress widget (implements ProgressSink)
 # ---------------------------------------------------------------------------
