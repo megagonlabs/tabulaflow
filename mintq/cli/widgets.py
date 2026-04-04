@@ -290,7 +290,7 @@ class AgentResultWidget(Widget):
 
     AgentResultWidget .tab-bar {
         height: 1;
-        margin: 0 0 1 0;
+        margin: 1 0 0 0;
     }
 
     AgentResultWidget .tab-bar Static {
@@ -338,9 +338,11 @@ class AgentResultWidget(Widget):
 
             hint = Static(" ←/→ switch ", classes="tab-inactive")
             labels.append(hint)
-            yield Horizontal(*labels, classes="tab-bar")
+            self._tab_bar = Horizontal(*labels, classes="tab-bar")
 
         yield self._content
+        if self.has_tabs:
+            yield self._tab_bar
 
     def on_mount(self) -> None:
         self._mounted = True
