@@ -94,7 +94,7 @@ def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> Rende
     return syntax
 
 
-def build_table(df: pd.DataFrame, max_rows: int = 10) -> RenderableType:
+def build_table(df: pd.DataFrame, max_rows: int = 5) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
     table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True)
     for col in df.columns:
@@ -106,8 +106,7 @@ def build_table(df: pd.DataFrame, max_rows: int = 10) -> RenderableType:
         table.add_row(*(str(v) for v in row))
 
     if truncated:
-        table.add_row(*["[dim]...[/dim]"] * len(df.columns))
-        table.caption = f"[dim]{len(df)} rows total (truncated)[/dim]"
+        table.caption = f"[dim]showing {max_rows} of {len(df)} rows[/dim]"
 
     return table
 
