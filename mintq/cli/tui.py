@@ -133,6 +133,8 @@ class MintqApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
         if text.startswith(COMMAND_PREFIX):
+            chat_log.mount(UserMessage(text))
+            chat_log.scroll_end(animate=False)
             session = await self._ensure_session()
             await self._handle_slash_command(text, session, chat_log)
             return
@@ -140,6 +142,7 @@ class MintqApp(App[None]):
         session = await self._ensure_session()
 
         if not session.registry.list_aliases():
+            chat_log.mount(UserMessage(text))
             msg = SystemMessage("[red]No database connected.[/red] Use /connect first.")
             chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
