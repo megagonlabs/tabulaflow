@@ -216,11 +216,8 @@ class AgentProgressWidget(Widget):
             parts.append(self._status_spinner)
 
         if self._streaming_text:
-            display = self._streaming_text
-            if len(display) > 500:
-                display = "..." + display[-497:]
             parts.append(Text())
-            parts.append(Text(display, style="dim"))
+            parts.append(Text(self._streaming_text))
 
         return Group(*parts) if parts else Text()
 
@@ -230,7 +227,6 @@ class AgentProgressWidget(Widget):
         pass
 
     def finish(self) -> None:
-        self._streaming_text = ""
         self._status_text = None
         self._frozen = True
         if self._timer is not None:
@@ -259,7 +255,7 @@ class AgentProgressWidget(Widget):
     def text_delta(self, delta: str) -> None:
         self._streaming_text += delta
         self._status_text = None
-        self._refresh()
+        self._refresh(layout=True, scroll=True)
 
     def set_status(self, text: str) -> None:
         self._status_text = text

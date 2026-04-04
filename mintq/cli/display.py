@@ -134,9 +134,6 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
     data_keys: list[str] = []
     query_keys: list[str] = []
 
-    if result.text:
-        views["response"] = Text(result.text)
-
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()
     for record in result.records:
@@ -159,8 +156,6 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
             query_keys.append(query_key)
 
     ordered_keys: list[str] = []
-    if "response" in views:
-        ordered_keys.append("response")
     ordered_keys.extend(chart_keys)
     ordered_keys.extend(data_keys)
     ordered_keys.extend(query_keys)
