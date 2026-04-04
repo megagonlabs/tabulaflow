@@ -277,11 +277,6 @@ class AgentResultWidget(Widget):
     AgentResultWidget {
         padding: 0 1;
         height: auto;
-        border-left: blank;
-    }
-
-    AgentResultWidget:focus-within {
-        border-left: thick #3EB489;
     }
 
     AgentResultWidget .tab-bar {
