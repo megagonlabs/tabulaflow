@@ -7,10 +7,13 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.spinner import Spinner
 from rich.text import Text
+from pathlib import Path
+
+from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.widget import Widget
-from textual.widgets import Static
+from textual.widgets import Input, Static
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
@@ -18,6 +21,82 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from mintq.cli.agent import ChatResult
+
+
+# ---------------------------------------------------------------------------
+# Input with persistent history
+# ---------------------------------------------------------------------------
+
+_MAX_HISTORY_ENTRIES = 500
+
+
+class HistoryInput(Input):
+    """Input widget with file-backed command history (Up/Down arrows)."""
+
+    BINDINGS = [
+        Binding("up", "history_prev", "Previous command", priority=True),
+        Binding("down", "history_next", "Next command", priority=True),
+    ]
+
+    def __init__(self, history_path: Path, **kwargs: object) -> None:
+        super().__init__(**kwargs)  # type: ignore[arg-type]
+        self._history_path = history_path
+        self._history: list[str] = []
+        self._history_index: int = -1
+        self._saved_input: str = ""
+        self._load_history()
+
+    def _load_history(self) -> None:
+        if self._history_path.is_file():
+            lines = self._history_path.read_text(encoding="utf-8").splitlines()
+            self._history = lines[-_MAX_HISTORY_ENTRIES:]
+
+    def _save_history(self) -> None:
+        self._history_path.parent.mkdir(parents=True, exist_ok=True)
+        self._history_path.write_text(
+            "\n".join(self._history[-_MAX_HISTORY_ENTRIES:]) + "\n",
+            encoding="utf-8",
+        )
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        """Automatically add submitted text to history."""
+        self._add_to_history(event.value)
+
+    def _add_to_history(self, text: str) -> None:
+        """Append a command to history and persist."""
+        stripped = text.strip()
+        if not stripped:
+            return
+        if self._history and self._history[-1] == stripped:
+            return
+        self._history.append(stripped)
+        self._history_index = -1
+        self._saved_input = ""
+        self._save_history()
+
+    def action_history_prev(self) -> None:
+        if not self._history:
+            return
+        if self._history_index == -1:
+            self._saved_input = self.value
+            self._history_index = len(self._history) - 1
+        elif self._history_index > 0:
+            self._history_index -= 1
+        else:
+            return
+        self.value = self._history[self._history_index]
+        self.cursor_position = len(self.value)
+
+    def action_history_next(self) -> None:
+        if self._history_index == -1:
+            return
+        if self._history_index < len(self._history) - 1:
+            self._history_index += 1
+            self.value = self._history[self._history_index]
+        else:
+            self._history_index = -1
+            self.value = self._saved_input
+        self.cursor_position = len(self.value)
 
 
 # ---------------------------------------------------------------------------

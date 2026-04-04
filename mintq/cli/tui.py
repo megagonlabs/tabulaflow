@@ -12,7 +12,14 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
-from mintq.cli.widgets import AgentProgressWidget, AgentResultWidget, BannerWidget, SystemMessage, UserMessage
+from mintq.cli.widgets import (
+    AgentProgressWidget,
+    AgentResultWidget,
+    BannerWidget,
+    HistoryInput,
+    SystemMessage,
+    UserMessage,
+)
 
 if TYPE_CHECKING:
     from mintq.cli.agent import ChatResult
@@ -41,7 +48,11 @@ class MintqApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
-        yield Input(placeholder="Ask a question or type /help", id="input-bar")
+        yield HistoryInput(
+            history_path=DATA_DIR / "history",
+            placeholder="Ask a question or type /help",
+            id="input-bar",
+        )
 
     def on_mount(self) -> None:
         self._setup_logging()
