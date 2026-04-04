@@ -62,16 +62,6 @@ def build_banner(*, model: str) -> RenderableType:
     )
 
 
-def build_nl(text: str) -> RenderableType:
-    """Build a natural language answer renderable."""
-    from rich.markdown import Markdown
-
-    layout = Table(show_header=False, show_edge=False, box=None, padding=0, expand=True)
-    layout.add_column(width=2, no_wrap=True, vertical="top")
-    layout.add_column(ratio=1)
-    layout.add_row(Text("◆", style=ACCENT_BOLD), Markdown(text, style="default"))
-    return layout
-
 
 def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> RenderableType:
     """Build a syntax-highlighted query renderable."""
@@ -145,7 +135,7 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
     query_keys: list[str] = []
 
     if result.text:
-        views["response"] = build_nl(result.text)
+        views["response"] = Text(result.text)
 
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()

@@ -190,9 +190,11 @@ class AgentProgressWidget(Widget):
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style=ACCENT)
         self._tool_spinner = Spinner("dots", style="dim")
+        self._frozen = False
+        self._timer: object | None = None
 
     def on_mount(self) -> None:
-        self.set_interval(1 / 12, self.refresh)
+        self._timer = self.set_interval(1 / 12, self.refresh)
 
     def render(self) -> RenderableType:
         parts: list[RenderableType] = []
@@ -229,7 +231,12 @@ class AgentProgressWidget(Widget):
 
     def finish(self) -> None:
         self._streaming_text = ""
-        self._refresh()
+        self._status_text = None
+        self._frozen = True
+        if self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        self._refresh(layout=True)
 
     def tool_start(self, name: str, args_summary: str) -> None:
         if self._status_text and self._status_text != "Thinking...":

@@ -239,8 +239,6 @@ class MintqApp(App[None]):
         finally:
             self._agent_busy = False
 
-        await progress.remove()
-
         session.last_result = result
         result_widget = AgentResultWidget(result, width=self.size.width - 4)
         chat_log.mount(result_widget)
