@@ -166,6 +166,12 @@ class AgentProgressWidget(Widget):
         self._steps: list[tuple[str, str, str]] = []
         self._streaming_text = ""
         self._status_text: str | None = "Thinking..."
+        # Persistent spinner instances so animation state survives across renders.
+        self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style=ACCENT)
+        self._tool_spinner = Spinner("dots", style="dim")
+
+    def on_mount(self) -> None:
+        self.set_interval(1 / 12, self.refresh)
 
     def render(self) -> RenderableType:
         parts: list[RenderableType] = []
@@ -174,7 +180,8 @@ class AgentProgressWidget(Widget):
         for status, _name, label in self._steps:
             if status == "running":
                 has_running = True
-                parts.append(Spinner("dots", text=Text(label, style="dim"), style="dim"))
+                self._tool_spinner.text = Text(label, style="dim")
+                parts.append(self._tool_spinner)
             else:
                 line = Text()
                 line.append("→ ", style="dim")
@@ -182,7 +189,8 @@ class AgentProgressWidget(Widget):
                 parts.append(line)
 
         if self._status_text and not has_running:
-            parts.append(Spinner("dots", text=Text(self._status_text, style="dim"), style=ACCENT))
+            self._status_spinner.text = Text(self._status_text, style="dim")
+            parts.append(self._status_spinner)
 
         if self._streaming_text:
             display = self._streaming_text

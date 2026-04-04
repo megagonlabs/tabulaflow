@@ -44,6 +44,7 @@ class MintqApp(App[None]):
         self._model = model
         self._agent = agent
         self._session: SessionState | None = None
+        self._session_initializing = False
         self._agent_busy = False
 
     def compose(self) -> ComposeResult:
@@ -107,9 +108,16 @@ class MintqApp(App[None]):
         else:
             inp.focus()
 
-    def _ensure_session(self) -> SessionState:
-        if self._session is None:
-            self._session = SessionState(model=self._model, agent=self._agent)
+    async def _ensure_session(self) -> SessionState:
+        """Get or create the session, initializing in a thread to avoid blocking the UI."""
+        if self._session is not None:
+            return self._session
+        import asyncio
+
+        loop = asyncio.get_running_loop()
+        self._session = await loop.run_in_executor(
+            None, SessionState, self._model, self._agent
+        )
         return self._session
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
@@ -125,11 +133,11 @@ class MintqApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
         if text.startswith(COMMAND_PREFIX):
-            session = self._ensure_session()
+            session = await self._ensure_session()
             await self._handle_slash_command(text, session, chat_log)
             return
 
-        session = self._ensure_session()
+        session = await self._ensure_session()
 
         if not session.registry.list_aliases():
             msg = SystemMessage("[red]No database connected.[/red] Use /connect first.")
