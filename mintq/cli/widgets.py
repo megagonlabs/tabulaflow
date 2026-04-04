@@ -238,16 +238,16 @@ class AgentProgressWidget(Widget):
         self._steps.append(("running", name, label))
         self._streaming_text = ""
         self._status_text = None
-        self._refresh()
+        self._refresh(layout=True, scroll=True)
 
     def tool_end(self, name: str, result_summary: str) -> None:
         for i in range(len(self._steps) - 1, -1, -1):
-            if self._steps[i][1] == name and self._steps[i][0] == "running":
+            if self._steps[i][0] == "running":
                 label = self._steps[i][2]
-                self._steps[i] = ("done", name, f"{label} → {result_summary}")
+                self._steps[i] = ("done", self._steps[i][1], f"{label} → {result_summary}")
                 break
         self._status_text = "Thinking..."
-        self._refresh()
+        self._refresh(layout=True, scroll=True)
 
     def text_delta(self, delta: str) -> None:
         self._streaming_text += delta
@@ -258,9 +258,11 @@ class AgentProgressWidget(Widget):
         self._status_text = text
         self._refresh()
 
-    def _refresh(self) -> None:
+    def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
         try:
-            self.refresh()
+            self.refresh(layout=layout)
+            if scroll:
+                self.app.query_one("#chat-log").scroll_end(animate=False)
         except Exception:
             pass
 

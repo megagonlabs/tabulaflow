@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterable
 import json
 import logging
@@ -236,6 +237,7 @@ class ChatAgent:
                     break
 
                 _handle_stream_event(event, progress, self._query_history, self._tools.get_table_schema)
+                await asyncio.sleep(0)
 
         finally:
             progress.finish()
