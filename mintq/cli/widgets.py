@@ -342,6 +342,8 @@ class AgentResultWidget(Widget):
             return
         self._update_content()
         self._update_tab_styles()
+        chat_log = self.app.query_one("#chat-log")
+        chat_log.scroll_end(animate=False)
 
     def _update_tab_styles(self) -> None:
         for i, label in enumerate(self._tab_labels):
