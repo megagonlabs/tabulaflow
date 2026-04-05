@@ -48,7 +48,7 @@ class MintqApp(App[None]):
         self._agent = agent
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
-        self._agent_busy = False
+        self._busy = False
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
@@ -132,7 +132,7 @@ class MintqApp(App[None]):
         if not text:
             return
 
-        if self._agent_busy:
+        if self._busy:
             return
 
         event.input.clear()
@@ -140,6 +140,7 @@ class MintqApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
         if text.startswith(COMMAND_PREFIX):
+            self._busy = True
             chat_log.mount(UserMessage(text))
             chat_log.scroll_end(animate=False)
             self.run_worker(self._handle_slash_command(text, chat_log))
@@ -157,7 +158,7 @@ class MintqApp(App[None]):
         chat_log.mount(UserMessage(text))
         chat_log.scroll_end(animate=False)
 
-        self._agent_busy = True
+        self._busy = True
         self.run_worker(self._run_agent(text, session, chat_log), exclusive=True)
 
     async def _handle_slash_command(
@@ -180,6 +181,7 @@ class MintqApp(App[None]):
             session = await self._ensure_session()
             result = await handle_command(text, session)
         finally:
+            self._busy = False
             if spinner is not None:
                 await spinner.remove()
 
@@ -237,7 +239,7 @@ class MintqApp(App[None]):
             chat_log.scroll_end(animate=False)
             return
         finally:
-            self._agent_busy = False
+            self._busy = False
 
         if progress._streaming_text != result.text:
             progress._streaming_text = result.text
