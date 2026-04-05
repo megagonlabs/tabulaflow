@@ -291,9 +291,10 @@ class AgentResultWidget(Widget):
 
     DEFAULT_CSS = """
     AgentResultWidget {
-        margin-top: 1;
-        padding: 0 1;
+        padding: 1 1;
+        margin: 1 2 0 1;
         height: auto;
+        background: $surface;
     }
 
     AgentResultWidget .tab-bar {
