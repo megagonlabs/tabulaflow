@@ -12,11 +12,9 @@ MintqApp {
     dock: bottom;
     height: 3;
     border: none;
-    border-left: thick #3EB489;
     padding: 1 1;
 }
 
 #input-bar:focus {
     border: none;
-    border-left: thick #3EB489;
 }
