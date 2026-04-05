@@ -368,7 +368,10 @@ class AgentResultWidget(Widget):
             line.append_text(Text(label, style=style))
             col += len(label)
             self._tab_hit_areas.append((row, col_start, col))
-        line.append("  ←/→ switch", style="dim")
+        hint = "  ←/→ switch"
+        if col + len(hint) > wrap_width:
+            line.append_text(Text("\n"))
+        line.append(hint, style="dim")
         self._tab_bar_widget.update(line)
 
     def _update_content(self) -> None:
