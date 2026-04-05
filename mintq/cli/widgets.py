@@ -12,6 +12,8 @@ from pathlib import Path
 from textual.binding import Binding
 from textual.containers import Horizontal
 from textual.reactive import reactive
+from textual.timer import Timer
+from textual.app import ComposeResult
 from textual.widget import Widget
 from textual.widgets import Input, Static
 
@@ -191,7 +193,7 @@ class AgentProgressWidget(Widget):
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style=ACCENT)
         self._tool_spinner = Spinner("dots", style="dim")
         self._frozen = False
-        self._timer: object | None = None
+        self._timer: Timer | None = None
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(1 / 12, self.refresh)
@@ -321,7 +323,7 @@ class AgentResultWidget(Widget):
     def has_tabs(self) -> bool:
         return len(self._ordered_keys) > 1
 
-    def compose(self) -> object:
+    def compose(self) -> ComposeResult:
         if self.has_tabs:
             self._tab_labels = []
             labels: list[Static] = []
@@ -373,7 +375,7 @@ class AgentResultWidget(Widget):
         assert isinstance(event, Click)
         widget = self.app.get_widget_at(event.screen_x, event.screen_y)[0]
         if hasattr(widget, "_tab_index"):
-            self.current_tab = widget._tab_index  # type: ignore[attr-defined]
+            self.current_tab = widget._tab_index
 
     def action_next_tab(self) -> None:
         if self._ordered_keys:

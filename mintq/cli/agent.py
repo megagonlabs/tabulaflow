@@ -185,7 +185,10 @@ class ChatAgent:
             n_patterns = len(connector.schema.relationships)
             return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
 
-        n_tables = len(connector.schema.tables) if connector.schema else 0
+        from mintq.schema import SQLSchema
+
+        schema = connector.schema
+        n_tables = len(schema.tables) if isinstance(schema, SQLSchema) else 0
         dialect = connector.language or "unknown"
         return f"{dialect}, {n_tables} tables"
 
@@ -205,7 +208,7 @@ class ChatAgent:
         from pydantic_ai import Agent
 
         self._pydantic_ai_agent = Agent(
-            model=self.model,
+            model=self.model,  # type: ignore[call-overload]
             tools=[
                 self._tools.run_query.as_pydantic_ai_tool(),
                 self._tools.get_db_document.as_pydantic_ai_tool(),

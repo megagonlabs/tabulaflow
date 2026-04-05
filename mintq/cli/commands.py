@@ -261,9 +261,9 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[red]Failed to load files:[/red] {e}"))
 
-        session.registry.register(alias, connector)
-        info = session.chat_agent.database_info(connector)
-        session.chat_agent.add_database([(alias, connector)])
+        session.registry.register(alias, connector)  # type: ignore[arg-type]
+        info = session.chat_agent.database_info(connector)  # type: ignore[arg-type]
+        session.chat_agent.add_database([(alias, connector)])  # type: ignore[list-item]
         return CommandResult(
             output=Text.from_markup(
                 f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})"
@@ -321,9 +321,9 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
-        session.registry.register(alias, neo_connector)
-        info = session.chat_agent.database_info(neo_connector)
-        session.chat_agent.add_database([(alias, neo_connector)])
+        session.registry.register(alias, neo_connector)  # type: ignore[arg-type]
+        info = session.chat_agent.database_info(neo_connector)  # type: ignore[arg-type]
+        session.chat_agent.add_database([(alias, neo_connector)])  # type: ignore[list-item]
         return CommandResult(
             output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
         )
@@ -348,9 +348,9 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
-    session.registry.register(alias, connector)
-    info = session.chat_agent.database_info(connector)
-    session.chat_agent.add_database([(alias, connector)])
+    session.registry.register(alias, connector)  # type: ignore[arg-type]
+    info = session.chat_agent.database_info(connector)  # type: ignore[arg-type]
+    session.chat_agent.add_database([(alias, connector)])  # type: ignore[list-item]
     return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})"))
 
 
