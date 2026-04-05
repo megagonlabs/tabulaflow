@@ -45,7 +45,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 - IMPORTANT: Your final response MUST begin with result reference lines, followed by a `---` separator, then your natural language answer. The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
   - Basic form: [[result:Q<id>]] (e.g. [[result:Q3]]).
   - Optional labeled form: [[result:Q<id>:<label>]] (e.g. [[result:Q3:num_players]]).
-  - Use labels when returning multiple records in one answer.
+  - Use labels when returning multiple records in one answer. Keep the labels as concise as possible.
   - Example format:
     [[result:Q3]]
     ---
