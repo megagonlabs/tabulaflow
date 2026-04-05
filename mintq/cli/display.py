@@ -141,9 +141,9 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
-        chart_key = f"chart[{label}]" if use_labels else "chart"
-        data_key = f"data[{label}]" if use_labels else "data"
-        query_key = f"query[{label}]" if use_labels else "query"
+        chart_key = f"Chart ({label})" if use_labels else "Chart"
+        data_key = f"Data ({label})" if use_labels else "Data"
+        query_key = f"Query ({label})" if use_labels else "Query"
 
         if record.chart_spec is not None and record.df is not None:
             views[chart_key] = build_chart(record.df, record.chart_spec, width)
