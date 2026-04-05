@@ -14,6 +14,7 @@ from mintq.db_connector import NL2QDBConnector
 from mintq.schema import (
     ExtraPredInfo,
     NL2QDataset,
+    SQLSchema,
     SQLTableSchema,
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,

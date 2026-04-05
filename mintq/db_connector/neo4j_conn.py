@@ -3,7 +3,7 @@ import os
 import re
 import time
 from dataclasses import dataclass
-from typing import Any, ClassVar, Mapping
+from typing import Any, ClassVar, Literal, Mapping
 
 import neo4j
 import pandas as pd
@@ -70,7 +70,7 @@ class Neo4jConnector:
     and ``db.schema.relTypeProperties()`` procedures (Neo4j 3.4+).
     """
 
-    connector_type: ClassVar = "property_graph"
+    connector_type: ClassVar[Literal["property_graph"]] = "property_graph"
     global_id: str
     schema: PropertyGraphSchema
     language: NonSQLLanguage

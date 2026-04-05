@@ -847,7 +847,7 @@ class SQLConnector:
     access) are fully supported.
     """
 
-    connector_type: ClassVar = "sql"
+    connector_type: ClassVar[Literal["sql"]] = "sql"
     global_id: str
     schema: SQLSchema
     language: SQLDialect
