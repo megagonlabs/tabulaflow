@@ -362,6 +362,7 @@ class DataBrowserScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
         Binding("q", "close_browser", "Back", show=False),
+        Binding("b", "close_browser", "Back", show=False),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
     ]
@@ -446,7 +447,7 @@ class DataBrowserScreen(Screen[None]):
             f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
             f"  |  Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}"
         )
-        hint_line = "Use [ and ] to change page, click header to sort, Esc to go back"
+        hint_line = "Use [ and ] to change page, click header to sort, b or Esc to go back"
         self._footer.update(
             Text(
                 f"{summary_and_status_line}\n{hint_line}",
