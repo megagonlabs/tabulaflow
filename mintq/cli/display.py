@@ -86,7 +86,7 @@ def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> Rende
 
 def build_table(df: pd.DataFrame, max_rows: int = 5) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
-    table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True)
+    table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True, box=box.SIMPLE_HEAD)
     for col in df.columns:
         table.add_column(str(col))
 

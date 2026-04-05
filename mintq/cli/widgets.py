@@ -306,11 +306,20 @@ class DataBrowserScreen(Screen[None]):
         height: 1fr;
         margin: 0 1;
         border: solid $accent;
+        background: $surface;
+        color: $text;
+        scrollbar-color: #666666;
+        scrollbar-color-hover: #3EB489;
+        scrollbar-color-active: #3EB489;
+        scrollbar-background: transparent;
+        scrollbar-background-hover: transparent;
+        scrollbar-background-active: transparent;
     }
 
     DataBrowserScreen .data-browser-footer {
         padding: 0 1 1 1;
-        color: $text-muted;
+        color: $text;
+        text-style: dim;
     }
     """
 
