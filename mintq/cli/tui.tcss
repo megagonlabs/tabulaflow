@@ -9,6 +9,16 @@ MintqApp {
     padding: 0 1 2 1;
 }
 
+/* Scrollbar */
+#chat-log {
+    scrollbar-color: #666666;
+    scrollbar-color-hover: #3EB489;
+    scrollbar-color-active: #3EB489;
+    scrollbar-background: transparent;
+    scrollbar-background-hover: transparent;
+    scrollbar-background-active: transparent;
+}
+
 #input-bar {
     dock: bottom;
     height: 3;
