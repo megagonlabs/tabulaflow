@@ -907,6 +907,30 @@ March 31
 - [x] Fix mypy
 - [x] DBRegistry
 
+April 1
+- [x] Registry tools
+
+April 2
+- [x] Refactor
+- [x] registry_get_db_document tool
+- [x] Support outputing multiple records
+
+April 3
+- [x] Refactor using textual
+
+April 4
+- [x] Polish UI
+- [x] Fix streaming and record parsing
+
+Features
+- [ ] Data browser
+- [ ] Query browser
+- [ ] Copy to clipboard
+- [ ] Session resume
+- [ ] Semantic operator
+- [ ] Data writing
+- [ ] Web search
+
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
 - [ ] Support Neo4j and cypherbench
