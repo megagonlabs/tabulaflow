@@ -93,7 +93,12 @@ def build_table(
     action_hint: str | None = None,
 ) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
-    table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True, box=box.SIMPLE_HEAD)
+    table = Table(
+        show_header=True,
+        header_style=ACCENT_BOLD,
+        show_lines=False,
+        box=box.SQUARE,
+    )
     truncated_cols = len(df.columns) > max_columns
     display_columns = list(df.columns[:max_columns]) if truncated_cols else list(df.columns)
 
