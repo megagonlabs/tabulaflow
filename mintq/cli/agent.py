@@ -34,6 +34,7 @@ _QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)(?::([^\]]+))?\]\]")
 SYSTEM_PROMPT = """\
 You are the mintq agent, a helpful database assistant that answers the user's question by querying the database.
 You are an agent - please keep going until the task is solved.
+Be THOROUGH. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
 
 <goal>
 - If the question is ambiguous, pick the most natural interpretation and proceed. Only ask for clarifications if you are truly blocked.
@@ -41,28 +42,30 @@ You are an agent - please keep going until the task is solved.
 - Your final response should be a clear concise natural language answer summarizing the results.
 - Do not put the query in the final response unless explicitly asked to.
 - Do not include the query execution results in the final response. The execution results will be rendered in a separate view to the user.
-- IMPORTANT: In your final response, include one or more result references so the system knows which query outputs to display.
+- IMPORTANT: Your final response MUST begin with result reference lines, followed by a `---` separator, then your natural language answer. The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
   - Basic form: [[result:Q<id>]] (e.g. [[result:Q3]]).
   - Optional labeled form: [[result:Q<id>:<label>]] (e.g. [[result:Q3:num_players]]).
   - Use labels when returning multiple records in one answer.
+  - Example format:
+    [[result:Q3]]
+    ---
+    There are 42 players in the database.
 </goal>
 
 <tool_calling>
 Gathering information:
-- For graph databases, call `get_db_document` and read it before writing Cypher.
-- You may use `run_query` to run exploratory Cypher queries when that helps clarify the graph.
+- For most databases, call `get_db_document` to understand the database structure.
 - For SQL databases, always use `get_table_schema` to get the schema of relevant tables before constructing the query.
-- You may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
-- You may use `run_query` to inspect some sample values to determine the data format if necessary.
+- For SQL databases, you may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
+- You may use `run_query` to run exploratory queries or inspect some sample values to determine the data format if necessary.
 
-Writing the task query:
+Writing database queries:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
-- You may execute intermediate or exploratory queries multiple times; however, the final query (the last one executed) must be complete and fully constructed. In the final query, do not split the logic into multiple dependent queries (for example, first retrieving an ID and then using that ID in a subsequent query—this is not allowed).
+- You may execute intermediate or exploratory queries multiple times; however, the final query displayed to the user must be complete and fully constructed without splitting the logic into multiple dependent queries.
 - For complex queries with multiple CTEs, build incrementally: execute and verify each CTE's output before adding the next. Do NOT jump straight to the full assembled query.
-- Be THOROUGH when constructing the final query. Make sure you have the FULL picture before finishing. Use additional tool calls as needed.
 
 Visualization:
-- After running the final query, call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
+- Call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
 - `render_chart` accepts an optional `record_id`. Omit it to chart the most recent query result, or pass a prior `record_id` if you want to visualize an earlier query.
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
@@ -258,15 +261,33 @@ def _build_chat_result(
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
 
 
+_SEPARATOR = "---"
+
+
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
+    # Split on the --- separator; refs are before it, display text after.
+    if _SEPARATOR in answer_text:
+        prefix, display_text = answer_text.split(_SEPARATOR, 1)
+    else:
+        prefix, display_text = answer_text, ""
+
     refs: list[tuple[str, str | None]] = []
-    for match in _QUERY_REF_RE.finditer(answer_text):
+    for match in _QUERY_REF_RE.finditer(prefix):
         record_id = match.group(1)
         raw_label = match.group(2)
         label = raw_label.strip() if raw_label is not None else None
         refs.append((record_id, label or None))
-    cleaned = _QUERY_REF_RE.sub("", answer_text).strip()
-    return cleaned, refs
+
+    # Fallback: also scan display_text for refs (in case agent doesn't follow format)
+    if not refs:
+        for match in _QUERY_REF_RE.finditer(display_text):
+            record_id = match.group(1)
+            raw_label = match.group(2)
+            label = raw_label.strip() if raw_label is not None else None
+            refs.append((record_id, label or None))
+        display_text = _QUERY_REF_RE.sub("", display_text)
+
+    return display_text.strip(), refs
 
 
 def _records_from_refs(

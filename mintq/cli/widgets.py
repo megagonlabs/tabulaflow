@@ -188,6 +188,8 @@ class AgentProgressWidget(Widget):
         super().__init__()
         self._steps: list[tuple[str, str, str]] = []
         self._streaming_text = ""
+        self._raw_text = ""
+        self._separator_seen = False
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style=ACCENT)
@@ -255,7 +257,15 @@ class AgentProgressWidget(Widget):
         self._refresh(layout=True, scroll=True)
 
     def text_delta(self, delta: str) -> None:
-        self._streaming_text += delta
+        self._raw_text += delta
+        # Only display text after the --- separator
+        if self._separator_seen:
+            self._streaming_text += delta
+        elif "---" in self._raw_text:
+            self._separator_seen = True
+            self._streaming_text = self._raw_text.split("---", 1)[1].lstrip("\n")
+        else:
+            return
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
