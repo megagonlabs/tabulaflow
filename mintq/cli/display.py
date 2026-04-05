@@ -5,6 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import TYPE_CHECKING
 
+from rich.align import Align
+from rich.columns import Columns
 from rich.console import Group
 from rich.panel import Panel
 from rich.style import Style
@@ -84,7 +86,12 @@ def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> Rende
     return syntax
 
 
-def build_table(df: pd.DataFrame, max_rows: int = 5, max_columns: int = 10) -> RenderableType:
+def build_table(
+    df: pd.DataFrame,
+    max_rows: int = 5,
+    max_columns: int = 10,
+    action_hint: str | None = None,
+) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
     table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True, box=box.SIMPLE_HEAD)
     truncated_cols = len(df.columns) > max_columns
@@ -103,10 +110,14 @@ def build_table(df: pd.DataFrame, max_rows: int = 5, max_columns: int = 10) -> R
         caption_parts.append(f"showing {max_rows} of {len(df)} rows")
     if truncated_cols:
         caption_parts.append(f"showing {max_columns} of {len(df.columns)} columns")
-    if caption_parts:
-        table.caption = f"[dim]{' | '.join(caption_parts)}[/dim]"
+    if not caption_parts and not action_hint:
+        return table
 
-    return table
+    stats_text = " | ".join(caption_parts)
+    left = Text(f"[ {action_hint} ]", style=ACCENT_BOLD) if action_hint else Text("")
+    right = Text(stats_text, style="dim") if stats_text else Text("")
+    footer = Columns([left, Align.right(right)], expand=True, equal=False)
+    return Group(table, footer)
 
 
 def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80) -> RenderableType:
@@ -162,7 +173,7 @@ def build_result_views(
             views[chart_key] = build_chart(record.df, record.chart_spec, width)
             chart_keys.append(chart_key)
         if record.df is not None and not record.df.empty:
-            views[data_key] = build_table(record.df)
+            views[data_key] = build_table(record.df, action_hint="Open Data Browser (click / b)")
             data_keys.append(data_key)
             data_views[data_key] = record.df
         if record.query:

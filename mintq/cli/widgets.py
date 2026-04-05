@@ -429,10 +429,6 @@ class AgentResultWidget(Widget):
         margin: 0 0 1 0;
     }
 
-    AgentResultWidget .actions-bar {
-        height: auto;
-        margin: 0 0 1 0;
-    }
     """
 
     current_tab: reactive[int] = reactive(0, init=False)
@@ -442,7 +438,6 @@ class AgentResultWidget(Widget):
         from mintq.cli.display import build_result_views
 
         self._ordered_keys, self._views, self._data_views = build_result_views(result, width)
-        self._actions_widget = Static(classes="actions-bar")
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
@@ -456,13 +451,11 @@ class AgentResultWidget(Widget):
             self._tab_bar_widget = Static(classes="tab-bar")
         if self.has_tabs:
             yield self._tab_bar_widget
-        yield self._actions_widget
         yield self._content
 
     def on_mount(self) -> None:
         self._mounted = True
         self._update_content()
-        self._update_actions_bar()
 
     def on_resize(self) -> None:
         if self.has_tabs:
@@ -474,7 +467,6 @@ class AgentResultWidget(Widget):
         self._update_content()
         if self.has_tabs:
             self._update_tab_bar()
-        self._update_actions_bar()
         if self._is_last_chat_item():
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
@@ -530,16 +522,6 @@ class AgentResultWidget(Widget):
         renderable = self._views.get(key, Text(""))
         self._content.update(renderable)
 
-    def _update_actions_bar(self) -> None:
-        key = self._current_key()
-        if key is None:
-            self._actions_widget.update(Text(""))
-            return
-        if key in self._data_views:
-            self._actions_widget.update(Text("[ Open Data Browser (click / b) ]", style=ACCENT_BOLD))
-            return
-        self._actions_widget.update(Text(""))
-
     def _current_key(self) -> str | None:
         if not self._ordered_keys:
             return None
@@ -551,16 +533,15 @@ class AgentResultWidget(Widget):
         from textual.events import Click
 
         assert isinstance(event, Click)
-        if not self.has_tabs:
+
+        if self.has_tabs and event.widget is self._tab_bar_widget:
+            for i, (row, col_start, col_end) in enumerate(self._tab_hit_areas):
+                if event.y == row and col_start <= event.x < col_end:
+                    self.current_tab = i
+                    break
             return
-        tab_bar = self._tab_bar_widget
-        if event.widget is not tab_bar:
-            return
-        for i, (row, col_start, col_end) in enumerate(self._tab_hit_areas):
-            if event.y == row and col_start <= event.x < col_end:
-                self.current_tab = i
-                break
-        if event.widget is self._actions_widget:
+
+        if event.widget in {self._content, self} and self._current_key() in self._data_views:
             self.action_open_data_browser()
 
     def action_next_tab(self) -> None:
