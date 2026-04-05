@@ -10,8 +10,13 @@ MintqApp {
 
 #input-bar {
     dock: bottom;
-    height: auto;
-    max-height: 5;
-    border-top: solid $accent;
-    padding: 0 1;
+    height: 3;
+    border: none;
+    border-left: thick #3EB489;
+    padding: 1 1;
+}
+
+#input-bar:focus {
+    border: none;
+    border-left: thick #3EB489;
 }
