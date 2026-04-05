@@ -132,10 +132,10 @@ class MintqApp(App[None]):
         if not text:
             return
 
-        event.input.clear()
-
         if self._agent_busy:
             return
+
+        event.input.clear()
 
         chat_log = self.query_one("#chat-log", VerticalScroll)
 
