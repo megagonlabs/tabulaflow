@@ -327,6 +327,8 @@ class AgentResultWidget(Widget):
     def on_mount(self) -> None:
         self._mounted = True
         self._update_content()
+
+    def on_resize(self) -> None:
         if self.has_tabs:
             self._update_tab_bar()
 
