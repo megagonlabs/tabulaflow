@@ -316,6 +316,30 @@ class DataBrowserScreen(Screen[None]):
         scrollbar-background-active: transparent;
     }
 
+    DataBrowserScreen .data-browser-grid > .datatable--cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
+    DataBrowserScreen .data-browser-grid > .datatable--fixed-cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
+    DataBrowserScreen .data-browser-grid:focus > .datatable--cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
+    DataBrowserScreen .data-browser-grid:focus > .datatable--fixed-cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
     DataBrowserScreen .data-browser-grid > .datatable--header {
         background: transparent;
         color: #3EB489;
@@ -357,7 +381,15 @@ class DataBrowserScreen(Screen[None]):
         self._sorted_column: str | None = None
         self._sort_reverse = False
         self._header = Static(classes="data-browser-header")
-        self._table = DataTable(zebra_stripes=True, classes="data-browser-grid", header_height=2)
+        self._table = DataTable(
+            zebra_stripes=True,
+            classes="data-browser-grid",
+            header_height=2,
+            show_cursor=True,
+            cursor_type="cell",
+            cursor_background_priority="css",
+            cursor_foreground_priority="css",
+        )
         self._footer = Static(classes="data-browser-footer")
 
     def compose(self) -> ComposeResult:
@@ -366,7 +398,6 @@ class DataBrowserScreen(Screen[None]):
         yield self._footer
 
     def on_mount(self) -> None:
-        self._table.cursor_type = "cell"
         self._table.focus()
         self._render_page()
 
