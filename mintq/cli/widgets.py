@@ -305,7 +305,7 @@ class DataBrowserScreen(Screen[None]):
     DataBrowserScreen .data-browser-grid {
         height: 1fr;
         margin: 0 1;
-        border: solid $accent;
+        border: solid white;
         background: $surface;
         color: $text;
         scrollbar-color: #666666;
@@ -314,6 +314,12 @@ class DataBrowserScreen(Screen[None]):
         scrollbar-background: transparent;
         scrollbar-background-hover: transparent;
         scrollbar-background-active: transparent;
+    }
+
+    DataBrowserScreen .data-browser-grid > .datatable--header {
+        background: transparent;
+        color: #3EB489;
+        text-style: bold;
     }
 
     DataBrowserScreen .data-browser-footer {
@@ -337,7 +343,7 @@ class DataBrowserScreen(Screen[None]):
         self._page_size = max(1, page_size)
         self._page_index = 0
         self._header = Static(classes="data-browser-header")
-        self._table = DataTable(zebra_stripes=True, classes="data-browser-grid")
+        self._table = DataTable(zebra_stripes=True, classes="data-browser-grid", header_height=2)
         self._footer = Static(classes="data-browser-footer")
 
     def compose(self) -> ComposeResult:
@@ -384,18 +390,20 @@ class DataBrowserScreen(Screen[None]):
         self._table.add_columns("#", *(str(col) for col in page_df.columns))
 
         for row_idx, row in page_df.iterrows():
-            cells = [str(row_idx)] + [self._format_cell(v) for v in row.tolist()]
+            cells = [str(int(row_idx) + 1)] + [self._format_cell(v) for v in row.tolist()]
             self._table.add_row(*cells)
 
         total_pages = self._max_page_index + 1
-        self._header.update(
-            Text(f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns", style=ACCENT_BOLD)
-        )
+        self._header.update(Text(""))
         shown_range = "0-0" if self._num_rows == 0 else f"{start + 1}-{end}"
+        summary_and_status_line = (
+            f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
+            f"  |  Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}"
+        )
+        hint_line = "Use [ and ] to change page, Esc to go back"
         self._footer.update(
             Text(
-                f"Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}  |  "
-                "Use [ / ] to change page, Esc to go back",
+                f"{summary_and_status_line}\n{hint_line}",
                 style="dim",
             )
         )
