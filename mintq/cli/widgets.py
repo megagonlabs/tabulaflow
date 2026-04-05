@@ -322,6 +322,18 @@ class DataBrowserScreen(Screen[None]):
         text-style: bold;
     }
 
+    DataBrowserScreen .data-browser-grid > .datatable--header-hover {
+        background: transparent;
+        color: #3EB489;
+        text-style: bold;
+    }
+
+    DataBrowserScreen .data-browser-grid > .datatable--header-cursor {
+        background: transparent;
+        color: #3EB489;
+        text-style: bold;
+    }
+
     DataBrowserScreen .data-browser-footer {
         padding: 0 1 1 1;
         color: $text;
@@ -342,6 +354,8 @@ class DataBrowserScreen(Screen[None]):
         self._df = df
         self._page_size = max(1, page_size)
         self._page_index = 0
+        self._sorted_column: str | None = None
+        self._sort_reverse = False
         self._header = Static(classes="data-browser-header")
         self._table = DataTable(zebra_stripes=True, classes="data-browser-grid", header_height=2)
         self._footer = Static(classes="data-browser-footer")
@@ -387,10 +401,18 @@ class DataBrowserScreen(Screen[None]):
         page_df = self._df.iloc[start:end]
 
         self._table.clear(columns=True)
-        self._table.add_columns("#", *(str(col) for col in page_df.columns))
+        header_labels = ["#"]
+        for col in page_df.columns:
+            label = str(col)
+            if self._sorted_column == label:
+                marker = "▼" if self._sort_reverse else "▲"
+                label = f"{label} {marker}"
+            header_labels.append(label)
+        self._table.add_columns(*header_labels)
 
-        for row_idx, row in page_df.iterrows():
-            cells = [str(int(row_idx) + 1)] + [self._format_cell(v) for v in row.tolist()]
+        for local_idx, (_, row) in enumerate(page_df.iterrows(), start=1):
+            row_number = start + local_idx
+            cells = [str(row_number)] + [self._format_cell(v) for v in row.tolist()]
             self._table.add_row(*cells)
 
         total_pages = self._max_page_index + 1
@@ -400,13 +422,42 @@ class DataBrowserScreen(Screen[None]):
             f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
             f"  |  Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}"
         )
-        hint_line = "Use [ and ] to change page, Esc to go back"
+        hint_line = "Use [ and ] to change page, click header to sort, Esc to go back"
         self._footer.update(
             Text(
                 f"{summary_and_status_line}\n{hint_line}",
                 style="dim",
             )
         )
+
+    def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
+        """Sort when user clicks a header cell."""
+        if event.data_table is not self._table:
+            return
+        self._sort_by_column_index(event.column_index)
+        event.stop()
+
+    def _sort_by_column_index(self, column_index: int) -> None:
+        """Sort by a displayed column index; index 0 is row number and ignored."""
+        if column_index <= 0:
+            return
+        col_pos = column_index - 1
+        if col_pos < 0 or col_pos >= len(self._df.columns):
+            return
+        column = str(self._df.columns[col_pos])
+        if self._sorted_column == column:
+            self._sort_reverse = not self._sort_reverse
+        else:
+            self._sorted_column = column
+            self._sort_reverse = False
+        self._df = self._df.sort_values(
+            by=column,
+            ascending=not self._sort_reverse,
+            kind="mergesort",
+            na_position="last",
+        )
+        self._page_index = 0
+        self._render_page()
 
     @staticmethod
     def _format_cell(value: object) -> str:
