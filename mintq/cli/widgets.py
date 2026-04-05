@@ -296,12 +296,6 @@ class DataBrowserScreen(Screen[None]):
         background: $surface;
     }
 
-    DataBrowserScreen .data-browser-header {
-        padding: 1 1 0 1;
-        color: $text;
-        text-style: bold;
-    }
-
     DataBrowserScreen .data-browser-grid {
         height: 1fr;
         margin: 0 1;
@@ -380,7 +374,6 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._sorted_column: str | None = None
         self._sort_reverse = False
-        self._header = Static(classes="data-browser-header")
         self._table = DataTable(
             zebra_stripes=True,
             classes="data-browser-grid",
@@ -393,7 +386,6 @@ class DataBrowserScreen(Screen[None]):
         self._footer = Static(classes="data-browser-footer")
 
     def compose(self) -> ComposeResult:
-        yield self._header
         yield self._table
         yield self._footer
 
@@ -407,7 +399,9 @@ class DataBrowserScreen(Screen[None]):
     def action_next_page(self) -> None:
         if self._page_index < self._max_page_index:
             self._page_index += 1
-            self._render_page()
+        else:
+            self._page_index = 0
+        self._render_page()
 
     def action_prev_page(self) -> None:
         if self._page_index > 0:
@@ -447,7 +441,6 @@ class DataBrowserScreen(Screen[None]):
             self._table.add_row(*cells)
 
         total_pages = self._max_page_index + 1
-        self._header.update(Text(""))
         shown_range = "0-0" if self._num_rows == 0 else f"{start + 1}-{end}"
         summary_and_status_line = (
             f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
