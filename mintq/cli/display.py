@@ -84,19 +84,27 @@ def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> Rende
     return syntax
 
 
-def build_table(df: pd.DataFrame, max_rows: int = 5) -> RenderableType:
+def build_table(df: pd.DataFrame, max_rows: int = 5, max_columns: int = 10) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
     table = Table(show_header=True, header_style=ACCENT_BOLD, show_lines=True, box=box.SIMPLE_HEAD)
-    for col in df.columns:
+    truncated_cols = len(df.columns) > max_columns
+    display_columns = list(df.columns[:max_columns]) if truncated_cols else list(df.columns)
+
+    for col in display_columns:
         table.add_column(str(col))
 
     truncated = len(df) > max_rows
-    display_df = df.head(max_rows)
+    display_df = df.loc[:, display_columns].head(max_rows)
     for _, row in display_df.iterrows():
         table.add_row(*(str(v) for v in row))
 
+    caption_parts: list[str] = []
     if truncated:
-        table.caption = f"[dim]showing {max_rows} of {len(df)} rows[/dim]"
+        caption_parts.append(f"showing {max_rows} of {len(df)} rows")
+    if truncated_cols:
+        caption_parts.append(f"showing {max_columns} of {len(df.columns)} columns")
+    if caption_parts:
+        table.caption = f"[dim]{' | '.join(caption_parts)}[/dim]"
 
     return table
 
