@@ -292,13 +292,14 @@ class AgentResultWidget(Widget):
 
     DEFAULT_CSS = """
     AgentResultWidget {
+        margin-top: 1;
         padding: 0 1;
         height: auto;
     }
 
     AgentResultWidget .tab-bar {
         height: 1;
-        margin: 1 0 0 0;
+        margin: 0 0 1 0;
     }
 
     AgentResultWidget .tab-bar Static {
@@ -339,7 +340,8 @@ class AgentResultWidget(Widget):
             labels: list[Static] = []
             for i, key in enumerate(self._ordered_keys):
                 cls = "tab-active" if i == 0 else "tab-inactive"
-                label_widget = Static(f" {key} ", classes=cls)
+                escaped = key.replace("[", "\\[")
+                label_widget = Static(f" {escaped} ", classes=cls)
                 label_widget._tab_index = i  # type: ignore[attr-defined]
                 self._tab_labels.append(label_widget)
                 labels.append(label_widget)
@@ -348,9 +350,9 @@ class AgentResultWidget(Widget):
             labels.append(hint)
             self._tab_bar = Horizontal(*labels, classes="tab-bar")
 
-        yield self._content
         if self.has_tabs:
             yield self._tab_bar
+        yield self._content
 
     def on_mount(self) -> None:
         self._mounted = True
