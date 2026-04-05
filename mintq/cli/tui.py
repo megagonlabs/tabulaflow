@@ -239,8 +239,9 @@ class MintqApp(App[None]):
         finally:
             self._agent_busy = False
 
-        progress._streaming_text = result.text
-        progress._refresh(layout=True)
+        if progress._streaming_text != result.text:
+            progress._streaming_text = result.text
+            progress._refresh(layout=True)
 
         session.last_result = result
         result_widget = AgentResultWidget(result, width=self.size.width - 4)
