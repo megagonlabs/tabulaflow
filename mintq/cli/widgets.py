@@ -13,12 +13,14 @@ from textual.binding import Binding
 from textual.reactive import reactive
 from textual.timer import Timer
 from textual.app import ComposeResult
+from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import Input, Static
+from textual.widgets import DataTable, Input, Static
 
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
+    import pandas as pd
     from rich.console import RenderableType
 
     from mintq.cli.agent import ChatResult
@@ -282,6 +284,122 @@ class AgentProgressWidget(Widget):
 
 
 # ---------------------------------------------------------------------------
+# Data browser screen
+# ---------------------------------------------------------------------------
+
+
+class DataBrowserScreen(Screen[None]):
+    """Full-screen browser for inspecting query result rows."""
+
+    DEFAULT_CSS = """
+    DataBrowserScreen {
+        background: $surface;
+    }
+
+    DataBrowserScreen .data-browser-header {
+        padding: 1 1 0 1;
+        color: $text;
+        text-style: bold;
+    }
+
+    DataBrowserScreen .data-browser-grid {
+        height: 1fr;
+        margin: 0 1;
+        border: solid $accent;
+    }
+
+    DataBrowserScreen .data-browser-footer {
+        padding: 0 1 1 1;
+        color: $text-muted;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_browser", "Back", show=True),
+        Binding("q", "close_browser", "Back", show=False),
+        Binding("[", "prev_page", "Prev page", show=True),
+        Binding("]", "next_page", "Next page", show=True),
+    ]
+
+    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 100) -> None:
+        super().__init__()
+        self._title = title
+        self._df = df
+        self._page_size = max(1, page_size)
+        self._page_index = 0
+        self._header = Static(classes="data-browser-header")
+        self._table = DataTable(zebra_stripes=True, classes="data-browser-grid")
+        self._footer = Static(classes="data-browser-footer")
+
+    def compose(self) -> ComposeResult:
+        yield self._header
+        yield self._table
+        yield self._footer
+
+    def on_mount(self) -> None:
+        self._table.cursor_type = "cell"
+        self._table.focus()
+        self._render_page()
+
+    def action_close_browser(self) -> None:
+        self.dismiss()
+
+    def action_next_page(self) -> None:
+        if self._page_index < self._max_page_index:
+            self._page_index += 1
+            self._render_page()
+
+    def action_prev_page(self) -> None:
+        if self._page_index > 0:
+            self._page_index -= 1
+        else:
+            self._page_index = self._max_page_index
+        self._render_page()
+
+    @property
+    def _num_rows(self) -> int:
+        return len(self._df)
+
+    @property
+    def _max_page_index(self) -> int:
+        if self._num_rows == 0:
+            return 0
+        return (self._num_rows - 1) // self._page_size
+
+    def _render_page(self) -> None:
+        start = self._page_index * self._page_size
+        end = min(start + self._page_size, self._num_rows)
+        page_df = self._df.iloc[start:end]
+
+        self._table.clear(columns=True)
+        self._table.add_columns("#", *(str(col) for col in page_df.columns))
+
+        for row_idx, row in page_df.iterrows():
+            cells = [str(row_idx)] + [self._format_cell(v) for v in row.tolist()]
+            self._table.add_row(*cells)
+
+        total_pages = self._max_page_index + 1
+        self._header.update(
+            Text(f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns", style=ACCENT_BOLD)
+        )
+        shown_range = "0-0" if self._num_rows == 0 else f"{start + 1}-{end}"
+        self._footer.update(
+            Text(
+                f"Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}  |  "
+                "Use [ / ] to change page, Esc to go back",
+                style="dim",
+            )
+        )
+
+    @staticmethod
+    def _format_cell(value: object) -> str:
+        s = str(value)
+        if len(s) > 200:
+            return s[:197] + "..."
+        return s
+
+
+# ---------------------------------------------------------------------------
 # Agent result widget with interactive tabs
 # ---------------------------------------------------------------------------
 
@@ -301,6 +419,11 @@ class AgentResultWidget(Widget):
         height: auto;
         margin: 0 0 1 0;
     }
+
+    AgentResultWidget .actions-bar {
+        height: auto;
+        margin: 0 0 1 0;
+    }
     """
 
     current_tab: reactive[int] = reactive(0, init=False)
@@ -309,7 +432,8 @@ class AgentResultWidget(Widget):
         super().__init__()
         from mintq.cli.display import build_result_views
 
-        self._ordered_keys, self._views = build_result_views(result, width)
+        self._ordered_keys, self._views, self._data_views = build_result_views(result, width)
+        self._actions_widget = Static(classes="actions-bar")
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
@@ -323,11 +447,13 @@ class AgentResultWidget(Widget):
             self._tab_bar_widget = Static(classes="tab-bar")
         if self.has_tabs:
             yield self._tab_bar_widget
+        yield self._actions_widget
         yield self._content
 
     def on_mount(self) -> None:
         self._mounted = True
         self._update_content()
+        self._update_actions_bar()
 
     def on_resize(self) -> None:
         if self.has_tabs:
@@ -339,6 +465,7 @@ class AgentResultWidget(Widget):
         self._update_content()
         if self.has_tabs:
             self._update_tab_bar()
+        self._update_actions_bar()
         if self._is_last_chat_item():
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
@@ -394,6 +521,22 @@ class AgentResultWidget(Widget):
         renderable = self._views.get(key, Text(""))
         self._content.update(renderable)
 
+    def _update_actions_bar(self) -> None:
+        key = self._current_key()
+        if key is None:
+            self._actions_widget.update(Text(""))
+            return
+        if key in self._data_views:
+            self._actions_widget.update(Text("[ Open Data Browser (click / b) ]", style=ACCENT_BOLD))
+            return
+        self._actions_widget.update(Text(""))
+
+    def _current_key(self) -> str | None:
+        if not self._ordered_keys:
+            return None
+        idx = min(self.current_tab, len(self._ordered_keys) - 1)
+        return self._ordered_keys[idx]
+
     def on_click(self, event: object) -> None:
         """Handle clicks on tab labels."""
         from textual.events import Click
@@ -408,6 +551,8 @@ class AgentResultWidget(Widget):
             if event.y == row and col_start <= event.x < col_end:
                 self.current_tab = i
                 break
+        if event.widget is self._actions_widget:
+            self.action_open_data_browser()
 
     def action_next_tab(self) -> None:
         if self._ordered_keys:
@@ -424,6 +569,7 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
+        ("b", "open_data_browser", "Open data browser"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
         ("k", "focus_prev_result", "Previous result"),
@@ -457,3 +603,13 @@ class AgentResultWidget(Widget):
     def action_focus_input(self) -> None:
         """Return focus to the input bar."""
         self.app.query_one("#input-bar").focus()
+
+    def action_open_data_browser(self) -> None:
+        """Open full data browser for the active Data tab."""
+        key = self._current_key()
+        if key is None:
+            return
+        df = self._data_views.get(key)
+        if df is None:
+            return
+        self.app.push_screen(DataBrowserScreen(title=key, df=df))

@@ -118,12 +118,16 @@ def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int =
 # ---------------------------------------------------------------------------
 
 
-def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict[str, RenderableType]]:
+def build_result_views(
+    result: object,
+    width: int = 80,
+) -> tuple[list[str], dict[str, RenderableType], dict[str, pd.DataFrame]]:
     """Build ordered view keys and their renderables from a ChatResult.
 
     Returns:
-        (ordered_keys, views) where ordered_keys defines tab order and
-        views maps key -> Rich renderable.
+        (ordered_keys, views, data_views) where ordered_keys defines tab order,
+        views maps key -> Rich renderable, and data_views maps only Data tab keys
+        to their underlying DataFrame for full browser rendering.
     """
     from mintq.cli.agent import ChatResult
 
@@ -133,6 +137,7 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
     chart_keys: list[str] = []
     data_keys: list[str] = []
     query_keys: list[str] = []
+    data_views: dict[str, pd.DataFrame] = {}
 
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()
@@ -151,6 +156,7 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
         if record.df is not None and not record.df.empty:
             views[data_key] = build_table(record.df)
             data_keys.append(data_key)
+            data_views[data_key] = record.df
         if record.query:
             views[query_key] = build_query(record.query, lexer=record.query_lexer)
             query_keys.append(query_key)
@@ -160,7 +166,7 @@ def build_result_views(result: object, width: int = 80) -> tuple[list[str], dict
     ordered_keys.extend(data_keys)
     ordered_keys.extend(query_keys)
 
-    return ordered_keys, views
+    return ordered_keys, views, data_views
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:
