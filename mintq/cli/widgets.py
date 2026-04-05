@@ -402,7 +402,7 @@ class DataBrowserScreen(Screen[None]):
 
     @staticmethod
     def _format_cell(value: object) -> str:
-        s = str(value)
+        s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
         if len(s) > 200:
             return s[:197] + "..."
         return s

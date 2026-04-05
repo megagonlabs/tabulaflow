@@ -103,7 +103,7 @@ def build_table(
     truncated = len(df) > max_rows
     display_df = df.loc[:, display_columns].head(max_rows)
     for _, row in display_df.iterrows():
-        table.add_row(*(str(v) for v in row))
+        table.add_row(*(_format_table_cell(v) for v in row))
 
     caption_parts: list[str] = []
     if truncated:
@@ -118,6 +118,11 @@ def build_table(
     right = Text(stats_text, style="dim") if stats_text else Text("")
     footer = Columns([left, Align.right(right)], expand=True, equal=False)
     return Group(table, footer)
+
+
+def _format_table_cell(value: object) -> str:
+    """Normalize cell text for compact preview rendering."""
+    return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
 
 
 def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80) -> RenderableType:

@@ -63,6 +63,7 @@ class MintqApp(App[None]):
         chat_log = self.query_one("#chat-log", VerticalScroll)
         chat_log.mount(BannerWidget(model=self._model))
         if self._debug_enabled():
+            chat_log.mount(self._build_debug_small_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
@@ -95,6 +96,44 @@ class MintqApp(App[None]):
                     record_id="QDEBUG",
                     label="debug_4000x60",
                     query=debug_query,
+                    df=df,
+                    chart_spec=None,
+                    query_lexer="sql",
+                )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(result, width=self.size.width - 4)
+
+    def _build_debug_small_result_widget(self) -> AgentResultWidget:
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        df = pd.DataFrame(
+            [
+                ["alpha", "line1\nline2", "ok"],
+                ["beta", "single", "multi\na\nb"],
+                ["gamma", "x\ny", "42"],
+                ["delta", "normal", "note\nwrapped"],
+                ["epsilon", "left", "right"],
+            ],
+            columns=["name", "details", "status"],
+        )
+        query = "\n".join(
+            [
+                "SELECT name, details, status",
+                "FROM debug_small_table",
+                "LIMIT 5",
+            ]
+        )
+        result = ChatResult(
+            text="Debug startup small table",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG_SMALL",
+                    label="debug_5x3_multiline",
+                    query=query,
                     df=df,
                     chart_spec=None,
                     query_lexer="sql",
