@@ -5,6 +5,7 @@ MintqApp {
 #chat-log {
     height: 1fr;
     overflow-y: auto;
+    overflow-x: hidden;
     padding: 0 1 2 1;
 }
 

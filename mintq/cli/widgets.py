@@ -10,7 +10,6 @@ from rich.text import Text
 from pathlib import Path
 
 from textual.binding import Binding
-from textual.containers import Horizontal
 from textual.reactive import reactive
 from textual.timer import Timer
 from textual.app import ComposeResult
@@ -298,24 +297,8 @@ class AgentResultWidget(Widget):
     }
 
     AgentResultWidget .tab-bar {
-        height: 1;
+        height: auto;
         margin: 0 0 1 0;
-    }
-
-    AgentResultWidget .tab-bar Static {
-        width: auto;
-    }
-
-    AgentResultWidget .tab-active {
-        background: #3EB489;
-        color: #000000;
-        text-style: bold;
-        padding: 0 1;
-    }
-
-    AgentResultWidget .tab-inactive {
-        color: $text-muted;
-        padding: 0 1;
     }
     """
 
@@ -327,8 +310,8 @@ class AgentResultWidget(Widget):
 
         self._ordered_keys, self._views = build_result_views(result, width)
         self._content = Static(id="result-content")
-        self._tab_labels: list[Static] = []
         self._mounted = False
+        self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
 
     @property
     def has_tabs(self) -> bool:
@@ -336,40 +319,55 @@ class AgentResultWidget(Widget):
 
     def compose(self) -> ComposeResult:
         if self.has_tabs:
-            self._tab_labels = []
-            labels: list[Static] = []
-            for i, key in enumerate(self._ordered_keys):
-                cls = "tab-active" if i == 0 else "tab-inactive"
-                escaped = key.replace("[", "\\[")
-                label_widget = Static(f" {escaped} ", classes=cls)
-                label_widget._tab_index = i  # type: ignore[attr-defined]
-                self._tab_labels.append(label_widget)
-                labels.append(label_widget)
-
-            hint = Static(" ←/→ switch ", classes="tab-inactive")
-            labels.append(hint)
-            self._tab_bar = Horizontal(*labels, classes="tab-bar")
-
+            self._tab_bar_widget = Static(classes="tab-bar")
         if self.has_tabs:
-            yield self._tab_bar
+            yield self._tab_bar_widget
         yield self._content
 
     def on_mount(self) -> None:
         self._mounted = True
         self._update_content()
+        if self.has_tabs:
+            self._update_tab_bar()
 
     def watch_current_tab(self) -> None:
         if not self._mounted:
             return
         self._update_content()
-        self._update_tab_styles()
+        if self.has_tabs:
+            self._update_tab_bar()
         chat_log = self.app.query_one("#chat-log")
         chat_log.scroll_end(animate=False)
 
-    def _update_tab_styles(self) -> None:
-        for i, label in enumerate(self._tab_labels):
-            label.remove_class("tab-active", "tab-inactive")
-            label.add_class("tab-active" if i == self.current_tab else "tab-inactive")
+    def _update_tab_bar(self) -> None:
+        from rich.style import Style
+
+        wrap_width = self._tab_bar_widget.size.width or 80
+
+        # Build styled text and compute hit areas by simulating layout.
+        # Visual width uses raw key; Rich Text uses escaped key for markup safety.
+        line = Text()
+        self._tab_hit_areas = []
+        row, col = 0, 0
+        for i, key in enumerate(self._ordered_keys):
+            label = f" {key} "
+            sep = " " if i > 0 else ""
+            needed = len(sep) + len(label)
+            if col > 0 and col + needed > wrap_width:
+                line.append_text(Text("\n"))
+                row += 1
+                col = 0
+                sep = ""
+            if sep:
+                line.append_text(Text(" "))
+                col += 1
+            col_start = col
+            style = Style(bold=True, color="black", bgcolor="#3EB489") if i == self.current_tab else Style(dim=True)
+            line.append_text(Text(label, style=style))
+            col += len(label)
+            self._tab_hit_areas.append((row, col_start, col))
+        line.append("  ←/→ switch", style="dim")
+        self._tab_bar_widget.update(line)
 
     def _update_content(self) -> None:
         if not self._ordered_keys:
@@ -385,9 +383,15 @@ class AgentResultWidget(Widget):
         from textual.events import Click
 
         assert isinstance(event, Click)
-        widget = self.app.get_widget_at(event.screen_x, event.screen_y)[0]
-        if hasattr(widget, "_tab_index"):
-            self.current_tab = widget._tab_index
+        if not self.has_tabs:
+            return
+        tab_bar = self._tab_bar_widget
+        if event.widget is not tab_bar:
+            return
+        for i, (row, col_start, col_end) in enumerate(self._tab_hit_areas):
+            if event.y == row and col_start <= event.x < col_end:
+                self.current_tab = i
+                break
 
     def action_next_tab(self) -> None:
         if self._ordered_keys:
