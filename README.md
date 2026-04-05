@@ -921,6 +921,7 @@ April 3
 April 4
 - [x] Polish UI
 - [x] Fix streaming and record parsing
+- [x] Fix disaplaying many tabs
 
 Features
 - [ ] Data browser
