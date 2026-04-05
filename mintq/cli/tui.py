@@ -62,8 +62,47 @@ class MintqApp(App[None]):
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
         chat_log.mount(BannerWidget(model=self._model))
+        if self._debug_enabled():
+            chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
+        chat_log.scroll_end(animate=False)
         self.run_worker(self._ensure_session())
+
+    @staticmethod
+    def _debug_enabled() -> bool:
+        raw = os.getenv("DEBUG")
+        if raw is None:
+            return False
+        return raw.strip().lower() not in {"", "0", "false", "no", "off"}
+
+    def _build_debug_result_widget(self) -> AgentResultWidget:
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        rows = 4000
+        cols = 60
+        col_names = [f"col_{i + 1:02d}" for i in range(cols)]
+        data = {name: [f"{name}_r{r + 1:04d}" for r in range(rows)] for name in col_names}
+        df = pd.DataFrame(data)
+        query_lines = [f"SELECT col_{i:02d} AS c{i:02d}" for i in range(1, 41)]
+        debug_query = "\n".join(query_lines)
+
+        result = ChatResult(
+            text="Debug startup table",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG",
+                    label="debug_4000x60",
+                    query=debug_query,
+                    df=df,
+                    chart_spec=None,
+                    query_lexer="sql",
+                )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(result, width=self.size.width - 4)
 
     def _setup_logging(self) -> None:
         from logging.handlers import RotatingFileHandler
