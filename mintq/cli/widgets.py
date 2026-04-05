@@ -339,8 +339,18 @@ class AgentResultWidget(Widget):
         self._update_content()
         if self.has_tabs:
             self._update_tab_bar()
-        chat_log = self.app.query_one("#chat-log")
-        chat_log.scroll_end(animate=False)
+        if self._is_last_chat_item():
+            chat_log = self.app.query_one("#chat-log")
+            chat_log.scroll_end(animate=False)
+
+    def _is_last_chat_item(self) -> bool:
+        """Return True when this widget is the last chat log child."""
+        try:
+            chat_log = self.app.query_one("#chat-log")
+        except Exception:
+            return False
+        children = list(chat_log.children)
+        return bool(children) and children[-1] is self
 
     def _update_tab_bar(self) -> None:
         from rich.style import Style
