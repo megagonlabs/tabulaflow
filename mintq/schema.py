@@ -587,8 +587,15 @@ class Trajectory(BaseModel):
         if not messages:
             return trajectory
 
-        if messages[0].kind == "request" and messages[0].instructions:
-            trajectory.messages.append(SystemMessage(content=messages[0].instructions))
+        for msg in reversed(messages):
+            if (
+                msg.kind == "request"
+                and msg.instructions is not None
+                and any(part.part_kind == "user-prompt" for part in msg.parts)
+            ):
+                trajectory.messages.append(SystemMessage(content=msg.instructions))
+                break
+
         for msg in messages:
             if msg.kind == "request":
                 for part in msg.parts:
