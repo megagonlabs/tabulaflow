@@ -6,8 +6,10 @@ import asyncio
 from collections.abc import Iterable
 import json
 import logging
+from pathlib import Path
 import re
 from dataclasses import dataclass, field
+from datetime import datetime
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -30,6 +32,8 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)(?::([^\]]+))?\]\]")
+_TRAJECTORY_LOG_DIR = Path.home() / ".mintq" / "trajectories"
+_TRAJECTORY_KEEP_LAST = 20
 
 SYSTEM_PROMPT = """\
 You are the mintq agent, a helpful database assistant that answers the user's question by querying the database.
@@ -248,7 +252,36 @@ class ChatAgent:
         finally:
             progress.finish()
 
+        self._save_trajectory_for_debug()
         return _build_chat_result(answer_text, self._query_history)
+
+    def _save_trajectory_for_debug(self) -> None:
+        """Persist the latest conversation trajectory and keep recent history bounded."""
+        if not self._message_history:
+            return
+        try:
+            from mintq.schema import Trajectory
+
+            trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
+            _TRAJECTORY_LOG_DIR.mkdir(parents=True, exist_ok=True)
+            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
+            path = _TRAJECTORY_LOG_DIR / f"trajectory-{timestamp}.md"
+            path.write_text(trajectory.to_markdown(), encoding="utf-8")
+            self._prune_old_trajectory_files()
+        except Exception:
+            logger.exception("Failed to persist CLI trajectory debug file")
+
+    def _prune_old_trajectory_files(self) -> None:
+        files = sorted(
+            _TRAJECTORY_LOG_DIR.glob("trajectory-*.md"),
+            key=lambda p: p.stat().st_mtime,
+            reverse=True,
+        )
+        for old_file in files[_TRAJECTORY_KEEP_LAST:]:
+            try:
+                old_file.unlink()
+            except OSError:
+                logger.warning("Failed to remove old trajectory file: %s", old_file)
 
 
 def _build_chat_result(
