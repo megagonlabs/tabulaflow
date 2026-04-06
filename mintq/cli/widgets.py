@@ -17,6 +17,7 @@ from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static
 
+from mintq.cli.display import DATA_PREVIEW_MAX_COLUMNS, DATA_PREVIEW_MAX_ROWS
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
@@ -707,7 +708,7 @@ class AgentResultWidget(Widget):
         df = self._data_views.get(key)
         if df is None:
             return False
-        return len(df) > 5 or len(df.columns) > 10
+        return len(df) > DATA_PREVIEW_MAX_ROWS or len(df.columns) > DATA_PREVIEW_MAX_COLUMNS
 
     def action_next_tab(self) -> None:
         if self._ordered_keys:

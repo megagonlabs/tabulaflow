@@ -29,6 +29,9 @@ MINTQ_THEME = Theme(
     }
 )
 
+DATA_PREVIEW_MAX_ROWS = 5
+DATA_PREVIEW_MAX_COLUMNS = 10
+
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
@@ -85,8 +88,8 @@ def build_query(query: str, max_lines: int | None = 20, *, lexer: str = "sql") -
 
 def build_table(
     df: pd.DataFrame,
-    max_rows: int = 5,
-    max_columns: int = 10,
+    max_rows: int = DATA_PREVIEW_MAX_ROWS,
+    max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
     action_hint: str | None = None,
 ) -> RenderableType:
     """Build a DataFrame as a Rich table renderable."""
