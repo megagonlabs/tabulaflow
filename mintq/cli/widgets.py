@@ -17,7 +17,11 @@ from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static
 
-from mintq.cli.display import DATA_PREVIEW_MAX_COLUMNS, DATA_PREVIEW_MAX_ROWS
+from mintq.cli.display import (
+    DATA_PREVIEW_MAX_COLUMNS,
+    DATA_PREVIEW_MAX_ROWS,
+    QUERY_PREVIEW_MAX_LINES,
+)
 from mintq.cli.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
@@ -602,11 +606,12 @@ class AgentResultWidget(Widget):
             hint.append("b", style=ACCENT_BOLD)
             hint.append(" Open Data Browser", style="dim")
         if current_key in self._query_views:
-            expanded = bool(current_key and current_key in self._expanded_query_keys)
-            if hint:
-                hint.append("    ")
-            hint.append("e", style=ACCENT_BOLD)
-            hint.append(" Collapse Query" if expanded else " Show Full Query", style="dim")
+            if current_key is not None and self._is_query_truncated(current_key):
+                expanded = current_key in self._expanded_query_keys
+                if hint:
+                    hint.append("    ")
+                hint.append("e", style=ACCENT_BOLD)
+                hint.append(" Collapse Query" if expanded else " Show Full Query", style="dim")
         if hint:
             hint.append("    ")
         hint.append("←/→", style=ACCENT_BOLD)
@@ -664,7 +669,11 @@ class AgentResultWidget(Widget):
         if query_view is not None:
             query, lexer = query_view
             expanded = key in self._expanded_query_keys
-            renderable = build_query(query, max_lines=None if expanded else 20, lexer=lexer)
+            renderable = build_query(
+                query,
+                max_lines=None if expanded else QUERY_PREVIEW_MAX_LINES,
+                lexer=lexer,
+            )
         else:
             renderable = self._views.get(key, Text(""))
         self._content.update(renderable)
@@ -710,6 +719,14 @@ class AgentResultWidget(Widget):
             return False
         return len(df) > DATA_PREVIEW_MAX_ROWS or len(df.columns) > DATA_PREVIEW_MAX_COLUMNS
 
+    def _is_query_truncated(self, key: str) -> bool:
+        """Return True when query preview uses truncation for this key."""
+        query_view = self._query_views.get(key)
+        if query_view is None:
+            return False
+        query, _lexer = query_view
+        return len(query.strip().splitlines()) > QUERY_PREVIEW_MAX_LINES
+
     def action_next_tab(self) -> None:
         if self._ordered_keys:
             self.current_tab = (self.current_tab + 1) % len(self._ordered_keys)
@@ -721,7 +738,7 @@ class AgentResultWidget(Widget):
     def action_toggle_query_preview(self) -> None:
         """Toggle expanded/collapsed rendering for the active Query tab."""
         key = self._current_key()
-        if key is None or key not in self._query_views:
+        if key is None or key not in self._query_views or not self._is_query_truncated(key):
             return
         if key in self._expanded_query_keys:
             self._expanded_query_keys.remove(key)

@@ -31,6 +31,7 @@ MINTQ_THEME = Theme(
 
 DATA_PREVIEW_MAX_ROWS = 5
 DATA_PREVIEW_MAX_COLUMNS = 10
+QUERY_PREVIEW_MAX_LINES = 20
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -68,7 +69,7 @@ def build_banner(*, model: str) -> RenderableType:
 
 
 
-def build_query(query: str, max_lines: int | None = 20, *, lexer: str = "sql") -> RenderableType:
+def build_query(query: str, max_lines: int | None = QUERY_PREVIEW_MAX_LINES, *, lexer: str = "sql") -> RenderableType:
     """Build a syntax-highlighted query renderable."""
     stripped = query.strip()
     all_lines = stripped.splitlines()
