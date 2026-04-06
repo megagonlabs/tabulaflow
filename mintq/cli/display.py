@@ -31,7 +31,7 @@ MINTQ_THEME = Theme(
 
 DATA_PREVIEW_MAX_ROWS = 5
 DATA_PREVIEW_MAX_COLUMNS = 10
-QUERY_PREVIEW_MAX_LINES = 20
+QUERY_PREVIEW_MAX_LINES = 7
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -75,7 +75,12 @@ def build_query(query: str, max_lines: int | None = QUERY_PREVIEW_MAX_LINES, *, 
     all_lines = stripped.splitlines()
     total_lines = len(all_lines)
     truncated = max_lines is not None and total_lines > max_lines
-    display_query = "\n".join(all_lines[:max_lines]) if truncated else stripped
+    if truncated:
+        assert max_lines is not None
+        omitted_lines = total_lines - max_lines
+        display_query = "\n".join(all_lines[:max_lines]) + f"\n... ({omitted_lines} lines omitted)"
+    else:
+        display_query = stripped
     syntax = Syntax(
         display_query,
         lexer,
