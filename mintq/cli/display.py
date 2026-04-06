@@ -116,9 +116,12 @@ def build_table(
         return table
 
     stats_text = " | ".join(caption_parts)
-    left = Text(f"[ {action_hint} ]", style=ACCENT_BOLD) if action_hint else Text("")
-    right = Text(stats_text, style="dim") if stats_text else Text("")
-    footer = Columns([left, Align.right(right)], expand=True, equal=False)
+    if action_hint:
+        left = Text(f"[ {action_hint} ]", style=ACCENT_BOLD)
+        right = Text(stats_text, style="dim") if stats_text else Text("")
+        footer = Columns([left, Align.right(right)], expand=True, equal=False)
+    else:
+        footer = Text(stats_text, style="dim")
     return Group(table, footer)
 
 
@@ -187,7 +190,7 @@ def build_result_views(
             views[chart_key] = build_chart(record.df, record.chart_spec, width)
             chart_keys.append(chart_key)
         if record.df is not None and not record.df.empty:
-            views[data_key] = build_table(record.df, action_hint="Open Data Browser (click / b)")
+            views[data_key] = build_table(record.df)
             data_keys.append(data_key)
             data_views[data_key] = record.df
         if record.query:

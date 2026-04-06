@@ -683,9 +683,6 @@ class AgentResultWidget(Widget):
                     break
             return
 
-        if event.widget in {self._content, self} and self._current_key() in self._data_views:
-            self.action_open_data_browser()
-
     def action_next_tab(self) -> None:
         if self._ordered_keys:
             self.current_tab = (self.current_tab + 1) % len(self._ordered_keys)
