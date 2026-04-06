@@ -923,12 +923,19 @@ April 4
 - [x] Fix streaming and record parsing
 - [x] Fix disaplaying many tabs
 
-Features
+April 5
 - [x] Data browser
-- [ ] Query browser
+- [x] Query expander
+- [x] Polish hints
+
+April 6
+- [x] Trajectory
+- [ ] workspace db
+- [ ] Semantic operator
+
+Features
 - [ ] Copy to clipboard
 - [ ] Session resume
-- [ ] Semantic operator
 - [ ] Data writing
 - [ ] Web search
 
