@@ -9,7 +9,6 @@ import logging
 from pathlib import Path
 import re
 from dataclasses import dataclass, field
-from datetime import datetime
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 if TYPE_CHECKING:
@@ -264,24 +263,35 @@ class ChatAgent:
 
             trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
             _TRAJECTORY_LOG_DIR.mkdir(parents=True, exist_ok=True)
-            timestamp = datetime.now().strftime("%Y%m%d-%H%M%S-%f")
-            path = _TRAJECTORY_LOG_DIR / f"trajectory-{timestamp}.md"
+            self._rotate_trajectory_files()
+            path = _TRAJECTORY_LOG_DIR / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
-            self._prune_old_trajectory_files()
         except Exception:
             logger.exception("Failed to persist CLI trajectory debug file")
 
-    def _prune_old_trajectory_files(self) -> None:
-        files = sorted(
-            _TRAJECTORY_LOG_DIR.glob("trajectory-*.md"),
-            key=lambda p: p.stat().st_mtime,
-            reverse=True,
-        )
-        for old_file in files[_TRAJECTORY_KEEP_LAST:]:
+    def _rotate_trajectory_files(self) -> None:
+        """Rotate trajectory.md into trajectory.N.md backups."""
+        max_backups = max(_TRAJECTORY_KEEP_LAST - 1, 0)
+        if max_backups == 0:
+            return
+
+        oldest = _TRAJECTORY_LOG_DIR / f"trajectory.{max_backups}.md"
+        if oldest.exists():
             try:
-                old_file.unlink()
+                oldest.unlink()
             except OSError:
-                logger.warning("Failed to remove old trajectory file: %s", old_file)
+                logger.warning("Failed to remove old trajectory file: %s", oldest)
+
+        for i in range(max_backups - 1, 0, -1):
+            src = _TRAJECTORY_LOG_DIR / f"trajectory.{i}.md"
+            dst = _TRAJECTORY_LOG_DIR / f"trajectory.{i + 1}.md"
+            if src.exists():
+                src.replace(dst)
+
+        current = _TRAJECTORY_LOG_DIR / "trajectory.md"
+        first_backup = _TRAJECTORY_LOG_DIR / "trajectory.1.md"
+        if current.exists():
+            current.replace(first_backup)
 
 
 def _build_chat_result(
