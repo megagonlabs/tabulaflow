@@ -382,7 +382,7 @@ class DataBrowserScreen(Screen[None]):
         Binding("]", "next_page", "Next page", show=True),
     ]
 
-    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 100) -> None:
+    def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
         super().__init__()
         self._title = title
         self._df = df
@@ -390,6 +390,7 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._sorted_column: str | None = None
         self._sort_reverse = False
+        self._header_labels: tuple[str, ...] = tuple()
         self._table = DataTable(
             zebra_stripes=True,
             classes="data-browser-grid",
@@ -445,7 +446,6 @@ class DataBrowserScreen(Screen[None]):
         end = min(start + self._page_size, self._num_rows)
         page_df = self._df.iloc[start:end]
 
-        self._table.clear(columns=True)
         header_labels = ["#"]
         for col in page_df.columns:
             label = str(col)
@@ -453,11 +453,17 @@ class DataBrowserScreen(Screen[None]):
                 marker = "▼" if self._sort_reverse else "▲"
                 label = f"{label} {marker}"
             header_labels.append(label)
-        self._table.add_columns(*header_labels)
+        current_headers = tuple(header_labels)
+        if current_headers != self._header_labels:
+            self._table.clear(columns=True)
+            self._table.add_columns(*header_labels)
+            self._header_labels = current_headers
+        else:
+            self._table.clear(columns=False)
 
-        for local_idx, (_, row) in enumerate(page_df.iterrows(), start=1):
+        for local_idx, row in enumerate(page_df.itertuples(index=False, name=None), start=1):
             row_number = start + local_idx
-            cells = [str(row_number)] + [self._format_cell(v) for v in row.tolist()]
+            cells = [str(row_number)] + [self._format_cell(v) for v in row]
             self._table.add_row(*cells)
 
         total_pages = self._max_page_index + 1
