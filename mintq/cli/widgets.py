@@ -352,10 +352,20 @@ class DataBrowserScreen(Screen[None]):
         text-style: bold;
     }
 
-    DataBrowserScreen .data-browser-footer {
-        padding: 0 1 1 1;
-        color: $text;
-        text-style: dim;
+    DataBrowserScreen .data-browser-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+
+    DataBrowserScreen .data-browser-status {
+        padding: 0 1;
+        color: #f5f5f5;
+    }
+
+    DataBrowserScreen .data-browser-gap {
+        height: 1;
     }
     """
 
@@ -384,11 +394,15 @@ class DataBrowserScreen(Screen[None]):
             cursor_background_priority="css",
             cursor_foreground_priority="css",
         )
-        self._footer = Static(classes="data-browser-footer")
+        self._status = Static(classes="data-browser-status")
+        self._gap = Static(classes="data-browser-gap")
+        self._hint = Static(classes="data-browser-hint")
 
     def compose(self) -> ComposeResult:
         yield self._table
-        yield self._footer
+        yield self._status
+        yield self._gap
+        yield self._hint
 
     def on_mount(self) -> None:
         self._table.focus()
@@ -447,13 +461,20 @@ class DataBrowserScreen(Screen[None]):
             f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
             f"  |  Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}"
         )
-        hint_line = "Use [ and ] to change page, click header to sort, b or Esc to go back"
-        self._footer.update(
-            Text(
-                f"{summary_and_status_line}\n{hint_line}",
-                style="dim",
-            )
-        )
+        hint_fg = "dim"
+        hint_segments: list[tuple[str, str]] = [
+            ("[", ACCENT_BOLD),
+            (" Prev Page    ", hint_fg),
+            ("]", ACCENT_BOLD),
+            (" Next Page    ", hint_fg),
+            ("b/Esc", ACCENT_BOLD),
+            (" Go Back    ", hint_fg),
+        ]
+        hint = Text()
+        for text, style in hint_segments:
+            hint.append(text, style=style)
+        self._status.update(Text(summary_and_status_line, style=hint_fg))
+        self._hint.update(hint)
 
     def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
         """Sort when user clicks a header cell."""
