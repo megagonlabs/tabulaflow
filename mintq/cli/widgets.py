@@ -687,6 +687,28 @@ class AgentResultWidget(Widget):
                     break
             return
 
+        if event.widget is self._content:
+            key = self._current_key()
+            if key in self._data_views and self._is_table_region_click(key=key, y=event.y):
+                self.action_open_data_browser()
+
+    def _is_table_region_click(self, *, key: str, y: int) -> bool:
+        """Return True when click y-position is within the data-table area."""
+        if y < 0:
+            return False
+        content_height = self._content.size.height
+        if content_height <= 0:
+            return False
+        footer_lines = 1 if self._data_preview_has_footer(key) else 0
+        return y < (content_height - footer_lines)
+
+    def _data_preview_has_footer(self, key: str) -> bool:
+        """Data preview shows a one-line footer only when rows/cols are truncated."""
+        df = self._data_views.get(key)
+        if df is None:
+            return False
+        return len(df) > 5 or len(df.columns) > 10
+
     def action_next_tab(self) -> None:
         if self._ordered_keys:
             self.current_tab = (self.current_tab + 1) % len(self._ordered_keys)
