@@ -542,10 +542,11 @@ class AgentResultWidget(Widget):
         super().__init__()
         from mintq.cli.display import build_result_views
 
-        self._ordered_keys, self._views, self._data_views = build_result_views(result, width)
+        self._ordered_keys, self._views, self._data_views, self._query_views = build_result_views(result, width)
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
+        self._expanded_query_keys: set[str] = set()
 
     @property
     def has_tabs(self) -> bool:
@@ -586,9 +587,31 @@ class AgentResultWidget(Widget):
         return bool(children) and children[-1] is self
 
     def _update_tab_bar(self) -> None:
+        from rich.align import Align
+        from rich.columns import Columns
         from rich.style import Style
 
         wrap_width = self._tab_bar_widget.size.width or 80
+        current_key = self._current_key()
+
+        hint = Text()
+        hint.append("←/→", style=ACCENT_BOLD)
+        hint.append(" switch", style="dim")
+        if current_key in self._data_views:
+            hint.append("    ")
+            hint.append("b", style=ACCENT_BOLD)
+            hint.append(" Open Data Browser", style="dim")
+        if current_key in self._query_views:
+            expanded = bool(current_key and current_key in self._expanded_query_keys)
+            hint.append("    ")
+            hint.append("e", style=ACCENT_BOLD)
+            hint.append(" Collapse" if expanded else " Expand", style="dim")
+
+        # Keep tab wrapping stable; if there isn't enough room for a side-by-side layout,
+        # render hints on a right-aligned second line.
+        hint_width = len(hint.plain)
+        side_by_side = (wrap_width - hint_width - 1) >= 20
+        tab_wrap_width = max(1, (wrap_width - hint_width - 1) if side_by_side else wrap_width)
 
         # Build styled text and compute hit areas by simulating layout.
         # Visual width uses raw key; Rich Text uses escaped key for markup safety.
@@ -599,7 +622,7 @@ class AgentResultWidget(Widget):
             label = f" {key} "
             sep = " " if i > 0 else ""
             needed = len(sep) + len(label)
-            if col > 0 and col + needed > wrap_width:
+            if col > 0 and col + needed > tab_wrap_width:
                 line.append_text(Text("\n"))
                 row += 1
                 col = 0
@@ -612,19 +635,33 @@ class AgentResultWidget(Widget):
             line.append_text(Text(label, style=style))
             col += len(label)
             self._tab_hit_areas.append((row, col_start, col))
-        hint = "  ←/→ switch"
-        if col + len(hint) > wrap_width:
-            line.append_text(Text("\n"))
-        line.append(hint, style="dim")
-        self._tab_bar_widget.update(line)
+        if side_by_side:
+            self._tab_bar_widget.update(
+                Columns(
+                    [line, Align.right(hint)],
+                    expand=True,
+                    equal=False,
+                    padding=(0, 1),
+                )
+            )
+        else:
+            self._tab_bar_widget.update(Group(line, Align.right(hint)))
 
     def _update_content(self) -> None:
+        from mintq.cli.display import build_query
+
         if not self._ordered_keys:
             self._content.update(Text("No results to display.", style="dim"))
             return
         idx = min(self.current_tab, len(self._ordered_keys) - 1)
         key = self._ordered_keys[idx]
-        renderable = self._views.get(key, Text(""))
+        query_view = self._query_views.get(key)
+        if query_view is not None:
+            query, lexer = query_view
+            expanded = key in self._expanded_query_keys
+            renderable = build_query(query, max_lines=None if expanded else 20, lexer=lexer)
+        else:
+            renderable = self._views.get(key, Text(""))
         self._content.update(renderable)
 
     def _current_key(self) -> str | None:
@@ -657,6 +694,20 @@ class AgentResultWidget(Widget):
         if self._ordered_keys:
             self.current_tab = (self.current_tab - 1) % len(self._ordered_keys)
 
+    def action_toggle_query_preview(self) -> None:
+        """Toggle expanded/collapsed rendering for the active Query tab."""
+        key = self._current_key()
+        if key is None or key not in self._query_views:
+            return
+        if key in self._expanded_query_keys:
+            self._expanded_query_keys.remove(key)
+        else:
+            self._expanded_query_keys.add(key)
+        self._update_content()
+        if self._is_last_chat_item():
+            chat_log = self.app.query_one("#chat-log")
+            chat_log.scroll_end(animate=False)
+
     can_focus = True
 
     BINDINGS = [
@@ -664,6 +715,7 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
+        ("e", "toggle_query_preview", "Expand/collapse query"),
         ("b", "open_data_browser", "Open data browser"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),

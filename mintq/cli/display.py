@@ -65,13 +65,12 @@ def build_banner(*, model: str) -> RenderableType:
 
 
 
-def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> RenderableType:
+def build_query(query: str, max_lines: int | None = 20, *, lexer: str = "sql") -> RenderableType:
     """Build a syntax-highlighted query renderable."""
     stripped = query.strip()
     all_lines = stripped.splitlines()
     total_lines = len(all_lines)
-    truncated = total_lines > max_lines
-
+    truncated = max_lines is not None and total_lines > max_lines
     display_query = "\n".join(all_lines[:max_lines]) if truncated else stripped
     syntax = Syntax(
         display_query,
@@ -81,8 +80,6 @@ def build_query(query: str, max_lines: int = 20, *, lexer: str = "sql") -> Rende
         line_numbers=True,
         background_color="default",
     )
-    if truncated:
-        return Group(syntax, Text(f"{total_lines} lines total (truncated to {max_lines})", style="dim"))
     return syntax
 
 
@@ -150,13 +147,19 @@ def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int =
 def build_result_views(
     result: object,
     width: int = 80,
-) -> tuple[list[str], dict[str, RenderableType], dict[str, pd.DataFrame]]:
+) -> tuple[
+    list[str],
+    dict[str, RenderableType],
+    dict[str, pd.DataFrame],
+    dict[str, tuple[str, str]],
+]:
     """Build ordered view keys and their renderables from a ChatResult.
 
     Returns:
-        (ordered_keys, views, data_views) where ordered_keys defines tab order,
+        (ordered_keys, views, data_views, query_views) where ordered_keys defines tab order,
         views maps key -> Rich renderable, and data_views maps only Data tab keys
-        to their underlying DataFrame for full browser rendering.
+        to their underlying DataFrame for full browser rendering. query_views
+        maps Query tab keys to (raw_query, lexer) for inline expand/collapse.
     """
     from mintq.cli.agent import ChatResult
 
@@ -167,6 +170,7 @@ def build_result_views(
     data_keys: list[str] = []
     query_keys: list[str] = []
     data_views: dict[str, pd.DataFrame] = {}
+    query_views: dict[str, tuple[str, str]] = {}
 
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()
@@ -189,13 +193,14 @@ def build_result_views(
         if record.query:
             views[query_key] = build_query(record.query, lexer=record.query_lexer)
             query_keys.append(query_key)
+            query_views[query_key] = (record.query, record.query_lexer)
 
     ordered_keys: list[str] = []
     ordered_keys.extend(chart_keys)
     ordered_keys.extend(data_keys)
     ordered_keys.extend(query_keys)
 
-    return ordered_keys, views, data_views
+    return ordered_keys, views, data_views, query_views
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:
