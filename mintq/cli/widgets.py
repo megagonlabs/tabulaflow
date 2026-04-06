@@ -595,17 +595,21 @@ class AgentResultWidget(Widget):
         current_key = self._current_key()
 
         hint = Text()
-        hint.append("←/→", style=ACCENT_BOLD)
-        hint.append(" switch", style="dim")
         if current_key in self._data_views:
-            hint.append("    ")
+            if hint:
+                hint.append("    ")
             hint.append("b", style=ACCENT_BOLD)
             hint.append(" Open Data Browser", style="dim")
         if current_key in self._query_views:
             expanded = bool(current_key and current_key in self._expanded_query_keys)
-            hint.append("    ")
+            if hint:
+                hint.append("    ")
             hint.append("e", style=ACCENT_BOLD)
-            hint.append(" Collapse" if expanded else " Expand", style="dim")
+            hint.append(" Collapse Query" if expanded else " Show Full Query", style="dim")
+        if hint:
+            hint.append("    ")
+        hint.append("←/→", style=ACCENT_BOLD)
+        hint.append(" Switch Tab", style="dim")
 
         # Keep tab wrapping stable; if there isn't enough room for a side-by-side layout,
         # render hints on a right-aligned second line.
