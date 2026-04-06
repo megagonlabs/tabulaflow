@@ -699,15 +699,18 @@ class AgentResultWidget(Widget):
 
         if event.widget is self._content:
             key = self._current_key()
-            if key in self._data_views and self._is_table_region_click(key=key, y=event.y):
+            if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
                 self.action_open_data_browser()
 
-    def _is_table_region_click(self, *, key: str, y: int) -> bool:
-        """Return True when click y-position is within the data-table area."""
-        if y < 0:
+    def _is_table_region_click(self, *, key: str, x: int, y: int) -> bool:
+        """Return True when click lands within the visible data-table preview area."""
+        if x < 0 or y < 0:
             return False
         content_height = self._content.size.height
         if content_height <= 0:
+            return False
+        table_width = self._data_preview_table_width(key)
+        if table_width <= 0 or x >= table_width:
             return False
         footer_lines = 1 if self._data_preview_has_footer(key) else 0
         return y < (content_height - footer_lines)
@@ -718,6 +721,21 @@ class AgentResultWidget(Widget):
         if df is None:
             return False
         return len(df) > DATA_PREVIEW_MAX_ROWS or len(df.columns) > DATA_PREVIEW_MAX_COLUMNS
+
+    def _data_preview_table_width(self, key: str) -> int:
+        """Measure rendered width of the data preview table area."""
+        renderable = self._views.get(key)
+        if renderable is None:
+            return 0
+        table_renderable = renderable
+        if isinstance(renderable, Group):
+            renderables = tuple(getattr(renderable, "renderables", ()))
+            if not renderables:
+                return 0
+            table_renderable = renderables[0]
+        options = self.app.console.options.update(width=max(1, self._content.size.width))
+        measurement = self.app.console.measure(table_renderable, options=options)
+        return measurement.maximum
 
     def _is_query_truncated(self, key: str) -> bool:
         """Return True when query preview uses truncation for this key."""
