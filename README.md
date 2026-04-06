@@ -924,7 +924,7 @@ April 4
 - [x] Fix disaplaying many tabs
 
 Features
-- [ ] Data browser
+- [x] Data browser
 - [ ] Query browser
 - [ ] Copy to clipboard
 - [ ] Session resume
