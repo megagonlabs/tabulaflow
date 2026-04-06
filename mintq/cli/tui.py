@@ -152,7 +152,7 @@ class MintqApp(App[None]):
 
         root = logging.getLogger()
         root.handlers.clear()
-        root.setLevel(logging.DEBUG)
+        root.setLevel(logging.INFO)
         file_handler = RotatingFileHandler(log_path, maxBytes=2_000_000, backupCount=3)
         file_handler.setFormatter(logging.Formatter("%(asctime)s | %(levelname)s | %(name)s | %(message)s"))
         root.addHandler(file_handler)
