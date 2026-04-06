@@ -467,7 +467,7 @@ class DataBrowserScreen(Screen[None]):
             (" Prev Page    ", hint_fg),
             ("]", ACCENT_BOLD),
             (" Next Page    ", hint_fg),
-            ("b/Esc", ACCENT_BOLD),
+            ("b", ACCENT_BOLD),
             (" Go Back    ", hint_fg),
         ]
         hint = Text()
