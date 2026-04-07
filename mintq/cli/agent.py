@@ -109,6 +109,7 @@ class ProgressSink(Protocol):
     def finish(self) -> None: ...
     def tool_start(self, name: str, args_summary: str) -> None: ...
     def tool_end(self, name: str, result_summary: str) -> None: ...
+    def tool_progress(self, completed: int, total: int) -> None: ...
     def text_delta(self, delta: str) -> None: ...
     def set_status(self, text: str) -> None: ...
 
@@ -260,6 +261,9 @@ class ChatAgent:
         from pydantic_ai.run import AgentRunResultEvent
 
         progress.start()
+        self._tools.registry_run_subagent_for_each_row.on_row_complete = (
+            lambda c, t: progress.tool_progress(c, t)
+        )
 
         try:
             assert self._pydantic_ai_agent is not None
@@ -278,6 +282,7 @@ class ChatAgent:
                 await asyncio.sleep(0)
 
         finally:
+            self._tools.registry_run_subagent_for_each_row.on_row_complete = None
             progress.finish()
 
         self._save_trajectory_for_debug()
@@ -479,7 +484,7 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
         mode = str(args.get("mode", "append"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
         return f"{record_id} -> [{target_alias}] {target} ({mode})"
-    if tool_name == "registry_run_subagent_for_each_row":
+    if tool_name == "run_subagent_for_each_row":
         table_name = str(args.get("table_name", ""))
         return f"{db_prefix}{table_name}"
     return str(args)[:80]

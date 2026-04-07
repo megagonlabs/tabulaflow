@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from typing import ClassVar
 
 from pydantic_ai import Tool
@@ -29,21 +30,22 @@ class RegistryRunSubagentForEachRowTool:
         """
         self.registry = registry
         self.subagent_llm = subagent_llm
+        self.on_row_complete: Callable[[int, int], None] | None = None
         self._tools: dict[str, RunSubagentForEachRowTool] = {}
 
     def _get_tool(self, db_alias: str) -> RunSubagentForEachRowTool:
         """Return a cached ``RunSubagentForEachRowTool`` for ``db_alias``, creating one if needed."""
         tool = self._tools.get(db_alias)
-        if tool is not None:
-            return tool
-        connector = self.registry.get(db_alias)
-        if connector.connector_type != "sql":
-            raise TypeError(
-                f"run_subagent_for_each_row is only supported for SQL connectors, "
-                f"not {connector.connector_type!r}"
-            )
-        tool = RunSubagentForEachRowTool(connector, subagent_llm=self.subagent_llm)
-        self._tools[db_alias] = tool
+        if tool is None:
+            connector = self.registry.get(db_alias)
+            if connector.connector_type != "sql":
+                raise TypeError(
+                    f"run_subagent_for_each_row is only supported for SQL connectors, "
+                    f"not {connector.connector_type!r}"
+                )
+            tool = RunSubagentForEachRowTool(connector, subagent_llm=self.subagent_llm)
+            self._tools[db_alias] = tool
+        tool.on_row_complete = self.on_row_complete
         return tool
 
     async def __call__(

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+from collections.abc import Callable
 from typing import ClassVar
 
 import jinja2
@@ -72,6 +73,7 @@ class RunSubagentForEachRowTool:
         """
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
+        self.on_row_complete: Callable[[int, int], None] | None = None
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
         self._get_column_json_schema_tool = GetColumnJsonSchemaTool(db_connector.schema)
@@ -116,7 +118,10 @@ class RunSubagentForEachRowTool:
         if missing_output_columns:
             return f"(error: output_columns not found in table {table_name!r}: {missing_output_columns})"
 
+        completed = 0
+
         async def _process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
+            nonlocal completed
             subagent = Agent(
                 model=self.subagent_llm,
                 tools=[
@@ -141,16 +146,21 @@ class RunSubagentForEachRowTool:
                     return f"row {row_idx}: {output.message}"
             except Exception as e:
                 return f"row {row_idx}: {type(e).__name__}: {e}"
+            finally:
+                completed += 1
+                if self.on_row_complete is not None:
+                    self.on_row_complete(completed, total)
+                    await asyncio.sleep(0)
             return None
 
         rows = df.to_dict(orient="records")
-        processed = len(rows)
+        total = len(rows)
         errors = await asyncio.gather(*(_process_one_row(row_idx, row) for row_idx, row in enumerate(rows, start=1)))
         error_messages = [e for e in errors if e is not None]
         failed = len(error_messages)
-        updated = processed - failed
+        updated = total - failed
         summary = (
-            f"Processed {processed} rows from {table_name}; "
+            f"Processed {total} rows from {table_name}; "
             f"subagent updates succeeded for {updated} rows, failed for {failed} rows."
         )
         if error_messages:
