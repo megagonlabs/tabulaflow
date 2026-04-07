@@ -331,9 +331,10 @@ class MintqApp(App[None]):
             progress._refresh(layout=True)
 
         session.last_result = result
-        result_widget = AgentResultWidget(result, width=self.size.width - 4)
-        chat_log.mount(result_widget)
-        chat_log.scroll_end(animate=False)
+        if result.records:
+            result_widget = AgentResultWidget(result, width=self.size.width - 4)
+            chat_log.mount(result_widget)
+            chat_log.scroll_end(animate=False)
 
 
 async def run_tui(model: str, agent: str) -> None:

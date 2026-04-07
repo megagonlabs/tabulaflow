@@ -335,7 +335,8 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
     if _SEPARATOR in answer_text:
         prefix, display_text = answer_text.split(_SEPARATOR, 1)
     else:
-        prefix, display_text = answer_text, ""
+        # No explicit separator means the full output is user-facing text.
+        prefix, display_text = "", answer_text
 
     refs: list[tuple[str, str | None]] = []
     for match in _QUERY_REF_RE.finditer(prefix):
