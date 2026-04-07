@@ -103,7 +103,7 @@ class MintqApp(App[None]):
             ],
             primary_record_index=0,
         )
-        return AgentResultWidget(result, width=self.size.width - 4)
+        return AgentResultWidget(result, width=self.size.width - 11)
 
     def _build_debug_small_result_widget(self) -> AgentResultWidget:
         import pandas as pd
@@ -141,7 +141,7 @@ class MintqApp(App[None]):
             ],
             primary_record_index=0,
         )
-        return AgentResultWidget(result, width=self.size.width - 4)
+        return AgentResultWidget(result, width=self.size.width - 11)
 
     def _setup_logging(self) -> None:
         from logging.handlers import RotatingFileHandler
@@ -332,7 +332,8 @@ class MintqApp(App[None]):
 
         session.last_result = result
         if result.records:
-            result_widget = AgentResultWidget(result, width=self.size.width - 4)
+            # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
+            result_widget = AgentResultWidget(result, width=self.size.width - 11)
             chat_log.mount(result_widget)
             chat_log.scroll_end(animate=False)
 
