@@ -696,6 +696,9 @@ class ChartBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
+    def on_click(self, event: object) -> None:
+        self.dismiss()
+
     def _render_chart(self) -> None:
         from mintq.cli.display import build_chart
 
