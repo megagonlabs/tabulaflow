@@ -106,7 +106,7 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        with self.engine.connect() as conn:  # type: ignore
+        with self.engine.begin() as conn:  # type: ignore
             if isinstance(statement, str):
                 # We use exec_driver_sql to avoid sqlalchemy.text() parameter
                 # parsing, which misinterprets :identifier patterns (e.g.
@@ -128,7 +128,7 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        async with self.engine.connect() as conn:  # type: ignore
+        async with self.engine.begin() as conn:  # type: ignore
             if isinstance(statement, str):
                 # See _run_query_s for rationale on exec_driver_sql.
                 result = await conn.exec_driver_sql(statement, parameters or None)
@@ -159,7 +159,7 @@ class ThrottledEngine:
         timeout: int | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
-        async with self.engine.connect() as conn:  # type: ignore
+        async with self.engine.begin() as conn:  # type: ignore
             if timeout is not None:
                 interrupter = self._create_interrupter(conn, timeout)
 
