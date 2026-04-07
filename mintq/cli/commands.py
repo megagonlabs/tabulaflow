@@ -231,14 +231,11 @@ async def handle_command(text: str, session: SessionState) -> CommandResult:
 
 
 async def _cmd_help(args: list[str], session: SessionState) -> CommandResult:
-    table = Table(title="Commands", show_header=True, header_style=ACCENT_BOLD, show_lines=False)
-    table.add_column("Command", style="bold")
-    table.add_column("Description")
-
+    lines = Text()
     for cmd, (_, description) in _COMMAND_HELP.items():
-        table.add_row(cmd, description)
-
-    return CommandResult(output=table)
+        lines.append(f"  {cmd}\n", style="bold")
+        lines.append(f"    {description}\n", style="dim")
+    return CommandResult(output=lines)
 
 
 async def _cmd_exit(args: list[str], session: SessionState) -> CommandResult:
