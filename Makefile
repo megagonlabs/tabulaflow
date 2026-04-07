@@ -473,3 +473,7 @@ diff-schema:
 .PHONY: sqlite
 sqlite:
 	sqlite3 data/BIRD-SQL/dev_20240627/dev_databases/$(DB)/$(DB).sqlite
+
+.PHONY: last-trajectory
+last-trajectory:
+	@ls -t ~/.mintq/sessions/*/trajectories/* 2>/dev/null | head -n 1
