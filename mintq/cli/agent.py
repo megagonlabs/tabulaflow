@@ -55,10 +55,16 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
     There are 42 players in the database.
 </goal>
 
+<registry_and_alias>
+- Databases are registered under aliases (e.g. `workspace`).
+- `db_alias` selects which registered database connector a tool call uses.
+- Aliases are application-level handles, not SQL catalog/schema names; to move data across aliases, use `transfer_record`.
+</registry_and_alias>
+
 <tool_calling>
 Gathering information:
 - For most databases, call `get_db_document` to understand the database structure.
-- For SQL databases, always use `get_table_schema` to get the schema of relevant tables before constructing the query.
+- For SQL databases, you may use `get_table_schema` to get the schema of relevant tables before constructing the query.
 - For SQL databases, you may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
 - You may use `run_query` to run exploratory queries or inspect some sample values to determine the data format if necessary.
 
@@ -79,7 +85,7 @@ Visualization:
 - `workspace` is a session-local DuckDB database for temporary transformation tables.
 - For transformation tasks (cleaning, reshaping, etc.), prefer writing to `workspace` instead of modifying source databases in place.
 - Use `transfer_record` to copy a prior result (`record_id`) into a workspace table.
-- When presenting a final table result to the user, run `SELECT *` and reference the result in the final response.
+- When presenting a final table result to the user, run `SELECT *` without `LIMIT` and reference the result in the final response.
 </using_workspace>
 """.strip()
 
