@@ -90,7 +90,8 @@ class RegistryRunSubagentForEachRowTool:
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
     ) -> str:
-        """Run a row-wise subagent over all rows in a table.
+        """Use subagents to process each row of a table and write updates back to the table.
+        All target output columns must already exist in the table.
 
         Args:
             db_alias: Alias of the target database table to update.
@@ -101,7 +102,7 @@ class RegistryRunSubagentForEachRowTool:
             input_columns: Optional columns to include in row identity/prompt payload.
                 If omitted, all table columns are included.
             output_columns: Optional columns the subagent should update.
-                If provided, all names must exist in the target table.
+                If provided, all output columns must already exist in the target table.
         """
         try:
             connector = self.registry.get(db_alias)
