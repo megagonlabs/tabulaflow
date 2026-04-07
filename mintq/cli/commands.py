@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from mintq.schema import SQLSchema
 
 COMMAND_PREFIX = "/"
+WORKSPACE_ALIAS = "workspace"
 
 _FILE_EXTENSIONS: dict[str, str] = {
     ".sqlite": "sqlite+aiosqlite",
@@ -59,12 +60,20 @@ class CommandResult:
 class SessionState:
     """Holds state for a single interactive session."""
 
-    def __init__(self, model: str, agent: str, session_id: str, trajectories_dir: Path) -> None:
+    def __init__(
+        self,
+        model: str,
+        agent: str,
+        session_id: str,
+        trajectories_dir: Path,
+        workspace_db_path: Path,
+    ) -> None:
         from mintq.cli.agent import ChatAgent
         from mintq.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
         self.session_id = session_id
+        self.workspace_db_path = workspace_db_path
         self.registry: DBRegistry = DBRegistry()
         self.chat_agent: ChatAgent = ChatAgent(
             registry=self.registry,
@@ -73,6 +82,24 @@ class SessionState:
             trajectory_log_dir=trajectories_dir,
         )
         self.last_result: object | None = None
+
+    async def connect_workspace_db(self) -> None:
+        """Create and register the per-session workspace DuckDB."""
+        from mintq.db_connector.sql_conn import SQLConnector
+
+        self.workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
+        workspace_abspath = os.path.abspath(self.workspace_db_path)
+        url = f"duckdb:///{workspace_abspath}"
+        connector = await SQLConnector.from_url_async(
+            global_id=f"cli+{WORKSPACE_ALIAS}",
+            url=url,
+            db_name=WORKSPACE_ALIAS,
+            read_only=False,
+            enable_schema_caching=False,
+            enable_query_caching=False,
+        )
+        self.registry.register(WORKSPACE_ALIAS, connector)
+        self.chat_agent.add_database([(WORKSPACE_ALIAS, connector)])
 
     @property
     def model(self) -> str:
@@ -171,6 +198,9 @@ def _resolve_alias(args: list[str], session: SessionState) -> tuple[str | None, 
     if args and session.registry.has(args[0]):
         return args[0], args[1:]
     aliases = session.registry.list_aliases()
+    user_aliases = [alias for alias in aliases if alias != WORKSPACE_ALIAS]
+    if len(user_aliases) == 1:
+        return user_aliases[0], args
     if len(aliases) == 1:
         return aliases[0], args
     return None, args
@@ -363,8 +393,11 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
 
 async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResult:
     aliases = session.registry.list_aliases()
+    user_aliases = [alias for alias in aliases if alias != WORKSPACE_ALIAS]
     if not args:
-        if len(aliases) == 1:
+        if len(user_aliases) == 1:
+            alias = user_aliases[0]
+        elif len(aliases) == 1:
             alias = aliases[0]
         else:
             return CommandResult(output=Text.from_markup("[red]Usage:[/red] /disconnect <alias>"))

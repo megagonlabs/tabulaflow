@@ -207,7 +207,9 @@ class MintqApp(App[None]):
                 self._agent,
                 self._session_id,
                 self._runtime_paths.trajectories_dir,
+                self._runtime_paths.workspace_db_path,
             )
+            await self._session.connect_workspace_db()
             return self._session
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:

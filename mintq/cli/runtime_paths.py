@@ -23,6 +23,7 @@ class RuntimePaths:
 
     logs_dir: Path
     trajectories_dir: Path
+    workspace_db_path: Path
     history_path: Path
     cli_log_path: Path
 
@@ -36,6 +37,7 @@ class RuntimePaths:
         return cls(
             logs_dir=logs_dir,
             trajectories_dir=trajectories_dir,
+            workspace_db_path=session_dir / "workspace.duckdb",
             history_path=root / "history",
             cli_log_path=logs_dir / "cli.log",
         )
