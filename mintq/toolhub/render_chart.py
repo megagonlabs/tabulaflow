@@ -102,7 +102,13 @@ def render_plotext(
     color = ACCENT_RGB
 
     if mark == "bar":
-        plt.bar([str(v) for v in x_data], y_data, color=color)
+        x_labels = [str(v) for v in x_data]
+        # Truncate labels so plotext doesn't skip any due to overlap.
+        # Reserve ~4 chars for y-axis; divide remaining width among bars.
+        max_label_len = max(1, (effective_width - 4) // max(len(x_labels), 1) - 1)
+        tick_labels = [s[:max_label_len] if len(s) > max_label_len else s for s in x_labels]
+        plt.bar(x_labels, y_data, color=color)
+        plt.xticks(list(range(1, len(x_labels) + 1)), tick_labels)
     elif mark == "line":
         plt.plot(x_data, y_data, color=color)
     elif mark == "scatter":
