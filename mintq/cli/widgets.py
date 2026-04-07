@@ -703,7 +703,6 @@ class QueryBrowserScreen(Screen[None]):
         yield TextArea(
             self._query,
             language=lang,
-            theme="monokai",
             read_only=True,
             show_line_numbers=True,
             soft_wrap=False,
@@ -712,6 +711,8 @@ class QueryBrowserScreen(Screen[None]):
         yield Static(classes="query-browser-hint")
 
     def on_mount(self) -> None:
+        self.query_one(TextArea).theme = "dracula"
+
         hint_text = Text()
         hint_text.append("f", style=ACCENT_BOLD)
         hint_text.append(" Exit Full Screen    ", style="dim")

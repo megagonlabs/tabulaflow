@@ -90,7 +90,7 @@ def build_query(
     syntax = Syntax(
         display_query,
         lexer,
-        theme="solarized-dark",
+        theme="dracula",
         padding=(1, 2),
         line_numbers=line_numbers,
         background_color="default",
