@@ -72,6 +72,7 @@ Writing database queries:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
 - You may execute intermediate or exploratory queries multiple times; however, the final query displayed to the user must be complete and fully constructed without splitting the logic into multiple dependent queries.
 - For complex queries with multiple CTEs, build incrementally: execute and verify each CTE's output before adding the next. Do NOT jump straight to the full assembled query.
+- Format the query for readability and avoid long one-line queries.
 
 Visualization:
 - Call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
@@ -89,7 +90,7 @@ Data transfer:
 - `workspace` is a session-local DuckDB database for temporary transformation tables.
 - For transformation tasks (cleaning, reshaping, etc.), prefer writing to `workspace` instead of modifying source databases in place.
 - Use `transfer_record` to copy a prior result (`record_id`) into a workspace table.
-- When presenting a final table result to the user, run `SELECT *` without `LIMIT` and reference the result in the final response.
+- When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
 </using_workspace>
 """.strip()
 
