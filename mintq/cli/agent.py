@@ -41,7 +41,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 
 <read_only_questions>
 - For read-only questions, your goal is to run database queries to answer the question.
-- You can present one or multiple query results in the final response using the following format:
+- You can present one or multiple tables in the final response using the following format:
   - In your final response, begin with result reference lines, followed by a `---` separator, then your natural language answer.
     The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
     - Basic form: [[result:Q<id>]] (e.g. [[result:Q3]]).
@@ -52,6 +52,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
       ---
       There are 42 players in the database.
 - If the question is ambiguous, pick the most natural interpretation and proceed. Only ask for clarifications if you are truly blocked.
+- Pay attention to whether the user is asking for one table or multiple tables.
 - Your final response should be a clear concise natural language answer summarizing the results.
   - Do not include the execution results or the query as they will be automatically rendered in a separate view for all referenced records.
 </read_only_questions>
