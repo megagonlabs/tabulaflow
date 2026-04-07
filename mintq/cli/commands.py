@@ -527,23 +527,6 @@ async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
     return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]"))
 
 
-async def _cmd_agent(args: list[str], session: SessionState) -> CommandResult:
-    if not args:
-        return CommandResult(output=Text.from_markup(f"[dim]Current agent:[/dim] {session.agent_name}"))
-    session.agent_name = args[0]
-    return CommandResult(
-        output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Agent set to [bold]{session.agent_name}[/bold]")
-    )
-
-
-async def _cmd_view(args: list[str], session: SessionState) -> CommandResult:
-    if session.last_result is None:
-        return CommandResult(output=Text("No result to display. Ask a question first.", style="dim"))
-    # In the TUI, the result is already displayed in an AgentResultWidget.
-    # This command is kept for compatibility but is a no-op in the TUI.
-    return CommandResult(output=Text("Use arrow keys on a result widget to switch tabs.", style="dim"))
-
-
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
@@ -554,8 +537,6 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/db": (_cmd_databases, "Alias for /databases"),
     "/schema": (_cmd_schema, "Show schema: /schema [alias] [table] [column]"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
-    "/agent": (_cmd_agent, "Switch agent: /agent <name>"),
-    "/view": (_cmd_view, "View last result (use arrow keys on result widget)"),
 }
 
 COMMANDS: dict[str, object] = {cmd: handler for cmd, (handler, _) in _COMMAND_HELP.items()}
