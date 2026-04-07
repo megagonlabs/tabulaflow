@@ -930,8 +930,12 @@ April 5
 
 April 6
 - [x] Trajectory
-- [ ] workspace db
-- [ ] Semantic operator
+- [x] workspace db
+- [x] Tune cli agent prompt
+- [x] run_subagent_for_each_row tool
+
+- [ ] Refresh for get_column_json_schema and get_db_document
+- [ ] Progress display for run_subagent_for_each_row
 
 Features
 - [ ] Copy to clipboard
