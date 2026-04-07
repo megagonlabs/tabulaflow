@@ -945,6 +945,9 @@ Features
 
 Demo
 - [ ] Profile all 152 spider2-snow databases
+- [ ] Scenario A: multi-source querying
+- [ ] Scenario B: semantic operators
+- [ ] Scenario C: building database from web pages
 
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
