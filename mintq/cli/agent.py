@@ -58,7 +58,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 <registry_and_alias>
 - Databases are registered under aliases (e.g. `workspace`).
 - `db_alias` selects which registered database connector a tool call uses.
-- Aliases are application-level handles, not SQL catalog/schema names; to move data across aliases, use `transfer_record`.
+- Aliases are application-level handles, not SQL catalog/schema names.
 </registry_and_alias>
 
 <tool_calling>
@@ -79,6 +79,10 @@ Visualization:
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
+
+Data transfer:
+- Use `transfer_record` to move data across aliases.
+- To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
 </tool_calling>
 
 <using_workspace>
