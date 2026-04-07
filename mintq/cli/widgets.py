@@ -588,12 +588,12 @@ class DataBrowserScreen(Screen[None]):
         )
         hint_fg = "dim"
         hint_segments: list[tuple[str, str]] = [
+            ("f", ACCENT_BOLD),
+            (" Exit Full Screen    ", hint_fg),
             ("[", ACCENT_BOLD),
             (" Prev Page    ", hint_fg),
             ("]", ACCENT_BOLD),
             (" Next Page    ", hint_fg),
-            ("f", ACCENT_BOLD),
-            (" Go Back    ", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
@@ -709,7 +709,7 @@ class ChartBrowserScreen(Screen[None]):
 
         hint = Text()
         hint.append("f", style=ACCENT_BOLD)
-        hint.append(" Go Back    ", style="dim")
+        hint.append(" Exit Full Screen    ", style="dim")
         self._hint.update(hint)
 
 
