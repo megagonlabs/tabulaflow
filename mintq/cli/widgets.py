@@ -16,7 +16,7 @@ from textual.timer import Timer
 from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widget import Widget
-from textual.widgets import DataTable, Input, Static
+from textual.widgets import DataTable, Input, Static, TextArea
 
 from mintq.cli.display import (
     DATA_PREVIEW_MAX_COLUMNS,
@@ -644,26 +644,27 @@ class DataBrowserScreen(Screen[None]):
 
 
 class QueryBrowserScreen(Screen[None]):
-    """Full-screen viewer for inspecting a query with line numbers."""
+    """Full-screen viewer for inspecting a query with scrolling."""
 
     DEFAULT_CSS = """
     QueryBrowserScreen {
         background: $surface;
     }
 
-    QueryBrowserScreen .query-browser-content {
+    QueryBrowserScreen TextArea {
         height: 1fr;
         margin: 0 1;
-        padding: 1 2;
-        background: $surface;
-        color: $text;
-        overflow-y: auto;
+        border: solid white;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
         scrollbar-color-active: #3EB489;
         scrollbar-background: transparent;
         scrollbar-background-hover: transparent;
         scrollbar-background-active: transparent;
+    }
+
+    QueryBrowserScreen .query-browser-gap {
+        height: 1;
     }
 
     QueryBrowserScreen .query-browser-hint {
@@ -680,33 +681,38 @@ class QueryBrowserScreen(Screen[None]):
         Binding("f", "close_browser", "Back", show=False),
     ]
 
+    # Languages supported by Textual's TextArea.
+    _SUPPORTED_LANGUAGES = frozenset({
+        "bash", "css", "go", "html", "java", "javascript", "json",
+        "markdown", "python", "regex", "rust", "sql", "toml", "xml", "yaml",
+    })
+
     def __init__(self, *, title: str, query: str, lexer: str = "sql") -> None:
         super().__init__()
         self._title = title
         self._query = query
         self._lexer = lexer
-        self._content = Static(classes="query-browser-content")
-        self._hint = Static(classes="query-browser-hint")
 
     def compose(self) -> ComposeResult:
-        yield self._content
-        yield self._hint
+        lang = self._lexer if self._lexer in self._SUPPORTED_LANGUAGES else None
+        yield TextArea(
+            self._query,
+            language=lang,
+            theme="monokai",
+            read_only=True,
+            show_line_numbers=True,
+            soft_wrap=False,
+        )
+        yield Static(classes="query-browser-gap")
+        yield Static(classes="query-browser-hint")
 
     def on_mount(self) -> None:
-        from mintq.cli.display import build_query
-
-        renderable = build_query(self._query, max_lines=None, lexer=self._lexer, line_numbers=True)
-        self._content.update(renderable)
-
-        hint = Text()
-        hint.append("f", style=ACCENT_BOLD)
-        hint.append(" Exit Full Screen    ", style="dim")
-        self._hint.update(hint)
+        hint_text = Text()
+        hint_text.append("f", style=ACCENT_BOLD)
+        hint_text.append(" Exit Full Screen    ", style="dim")
+        self.query_one(".query-browser-hint", Static).update(hint_text)
 
     def action_close_browser(self) -> None:
-        self.dismiss()
-
-    def on_click(self, event: object) -> None:
         self.dismiss()
 
 

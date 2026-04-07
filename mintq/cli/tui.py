@@ -87,8 +87,11 @@ class MintqApp(App[None]):
         col_names = [f"col_{i + 1:02d}" for i in range(cols)]
         data = {name: [f"{name}_r{r + 1:04d}" for r in range(rows)] for name in col_names}
         df = pd.DataFrame(data)
-        query_lines = [f"SELECT col_{i:02d} AS c{i:02d}" for i in range(1, 41)]
-        debug_query = "\n".join(query_lines)
+        query_lines = [
+            f"SELECT col_{i:02d} AS c{i:02d}, COALESCE(col_{i:02d}, 'N/A') AS col_{i:02d}_filled, UPPER(col_{i:02d}) AS col_{i:02d}_upper, LENGTH(col_{i:02d}) AS col_{i:02d}_len, LOWER(col_{i:02d}) AS col_{i:02d}_lower, TRIM(col_{i:02d}) AS col_{i:02d}_trimmed, REPLACE(col_{i:02d}, ' ', '_') AS col_{i:02d}_cleaned, SUBSTRING(col_{i:02d}, 1, 50) AS col_{i:02d}_short"
+            for i in range(1, 41)
+        ]
+        debug_query = ",\n".join(query_lines) + "\nFROM debug_wide_table\nWHERE col_01 IS NOT NULL\nORDER BY col_01\nLIMIT 4000"
 
         result = ChatResult(
             text="Debug startup table",
