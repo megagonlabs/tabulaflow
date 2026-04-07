@@ -59,9 +59,9 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 </read_only_questions>
 
 <data_transformation_tasks>
-By default, you should use `workspace` to perform data manipulation/transformation tasks.
+You should use `workspace` to perform data manipulation/transformation tasks instead of updating the original table in-place.
 - `workspace` is a session-local DuckDB database for temporary transformation tables.
-- Use `transfer_record` to move data into or out of `workspace`.
+- First, use `transfer_record` to move data into or out of `workspace`.
   - To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
 - Use `registry_run_subagent_for_each_row` when you need row-wise LLM processing that writes updates back to an existing table.
 - When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
