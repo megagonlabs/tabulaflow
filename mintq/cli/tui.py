@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
 from typing import TYPE_CHECKING
 
 from textual.app import App, ComposeResult
@@ -12,6 +11,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
+from mintq.cli.runtime_paths import RuntimePaths, generate_session_id
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -24,8 +24,6 @@ from mintq.cli.widgets import (
 
 if TYPE_CHECKING:
     from mintq.cli.agent import ChatResult
-
-DATA_DIR = Path.home() / ".mintq"
 
 logger = logging.getLogger(__name__)
 
@@ -46,6 +44,8 @@ class MintqApp(App[None]):
         super().__init__()
         self._model = model
         self._agent = agent
+        self._session_id = generate_session_id()
+        self._runtime_paths = RuntimePaths.for_session(self._session_id)
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
@@ -53,7 +53,7 @@ class MintqApp(App[None]):
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
         yield HistoryInput(
-            history_path=DATA_DIR / "history",
+            history_path=self._runtime_paths.history_path,
             placeholder="Ask a question or type /help",
             id="input-bar",
         )
@@ -146,9 +146,9 @@ class MintqApp(App[None]):
     def _setup_logging(self) -> None:
         from logging.handlers import RotatingFileHandler
 
-        log_dir = DATA_DIR / "logs"
+        log_dir = self._runtime_paths.logs_dir
         log_dir.mkdir(parents=True, exist_ok=True)
-        log_path = log_dir / "cli.log"
+        log_path = self._runtime_paths.cli_log_path
 
         root = logging.getLogger()
         root.handlers.clear()
@@ -201,7 +201,12 @@ class MintqApp(App[None]):
                 return self._session
             loop = asyncio.get_running_loop()
             self._session = await loop.run_in_executor(
-                None, SessionState, self._model, self._agent
+                None,
+                SessionState,
+                self._model,
+                self._agent,
+                self._session_id,
+                self._runtime_paths.trajectories_dir,
             )
             return self._session
 

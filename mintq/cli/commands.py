@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 import shlex
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -58,13 +59,19 @@ class CommandResult:
 class SessionState:
     """Holds state for a single interactive session."""
 
-    def __init__(self, model: str, agent: str) -> None:
+    def __init__(self, model: str, agent: str, session_id: str, trajectories_dir: Path) -> None:
         from mintq.cli.agent import ChatAgent
         from mintq.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
+        self.session_id = session_id
         self.registry: DBRegistry = DBRegistry()
-        self.chat_agent: ChatAgent = ChatAgent(registry=self.registry, model=model)
+        self.chat_agent: ChatAgent = ChatAgent(
+            registry=self.registry,
+            model=model,
+            session_id=session_id,
+            trajectory_log_dir=trajectories_dir,
+        )
         self.last_result: object | None = None
 
     @property

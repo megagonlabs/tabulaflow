@@ -31,7 +31,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)(?::([^\]]+))?\]\]")
-_TRAJECTORY_LOG_DIR = Path.home() / ".mintq" / "trajectories"
 _TRAJECTORY_KEEP_LAST = 20
 
 SYSTEM_PROMPT = """\
@@ -147,6 +146,8 @@ class ChatAgent:
 
     registry: DBRegistry
     model: str
+    session_id: str
+    trajectory_log_dir: Path
     _message_history: list[ModelMessage] = field(default_factory=list)
     _system_prompt: str = SYSTEM_PROMPT
     _pydantic_ai_agent: Agent[None, str] | None = None
@@ -262,9 +263,9 @@ class ChatAgent:
             from mintq.schema import Trajectory
 
             trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
-            _TRAJECTORY_LOG_DIR.mkdir(parents=True, exist_ok=True)
+            self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
             self._rotate_trajectory_files()
-            path = _TRAJECTORY_LOG_DIR / "trajectory.md"
+            path = self.trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
         except Exception:
             logger.exception("Failed to persist CLI trajectory debug file")
@@ -275,7 +276,7 @@ class ChatAgent:
         if max_backups == 0:
             return
 
-        oldest = _TRAJECTORY_LOG_DIR / f"trajectory.{max_backups}.md"
+        oldest = self.trajectory_log_dir / f"trajectory.{max_backups}.md"
         if oldest.exists():
             try:
                 oldest.unlink()
@@ -283,13 +284,13 @@ class ChatAgent:
                 logger.warning("Failed to remove old trajectory file: %s", oldest)
 
         for i in range(max_backups - 1, 0, -1):
-            src = _TRAJECTORY_LOG_DIR / f"trajectory.{i}.md"
-            dst = _TRAJECTORY_LOG_DIR / f"trajectory.{i + 1}.md"
+            src = self.trajectory_log_dir / f"trajectory.{i}.md"
+            dst = self.trajectory_log_dir / f"trajectory.{i + 1}.md"
             if src.exists():
                 src.replace(dst)
 
-        current = _TRAJECTORY_LOG_DIR / "trajectory.md"
-        first_backup = _TRAJECTORY_LOG_DIR / "trajectory.1.md"
+        current = self.trajectory_log_dir / "trajectory.md"
+        first_backup = self.trajectory_log_dir / "trajectory.1.md"
         if current.exists():
             current.replace(first_backup)
 
