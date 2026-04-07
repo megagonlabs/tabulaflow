@@ -11,6 +11,7 @@ from pathlib import Path
 
 from textual.binding import Binding
 from textual.reactive import reactive
+from textual.suggester import Suggester
 from textual.timer import Timer
 from textual.app import ComposeResult
 from textual.screen import Screen
@@ -32,6 +33,94 @@ if TYPE_CHECKING:
 
 
 # ---------------------------------------------------------------------------
+# Autocomplete suggester
+# ---------------------------------------------------------------------------
+
+_SLASH_COMMANDS = sorted(
+    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/model", "/agent", "/view"]
+)
+
+_CONNECTABLE_EXTENSIONS = frozenset(
+    {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
+)
+
+
+class MintqSuggester(Suggester):
+    """Autocomplete for slash commands and file paths after /connect."""
+
+    def __init__(self) -> None:
+        super().__init__(use_cache=False, case_sensitive=True)
+
+    async def get_suggestion(self, value: str) -> str | None:
+        if not value:
+            return None
+
+        # File path completion after "/connect "
+        if value.startswith("/connect "):
+            return self._suggest_connect_path(value)
+
+        # Slash command completion
+        if value.startswith("/"):
+            return self._suggest_slash_command(value)
+
+        return None
+
+    def _suggest_slash_command(self, value: str) -> str | None:
+        # Only complete the command portion (first word)
+        parts = value.split(" ", 1)
+        prefix = parts[0]
+        for cmd in _SLASH_COMMANDS:
+            if cmd.startswith(prefix) and cmd != prefix:
+                # Return just the command if user hasn't typed args yet
+                if len(parts) == 1:
+                    return cmd
+                return None
+        return None
+
+    def _suggest_connect_path(self, value: str) -> str | None:
+        raw = value[len("/connect "):]
+        if not raw:
+            return None
+
+        # Split to find the last token (supports multiple file args)
+        tokens = raw.split()
+        partial = tokens[-1] if tokens else raw
+        prefix_part = value[: len(value) - len(partial)]
+
+        p = Path(partial)
+        if partial.endswith("/"):
+            parent = p
+            name_prefix = ""
+        else:
+            parent = p.parent
+            name_prefix = p.name
+
+        try:
+            candidates = sorted(parent.iterdir())
+        except (OSError, PermissionError):
+            return None
+
+        files: list[Path] = []
+        dirs: list[Path] = []
+        for entry in candidates:
+            if not entry.name.startswith(name_prefix) or entry.name.startswith("."):
+                continue
+            if entry.name == name_prefix:
+                continue
+            if entry.is_dir():
+                dirs.append(entry)
+            elif entry.suffix.lower() in _CONNECTABLE_EXTENSIONS:
+                files.append(entry)
+
+        # Prioritize files over directories
+        for entry in files:
+            return f"{prefix_part}{entry}"
+        for entry in dirs:
+            return f"{prefix_part}{entry}/"
+        return None
+
+
+# ---------------------------------------------------------------------------
 # Input with persistent history
 # ---------------------------------------------------------------------------
 
@@ -44,10 +133,11 @@ class HistoryInput(Input):
     BINDINGS = [
         Binding("up", "history_prev", "Previous command", priority=True),
         Binding("down", "history_next", "Next command", priority=True),
+        Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
     ]
 
     def __init__(self, history_path: Path, **kwargs: object) -> None:
-        super().__init__(**kwargs)  # type: ignore[arg-type]
+        super().__init__(suggester=MintqSuggester(), **kwargs)  # type: ignore[arg-type]
         self._history_path = history_path
         self._history: list[str] = []
         self._history_index: int = -1
@@ -105,6 +195,12 @@ class HistoryInput(Input):
             self._history_index = -1
             self.value = self._saved_input
         self.cursor_position = len(self.value)
+
+    def action_accept_suggestion(self) -> None:
+        """Accept the current autocomplete suggestion, if any."""
+        if self._suggestion:
+            self.value = self._suggestion
+            self.cursor_position = len(self.value)
 
 
 # ---------------------------------------------------------------------------
