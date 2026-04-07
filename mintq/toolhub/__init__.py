@@ -17,6 +17,7 @@ from mintq.toolhub.registry_run_query import QueryHistory, QueryRecord, Registry
 from mintq.toolhub.registry_run_subagent_for_each_row import RegistryRunSubagentForEachRowTool
 from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool
+from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
 
 __all__ = [
@@ -41,5 +42,6 @@ __all__ = [
     "RenderPlotextChartTool",
     "RunDbtTool",
     "RunQueryTool",
+    "RunSubagentForEachRowTool",
     "SearchKeywordsTool",
 ]

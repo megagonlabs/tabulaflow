@@ -934,6 +934,8 @@ April 6
 - [x] Tune cli agent prompt
 - [x] run_subagent_for_each_row tool
 
+April 7
+- [x] Auto completion
 - [ ] Refresh for get_column_json_schema and get_db_document
 - [ ] Progress display for run_subagent_for_each_row
 
