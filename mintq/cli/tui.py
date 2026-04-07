@@ -64,6 +64,7 @@ class MintqApp(App[None]):
         chat_log.mount(BannerWidget(model=self._model))
         if self._debug_enabled():
             chat_log.mount(self._build_debug_small_result_widget())
+            chat_log.mount(self._build_debug_chart_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
@@ -136,6 +137,42 @@ class MintqApp(App[None]):
                     query=query,
                     df=df,
                     chart_spec=None,
+                    query_lexer="sql",
+                )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(result, width=self.size.width - 11)
+
+    def _build_debug_chart_result_widget(self) -> AgentResultWidget:
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        df = pd.DataFrame(
+            {
+                "category": ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller"],
+                "count": [42, 35, 58, 21, 29, 18, 33],
+            }
+        )
+        chart_spec: dict[str, object] = {
+            "mark": "bar",
+            "encoding": {
+                "x": {"field": "category", "type": "nominal"},
+                "y": {"field": "count", "type": "quantitative"},
+            },
+            "title": "Movies by Genre",
+        }
+        query = "SELECT genre AS category, COUNT(*) AS count\nFROM movies\nGROUP BY genre\nORDER BY count DESC"
+        result = ChatResult(
+            text="Debug chart",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG_CHART",
+                    label="debug_bar_chart",
+                    query=query,
+                    df=df,
+                    chart_spec=chart_spec,
                     query_lexer="sql",
                 )
             ],
