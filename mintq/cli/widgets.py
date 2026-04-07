@@ -707,6 +707,9 @@ class AgentResultWidget(Widget):
             key = self._current_key()
             if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
                 self.action_open_data_browser()
+                return
+            if key in self._query_views and key is not None and self._is_query_truncated(key):
+                self.action_toggle_query_preview()
 
     def _is_table_region_click(self, *, key: str, x: int, y: int) -> bool:
         """Return True when click lands within the visible data-table preview area."""
