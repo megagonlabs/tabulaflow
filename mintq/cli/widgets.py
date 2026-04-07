@@ -639,6 +639,78 @@ class DataBrowserScreen(Screen[None]):
 
 
 # ---------------------------------------------------------------------------
+# Query browser screen
+# ---------------------------------------------------------------------------
+
+
+class QueryBrowserScreen(Screen[None]):
+    """Full-screen viewer for inspecting a query with line numbers."""
+
+    DEFAULT_CSS = """
+    QueryBrowserScreen {
+        background: $surface;
+    }
+
+    QueryBrowserScreen .query-browser-content {
+        height: 1fr;
+        margin: 0 1;
+        padding: 1 2;
+        background: $surface;
+        color: $text;
+        overflow-y: auto;
+        scrollbar-color: #666666;
+        scrollbar-color-hover: #3EB489;
+        scrollbar-color-active: #3EB489;
+        scrollbar-background: transparent;
+        scrollbar-background-hover: transparent;
+        scrollbar-background-active: transparent;
+    }
+
+    QueryBrowserScreen .query-browser-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_browser", "Back", show=True),
+        Binding("q", "close_browser", "Back", show=False),
+        Binding("f", "close_browser", "Back", show=False),
+    ]
+
+    def __init__(self, *, title: str, query: str, lexer: str = "sql") -> None:
+        super().__init__()
+        self._title = title
+        self._query = query
+        self._lexer = lexer
+        self._content = Static(classes="query-browser-content")
+        self._hint = Static(classes="query-browser-hint")
+
+    def compose(self) -> ComposeResult:
+        yield self._content
+        yield self._hint
+
+    def on_mount(self) -> None:
+        from mintq.cli.display import build_query
+
+        renderable = build_query(self._query, max_lines=None, lexer=self._lexer, line_numbers=True)
+        self._content.update(renderable)
+
+        hint = Text()
+        hint.append("f", style=ACCENT_BOLD)
+        hint.append(" Exit Full Screen    ", style="dim")
+        self._hint.update(hint)
+
+    def action_close_browser(self) -> None:
+        self.dismiss()
+
+    def on_click(self, event: object) -> None:
+        self.dismiss()
+
+
+# ---------------------------------------------------------------------------
 # Chart browser screen
 # ---------------------------------------------------------------------------
 
@@ -748,7 +820,6 @@ class AgentResultWidget(Widget):
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
-        self._expanded_query_keys: set[str] = set()
 
     @property
     def has_tabs(self) -> bool:
@@ -797,18 +868,11 @@ class AgentResultWidget(Widget):
         current_key = self._current_key()
 
         hint = Text()
-        if current_key in self._chart_views or current_key in self._data_views:
+        if current_key in self._chart_views or current_key in self._data_views or current_key in self._query_views:
             if hint:
                 hint.append("    ")
             hint.append("f", style=ACCENT_BOLD)
             hint.append(" Full Screen", style="dim")
-        if current_key in self._query_views:
-            if current_key is not None and self._is_query_truncated(current_key):
-                expanded = current_key in self._expanded_query_keys
-                if hint:
-                    hint.append("    ")
-                hint.append("e", style=ACCENT_BOLD)
-                hint.append(" Collapse Query" if expanded else " Show Full Query", style="dim")
         if hint:
             hint.append("    ")
         hint.append("←/→", style=ACCENT_BOLD)
@@ -865,12 +929,7 @@ class AgentResultWidget(Widget):
         query_view = self._query_views.get(key)
         if query_view is not None:
             query, lexer = query_view
-            expanded = key in self._expanded_query_keys
-            renderable = build_query(
-                query,
-                max_lines=None if expanded else QUERY_PREVIEW_MAX_LINES,
-                lexer=lexer,
-            )
+            renderable = build_query(query, max_lines=QUERY_PREVIEW_MAX_LINES, lexer=lexer)
         else:
             renderable = self._views.get(key, Text(""))
         self._content.update(renderable)
@@ -902,8 +961,9 @@ class AgentResultWidget(Widget):
             if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
                 self.action_open_full_screen()
                 return
-            if key in self._query_views and key is not None and self._is_query_truncated(key):
-                self.action_toggle_query_preview()
+            if key in self._query_views:
+                self.action_open_full_screen()
+                return
 
     def _is_chart_region_click(self, *, key: str, x: int, y: int) -> bool:
         """Return True when click lands within the rendered chart area."""
@@ -951,13 +1011,6 @@ class AgentResultWidget(Widget):
         measurement = self.app.console.measure(table_renderable, options=options)
         return measurement.maximum
 
-    def _is_query_truncated(self, key: str) -> bool:
-        """Return True when query preview uses truncation for this key."""
-        query_view = self._query_views.get(key)
-        if query_view is None:
-            return False
-        query, _lexer = query_view
-        return len(query.strip().splitlines()) > QUERY_PREVIEW_MAX_LINES
 
     def action_next_tab(self) -> None:
         if self._ordered_keys:
@@ -967,20 +1020,6 @@ class AgentResultWidget(Widget):
         if self._ordered_keys:
             self.current_tab = (self.current_tab - 1) % len(self._ordered_keys)
 
-    def action_toggle_query_preview(self) -> None:
-        """Toggle expanded/collapsed rendering for the active Query tab."""
-        key = self._current_key()
-        if key is None or key not in self._query_views or not self._is_query_truncated(key):
-            return
-        if key in self._expanded_query_keys:
-            self._expanded_query_keys.remove(key)
-        else:
-            self._expanded_query_keys.add(key)
-        self._update_content()
-        if self._is_last_chat_item():
-            chat_log = self.app.query_one("#chat-log")
-            chat_log.scroll_end(animate=False)
-
     can_focus = True
 
     BINDINGS = [
@@ -988,7 +1027,6 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
-        ("e", "toggle_query_preview", "Expand/collapse query"),
         ("f", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
@@ -1025,7 +1063,7 @@ class AgentResultWidget(Widget):
         self.app.query_one("#input-bar").focus()
 
     def action_open_full_screen(self) -> None:
-        """Open full-screen viewer for the active Chart or Data tab."""
+        """Open full-screen viewer for the active Chart, Data, or Query tab."""
         key = self._current_key()
         if key is None:
             return
@@ -1037,3 +1075,8 @@ class AgentResultWidget(Widget):
         df = self._data_views.get(key)
         if df is not None:
             self.app.push_screen(DataBrowserScreen(title=key, df=df))
+            return
+        query_data = self._query_views.get(key)
+        if query_data is not None:
+            query, lexer = query_data
+            self.app.push_screen(QueryBrowserScreen(title=key, query=query, lexer=lexer))

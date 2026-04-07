@@ -69,7 +69,13 @@ def build_banner(*, model: str) -> RenderableType:
 
 
 
-def build_query(query: str, max_lines: int | None = QUERY_PREVIEW_MAX_LINES, *, lexer: str = "sql") -> RenderableType:
+def build_query(
+    query: str,
+    max_lines: int | None = QUERY_PREVIEW_MAX_LINES,
+    *,
+    lexer: str = "sql",
+    line_numbers: bool = False,
+) -> RenderableType:
     """Build a syntax-highlighted query renderable."""
     stripped = query.strip()
     all_lines = stripped.splitlines()
@@ -85,8 +91,8 @@ def build_query(query: str, max_lines: int | None = QUERY_PREVIEW_MAX_LINES, *, 
         display_query,
         lexer,
         theme="solarized-dark",
-        padding=(1, 1),
-        line_numbers=True,
+        padding=(1, 2),
+        line_numbers=line_numbers,
         background_color="default",
     )
     return syntax
