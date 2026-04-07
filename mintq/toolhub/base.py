@@ -7,6 +7,12 @@ BaseToolMetrics: TypeAlias = BaseModel
 
 
 class BaseTool(Protocol):
+    """Protocol for agent tools.
+
+    Attributes:
+        name: Identifier exposed to the LLM as the tool's function name.
+    """
+
     name: ClassVar[str]
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any: ...
