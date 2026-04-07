@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
         RegistryRunQueryTool,
+        RegistryRunSubagentForEachRowTool,
         RegistryTransferRecordTool,
         RenderPlotextChartTool,
     )
@@ -62,6 +63,7 @@ By default, you should use `workspace` to perform data manipulation/transformati
 - `workspace` is a session-local DuckDB database for temporary transformation tables.
 - Use `transfer_record` to move data into or out of `workspace`.
   - To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
+- Use `registry_run_subagent_for_each_row` when you need row-wise LLM processing that writes updates back to an existing table.
 - When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
 </data_transformation_tasks>
 
@@ -156,6 +158,7 @@ class Toolset:
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
     transfer_record: RegistryTransferRecordTool
+    registry_run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
     render_chart: RenderPlotextChartTool
 
 
@@ -181,6 +184,7 @@ class ChatAgent:
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
             RegistryRunQueryTool,
+            RegistryRunSubagentForEachRowTool,
             RegistryTransferRecordTool,
             RenderPlotextChartTool,
         )
@@ -192,6 +196,7 @@ class ChatAgent:
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), compress=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
+            registry_run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(self.registry),
             render_chart=RenderPlotextChartTool(history=self._query_history),
         )
         self._build_agent()
@@ -243,6 +248,7 @@ class ChatAgent:
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.transfer_record.as_pydantic_ai_tool(),
+                self._tools.registry_run_subagent_for_each_row.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
             ],
             instructions=self._system_prompt,
@@ -473,6 +479,9 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
         mode = str(args.get("mode", "append"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
         return f"{record_id} -> [{target_alias}] {target} ({mode})"
+    if tool_name == "registry_run_subagent_for_each_row":
+        table_name = str(args.get("table_name", ""))
+        return f"{db_prefix}{table_name}"
     return str(args)[:80]
 
 

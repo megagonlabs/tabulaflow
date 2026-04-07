@@ -939,6 +939,9 @@ Features
 - [ ] Data writing
 - [ ] Web search
 
+Demo
+- [ ] Profile all 152 spider2-snow databases
+
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
 - [ ] Support Neo4j and cypherbench
