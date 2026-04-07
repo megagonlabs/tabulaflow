@@ -639,6 +639,79 @@ class DataBrowserScreen(Screen[None]):
 
 
 # ---------------------------------------------------------------------------
+# Chart browser screen
+# ---------------------------------------------------------------------------
+
+
+class ChartBrowserScreen(Screen[None]):
+    """Full-screen viewer for inspecting a chart at terminal size."""
+
+    DEFAULT_CSS = """
+    ChartBrowserScreen {
+        background: $surface;
+    }
+
+    ChartBrowserScreen .chart-browser-content {
+        height: 1fr;
+        margin: 0 1;
+        padding: 1 2;
+        background: $surface;
+        color: $text;
+    }
+
+    ChartBrowserScreen .chart-browser-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_browser", "Back", show=True),
+        Binding("q", "close_browser", "Back", show=False),
+        Binding("b", "close_browser", "Back", show=False),
+        Binding("f", "close_browser", "Back", show=False),
+    ]
+
+    def __init__(
+        self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]
+    ) -> None:
+        super().__init__()
+        self._title = title
+        self._df = df
+        self._vegalite_spec = vegalite_spec
+        self._content = Static(classes="chart-browser-content")
+        self._hint = Static(classes="chart-browser-hint")
+
+    def compose(self) -> ComposeResult:
+        yield self._content
+        yield self._hint
+
+    def on_mount(self) -> None:
+        self._render_chart()
+
+    def on_resize(self) -> None:
+        self._render_chart()
+
+    def action_close_browser(self) -> None:
+        self.dismiss()
+
+    def _render_chart(self) -> None:
+        from mintq.cli.display import build_chart
+
+        content_width = max(20, self._content.size.width - 4)
+        content_height = max(10, self._content.size.height)
+        renderable = build_chart(self._df, self._vegalite_spec, content_width, content_height)
+        self._content.update(renderable)
+
+        hint = Text()
+        hint.append("f", style=ACCENT_BOLD)
+        hint.append(" Go Back    ", style="dim")
+        self._hint.update(hint)
+
+
+# ---------------------------------------------------------------------------
 # Agent result widget with interactive tabs
 # ---------------------------------------------------------------------------
 
@@ -667,7 +740,9 @@ class AgentResultWidget(Widget):
         super().__init__()
         from mintq.cli.display import build_result_views
 
-        self._ordered_keys, self._views, self._data_views, self._query_views = build_result_views(result, width)
+        self._ordered_keys, self._views, self._data_views, self._query_views, self._chart_views = build_result_views(
+            result, width
+        )
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
@@ -720,6 +795,11 @@ class AgentResultWidget(Widget):
         current_key = self._current_key()
 
         hint = Text()
+        if current_key in self._chart_views:
+            if hint:
+                hint.append("    ")
+            hint.append("f", style=ACCENT_BOLD)
+            hint.append(" Full Screen Chart", style="dim")
         if current_key in self._data_views:
             if hint:
                 hint.append("    ")
@@ -898,6 +978,7 @@ class AgentResultWidget(Widget):
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
         ("e", "toggle_query_preview", "Expand/collapse query"),
+        ("f", "open_chart_browser", "Full screen chart"),
         ("b", "open_data_browser", "Open data browser"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
@@ -942,3 +1023,14 @@ class AgentResultWidget(Widget):
         if df is None:
             return
         self.app.push_screen(DataBrowserScreen(title=key, df=df))
+
+    def action_open_chart_browser(self) -> None:
+        """Open full-screen chart viewer for the active Chart tab."""
+        key = self._current_key()
+        if key is None:
+            return
+        chart_data = self._chart_views.get(key)
+        if chart_data is None:
+            return
+        df, spec = chart_data
+        self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))

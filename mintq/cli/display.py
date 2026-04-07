@@ -139,13 +139,15 @@ def _format_table_cell(value: object) -> str:
     return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
 
 
-def build_chart(df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80) -> RenderableType:
+def build_chart(
+    df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80, height: int | None = None
+) -> RenderableType:
     """Build a plotext chart renderable from a Vega-Lite spec and DataFrame."""
     from mintq.toolhub.render_chart import parse_vegalite_spec, render_plotext
 
     try:
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
-        chart_str = render_plotext(mark, x_field, y_field, title, df, width)
+        chart_str = render_plotext(mark, x_field, y_field, title, df, width, height)
         return Text.from_ansi(chart_str)
     except Exception as e:
         return Text(f"Chart error: {e}", style="dim")
@@ -164,14 +166,16 @@ def build_result_views(
     dict[str, RenderableType],
     dict[str, pd.DataFrame],
     dict[str, tuple[str, str]],
+    dict[str, tuple[pd.DataFrame, dict[str, object]]],
 ]:
     """Build ordered view keys and their renderables from a ChatResult.
 
     Returns:
-        (ordered_keys, views, data_views, query_views) where ordered_keys defines tab order,
-        views maps key -> Rich renderable, and data_views maps only Data tab keys
-        to their underlying DataFrame for full browser rendering. query_views
-        maps Query tab keys to (raw_query, lexer) for inline expand/collapse.
+        (ordered_keys, views, data_views, query_views, chart_views) where
+        ordered_keys defines tab order, views maps key -> Rich renderable,
+        data_views maps Data tab keys to their underlying DataFrame,
+        query_views maps Query tab keys to (raw_query, lexer),
+        and chart_views maps Chart tab keys to (df, vegalite_spec).
     """
     from mintq.cli.agent import ChatResult
 
@@ -183,6 +187,7 @@ def build_result_views(
     query_keys: list[str] = []
     data_views: dict[str, pd.DataFrame] = {}
     query_views: dict[str, tuple[str, str]] = {}
+    chart_views: dict[str, tuple[pd.DataFrame, dict[str, object]]] = {}
 
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()
@@ -198,6 +203,7 @@ def build_result_views(
         if record.chart_spec is not None and record.df is not None:
             views[chart_key] = build_chart(record.df, record.chart_spec, width)
             chart_keys.append(chart_key)
+            chart_views[chart_key] = (record.df, record.chart_spec)
         if record.df is not None and not record.df.empty:
             views[data_key] = build_table(record.df)
             data_keys.append(data_key)
@@ -212,7 +218,7 @@ def build_result_views(
     ordered_keys.extend(data_keys)
     ordered_keys.extend(query_keys)
 
-    return ordered_keys, views, data_views, query_views
+    return ordered_keys, views, data_views, query_views, chart_views
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:

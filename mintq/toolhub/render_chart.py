@@ -71,6 +71,7 @@ def render_plotext(
     title: str,
     df: pd.DataFrame,
     console_width: int | None = None,
+    console_height: int | None = None,
 ) -> str:
     """Render a plotext chart and return the built string.
 
@@ -80,9 +81,13 @@ def render_plotext(
 
     from mintq.cli.theme import ACCENT_RGB
 
-    # Reserve a little room to avoid wrapping at terminal edges.
-    effective_width = max(20, (console_width or 62) - 2)
-    effective_height = 25
+    effective_height = console_height or 25
+    # In preview mode (no explicit height), cap width to keep chart roughly square.
+    # In full-screen mode (explicit height), use the full available width.
+    if console_height is not None:
+        effective_width = max(20, (console_width or 62) - 2)
+    else:
+        effective_width = min(max(20, (console_width or 62) - 2), effective_height * 2)
 
     plt.clear_figure()
     plt.theme("dark")
