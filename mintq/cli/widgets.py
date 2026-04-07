@@ -491,7 +491,7 @@ class DataBrowserScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
         Binding("q", "close_browser", "Back", show=False),
-        Binding("b", "close_browser", "Back", show=False),
+        Binding("f", "close_browser", "Back", show=False),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
     ]
@@ -592,7 +592,7 @@ class DataBrowserScreen(Screen[None]):
             (" Prev Page    ", hint_fg),
             ("]", ACCENT_BOLD),
             (" Next Page    ", hint_fg),
-            ("b", ACCENT_BOLD),
+            ("f", ACCENT_BOLD),
             (" Go Back    ", hint_fg),
         ]
         hint = Text()
@@ -670,7 +670,6 @@ class ChartBrowserScreen(Screen[None]):
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
         Binding("q", "close_browser", "Back", show=False),
-        Binding("b", "close_browser", "Back", show=False),
         Binding("f", "close_browser", "Back", show=False),
     ]
 
@@ -795,16 +794,11 @@ class AgentResultWidget(Widget):
         current_key = self._current_key()
 
         hint = Text()
-        if current_key in self._chart_views:
+        if current_key in self._chart_views or current_key in self._data_views:
             if hint:
                 hint.append("    ")
             hint.append("f", style=ACCENT_BOLD)
-            hint.append(" Full Screen Chart", style="dim")
-        if current_key in self._data_views:
-            if hint:
-                hint.append("    ")
-            hint.append("b", style=ACCENT_BOLD)
-            hint.append(" Open Data Browser", style="dim")
+            hint.append(" Full Screen", style="dim")
         if current_key in self._query_views:
             if current_key is not None and self._is_query_truncated(current_key):
                 expanded = current_key in self._expanded_query_keys
@@ -900,7 +894,7 @@ class AgentResultWidget(Widget):
         if event.widget is self._content:
             key = self._current_key()
             if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
-                self.action_open_data_browser()
+                self.action_open_full_screen()
                 return
             if key in self._query_views and key is not None and self._is_query_truncated(key):
                 self.action_toggle_query_preview()
@@ -978,8 +972,7 @@ class AgentResultWidget(Widget):
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
         ("e", "toggle_query_preview", "Expand/collapse query"),
-        ("f", "open_chart_browser", "Full screen chart"),
-        ("b", "open_data_browser", "Open data browser"),
+        ("f", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
         ("k", "focus_prev_result", "Previous result"),
@@ -1014,23 +1007,16 @@ class AgentResultWidget(Widget):
         """Return focus to the input bar."""
         self.app.query_one("#input-bar").focus()
 
-    def action_open_data_browser(self) -> None:
-        """Open full data browser for the active Data tab."""
-        key = self._current_key()
-        if key is None:
-            return
-        df = self._data_views.get(key)
-        if df is None:
-            return
-        self.app.push_screen(DataBrowserScreen(title=key, df=df))
-
-    def action_open_chart_browser(self) -> None:
-        """Open full-screen chart viewer for the active Chart tab."""
+    def action_open_full_screen(self) -> None:
+        """Open full-screen viewer for the active Chart or Data tab."""
         key = self._current_key()
         if key is None:
             return
         chart_data = self._chart_views.get(key)
-        if chart_data is None:
+        if chart_data is not None:
+            df, spec = chart_data
+            self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))
             return
-        df, spec = chart_data
-        self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))
+        df = self._data_views.get(key)
+        if df is not None:
+            self.app.push_screen(DataBrowserScreen(title=key, df=df))
