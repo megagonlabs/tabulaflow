@@ -1147,6 +1147,89 @@ class SQLConnector:
             logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")
             return self.schema
 
+    async def write_dataframe_async(
+        self,
+        df: pd.DataFrame,
+        table_name: str,
+        schema_name: str | None = None,
+        mode: Literal["append", "replace"] = "append",
+    ) -> int:
+        """Write a DataFrame into a database table.
+
+        Args:
+            df: DataFrame to persist.
+            table_name: Destination table name.
+            schema_name: Optional destination schema name.
+            mode: Write mode. ``append`` inserts rows into an existing table
+                (or creates one if missing). ``replace`` recreates the table.
+
+        Returns:
+            Number of rows written.
+
+        Raises:
+            ValueError: If ``table_name`` is empty, ``mode`` is invalid, or
+                the connector is read-only.
+        """
+        if self.read_only:
+            raise ValueError("write_dataframe_async is blocked when read_only=True")
+        if not table_name.strip():
+            raise ValueError("table_name must be non-empty")
+        if mode not in {"append", "replace"}:
+            raise ValueError(f"Unsupported mode: {mode!r}")
+
+        if_exists: Literal["append", "replace"] = "replace" if mode == "replace" else "append"
+
+        async with self._t_eng.throttle():
+            if self._t_eng.engine_type == "async":
+                async_engine = self._t_eng.engine
+                assert isinstance(async_engine, AsyncEngine)
+                async with async_engine.begin() as conn:
+                    await conn.run_sync(
+                        lambda sync_conn: self._write_df_to_sql(
+                            df=df,
+                            conn=sync_conn,
+                            table_name=table_name,
+                            schema_name=schema_name,
+                            if_exists=if_exists,
+                        )
+                    )
+            else:
+                sync_engine = self._t_eng.engine
+
+                def _write_sync() -> None:
+                    with sync_engine.begin() as conn:  # type: ignore[union-attr]
+                        self._write_df_to_sql(
+                            df=df,
+                            conn=conn,
+                            table_name=table_name,
+                            schema_name=schema_name,
+                            if_exists=if_exists,
+                        )
+
+                loop = asyncio.get_running_loop()
+                await loop.run_in_executor(None, _write_sync)
+
+        return len(df)
+
+    @staticmethod
+    def _write_df_to_sql(
+        *,
+        df: pd.DataFrame,
+        conn: sqlalchemy.engine.Connection,
+        table_name: str,
+        schema_name: str | None,
+        if_exists: Literal["append", "replace"],
+    ) -> None:
+        """Write a DataFrame to a SQL table using pandas."""
+        df.to_sql(
+            name=table_name,
+            con=conn,
+            schema=schema_name,
+            if_exists=if_exists,
+            index=False,
+            method="multi",
+        )
+
     @staticmethod
     def _query_cache_key(global_id: str, query: str, parameters: Mapping[str, Any], timeout: int | None) -> str:
         """Build a deterministic cache key for a query."""

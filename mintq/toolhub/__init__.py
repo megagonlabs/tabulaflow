@@ -14,6 +14,7 @@ from mintq.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from mintq.toolhub.registry_get_schema import RegistryGetSchemaTool
 from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
 from mintq.toolhub.registry_run_query import QueryHistory, QueryRecord, RegistryRunQueryTool
+from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
 
@@ -34,6 +35,7 @@ __all__ = [
     "QueryHistory",
     "QueryRecord",
     "RegistryRunQueryTool",
+    "RegistryTransferRecordTool",
     "RenderPlotextChartTool",
     "RunDbtTool",
     "RunQueryTool",

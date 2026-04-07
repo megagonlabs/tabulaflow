@@ -25,6 +25,7 @@ if TYPE_CHECKING:
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
         RegistryRunQueryTool,
+        RegistryTransferRecordTool,
         RenderPlotextChartTool,
     )
 
@@ -72,6 +73,12 @@ Visualization:
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
+
+Data transfer:
+- Use `transfer_record` to persist a prior `run_query` result into a table.
+- The source is always identified by `record_id` (e.g. `Q3`).
+- Always provide `target_alias` explicitly (e.g. `workspace`).
+- `mode=append` adds rows; `mode=replace` recreates the target table.
 </tool_calling>
 """.strip()
 
@@ -137,6 +144,7 @@ class Toolset:
     get_db_document: RegistryGetDBDocumentTool
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
+    transfer_record: RegistryTransferRecordTool
     render_chart: RenderPlotextChartTool
 
 
@@ -162,6 +170,7 @@ class ChatAgent:
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
             RegistryRunQueryTool,
+            RegistryTransferRecordTool,
             RenderPlotextChartTool,
         )
 
@@ -171,6 +180,7 @@ class ChatAgent:
             get_db_document=RegistryGetDBDocumentTool(self.registry),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), compress=True),
+            transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
             render_chart=RenderPlotextChartTool(history=self._query_history),
         )
         self._build_agent()
@@ -221,6 +231,7 @@ class ChatAgent:
                 self._tools.get_db_document.as_pydantic_ai_tool(),
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
+                self._tools.transfer_record.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
             ],
             instructions=self._system_prompt,
@@ -442,6 +453,14 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
             return str(title) if title else str(mark)
         except (json.JSONDecodeError, TypeError):
             return "chart"
+    if tool_name == "transfer_record":
+        record_id = str(args.get("record_id", ""))
+        target_alias = str(args.get("target_alias", ""))
+        target_schema = str(args.get("target_schema", "")) if args.get("target_schema") else ""
+        target_table = str(args.get("target_table", ""))
+        mode = str(args.get("mode", "append"))
+        target = f"{target_schema}.{target_table}" if target_schema else target_table
+        return f"{record_id} -> [{target_alias}] {target} ({mode})"
     return str(args)[:80]
 
 
