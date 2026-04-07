@@ -663,6 +663,11 @@ class QueryBrowserScreen(Screen[None]):
         scrollbar-background-active: transparent;
     }
 
+    QueryBrowserScreen TextArea:focus {
+        border: solid white;
+        outline: none;
+    }
+
     QueryBrowserScreen .query-browser-gap {
         height: 1;
     }
