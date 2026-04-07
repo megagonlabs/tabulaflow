@@ -73,13 +73,14 @@ Visualization:
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
-
-Data transfer:
-- Use `transfer_record` to persist a prior `run_query` result into a table.
-- The source is always identified by `record_id` (e.g. `Q3`).
-- Always provide `target_alias` explicitly (e.g. `workspace`).
-- `mode=append` adds rows; `mode=replace` recreates the target table.
 </tool_calling>
+
+<using_workspace>
+- `workspace` is a session-local DuckDB database for temporary transformation tables.
+- For transformation tasks (cleaning, reshaping, etc.), prefer writing to `workspace` instead of modifying source databases in place.
+- Use `transfer_record` to copy a prior result (`record_id`) into a workspace table.
+- When presenting a final table result to the user, run `SELECT *` and reference the result in the final response.
+</using_workspace>
 """.strip()
 
 
