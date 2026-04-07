@@ -893,11 +893,25 @@ class AgentResultWidget(Widget):
 
         if event.widget is self._content:
             key = self._current_key()
+            if key in self._chart_views and self._is_chart_region_click(key=key, x=event.x, y=event.y):
+                self.action_open_full_screen()
+                return
             if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
                 self.action_open_full_screen()
                 return
             if key in self._query_views and key is not None and self._is_query_truncated(key):
                 self.action_toggle_query_preview()
+
+    def _is_chart_region_click(self, *, key: str, x: int, y: int) -> bool:
+        """Return True when click lands within the rendered chart area."""
+        if x < 0 or y < 0:
+            return False
+        renderable = self._views.get(key)
+        if renderable is None:
+            return False
+        options = self.app.console.options.update(width=max(1, self._content.size.width))
+        measurement = self.app.console.measure(renderable, options=options)
+        return x < measurement.maximum
 
     def _is_table_region_click(self, *, key: str, x: int, y: int) -> bool:
         """Return True when click lands within the visible data-table preview area."""
