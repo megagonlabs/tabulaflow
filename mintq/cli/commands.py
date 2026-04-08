@@ -278,7 +278,9 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 "  /connect snowflake://user@account/db\n"
                 "  /connect duckdb:///path/to/db.duckdb\n"
                 "  /connect neo4j://neo4j:password@localhost:7687\n"
-                "  /connect bolt://localhost:7687?database=neo4j myalias[/dim]"
+                "  /connect bolt://localhost:7687?database=neo4j myalias\n"
+                "  /connect https://huggingface.co/datasets/stanfordnlp/imdb\n"
+                "  /connect https://huggingface.co/datasets/nyu-mll/glue/viewer/mrpc/train[/dim]"
             )
         )
 
@@ -332,6 +334,12 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
             )
         )
 
+    # --- HuggingFace dataset connections ---
+    from mintq.db_connector.loaders import is_hf_dataset_url
+
+    if is_hf_dataset_url(args[0]):
+        return await _connect_hf_dataset(args, session)
+
     # --- URL / database-file connections ---
     raw = args[0]
     url = _normalize_url(raw)
@@ -350,6 +358,45 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         return CommandResult(password_prompt=f"connect:{url}:{alias}")
 
     return await _execute_connect(url, alias, session)
+
+
+async def _connect_hf_dataset(args: list[str], session: SessionState) -> CommandResult:
+    """Handle /connect for HuggingFace dataset URLs."""
+    from mintq.db_connector.loaders import load_hf_dataset, parse_hf_dataset_url
+
+    url = args[0]
+    try:
+        dataset_id, _, _ = parse_hf_dataset_url(url)
+    except ValueError as e:
+        return CommandResult(output=Text.from_markup(f"[red]{e}[/red]"))
+
+    default_alias = _sanitize_alias(dataset_id.split("/")[-1])
+    alias = _sanitize_alias(args[1]) if len(args) > 1 else default_alias
+
+    if session.registry.has(alias):
+        return CommandResult(
+            output=Text.from_markup(
+                f"[red]Alias already in use:[/red] {alias}. "
+                "Disconnect first or provide a different alias: /connect <url> <alias>"
+            )
+        )
+
+    global_id = f"cli+{alias}"
+    try:
+        connector = await load_hf_dataset(
+            url, global_id=global_id, db_name=alias, read_only=True,
+        )
+    except Exception as e:
+        return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))
+
+    session.registry.register(alias, connector)
+    info = session.chat_agent.database_info(connector)
+    session.chat_agent.add_database([(alias, connector)])
+    return CommandResult(
+        output=Text.from_markup(
+            f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{dataset_id}[/bold] as [bold]{alias}[/bold] ({info})"
+        )
+    )
 
 
 async def execute_connect_with_password(url: str, alias: str, password: str, session: SessionState) -> CommandResult:
