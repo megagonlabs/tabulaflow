@@ -83,6 +83,7 @@ class MintqApp(App[None]):
         from mintq.cli.agent import ChatResult, ChatResultRecord
 
         import datetime
+        import json
         import math
         import random
 
@@ -180,6 +181,38 @@ class MintqApp(App[None]):
                 r, 4,
             ) for r in range(rows)],
             "tags": [[categories[r % len(categories)], channels[r % len(channels)]] for r in range(rows)],
+            "metadata_json": [
+                json.dumps({
+                    "source": channels[r % len(channels)],
+                    "version": f"2.{r % 10}.{r % 5}",
+                    "flags": {"priority": r % 11 == 0, "reviewed": r % 3 == 0},
+                    "timestamps": {
+                        "created": f"2024-{(r % 12) + 1:02d}-{(r % 28) + 1:02d}T{r % 24:02d}:{r % 60:02d}:00Z",
+                        "updated": f"2024-{(r % 12) + 1:02d}-{min((r % 28) + 3, 28):02d}T{r % 24:02d}:{r % 60:02d}:00Z",
+                    },
+                    "tags": [categories[r % len(categories)], categories[(r + 3) % len(categories)]],
+                    "metrics": {"clicks": r * 7 % 500, "impressions": r * 13 % 10000, "ctr": round((r * 7 % 500) / max(1, r * 13 % 10000), 4)},
+                }) for r in range(rows)
+            ],
+            "config_json": [maybe_none(
+                json.dumps({
+                    "rules": [
+                        {"field": "amount", "op": ">" if r % 2 == 0 else "<=", "value": 100 + r % 900},
+                        {"field": "category", "op": "in", "value": [categories[r % len(categories)], categories[(r + 1) % len(categories)]]},
+                    ],
+                    "actions": [{"type": "discount", "pct": round((r % 30) * 0.5, 1)}, {"type": "notify", "channel": "email"}],
+                    "enabled": r % 5 != 0,
+                    "description": f"Auto-rule for {regions[r % len(regions)]} region, batch {r // 100 + 1}",
+                }), r, 6,
+            ) for r in range(rows)],
+            "sql_snippet": [maybe_none(
+                f"SELECT t.id, t.name, SUM(o.amount) AS total\nFROM transactions t\nJOIN orders o ON t.id = o.txn_id\nWHERE o.status = 'completed'\n  AND o.region = '{regions[r % len(regions)]}'\nGROUP BY t.id, t.name\nHAVING SUM(o.amount) > {100 + r % 900}\nORDER BY total DESC\nLIMIT {10 + r % 40};",
+                r, 7,
+            ) for r in range(rows)],
+            "python_snippet": [maybe_none(
+                f"def process_batch_{r}(items: list[dict]) -> float:\n    total = 0.0\n    for item in items:\n        if item['status'] == 'completed':\n            total += item['amount'] * (1 - item.get('discount', 0))\n    return round(total, 2)",
+                r, 8,
+            ) for r in range(rows)],
             "score": [maybe_none(round(math.sin(r * 0.1) * 50 + 50, 4), r, 25) for r in range(rows)],
             "rating": [round(1.0 + (r % 40) * 0.1, 1) for r in range(rows)],
             "weight_kg": [maybe_none(round(0.1 + (r % 200) * 0.25, 3), r, 9) for r in range(rows)],

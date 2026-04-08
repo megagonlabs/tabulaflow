@@ -536,6 +536,33 @@ class DataBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
+    def action_open_cell(self) -> None:
+        """Open cell value browser for the currently highlighted cell."""
+        row_idx = self._table.cursor_coordinate.row
+        col_idx = self._table.cursor_coordinate.column
+        # Column 0 is the row-number column; skip it.
+        if col_idx <= 0:
+            return
+        df_col = col_idx - 1
+        if df_col >= len(self._df.columns):
+            return
+        start = self._page_index * self._page_size
+        df_row = start + row_idx
+        if df_row >= len(self._df):
+            return
+        col_name = str(self._df.columns[df_col])
+        raw_value = self._df.iloc[df_row, df_col]
+        row_number = df_row + 1
+        dtype_str = self._describe_dtype(self._df[col_name])
+        self.app.push_screen(
+            CellBrowserScreen(
+                column_name=col_name,
+                row_number=row_number,
+                value=raw_value,
+                dtype_str=dtype_str,
+            )
+        )
+
     def action_next_page(self) -> None:
         if self._page_index < self._max_page_index:
             self._page_index += 1
@@ -615,6 +642,8 @@ class DataBrowserScreen(Screen[None]):
         hint_segments: list[tuple[str, str]] = [
             ("Esc", ACCENT_BOLD),
             (" Back    ", hint_fg),
+            ("Enter", ACCENT_BOLD),
+            (" View Cell    ", hint_fg),
             ("[", ACCENT_BOLD),
             (" Prev Page    ", hint_fg),
             ("]", ACCENT_BOLD),
@@ -629,6 +658,11 @@ class DataBrowserScreen(Screen[None]):
         """Update status bar with selected column dtype."""
         if event.data_table is self._table:
             self._update_status()
+
+    def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
+        """Open cell value browser on Enter."""
+        if event.data_table is self._table:
+            self.action_open_cell()
 
     def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
         """Sort when user clicks a header cell."""
@@ -702,6 +736,130 @@ class DataBrowserScreen(Screen[None]):
             t.append("...", style="dim")
             return t
         return Text(s)
+
+
+# ---------------------------------------------------------------------------
+# Cell value browser screen
+# ---------------------------------------------------------------------------
+
+
+class CellBrowserScreen(Screen[None]):
+    """Full-screen viewer for inspecting a single cell value."""
+
+    DEFAULT_CSS = """
+    CellBrowserScreen {
+        background: $surface;
+    }
+
+    CellBrowserScreen TextArea {
+        height: 1fr;
+        margin: 0 1;
+        border: solid white;
+        background: $surface;
+        scrollbar-color: #666666;
+        scrollbar-color-hover: #3EB489;
+        scrollbar-color-active: #3EB489;
+        scrollbar-background: transparent;
+        scrollbar-background-hover: transparent;
+        scrollbar-background-active: transparent;
+    }
+
+    CellBrowserScreen TextArea:focus {
+        border: solid white;
+        outline: none;
+    }
+
+    CellBrowserScreen .cell-browser-status {
+        padding: 0 1;
+        color: #f5f5f5;
+    }
+
+    CellBrowserScreen .cell-browser-gap {
+        height: 1;
+    }
+
+    CellBrowserScreen .cell-browser-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_browser", "Back", show=True),
+    ]
+
+    def __init__(
+        self,
+        *,
+        column_name: str,
+        row_number: int,
+        value: object,
+        dtype_str: str,
+    ) -> None:
+        super().__init__()
+        self._column_name = column_name
+        self._row_number = row_number
+        self._raw_value = value
+        self._dtype_str = dtype_str
+        self._display_text, self._language = self._format_value(value)
+
+    @staticmethod
+    def _format_value(value: object) -> tuple[str, str | None]:
+        """Return (display_text, language) for the cell value."""
+        import json
+
+        import pandas as pd_
+
+        try:
+            if value is None or pd_.isna(value):
+                return "NULL", None
+        except (TypeError, ValueError):
+            pass
+
+        s = str(value)
+
+        # Try JSON pretty-print
+        try:
+            parsed = json.loads(s)
+            if isinstance(parsed, (dict, list)):
+                return json.dumps(parsed, indent=2, ensure_ascii=False), "json"
+        except (json.JSONDecodeError, TypeError, ValueError):
+            pass
+
+        return s, None
+
+    def compose(self) -> ComposeResult:
+        lang = self._language if self._language in QueryBrowserScreen._SUPPORTED_LANGUAGES else None
+        yield TextArea(
+            self._display_text,
+            language=lang,
+            read_only=True,
+            show_line_numbers=True,
+            soft_wrap=True,
+        )
+        yield Static(classes="cell-browser-status")
+        yield Static(classes="cell-browser-gap")
+        yield Static(classes="cell-browser-hint")
+
+    def on_mount(self) -> None:
+        text_area = self.query_one(TextArea)
+        text_area.register_theme(DRACULA_TRANSPARENT)
+        text_area.theme = "dracula-transparent"
+
+        status_text = f"{self._column_name} ({self._dtype_str})  |  Row {self._row_number:,}"
+        self.query_one(".cell-browser-status", Static).update(
+            Text(status_text, style="dim")
+        )
+
+        hint = Text()
+        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append(" Back    ", style="dim")
+        self.query_one(".cell-browser-hint", Static).update(hint)
+
+    def action_close_browser(self) -> None:
+        self.dismiss()
 
 
 # ---------------------------------------------------------------------------
