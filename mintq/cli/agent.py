@@ -273,7 +273,11 @@ class ChatAgent:
                 self._tools.render_chart.as_pydantic_ai_tool(),
             ],
             instructions=self._system_prompt,
-            model_settings={"openai_service_tier": "priority"},
+            model_settings={
+                "openai_service_tier": "priority",
+                "openai_reasoning_effort": "medium",
+                "openai_reasoning_summary": "detailed",
+            },
         )
 
     async def run(self, question: str, progress: ProgressSink) -> ChatResult:
