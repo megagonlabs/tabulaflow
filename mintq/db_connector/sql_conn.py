@@ -5,6 +5,8 @@ import re
 import logging
 import tempfile
 import warnings
+
+import sqlparse
 from typing import Any, ClassVar, Sequence, Mapping, Literal, AsyncGenerator
 import dataclasses
 from dataclasses import dataclass
@@ -35,8 +37,8 @@ from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 
-# Statements that modify data or schema.  The pattern matches the *first*
-# non-whitespace, non-comment keyword in the query.
+# Statements that modify data or schema.  The pattern matches the first
+# non-whitespace, non-comment keyword in a single SQL statement.
 _WRITE_STATEMENT_RE = re.compile(
     r"^\s*"
     r"(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"  # skip leading SQL comments
@@ -46,9 +48,24 @@ _WRITE_STATEMENT_RE = re.compile(
     r"|GRANT|REVOKE"  # DCL
     r"|CALL|EXECUTE(?!\s+IMMEDIATE\b)|EXEC(?!UTE)"  # stored procs (not EXECUTE IMMEDIATE)
     r"|COPY|LOAD|UNLOAD|PUT|GET|REMOVE"  # bulk / file ops (Snowflake, etc.)
+    r"|ATTACH|DETACH"  # database attachment
     r")\b",
     re.IGNORECASE | re.DOTALL,
 )
+
+
+def _contains_write_statement(query: str) -> re.Match[str] | None:
+    """Check every statement in a (possibly multi-statement) query string.
+
+    Uses ``sqlparse.split`` to split on statement boundaries and tests each
+    fragment against ``_WRITE_STATEMENT_RE``.  Returns the first match found,
+    or ``None`` if all statements are read-only.
+    """
+    for stmt in sqlparse.split(query):
+        m = _WRITE_STATEMENT_RE.match(stmt)
+        if m:
+            return m
+    return None
 
 
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
@@ -1271,17 +1288,17 @@ class SQLConnector:
             An :class:`ExecResult` containing the result DataFrame (or
             an error) and latency information.
         """
-        # --- read-only guard ---
+        # --- read-only guard (checks every statement in multi-statement strings) ---
         query_str = str(query) if not isinstance(query, str) else query
-        if self.read_only and _WRITE_STATEMENT_RE.match(query_str):
-            keyword = _WRITE_STATEMENT_RE.match(query_str)
-            assert keyword is not None
-            return ExecResult(
-                error=ErrorInfo(
-                    exc_type="ReadOnlyViolationError",
-                    message=f"Write statement blocked (read_only=True): {keyword.group('keyword').upper()} ...",
-                ),
-            )
+        if self.read_only:
+            write_match = _contains_write_statement(query_str)
+            if write_match:
+                return ExecResult(
+                    error=ErrorInfo(
+                        exc_type="ReadOnlyViolationError",
+                        message=f"Write statement blocked (read_only=True): {write_match.group('keyword').upper()} ...",
+                    ),
+                )
 
         # --- query result cache lookup ---
         params_map: Mapping[str, Any] = parameters if isinstance(parameters, Mapping) else {}
