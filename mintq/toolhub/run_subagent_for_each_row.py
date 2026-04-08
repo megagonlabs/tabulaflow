@@ -100,8 +100,8 @@ class RunSubagentForEachRowTool:
         - **Semantic join**: Match rows across tables where there is no shared key
           and no syntactic overlap between join columns (e.g., abbreviations to
           full names, or matching product names across different naming conventions).
-          Two approaches: (a) add a foreign-key column to one table and have the
-          subagent look up the other table (via ``run_query``) to resolve the
+          Two approaches: (a) (preferred) add a foreign-key column to one table and instruct
+          the subagent to look up the other table (via ``run_query``) to resolve the
           match, or (b) add a standardized column to both tables and have the
           subagent normalize each side to a canonical form independently. After
           the tool completes, a standard SQL JOIN on the new column(s) produces

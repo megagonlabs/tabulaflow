@@ -118,8 +118,8 @@ Steps:
 1. Transfer both tables into `workspace`.
 2. Add a resolved/normalized column to one (or both) tables.
 3. Use `registry_run_subagent_for_each_row` to populate the new column by matching values across tables.
-   When normalizing both sides, specify the canonical form (e.g., "normalize to IATA airport code").
-   When resolving values against a column in the other table, instruct the subagent to query it at runtime — do not embed a large vocabulary in the task instruction.
+   - (preferred) approach (a): When resolving values against a column in the other table, instruct the subagent to query it at runtime — do not embed a large vocabulary in the task instruction.
+   - approach (b): When normalizing both sides, specify the canonical form (e.g., "normalize to IATA airport code").
 4. Join on the resolved column with a standard SQL query.
 </examples>
 """.strip()
