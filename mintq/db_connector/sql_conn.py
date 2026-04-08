@@ -967,6 +967,11 @@ class SQLConnector:
 
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
+
+        # Eagerly open one connection to surface file-lock errors (DuckDB)
+        # or credential / network issues immediately rather than at first query.
+        await t_eng.run_query_async("SELECT 1")
+
         if schema is None:
             schema = await load_schema_with_cache_async(
                 global_id,
