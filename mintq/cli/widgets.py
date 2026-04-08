@@ -513,6 +513,7 @@ class DataBrowserScreen(Screen[None]):
             cursor_type="cell",
             cursor_background_priority="css",
             cursor_foreground_priority="css",
+            fixed_columns=1,
         )
         self._status = Static(classes="data-browser-status")
         self._gap = Static(classes="data-browser-gap")
@@ -646,7 +647,7 @@ class DataBrowserScreen(Screen[None]):
             pass
 
         if isinstance(value, bool):
-            return Text(str(value))
+            return Text("✔" if value else "✘", style=ACCENT if value else "dim")
 
         if isinstance(value, numbers.Integral):
             return Text(f"{value:,}", justify="right")

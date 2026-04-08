@@ -173,7 +173,7 @@ class MintqApp(App[None]):
                     f"Customer requested full refund plus store credit for inconvenience. "
                     f"District manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)} approved exception. "
                     f"Follow-up scheduled for next business day. See ticket SUPPORT-{r * 3:07d} for details."
-                ) if r % 200 == 0 else (
+                ) if r % 200 == 0 or r in (3, 17, 34) else (
                     f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
                     f"processed via {channels[r % len(channels)]}."
                 ),
