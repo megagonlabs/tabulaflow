@@ -579,11 +579,13 @@ LIMIT 4000"""
         if len(parts) < 2 or not is_hf_dataset_url(parts[1]):
             return "Connecting..."
 
-        from mintq.db_connector.loaders.huggingface import _format_size, get_hf_dataset_size
+        from mintq.db_connector.loaders.huggingface import _format_size, get_hf_dataset_info
 
-        size = await asyncio.get_running_loop().run_in_executor(
-            None, get_hf_dataset_size, parts[1],
+        size, cached = await asyncio.get_running_loop().run_in_executor(
+            None, get_hf_dataset_info, parts[1],
         )
+        if cached:
+            return "Loading from cache..."
         if size is not None:
             return f"Downloading {_format_size(size)}..."
         return "Downloading..."

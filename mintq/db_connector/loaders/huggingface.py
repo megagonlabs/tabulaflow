@@ -49,18 +49,19 @@ def is_hf_dataset_url(url: str) -> bool:
     return bool(_HF_DATASET_RE.match(url))
 
 
-def get_hf_dataset_size(
+def get_hf_dataset_info(
     dataset_url: str,
-) -> int | None:
-    """Return the download size in bytes for a HuggingFace dataset, or None if unavailable."""
+) -> tuple[int | None, bool]:
+    """Return (download_size_bytes, is_cached) for a HuggingFace dataset."""
     from datasets import load_dataset_builder
 
     dataset_id, subset, _split = parse_hf_dataset_url(dataset_url)
     try:
         builder = load_dataset_builder(dataset_id, name=subset)
-        return builder.info.download_size
+        cached = os.path.exists(builder.cache_dir)
+        return builder.info.download_size, cached
     except Exception:
-        return None
+        return None, False
 
 
 def _format_size(n_bytes: int) -> str:
