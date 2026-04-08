@@ -49,6 +49,29 @@ def is_hf_dataset_url(url: str) -> bool:
     return bool(_HF_DATASET_RE.match(url))
 
 
+def get_hf_dataset_size(
+    dataset_url: str,
+) -> int | None:
+    """Return the download size in bytes for a HuggingFace dataset, or None if unavailable."""
+    from datasets import load_dataset_builder
+
+    dataset_id, subset, _split = parse_hf_dataset_url(dataset_url)
+    try:
+        builder = load_dataset_builder(dataset_id, name=subset)
+        return builder.info.download_size
+    except Exception:
+        return None
+
+
+def _format_size(n_bytes: int) -> str:
+    """Format bytes as a human-readable string."""
+    for unit in ("B", "KB", "MB", "GB"):
+        if abs(n_bytes) < 1024:
+            return f"{n_bytes:.0f} {unit}" if unit == "B" else f"{n_bytes:.1f} {unit}"
+        n_bytes /= 1024  # type: ignore[assignment]
+    return f"{n_bytes:.1f} TB"
+
+
 def _load_hf_to_parquet(
     dataset_id: str,
     subset: str | None,

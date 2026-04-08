@@ -569,6 +569,25 @@ LIMIT 4000"""
         self._busy = True
         self.run_worker(self._run_agent(text, session, chat_log), exclusive=True)
 
+    @staticmethod
+    async def _connect_spinner_label(parts: list[str]) -> str:
+        """Build a spinner label for /connect, including download size for HF datasets."""
+        import asyncio
+
+        from mintq.db_connector.loaders import is_hf_dataset_url
+
+        if len(parts) < 2 or not is_hf_dataset_url(parts[1]):
+            return "Connecting..."
+
+        from mintq.db_connector.loaders.huggingface import _format_size, get_hf_dataset_size
+
+        size = await asyncio.get_running_loop().run_in_executor(
+            None, get_hf_dataset_size, parts[1],
+        )
+        if size is not None:
+            return f"Downloading {_format_size(size)}..."
+        return "Downloading..."
+
     async def _handle_slash_command(
         self,
         text: str,
@@ -580,7 +599,7 @@ LIMIT 4000"""
 
         spinner: SpinnerWidget | None = None
         if slow:
-            label = "Connecting..." if cmd == "/connect" else "Disconnecting..."
+            label = await self._connect_spinner_label(parts) if cmd == "/connect" else "Disconnecting..."
             spinner = SpinnerWidget(label)
             chat_log.mount(spinner)
             chat_log.scroll_end(animate=False)
