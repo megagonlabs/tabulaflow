@@ -167,8 +167,16 @@ class MintqApp(App[None]):
             "manager_name": [f"Manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)}" for r in range(rows)],
             "manager_email": [f"mgr{r % 80}@corp.example.com" for r in range(rows)],
             "notes": [maybe_none(
-                f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
-                f"processed via {channels[r % len(channels)]}.",
+                (
+                    f"URGENT: Escalated to regional manager due to customer complaint ref#{r:06d}. "
+                    f"Original order placed on {rand_date(r)} via {channels[r % len(channels)]}. "
+                    f"Customer requested full refund plus store credit for inconvenience. "
+                    f"District manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)} approved exception. "
+                    f"Follow-up scheduled for next business day. See ticket SUPPORT-{r * 3:07d} for details."
+                ) if r % 200 == 0 else (
+                    f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
+                    f"processed via {channels[r % len(channels)]}."
+                ),
                 r, 4,
             ) for r in range(rows)],
             "tags": [[categories[r % len(categories)], channels[r % len(channels)]] for r in range(rows)],

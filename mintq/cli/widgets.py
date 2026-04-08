@@ -577,7 +577,8 @@ class DataBrowserScreen(Screen[None]):
 
         for local_idx, row in enumerate(page_df.itertuples(index=False, name=None), start=1):
             row_number = start + local_idx
-            cells = [str(row_number)] + [self._format_cell(v) for v in row]
+            row_label = Text(f"{row_number:,}", justify="right")
+            cells = [row_label] + [self._format_cell(v) for v in row]
             self._table.add_row(*cells)
 
         total_pages = self._max_page_index + 1
@@ -630,12 +631,35 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._render_page()
 
+    _MAX_CELL_LEN = 200
+
     @staticmethod
-    def _format_cell(value: object) -> str:
+    def _format_cell(value: object) -> Text:
+        import numbers
+
+        import pandas as pd_
+
+        try:
+            if value is None or pd_.isna(value):
+                return Text("NULL", style="dim italic")
+        except (TypeError, ValueError):
+            pass
+
+        if isinstance(value, bool):
+            return Text(str(value))
+
+        if isinstance(value, numbers.Integral):
+            return Text(f"{value:,}", justify="right")
+
+        if isinstance(value, numbers.Real):
+            return Text(f"{value:,}", justify="right")
+
         s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
-        if len(s) > 200:
-            return s[:197] + "..."
-        return s
+        if len(s) > DataBrowserScreen._MAX_CELL_LEN:
+            t = Text(s[: DataBrowserScreen._MAX_CELL_LEN - 3])
+            t.append("...", style="dim")
+            return t
+        return Text(s)
 
 
 # ---------------------------------------------------------------------------
