@@ -53,7 +53,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
       ---
       There are 42 players in the database.
     - Do not reference every query you ran. Select only the most relevant results with minimal overlap.
-    - For example, if the question asks for a count of entities matching a condition, state the count in your response and present the full list in a single table.
+    - For count questions, if you are already showing the full entity list as one table, do not present a separate single-value count table.
 - If the question is ambiguous, choose the most natural interpretation and proceed. Only ask for clarification when you are truly blocked.
 - Pay attention to whether the user is asking for one table or multiple tables.
 - Your final response should be a clear concise natural language answer summarizing the results.
