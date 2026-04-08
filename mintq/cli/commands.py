@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import re
 from pathlib import Path
 import shlex
 from typing import TYPE_CHECKING, Any, cast
@@ -118,8 +119,23 @@ def _is_data_file(path: str) -> bool:
     return os.path.splitext(path)[1].lower() in _DATA_FILE_EXTENSIONS
 
 
+def _is_db_file(path: str) -> bool:
+    return os.path.splitext(path)[1].lower() in _FILE_EXTENSIONS
+
+
+def _sanitize_alias(raw: str) -> str:
+    """Convert a raw string to a valid alias containing only [a-z0-9_]."""
+    name = os.path.splitext(os.path.basename(raw))[0]
+    name = re.sub(r"[^a-zA-Z0-9_]", "_", name)
+    name = re.sub(r"_+", "_", name)
+    name = name.strip("_").lower()
+    return name or "db"
+
+
 def _alias_from_files(file_paths: list[str]) -> str:
-    return os.path.splitext(os.path.basename(file_paths[0]))[0]
+    if len(file_paths) == 1:
+        return _sanitize_alias(file_paths[0])
+    return "local_files"
 
 
 def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
@@ -185,13 +201,14 @@ def _normalize_url(raw: str) -> str:
 def _alias_from_url(url: str) -> str:
     if ":///" in url:
         path = url.split("///", 1)[-1]
-        return os.path.splitext(os.path.basename(path))[0]
+        return _sanitize_alias(os.path.basename(path))
     parsed = urlparse(url)
     if parsed.path and parsed.path.strip("/"):
-        return parsed.path.strip("/").rsplit("/", 1)[-1]
+        segment = parsed.path.strip("/").rsplit("/", 1)[-1]
+        return _sanitize_alias(segment)
     if parsed.hostname:
-        return parsed.hostname
-    return url
+        return _sanitize_alias(parsed.hostname)
+    return _sanitize_alias(url)
 
 
 def _resolve_alias(args: list[str], session: SessionState) -> tuple[str | None, list[str]]:
@@ -251,7 +268,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(
             output=Text.from_markup(
-                "[red]Usage:[/red] /connect <url_or_path> [alias]\n"
+                "[red]Usage:[/red] /connect <url_or_path> \\[alias]\n"
                 "[dim]  /connect ./data/schools.sqlite\n"
                 "  /connect ./sales.csv\n"
                 "  /connect ./sales.csv ./inventory.csv mydb\n"
@@ -269,7 +286,18 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     file_args = [a for a in args if _is_data_file(a)]
     if file_args:
         non_file_args = [a for a in args if not _is_data_file(a)]
-        alias = non_file_args[0] if non_file_args else _alias_from_files(file_args)
+        db_file_args = [a for a in non_file_args if _is_db_file(a)]
+        if db_file_args:
+            return CommandResult(
+                output=Text.from_markup(
+                    "[red]Cannot mix database files and data files.[/red] "
+                    "Connect them separately:\n"
+                    f"[dim]  /connect {db_file_args[0]}\n"
+                    f"  /connect {' '.join(os.path.basename(f) for f in file_args)}[/dim]"
+                )
+            )
+        alias_args = [a for a in non_file_args if not _is_db_file(a)]
+        alias = _sanitize_alias(alias_args[0]) if alias_args else _alias_from_files(file_args)
 
         if session.registry.has(alias):
             return CommandResult(
@@ -307,7 +335,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     # --- URL / database-file connections ---
     raw = args[0]
     url = _normalize_url(raw)
-    alias = args[1] if len(args) > 1 else _alias_from_url(url)
+    alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
 
     if session.registry.has(alias):
         return CommandResult(
@@ -459,7 +487,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
         if not args:
             return CommandResult(
                 output=Text.from_markup(
-                    "[dim]Multiple databases connected. Specify alias: /schema <alias> [table] [column][/dim]\n"
+                    "[dim]Multiple databases connected. Specify alias: /schema <alias> \\[table] \\[column][/dim]\n"
                     f"[dim]Available: {', '.join(aliases)}[/dim]"
                 )
             )
@@ -500,7 +528,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
         lines = [f"[red]Ambiguous table name:[/red] {rest[0]}. Matches:"]
         for t in result:
             lines.append(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
-        lines.append("[dim]Use the qualified name: /schema [alias] <schema>.<table>[/dim]")
+        lines.append("[dim]Use the qualified name: /schema \\[alias] <schema>.<table>[/dim]")
         return CommandResult(output=Text.from_markup("\n".join(lines)))
 
     tbl = result
@@ -528,11 +556,11 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
     "/clear": (_cmd_clear, "Clear the screen"),
-    "/connect": (_cmd_connect, "Connect to a database: /connect <url> [alias]"),
-    "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect [alias]"),
+    "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
+    "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
-    "/schema": (_cmd_schema, "Show schema: /schema [alias] [table] [column]"),
+    "/schema": (_cmd_schema, "Show schema: /schema \\[alias] \\[table] \\[column]"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
 }
 

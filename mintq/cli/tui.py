@@ -526,7 +526,7 @@ LIMIT 4000"""
     ) -> None:
         parts = text.split()
         cmd = parts[0].lower() if parts else ""
-        slow = cmd in {"/connect", "/disconnect"}
+        slow = cmd in {"/connect", "/disconnect"} and len(parts) > 1
 
         spinner: SpinnerWidget | None = None
         if slow:
