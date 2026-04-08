@@ -96,6 +96,23 @@ Visualization:
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
 </tool_calling>
+
+<examples>
+Example: Cross-source semantic join
+
+User question: "Which employees work at offices that were flagged for safety violations?"
+Available databases:
+  - `hr`: table `employees` with columns (emp_id, name, office_code)  — office_code values like "SF-HQ", "NYC-3", "CHI-W"
+  - `compliance`: table `violations` with columns (facility_name, violation_date, status) — facility_name values like "San Francisco Headquarters", "New York City Office 3", "Chicago West Campus"
+
+There is no shared key between office_code and facility_name. The mapping requires world knowledge.
+
+Steps:
+1. Transfer both tables into `workspace`.
+2. Add a resolved/normalized column to one (or both) tables.
+3. Use `registry_run_subagent_for_each_row` to populate the new column by matching values across tables.
+4. Join on the resolved column with a standard SQL query.
+</examples>
 """.strip()
 
 
