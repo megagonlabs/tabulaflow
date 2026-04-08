@@ -23,7 +23,7 @@ from mintq.cli.display import (
     DATA_PREVIEW_MAX_ROWS,
     QUERY_PREVIEW_MAX_LINES,
 )
-from mintq.cli.theme import ACCENT, ACCENT_BOLD
+from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -655,6 +655,7 @@ class QueryBrowserScreen(Screen[None]):
         height: 1fr;
         margin: 0 1;
         border: solid white;
+        background: $surface;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
         scrollbar-color-active: #3EB489;
@@ -711,7 +712,9 @@ class QueryBrowserScreen(Screen[None]):
         yield Static(classes="query-browser-hint")
 
     def on_mount(self) -> None:
-        self.query_one(TextArea).theme = "dracula"
+        text_area = self.query_one(TextArea)
+        text_area.register_theme(DRACULA_TRANSPARENT)
+        text_area.theme = "dracula-transparent"
 
         hint_text = Text()
         hint_text.append("f", style=ACCENT_BOLD)
