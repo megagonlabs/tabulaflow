@@ -953,6 +953,9 @@ April 7
 Demo
 - [ ] Profile all 152 spider2-snow databases
 - [ ] Scenario A: multi-source querying
+  - public data sources
+    - Wikidata
+    - huggingface
 - [ ] Scenario B: semantic operators
 - [ ] Scenario C: building database from web pages
 
