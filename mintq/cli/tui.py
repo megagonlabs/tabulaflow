@@ -529,6 +529,7 @@ LIMIT 4000"""
                 self._agent,
                 self._session_id,
                 self._runtime_paths.trajectories_dir,
+                self._runtime_paths.data_dir,
                 self._runtime_paths.workspace_db_path,
             )
             await self._session.connect_workspace_db()

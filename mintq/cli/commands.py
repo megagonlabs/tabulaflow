@@ -67,6 +67,7 @@ class SessionState:
         agent: str,
         session_id: str,
         trajectories_dir: Path,
+        data_dir: Path,
         workspace_db_path: Path,
     ) -> None:
         from mintq.cli.agent import ChatAgent
@@ -74,6 +75,7 @@ class SessionState:
 
         self.agent_name = agent
         self.session_id = session_id
+        self.data_dir = data_dir
         self.workspace_db_path = workspace_db_path
         self.registry: DBRegistry = DBRegistry()
         self.chat_agent: ChatAgent = ChatAgent(
@@ -318,6 +320,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 global_id=global_id,
                 file_paths=file_args,
                 db_name=alias,
+                data_dir=str(session.data_dir),
                 read_only=True,
                 enable_schema_caching=False,
                 enable_query_caching=False,
@@ -384,7 +387,8 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     global_id = f"cli+{alias}"
     try:
         connector = await load_hf_dataset(
-            url, global_id=global_id, db_name=alias, read_only=True,
+            url, global_id=global_id, db_name=alias,
+            data_dir=str(session.data_dir), read_only=True,
         )
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))

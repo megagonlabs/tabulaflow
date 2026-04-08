@@ -1004,15 +1004,15 @@ class SQLConnector:
         file_paths: list[str],
         *,
         db_name: str | None = None,
+        data_dir: str | None = None,
         read_only: bool = True,
         enable_schema_caching: bool = False,
         enable_query_caching: bool = False,
     ) -> "SQLConnector":
         """Create a connector from CSV, Excel, Parquet, or JSON files.
 
-        Each file is loaded into a DuckDB table backed by a temporary database
-        file. Table names are derived from filenames. The temp file is cleaned
-        up when :meth:`disconnect_async` is called.
+        Each file is loaded into a DuckDB table backed by a database file.
+        The file is cleaned up when :meth:`disconnect_async` is called.
 
         Supported formats: ``.csv``, ``.tsv``, ``.xlsx``, ``.xls``,
         ``.parquet``, ``.json``, ``.jsonl``, ``.ndjson``.
@@ -1023,12 +1023,14 @@ class SQLConnector:
             file_paths: Paths to data files to load.
             db_name: Display name for the database. Defaults to the first
                 file's stem.
+            data_dir: Directory to store the DuckDB file. If ``None``, a
+                system temp directory is used.
             read_only: If True, block write statements.
             enable_schema_caching: Whether to cache the inferred schema.
             enable_query_caching: Whether to cache query results.
 
         Returns:
-            A :class:`SQLConnector` backed by a temporary DuckDB database.
+            A :class:`SQLConnector` backed by a DuckDB database.
         """
         seen: set[str] = set()
         resolved: list[str] = []
@@ -1048,9 +1050,13 @@ class SQLConnector:
         if db_name is None:
             db_name = _table_name_from_path(resolved[0])
 
-        fd, db_path = tempfile.mkstemp(suffix=".duckdb")
-        os.close(fd)
-        os.unlink(db_path)
+        if data_dir is not None:
+            os.makedirs(data_dir, exist_ok=True)
+            db_path = os.path.join(data_dir, f"{db_name}.duckdb")
+        else:
+            fd, db_path = tempfile.mkstemp(suffix=".duckdb")
+            os.close(fd)
+            os.unlink(db_path)
 
         loop = asyncio.get_running_loop()
         table_file_map: dict[str, str] = await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)

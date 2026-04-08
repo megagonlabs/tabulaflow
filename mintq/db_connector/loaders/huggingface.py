@@ -110,6 +110,7 @@ async def load_hf_dataset(
     *,
     global_id: str,
     db_name: str | None = None,
+    data_dir: str | None = None,
     read_only: bool = True,
 ) -> "SQLConnector":
     """Load a HuggingFace dataset into a DuckDB-backed SQLConnector.
@@ -118,10 +119,12 @@ async def load_hf_dataset(
         dataset_url: A HuggingFace dataset URL.
         global_id: Globally unique identifier for the connection.
         db_name: Display name for the database. Defaults to the dataset name.
+        data_dir: Directory to store the DuckDB file. If ``None``, a
+            system temp directory is used.
         read_only: If True, block write statements.
 
     Returns:
-        A :class:`SQLConnector` backed by a temporary DuckDB database.
+        A :class:`SQLConnector` backed by a DuckDB database.
     """
     from mintq.db_connector.sql_conn import SQLConnector
 
@@ -141,6 +144,7 @@ async def load_hf_dataset(
             global_id=global_id,
             file_paths=parquet_paths,
             db_name=db_name,
+            data_dir=data_dir,
             read_only=read_only,
             enable_schema_caching=False,
             enable_query_caching=False,
