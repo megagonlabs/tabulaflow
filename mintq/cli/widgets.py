@@ -587,12 +587,31 @@ class DataBrowserScreen(Screen[None]):
             cells = [row_label] + [self._format_cell(v) for v in row]
             self._table.add_row(*cells)
 
+        self._update_status()
+        self._update_hint()
+
+    def _update_status(self) -> None:
         total_pages = self._max_page_index + 1
+        start = self._page_index * self._page_size
+        end = min(start + self._page_size, self._num_rows)
         shown_range = "0-0" if self._num_rows == 0 else f"{start + 1}-{end}"
-        summary_and_status_line = (
-            f"{self._title}  |  {self._num_rows:,} rows x {len(self._df.columns)} columns"
-            f"  |  Rows {shown_range} of {self._num_rows:,}  |  Page {self._page_index + 1}/{total_pages}"
-        )
+
+        parts = [
+            self._title,
+            f"{self._num_rows:,} rows x {len(self._df.columns)} cols",
+            f"Rows {shown_range} of {self._num_rows:,}",
+            f"Page {self._page_index + 1}/{total_pages}",
+        ]
+
+        col_index = self._table.cursor_coordinate.column - 1
+        if 0 <= col_index < len(self._df.columns):
+            col_name = str(self._df.columns[col_index])
+            col_dtype = str(self._df[col_name].dtype)
+            parts.append(f"{col_name} ({col_dtype})")
+
+        self._status.update(Text("  |  ".join(parts), style="dim"))
+
+    def _update_hint(self) -> None:
         hint_fg = "dim"
         hint_segments: list[tuple[str, str]] = [
             ("f", ACCENT_BOLD),
@@ -605,8 +624,12 @@ class DataBrowserScreen(Screen[None]):
         hint = Text()
         for text, style in hint_segments:
             hint.append(text, style=style)
-        self._status.update(Text(summary_and_status_line, style=hint_fg))
         self._hint.update(hint)
+
+    def on_data_table_cell_highlighted(self, event: DataTable.CellHighlighted) -> None:
+        """Update status bar with selected column dtype."""
+        if event.data_table is self._table:
+            self._update_status()
 
     def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
         """Sort when user clicks a header cell."""
