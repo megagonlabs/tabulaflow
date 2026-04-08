@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -805,11 +806,36 @@ class CellBrowserScreen(Screen[None]):
         self._dtype_str = dtype_str
         self._display_text, self._language = self._format_value(value)
 
+    _SQL_RE = re.compile(r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b", re.IGNORECASE)
+    _PY_RE = re.compile(r"^\s*(def |class |import |from |if __name__)")
+
+    @staticmethod
+    def _try_as_json(value: object) -> str | None:
+        """Try to pretty-print value as JSON. Returns formatted string or None."""
+        import ast
+        import json
+
+        if isinstance(value, (dict, list)):
+            obj = value
+        elif isinstance(value, str):
+            # Try JSON first, then Python repr
+            for parser in (json.loads, ast.literal_eval):
+                try:
+                    parsed = parser(value)
+                    if isinstance(parsed, (dict, list)):
+                        obj = parsed
+                        break
+                except Exception:
+                    continue
+            else:
+                return None
+        else:
+            return None
+        return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
+
     @staticmethod
     def _format_value(value: object) -> tuple[str, str | None]:
         """Return (display_text, language) for the cell value."""
-        import json
-
         import pandas as pd_
 
         try:
@@ -818,31 +844,15 @@ class CellBrowserScreen(Screen[None]):
         except (TypeError, ValueError):
             pass
 
+        json_str = CellBrowserScreen._try_as_json(value)
+        if json_str is not None:
+            return json_str, "json"
+
         s = str(value)
-
-        # Try JSON pretty-print
-        try:
-            parsed = json.loads(s)
-            if isinstance(parsed, (dict, list)):
-                return json.dumps(parsed, indent=2, ensure_ascii=False), "json"
-        except (json.JSONDecodeError, TypeError, ValueError):
-            pass
-
-        # Heuristic: detect SQL
-        _SQL_KW = re.compile(
-            r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b",
-            re.IGNORECASE,
-        )
-        if _SQL_KW.match(s):
+        if CellBrowserScreen._SQL_RE.match(s):
             return s, "sql"
-
-        # Heuristic: detect Python
-        _PY_KW = re.compile(
-            r"^\s*(def |class |import |from |if __name__)",
-        )
-        if _PY_KW.match(s):
+        if CellBrowserScreen._PY_RE.match(s):
             return s, "python"
-
         return s, None
 
     def compose(self) -> ComposeResult:

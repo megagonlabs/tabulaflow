@@ -213,6 +213,22 @@ class MintqApp(App[None]):
                 f"def process_batch_{r}(items: list[dict]) -> float:\n    total = 0.0\n    for item in items:\n        if item['status'] == 'completed':\n            total += item['amount'] * (1 - item.get('discount', 0))\n    return round(total, 2)",
                 r, 8,
             ) for r in range(rows)],
+            "native_list": [
+                [categories[r % len(categories)], r * 3, {"nested": True, "id": r}]
+                for r in range(rows)
+            ],
+            "native_dict": [
+                {"id": r, "region": regions[r % len(regions)], "amounts": [round(r * 1.5, 2), round(r * 2.3, 2)]}
+                for r in range(rows)
+            ],
+            "str_list": [
+                str([states[r % len(states)], cities[r % len(cities)], r % 100])
+                for r in range(rows)
+            ],
+            "str_dict": [
+                str({"key": f"item_{r}", "value": round(r * 0.7, 2), "tags": [categories[r % len(categories)]]})
+                for r in range(rows)
+            ],
             "score": [maybe_none(round(math.sin(r * 0.1) * 50 + 50, 4), r, 25) for r in range(rows)],
             "rating": [round(1.0 + (r % 40) * 0.1, 1) for r in range(rows)],
             "weight_kg": [maybe_none(round(0.1 + (r % 200) * 0.25, 3), r, 9) for r in range(rows)],
