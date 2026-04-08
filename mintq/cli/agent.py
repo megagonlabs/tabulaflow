@@ -73,6 +73,7 @@ You MUST use `workspace` for data transformation tasks and semantic operations (
 - Databases are registered under aliases (e.g. `workspace`).
 - `db_alias` selects which registered database connector a tool call uses.
 - Aliases are application-level handles, not SQL catalog/schema names.
+- Tables in different aliases cannot be joined directly. To join across databases, first transfer the relevant tables into `workspace` using `transfer_record`, then join them there.
 </registry_and_alias>
 
 <tool_calling>
