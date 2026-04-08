@@ -87,11 +87,146 @@ class MintqApp(App[None]):
         col_names = [f"col_{i + 1:02d}" for i in range(cols)]
         data = {name: [f"{name}_r{r + 1:04d}" for r in range(rows)] for name in col_names}
         df = pd.DataFrame(data)
-        query_lines = [
-            f"SELECT col_{i:02d} AS c{i:02d}, COALESCE(col_{i:02d}, 'N/A') AS col_{i:02d}_filled, UPPER(col_{i:02d}) AS col_{i:02d}_upper, LENGTH(col_{i:02d}) AS col_{i:02d}_len, LOWER(col_{i:02d}) AS col_{i:02d}_lower, TRIM(col_{i:02d}) AS col_{i:02d}_trimmed, REPLACE(col_{i:02d}, ' ', '_') AS col_{i:02d}_cleaned, SUBSTRING(col_{i:02d}, 1, 50) AS col_{i:02d}_short"
-            for i in range(1, 41)
-        ]
-        debug_query = ",\n".join(query_lines) + "\nFROM debug_wide_table\nWHERE col_01 IS NOT NULL\nORDER BY col_01\nLIMIT 4000"
+        debug_query = """\
+WITH monthly_sales AS (
+    SELECT
+        s.store_id,
+        st.store_name,
+        st.region,
+        st.state,
+        st.city,
+        st.zip_code,
+        st.store_type,
+        st.open_date AS store_open_date,
+        dm.district_manager_name,
+        dm.district_manager_email,
+        DATE_TRUNC('month', s.sale_date) AS sale_month,
+        COUNT(DISTINCT s.transaction_id) AS num_transactions,
+        COUNT(DISTINCT s.customer_id) AS unique_customers,
+        COUNT(DISTINCT s.product_id) AS unique_products,
+        COUNT(DISTINCT s.employee_id) AS active_employees,
+        SUM(s.quantity) AS total_units,
+        SUM(s.amount) AS gross_revenue,
+        SUM(s.cost_of_goods) AS total_cogs,
+        SUM(s.discount_amount) AS total_discounts,
+        SUM(s.tax_amount) AS total_tax,
+        SUM(s.shipping_cost) AS total_shipping,
+        SUM(s.amount - s.discount_amount) AS net_revenue,
+        SUM(s.amount - s.cost_of_goods) AS gross_profit,
+        AVG(s.amount) AS avg_transaction_value,
+        MEDIAN(s.amount) AS median_transaction_value,
+        STDDEV(s.amount) AS stddev_transaction_value,
+        MAX(s.amount) AS max_transaction_value,
+        MIN(s.amount) AS min_transaction_value,
+        SUM(CASE WHEN s.channel = 'online' THEN s.amount ELSE 0 END) AS online_revenue,
+        SUM(CASE WHEN s.channel = 'in_store' THEN s.amount ELSE 0 END) AS in_store_revenue,
+        SUM(CASE WHEN s.is_return THEN s.amount ELSE 0 END) AS return_amount,
+        COUNT(CASE WHEN s.is_return THEN 1 END) AS return_count,
+        COUNT(CASE WHEN s.payment_method = 'credit_card' THEN 1 END) AS cc_transactions,
+        COUNT(CASE WHEN s.payment_method = 'cash' THEN 1 END) AS cash_transactions
+    FROM sales s
+    JOIN stores st ON s.store_id = st.store_id
+    LEFT JOIN district_managers dm ON st.district_id = dm.district_id
+    WHERE s.sale_date >= '2024-01-01'
+      AND s.sale_date < '2025-01-01'
+      AND s.status = 'completed'
+    GROUP BY s.store_id, st.store_name, st.region, st.state, st.city,
+             st.zip_code, st.store_type, st.open_date,
+             dm.district_manager_name, dm.district_manager_email,
+             DATE_TRUNC('month', s.sale_date)
+),
+ranked AS (
+    SELECT
+        ms.*,
+        ROW_NUMBER() OVER (PARTITION BY region ORDER BY gross_revenue DESC) AS region_revenue_rank,
+        RANK() OVER (PARTITION BY state ORDER BY net_revenue DESC) AS state_revenue_rank,
+        DENSE_RANK() OVER (PARTITION BY city ORDER BY unique_customers DESC) AS city_customer_rank,
+        SUM(gross_revenue) OVER (PARTITION BY store_id ORDER BY sale_month) AS cumul_gross_revenue,
+        SUM(net_revenue) OVER (PARTITION BY store_id ORDER BY sale_month) AS cumul_net_revenue,
+        SUM(gross_profit) OVER (PARTITION BY store_id ORDER BY sale_month) AS cumul_gross_profit,
+        LAG(gross_revenue, 1) OVER (PARTITION BY store_id ORDER BY sale_month) AS prev_month_revenue,
+        LAG(unique_customers, 1) OVER (PARTITION BY store_id ORDER BY sale_month) AS prev_month_customers,
+        LEAD(gross_revenue, 1) OVER (PARTITION BY store_id ORDER BY sale_month) AS next_month_revenue,
+        AVG(gross_revenue) OVER (
+            PARTITION BY store_id ORDER BY sale_month
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ) AS rolling_3m_avg_revenue,
+        AVG(unique_customers) OVER (
+            PARTITION BY region ORDER BY sale_month
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ) AS rolling_3m_avg_customers,
+        AVG(gross_profit) OVER (
+            PARTITION BY store_id ORDER BY sale_month
+            ROWS BETWEEN 2 PRECEDING AND CURRENT ROW
+        ) AS rolling_3m_avg_profit,
+        SUM(gross_revenue) OVER (PARTITION BY region, sale_month) AS region_month_total,
+        SUM(gross_revenue) OVER (PARTITION BY sale_month) AS company_month_total
+    FROM monthly_sales ms
+)
+SELECT
+    store_id,
+    store_name,
+    region,
+    state,
+    city,
+    zip_code,
+    store_type,
+    store_open_date,
+    district_manager_name,
+    district_manager_email,
+    sale_month,
+    num_transactions,
+    unique_customers,
+    unique_products,
+    active_employees,
+    total_units,
+    gross_revenue,
+    total_cogs,
+    total_discounts,
+    total_tax,
+    total_shipping,
+    net_revenue,
+    gross_profit,
+    avg_transaction_value,
+    median_transaction_value,
+    stddev_transaction_value,
+    max_transaction_value,
+    min_transaction_value,
+    online_revenue,
+    in_store_revenue,
+    return_amount,
+    return_count,
+    cc_transactions,
+    cash_transactions,
+    region_revenue_rank,
+    state_revenue_rank,
+    city_customer_rank,
+    cumul_gross_revenue,
+    cumul_net_revenue,
+    cumul_gross_profit,
+    prev_month_revenue,
+    prev_month_customers,
+    next_month_revenue,
+    rolling_3m_avg_revenue,
+    rolling_3m_avg_customers,
+    rolling_3m_avg_profit,
+    region_month_total,
+    company_month_total,
+    ROUND(gross_profit / NULLIF(gross_revenue, 0) * 100, 2) AS gross_margin_pct,
+    ROUND(total_discounts / NULLIF(gross_revenue, 0) * 100, 2) AS discount_pct,
+    ROUND(return_amount / NULLIF(gross_revenue, 0) * 100, 2) AS return_rate_pct,
+    ROUND(online_revenue / NULLIF(gross_revenue, 0) * 100, 2) AS online_share_pct,
+    ROUND((gross_revenue - prev_month_revenue) / NULLIF(prev_month_revenue, 0) * 100, 2) AS mom_revenue_growth_pct, ROUND((unique_customers - prev_month_customers) / NULLIF(prev_month_customers, 0) * 100, 2) AS mom_customer_growth_pct,
+    ROUND(gross_revenue / NULLIF(unique_customers, 0), 2) AS revenue_per_customer,
+    ROUND(total_units / NULLIF(num_transactions, 0), 2) AS units_per_transaction,
+    ROUND(gross_revenue / NULLIF(active_employees, 0), 2) AS revenue_per_employee,
+    ROUND(gross_revenue / NULLIF(region_month_total, 0) * 100, 2) AS region_share_pct,
+    ROUND(gross_revenue / NULLIF(company_month_total, 0) * 100, 2) AS company_share_pct,
+    DATEDIFF('month', store_open_date, sale_month) AS store_age_months
+FROM ranked
+WHERE region_revenue_rank <= 50
+ORDER BY region, gross_revenue DESC, sale_month
+LIMIT 4000"""
 
         result = ChatResult(
             text="Debug startup table",
