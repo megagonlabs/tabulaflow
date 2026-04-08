@@ -936,10 +936,13 @@ April 6
 
 April 7
 - [x] Auto completion
-- [ ] Refresh for get_column_json_schema and get_db_document
-- [ ] Progress display for run_subagent_for_each_row
+- [x] Progress display for run_subagent_for_each_row
+- [x] Chart browser and query browser, use F to open/close all browsers
+- [x] Data browser display
+- [x] Tune prompt for semantic operators
 
-Features
+- [ ] Refresh for get_column_json_schema and get_db_document
+- [ ] Merge transfer_record into run_query
 - [ ] Copy to clipboard
 - [ ] Session resume
 - [ ] Data writing
