@@ -56,20 +56,41 @@ class RegistryRunSubagentForEachRowTool:
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
     ) -> str:
-        """Use subagents to process each row of a table and write updates back.
+        """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
-        All target output columns must already exist in the table.
+        This is the execution primitive for semantic operators — tasks where the
+        predicate, join condition, or transformation requires natural-language
+        understanding rather than exact SQL expressions. Prefer this tool over
+        fuzzy regex matching or LIKE-based SQL for these tasks. Common patterns:
+
+        - **Semantic filter**: Classify a free-text column against a natural-language
+          predicate (e.g., "is this review positive or negative?").
+        - **Semantic extraction**: Extract structured values from unstructured text
+          (e.g., extract sentiment, topic, or named entities from a comment).
+        - **Semantic join**: Match rows across tables where there is no shared key
+          and no syntactic overlap between join columns (e.g., abbreviations to
+          full names, or matching product names across different naming conventions).
+          Two approaches: (a) add a foreign-key column to one table and have the
+          subagent look up the other table (via ``run_query``) to resolve the
+          match, or (b) add a standardized column to both tables and have the
+          subagent normalize each side to a canonical form independently. After
+          the tool completes, a standard SQL JOIN on the new column(s) produces
+          the final result.
+
+        Each subagent has ``run_query`` access, so it can look up other tables as
+        needed for join resolution. All target output columns must already exist in
+        the table.
 
         Args:
-            db_alias: Alias of the target database table to update.
-            table_name: Target table name. Can be qualified (for example schema.table).
+            db_alias: Alias of the target database to update.
+            table_name: Target table name. Can be qualified (e.g. schema.table).
             task_instruction: Concise task instructions for processing each row.
-                Use clear unambiguous instructions. Mention the output columns, their
-                data types and format requirements.
-            input_columns: Optional columns to include in row identity/prompt payload.
-                If omitted, all table columns are included.
-            output_columns: Optional columns the subagent should update.
-                If provided, all output columns must already exist in the target table.
+                Use clear, unambiguous instructions. Mention the output columns,
+                their data types, and format requirements.
+            input_columns: Columns to include in the row payload sent to the
+                subagent. If omitted, all table columns are included.
+            output_columns: Columns the subagent should update. If provided, all
+                must already exist in the target table.
         """
         try:
             tool = self._get_tool(db_alias)
