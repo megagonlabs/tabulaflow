@@ -828,6 +828,21 @@ class CellBrowserScreen(Screen[None]):
         except (json.JSONDecodeError, TypeError, ValueError):
             pass
 
+        # Heuristic: detect SQL
+        _SQL_KW = re.compile(
+            r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b",
+            re.IGNORECASE,
+        )
+        if _SQL_KW.match(s):
+            return s, "sql"
+
+        # Heuristic: detect Python
+        _PY_KW = re.compile(
+            r"^\s*(def |class |import |from |if __name__)",
+        )
+        if _PY_KW.match(s):
+            return s, "python"
+
         return s, None
 
     def compose(self) -> ComposeResult:
