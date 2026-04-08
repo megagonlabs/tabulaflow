@@ -606,7 +606,7 @@ class DataBrowserScreen(Screen[None]):
         col_index = self._table.cursor_coordinate.column - 1
         if 0 <= col_index < len(self._df.columns):
             col_name = str(self._df.columns[col_index])
-            col_dtype = str(self._df[col_name].dtype)
+            col_dtype = self._describe_dtype(self._df[col_name])
             parts.append(f"{col_name} ({col_dtype})")
 
         self._status.update(Text("  |  ".join(parts), style="dim"))
@@ -661,6 +661,20 @@ class DataBrowserScreen(Screen[None]):
         self._render_page()
 
     _MAX_CELL_LEN = 200
+
+    @staticmethod
+    def _describe_dtype(series: "pd.Series") -> str:  # type: ignore[type-arg]
+        """Return a human-readable dtype label, resolving 'object' to the actual Python type."""
+        dtype_str = str(series.dtype)
+        if dtype_str != "object":
+            return dtype_str
+        sample = series.dropna().head(20)
+        if sample.empty:
+            return "object"
+        types = {type(v).__name__ for v in sample}
+        if len(types) == 1:
+            return types.pop()
+        return "mixed"
 
     @staticmethod
     def _format_cell(value: object) -> Text:
