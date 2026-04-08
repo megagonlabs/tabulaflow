@@ -496,8 +496,6 @@ class DataBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("q", "close_browser", "Back", show=False),
-        Binding("f", "close_browser", "Back", show=False),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
     ]
@@ -615,8 +613,8 @@ class DataBrowserScreen(Screen[None]):
     def _update_hint(self) -> None:
         hint_fg = "dim"
         hint_segments: list[tuple[str, str]] = [
-            ("f", ACCENT_BOLD),
-            (" Exit Full Screen    ", hint_fg),
+            ("Esc", ACCENT_BOLD),
+            (" Back    ", hint_fg),
             ("[", ACCENT_BOLD),
             (" Prev Page    ", hint_fg),
             ("]", ACCENT_BOLD),
@@ -751,8 +749,6 @@ class QueryBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("q", "close_browser", "Back", show=False),
-        Binding("f", "close_browser", "Back", show=False),
     ]
 
     # Languages supported by Textual's TextArea.
@@ -785,8 +781,8 @@ class QueryBrowserScreen(Screen[None]):
         text_area.theme = "dracula-transparent"
 
         hint_text = Text()
-        hint_text.append("f", style=ACCENT_BOLD)
-        hint_text.append(" Exit Full Screen    ", style="dim")
+        hint_text.append("Esc", style=ACCENT_BOLD)
+        hint_text.append(" Back    ", style="dim")
         self.query_one(".query-browser-hint", Static).update(hint_text)
 
     def action_close_browser(self) -> None:
@@ -824,8 +820,6 @@ class ChartBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("q", "close_browser", "Back", show=False),
-        Binding("f", "close_browser", "Back", show=False),
     ]
 
     def __init__(
@@ -863,8 +857,8 @@ class ChartBrowserScreen(Screen[None]):
         self._content.update(renderable)
 
         hint = Text()
-        hint.append("f", style=ACCENT_BOLD)
-        hint.append(" Exit Full Screen    ", style="dim")
+        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append(" Back    ", style="dim")
         self._hint.update(hint)
 
 
@@ -954,7 +948,7 @@ class AgentResultWidget(Widget):
         if current_key in self._chart_views or current_key in self._data_views or current_key in self._query_views:
             if hint:
                 hint.append("    ")
-            hint.append("f", style=ACCENT_BOLD)
+            hint.append("Enter", style=ACCENT_BOLD)
             hint.append(" Full Screen", style="dim")
         if hint:
             hint.append("    ")
@@ -1110,7 +1104,7 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
-        ("f", "open_full_screen", "Full screen"),
+        ("enter", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
         ("k", "focus_prev_result", "Previous result"),
