@@ -608,7 +608,9 @@ LIMIT 4000"""
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(result, width=self.size.width - 11)
             chat_log.mount(result_widget)
-            chat_log.scroll_end(animate=False)
+
+        # Defer scroll until after layout reflow so the final content height is known.
+        self.call_after_refresh(chat_log.scroll_end, animate=False)
 
 
 async def run_tui(model: str, agent: str) -> None:

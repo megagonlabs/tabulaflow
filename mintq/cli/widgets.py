@@ -323,7 +323,8 @@ class AgentProgressWidget(Widget):
             parts.append(self._status_spinner)
 
         if self._streaming_text:
-            parts.append(Text())
+            if self._steps:
+                parts.append(Text())
             parts.append(Text(self._streaming_text))
 
         return Group(*parts) if parts else Text()
