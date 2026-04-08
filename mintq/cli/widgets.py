@@ -418,7 +418,7 @@ class DataBrowserScreen(Screen[None]):
     DataBrowserScreen .data-browser-grid {
         height: 1fr;
         margin: 0 1;
-        border: solid white;
+        border: solid #3EB489;
         background: $surface;
         color: $text;
         scrollbar-color: #666666;

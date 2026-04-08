@@ -82,10 +82,100 @@ class MintqApp(App[None]):
 
         from mintq.cli.agent import ChatResult, ChatResultRecord
 
+        import datetime
+        import math
+        import random
+
+        random.seed(42)
         rows = 4000
-        cols = 60
-        col_names = [f"col_{i + 1:02d}" for i in range(cols)]
-        data = {name: [f"{name}_r{r + 1:04d}" for r in range(rows)] for name in col_names}
+
+        regions = ["Northeast", "Southeast", "Midwest", "West", "Southwest"]
+        states = ["NY", "CA", "TX", "FL", "IL", "PA", "OH", "GA", "NC", "MI"]
+        cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
+                  "Philadelphia", "San Antonio", "San Diego", "Dallas", "Austin"]
+        store_types = ["flagship", "mall", "outlet", "pop-up", "warehouse"]
+        channels = ["online", "in_store", "phone", "marketplace"]
+        payment_methods = ["credit_card", "debit_card", "cash", "apple_pay", "paypal"]
+        statuses = ["completed", "pending", "refunded", "cancelled", "disputed"]
+        categories = ["Electronics", "Clothing", "Grocery", "Home & Garden",
+                      "Sports", "Books", "Toys", "Beauty", "Automotive", "Jewelry"]
+        base_date = datetime.date(2024, 1, 1)
+        base_dt = datetime.datetime(2024, 1, 1, 8, 0, 0)
+
+        def rand_date(r: int) -> datetime.date:
+            return base_date + datetime.timedelta(days=r % 365)
+
+        def rand_datetime(r: int) -> datetime.datetime:
+            return base_dt + datetime.timedelta(days=r % 365, hours=r % 24, minutes=r % 60)
+
+        def maybe_none(val: object, r: int, freq: int = 20) -> object:
+            return None if r % freq == 0 else val
+
+        data: dict[str, list[object]] = {
+            "store_id": [1000 + r % 500 for r in range(rows)],
+            "transaction_id": [f"TXN-{r + 1:08d}" for r in range(rows)],
+            "store_name": [f"Store #{1000 + r % 500}" for r in range(rows)],
+            "region": [regions[r % len(regions)] for r in range(rows)],
+            "state": [states[r % len(states)] for r in range(rows)],
+            "city": [cities[r % len(cities)] for r in range(rows)],
+            "zip_code": [f"{10000 + r % 90000}" for r in range(rows)],
+            "store_type": [store_types[r % len(store_types)] for r in range(rows)],
+            "channel": [channels[r % len(channels)] for r in range(rows)],
+            "payment_method": [payment_methods[r % len(payment_methods)] for r in range(rows)],
+            "status": [statuses[r % len(statuses)] for r in range(rows)],
+            "category": [categories[r % len(categories)] for r in range(rows)],
+            "sale_date": [rand_date(r) for r in range(rows)],
+            "sale_datetime": [rand_datetime(r) for r in range(rows)],
+            "store_open_date": [datetime.date(2015 + r % 10, (r % 12) + 1, (r % 28) + 1) for r in range(rows)],
+            "customer_id": [maybe_none(50000 + r * 3, r) for r in range(rows)],
+            "employee_id": [200 + r % 80 for r in range(rows)],
+            "product_id": [f"SKU-{r % 2000:05d}" for r in range(rows)],
+            "quantity": [1 + r % 25 for r in range(rows)],
+            "unit_price": [round(0.99 + (r % 500) * 1.5, 2) for r in range(rows)],
+            "amount": [round(10.0 + (r % 1000) * 4.73, 2) for r in range(rows)],
+            "cost_of_goods": [round(5.0 + (r % 800) * 2.91, 2) for r in range(rows)],
+            "discount_amount": [maybe_none(round((r % 50) * 0.75, 2), r, 5) for r in range(rows)],
+            "tax_amount": [round(0.5 + (r % 300) * 0.42, 2) for r in range(rows)],
+            "shipping_cost": [maybe_none(round((r % 40) * 1.25, 2), r, 8) for r in range(rows)],
+            "is_return": [r % 17 == 0 for r in range(rows)],
+            "is_gift": [r % 23 == 0 for r in range(rows)],
+            "is_loyalty_member": [r % 3 != 0 for r in range(rows)],
+            "loyalty_points": [maybe_none(r * 7 % 10000, r, 3) for r in range(rows)],
+            "net_revenue": [round(10.0 + (r % 1000) * 4.73 - (r % 50) * 0.75, 2) for r in range(rows)],
+            "gross_profit": [round(5.0 + (r % 500) * 1.82, 2) for r in range(rows)],
+            "gross_margin_pct": [round(20.0 + (r % 60) * 0.8, 2) for r in range(rows)],
+            "discount_pct": [maybe_none(round((r % 30) * 0.5, 2), r, 5) for r in range(rows)],
+            "return_rate_pct": [round((r % 15) * 0.3, 2) for r in range(rows)],
+            "online_share_pct": [round(10.0 + (r % 80) * 0.9, 2) for r in range(rows)],
+            "mom_revenue_growth_pct": [maybe_none(round(-15.0 + (r % 60) * 0.7, 2), r, 12) for r in range(rows)],
+            "yoy_revenue_growth_pct": [maybe_none(round(-25.0 + (r % 80) * 0.9, 2), r, 15) for r in range(rows)],
+            "revenue_per_customer": [round(50.0 + (r % 400) * 2.3, 2) for r in range(rows)],
+            "units_per_transaction": [round(1.0 + (r % 10) * 0.3, 2) for r in range(rows)],
+            "avg_basket_size": [round(25.0 + (r % 200) * 1.1, 2) for r in range(rows)],
+            "num_transactions": [10 + r % 500 for r in range(rows)],
+            "unique_customers": [5 + r % 300 for r in range(rows)],
+            "unique_products": [3 + r % 150 for r in range(rows)],
+            "active_employees": [2 + r % 30 for r in range(rows)],
+            "region_revenue_rank": [1 + r % 50 for r in range(rows)],
+            "state_revenue_rank": [1 + r % 100 for r in range(rows)],
+            "cumul_gross_revenue": [round((r + 1) * 473.21, 2) for r in range(rows)],
+            "rolling_3m_avg_revenue": [maybe_none(round(1000.0 + (r % 500) * 8.3, 2), r, 10) for r in range(rows)],
+            "store_age_months": [6 + r % 120 for r in range(rows)],
+            "latitude": [round(25.0 + (r % 2000) * 0.01, 6) for r in range(rows)],
+            "longitude": [round(-125.0 + (r % 5000) * 0.01, 6) for r in range(rows)],
+            "customer_email": [maybe_none(f"user{r % 3000}@example.com", r, 7) for r in range(rows)],
+            "manager_name": [f"Manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)}" for r in range(rows)],
+            "manager_email": [f"mgr{r % 80}@corp.example.com" for r in range(rows)],
+            "notes": [maybe_none(
+                f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
+                f"processed via {channels[r % len(channels)]}.",
+                r, 4,
+            ) for r in range(rows)],
+            "tags": [[categories[r % len(categories)], channels[r % len(channels)]] for r in range(rows)],
+            "score": [maybe_none(round(math.sin(r * 0.1) * 50 + 50, 4), r, 25) for r in range(rows)],
+            "rating": [round(1.0 + (r % 40) * 0.1, 1) for r in range(rows)],
+            "weight_kg": [maybe_none(round(0.1 + (r % 200) * 0.25, 3), r, 9) for r in range(rows)],
+        }
         df = pd.DataFrame(data)
         debug_query = """\
 WITH monthly_sales AS (
