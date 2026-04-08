@@ -332,9 +332,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         info = session.chat_agent.database_info(connector)
         session.chat_agent.add_database([(alias, connector)])
         return CommandResult(
-            output=Text.from_markup(
-                f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{file_label}[/bold] as [bold]{alias}[/bold] ({info})"
-            )
+            output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim")
         )
 
     # --- HuggingFace dataset connections ---
@@ -397,9 +395,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
     return CommandResult(
-        output=Text.from_markup(
-            f"[{ACCENT}]✓[/{ACCENT}] Loaded [bold]{dataset_id}[/bold] as [bold]{alias}[/bold] ({info})"
-        )
+        output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim")
     )
 
 
@@ -438,7 +434,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         info = session.chat_agent.database_info(neo_connector)
         session.chat_agent.add_database([(alias, neo_connector)])
         return CommandResult(
-            output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})")
+            output=Text(f"✓ Connected to {alias} ({info})", style="dim")
         )
 
     try:
@@ -464,7 +460,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     session.registry.register(alias, connector)
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
-    return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Connected to [bold]{alias}[/bold] ({info})"))
+    return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 
 async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResult:
@@ -481,7 +477,7 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         alias = args[0]
 
     if await session.registry.unregister_async(alias):
-        return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Disconnected from [bold]{alias}[/bold]"))
+        return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
         return CommandResult(output=Text.from_markup(f"[red]No connection named:[/red] {alias}"))
 
