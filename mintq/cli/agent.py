@@ -59,7 +59,7 @@ Be THOROUGH. Make sure you have the FULL picture before finishing. Use additiona
 </read_only_questions>
 
 <data_transformation_tasks>
-You should use `workspace` to perform data manipulation/transformation tasks instead of updating the original table in-place.
+You MUST use `workspace` for data transformation tasks and semantic operations (e.g., LLM-based filtering, joining, or extraction). Never modify the original tables in-place.
 - `workspace` is a session-local DuckDB database for temporary transformation tables.
 - First, use `transfer_record` to move data into or out of `workspace`.
   - To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
