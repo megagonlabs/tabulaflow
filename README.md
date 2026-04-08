@@ -941,6 +941,8 @@ April 7
 - [x] Data browser display
 - [x] Tune prompt for semantic operators
 
+- [ ] Web search
+- [ ] Query browser - show language and database
 - [ ] Refresh for get_column_json_schema and get_db_document
 - [ ] Merge transfer_record into run_query
 - [ ] Copy to clipboard
