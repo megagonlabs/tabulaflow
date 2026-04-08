@@ -605,10 +605,15 @@ LIMIT 4000"""
             children = list(chat_log.children)
             if children and isinstance(children[-1], UserMessage):
                 children[-1].styles.margin = (1, 0, 0, 0)
-            label = await self._connect_spinner_label(parts) if cmd == "/connect" else "Disconnecting..."
+            label = "Connecting..." if cmd == "/connect" else "Disconnecting..."
             spinner = SpinnerWidget(label)
             chat_log.mount(spinner)
             chat_log.scroll_end(animate=False)
+            # Refine label with dataset size info (non-blocking).
+            if cmd == "/connect":
+                refined = await self._connect_spinner_label(parts)
+                if spinner._label != refined:
+                    spinner.update_label(refined)
 
         try:
             session = await self._ensure_session()

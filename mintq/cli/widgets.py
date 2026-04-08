@@ -263,7 +263,12 @@ class SpinnerWidget(Widget):
 
     def __init__(self, label: str = "Loading...") -> None:
         super().__init__()
+        self._label = label
         self._spinner = Spinner("dots", text=Text(label, style="dim"), style=ACCENT)
+
+    def update_label(self, label: str) -> None:
+        self._label = label
+        self._spinner.text = Text(label, style="dim")
 
     def on_mount(self) -> None:
         self.set_interval(1 / 12, self.refresh)
