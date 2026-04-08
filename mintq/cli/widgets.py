@@ -453,6 +453,11 @@ class DataBrowserScreen(Screen[None]):
         text-style: bold;
     }
 
+    DataBrowserScreen .data-browser-grid > .datatable--fixed {
+        background: transparent;
+        color: #888888;
+    }
+
     DataBrowserScreen .data-browser-grid > .datatable--header {
         background: transparent;
         color: #3EB489;
