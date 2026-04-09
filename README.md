@@ -956,8 +956,9 @@ Demo
   - public data sources
     - Wikidata
     - huggingface
-- [ ] Scenario B: semantic operators
-- [ ] Scenario C: building database from web pages
+- [ ] Scenario B: dataset preprocessing
+- [ ] Scenario C: semantic operators
+- [ ] Scenario D: building database from web pages
 
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
