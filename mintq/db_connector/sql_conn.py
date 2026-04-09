@@ -868,11 +868,11 @@ class SQLConnector:
     global_id: str
     schema: SQLSchema
     language: SQLDialect
+    _t_eng: ThrottledEngine
     db_description: str | None = None
     read_only: bool = True
     enable_schema_caching: bool = True
     enable_query_caching: bool = False
-    _t_eng: ThrottledEngine
     _group_date_partitioned_tables: bool = True
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
