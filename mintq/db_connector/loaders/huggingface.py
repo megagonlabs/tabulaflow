@@ -191,7 +191,10 @@ async def load_hf_dataset(
             None, _fetch_hf_description, dataset_id,
         )
         if description:
-            connector.db_description = description
+            connector.db_description = (
+                f"Source: HuggingFace dataset {dataset_url}\n\n"
+                f"<readme>\n{description}\n</readme>"
+            )
     finally:
         # Clean up temp parquet files; DuckDB has its own copy.
         for f in os.listdir(tmp_dir):
