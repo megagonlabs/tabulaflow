@@ -30,10 +30,11 @@ _USER_PROMPT_MAX_CHARS = 400000
 
 
 def format_user_prompt(formatted_schema: str, db_description: str | None = None) -> str:
-    prompt = "Generate a summary for the following database:\n" + formatted_schema
+    parts = ["Generate a summary for the following database:"]
     if db_description:
-        prompt += f"\n\n## Additional context about this database\n\n{db_description}"
-    return prompt
+        parts.append(f"<db_description>\n{db_description}\n</db_description>")
+    parts.append(f"<schema>\n{formatted_schema}\n</schema>")
+    return "\n\n".join(parts)
 
 
 def truncate_user_prompt(user_prompt: str, max_chars: int = _USER_PROMPT_MAX_CHARS) -> str:

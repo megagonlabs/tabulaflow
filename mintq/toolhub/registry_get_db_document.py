@@ -115,9 +115,9 @@ class RegistryGetDBDocumentTool:
             schema_doc = self._format_direct_document(db_alias)
             description = await self._get_description(connector)
             if description:
-                document = f"## About this dataset\n\n{description}\n\n---\n\n{schema_doc}"
+                document = f"<db_description>\n{description}\n</db_description>\n\n<schema>\n{schema_doc}\n</schema>"
             else:
-                document = schema_doc
+                document = f"<schema>\n{schema_doc}\n</schema>"
 
         self._document_cache[db_alias] = document
         return document
