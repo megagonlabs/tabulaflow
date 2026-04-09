@@ -941,7 +941,15 @@ April 7
 - [x] Data browser display
 - [x] Tune prompt for semantic operators
 
-- [ ] Web search
+April 8
+- [x] Cell browser
+- [x] Huggingface
+
+April 9
+- [x] Huggingface
+
+- [ ] /reconnect
+- [ ] Semantic join - cross join
 - [ ] Query browser - show language and database
 - [ ] Refresh for get_column_json_schema and get_db_document
 - [ ] Merge transfer_record into run_query
