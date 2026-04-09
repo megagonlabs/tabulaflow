@@ -514,7 +514,6 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._sorted_column: str | None = None
         self._sort_reverse = False
-        self._header_labels: tuple[str, ...] = tuple()
         self._table = DataTable(
             zebra_stripes=True,
             classes="data-browser-grid",
@@ -605,13 +604,8 @@ class DataBrowserScreen(Screen[None]):
                 marker = "▼" if self._sort_reverse else "▲"
                 label = f"{label} {marker}"
             header_labels.append(label)
-        current_headers = tuple(header_labels)
-        if current_headers != self._header_labels:
-            self._table.clear(columns=True)
-            self._table.add_columns(*header_labels)
-            self._header_labels = current_headers
-        else:
-            self._table.clear(columns=False)
+        self._table.clear(columns=True)
+        self._table.add_columns(*header_labels)
 
         for local_idx, row in enumerate(page_df.itertuples(index=False, name=None), start=1):
             row_number = start + local_idx
@@ -699,7 +693,7 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._render_page()
 
-    _MAX_CELL_LEN = 200
+    _MAX_CELL_LEN = 80
 
     @staticmethod
     def _describe_dtype(series: "pd.Series") -> str:  # type: ignore[type-arg]

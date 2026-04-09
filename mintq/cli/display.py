@@ -30,7 +30,7 @@ MINTQ_THEME = Theme(
 )
 
 DATA_PREVIEW_MAX_ROWS = 5
-DATA_PREVIEW_MAX_COLUMNS = 10
+DATA_PREVIEW_MAX_COLUMNS = 8
 QUERY_PREVIEW_MAX_LINES = 7
 
 if TYPE_CHECKING:
@@ -98,6 +98,14 @@ def build_query(
     return syntax
 
 
+_TABLE_BUDGET = 100
+
+
+def _cell_max_width(n_columns: int) -> int:
+    """Divide the table width budget evenly among columns."""
+    return max(8, _TABLE_BUDGET // max(n_columns, 1))
+
+
 def build_table(
     df: pd.DataFrame,
     max_rows: int = DATA_PREVIEW_MAX_ROWS,
@@ -113,14 +121,15 @@ def build_table(
     )
     truncated_cols = len(df.columns) > max_columns
     display_columns = list(df.columns[:max_columns]) if truncated_cols else list(df.columns)
+    cell_width = _cell_max_width(len(display_columns))
 
     for col in display_columns:
-        table.add_column(str(col))
+        table.add_column(str(col), no_wrap=True)
 
     truncated = len(df) > max_rows
     display_df = df.loc[:, display_columns].head(max_rows)
     for _, row in display_df.iterrows():
-        table.add_row(*(_format_table_cell(v) for v in row))
+        table.add_row(*(_format_table_cell(v, cell_width) for v in row))
 
     caption_parts: list[str] = []
     if truncated:
@@ -140,9 +149,12 @@ def build_table(
     return Group(table, footer)
 
 
-def _format_table_cell(value: object) -> str:
-    """Normalize cell text for compact preview rendering."""
-    return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+def _format_table_cell(value: object, max_width: int = 20) -> str:
+    """Normalize cell text for compact single-line preview rendering."""
+    s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+    if len(s) > max_width:
+        return s[: max_width - 1] + "…"
+    return s
 
 
 def build_chart(
