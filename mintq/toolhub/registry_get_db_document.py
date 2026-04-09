@@ -10,8 +10,10 @@ from mintq.formatters.cypher import CypherSchemaFormatter
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
 from mintq.preprocessors.components.schema_compressor import SchemaCompressor
 from mintq.preprocessors.db_summarizer import DBSummarizer
+from mintq.preprocessors.components.text_summarizer import TextSummarizer
 
 _MAX_CHARS = 50000
+_MAX_DESCRIPTION_CHARS = 5000
 
 
 class RegistryGetDBDocumentToolMetrics(BaseModel):
@@ -82,17 +84,41 @@ class RegistryGetDBDocumentTool:
             return self._graph_formatter.format(connector.schema)
         raise TypeError(f"Unsupported connector type for get_db_document: {connector.connector_type!r}")
 
+    async def _get_description(self, connector: object) -> str | None:
+        """Return the connector's db_description, summarizing if too long."""
+        desc = getattr(connector, "db_description", None)
+        if not desc:
+            return None
+        if len(desc) <= _MAX_DESCRIPTION_CHARS:
+            return desc
+
+        summarizer = TextSummarizer()
+        return await summarizer.summarize(desc)
+
     async def _get_document(self, db_alias: str) -> str:
         cached = self._document_cache.get(db_alias)
         if cached is not None:
             return cached
         connector = self.registry.get(db_alias)
-        if self.min_items_for_summary > 0 and self._schema_item_count(db_alias) < self.min_items_for_summary:
-            document = self._format_direct_document(db_alias)
-        else:
+
+        use_summarizer = not (
+            self.min_items_for_summary > 0 and self._schema_item_count(db_alias) < self.min_items_for_summary
+        )
+
+        if use_summarizer:
+            # DBSummarizer incorporates db_description into its prompt automatically.
             db_summarizer = DBSummarizer(llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words)
             db_summary = await db_summarizer.preprocess_async(connector)
             document = db_summary.db_summary_markdown
+        else:
+            # Direct schema document — prepend description separately.
+            schema_doc = self._format_direct_document(db_alias)
+            description = await self._get_description(connector)
+            if description:
+                document = f"## About this dataset\n\n{description}\n\n---\n\n{schema_doc}"
+            else:
+                document = schema_doc
+
         self._document_cache[db_alias] = document
         return document
 

@@ -74,11 +74,12 @@ class Neo4jConnector:
     global_id: str
     schema: PropertyGraphSchema
     language: NonSQLLanguage
+    db_description: str | None = None
+    read_only: bool = True
+    enable_schema_caching: bool = True
     _driver: neo4j.AsyncDriver
     _database: str | None
     _schema_name: str
-    read_only: bool = True
-    enable_schema_caching: bool = True
 
     @staticmethod
     async def _fetch_default_db_name(driver: neo4j.AsyncDriver) -> str | None:

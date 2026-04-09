@@ -29,8 +29,11 @@ The purpose of the summary is to help database experts explore the database and 
 _USER_PROMPT_MAX_CHARS = 400000
 
 
-def format_user_prompt(formatted_schema: str) -> str:
-    return "Generate a summary for the following database:\n" + formatted_schema
+def format_user_prompt(formatted_schema: str, db_description: str | None = None) -> str:
+    prompt = "Generate a summary for the following database:\n" + formatted_schema
+    if db_description:
+        prompt += f"\n\n## Additional context about this database\n\n{db_description}"
+    return prompt
 
 
 def truncate_user_prompt(user_prompt: str, max_chars: int = _USER_PROMPT_MAX_CHARS) -> str:
@@ -86,14 +89,18 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
                 return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
             if self.compressor is not None:
                 schema = self.compressor.compress(schema)
-            user_prompt = format_user_prompt(self.sql_formatter.format(schema, add_description=True))
+            db_description = getattr(db_connector, "db_description", None)
+            user_prompt = format_user_prompt(
+                self.sql_formatter.format(schema, add_description=True), db_description
+            )
         elif db_connector.connector_type == "property_graph":
             graph_schema = db_connector.schema
             if not graph_schema.nodes and not graph_schema.relationships:
                 return DBSummary(
                     db_summary_markdown=f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
                 )
-            user_prompt = format_user_prompt(self.graph_formatter.format(graph_schema))
+            db_description = getattr(db_connector, "db_description", None)
+            user_prompt = format_user_prompt(self.graph_formatter.format(graph_schema), db_description)
         else:
             raise TypeError(f"Unsupported connector type for DBSummarizer: {db_connector.connector_type!r}")
 

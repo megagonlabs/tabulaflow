@@ -2,6 +2,7 @@ __all__ = [
     "SchemaCompressor",
     "ColumnProfiler",
     "ForeignKeyPredictor",
+    "TextSummarizer",
 ]
 
 
@@ -11,6 +12,7 @@ def __getattr__(name: str) -> object:
         "SchemaCompressor": "mintq.preprocessors.components.schema_compressor",
         "ColumnProfiler": "mintq.preprocessors.components.column_profiler",
         "ForeignKeyPredictor": "mintq.preprocessors.components.fk_predictor",
+        "TextSummarizer": "mintq.preprocessors.components.text_summarizer",
     }
     if name in _lazy:
         import importlib

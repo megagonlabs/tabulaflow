@@ -73,6 +73,18 @@ def _format_size(n_bytes: int) -> str:
     return f"{n_bytes:.1f} TB"
 
 
+def _fetch_hf_description(dataset_id: str) -> str | None:
+    """Fetch the dataset card description from HuggingFace Hub."""
+    try:
+        from huggingface_hub import dataset_info
+
+        info = dataset_info(dataset_id)
+        desc = info.description
+        return desc.strip() if desc else None
+    except Exception:
+        return None
+
+
 def _load_hf_to_parquet(
     dataset_id: str,
     subset: str | None,
@@ -173,6 +185,13 @@ async def load_hf_dataset(
             enable_schema_caching=False,
             enable_query_caching=False,
         )
+
+        # Fetch dataset description for the agent.
+        description = await loop.run_in_executor(
+            None, _fetch_hf_description, dataset_id,
+        )
+        if description:
+            connector.db_description = description
     finally:
         # Clean up temp parquet files; DuckDB has its own copy.
         for f in os.listdir(tmp_dir):

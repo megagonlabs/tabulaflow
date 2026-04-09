@@ -341,6 +341,14 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if is_hf_dataset_url(args[0]):
         return await _connect_hf_dataset(args, session)
 
+    if "huggingface.co" in args[0]:
+        return CommandResult(
+            output=Text.from_markup(
+                "[red]Unsupported HuggingFace URL format.[/red]\n"
+                "[dim]Expected: https://huggingface.co/datasets/\\<owner>/\\<dataset>\\[/viewer/\\<subset>\\[/\\<split>\\]\\][/dim]"
+            )
+        )
+
     # --- URL / database-file connections ---
     raw = args[0]
     url = _normalize_url(raw)
