@@ -1078,6 +1078,9 @@ class SQLConnector:
             if source_file:
                 table.description = f"Imported from {os.path.basename(source_file)}"
 
+        file_list = "\n".join(resolved)
+        connector.db_description = f"Source: local files\n\n{file_list}"
+
         return connector
 
     async def disconnect_async(self) -> None:
