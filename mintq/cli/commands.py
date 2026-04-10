@@ -189,7 +189,7 @@ def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
 def _normalize_url(raw: str) -> str:
     for ext, scheme in _FILE_EXTENSIONS.items():
         if raw.endswith(ext):
-            abspath = os.path.abspath(raw)
+            abspath = os.path.abspath(os.path.expanduser(raw))
             return f"{scheme}:///{abspath}"
 
     if "://" in raw:

@@ -1057,7 +1057,7 @@ class SQLConnector:
         seen: set[str] = set()
         resolved: list[str] = []
         for p in file_paths:
-            abs_p = os.path.abspath(p)
+            abs_p = os.path.abspath(os.path.expanduser(p))
             if not os.path.isfile(abs_p):
                 raise FileNotFoundError(f"File not found: {p}")
             ext = os.path.splitext(abs_p)[1].lower()
