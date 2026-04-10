@@ -264,7 +264,7 @@ class SpinnerWidget(Widget):
     def __init__(self, label: str = "Loading...") -> None:
         super().__init__()
         self._label = label
-        self._spinner = Spinner("dots", text=Text(label, style="dim"), style=ACCENT)
+        self._spinner = Spinner("dots", text=Text(label, style="dim"), style="dim")
 
     def update_label(self, label: str) -> None:
         self._label = label
