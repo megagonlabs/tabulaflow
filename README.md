@@ -946,8 +946,10 @@ April 8
 - [x] Huggingface
 
 April 9
-- [x] Huggingface
+- [x] Huggingface - rewrite using duckdb's read_parquet
+  - duckdb hf protocol does not work for large datasets
 - [x] Refactor config system
+- [x] Refactor cache folders - use ~/.mintq/cache
 
 - [ ] /reconnect
 - [ ] Semantic join - cross join
