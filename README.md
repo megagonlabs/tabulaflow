@@ -951,6 +951,7 @@ April 9
 - [x] Refactor config system
 - [x] Refactor cache folders - use ~/.mintq/cache
 
+- [ ] Fix bugs: (1) huggingface with split (2) large subset with multiple splits
 - [ ] /reconnect
 - [ ] Semantic join - cross join
 - [ ] Query browser - show language and database
