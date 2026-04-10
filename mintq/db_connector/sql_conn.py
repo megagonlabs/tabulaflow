@@ -896,6 +896,7 @@ class SQLConnector:
         enable_schema_caching: bool = True,
         enable_query_caching: bool = False,
         include_schema_names: list[str] | None = None,
+        duckdb_init_sql: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -936,6 +937,8 @@ class SQLConnector:
             enable_query_caching: If ``False``, skip query result caching
                 for this connector regardless of global config. Useful for
                 interactive use where fresh results are always needed.
+            duckdb_init_sql: Optional list of SQL statements to execute on
+                each new DuckDB connection (e.g. extension loading).
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -964,6 +967,8 @@ class SQLConnector:
                 dbapi_conn.execute("PRAGMA enable_progress_bar=false")
                 if db_dir:
                     dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
+                for sql in (duckdb_init_sql or []):
+                    dbapi_conn.execute(sql)
 
             event.listen(sync_engine, "connect", _duckdb_on_connect)
 

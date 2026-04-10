@@ -99,19 +99,14 @@ def _fetch_hf_description(dataset_id: str) -> str | None:
         return None
 
 
-def _hf_parquet_glob(dataset_id: str, config: str, split: str | None = None) -> str:
-    """Build a ``hf://`` glob pattern for auto-converted parquet files."""
-    split_part = split if split else "*"
-    return f"hf://datasets/{dataset_id}@~parquet/{config}/{split_part}/*.parquet"
-
-
-def _hf_api_get(endpoint: str, dataset_id: str) -> dict[str, Any]:
+def _hf_api_get(endpoint: str, dataset_id: str, **params: str) -> dict[str, Any]:
     """Make a GET request to the HuggingFace datasets-server API."""
     import json
     from urllib.parse import urlencode
     from urllib.request import Request, urlopen
 
-    url = f"https://datasets-server.huggingface.co/{endpoint}?{urlencode({'dataset': dataset_id})}"
+    query = {"dataset": dataset_id, **params}
+    url = f"https://datasets-server.huggingface.co/{endpoint}?{urlencode(query)}"
     req = Request(url, headers={"User-Agent": "mintq"})
     with urlopen(req, timeout=30) as resp:
         return json.loads(resp.read())  # type: ignore[no-any-return]
@@ -141,26 +136,23 @@ def _fetch_configs_from_api(dataset_id: str) -> list[str]:
     return sorted({s["config"] for s in _fetch_splits_from_api(dataset_id)})
 
 
+def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
+    """Fetch direct parquet file URLs for a specific config/split."""
+    data = _hf_api_get("parquet", dataset_id, config=config, split=split)
+    return [f["url"] for f in data.get("parquet_files", [])]
+
+
 # ---------------------------------------------------------------------------
-# DuckDB-native discovery & loading
+# DuckDB loading
 # ---------------------------------------------------------------------------
 
 
 def _init_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Create a DuckDB connection with httpfs and optional HF auth."""
+    """Create a DuckDB connection with httpfs."""
     import duckdb as _duckdb
 
     conn = _duckdb.connect(db_path)
     conn.execute("INSTALL httpfs; LOAD httpfs;")
-
-    hf_token_path = os.path.expanduser("~/.cache/huggingface/token")
-    if os.path.isfile(hf_token_path):
-        conn.execute("""
-            CREATE SECRET IF NOT EXISTS hf_token (
-                TYPE huggingface,
-                PROVIDER credential_chain
-            )
-        """)
     return conn
 
 
@@ -228,17 +220,27 @@ def _create_tables(
     splits: list[str],
     materialize: bool,
 ) -> list[str]:
-    """Create DuckDB tables or views from hf:// parquet globs."""
+    """Create DuckDB tables or views from explicit parquet URLs.
+
+    Uses the HuggingFace datasets-server ``/parquet`` API to get direct
+    download URLs, avoiding DuckDB ``hf://`` glob resolution which triggers
+    HTTP HEAD requests that are easily rate-limited (429).
+    """
     kind = "TABLE" if materialize else "VIEW"
     table_names: list[str] = []
 
     for split_name in splits:
         table_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
         table_names.append(table_name)
-        source = _hf_parquet_glob(dataset_id, config, split_name)
 
-        sql = f'CREATE {kind} "{table_name}" AS SELECT * FROM \'{source}\''
-        logger.info("Creating %s '%s' from %s", kind, table_name, source)
+        urls = _fetch_parquet_urls(dataset_id, config, split_name)
+        if not urls:
+            raise ValueError(
+                f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'."
+            )
+        url_list = ", ".join(f"'{u}'" for u in urls)
+        sql = f'CREATE {kind} "{table_name}" AS SELECT * FROM read_parquet([{url_list}])'
+        logger.info("Creating %s '%s' from %d parquet files", kind, table_name, len(urls))
         conn.execute(sql)
 
     return table_names
@@ -341,6 +343,7 @@ async def load_hf_dataset(
         read_only=read_only,
         enable_schema_caching=False,
         enable_query_caching=False,
+        duckdb_init_sql=["LOAD httpfs"],
     )
     connector._temp_db_path = db_path
 
