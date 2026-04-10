@@ -514,7 +514,7 @@ class DataBrowserScreen(Screen[None]):
         self._page_index = 0
         self._sorted_column: str | None = None
         self._sort_reverse = False
-        self._table = DataTable(
+        self._table: DataTable[Text] = DataTable(
             zebra_stripes=True,
             classes="data-browser-grid",
             header_height=2,
@@ -696,7 +696,7 @@ class DataBrowserScreen(Screen[None]):
     _MAX_CELL_LEN = 80
 
     @staticmethod
-    def _describe_dtype(series: "pd.Series") -> str:  # type: ignore[type-arg]
+    def _describe_dtype(series: "pd.Series") -> str:
         """Return a human-readable dtype label, resolving 'object' to the actual Python type."""
         dtype_str = str(series.dtype)
         if dtype_str != "object":

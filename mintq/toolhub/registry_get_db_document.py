@@ -90,7 +90,7 @@ class RegistryGetDBDocumentTool:
         if not desc:
             return None
         if len(desc) <= _MAX_DESCRIPTION_CHARS:
-            return desc
+            return str(desc)
 
         summarizer = TextSummarizer()
         return await summarizer.summarize(desc)

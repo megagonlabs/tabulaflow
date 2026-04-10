@@ -28,7 +28,7 @@ class TextSummarizer:
         """Return a summarized version of the input text."""
         from pydantic_ai import Agent
 
-        agent = Agent[None, str](
+        agent = Agent[None, str](  # type: ignore[call-overload]
             model=self.llm,
             instructions=_SYSTEM_PROMPT.format(max_words=self.max_words),
             model_settings={
@@ -36,4 +36,4 @@ class TextSummarizer:
             },
         )
         result = await agent.run(text)
-        return result.output
+        return result.output  # type: ignore[no-any-return]

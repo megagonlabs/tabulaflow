@@ -140,6 +140,7 @@ def build_table(
         return table
 
     stats_text = " | ".join(caption_parts)
+    footer: Columns | Text
     if action_hint:
         left = Text(f"[ {action_hint} ]", style=ACCENT_BOLD)
         right = Text(stats_text, style="dim") if stats_text else Text("")

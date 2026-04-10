@@ -14,6 +14,7 @@ ACCENT_DIM_RGB = (100, 160, 130)
 def _make_transparent_dracula() -> TextAreaTheme:
     """Dracula TextArea theme with backgrounds removed so CSS $surface shows through."""
     builtin = TextAreaTheme.get_builtin_theme("dracula")
+    assert builtin is not None, "dracula is a built-in theme"
     return TextAreaTheme(
         name="dracula-transparent",
         base_style=Style(color=builtin.base_style.color if builtin.base_style else None),
