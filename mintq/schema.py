@@ -113,7 +113,7 @@ def _json_stringify_nested_columns(df: pd.DataFrame) -> pd.DataFrame:
         if df[col].dtype != object:
             continue
         if df[col].dropna().map(lambda x: isinstance(x, (dict, list))).any():
-            df[col] = df[col].apply(lambda x: json.dumps(x) if isinstance(x, (dict, list)) else x)
+            df[col] = df[col].apply(lambda x: json.dumps(x, default=str) if isinstance(x, (dict, list)) else x)
     return df
 
 
