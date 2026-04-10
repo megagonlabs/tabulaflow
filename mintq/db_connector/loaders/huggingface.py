@@ -129,30 +129,6 @@ def _fetch_configs_from_api(dataset_id: str) -> list[str]:
     return sorted({s["config"] for s in splits})
 
 
-def get_hf_dataset_info(dataset_url: str) -> tuple[int | None, bool]:
-    """Return (total_parquet_size_bytes, False) for a HuggingFace dataset.
-
-    The second element is always False since remote parquet loading does not
-    use a local cache.
-    """
-    import duckdb as _duckdb
-
-    dataset_id, subset, _split = parse_hf_dataset_url(dataset_url)
-    config = subset or "default"
-    try:
-        conn = _duckdb.connect()
-        conn.execute("INSTALL httpfs; LOAD httpfs;")
-        glob_pat = _hf_parquet_glob(dataset_id, config)
-        row = conn.sql(
-            f"SELECT SUM(file_size_bytes) FROM parquet_file_metadata('{glob_pat}')"
-        ).fetchone()
-        conn.close()
-        total = row[0] if row and row[0] else None
-        return total, False
-    except Exception:
-        return None, False
-
-
 # ---------------------------------------------------------------------------
 # DuckDB-native discovery & loading
 # ---------------------------------------------------------------------------

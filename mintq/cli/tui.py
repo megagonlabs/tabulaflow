@@ -571,24 +571,8 @@ LIMIT 4000"""
 
     @staticmethod
     async def _connect_spinner_label(parts: list[str]) -> str:
-        """Build a spinner label for /connect, including download size for HF datasets."""
-        import asyncio
-
-        from mintq.db_connector.loaders import is_hf_dataset_url
-
-        if len(parts) < 2 or not is_hf_dataset_url(parts[1]):
-            return "Connecting..."
-
-        from mintq.db_connector.loaders.huggingface import _format_size, get_hf_dataset_info
-
-        size, cached = await asyncio.get_running_loop().run_in_executor(
-            None, get_hf_dataset_info, parts[1],
-        )
-        if cached:
-            return "Loading from cache..."
-        if size is not None:
-            return f"Downloading {_format_size(size)}..."
-        return "Downloading..."
+        """Build a spinner label for /connect."""
+        return "Connecting..."
 
     async def _handle_slash_command(
         self,
