@@ -51,12 +51,10 @@ def configure(**kwargs: object) -> None:
             instrument_enabled=False,
         )
     """
-    import mintq.patches  # noqa: F401
+    import mintq.patches
     from mintq.config import mintq_config
 
     mintq_config.configure(**kwargs)
-
-    _register_custom_model_prices()
 
     logging.basicConfig(level=logging.WARNING)
     logging.getLogger("mintq").setLevel(mintq_config.log_level)
@@ -64,6 +62,8 @@ def configure(**kwargs: object) -> None:
     logger.info("MINTQ Configuration: %s", mintq_config)
 
     if mintq_config.instrument_enabled:
+        mintq.patches.setup()
+
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
             from phoenix.otel import register
 
@@ -81,30 +81,6 @@ def configure(**kwargs: object) -> None:
         from pydantic_ai import Agent
 
         Agent.instrument_all()
-
-
-def _register_custom_model_prices() -> None:
-    """Register pricing for models not yet in litellm's bundled data.
-
-    Entries are skipped if litellm already has them, so this is safe
-    to leave in place after litellm adds native support.
-    """
-    import litellm
-
-    custom_prices = {
-        "gpt-5.4-mini": {
-            "input_cost_per_token": 7.5e-07,
-            "output_cost_per_token": 4.5e-06,
-            "max_input_tokens": 400000,
-            "max_output_tokens": 128000,
-            "max_tokens": 128000,
-            "litellm_provider": "openai",
-            "mode": "chat",
-        },
-    }
-    for model, info in custom_prices.items():
-        if model not in litellm.model_cost:
-            litellm.model_cost[model] = info
 
 
 __all__ = [

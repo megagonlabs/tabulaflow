@@ -3,27 +3,30 @@ Monkey patches for third-party libraries.
 
 This module applies runtime patches to external libraries to add custom functionality.
 Import this module to ensure patches are applied.
+
+Provider-specific imports are deferred to avoid pulling in every SDK at import time.
+Patches are applied lazily when models are first resolved via ``infer_model``.
 """
 
+from __future__ import annotations
+
 import asyncio
-from contextlib import AsyncExitStack
-from typing import Any, Callable
-import os
-import re
-from anthropic import AsyncAnthropicVertex
 import json
+import re
+from contextlib import AsyncExitStack
+from typing import Any, Callable, TYPE_CHECKING
+
 from aiolimiter import AsyncLimiter
 import pydantic_ai.models
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
-from pydantic_ai.providers import Provider, infer_provider
-from pydantic_ai.settings import ModelSettings
-from pydantic_ai.messages import ModelResponse, ModelMessage, ToolCallPart
-from pydantic_ai.models.anthropic import AnthropicModel
-from pydantic_ai.providers.anthropic import AnthropicProvider
-from pydantic_ai.embeddings.base import EmbeddingModel
 from pydantic_ai.usage import UsageLimits
+
 from mintq.config import mintq_config
+
+if TYPE_CHECKING:
+    from pydantic_ai.messages import ModelMessage, ModelResponse
+    from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
+    from pydantic_ai.providers import Provider
+    from pydantic_ai.settings import ModelSettings
 
 
 # =====================================================================================
@@ -34,84 +37,8 @@ from mintq.config import mintq_config
 UsageLimits.__init__.__kwdefaults__["request_limit"] = None  # type: ignore[index]
 
 
-# =====================================================================================================
-# |     Patch Model.request to support parsing output with <tool_call> tags (e.g. for qwen3-coder)    |
-# |     (temporary fix until https://github.com/pydantic/pydantic-ai/issues/2033 is fixed)            |
-# =====================================================================================================
-
-
-async def _patched_request(
-    self: OpenAIChatModel,
-    messages: list[ModelMessage],
-    model_settings: ModelSettings | None,
-    model_request_parameters: ModelRequestParameters,
-) -> ModelResponse:
-    response = await self.__original_openai_request__(messages, model_settings, model_request_parameters)  # type: ignore
-    try:
-        new_parts = []
-        for part in response.parts:
-            if part.part_kind == "text":
-                tool_call_pattern = r"<tool_call>(.*?)</tool_call>"
-                matches = list(re.finditer(tool_call_pattern, part.content, re.DOTALL))
-
-                if matches:
-                    for match in matches:
-                        content = match.group(1).strip()
-                        payload = json.loads(content)
-                        new_parts.append(
-                            ToolCallPart(
-                                tool_name=payload["name"],
-                                args=payload["arguments"],
-                            )
-                        )
-                    continue
-            new_parts.append(part)
-        response.parts = new_parts
-    except json.JSONDecodeError:
-        pass
-    return response  # type: ignore
-
-
-if not hasattr(OpenAIChatModel, "__original_openai_request__"):
-    OpenAIChatModel.__original_openai_request__ = OpenAIChatModel.request  # type: ignore
-    OpenAIChatModel.request = _patched_request  # type: ignore
-
-
-# =============================================================================================
-# |     Patch pydantic_ai.models.infer_model to support Claude models in Google Vertex AI     |
-# |     (temporary fix until https://github.com/pydantic/pydantic-ai/pull/1392 is fixed)      |
-# =============================================================================================
-
-
-def get_anthropic_vertex_model(model_name: str) -> Model:
-    """Adpapted from https://github.com/pydantic/pydantic-ai/pull/1392#issuecomment-2851287096"""
-    return AnthropicModel(
-        model_name,
-        provider=AnthropicProvider(
-            anthropic_client=AsyncAnthropicVertex(
-                project_id=os.environ["GOOGLE_CLOUD_PROJECT"],
-                region=os.environ["GOOGLE_CLOUD_LOCATION"],
-            )
-        ),
-    )
-
-
-_original_infer_model = pydantic_ai.models.infer_model
-
-
-def _patched_infer_model(  # noqa: C901
-    model: Model | KnownModelName | str, provider_factory: Callable[[str], Provider[Any]] = infer_provider
-) -> Model:
-    if isinstance(model, str) and model.startswith("google-vertex:claude"):
-        return get_anthropic_vertex_model(model.split(":")[1])
-    return _original_infer_model(model)
-
-
-pydantic_ai.models.infer_model = _patched_infer_model
-
-
 # ==========================================================================================
-# |     Patch pydantic_ai.models.Model.request() to support max concurrency throttling     |
+# |     Throttling infrastructure                                                          |
 # ==========================================================================================
 
 _llm_throttle_cache: dict[int, tuple[asyncio.Semaphore | None, AsyncLimiter | None]] = {}
@@ -137,7 +64,7 @@ def _get_throttles(
     return cache[loop_id]
 
 
-async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
+async def _throttled_request(self: Any, *args: Any, **kwargs: Any) -> Any:
     """Wraps Model.request() with concurrency and rate-limit throttling."""
     sem, limiter = _get_throttles(
         _llm_throttle_cache,
@@ -149,50 +76,10 @@ async def _throttled_request(self: Model, *args: Any, **kwargs: Any) -> Any:
             await stack.enter_async_context(sem)
         if limiter is not None:
             await stack.enter_async_context(limiter)
-        return await self.__original_request__(*args, **kwargs)  # type: ignore
+        return await self.__original_request__(*args, **kwargs)
 
 
-def patch_model_class(model_class: type[Model]) -> None:
-    if not hasattr(model_class, "__original_request__"):
-        model_class.__original_request__ = model_class.request  # type: ignore
-        model_class.request = _throttled_request  # type: ignore
-
-
-def patch_all_models() -> None:
-    from pydantic_ai.models.cohere import CohereModel
-    from pydantic_ai.models.openai import OpenAIChatModel
-    from pydantic_ai.models.openai import OpenAIResponsesModel
-    from pydantic_ai.models.google import GoogleModel
-    from pydantic_ai.models.groq import GroqModel
-    from pydantic_ai.models.mistral import MistralModel
-    from pydantic_ai.models.anthropic import AnthropicModel
-    from pydantic_ai.models.bedrock import BedrockConverseModel
-    from pydantic_ai.models.huggingface import HuggingFaceModel
-
-    all_model_classes: list[type[Model]] = [
-        CohereModel,
-        OpenAIChatModel,
-        OpenAIResponsesModel,
-        GoogleModel,
-        GroqModel,
-        MistralModel,
-        AnthropicModel,
-        BedrockConverseModel,
-        HuggingFaceModel,
-    ]
-    for model_class in all_model_classes:
-        patch_model_class(model_class)
-
-
-patch_all_models()
-
-
-# ================================================================================================
-# |     Patch pydantic_ai embedding models to support max concurrency and rate limit throttling  |
-# ================================================================================================
-
-
-async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> Any:
+async def _throttled_embed(self: Any, *args: Any, **kwargs: Any) -> Any:
     """Wraps EmbeddingModel.embed() with concurrency and rate-limit throttling."""
     sem, limiter = _get_throttles(
         _embedding_throttle_cache,
@@ -204,45 +91,172 @@ async def _throttled_embed(self: EmbeddingModel, *args: Any, **kwargs: Any) -> A
             await stack.enter_async_context(sem)
         if limiter is not None:
             await stack.enter_async_context(limiter)
-        return await self.__original_embed__(*args, **kwargs)  # type: ignore
+        return await self.__original_embed__(*args, **kwargs)
 
 
-def patch_embedding_model_class(model_class: type[EmbeddingModel]) -> None:
-    if not hasattr(model_class, "__original_embed__"):
-        model_class.__original_embed__ = model_class.embed  # type: ignore
-        model_class.embed = _throttled_embed  # type: ignore
+# =====================================================================================================
+# |     Patch Model.request to support parsing output with <tool_call> tags (e.g. for qwen3-coder)    |
+# |     (temporary fix until https://github.com/pydantic/pydantic-ai/issues/2033 is fixed)            |
+# =====================================================================================================
 
 
-def patch_all_embedding_models() -> None:
+async def _patched_openai_request(
+    self: Any,
+    messages: list[ModelMessage],
+    model_settings: ModelSettings | None,
+    model_request_parameters: ModelRequestParameters,
+) -> ModelResponse:
+    response = await self.__original_openai_request__(messages, model_settings, model_request_parameters)
+    try:
+        from pydantic_ai.messages import ToolCallPart
+
+        new_parts = []
+        for part in response.parts:
+            if part.part_kind == "text":
+                tool_call_pattern = r"<tool_call>(.*?)</tool_call>"
+                matches = list(re.finditer(tool_call_pattern, part.content, re.DOTALL))
+
+                if matches:
+                    for match in matches:
+                        content = match.group(1).strip()
+                        payload = json.loads(content)
+                        new_parts.append(
+                            ToolCallPart(
+                                tool_name=payload["name"],
+                                args=payload["arguments"],
+                            )
+                        )
+                    continue
+            new_parts.append(part)
+        response.parts = new_parts
+    except json.JSONDecodeError:
+        pass
+    return response  # type: ignore
+
+
+# ==========================================================================================
+# |     Lazy per-class patching                                                            |
+# ==========================================================================================
+
+_patched_model_classes: set[type] = set()
+
+
+def _patch_model_class(model_cls: type) -> None:
+    """Apply throttling (and OpenAI tool_call parsing) to a model class on first use."""
+    if model_cls in _patched_model_classes:
+        return
+    _patched_model_classes.add(model_cls)
+
+    # OpenAI: parse <tool_call> tags (for qwen3-coder etc.)
+    if model_cls.__name__ == "OpenAIChatModel":
+        if not hasattr(model_cls, "__original_openai_request__"):
+            model_cls.__original_openai_request__ = model_cls.request  # type: ignore
+            model_cls.request = _patched_openai_request  # type: ignore
+
+    # Throttling for all model classes
+    if not hasattr(model_cls, "__original_request__"):
+        model_cls.__original_request__ = model_cls.request  # type: ignore
+        model_cls.request = _throttled_request  # type: ignore
+
+
+# ==========================================================================================
+# |     One-time deferred setup (runs on first model resolution)                           |
+# ==========================================================================================
+
+_full_setup_done = False
+
+
+def setup() -> None:
+    """Apply deferred patches: embedding throttling, BigQuery tracing, litellm prices.
+
+    Called from ``mintq.configure()`` for pipeline runs. Not needed for the CLI.
+    """
+    global _full_setup_done
+    if _full_setup_done:
+        return
+    _full_setup_done = True
+
+    # Patch all embedding model classes
     from pydantic_ai.embeddings.openai import OpenAIEmbeddingModel
     from pydantic_ai.embeddings.cohere import CohereEmbeddingModel
     from pydantic_ai.embeddings.google import GoogleEmbeddingModel
     from pydantic_ai.embeddings.bedrock import BedrockEmbeddingModel
 
-    all_embedding_model_classes: list[type[EmbeddingModel]] = [
-        OpenAIEmbeddingModel,
-        CohereEmbeddingModel,
-        GoogleEmbeddingModel,
-        BedrockEmbeddingModel,
-    ]
-    for model_class in all_embedding_model_classes:
-        patch_embedding_model_class(model_class)
+    for cls in (OpenAIEmbeddingModel, CohereEmbeddingModel, GoogleEmbeddingModel, BedrockEmbeddingModel):
+        if not hasattr(cls, "__original_embed__"):
+            cls.__original_embed__ = cls.embed  # type: ignore
+            cls.embed = _throttled_embed  # type: ignore
+
+    # Disable BigQuery's built-in OpenTelemetry tracing
+    if mintq_config.disable_bigquery_tracing:
+        try:
+            from google.cloud.bigquery import opentelemetry_tracing
+
+            opentelemetry_tracing.HAS_OPENTELEMETRY = False
+        except ImportError:
+            pass
+
+    # Register custom model prices in litellm
+    _register_custom_model_prices()
 
 
-patch_all_embedding_models()
+def _register_custom_model_prices() -> None:
+    """Register pricing for models not yet in litellm's bundled data.
+
+    Entries are skipped if litellm already has them, so this is safe
+    to leave in place after litellm adds native support.
+    """
+    import litellm
+
+    custom_prices = {
+        "gpt-5.4-mini": {
+            "input_cost_per_token": 7.5e-07,
+            "output_cost_per_token": 4.5e-06,
+            "max_input_tokens": 400000,
+            "max_output_tokens": 128000,
+            "max_tokens": 128000,
+            "litellm_provider": "openai",
+            "mode": "chat",
+        },
+    }
+    for model, info in custom_prices.items():
+        if model not in litellm.model_cost:
+            litellm.model_cost[model] = info
 
 
-# ================================================================================================
-# |     Disable BigQuery's built-in OpenTelemetry tracing                                        |
-# |     The google-cloud-bigquery client auto-emits OTEL spans when it detects a TracerProvider.  |
-# |     This pollutes Langfuse with low-level DB spans. There's no env var to disable it, so we   |
-# |     flip the HAS_OPENTELEMETRY flag to make its create_span() yield None.                     |
-# ================================================================================================
+# =============================================================================================
+# |     Patch pydantic_ai.models.infer_model                                                  |
+# |     - Support Claude models in Google Vertex AI                                           |
+# |     - Lazily apply throttling and model-specific patches on first use                     |
+# =============================================================================================
 
-if mintq_config.disable_bigquery_tracing:
-    try:
-        from google.cloud.bigquery import opentelemetry_tracing
+_original_infer_model = pydantic_ai.models.infer_model
 
-        opentelemetry_tracing.HAS_OPENTELEMETRY = False
-    except ImportError:
-        pass
+
+def _patched_infer_model(model: Any, *args: Any, **kwargs: Any) -> Any:
+
+    result: Any
+    if isinstance(model, str) and model.startswith("google-vertex:claude"):
+        import os
+
+        from anthropic import AsyncAnthropicVertex
+        from pydantic_ai.models.anthropic import AnthropicModel
+        from pydantic_ai.providers.anthropic import AnthropicProvider
+
+        result = AnthropicModel(
+            model.split(":")[1],
+            provider=AnthropicProvider(
+                anthropic_client=AsyncAnthropicVertex(
+                    project_id=os.environ["GOOGLE_CLOUD_PROJECT"],
+                    region=os.environ["GOOGLE_CLOUD_LOCATION"],
+                )
+            ),
+        )
+    else:
+        result = _original_infer_model(model, *args, **kwargs)
+
+    _patch_model_class(type(result))
+    return result
+
+
+pydantic_ai.models.infer_model = _patched_infer_model

@@ -103,7 +103,7 @@ class MintqConfig:
         return getattr(self._settings, name)
 
     def __repr__(self) -> str:
-        items = {name: getattr(self, name) for name in self._settings.model_fields}
+        items = {name: getattr(self, name) for name in type(self._settings).model_fields}
         return "MintqConfig(" + ", ".join(f"{k}={v!r}" for k, v in items.items()) + ")"
 
 

@@ -283,6 +283,7 @@ class ChatAgent:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
+        import mintq.patches  # noqa: F401
         from pydantic_ai import Agent
 
         self._pydantic_ai_agent = Agent(
