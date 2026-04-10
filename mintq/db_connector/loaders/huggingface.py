@@ -260,6 +260,39 @@ def _create_tables(
     return table_names
 
 
+def _db_path(cache_dir: str, dataset_id: str, config: str, split_filter: str | None) -> str:
+    """Build the cache file path for a dataset/config/split combination."""
+    suffix = f"{dataset_id}__{config}"
+    if split_filter:
+        suffix += f"__{split_filter}"
+    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", suffix)
+    return os.path.join(cache_dir, f"{safe_name}.duckdb")
+
+
+def _try_cache(db_path: str) -> list[str] | None:
+    """Return cached table names if the DuckDB file is valid, else None.
+
+    Removes incomplete cache files (e.g. from interrupted runs).
+    """
+    if not os.path.exists(db_path):
+        return None
+    import duckdb
+
+    with duckdb.connect(db_path, read_only=True) as conn:
+        tables = sorted(
+            r[0]
+            for r in conn.sql(
+                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+            ).fetchall()
+        )
+    if tables:
+        logger.info("Using cached DuckDB file with tables: %s", ", ".join(tables))
+        return tables
+    logger.warning("Removing incomplete cached DuckDB file: %s", db_path)
+    os.remove(db_path)
+    return None
+
+
 def _load_hf_into_duckdb(
     dataset_id: str,
     subset: str | None,
@@ -274,6 +307,20 @@ def _load_hf_into_duckdb(
     Returns:
         A tuple of (db_path, table_names).
     """
+    from mintq.config import mintq_config
+
+    cache_dir = os.path.join(mintq_config.cache_dir, "hf")
+    os.makedirs(cache_dir, exist_ok=True)
+
+    # Try cache before making any API calls.  If subset is given we know the
+    # config; otherwise guess "default" (the most common case).
+    candidate_config = subset or "default"
+    db_path = _db_path(cache_dir, dataset_id, candidate_config, split_filter)
+    cached = _try_cache(db_path)
+    if cached is not None:
+        return db_path, cached
+
+    # Cache miss — resolve config and discover splits via API.
     config = _resolve_config(dataset_id, subset)
     split_sizes = _discover_splits_and_size(dataset_id, config)
 
@@ -286,38 +333,17 @@ def _load_hf_into_duckdb(
     else:
         splits = sorted(split_sizes)
 
-    # Cache path uses the resolved config name.
-    from mintq.config import mintq_config
-    cache_dir = os.path.join(mintq_config.cache_dir, "hf")
-    os.makedirs(cache_dir, exist_ok=True)
-    suffix = f"{dataset_id}__{config}"
-    if split_filter:
-        suffix += f"__{split_filter}"
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", suffix)
-    db_path = os.path.join(cache_dir, f"{safe_name}.duckdb")
+    # Re-check cache if resolved config differs from the candidate.
+    if config != candidate_config:
+        db_path = _db_path(cache_dir, dataset_id, config, split_filter)
+        cached = _try_cache(db_path)
+        if cached is not None:
+            return db_path, cached
 
     loaded_sizes = {s: split_sizes[s] for s in splits}
     loaded_total = sum(loaded_sizes.values())
     size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
-
-    # Check cache with a read-only connection so we don't block other
-    # CLI instances that already hold a read-only handle on this file.
-    if os.path.exists(db_path):
-        import duckdb
-
-        with duckdb.connect(db_path, read_only=True) as conn:
-            tables = sorted(
-                r[0]
-                for r in conn.sql(
-                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-                ).fetchall()
-            )
-        if tables:
-            logger.info("Using cached DuckDB file with tables: %s", ", ".join(tables))
-            return db_path, tables
-        logger.warning("Removing incomplete cached DuckDB file: %s", db_path)
-        os.remove(db_path)
 
     conn = _init_duckdb(db_path)
     try:
