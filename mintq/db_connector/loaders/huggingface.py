@@ -359,7 +359,7 @@ async def load_hf_dataset(
         url=url,
         db_name=db_name,
         read_only=read_only,
-        enable_schema_caching=False,
+        enable_schema_caching=True,
         enable_query_caching=False,
         duckdb_init_sql=["LOAD httpfs"] if not materialized else None,
     )
