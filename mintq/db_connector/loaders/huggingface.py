@@ -148,9 +148,9 @@ def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
 
 def _init_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
     """Create a DuckDB connection with httpfs."""
-    import duckdb as _duckdb
+    import duckdb
 
-    conn = _duckdb.connect(db_path)
+    conn = duckdb.connect(db_path)
     conn.execute("INSTALL httpfs; LOAD httpfs;")
     return conn
 
@@ -192,42 +192,41 @@ def _resolve_config(dataset_id: str, subset: str | None) -> str:
     )
 
 
-def _discover_splits_and_size(dataset_id: str, config: str) -> tuple[list[str], int]:
-    """Discover splits and total size via the HuggingFace API.
+def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
+    """Discover splits and per-split sizes via the HuggingFace API.
 
     Returns:
-        A tuple of (sorted split names, total parquet size in bytes).
+        A dict mapping split name to parquet size in bytes.
     """
     data = _hf_api_get("size", dataset_id)
 
-    total_size = 0
-    splits: list[str] = []
+    split_sizes: dict[str, int] = {}
     for entry in data.get("size", {}).get("splits", []):
         if entry.get("config") == config:
-            splits.append(entry["split"])
-            total_size += int(entry.get("num_bytes_parquet_files", 0))
+            split_sizes[entry["split"]] = int(entry.get("num_bytes_parquet_files", 0))
 
-    if not splits:
+    if not split_sizes:
         raise ValueError(f"No splits found for '{dataset_id}' config '{config}'.")
-    return sorted(splits), total_size
+    return split_sizes
 
 
 def _create_tables(
     conn: duckdb.DuckDBPyConnection,
     dataset_id: str,
     config: str,
-    splits: list[str],
-    materialize: bool,
+    split_sizes: dict[str, int],
 ) -> list[str]:
     """Create DuckDB tables or views from explicit parquet URLs.
 
     Uses the HuggingFace datasets-server ``/parquet`` API to get direct
     download URLs, avoiding DuckDB ``hf://`` glob resolution which triggers
     HTTP HEAD requests that are easily rate-limited (429).
+
+    Each split is independently materialized or sampled based on its size.
     """
     table_names: list[str] = []
 
-    for split_name in splits:
+    for split_name, size in split_sizes.items():
         urls = _fetch_parquet_urls(dataset_id, config, split_name)
         if not urls:
             raise ValueError(
@@ -237,6 +236,7 @@ def _create_tables(
         source = f"read_parquet([{url_list}])"
 
         base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
+        materialize = size > 0 and size < MATERIALIZE_THRESHOLD_BYTES
         if materialize:
             sql = f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}'
             logger.info("Creating TABLE '%s' from %d parquet files", base_name, len(urls))
@@ -264,7 +264,7 @@ def _load_hf_into_duckdb(
     dataset_id: str,
     subset: str | None,
     split_filter: str | None,
-) -> tuple[str, list[str], bool]:
+) -> tuple[str, list[str]]:
     """Discover metadata and load a HuggingFace dataset into DuckDB.
 
     Discovery (config resolution, split listing, size estimation) uses the
@@ -272,17 +272,19 @@ def _load_hf_into_duckdb(
     trigger 429 rate limiting.  Only the final table/view creation uses DuckDB.
 
     Returns:
-        A tuple of (db_path, table_names, materialized).
+        A tuple of (db_path, table_names).
     """
     config = _resolve_config(dataset_id, subset)
-    splits, total_size = _discover_splits_and_size(dataset_id, config)
+    split_sizes = _discover_splits_and_size(dataset_id, config)
 
     if split_filter:
-        if split_filter not in splits:
+        if split_filter not in split_sizes:
             raise ValueError(
-                f"Split '{split_filter}' not found. Available splits: {', '.join(splits)}"
+                f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}"
             )
         splits = [split_filter]
+    else:
+        splits = sorted(split_sizes)
 
     # Cache path uses the resolved config name.
     from mintq.config import mintq_config
@@ -294,34 +296,33 @@ def _load_hf_into_duckdb(
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", suffix)
     db_path = os.path.join(cache_dir, f"{safe_name}.duckdb")
 
-    materialize = total_size > 0 and total_size < MATERIALIZE_THRESHOLD_BYTES
-    strategy = "materialized" if materialize else "sample"
-    size_str = _format_size(total_size) if total_size > 0 else "unknown size"
-    logger.info("Loading HF dataset '%s' (%s) as %s", dataset_id, size_str, strategy)
+    loaded_sizes = {s: split_sizes[s] for s in splits}
+    loaded_total = sum(loaded_sizes.values())
+    size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
+    logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
 
     # Check cache with a read-only connection so we don't block other
     # CLI instances that already hold a read-only handle on this file.
     if os.path.exists(db_path):
-        import duckdb as _duckdb
+        import duckdb
 
-        ro_conn = _duckdb.connect(db_path, read_only=True)
-        try:
-            existing = {
+        with duckdb.connect(db_path, read_only=True) as conn:
+            tables = sorted(
                 r[0]
-                for r in ro_conn.sql(
+                for r in conn.sql(
                     "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
                 ).fetchall()
-            }
-            if existing:
-                logger.info("Using cached DuckDB file with tables: %s", ", ".join(sorted(existing)))
-                return db_path, sorted(existing), materialize
-        finally:
-            ro_conn.close()
+            )
+        if tables:
+            logger.info("Using cached DuckDB file with tables: %s", ", ".join(tables))
+            return db_path, tables
+        logger.warning("Removing incomplete cached DuckDB file: %s", db_path)
+        os.remove(db_path)
 
     conn = _init_duckdb(db_path)
     try:
-        table_names = _create_tables(conn, dataset_id, config, splits, materialize)
-        return db_path, table_names, materialize
+        table_names = _create_tables(conn, dataset_id, config, loaded_sizes)
+        return db_path, table_names
     finally:
         conn.close()
 
@@ -361,7 +362,7 @@ async def load_hf_dataset(
         db_name = dataset_id.split("/")[-1]
 
     loop = asyncio.get_running_loop()
-    db_path, table_names, materialized = await loop.run_in_executor(
+    db_path, table_names = await loop.run_in_executor(
         None, _load_hf_into_duckdb, dataset_id, subset, split,
     )
 
@@ -373,12 +374,11 @@ async def load_hf_dataset(
         read_only=read_only,
         enable_schema_caching=True,
         enable_query_caching=False,
-        duckdb_init_sql=["LOAD httpfs"] if not materialized else None,
+        duckdb_init_sql=["LOAD httpfs"],
     )
-    strategy = "materialized" if materialized else "sample"
     for table in connector.schema.tables:
         if table.name in table_names:
-            table.description = f"Imported from HuggingFace parquet ({strategy})"
+            table.description = "Imported from HuggingFace parquet"
 
     # Fetch dataset description for the agent.
     description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
