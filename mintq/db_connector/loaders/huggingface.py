@@ -288,7 +288,10 @@ def _load_hf_into_duckdb(
     from mintq.config import mintq_config
     cache_dir = os.path.join(mintq_config.cache_dir, "hf")
     os.makedirs(cache_dir, exist_ok=True)
-    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", f"{dataset_id}__{config}")
+    suffix = f"{dataset_id}__{config}"
+    if split_filter:
+        suffix += f"__{split_filter}"
+    safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", suffix)
     db_path = os.path.join(cache_dir, f"{safe_name}.duckdb")
 
     materialize = total_size > 0 and total_size < MATERIALIZE_THRESHOLD_BYTES
