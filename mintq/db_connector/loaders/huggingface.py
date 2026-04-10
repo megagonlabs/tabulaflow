@@ -392,7 +392,7 @@ async def load_hf_dataset(
 
     # Derive global_id from the DuckDB cache path so the schema cache key
     # is stable across sessions regardless of the user-chosen alias.
-    global_id = f"hf__{os.path.splitext(os.path.basename(db_path))[0]}"
+    global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(
