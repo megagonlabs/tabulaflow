@@ -59,7 +59,7 @@ def configure(**kwargs: object) -> None:
     logging.basicConfig(level=logging.WARNING)
     logging.getLogger("mintq").setLevel(mintq_config.log_level)
 
-    logger.info("MINTQ Configuration: %s", mintq_config)
+    logger.debug("MINTQ Configuration: %s", mintq_config)
 
     if mintq_config.instrument_enabled:
         mintq.patches.setup()
