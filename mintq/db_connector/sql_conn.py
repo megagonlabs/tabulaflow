@@ -945,6 +945,12 @@ class SQLConnector:
             execute queries.
         """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
+
+        # Open DuckDB in native read-only mode so it doesn't hold a file lock.
+        if read_only and str(url).startswith("duckdb"):
+            connect_args = engine_kwargs.setdefault("connect_args", {})
+            connect_args.setdefault("read_only", True)
+
         engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
         if engine_type == "async":
             engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
@@ -1090,11 +1096,13 @@ class SQLConnector:
     async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
 
-        DuckDB holds a file-level lock even for ``read_only=True``
-        connections, which prevents an external process (e.g. ``dbt run``)
-        from acquiring a write lock.  Calling this method releases the lock
-        while keeping the connector usable — ``schema`` remains in memory
-        and SQLAlchemy will transparently create new connections on demand.
+        For read-write DuckDB connectors, this releases the file-level
+        lock so external processes (e.g. ``dbt run``) can acquire a write
+        lock.  Read-only connectors already use DuckDB's native read-only
+        mode and do not hold a lock.
+
+        After disconnect, ``schema`` remains in memory and SQLAlchemy will
+        transparently create new connections on demand.
 
         If this connector was created via :meth:`from_files_async`, the
         temporary DuckDB file is also deleted.
