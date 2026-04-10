@@ -415,9 +415,18 @@ async def execute_connect_with_password(url: str, alias: str, password: str, ses
     return await _execute_connect(url, alias, session)
 
 
+def _global_id_from_url(url: str) -> str:
+    """Derive a stable global_id from a database URL, stripping credentials."""
+    parsed = urlparse(url)
+    # Keep scheme, host, port, path (database name) — drop user/password.
+    stripped = parsed._replace(netloc=parsed.hostname + (f":{parsed.port}" if parsed.port else ""))
+    safe = re.sub(r"[^a-zA-Z0-9_]", "_", urlunparse(stripped))
+    return f"cli+{safe}"
+
+
 async def _execute_connect(url: str, alias: str, session: SessionState) -> CommandResult:
     """Execute the actual database connection."""
-    global_id = f"cli+{alias}"
+    global_id = _global_id_from_url(url)
 
     if _is_neo4j_bolt_url(url):
         from mintq.db_connector.neo4j_conn import Neo4jConnector
