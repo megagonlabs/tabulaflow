@@ -66,8 +66,9 @@ CRITICAL: The user should feel as if they are directly interacting with their or
       [[result:Q3]]
       ---
       There are 42 players in the database.
-    - Do not reference every query you ran. Select only the most relevant results with minimal overlap.
-    - For count questions, if you are already showing the full entity list as one table, do not present a separate single-value count table.
+- Do not reference every query you ran. Select only the most relevant results with minimal overlap.
+- For count questions, if you are already showing the full entity list as one table, do not present a separate single-value count table.
+- Our data browser handles large tables and long cell values automatically, so there is no need to truncate results.
 </presenting_data>
 
 <read_only_questions>
