@@ -2,7 +2,6 @@ import argparse
 import collections
 import time
 import asyncio
-import os
 import logging
 from typing import Any
 from tqdm.asyncio import tqdm_asyncio
@@ -85,18 +84,15 @@ async def main_async() -> None:
     if args.debug:
         parser.set_defaults(databases=["california_schools"])
 
-    if args.overwrite:
-        os.environ["MINTQ_PREPROCESSOR_CACHE_OVERWRITE"] = "1"
-
     args = parser.parse_args()
     print(args)
     print()
 
-    mintq.configure()
-
-    os.environ["MINTQ_PREPROCESSOR_CACHE_ENABLED"] = "1"
-    os.environ["MINTQ_PREPROCESSOR_CACHE_REQUIRED"] = "0"
-    mintq_config.reload_from_env()
+    mintq.configure(
+        preprocessor_cache_enabled=True,
+        preprocessor_cache_required=False,
+        preprocessor_cache_overwrite=args.overwrite,
+    )
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

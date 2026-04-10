@@ -1,6 +1,5 @@
 import argparse
 import time
-import os
 import asyncio
 from mintq.datahub import dataset_registry
 import mintq
@@ -17,15 +16,11 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq.configure()
-
-    os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "1"
-    os.environ["MINTQ_SCHEMA_CACHE_REQUIRED"] = "0"
-    if args.overwrite:
-        os.environ["MINTQ_SCHEMA_CACHE_OVERWRITE"] = "1"
-    else:
-        os.environ["MINTQ_SCHEMA_CACHE_OVERWRITE"] = "0"
-    mintq_config.reload_from_env()
+    mintq.configure(
+        schema_cache_enabled=True,
+        schema_cache_required=False,
+        schema_cache_overwrite=args.overwrite,
+    )
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

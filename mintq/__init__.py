@@ -34,23 +34,32 @@ def __getattr__(name: str) -> object:
 logger = logging.getLogger(__name__)
 
 
-def configure(*, log_level: int | None = None) -> None:
+def configure(**kwargs: object) -> None:
     """Set up logging, tracing, and instrumentation.
 
     Call this once from your entry point before running any pipeline.
-    Reads configuration from environment variables and ``mintq_config``.
+    Accepts the same keyword arguments as :meth:`MintqConfig.configure`
+    to override defaults programmatically.
 
-    Args:
-        log_level: Override the mintq logger level. If None, uses the
-            level from ``MINTQ_LOG_LEVEL`` env var (default INFO).
+    Example::
+
+        import mintq
+
+        mintq.configure(
+            column_stats_mode="always_skip",
+            query_cache_enabled=False,
+            instrument_enabled=False,
+        )
     """
     import mintq.patches  # noqa: F401
     from mintq.config import mintq_config
 
+    mintq_config.configure(**kwargs)
+
     _register_custom_model_prices()
 
     logging.basicConfig(level=logging.WARNING)
-    logging.getLogger("mintq").setLevel(log_level if log_level is not None else mintq_config.log_level)
+    logging.getLogger("mintq").setLevel(mintq_config.log_level)
 
     logger.info("MINTQ Configuration: %s", mintq_config)
 

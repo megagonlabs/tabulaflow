@@ -2,7 +2,6 @@
 import argparse
 import time
 import asyncio
-import os
 from tabulate import tabulate
 import mintq
 from mintq.config import mintq_config
@@ -233,10 +232,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq.configure()
-
-    if args.no_cache:
-        os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
+    mintq.configure(schema_cache_enabled=not args.no_cache)
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

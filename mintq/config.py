@@ -1,280 +1,110 @@
-import logging
-import os
-from typing import Literal, get_args
+from typing import Any, Literal, Self
+
+from pydantic import field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 ColumnStatsMode = Literal["always_skip", "always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 QueryCacheMode = Literal["all", "successful_only"]
 
-_TRUTHY = frozenset({"1", "true", "yes", "on"})
-_FALSY = frozenset({"0", "false", "no", "off"})
+_POSITIVE_INT_OR_NONE_FIELDS = (
+    "df_max_rows",
+    "max_llm_concurrency",
+    "max_llm_requests_per_minute",
+    "max_embedding_concurrency",
+    "max_embedding_requests_per_minute",
+    "query_timeout",
+)
 
 
-def _parse_bool_env(env_var: str, value: str) -> bool:
-    """Parse a boolean from an environment variable value.
+class _MintqSettings(BaseSettings):
+    """Reads ``MINTQ_*`` environment variables with typed defaults."""
 
-    Accepts ``1/true/yes/on`` (truthy) and ``0/false/no/off`` (falsy),
-    case-insensitive.  Raises ``ValueError`` for unrecognised values.
-    """
-    normed = value.strip().lower()
-    if normed in _TRUTHY:
-        return True
-    if normed in _FALSY:
-        return False
-    raise ValueError(f"Invalid boolean value for {env_var}={value!r}. Expected one of {sorted(_TRUTHY | _FALSY)}")
+    model_config = SettingsConfigDict(env_prefix="MINTQ_")
 
+    cache_dir: str = "cache"
+    schema_cache_enabled: bool = True
+    schema_cache_overwrite: bool = False
+    schema_cache_required: bool = False
+    preprocessor_cache_enabled: bool = True
+    preprocessor_cache_overwrite: bool = False
+    preprocessor_cache_required: bool = False
+    query_cache_enabled: bool = True
+    query_cache_overwrite: bool = False
+    query_cache_mode: QueryCacheMode = "successful_only"
+    instrument_enabled: bool = True
+    instrument_prefix: str = "exp"
+    disable_bigquery_tracing: bool = True
+    df_max_rows: int | None = 100000
+    max_llm_concurrency: int | None = 16
+    max_llm_requests_per_minute: int | None = 600
+    max_embedding_concurrency: int | None = 4
+    max_embedding_requests_per_minute: int | None = 150
+    dataset: str = "bird-sql"
+    split: str = "dev"
+    query_timeout: int | None = 300
+    log_level: str = "WARNING"
+    column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
 
-class MintqConfig:
-    DEFAULT_CACHE_DIR = "cache"
-    DEFAULT_SCHEMA_CACHE_ENABLED = True
-    DEFAULT_SCHEMA_CACHE_OVERWRITE = False
-    DEFAULT_SCHEMA_CACHE_REQUIRED = False
-    DEFAULT_PREPROCESSOR_CACHE_ENABLED = True
-    DEFAULT_PREPROCESSOR_CACHE_OVERWRITE = False
-    DEFAULT_PREPROCESSOR_CACHE_REQUIRED = False
-    DEFAULT_QUERY_CACHE_ENABLED = True
-    DEFAULT_QUERY_CACHE_OVERWRITE = False
-    DEFAULT_QUERY_CACHE_MODE: QueryCacheMode = "successful_only"
-    DEFAULT_INSTRUMENT_ENABLED = True
-    DEFAULT_INSTRUMENT_PREFIX = "exp"
-    DEFAULT_DISABLE_BIGQUERY_TRACING = True
-    DEFAULT_DF_MAX_ROWS = 100000
-    DEFAULT_MAX_LLM_CONCURRENCY = 16
-    DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 600
-    DEFAULT_MAX_EMBEDDING_CONCURRENCY = 4
-    DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 150
-    DEFAULT_DATASET = "bird-sql"
-    DEFAULT_SPLIT = "dev"
-    DEFAULT_QUERY_TIMEOUT = 300
-    DEFAULT_LOG_LEVEL = "WARNING"
-    DEFAULT_COLUMN_STATS_MODE: ColumnStatsMode = "skip_for_large_tables"
-    # DEFAULT_MAX_LLM_CONCURRENCY = 4
-    # DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE = 150
-    # DEFAULT_MAX_EMBEDDING_CONCURRENCY = 1
-    # DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE = 40
+    @field_validator(*_POSITIVE_INT_OR_NONE_FIELDS, mode="before")
+    @classmethod
+    def _coerce_positive_int_or_none(cls, v: Any) -> int | None:
+        if v is None:
+            return None
+        n = int(v)
+        return n if n > 0 else None
 
-    def __init__(self) -> None:
-        self._validate()
+    @field_validator("log_level", mode="before")
+    @classmethod
+    def _normalize_log_level(cls, v: Any) -> str:
+        upper = str(v).upper()
+        valid = {"DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"}
+        if upper not in valid:
+            raise ValueError(f"Invalid log level {v!r}. Must be one of {sorted(valid)}")
+        return upper
 
-    def _validate(self) -> None:
+    @model_validator(mode="after")
+    def _validate_cache_flags(self) -> Self:
         for prefix in ("schema", "preprocessor"):
             enabled = getattr(self, f"{prefix}_cache_enabled")
             overwrite = getattr(self, f"{prefix}_cache_overwrite")
             required = getattr(self, f"{prefix}_cache_required")
-            env_prefix = prefix.upper()
+            label = f"MINTQ_{prefix.upper()}_CACHE"
             if required and overwrite:
-                raise ValueError(
-                    f"MINTQ_{env_prefix}_CACHE_REQUIRED and MINTQ_{env_prefix}_CACHE_OVERWRITE cannot be 1 at the same time"
-                )
+                raise ValueError(f"{label}_REQUIRED and {label}_OVERWRITE cannot be 1 at the same time")
             if required and not enabled:
-                raise ValueError(
-                    f"MINTQ_{env_prefix}_CACHE_REQUIRED cannot be 1 when MINTQ_{env_prefix}_CACHE_ENABLED is 0"
-                )
+                raise ValueError(f"{label}_REQUIRED cannot be 1 when {label}_ENABLED is 0")
+        return self
 
-    @property
-    def cache_dir(self) -> str:
-        if (value := os.getenv("MINTQ_CACHE_DIR")) is not None:
-            return value
-        return self.DEFAULT_CACHE_DIR
 
-    @property
-    def schema_cache_enabled(self) -> bool:
-        if (value := os.getenv("MINTQ_SCHEMA_CACHE_ENABLED")) is not None:
-            return _parse_bool_env("MINTQ_SCHEMA_CACHE_ENABLED", value)
-        return self.DEFAULT_SCHEMA_CACHE_ENABLED
+class MintqConfig:
+    """Global configuration for mintq.
 
-    @property
-    def schema_cache_overwrite(self) -> bool:
-        """Overwrite existing schema cache files."""
-        if (value := os.getenv("MINTQ_SCHEMA_CACHE_OVERWRITE")) is not None:
-            return _parse_bool_env("MINTQ_SCHEMA_CACHE_OVERWRITE", value)
-        return self.DEFAULT_SCHEMA_CACHE_OVERWRITE
+    Resolution order for each option: ``configure()`` kwargs > env vars > defaults.
+    """
 
-    @property
-    def schema_cache_required(self) -> bool:
-        """Raise an error if schema cache is not found."""
-        if (value := os.getenv("MINTQ_SCHEMA_CACHE_REQUIRED")) is not None:
-            return _parse_bool_env("MINTQ_SCHEMA_CACHE_REQUIRED", value)
-        return self.DEFAULT_SCHEMA_CACHE_REQUIRED
+    def __init__(self) -> None:
+        self._overrides: dict[str, Any] = {}
+        self._settings = _MintqSettings()
 
-    @property
-    def preprocessor_cache_enabled(self) -> bool:
-        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_ENABLED")) is not None:
-            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_ENABLED", value)
-        return self.DEFAULT_PREPROCESSOR_CACHE_ENABLED
+    def configure(self, **kwargs: Any) -> None:
+        """Set configuration overrides.
 
-    @property
-    def preprocessor_cache_overwrite(self) -> bool:
-        """Overwrite existing preprocessor cache files."""
-        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_OVERWRITE")) is not None:
-            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_OVERWRITE", value)
-        return self.DEFAULT_PREPROCESSOR_CACHE_OVERWRITE
-
-    @property
-    def preprocessor_cache_required(self) -> bool:
-        """Raise an error if preprocessor cache is not found."""
-        if (value := os.getenv("MINTQ_PREPROCESSOR_CACHE_REQUIRED")) is not None:
-            return _parse_bool_env("MINTQ_PREPROCESSOR_CACHE_REQUIRED", value)
-        return self.DEFAULT_PREPROCESSOR_CACHE_REQUIRED
-
-    @property
-    def query_cache_enabled(self) -> bool:
-        """Cache SQL query results (including errors and timeouts) to disk.
-
-        Useful for avoiding redundant Snowflake queries across experiment runs.
-        Controlled via ``MINTQ_QUERY_CACHE_ENABLED``.  Defaults to ``False``.
+        Only supplied kwargs are stored; omitted options keep their current
+        resolution (env var > default). Call with no arguments to clear all
+        overrides and re-read from environment.
         """
-        if (value := os.getenv("MINTQ_QUERY_CACHE_ENABLED")) is not None:
-            return _parse_bool_env("MINTQ_QUERY_CACHE_ENABLED", value)
-        return self.DEFAULT_QUERY_CACHE_ENABLED
+        if not kwargs:
+            self._overrides.clear()
+        else:
+            self._overrides.update(kwargs)
+        self._settings = _MintqSettings(**self._overrides)
 
-    @property
-    def query_cache_mode(self) -> QueryCacheMode:
-        """Controls which query results are cached.
-
-        - ``"all"``: Cache all outcomes (successes, errors, and timeouts).
-        - ``"successful_only"``: Only cache queries that returned results successfully.
-
-        Controlled via ``MINTQ_QUERY_CACHE_MODE``.  Defaults to ``"all"``.
-        """
-        if (value := os.getenv("MINTQ_QUERY_CACHE_MODE")) is not None:
-            if value not in get_args(QueryCacheMode):
-                raise ValueError(
-                    f"Invalid MINTQ_QUERY_CACHE_MODE={value!r}. Must be one of {sorted(get_args(QueryCacheMode))}"
-                )
-            return value  # type: ignore[return-value]
-        return self.DEFAULT_QUERY_CACHE_MODE
-
-    @property
-    def query_cache_overwrite(self) -> bool:
-        """Overwrite existing query result cache files.
-
-        When ``True``, queries are always executed against the database and
-        the results replace any existing cached entries.
-        Controlled via ``MINTQ_QUERY_CACHE_OVERWRITE``.  Defaults to ``False``.
-        """
-        if (value := os.getenv("MINTQ_QUERY_CACHE_OVERWRITE")) is not None:
-            return _parse_bool_env("MINTQ_QUERY_CACHE_OVERWRITE", value)
-        return self.DEFAULT_QUERY_CACHE_OVERWRITE
-
-    @property
-    def instrument_enabled(self) -> bool:
-        if (value := os.getenv("MINTQ_INSTRUMENT_ENABLED")) is not None:
-            return _parse_bool_env("MINTQ_INSTRUMENT_ENABLED", value)
-        return self.DEFAULT_INSTRUMENT_ENABLED
-
-    @property
-    def instrument_prefix(self) -> str:
-        if (value := os.getenv("MINTQ_INSTRUMENT_PREFIX")) is not None:
-            return value
-        return self.DEFAULT_INSTRUMENT_PREFIX
-
-    @property
-    def disable_bigquery_tracing(self) -> bool:
-        """Disable BigQuery's built-in OpenTelemetry tracing.
-
-        The google-cloud-bigquery client auto-emits OTEL spans for every
-        API call when a TracerProvider is configured, cluttering Langfuse.
-        Controlled via ``MINTQ_DISABLE_BIGQUERY_TRACING``.  Defaults to ``True``.
-        """
-        if (value := os.getenv("MINTQ_DISABLE_BIGQUERY_TRACING")) is not None:
-            return _parse_bool_env("MINTQ_DISABLE_BIGQUERY_TRACING", value)
-        return self.DEFAULT_DISABLE_BIGQUERY_TRACING
-
-    @property
-    def df_max_rows(self) -> int | None:
-        if (value := os.getenv("MINTQ_DF_MAX_ROWS")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_DF_MAX_ROWS
-
-    @property
-    def max_llm_concurrency(self) -> int | None:
-        """Maximum number of concurrent LLM calls."""
-        if (value := os.getenv("MINTQ_MAX_LLM_CONCURRENCY")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_MAX_LLM_CONCURRENCY
-
-    @property
-    def max_llm_requests_per_minute(self) -> int | None:
-        """Maximum number of LLM requests per minute."""
-        if (value := os.getenv("MINTQ_MAX_LLM_REQUESTS_PER_MINUTE")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_MAX_LLM_REQUESTS_PER_MINUTE
-
-    @property
-    def max_embedding_concurrency(self) -> int | None:
-        """Maximum number of concurrent embedding calls."""
-        if (value := os.getenv("MINTQ_MAX_EMBEDDING_CONCURRENCY")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_MAX_EMBEDDING_CONCURRENCY
-
-    @property
-    def max_embedding_requests_per_minute(self) -> int | None:
-        """Maximum number of embedding requests per minute."""
-        if (value := os.getenv("MINTQ_MAX_EMBEDDING_REQUESTS_PER_MINUTE")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_MAX_EMBEDDING_REQUESTS_PER_MINUTE
-
-    @property
-    def dataset(self) -> str:
-        if (value := os.getenv("MINTQ_DATASET")) is not None:
-            return value
-        return self.DEFAULT_DATASET
-
-    @property
-    def split(self) -> str:
-        if (value := os.getenv("MINTQ_SPLIT")) is not None:
-            return value
-        return self.DEFAULT_SPLIT
-
-    @property
-    def query_timeout(self) -> int | None:
-        if (value := os.getenv("MINTQ_QUERY_TIMEOUT")) is not None:
-            return int(value) if int(value) > 0 else None
-        return self.DEFAULT_QUERY_TIMEOUT
-
-    @property
-    def log_level(self) -> int:
-        """Log level for the mintq logger.
-
-        Set via ``MINTQ_LOG_LEVEL`` (e.g. ``DEBUG``, ``INFO``, ``WARNING``).
-        """
-        valid_levels = ("DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL")
-        if (value := os.getenv("MINTQ_LOG_LEVEL")) is not None:
-            value = value.upper()
-            if value not in valid_levels:
-                raise ValueError(f"Invalid MINTQ_LOG_LEVEL={value!r}. Must be one of {valid_levels}")
-            return int(getattr(logging, value))
-        return int(getattr(logging, self.DEFAULT_LOG_LEVEL))
-
-    @property
-    def column_stats_mode(self) -> ColumnStatsMode:
-        """Column statistics collection mode for schema building.
-
-        Controls how column-level statistics (null ratio, unique count) are
-        collected:
-        - ``"always_skip"``: Never compute column statistics.
-        - ``"always_precise"``: Always compute exact statistics.
-        - ``"sample_for_large_tables"``: Sample large tables before computing.
-        - ``"skip_for_large_tables"``: Skip statistics for large tables.
-        """
-        if (value := os.getenv("MINTQ_COLUMN_STATS_MODE")) is not None:
-            if value not in get_args(ColumnStatsMode):
-                raise ValueError(
-                    f"Invalid MINTQ_COLUMN_STATS_MODE={value!r}. Must be one of {sorted(get_args(ColumnStatsMode))}"
-                )
-            return value  # type: ignore[return-value]
-        return self.DEFAULT_COLUMN_STATS_MODE
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._settings, name)
 
     def __repr__(self) -> str:
-        props = {
-            name: getattr(self, name) for name, attr in self.__class__.__dict__.items() if isinstance(attr, property)
-        }
-        values = ", ".join(f"{k}={v!r}" for k, v in props.items())
-        return f"MintqConfig({values})"
-
-    def reload_from_env(self) -> None:
-        """Re-validate the config from environment variables."""
-        self._validate()
+        items = {name: getattr(self, name) for name in self._settings.model_fields}
+        return "MintqConfig(" + ", ".join(f"{k}={v!r}" for k, v in items.items()) + ")"
 
 
 mintq_config = MintqConfig()

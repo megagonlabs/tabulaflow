@@ -1,6 +1,5 @@
 import asyncio
 import argparse
-import os
 import time
 import mintq
 from mintq.config import mintq_config
@@ -37,7 +36,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq.configure()
+    mintq.configure(schema_cache_enabled=not args.no_cache)
 
     t0 = time.time()
 
@@ -50,10 +49,6 @@ async def main() -> None:
         if split is None:
             default_splits = {"bird-sql": "dev", "spider2-snow": "test", "beaver": "test"}
             split = default_splits.get(args.dataset, mintq_config.split)
-
-        if args.no_cache:
-            os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
-            mintq_config.reload_from_env()
 
         dataset_loader = dataset_registry.get_class(args.dataset)()
         dataset = await dataset_loader.get_split_async(split, databases=[args.database])

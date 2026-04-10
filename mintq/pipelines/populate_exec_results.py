@@ -70,11 +70,7 @@ async def main_async() -> None:
     print(args)
     print()
 
-    if args.no_query_cache:
-        os.environ["MINTQ_QUERY_CACHE_ENABLED"] = "0"
-        mintq_config.reload_from_env()
-
-    mintq.configure()
+    mintq.configure(query_cache_enabled=not args.no_query_cache)
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

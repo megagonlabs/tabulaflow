@@ -29,12 +29,12 @@ def chat(
     import asyncio
 
     import mintq
-    from mintq.config import mintq_config
 
-    mintq_config.DEFAULT_COLUMN_STATS_MODE = "always_skip"
-    mintq_config.DEFAULT_QUERY_CACHE_ENABLED = False
-    mintq_config.DEFAULT_INSTRUMENT_ENABLED = False
-    mintq.configure()
+    mintq.configure(
+        column_stats_mode="always_skip",
+        query_cache_enabled=False,
+        instrument_enabled=False,
+    )
 
     from mintq.cli.tui import run_tui
 
