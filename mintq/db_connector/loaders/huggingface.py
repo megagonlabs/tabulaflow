@@ -361,19 +361,17 @@ def _load_hf_into_duckdb(
 async def load_hf_dataset(
     dataset_url: str,
     *,
-    global_id: str,
     db_name: str | None = None,
     read_only: bool = True,
 ) -> SQLConnector:
     """Load a HuggingFace dataset into a DuckDB-backed SQLConnector.
 
     Small datasets are fully materialized.  Large datasets get a lazy view
-    over all parquet files plus a materialized 10k-row sample table.
-    DuckDB files are cached in ``~/.mintq/hf_cache/`` across sessions.
+    over all parquet files plus a materialized sample table.
+    DuckDB files are cached in ``~/.mintq/cache/hf/`` across sessions.
 
     Args:
         dataset_url: A HuggingFace dataset URL.
-        global_id: Globally unique identifier for the connection.
         db_name: Display name for the database. Defaults to the dataset name.
         read_only: If True, block write statements.
 
@@ -391,6 +389,10 @@ async def load_hf_dataset(
     db_path, table_names = await loop.run_in_executor(
         None, _load_hf_into_duckdb, dataset_id, subset, split,
     )
+
+    # Derive global_id from the DuckDB cache path so the schema cache key
+    # is stable across sessions regardless of the user-chosen alias.
+    global_id = f"hf__{os.path.splitext(os.path.basename(db_path))[0]}"
 
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(

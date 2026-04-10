@@ -390,10 +390,9 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
             )
         )
 
-    global_id = f"cli+{alias}"
     try:
         connector = await load_hf_dataset(
-            url, global_id=global_id, db_name=alias, read_only=True,
+            url, db_name=alias, read_only=True,
         )
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))
