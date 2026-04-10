@@ -16,7 +16,7 @@ import logging
 import os
 import re
 import tempfile
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     import duckdb
@@ -105,28 +105,40 @@ def _hf_parquet_glob(dataset_id: str, config: str, split: str | None = None) -> 
     return f"hf://datasets/{dataset_id}@~parquet/{config}/{split_part}/*.parquet"
 
 
-def _fetch_configs_from_api(dataset_id: str) -> list[str]:
-    """Fetch available config names via the HuggingFace datasets-server API.
-
-    This is the only function that calls the HF API — used as a fallback
-    when DuckDB cannot determine the config name.
-    """
+def _hf_api_get(endpoint: str, dataset_id: str) -> dict[str, Any]:
+    """Make a GET request to the HuggingFace datasets-server API."""
     import json
     from urllib.parse import urlencode
     from urllib.request import Request, urlopen
 
-    url = f"https://datasets-server.huggingface.co/splits?{urlencode({'dataset': dataset_id})}"
+    url = f"https://datasets-server.huggingface.co/{endpoint}?{urlencode({'dataset': dataset_id})}"
     req = Request(url, headers={"User-Agent": "mintq"})
     with urlopen(req, timeout=30) as resp:
-        data = json.loads(resp.read())
+        return json.loads(resp.read())  # type: ignore[no-any-return]
 
-    splits = data.get("splits", [])
+
+def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
+    """Fetch split entries from the HuggingFace datasets-server API.
+
+    Returns:
+        A list of dicts with keys ``config`` and ``split``.
+
+    Raises:
+        ValueError: If the dataset has no splits.
+    """
+    data = _hf_api_get("splits", dataset_id)
+    splits: list[dict[str, Any]] = data.get("splits", [])
     if not splits:
         raise ValueError(
             f"No splits found for dataset '{dataset_id}'. "
             "The dataset may be gated, private, or not yet indexed."
         )
-    return sorted({s["config"] for s in splits})
+    return splits
+
+
+def _fetch_configs_from_api(dataset_id: str) -> list[str]:
+    """Fetch available config names via the HuggingFace datasets-server API."""
+    return sorted({s["config"] for s in _fetch_splits_from_api(dataset_id)})
 
 
 # ---------------------------------------------------------------------------
@@ -152,13 +164,10 @@ def _init_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
     return conn
 
 
-def _resolve_config(
-    conn: duckdb.DuckDBPyConnection, dataset_id: str, subset: str | None
-) -> str:
-    """Resolve which config to use, probing via DuckDB first.
+def _resolve_config(dataset_id: str, subset: str | None) -> str:
+    """Resolve which config to use via the HuggingFace API.
 
     Args:
-        conn: An initialised DuckDB connection with httpfs loaded.
         dataset_id: HuggingFace dataset identifier.
         subset: User-specified config, or None.
 
@@ -169,40 +178,17 @@ def _resolve_config(
         ValueError: If the config doesn't exist or multiple configs exist
             and none was specified.
     """
+    configs = _fetch_configs_from_api(dataset_id)
+
     if subset is not None:
-        # User specified a config — verify it exists with a fast probe.
-        probe = f"hf://datasets/{dataset_id}@~parquet/{subset}/train/0000.parquet"
-        try:
-            conn.sql(f"SELECT 1 FROM '{probe}' LIMIT 1").fetchone()
-        except Exception:
-            # Probe failed — could be a different split name or bad config.
-            # Try glob to be sure.
-            glob_pat = _hf_parquet_glob(dataset_id, subset)
-            try:
-                files = conn.sql(f"SELECT file FROM glob('{glob_pat}')").fetchall()
-                if not files:
-                    raise ValueError(f"No parquet files found for config '{subset}'.")  # noqa: TRY301
-            except Exception:
-                configs = _fetch_configs_from_api(dataset_id)
-                if subset not in configs:
-                    raise ValueError(
-                        f"Subset '{subset}' not found. Available subsets: {', '.join(configs)}"
-                    ) from None
-                raise
+        if subset not in configs:
+            raise ValueError(
+                f"Subset '{subset}' not found. Available subsets: {', '.join(configs)}"
+            )
         return subset
 
-    # No subset specified — try "default" with a fast probe.
-    probe = f"hf://datasets/{dataset_id}@~parquet/default/train/0000.parquet"
-    try:
-        conn.sql(f"SELECT 1 FROM '{probe}' LIMIT 1").fetchone()
+    if "default" in configs:
         return "default"
-    except Exception:
-        pass
-
-    # "default" doesn't exist — check if there's a different single config
-    # or multiple configs. We must use the API here because globbing all
-    # configs is too slow for large datasets.
-    configs = _fetch_configs_from_api(dataset_id)
     if len(configs) == 1:
         return configs[0]
 
@@ -215,27 +201,24 @@ def _resolve_config(
     )
 
 
-def _discover_splits_and_size(
-    conn: duckdb.DuckDBPyConnection, dataset_id: str, config: str
-) -> tuple[list[str], int]:
-    """Discover splits and total size in a single query via parquet_file_metadata.
+def _discover_splits_and_size(dataset_id: str, config: str) -> tuple[list[str], int]:
+    """Discover splits and total size via the HuggingFace API.
 
     Returns:
         A tuple of (sorted split names, total parquet size in bytes).
     """
-    glob_pat = _hf_parquet_glob(dataset_id, config)
-    rows = conn.sql(
-        f"SELECT "
-        f"  regexp_extract(file_name, '.*@~parquet/[^/]+/([^/]+)/', 1) AS split, "
-        f"  SUM(file_size_bytes) AS total_bytes "
-        f"FROM parquet_file_metadata('{glob_pat}') "
-        f"GROUP BY split"
-    ).fetchall()
-    if not rows:
-        raise ValueError(f"No parquet files found for '{dataset_id}' config '{config}'.")
-    splits = sorted(r[0] for r in rows if r[0])
-    total_size = sum(int(r[1]) for r in rows if r[1])
-    return splits, total_size
+    data = _hf_api_get("size", dataset_id)
+
+    total_size = 0
+    splits: list[str] = []
+    for entry in data.get("size", {}).get("splits", []):
+        if entry.get("config") == config:
+            splits.append(entry["split"])
+            total_size += int(entry.get("num_bytes_parquet_files", 0))
+
+    if not splits:
+        raise ValueError(f"No splits found for '{dataset_id}' config '{config}'.")
+    return sorted(splits), total_size
 
 
 def _create_tables(
@@ -269,30 +252,30 @@ def _load_hf_into_duckdb(
 ) -> tuple[list[str], bool]:
     """Discover metadata and load a HuggingFace dataset into DuckDB.
 
-    All discovery (config resolution, split listing, size estimation) is done
-    via DuckDB's native ``hf://`` protocol.  The HF datasets-server API is
-    only used as a fallback for config discovery when ``default`` doesn't exist.
+    Discovery (config resolution, split listing, size estimation) uses the
+    HuggingFace datasets-server API to avoid DuckDB HTTP HEAD requests that
+    trigger 429 rate limiting.  Only the final table/view creation uses DuckDB.
 
     Returns:
         A tuple of (table_names, materialized).
     """
+    config = _resolve_config(dataset_id, subset)
+    splits, total_size = _discover_splits_and_size(dataset_id, config)
+
+    if split_filter:
+        if split_filter not in splits:
+            raise ValueError(
+                f"Split '{split_filter}' not found. Available splits: {', '.join(splits)}"
+            )
+        splits = [split_filter]
+
+    materialize = total_size > 0 and total_size < MATERIALIZE_THRESHOLD_BYTES
+    strategy = "materialized" if materialize else "lazy view"
+    size_str = _format_size(total_size) if total_size > 0 else "unknown size"
+    logger.info("Loading HF dataset '%s' (%s) as %s", dataset_id, size_str, strategy)
+
     conn = _init_duckdb(db_path)
     try:
-        config = _resolve_config(conn, dataset_id, subset)
-        splits, total_size = _discover_splits_and_size(conn, dataset_id, config)
-
-        if split_filter:
-            if split_filter not in splits:
-                raise ValueError(
-                    f"Split '{split_filter}' not found. Available splits: {', '.join(splits)}"
-                )
-            splits = [split_filter]
-
-        materialize = total_size > 0 and total_size < MATERIALIZE_THRESHOLD_BYTES
-        strategy = "materialized" if materialize else "lazy view"
-        size_str = _format_size(total_size) if total_size > 0 else "unknown size"
-        logger.info("Loading HF dataset '%s' (%s) as %s", dataset_id, size_str, strategy)
-
         table_names = _create_tables(conn, dataset_id, config, splits, materialize)
         return table_names, materialize
     finally:
