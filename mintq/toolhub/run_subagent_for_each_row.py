@@ -65,6 +65,7 @@ class RunSubagentForEachRowTool:
         *,
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: dict[str, object] | None = None,
+        max_concurrency: int = 200,
     ) -> None:
         """Initialize the tool.
 
@@ -73,10 +74,15 @@ class RunSubagentForEachRowTool:
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
+            max_concurrency: Maximum number of row subagents to run
+                concurrently.
         """
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be greater than 0")
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
+        self.max_concurrency = max_concurrency
         self.on_row_complete: Callable[[int, int], None] | None = None
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
@@ -181,7 +187,15 @@ class RunSubagentForEachRowTool:
 
         rows = df.to_dict(orient="records")
         total = len(rows)
-        errors = await asyncio.gather(*(_process_one_row(row_idx, row) for row_idx, row in enumerate(rows, start=1)))
+        semaphore = asyncio.Semaphore(self.max_concurrency)
+
+        async def _throttled_process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
+            async with semaphore:
+                return await _process_one_row(row_idx, row)
+
+        errors = await asyncio.gather(
+            *(_throttled_process_one_row(row_idx, row) for row_idx, row in enumerate(rows, start=1))
+        )
         error_messages = [e for e in errors if e is not None]
         failed = len(error_messages)
         updated = total - failed
