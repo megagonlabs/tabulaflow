@@ -252,8 +252,8 @@ def _create_tables(
             # Materialized 1k sample from the first parquet file.
             sample_name = f"{base_name}_sample"
             first_url = urls[0]
-            sample_sql = f"CREATE TABLE \"{sample_name}\" AS SELECT * FROM read_parquet('{first_url}') LIMIT 10000"
-            logger.info("Creating TABLE '%s' (1k sample) from first parquet file", sample_name)
+            sample_sql = f"CREATE TABLE \"{sample_name}\" AS SELECT * FROM read_parquet('{first_url}') LIMIT 1000"
+            logger.info("Creating TABLE '%s' (at most 1k sample) from first parquet file", sample_name)
             conn.execute(sample_sql)
             table_names.append(sample_name)
 
