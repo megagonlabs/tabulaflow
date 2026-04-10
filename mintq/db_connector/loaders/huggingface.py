@@ -138,7 +138,7 @@ def _fetch_configs_from_api(dataset_id: str) -> list[str]:
 def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
     """Fetch direct parquet file URLs for a specific config/split."""
     data = _hf_api_get("parquet", dataset_id, config=config, split=split)
-    return [f["url"] for f in data.get("parquet_files", [])]
+    return [f["url"] for f in data.get("parquet_files", []) if f.get("split") == split]
 
 
 # ---------------------------------------------------------------------------
