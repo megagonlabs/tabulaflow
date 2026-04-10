@@ -63,21 +63,21 @@ def configure(**kwargs: object) -> None:
 
     logger.info("MINTQ Configuration: %s", mintq_config)
 
-    if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
-        from phoenix.otel import register
-
-        register(project_name="default", auto_instrument=True)
-
-    if os.getenv("LANGFUSE_HOST"):
-        from langfuse import get_client
-
-        langfuse = get_client()
-        if langfuse.auth_check():
-            logger.info("Langfuse client authenticated.")
-        else:
-            logger.error("Langfuse authentication failed. Check credentials and host.")
-
     if mintq_config.instrument_enabled:
+        if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
+            from phoenix.otel import register
+
+            register(project_name="default", auto_instrument=True)
+
+        if os.getenv("LANGFUSE_HOST"):
+            from langfuse import get_client
+
+            langfuse = get_client()
+            if langfuse.auth_check():
+                logger.info("Langfuse client authenticated.")
+            else:
+                logger.error("Langfuse authentication failed. Check credentials and host.")
+
         from pydantic_ai import Agent
 
         Agent.instrument_all()
