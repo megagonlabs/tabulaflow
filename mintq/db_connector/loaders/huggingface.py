@@ -226,22 +226,37 @@ def _create_tables(
     download URLs, avoiding DuckDB ``hf://`` glob resolution which triggers
     HTTP HEAD requests that are easily rate-limited (429).
     """
-    kind = "TABLE" if materialize else "VIEW"
     table_names: list[str] = []
 
     for split_name in splits:
-        table_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
-        table_names.append(table_name)
-
         urls = _fetch_parquet_urls(dataset_id, config, split_name)
         if not urls:
             raise ValueError(
                 f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'."
             )
         url_list = ", ".join(f"'{u}'" for u in urls)
-        sql = f'CREATE {kind} "{table_name}" AS SELECT * FROM read_parquet([{url_list}])'
-        logger.info("Creating %s '%s' from %d parquet files", kind, table_name, len(urls))
-        conn.execute(sql)
+        source = f"read_parquet([{url_list}])"
+
+        base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
+        if materialize:
+            sql = f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}'
+            logger.info("Creating TABLE '%s' from %d parquet files", base_name, len(urls))
+            table_names.append(base_name)
+            conn.execute(sql)
+        else:
+            # Full-data view over all parquet files.
+            view_sql = f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}'
+            logger.info("Creating VIEW '%s' from %d parquet files", base_name, len(urls))
+            conn.execute(view_sql)
+            table_names.append(base_name)
+
+            # Materialized 1k sample from the first parquet file.
+            sample_name = f"{base_name}_1k_sample"
+            first_url = urls[0]
+            sample_sql = f"CREATE TABLE \"{sample_name}\" AS SELECT * FROM read_parquet('{first_url}') LIMIT 1000"
+            logger.info("Creating TABLE '%s' (1k sample) from first parquet file", sample_name)
+            conn.execute(sample_sql)
+            table_names.append(sample_name)
 
     return table_names
 
@@ -272,7 +287,7 @@ def _load_hf_into_duckdb(
         splits = [split_filter]
 
     materialize = total_size > 0 and total_size < MATERIALIZE_THRESHOLD_BYTES
-    strategy = "materialized" if materialize else "lazy view"
+    strategy = "materialized" if materialize else "sample"
     size_str = _format_size(total_size) if total_size > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s) as %s", dataset_id, size_str, strategy)
 
@@ -343,11 +358,11 @@ async def load_hf_dataset(
         read_only=read_only,
         enable_schema_caching=False,
         enable_query_caching=False,
-        duckdb_init_sql=["LOAD httpfs"],
+        duckdb_init_sql=["LOAD httpfs"] if not materialized else None,
     )
     connector._temp_db_path = db_path
 
-    strategy = "materialized" if materialized else "lazy view"
+    strategy = "materialized" if materialized else "sample"
     for table in connector.schema.tables:
         if table.name in table_names:
             table.description = f"Imported from HuggingFace parquet ({strategy})"

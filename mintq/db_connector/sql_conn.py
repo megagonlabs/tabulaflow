@@ -937,8 +937,6 @@ class SQLConnector:
             enable_query_caching: If ``False``, skip query result caching
                 for this connector regardless of global config. Useful for
                 interactive use where fresh results are always needed.
-            duckdb_init_sql: Optional list of SQL statements to execute on
-                each new DuckDB connection (e.g. extension loading).
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
