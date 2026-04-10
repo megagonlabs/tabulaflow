@@ -28,6 +28,14 @@ def chat(
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
 
+    import mintq
+    from mintq.config import mintq_config
+
+    mintq_config.DEFAULT_COLUMN_STATS_MODE = "always_skip"
+    mintq_config.DEFAULT_QUERY_CACHE_ENABLED = False
+    mintq_config.DEFAULT_INSTRUMENT_ENABLED = False
+    mintq.configure()
+
     from mintq.cli.tui import run_tui
 
     asyncio.run(run_tui(model=model, agent=agent))

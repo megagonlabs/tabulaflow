@@ -281,7 +281,6 @@ async def load_schema_with_cache_async(
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
     enable_schema_caching: bool = True,
-    column_stats_mode: ColumnStatsMode | None = None,
 ) -> SQLSchema:
     """Loads the database schema, utilizing a cache if available and enabled.
 
@@ -319,7 +318,7 @@ async def load_schema_with_cache_async(
             dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=column_stats_mode if column_stats_mode is not None else mintq_config.column_stats_mode,
+            column_stats_mode=mintq_config.column_stats_mode,
             include_schema_names=include_schema_names,
         )
         if t_eng.engine_type == "async":
@@ -897,7 +896,6 @@ class SQLConnector:
         enable_schema_caching: bool = True,
         enable_query_caching: bool = False,
         include_schema_names: list[str] | None = None,
-        column_stats_mode: ColumnStatsMode | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -985,7 +983,6 @@ class SQLConnector:
                 group_table_regexes,
                 include_schema_names=include_schema_names,
                 enable_schema_caching=enable_schema_caching,
-                column_stats_mode=column_stats_mode,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(
@@ -999,7 +996,7 @@ class SQLConnector:
             _group_date_partitioned_tables=group_date_partitioned_tables,
             _group_table_regexes=list(group_table_regexes),
             _include_schema_names=include_schema_names,
-            _column_stats_mode=column_stats_mode if column_stats_mode is not None else mintq_config.column_stats_mode,
+            _column_stats_mode=mintq_config.column_stats_mode,
         )
 
     @classmethod
