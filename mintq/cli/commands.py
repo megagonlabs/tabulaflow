@@ -100,6 +100,7 @@ class SessionState:
             read_only=False,
             enable_schema_caching=False,
             enable_query_caching=False,
+            column_stats_mode="always_skip",
         )
         self.registry.register(WORKSPACE_ALIAS, connector)
         self.chat_agent.add_database([(WORKSPACE_ALIAS, connector)])
@@ -460,6 +461,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
             read_only=True,
             enable_schema_caching=True,
             enable_query_caching=False,
+            column_stats_mode="always_skip",
             **engine_kwargs,
         )
     except Exception as e:

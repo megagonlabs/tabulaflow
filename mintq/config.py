@@ -2,7 +2,7 @@ import logging
 import os
 from typing import Literal, get_args
 
-ColumnStatsMode = Literal["always_precise", "sample_for_large_tables", "skip_for_large_tables"]
+ColumnStatsMode = Literal["always_skip", "always_precise", "sample_for_large_tables", "skip_for_large_tables"]
 QueryCacheMode = Literal["all", "successful_only"]
 
 _TRUTHY = frozenset({"1", "true", "yes", "on"})
@@ -251,7 +251,8 @@ class MintqConfig:
         """Column statistics collection mode for schema building.
 
         Controls how column-level statistics (null ratio, unique count) are
-        collected for large tables:
+        collected:
+        - ``"always_skip"``: Never compute column statistics.
         - ``"always_precise"``: Always compute exact statistics.
         - ``"sample_for_large_tables"``: Sample large tables before computing.
         - ``"skip_for_large_tables"``: Skip statistics for large tables.
