@@ -64,6 +64,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         compress_schema: bool = True,
         openai_reasoning_effort: Literal["none", "minimal", "low", "medium", "high", "xhigh"] | None = "high",
         max_summary_words: int = 4000,
+        model_settings: dict[str, object] | None = None,
     ) -> None:
         self.llm = llm
         self.compressor = SchemaCompressor() if compress_schema else None
@@ -71,6 +72,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         self.graph_formatter = CypherSchemaFormatter()
         self.openai_reasoning_effort = openai_reasoning_effort
         self.max_summary_words = max_summary_words
+        self.extra_model_settings = model_settings
         self._usage = Usage.create(llm=llm)
 
     def usage(self) -> Usage:
@@ -107,7 +109,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
 
         run_query_tool = RunQueryTool(db_connector)
 
-        model_settings: dict[str, Any] = {}
+        model_settings: dict[str, Any] = dict(self.extra_model_settings or {})
         if self.openai_reasoning_effort is not None:
             model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
             model_settings["openai_reasoning_summary"] = "detailed"

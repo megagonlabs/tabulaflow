@@ -235,7 +235,7 @@ class ChatAgent:
         self._query_history = QueryHistory()
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history),
-            get_db_document=RegistryGetDBDocumentTool(self.registry),
+            get_db_document=RegistryGetDBDocumentTool(self.registry, model_settings={"openai_service_tier": "priority"}),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),

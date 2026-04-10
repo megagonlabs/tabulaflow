@@ -42,6 +42,7 @@ class RegistryGetDBDocumentTool:
         summary_max_words: int = 2000,
         min_items_for_summary: int = 10,
         enable_refresh: bool = False,
+        model_settings: dict[str, object] | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -54,9 +55,12 @@ class RegistryGetDBDocumentTool:
                 node-label count + relationship-pattern count. If the count is
                 lower, returns a direct formatted schema document.
             enable_refresh: If True, expose `refresh` to the LLM tool signature.
+            model_settings: Optional pydantic-ai model settings passed to
+                summarizer agents (e.g. ``openai_service_tier``).
         """
         self.registry = registry
         self.db_summarizer_llm = db_summarizer_llm
+        self.model_settings = model_settings
         self.summary_max_words = summary_max_words
         self.min_items_for_summary = min_items_for_summary
         self.enable_refresh = enable_refresh
@@ -92,7 +96,7 @@ class RegistryGetDBDocumentTool:
         if len(desc) <= _MAX_DESCRIPTION_CHARS:
             return str(desc)
 
-        summarizer = TextSummarizer()
+        summarizer = TextSummarizer(model_settings=self.model_settings)
         return await summarizer.summarize(desc)
 
     async def _get_document(self, db_alias: str) -> str:
@@ -107,7 +111,7 @@ class RegistryGetDBDocumentTool:
 
         if use_summarizer:
             # DBSummarizer incorporates db_description into its prompt automatically.
-            db_summarizer = DBSummarizer(llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words)
+            db_summarizer = DBSummarizer(llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings)
             db_summary = await db_summarizer.preprocess_async(connector)
             document = db_summary.db_summary_markdown
         else:
