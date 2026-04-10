@@ -296,19 +296,27 @@ def _load_hf_into_duckdb(
     size_str = _format_size(total_size) if total_size > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s) as %s", dataset_id, size_str, strategy)
 
+    # Check cache with a read-only connection so we don't block other
+    # CLI instances that already hold a read-only handle on this file.
+    if os.path.exists(db_path):
+        import duckdb as _duckdb
+
+        ro_conn = _duckdb.connect(db_path, read_only=True)
+        try:
+            existing = {
+                r[0]
+                for r in ro_conn.sql(
+                    "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
+                ).fetchall()
+            }
+            if existing:
+                logger.info("Using cached DuckDB file with tables: %s", ", ".join(sorted(existing)))
+                return db_path, sorted(existing), materialize
+        finally:
+            ro_conn.close()
+
     conn = _init_duckdb(db_path)
     try:
-        # Check if already loaded (cached DuckDB file from a previous session).
-        existing = {
-            r[0]
-            for r in conn.sql(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-            ).fetchall()
-        }
-        if existing:
-            logger.info("Using cached DuckDB file with tables: %s", ", ".join(sorted(existing)))
-            return db_path, sorted(existing), materialize
-
         table_names = _create_tables(conn, dataset_id, config, splits, materialize)
         return db_path, table_names, materialize
     finally:
