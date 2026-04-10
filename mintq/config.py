@@ -1,3 +1,4 @@
+import os
 from typing import Any, Literal, Self
 
 from pydantic import field_validator, model_validator
@@ -21,7 +22,7 @@ class _MintqSettings(BaseSettings):
 
     model_config = SettingsConfigDict(env_prefix="MINTQ_")
 
-    cache_dir: str = "cache"
+    cache_dir: str = os.path.join(os.path.expanduser("~"), ".mintq", "cache")
     schema_cache_enabled: bool = True
     schema_cache_overwrite: bool = False
     schema_cache_required: bool = False

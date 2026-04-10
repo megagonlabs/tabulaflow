@@ -285,7 +285,8 @@ def _load_hf_into_duckdb(
         splits = [split_filter]
 
     # Cache path uses the resolved config name.
-    cache_dir = os.path.join(os.path.expanduser("~"), ".mintq", "hf_cache")
+    from mintq.config import mintq_config
+    cache_dir = os.path.join(mintq_config.cache_dir, "hf")
     os.makedirs(cache_dir, exist_ok=True)
     safe_name = re.sub(r"[^a-zA-Z0-9_]", "_", f"{dataset_id}__{config}")
     db_path = os.path.join(cache_dir, f"{safe_name}.duckdb")
