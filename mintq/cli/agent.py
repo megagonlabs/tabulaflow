@@ -239,7 +239,10 @@ class ChatAgent:
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
-            registry_run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(self.registry),
+            registry_run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
+                self.registry,
+                model_settings={"openai_service_tier": "priority"},
+            ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
         )
         self._build_agent()

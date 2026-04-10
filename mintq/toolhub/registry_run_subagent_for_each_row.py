@@ -21,15 +21,24 @@ class RegistryRunSubagentForEachRowTool:
 
     name: ClassVar[str] = "run_subagent_for_each_row"
 
-    def __init__(self, registry: DBRegistry, *, subagent_llm: str = "openai-responses:gpt-5-mini") -> None:
+    def __init__(
+        self,
+        registry: DBRegistry,
+        *,
+        subagent_llm: str = "openai-responses:gpt-5-mini",
+        model_settings: dict[str, object] | None = None,
+    ) -> None:
         """Initialize the tool.
 
         Args:
             registry: Registry containing available connectors.
             subagent_llm: LLM identifier used by per-row subagent runs.
+            model_settings: Optional pydantic-ai model settings passed to
+                each subagent run (e.g. ``openai_service_tier``).
         """
         self.registry = registry
         self.subagent_llm = subagent_llm
+        self.model_settings = model_settings
         self.on_row_complete: Callable[[int, int], None] | None = None
         self._tools: dict[str, RunSubagentForEachRowTool] = {}
 
@@ -43,7 +52,7 @@ class RegistryRunSubagentForEachRowTool:
                     f"run_subagent_for_each_row is only supported for SQL connectors, "
                     f"not {connector.connector_type!r}"
                 )
-            tool = RunSubagentForEachRowTool(connector, subagent_llm=self.subagent_llm)
+            tool = RunSubagentForEachRowTool(connector, subagent_llm=self.subagent_llm, model_settings=self.model_settings)
             self._tools[db_alias] = tool
         tool.on_row_complete = self.on_row_complete
         return tool
