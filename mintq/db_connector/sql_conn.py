@@ -681,7 +681,7 @@ def _normalize_duckdb_schema_names(t_eng: ThrottledEngine, schema_names: list[st
     for s in schema_names:
         if s and "." in s:
             db_part, schema_part = s.split(".", 1)
-            if current_db and db_part != current_db:
+            if current_db and db_part.strip('"') != current_db:
                 continue
             result.append(schema_part)
         else:
