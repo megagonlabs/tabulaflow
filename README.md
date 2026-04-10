@@ -962,15 +962,21 @@ April 9
 - [ ] Data writing
 - [ ] Web search
 
-Demo
-- [ ] Profile all 152 spider2-snow databases
-- [ ] Scenario A: multi-source querying
-  - public data sources
-    - Wikidata
-    - huggingface
-- [ ] Scenario B: dataset preprocessing
-- [ ] Scenario C: semantic operators
-- [ ] Scenario D: building database from web pages
+
+- Scenarios
+  - [ ] Data browsing (replace DBeaver)
+  - [ ] Multi-source querying on databases
+    - [ ] Compare two similar databases
+    - [ ] Profile all 152 spider2-snow databases
+  - [ ] Public data sources
+    - [ ] Huggingface, analyze, preprocessing (replace jupyter notebook)
+    - [ ] Wikidata
+    - [ ] Government/academic data
+  - [ ] Error analysis
+  - [ ] Running inference
+  - [ ] Semantic operators
+  - [ ] Web deep research (replace aisheets)
+
 
 Release plan
 - [ ] Run N candidates on spider2-snow and spider2-lite
