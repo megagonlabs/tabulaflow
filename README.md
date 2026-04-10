@@ -947,6 +947,7 @@ April 8
 
 April 9
 - [x] Huggingface
+- [x] Refactor config system
 
 - [ ] /reconnect
 - [ ] Semantic join - cross join
