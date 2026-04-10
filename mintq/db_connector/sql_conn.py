@@ -281,6 +281,7 @@ async def load_schema_with_cache_async(
     group_table_regexes: list[str] = [],
     include_schema_names: list[str] | None = None,
     enable_schema_caching: bool = True,
+    column_stats_mode: ColumnStatsMode | None = None,
 ) -> SQLSchema:
     """Loads the database schema, utilizing a cache if available and enabled.
 
@@ -318,7 +319,7 @@ async def load_schema_with_cache_async(
             dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=mintq_config.column_stats_mode,
+            column_stats_mode=column_stats_mode if column_stats_mode is not None else mintq_config.column_stats_mode,
             include_schema_names=include_schema_names,
         )
         if t_eng.engine_type == "async":
@@ -497,7 +498,9 @@ async def build_column_async(
         unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
 
     examples: list[Any]
-    if num_rows is not None and num_rows == 0:
+    if skip_stats and num_rows is None:
+        examples = []
+    elif num_rows is not None and num_rows == 0:
         examples = []
     elif dtype in CATEGORICAL_TYPES and num_unique is not None:
         examples = (
@@ -569,20 +572,23 @@ async def build_table_async(
         return None
 
     tbl = sqlalchemy.table(table_name, schema=schema_name)
-    count_timeout = _VIEW_COUNT_TIMEOUT if is_view else _TABLE_COUNT_TIMEOUT
-    try:
-        num_rows = (
-            await t_eng.run_query_async(
-                select(func.count()).select_from(tbl),
-                timeout=count_timeout,
-            )
-        ).result[0][0]
-    except (TimeoutError, asyncio.TimeoutError):
-        kind = "view" if is_view else "table"
-        logger.warning(
-            f"COUNT(*) on {kind} {schema_name}.{table_name} timed out after {count_timeout}s; skipping column stats"
-        )
+    if is_view and column_stats_mode == "always_skip":
         num_rows = None
+    else:
+        count_timeout = _VIEW_COUNT_TIMEOUT if is_view else _TABLE_COUNT_TIMEOUT
+        try:
+            num_rows = (
+                await t_eng.run_query_async(
+                    select(func.count()).select_from(tbl),
+                    timeout=count_timeout,
+                )
+            ).result[0][0]
+        except (TimeoutError, asyncio.TimeoutError):
+            kind = "view" if is_view else "table"
+            logger.warning(
+                f"COUNT(*) on {kind} {schema_name}.{table_name} timed out after {count_timeout}s; skipping column stats"
+            )
+            num_rows = None
 
     columns = await asyncio.gather(
         *[
@@ -615,7 +621,10 @@ async def build_table_async(
             name2col[col].foreign_keys.append(fk)
 
     # Sample rows from the table
-    sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
+    if is_view and column_stats_mode == "always_skip":
+        sampled_df = None
+    else:
+        sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
     return SQLTableSchema(
         name=table_name,
@@ -896,6 +905,7 @@ class SQLConnector:
         enable_schema_caching: bool = True,
         enable_query_caching: bool = False,
         include_schema_names: list[str] | None = None,
+        column_stats_mode: ColumnStatsMode | None = None,
         duckdb_init_sql: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
@@ -992,6 +1002,7 @@ class SQLConnector:
                 group_table_regexes,
                 include_schema_names=include_schema_names,
                 enable_schema_caching=enable_schema_caching,
+                column_stats_mode=column_stats_mode,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(
@@ -1005,7 +1016,7 @@ class SQLConnector:
             _group_date_partitioned_tables=group_date_partitioned_tables,
             _group_table_regexes=list(group_table_regexes),
             _include_schema_names=include_schema_names,
-            _column_stats_mode=mintq_config.column_stats_mode,
+            _column_stats_mode=column_stats_mode if column_stats_mode is not None else mintq_config.column_stats_mode,
         )
 
     @classmethod
