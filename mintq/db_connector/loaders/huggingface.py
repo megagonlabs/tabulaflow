@@ -394,6 +394,15 @@ async def load_hf_dataset(
     # is stable across sessions regardless of the user-chosen alias.
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
+    # Fetch dataset description (used for schema context).
+    hf_description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
+    description: str | None = None
+    if hf_description:
+        description = (
+            f"Source: HuggingFace dataset {dataset_url}\n\n"
+            f"<readme>\n{hf_description}\n</readme>"
+        )
+
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(
         global_id=global_id,
@@ -403,17 +412,6 @@ async def load_hf_dataset(
         enable_schema_caching=True,
         enable_query_caching=False,
         duckdb_init_sql=["LOAD httpfs"],
+        description=description,
     )
-    for table in connector.schema.tables:
-        if table.name in table_names:
-            table.description = "Imported from HuggingFace parquet"
-
-    # Fetch dataset description for the agent.
-    description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
-    if description:
-        connector.schema.description = (
-            f"Source: HuggingFace dataset {dataset_url}\n\n"
-            f"<readme>\n{description}\n</readme>"
-        )
-
     return connector

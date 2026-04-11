@@ -282,6 +282,7 @@ async def load_schema_with_cache_async(
     include_schema_names: list[str] | None = None,
     enable_schema_caching: bool = True,
     column_stats_mode: ColumnStatsMode | None = None,
+    description: str | None = None,
 ) -> SQLSchema:
     """Loads the database schema, utilizing a cache if available and enabled.
 
@@ -289,6 +290,7 @@ async def load_schema_with_cache_async(
         enable_schema_caching: If False, skip schema cache read/write
             regardless of global config.  Useful for mutable databases
             where cached schemas would be stale.
+        description: Optional database description to store in the schema.
     """
     schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
@@ -326,6 +328,8 @@ async def load_schema_with_cache_async(
             await t_eng.engine.dispose()  # type: ignore
         else:
             t_eng.engine.dispose()
+        if description:
+            schema.description = description
         if enable_schema_caching and mintq_config.schema_cache_enabled and schema.tables:
             with open(cache_path, "w", encoding="utf-8") as f:
                 f.write(schema.model_dump_json(indent=2))
@@ -889,6 +893,15 @@ class SQLConnector:
     _temp_db_path: str | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
 
+    def save_schema_cache(self) -> None:
+        """Write the current schema to the cache file if caching is enabled."""
+        if self.enable_schema_caching and mintq_config.schema_cache_enabled:
+            schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
+            os.makedirs(schema_cache_dir, exist_ok=True)
+            cache_path = os.path.join(schema_cache_dir, f"{self.global_id}.json")
+            with open(cache_path, "w", encoding="utf-8") as f:
+                f.write(self.schema.model_dump_json(indent=2))
+
     @classmethod
     async def from_url_async(
         cls,
@@ -906,6 +919,7 @@ class SQLConnector:
         include_schema_names: list[str] | None = None,
         column_stats_mode: ColumnStatsMode | None = None,
         duckdb_init_sql: list[str] | None = None,
+        description: str | None = None,
         **engine_kwargs: Any,
     ) -> "SQLConnector":
         """Asynchronously create a SQLConnector from a database URL.
@@ -946,6 +960,8 @@ class SQLConnector:
             enable_query_caching: If ``False``, skip query result caching
                 for this connector regardless of global config. Useful for
                 interactive use where fresh results are always needed.
+            description: Optional database description stored in the schema
+                and persisted to the schema cache.
             **engine_kwargs: Additional keyword arguments forwarded to the
                 SQLAlchemy engine constructor (e.g. ``pool_pre_ping``).
 
@@ -1002,6 +1018,7 @@ class SQLConnector:
                 include_schema_names=include_schema_names,
                 enable_schema_caching=enable_schema_caching,
                 column_stats_mode=column_stats_mode,
+                description=description,
             )
         language: SQLDialect = schema.dialect  # type: ignore[assignment]
         return cls(
@@ -1191,12 +1208,7 @@ class SQLConnector:
                     include_schema_names=self._include_schema_names,
                 )
 
-            if self.enable_schema_caching and mintq_config.schema_cache_enabled:
-                schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
-                os.makedirs(schema_cache_dir, exist_ok=True)
-                cache_path = os.path.join(schema_cache_dir, f"{self.global_id}.json")
-                with open(cache_path, "w", encoding="utf-8") as f:
-                    f.write(self.schema.model_dump_json(indent=2))
+            self.save_schema_cache()
 
             logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")
             return self.schema
