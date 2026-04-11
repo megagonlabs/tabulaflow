@@ -954,6 +954,7 @@ April 9
 April 10
 - [x] Huggingface - fix bugs
 
+- [ ] Bug: Tool response mixed up when parallel called
 - [ ] Data browser
 - [ ] /reconnect
 - [ ] Semantic join - cross join
