@@ -401,19 +401,23 @@ async def load_hf_dataset(
     # is stable across sessions regardless of the user-chosen alias.
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
-    # Fetch dataset description (used for schema context).
-    hf_description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
-    description: str | None = None
-    if hf_description:
-        if len(hf_description) > 5000:
-            from mintq.preprocessors.components.text_summarizer import TextSummarizer
+    # Fetch dataset description only on schema cache miss.
+    from mintq.config import mintq_config
 
-            summarizer = TextSummarizer()
-            hf_description = await summarizer.summarize(hf_description)
-        description = (
-            f"Source: HuggingFace dataset {dataset_url}\n\n"
-            f"<readme>\n{hf_description}\n</readme>"
-        )
+    schema_cache_path = os.path.join(mintq_config.cache_dir, "schemas", f"{global_id}.json")
+    description: str | None = None
+    if not os.path.exists(schema_cache_path):
+        hf_description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
+        if hf_description:
+            if len(hf_description) > 5000:
+                from mintq.preprocessors.components.text_summarizer import TextSummarizer
+
+                summarizer = TextSummarizer()
+                hf_description = await summarizer.summarize(hf_description)
+            description = (
+                f"Source: HuggingFace dataset {dataset_url}\n\n"
+                f"<readme>\n{hf_description}\n</readme>"
+            )
 
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(
