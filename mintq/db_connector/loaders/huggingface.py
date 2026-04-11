@@ -411,7 +411,7 @@ async def load_hf_dataset(
     # Fetch dataset description for the agent.
     description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
     if description:
-        connector.db_description = (
+        connector.schema.description = (
             f"Source: HuggingFace dataset {dataset_url}\n\n"
             f"<readme>\n{description}\n</readme>"
         )

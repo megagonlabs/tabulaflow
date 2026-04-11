@@ -879,7 +879,6 @@ class SQLConnector:
     schema: SQLSchema
     language: SQLDialect
     _t_eng: ThrottledEngine
-    db_description: str | None = None
     read_only: bool = True
     enable_schema_caching: bool = True
     enable_query_caching: bool = False
@@ -1100,7 +1099,7 @@ class SQLConnector:
                 table.description = f"Imported from {os.path.basename(source_file)}"
 
         file_list = "\n".join(resolved)
-        connector.db_description = f"Source: local files\n\n{file_list}"
+        connector.schema.description = f"Source: local files\n\n{file_list}"
 
         return connector
 

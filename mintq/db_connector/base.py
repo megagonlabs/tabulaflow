@@ -8,7 +8,6 @@ class BaseSQLDBConnector(Protocol):
     global_id: str
     schema: SQLSchema
     language: SQLDialect
-    db_description: str | None
 
     def __init__(self, global_id: str, **kwargs: Any): ...
 
@@ -37,7 +36,6 @@ class BasePropertyGraphDBConnector(Protocol):
     global_id: str
     schema: PropertyGraphSchema
     language: NonSQLLanguage
-    db_description: str | None
 
     def __init__(self, global_id: str, **kwargs: Any): ...
 

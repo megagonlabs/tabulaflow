@@ -296,6 +296,7 @@ class PropertyGraphSchema(BaseModel):
     """Property-graph schema usable with any graph database."""
 
     name: str
+    description: str | None = None
     nodes: list[NodeSchema] = Field(default_factory=list)
     relationships: list[RelationshipSchema] = Field(default_factory=list)
 
@@ -451,6 +452,7 @@ class SQLSchema(BaseModel):
     name: str
     """Database name, or project name for BigQuery."""
     dialect: SQLDialect | None = None
+    description: str | None = None
     tables: list[SQLTableSchema]
 
     def num_total_columns(self) -> int:

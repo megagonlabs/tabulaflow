@@ -75,6 +75,8 @@ class SQLBasicSchemaFormatter:
         res = f"{name_label}: {schema.name}"
         if schema.dialect:
             res += f" (SQL Dialect: {schema.dialect})"
+        if schema.description:
+            res += f"\nDescription: {schema.description}"
         if not schema.tables:
             return f"{res}\n(database has no tables)"
         res += "\n\n"

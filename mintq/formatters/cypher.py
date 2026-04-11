@@ -41,9 +41,13 @@ class CypherSchemaFormatter:
         rel_lines = [self.format_relationship(r) for r in schema.relationships]
         rel_prop_lines = self._format_relationship_properties(schema.relationships)
 
+        header = f"Database: {schema.name} (Query Language: cypher)"
+        if schema.description:
+            header += f"\nDescription: {schema.description}"
+
         return "\n\n".join(
             [
-                f"Database: {schema.name} (Query Language: cypher)",
+                header,
                 _section("Node properties:", node_lines),
                 _section("The relationships:", rel_lines),
                 _section("Relationship properties:", rel_prop_lines),

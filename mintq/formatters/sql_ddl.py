@@ -109,6 +109,8 @@ class SQLDDLSchemaFormatter:
         lines = [f"-- {name_label}: {schema.name}"]
         if schema.dialect:
             lines.append(f"-- SQL Dialect: {schema.dialect}")
+        if schema.description:
+            lines.append(f"-- Description: {schema.description}")
         if not schema.tables:
             lines.append("-- (database has no tables)")
             return "\n".join(lines)

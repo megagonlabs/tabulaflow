@@ -29,12 +29,8 @@ The purpose of the summary is to help database experts explore the database and 
 _USER_PROMPT_MAX_CHARS = 400000
 
 
-def format_user_prompt(formatted_schema: str, db_description: str | None = None) -> str:
-    parts = ["Generate a summary for the following database:"]
-    if db_description:
-        parts.append(f"<db_description>\n{db_description}\n</db_description>")
-    parts.append(f"<schema>\n{formatted_schema}\n</schema>")
-    return "\n\n".join(parts)
+def format_user_prompt(formatted_schema: str) -> str:
+    return f"Generate a summary for the following database:\n\n<schema>\n{formatted_schema}\n</schema>"
 
 
 def truncate_user_prompt(user_prompt: str, max_chars: int = _USER_PROMPT_MAX_CHARS) -> str:
@@ -92,9 +88,8 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
                 return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
             if self.compressor is not None:
                 schema = self.compressor.compress(schema)
-            db_description = getattr(db_connector, "db_description", None)
             user_prompt = format_user_prompt(
-                self.sql_formatter.format(schema, add_description=True), db_description
+                self.sql_formatter.format(schema, add_description=True)
             )
         elif db_connector.connector_type == "property_graph":
             graph_schema = db_connector.schema
@@ -102,8 +97,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
                 return DBSummary(
                     db_summary_markdown=f"# Database: `{graph_schema.name}`\n\nThis graph database has no nodes or relationships."
                 )
-            db_description = getattr(db_connector, "db_description", None)
-            user_prompt = format_user_prompt(self.graph_formatter.format(graph_schema), db_description)
+            user_prompt = format_user_prompt(self.graph_formatter.format(graph_schema))
         else:
             raise TypeError(f"Unsupported connector type for DBSummarizer: {db_connector.connector_type!r}")
 

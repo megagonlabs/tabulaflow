@@ -77,7 +77,6 @@ class Neo4jConnector:
     _driver: neo4j.AsyncDriver
     _database: str | None
     _schema_name: str
-    db_description: str | None = None
     read_only: bool = True
     enable_schema_caching: bool = True
 
