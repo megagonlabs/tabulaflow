@@ -106,15 +106,17 @@ class SQLDDLSchemaFormatter:
     def format(self, schema: SQLSchema, pk_fk_column_only: bool = False, add_description: bool = False) -> str:
         self.set_dialect(schema.dialect)
         name_label = "Project" if schema.dialect == "bigquery" else "Database"
-        lines = [f"-- {name_label}: {schema.name}"]
+        metadata_lines = [f"**{name_label}:** `{schema.name}`"]
         if schema.dialect:
-            lines.append(f"-- SQL Dialect: {schema.dialect}")
+            metadata_lines.append(f"**SQL Dialect:** `{schema.dialect}`")
         if schema.description:
-            lines.append(f"-- Description: {schema.description}")
+            metadata_lines.append("**Description:**")
+            metadata_lines.append(f"```text\n{schema.description}\n```")
         if not schema.tables:
-            lines.append("-- (database has no tables)")
-            return "\n".join(lines)
+            metadata_lines.append("_(database has no tables)_")
+            return "\n".join(metadata_lines)
 
+        lines: list[str] = []
         quotas = self._compute_column_quotas(schema.tables)
         for table, max_columns in zip(schema.tables, quotas):
             lines.append("")  # Blank line between tables
@@ -128,7 +130,8 @@ class SQLDDLSchemaFormatter:
                 )
             )
 
-        return "```sql\n" + "\n".join(lines) + "\n```"
+        sql_block = "```sql\n" + "\n".join(lines) + "\n```"
+        return "\n".join(metadata_lines) + "\n\n" + sql_block
 
     def format_table(
         self,
