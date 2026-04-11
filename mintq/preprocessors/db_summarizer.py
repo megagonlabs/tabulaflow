@@ -30,7 +30,7 @@ _USER_PROMPT_MAX_CHARS = 400000
 
 
 def format_user_prompt(formatted_schema: str) -> str:
-    return f"Generate a summary for the following database:\n\n<schema>\n{formatted_schema}\n</schema>"
+    return f"Generate a summary for the following database:\n\n<db_schema>\n{formatted_schema}\n</db_schema>"
 
 
 def truncate_user_prompt(user_prompt: str, max_chars: int = _USER_PROMPT_MAX_CHARS) -> str:

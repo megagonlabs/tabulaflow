@@ -102,7 +102,7 @@ class RegistryGetDBDocumentTool:
             document = db_summary.db_summary_markdown
         else:
             schema_doc = self._format_direct_document(db_alias)
-            document = f"<schema>\n{schema_doc}\n</schema>"
+            document = f"<db_schema>\n{schema_doc}\n</db_schema>"
 
         self._document_cache[db_alias] = document
         return document
