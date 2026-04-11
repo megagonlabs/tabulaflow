@@ -87,13 +87,20 @@ def _format_size(n_bytes: int) -> str:
 
 
 def _fetch_hf_description(dataset_id: str) -> str | None:
-    """Fetch the dataset card description from HuggingFace Hub."""
-    try:
-        from huggingface_hub import dataset_info
+    """Fetch the full dataset README from HuggingFace Hub.
 
-        info = dataset_info(dataset_id)
-        desc = info.description
-        return desc.strip() if desc else None
+    Downloads the README.md file directly rather than using dataset_info(),
+    which returns a truncated description for large dataset cards.
+    """
+    try:
+        from huggingface_hub import hf_hub_download
+
+        path = hf_hub_download(dataset_id, "README.md", repo_type="dataset")
+        with open(path, encoding="utf-8") as f:
+            content = f.read()
+        # Strip YAML frontmatter.
+        content = re.sub(r"^---\n.*?\n---\n", "", content, flags=re.DOTALL).strip()
+        return content or None
     except Exception:
         return None
 
