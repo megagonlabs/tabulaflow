@@ -150,8 +150,8 @@ class ProgressSink(Protocol):
 
     def start(self) -> None: ...
     def finish(self) -> None: ...
-    def tool_start(self, name: str, args_summary: str) -> None: ...
-    def tool_end(self, name: str, result_summary: str) -> None: ...
+    def tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None: ...
+    def tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None: ...
     def tool_progress(self, completed: int, total: int) -> None: ...
     def text_delta(self, delta: str) -> None: ...
     def set_status(self, text: str) -> None: ...
@@ -465,15 +465,17 @@ def _handle_stream_event(
     from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
 
     if isinstance(event, FunctionToolCallEvent):
+        tool_call_id = event.tool_call_id
         tool_name = event.part.tool_name
         args = event.part.args
         args_summary = _summarize_args(tool_name, args)
-        progress.tool_start(tool_name, args_summary)
+        progress.tool_start(tool_call_id, tool_name, args_summary)
 
     elif isinstance(event, FunctionToolResultEvent):
+        tool_call_id = event.tool_call_id
         result_tool_name = event.result.tool_name or ""
         result_summary = _summarize_result(result_tool_name, query_history, get_table_schema_tool)
-        progress.tool_end(result_tool_name, result_summary)
+        progress.tool_end(tool_call_id, result_tool_name, result_summary)
 
     elif isinstance(event, PartDeltaEvent):
         if isinstance(event.delta, TextPartDelta):

@@ -294,7 +294,7 @@ class AgentProgressWidget(Widget):
 
     def __init__(self) -> None:
         super().__init__()
-        self._steps: list[tuple[str, str, str]] = []
+        self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
         self._streaming_text = ""
         self._raw_text = ""
         self._separator_seen = False
@@ -313,7 +313,7 @@ class AgentProgressWidget(Widget):
         parts: list[RenderableType] = []
 
         has_running = False
-        for status, _name, label in self._steps:
+        for status, _tool_call_id, _name, label in self._steps:
             if status == "running":
                 has_running = True
                 self._tool_spinner.text = Text(label, style="dim")
@@ -348,11 +348,11 @@ class AgentProgressWidget(Widget):
             self._timer = None
         self._refresh(layout=True)
 
-    def tool_start(self, name: str, args_summary: str) -> None:
+    def tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
         if self._status_text and self._status_text != "Thinking...":
-            self._steps.append(("done", "__status__", self._status_text))
+            self._steps.append(("done", "", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
-        self._steps.append(("running", name, label))
+        self._steps.append(("running", tool_call_id, name, label))
         self._streaming_text = ""
         self._status_text = None
         self._refresh(layout=True, scroll=True)
@@ -363,21 +363,21 @@ class AgentProgressWidget(Widget):
         self._tool_progress_pct = pct
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
-                base_label = self._steps[i][2].split(" → ")[0]
-                self._steps[i] = ("running", self._steps[i][1], f"{base_label} → {pct}%")
+                base_label = self._steps[i][3].split(" → ")[0]
+                self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {pct}%")
                 break
         self._refresh(layout=True, scroll=True)
 
-    def tool_end(self, name: str, result_summary: str) -> None:
+    def tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
         for i in range(len(self._steps) - 1, -1, -1):
-            if self._steps[i][0] == "running":
-                label = self._steps[i][2]
+            step = self._steps[i]
+            if step[0] == "running" and step[1] == tool_call_id:
+                label = step[3]
                 if self._tool_progress_pct is not None:
-                    # Already has "→ pct%"; update to final 100%
                     base_label = label.split(" → ")[0]
-                    self._steps[i] = ("done", self._steps[i][1], f"{base_label} → 100%")
+                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → 100%")
                 else:
-                    self._steps[i] = ("done", self._steps[i][1], f"{label} → {result_summary}")
+                    self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
                 break
         self._tool_progress_pct = None
         self._status_text = "Thinking..."
