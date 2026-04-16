@@ -38,7 +38,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _SLASH_COMMANDS = sorted(
-    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/model"]
+    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/browse", "/model"]
 )
 
 _CONNECTABLE_EXTENSIONS = frozenset(
@@ -1339,3 +1339,258 @@ class AgentResultWidget(Widget):
         if query_data is not None:
             query, lexer = query_data
             self.app.push_screen(QueryBrowserScreen(title=key, query=query, lexer=lexer))
+
+
+# ---------------------------------------------------------------------------
+# Schema browser screen
+# ---------------------------------------------------------------------------
+
+# Node data stored in Tree nodes to identify what each node represents.
+_NODE_KIND_DB = "db"
+_NODE_KIND_SCHEMA = "schema"
+_NODE_KIND_TABLE = "table"
+_NODE_KIND_COLUMN = "column"
+
+
+class _NodeData:
+    """Metadata attached to each Tree node."""
+
+    __slots__ = ("kind", "alias", "schema_name", "table_name")
+
+    def __init__(
+        self,
+        kind: str,
+        alias: str,
+        schema_name: str | None = None,
+        table_name: str | None = None,
+    ) -> None:
+        self.kind = kind
+        self.alias = alias
+        self.schema_name = schema_name
+        self.table_name = table_name
+
+
+class SchemaBrowserScreen(Screen[None]):
+    """Full-screen tree browser for exploring connected database schemas."""
+
+    DEFAULT_CSS = """
+    SchemaBrowserScreen {
+        background: $surface;
+    }
+
+    SchemaBrowserScreen #browse-tree {
+        height: 1fr;
+        margin: 0 1;
+        scrollbar-color: #666666;
+        scrollbar-color-hover: #3EB489;
+        scrollbar-color-active: #3EB489;
+        scrollbar-background: transparent;
+        scrollbar-background-hover: transparent;
+        scrollbar-background-active: transparent;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
+    SchemaBrowserScreen #browse-tree:focus > .tree--cursor {
+        background: #3EB489;
+        color: black;
+        text-style: bold;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--highlight {
+        background: #3EB489 30%;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--guides {
+        color: #555555;
+    }
+
+    SchemaBrowserScreen #browse-hint {
+        dock: bottom;
+        padding: 0 1;
+        color: #f5f5f5;
+        background: #2a2a2a;
+    }
+    """
+
+    BINDINGS = [
+        Binding("escape", "close_browser", "Back", show=True),
+    ]
+
+    def __init__(self, *, registry: object, alias: str | None = None) -> None:
+        super().__init__()
+        from mintq.db_connector.db_registry import DBRegistry
+
+        assert isinstance(registry, DBRegistry)
+        self._registry: DBRegistry = registry
+        self._filter_alias = alias
+        self._hint = Static(id="browse-hint")
+
+    def compose(self) -> ComposeResult:
+        from textual.widgets import Tree
+
+        tree: Tree[_NodeData] = Tree("Databases", id="browse-tree")
+        tree.show_root = False
+        tree.guide_depth = 3
+
+        yield tree
+        yield self._hint
+
+    def on_mount(self) -> None:
+        self._build_tree()
+        self._update_hint()
+        self.query_one("#browse-tree").focus()
+
+    # -- tree construction ---------------------------------------------------
+
+    def _build_tree(self) -> None:
+        from textual.widgets import Tree
+
+        from mintq.schema import SQLSchema, SQLTableSchema
+
+        tree = self.query_one("#browse-tree", Tree)
+
+        aliases = self._registry.list_aliases()
+        if self._filter_alias is not None:
+            aliases = [a for a in aliases if a == self._filter_alias]
+        aliases.sort()
+
+        for alias in aliases:
+            connector = self._registry.get(alias)
+            schema = connector.schema
+            if not isinstance(schema, SQLSchema):
+                continue
+
+            db_label = Text()
+            db_label.append(alias, style="bold")
+            dialect = schema.dialect or getattr(connector, "language", None)
+            if dialect:
+                db_label.append(f"  {dialect}", style="dim")
+
+            db_node = tree.root.add(
+                db_label,
+                data=_NodeData(kind=_NODE_KIND_DB, alias=alias),
+                expand=len(aliases) == 1,
+            )
+
+            tables: list[SQLTableSchema] = list(schema.tables)
+            schema_names: set[str | None] = {t.schema_name for t in tables}
+            has_schemas = schema_names != {None}
+
+            if has_schemas:
+                groups: dict[str | None, list[SQLTableSchema]] = {}
+                for t in tables:
+                    groups.setdefault(t.schema_name, []).append(t)
+                for sn in sorted(groups, key=lambda s: (s is None, s or "")):
+                    sn_label = Text()
+                    sn_label.append(sn or "(default)", style="bold")
+                    sn_label.append(f"  {len(groups[sn])} tables", style="dim")
+                    schema_node = db_node.add(
+                        sn_label,
+                        data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
+                    )
+                    for t in sorted(groups[sn], key=lambda t: t.name):
+                        self._add_table_node(schema_node, alias, t)
+            else:
+                for t in sorted(tables, key=lambda t: t.name):
+                    self._add_table_node(db_node, alias, t)
+
+    @staticmethod
+    def _add_table_node(parent: object, alias: str, table: object) -> None:
+        from typing import Any
+
+        from mintq.schema import SQLTableSchema
+
+        assert isinstance(table, SQLTableSchema)
+        parent_node: Any = parent
+
+        t_label = Text()
+        t_label.append(table.name)
+        parts: list[str] = []
+        if table.num_rows is not None:
+            parts.append(f"{table.num_rows:,} rows")
+        parts.append(f"{len(table.columns)} cols")
+        if table.is_view:
+            parts.append("view")
+        t_label.append(f"  {', '.join(parts)}", style="dim")
+
+        table_node = parent_node.add(
+            t_label,
+            data=_NodeData(
+                kind=_NODE_KIND_TABLE,
+                alias=alias,
+                schema_name=table.schema_name,
+                table_name=table.name,
+            ),
+        )
+
+        for col in table.columns:
+            c_label = Text()
+            c_label.append(col.name)
+            c_label.append(f"  {col.dtype}", style="dim")
+            if col.primary_key_type:
+                c_label.append(" PK", style="bold #e6c07b")
+            if col.foreign_keys:
+                c_label.append(" FK", style="#61afef")
+            table_node.add_leaf(c_label, data=None)
+
+    # -- open table preview on Enter -----------------------------------------
+
+    def on_tree_node_selected(self, event: object) -> None:
+        """Open DataBrowserScreen when a table node is selected (Enter)."""
+        from textual.widgets import Tree
+
+        assert isinstance(event, Tree.NodeSelected)
+        node_data: _NodeData | None = event.node.data
+        if node_data is None or node_data.kind != _NODE_KIND_TABLE:
+            return
+        self.run_worker(self._open_table_preview(node_data), exclusive=True, group="preview")
+
+    async def _open_table_preview(self, data: _NodeData) -> None:
+        import pandas as pd
+        from sqlalchemy import select, table as sa_table, column as sa_column
+
+        assert data.table_name is not None
+        connector = self._registry.get(data.alias)
+
+        tbl = sa_table(data.table_name, sa_column("*"), schema=data.schema_name)
+        stmt = select("*").select_from(tbl).limit(100)
+
+        title = f"{data.alias}: {data.schema_name}.{data.table_name}" if data.schema_name else f"{data.alias}: {data.table_name}"
+
+        try:
+            result = await connector.run_query_async(stmt)  # type: ignore[arg-type]
+            df: pd.DataFrame | None = getattr(result, "df", None)
+            if df is None:
+                raw = getattr(result, "result", None)
+                if isinstance(raw, pd.DataFrame):
+                    df = raw
+        except Exception:
+            return
+
+        if df is None or df.empty:
+            return
+
+        self.app.push_screen(DataBrowserScreen(title=title, df=df))
+
+    # -- actions & hints -----------------------------------------------------
+
+    def action_close_browser(self) -> None:
+        self.dismiss()
+
+    def _update_hint(self) -> None:
+        hint_fg = "dim"
+        segments: list[tuple[str, str]] = [
+            ("Esc", ACCENT_BOLD),
+            (" Back    ", hint_fg),
+            ("Enter", ACCENT_BOLD),
+            (" Preview table", hint_fg),
+        ]
+        hint = Text()
+        for text, style in segments:
+            hint.append(text, style=style)
+        self._hint.update(hint)

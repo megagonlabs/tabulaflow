@@ -39,6 +39,9 @@ _DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", 
 class CommandResult:
     """Result of a slash command execution."""
 
+    # Sentinel: open the data browser. ``True`` = all DBs, ``str`` = single alias.
+    BROWSE_ALL: object = object()
+
     def __init__(
         self,
         *,
@@ -46,11 +49,13 @@ class CommandResult:
         should_quit: bool = False,
         should_clear: bool = False,
         password_prompt: str | None = None,
+        browse: object | str | None = None,
     ) -> None:
         self.output = output
         self.should_quit = should_quit
         self.should_clear = should_clear
         self.password_prompt = password_prompt
+        self.browse = browse
 
 
 # ---------------------------------------------------------------------------
@@ -614,6 +619,18 @@ async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
     return CommandResult(output=Text.from_markup(f"[{ACCENT}]✓[/{ACCENT}] Model set to [bold]{session.model}[/bold]"))
 
 
+async def _cmd_browse(args: list[str], session: SessionState) -> CommandResult:
+    aliases = session.registry.list_aliases()
+    if not aliases:
+        return CommandResult(output=Text("No databases connected. Use /connect first.", style="red"))
+    if args:
+        alias = args[0]
+        if alias not in aliases:
+            return CommandResult(output=Text(f"Unknown alias: {alias}", style="red"))
+        return CommandResult(browse=alias)
+    return CommandResult(browse=CommandResult.BROWSE_ALL)
+
+
 _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/help": (_cmd_help, "Show this help message"),
     "/exit": (_cmd_exit, "Exit the chat"),
@@ -623,6 +640,7 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
     "/schema": (_cmd_schema, "Show schema: /schema \\[alias] \\[table] \\[column]"),
+    "/browse": (_cmd_browse, "Browse data: /browse \\[alias]"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
 }
 

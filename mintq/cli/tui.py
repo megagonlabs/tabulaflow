@@ -637,6 +637,13 @@ LIMIT 4000"""
             chat_log.mount(BannerWidget(model=session.model))
             return
 
+        if result.browse is not None:
+            from mintq.cli.widgets import SchemaBrowserScreen
+
+            alias = result.browse if isinstance(result.browse, str) else None
+            self.push_screen(SchemaBrowserScreen(registry=session.registry, alias=alias))
+            return
+
         if result.output is not None:
             msg = SystemMessage(result.output)
             chat_log.mount(msg)
