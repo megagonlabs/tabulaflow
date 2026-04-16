@@ -300,7 +300,7 @@ class AgentProgressWidget(Widget):
         self._separator_seen = False
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
-        self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style=ACCENT)
+        self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
         self._tool_spinner = Spinner("dots", style="dim")
         self._tool_progress_pct: int | None = None
         self._frozen = False
