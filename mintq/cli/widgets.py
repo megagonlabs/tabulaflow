@@ -1490,10 +1490,11 @@ class SchemaBrowserScreen(Screen[None]):
             if dialect:
                 db_label.append(f"  {dialect}", style="dim")
 
+            auto_expand = alias != "workspace"
             db_node = tree.root.add(
                 db_label,
                 data=_NodeData(kind=_NODE_KIND_DB, alias=alias),
-                expand=len(aliases) == 1,
+                expand=auto_expand,
             )
 
             tables: list[SQLTableSchema] = list(schema.tables)
@@ -1511,6 +1512,7 @@ class SchemaBrowserScreen(Screen[None]):
                     schema_node = db_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
+                        expand=auto_expand,
                     )
                     for t in sorted(groups[sn], key=lambda t: t.name):
                         self._add_table_node(schema_node, alias, t)
