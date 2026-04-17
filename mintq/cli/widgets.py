@@ -1453,6 +1453,7 @@ class SchemaBrowserScreen(Screen[None]):
         tree: Tree[_NodeData] = Tree("Databases", id="browse-tree")
         tree.show_root = False
         tree.guide_depth = 3
+        tree.auto_expand = False
 
         yield tree
         yield self._hint
