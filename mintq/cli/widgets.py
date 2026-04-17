@@ -1410,12 +1410,13 @@ class SchemaBrowserScreen(Screen[None]):
 
     DEFAULT_CSS = """
     SchemaBrowserScreen {
-        background: $surface;
+        background: $background;
     }
 
     SchemaBrowserScreen #browse-tree {
         height: 1fr;
-        margin: 0 1;
+        padding: 1 2;
+        background: $background;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
         scrollbar-color-active: #3EB489;
@@ -1462,7 +1463,7 @@ class SchemaBrowserScreen(Screen[None]):
 
     SchemaBrowserScreen #browse-hint {
         dock: bottom;
-        padding: 0 1;
+        padding: 0 2;
         color: #f5f5f5;
         background: #2a2a2a;
     }
