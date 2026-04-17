@@ -1402,10 +1402,26 @@ class SchemaBrowserScreen(Screen[None]):
     }
 
     SchemaBrowserScreen #browse-tree > .tree--highlight {
-        background: #3EB489 30%;
+        background: transparent;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--highlight-line {
+        background: transparent;
     }
 
     SchemaBrowserScreen #browse-tree > .tree--guides {
+        color: #555555;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--guides-hover {
+        color: #555555;
+    }
+
+    SchemaBrowserScreen #browse-tree > .tree--guides-selected {
+        color: #555555;
+    }
+
+    SchemaBrowserScreen #browse-tree:focus > .tree--guides-selected {
         color: #555555;
     }
 
@@ -1419,6 +1435,7 @@ class SchemaBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
+        Binding("enter", "open_preview", "Preview table", show=False),
     ]
 
     def __init__(self, *, registry: object, alias: str | None = None) -> None:
@@ -1540,15 +1557,20 @@ class SchemaBrowserScreen(Screen[None]):
 
     # -- open table preview on Enter -----------------------------------------
 
-    def on_tree_node_selected(self, event: object) -> None:
-        """Open DataBrowserScreen when a table node is selected (Enter)."""
+    def action_open_preview(self) -> None:
+        """Open DataBrowserScreen for the table under the cursor, or toggle the node."""
         from textual.widgets import Tree
 
-        assert isinstance(event, Tree.NodeSelected)
-        node_data: _NodeData | None = event.node.data
-        if node_data is None or node_data.kind != _NODE_KIND_TABLE:
+        tree = self.query_one("#browse-tree", Tree)
+        try:
+            node = tree._tree_lines[tree.cursor_line].path[-1]
+        except (IndexError, AttributeError):
             return
-        self.run_worker(self._open_table_preview(node_data), exclusive=True, group="preview")
+        node_data: _NodeData | None = node.data
+        if node_data is not None and node_data.kind == _NODE_KIND_TABLE:
+            self.run_worker(self._open_table_preview(node_data), exclusive=True, group="preview")
+        else:
+            node.toggle()
 
     async def _open_table_preview(self, data: _NodeData) -> None:
         import pandas as pd
