@@ -808,6 +808,23 @@ class CellBrowserScreen(Screen[None]):
     _SQL_RE = re.compile(r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b", re.IGNORECASE)
     _PY_RE = re.compile(r"^\s*(def |class |import |from |if __name__)")
 
+    _MAX_JSON_LEAF = 1000
+
+    @staticmethod
+    def _truncate_json_leaves(obj: object, max_len: int) -> object:
+        """Recursively truncate long string/bytes leaves in a JSON-like structure."""
+        if isinstance(obj, dict):
+            return {k: CellBrowserScreen._truncate_json_leaves(v, max_len) for k, v in obj.items()}
+        if isinstance(obj, list):
+            return [CellBrowserScreen._truncate_json_leaves(v, max_len) for v in obj]
+        if isinstance(obj, (bytes, bytearray)):
+            if len(obj) > max_len:
+                return f"<binary: {len(obj):,} bytes>"
+            return obj.hex(" ")
+        if isinstance(obj, str) and len(obj) > max_len:
+            return obj[:max_len] + f"... ({len(obj):,} chars)"
+        return obj
+
     @staticmethod
     def _try_as_json(value: object) -> str | None:
         """Try to pretty-print value as JSON. Returns formatted string or None."""
@@ -830,6 +847,7 @@ class CellBrowserScreen(Screen[None]):
                 return None
         else:
             return None
+        obj = CellBrowserScreen._truncate_json_leaves(obj, CellBrowserScreen._MAX_JSON_LEAF)
         return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
 
     _MAX_CELL_DISPLAY = 10000
