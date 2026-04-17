@@ -242,8 +242,8 @@ def _build_sample_columns(conn: duckdb.DuckDBPyConnection, source: str) -> str:
     for name, dtype, *_ in cols:
         quoted = f'"{name}"'
         if _dtype_has_blob(dtype):
-            parts.append(f"NULL AS {quoted}")
-            logger.info("Nulling BLOB column '%s' (%s) in sample", name, dtype)
+            parts.append(f"'<binary: skipped>' AS {quoted}")
+            logger.info("Skipping BLOB column '%s' (%s) in sample", name, dtype)
         else:
             parts.append(quoted)
     return ", ".join(parts) if parts else "*"
