@@ -954,7 +954,13 @@ April 9
 April 10
 - [x] Huggingface - fix bugs
 
-- [ ] Bug: Tool response mixed up when parallel called
+April 16
+- [x] Fix bug: Tool response mixed up when parallel called
+- [x] Schema browser
+- [x] Fix cell browser crash on large content
+
+
+- [ ] Huggingface: fallback to datasets
 - [ ] Data browser
 - [ ] /reconnect
 - [ ] Semantic join - cross join
