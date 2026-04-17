@@ -832,6 +832,8 @@ class CellBrowserScreen(Screen[None]):
             return None
         return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
 
+    _MAX_CELL_DISPLAY = 10000
+
     @staticmethod
     def _format_value(value: object) -> tuple[str, str | None]:
         """Return (display_text, language) for the cell value."""
@@ -843,15 +845,28 @@ class CellBrowserScreen(Screen[None]):
         except (TypeError, ValueError):
             pass
 
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            raw = bytes(value)
+            preview = raw[:32].hex(" ")
+            return f"<binary: {len(raw):,} bytes>\n{preview} ...", None
+
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
+            if len(json_str) > CellBrowserScreen._MAX_CELL_DISPLAY:
+                json_str = json_str[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(json_str):,} chars total, truncated)"
             return json_str, "json"
 
         s = str(value)
         if CellBrowserScreen._SQL_RE.match(s):
+            if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
+                s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "sql"
         if CellBrowserScreen._PY_RE.match(s):
+            if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
+                s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "python"
+        if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
+            s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
         return s, None
 
     def compose(self) -> ComposeResult:
