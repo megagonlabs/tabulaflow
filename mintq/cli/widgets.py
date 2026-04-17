@@ -502,6 +502,7 @@ class DataBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
+        Binding("f", "open_cell", "View cell"),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
     ]
@@ -642,7 +643,7 @@ class DataBrowserScreen(Screen[None]):
         hint_segments: list[tuple[str, str]] = [
             ("Esc", ACCENT_BOLD),
             (" Back    ", hint_fg),
-            ("Enter", ACCENT_BOLD),
+            ("F", ACCENT_BOLD),
             (" View Cell    ", hint_fg),
             ("[", ACCENT_BOLD),
             (" Prev Page    ", hint_fg),
@@ -660,9 +661,8 @@ class DataBrowserScreen(Screen[None]):
             self._update_status()
 
     def on_data_table_cell_selected(self, event: DataTable.CellSelected) -> None:
-        """Open cell value browser on Enter."""
-        if event.data_table is self._table:
-            self.action_open_cell()
+        """Suppress default Enter behavior on cells."""
+        event.stop()
 
     def on_data_table_header_selected(self, event: DataTable.HeaderSelected) -> None:
         """Sort when user clicks a header cell."""
@@ -1130,7 +1130,7 @@ class AgentResultWidget(Widget):
         if current_key in self._chart_views or current_key in self._data_views or current_key in self._query_views:
             if hint:
                 hint.append("    ")
-            hint.append("Enter", style=ACCENT_BOLD)
+            hint.append("F", style=ACCENT_BOLD)
             hint.append(" Full Screen", style="dim")
         if hint:
             hint.append("    ")
@@ -1286,7 +1286,7 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
-        ("enter", "open_full_screen", "Full screen"),
+        ("f", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
         ("k", "focus_prev_result", "Previous result"),
@@ -1435,7 +1435,7 @@ class SchemaBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("enter", "open_preview", "Preview table", show=False),
+        Binding("f", "open_preview", "Preview table", show=False),
     ]
 
     def __init__(self, *, registry: object, alias: str | None = None) -> None:
@@ -1558,7 +1558,7 @@ class SchemaBrowserScreen(Screen[None]):
     # -- open table preview on Enter -----------------------------------------
 
     def action_open_preview(self) -> None:
-        """Open DataBrowserScreen for the table under the cursor, or toggle the node."""
+        """Open DataBrowserScreen for the table under the cursor."""
         from textual.widgets import Tree
 
         tree = self.query_one("#browse-tree", Tree)
@@ -1569,8 +1569,6 @@ class SchemaBrowserScreen(Screen[None]):
         node_data: _NodeData | None = node.data
         if node_data is not None and node_data.kind == _NODE_KIND_TABLE:
             self.run_worker(self._open_table_preview(node_data), exclusive=True, group="preview")
-        else:
-            node.toggle()
 
     async def _open_table_preview(self, data: _NodeData) -> None:
         import pandas as pd
@@ -1609,7 +1607,7 @@ class SchemaBrowserScreen(Screen[None]):
         segments: list[tuple[str, str]] = [
             ("Esc", ACCENT_BOLD),
             (" Back    ", hint_fg),
-            ("Enter", ACCENT_BOLD),
+            ("F", ACCENT_BOLD),
             (" Preview table", hint_fg),
         ]
         hint = Text()
