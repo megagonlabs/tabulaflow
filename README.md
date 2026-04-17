@@ -960,6 +960,7 @@ April 16
 - [x] Fix cell browser crash on large content
 
 
+- [ ] Switch to parquet
 - [ ] Huggingface: fallback to datasets
 - [ ] Support images in huggingface datasets
 - [ ] Data browser
