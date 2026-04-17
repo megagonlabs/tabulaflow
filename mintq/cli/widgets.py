@@ -1558,8 +1558,10 @@ class SchemaBrowserScreen(Screen[None]):
     # -- open table preview on Enter -----------------------------------------
 
     def action_open_preview(self) -> None:
-        """Open DataBrowserScreen for the table under the cursor."""
+        """Open DataBrowserScreen for the table under the cursor using sampled_df."""
         from textual.widgets import Tree
+
+        from mintq.schema import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:
@@ -1567,35 +1569,25 @@ class SchemaBrowserScreen(Screen[None]):
         except (IndexError, AttributeError):
             return
         node_data: _NodeData | None = node.data
-        if node_data is not None and node_data.kind == _NODE_KIND_TABLE:
-            self.run_worker(self._open_table_preview(node_data), exclusive=True, group="preview")
-
-    async def _open_table_preview(self, data: _NodeData) -> None:
-        import pandas as pd
-        from sqlalchemy import select, table as sa_table, column as sa_column
-
-        assert data.table_name is not None
-        connector = self._registry.get(data.alias)
-
-        tbl = sa_table(data.table_name, sa_column("*"), schema=data.schema_name)
-        stmt = select("*").select_from(tbl).limit(100)
-
-        title = f"{data.alias}: {data.schema_name}.{data.table_name}" if data.schema_name else f"{data.alias}: {data.table_name}"
-
-        try:
-            result = await connector.run_query_async(stmt)  # type: ignore[arg-type]
-            df: pd.DataFrame | None = getattr(result, "df", None)
-            if df is None:
-                raw = getattr(result, "result", None)
-                if isinstance(raw, pd.DataFrame):
-                    df = raw
-        except Exception:
+        if node_data is None or node_data.kind != _NODE_KIND_TABLE:
             return
 
-        if df is None or df.empty:
+        connector = self._registry.get(node_data.alias)
+        schema = connector.schema
+        assert isinstance(schema, SQLSchema)
+        table = next(
+            (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
+            None,
+        )
+        if table is None or table.sampled_df is None or table.sampled_df.empty:
             return
 
-        self.app.push_screen(DataBrowserScreen(title=title, df=df))
+        title = (
+            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name}"
+            if node_data.schema_name
+            else f"{node_data.alias}: {node_data.table_name}"
+        )
+        self.app.push_screen(DataBrowserScreen(title=title, df=table.sampled_df))
 
     # -- actions & hints -----------------------------------------------------
 
