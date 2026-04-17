@@ -331,8 +331,12 @@ async def load_schema_with_cache_async(
         if description:
             schema.description = description
         if enable_schema_caching and mintq_config.schema_cache_enabled and schema.tables:
-            with open(cache_path, "w", encoding="utf-8") as f:
-                f.write(schema.model_dump_json(indent=2))
+
+            def _write_cache() -> None:
+                with open(cache_path, "w", encoding="utf-8") as f:
+                    f.write(schema.model_dump_json(indent=2))
+
+            await asyncio.to_thread(_write_cache)
         return schema
 
 
