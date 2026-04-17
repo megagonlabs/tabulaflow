@@ -340,6 +340,70 @@ def _try_cache(db_path: str) -> list[str] | None:
     return None
 
 
+def _load_hf_via_datasets_lib(
+    dataset_id: str,
+    subset: str | None,
+    split_filter: str | None,
+    cache_dir: str,
+) -> tuple[str, list[str]]:
+    """Fallback loader using the ``datasets`` library for datasets not indexed
+    by the HuggingFace datasets-server (e.g. those with custom loading scripts).
+
+    Downloads via ``datasets.load_dataset()``, exports each split to parquet,
+    and loads them into DuckDB.
+
+    Returns:
+        A tuple of (db_path, table_names).
+    """
+    import tempfile
+
+    import datasets as ds
+
+    logger.info(
+        "Falling back to datasets library for '%s' (not available via datasets-server)",
+        dataset_id,
+    )
+
+    kwargs: dict[str, Any] = {}
+    if subset is not None:
+        kwargs["name"] = subset
+    if split_filter is not None:
+        kwargs["split"] = split_filter
+
+    loaded = ds.load_dataset(dataset_id, **kwargs)
+
+    # Normalise to a dict of splits.
+    if isinstance(loaded, ds.DatasetDict):
+        split_dict: dict[str, ds.Dataset] = dict(loaded)
+    else:
+        # Single split returned when split_filter is specified.
+        split_name = split_filter or "data"
+        split_dict = {split_name: loaded}
+
+    config_label = subset or "default"
+    db_file = _db_path(cache_dir, dataset_id, config_label, split_filter)
+    conn = _init_duckdb(db_file)
+
+    table_names: list[str] = []
+    try:
+        with tempfile.TemporaryDirectory() as tmpdir:
+            for split_name, split_ds in sorted(split_dict.items()):
+                base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
+                parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
+                split_ds.to_parquet(parquet_path)
+
+                source = f"read_parquet('{parquet_path}')"
+                columns = _build_sample_columns(conn, source)
+                sql = f'CREATE TABLE "{base_name}" AS SELECT {columns} FROM {source}'
+                logger.info("Creating TABLE '%s' from datasets library", base_name)
+                conn.execute(sql)
+                table_names.append(base_name)
+    finally:
+        conn.close()
+
+    return db_file, table_names
+
+
 def _load_hf_into_duckdb(
     dataset_id: str,
     subset: str | None,
@@ -350,6 +414,9 @@ def _load_hf_into_duckdb(
     Discovery (config resolution, split listing, size estimation) uses the
     HuggingFace datasets-server API to avoid DuckDB HTTP HEAD requests that
     trigger 429 rate limiting.  Only the final table/view creation uses DuckDB.
+
+    Falls back to the ``datasets`` library when the datasets-server API is
+    unavailable (e.g. for datasets with custom loading scripts).
 
     Returns:
         A tuple of (db_path, table_names).
@@ -368,8 +435,12 @@ def _load_hf_into_duckdb(
         return db_path, cached
 
     # Cache miss — resolve config and discover splits via API.
-    config = _resolve_config(dataset_id, subset)
-    split_sizes = _discover_splits_and_size(dataset_id, config)
+    try:
+        config = _resolve_config(dataset_id, subset)
+        split_sizes = _discover_splits_and_size(dataset_id, config)
+    except ValueError:
+        # datasets-server unavailable — fall back to datasets library.
+        return _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
 
     if split_filter:
         if split_filter not in split_sizes:
