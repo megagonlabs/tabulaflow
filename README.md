@@ -961,6 +961,7 @@ April 16
 
 
 - [ ] Huggingface: fallback to datasets
+- [ ] Support images in huggingface datasets
 - [ ] Data browser
 - [ ] /reconnect
 - [ ] Semantic join - cross join
