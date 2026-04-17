@@ -1461,6 +1461,15 @@ class SchemaBrowserScreen(Screen[None]):
         color: #555555;
     }
 
+    SchemaBrowserScreen .schema-browser-status {
+        padding: 0 2;
+        color: #f5f5f5;
+    }
+
+    SchemaBrowserScreen .schema-browser-gap {
+        height: 1;
+    }
+
     SchemaBrowserScreen #browse-hint {
         dock: bottom;
         padding: 0 2;
@@ -1483,6 +1492,8 @@ class SchemaBrowserScreen(Screen[None]):
         assert isinstance(registry, DBRegistry)
         self._registry: DBRegistry = registry
         self._filter_alias = alias
+        self._status = Static(classes="schema-browser-status")
+        self._gap = Static(classes="schema-browser-gap")
         self._hint = Static(id="browse-hint")
 
     def compose(self) -> ComposeResult:
@@ -1494,10 +1505,13 @@ class SchemaBrowserScreen(Screen[None]):
         tree.auto_expand = False
 
         yield tree
+        yield self._status
+        yield self._gap
         yield self._hint
 
     def on_mount(self) -> None:
         self._build_tree()
+        self._update_status()
         self._update_hint()
         self.query_one("#browse-tree").focus()
 
@@ -1545,7 +1559,6 @@ class SchemaBrowserScreen(Screen[None]):
                 for sn in sorted(groups, key=lambda s: (s is None, s or "")):
                     sn_label = Text()
                     sn_label.append(sn or "(default)", style="bold")
-                    sn_label.append(f"  {len(groups[sn])} tables", style="dim")
                     schema_node = db_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
@@ -1568,13 +1581,8 @@ class SchemaBrowserScreen(Screen[None]):
 
         t_label = Text()
         t_label.append(table.name)
-        parts: list[str] = []
-        if table.num_rows is not None:
-            parts.append(f"{table.num_rows:,} rows")
-        parts.append(f"{len(table.columns)} cols")
         if table.is_view:
-            parts.append("view")
-        t_label.append(f"  {', '.join(parts)}", style="dim")
+            t_label.append("  view", style="dim")
 
         table_node = parent_node.add(
             t_label,
@@ -1594,7 +1602,15 @@ class SchemaBrowserScreen(Screen[None]):
                 c_label.append(" PK", style="bold #e6c07b")
             if col.foreign_keys:
                 c_label.append(" FK", style="#61afef")
-            table_node.add_leaf(c_label, data=None)
+            table_node.add_leaf(
+                c_label,
+                data=_NodeData(
+                    kind=_NODE_KIND_COLUMN,
+                    alias=alias,
+                    schema_name=table.schema_name,
+                    table_name=table.name,
+                ),
+            )
 
     # -- actions --------------------------------------------------------------
 
@@ -1658,7 +1674,8 @@ class SchemaBrowserScreen(Screen[None]):
         node.expand()
 
     def on_tree_node_highlighted(self, event: object) -> None:
-        """Update hint bar when cursor moves."""
+        """Update hint and status bars when cursor moves."""
+        self._update_status()
         self._update_hint()
 
     def _cursor_has_preview(self) -> bool:
@@ -1684,6 +1701,66 @@ class SchemaBrowserScreen(Screen[None]):
             None,
         )
         return table is not None and table.sampled_df is not None and not table.sampled_df.empty
+
+    def _update_status(self) -> None:
+        """Update the status bar with table/column/row counts for the highlighted scope."""
+        from textual.widgets import Tree
+
+        from mintq.schema import SQLSchema
+
+        tree = self.query_one("#browse-tree", Tree)
+        try:
+            node = tree._tree_lines[tree.cursor_line].path[-1]
+        except (IndexError, AttributeError):
+            self._status.update(Text(""))
+            return
+
+        node_data: _NodeData | None = node.data
+        if node_data is None:
+            self._status.update(Text(""))
+            return
+
+        parts: list[str] = []
+        connector = self._registry.get(node_data.alias)
+        schema = connector.schema
+        if not isinstance(schema, SQLSchema):
+            self._status.update(Text(""))
+            return
+
+        if node_data.kind == _NODE_KIND_DB:
+            tables = list(schema.tables)
+            parts.append(node_data.alias)
+            parts.append(f"{len(tables):,} tables")
+
+        elif node_data.kind == _NODE_KIND_SCHEMA:
+            tables = [t for t in schema.tables if t.schema_name == node_data.schema_name]
+            path = f"{node_data.alias} > {node_data.schema_name or '(default)'}"
+            parts.append(path)
+            parts.append(f"{len(tables):,} tables")
+
+        elif node_data.kind in (_NODE_KIND_TABLE, _NODE_KIND_COLUMN):
+            table = next(
+                (
+                    t
+                    for t in schema.tables
+                    if t.name == node_data.table_name and t.schema_name == node_data.schema_name
+                ),
+                None,
+            )
+            if table:
+                if node_data.schema_name:
+                    path = f"{node_data.alias} > {node_data.schema_name}.{node_data.table_name}"
+                else:
+                    path = f"{node_data.alias} > {node_data.table_name}"
+                parts.append(path)
+                parts.append(f"{len(table.columns):,} columns")
+                if table.num_rows is not None:
+                    parts.append(f"{table.num_rows:,} rows")
+
+        if parts:
+            self._status.update(Text("  |  ".join(parts), style="dim"))
+        else:
+            self._status.update(Text(""))
 
     def _update_hint(self) -> None:
         hint_fg = "dim"
