@@ -502,7 +502,7 @@ class DataBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("f", "open_cell", "View cell"),
+        Binding("enter", "open_cell", "View cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
     ]
@@ -643,7 +643,7 @@ class DataBrowserScreen(Screen[None]):
         hint_segments: list[tuple[str, str]] = [
             ("Esc", ACCENT_BOLD),
             (" Back    ", hint_fg),
-            ("F", ACCENT_BOLD),
+            ("Enter", ACCENT_BOLD),
             (" View Cell    ", hint_fg),
             ("[", ACCENT_BOLD),
             (" Prev Page    ", hint_fg),
@@ -1130,7 +1130,7 @@ class AgentResultWidget(Widget):
         if current_key in self._chart_views or current_key in self._data_views or current_key in self._query_views:
             if hint:
                 hint.append("    ")
-            hint.append("F", style=ACCENT_BOLD)
+            hint.append("Enter", style=ACCENT_BOLD)
             hint.append(" Full Screen", style="dim")
         if hint:
             hint.append("    ")
@@ -1286,7 +1286,7 @@ class AgentResultWidget(Widget):
         ("left", "prev_tab", "Previous tab"),
         ("tab", "next_tab", "Next tab"),
         ("shift+tab", "prev_tab", "Previous tab"),
-        ("f", "open_full_screen", "Full screen"),
+        ("enter", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
         ("k", "focus_prev_result", "Previous result"),
@@ -1435,8 +1435,9 @@ class SchemaBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("enter", "toggle_cursor_node", "Expand/Collapse", show=False, priority=True),
-        Binding("f", "open_preview", "Preview table", show=False),
+        Binding("left", "collapse_node", "Collapse", show=False, priority=True),
+        Binding("right", "expand_node", "Expand", show=False, priority=True),
+        Binding("enter", "open_preview", "Preview table", show=False, priority=True),
     ]
 
     def __init__(self, *, registry: object, alias: str | None = None) -> None:
@@ -1559,7 +1560,7 @@ class SchemaBrowserScreen(Screen[None]):
                 c_label.append(" FK", style="#61afef")
             table_node.add_leaf(c_label, data=None)
 
-    # -- open table preview on Enter -----------------------------------------
+    # -- actions --------------------------------------------------------------
 
     def action_open_preview(self) -> None:
         """Open DataBrowserScreen for the table under the cursor using sampled_df."""
@@ -1598,8 +1599,8 @@ class SchemaBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
-    def action_toggle_cursor_node(self) -> None:
-        """Toggle expand/collapse on the cursor node."""
+    def action_collapse_node(self) -> None:
+        """Collapse the cursor node."""
         from textual.widgets import Tree
 
         tree = self.query_one("#browse-tree", Tree)
@@ -1607,7 +1608,18 @@ class SchemaBrowserScreen(Screen[None]):
             node = tree._tree_lines[tree.cursor_line].path[-1]
         except (IndexError, AttributeError):
             return
-        node.toggle()
+        node.collapse()
+
+    def action_expand_node(self) -> None:
+        """Expand the cursor node."""
+        from textual.widgets import Tree
+
+        tree = self.query_one("#browse-tree", Tree)
+        try:
+            node = tree._tree_lines[tree.cursor_line].path[-1]
+        except (IndexError, AttributeError):
+            return
+        node.expand()
 
     def on_tree_node_highlighted(self, event: object) -> None:
         """Update hint bar when cursor moves."""
@@ -1644,6 +1656,6 @@ class SchemaBrowserScreen(Screen[None]):
         hint.append(" Back", style=hint_fg)
         if self._cursor_has_preview():
             hint.append("    ", style=hint_fg)
-            hint.append("F", style=ACCENT_BOLD)
+            hint.append("Enter", style=ACCENT_BOLD)
             hint.append(" Preview table", style=hint_fg)
         self._hint.update(hint)
