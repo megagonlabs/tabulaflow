@@ -1435,6 +1435,7 @@ class SchemaBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
+        Binding("enter", "toggle_cursor_node", "Expand/Collapse", show=False, priority=True),
         Binding("f", "open_preview", "Preview table", show=False),
     ]
 
@@ -1594,6 +1595,17 @@ class SchemaBrowserScreen(Screen[None]):
 
     def action_close_browser(self) -> None:
         self.dismiss()
+
+    def action_toggle_cursor_node(self) -> None:
+        """Toggle expand/collapse on the cursor node."""
+        from textual.widgets import Tree
+
+        tree = self.query_one("#browse-tree", Tree)
+        try:
+            node = tree._tree_lines[tree.cursor_line].path[-1]
+        except (IndexError, AttributeError):
+            return
+        node.toggle()
 
     def on_tree_node_highlighted(self, event: object) -> None:
         """Update hint bar when cursor moves."""
