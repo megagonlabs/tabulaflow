@@ -1621,9 +1621,9 @@ class SchemaBrowserScreen(Screen[None]):
             return
 
         title = (
-            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name}"
+            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} (preview)"
             if node_data.schema_name
-            else f"{node_data.alias}: {node_data.table_name}"
+            else f"{node_data.alias}: {node_data.table_name} (preview)"
         )
         self.app.push_screen(DataBrowserScreen(title=title, df=table.sampled_df))
 
