@@ -442,6 +442,12 @@ class DataBrowserScreen(Screen[None]):
         text-style: bold;
     }
 
+    DataBrowserScreen .data-browser-grid:focus {
+        border: solid #3EB489;
+        outline: none;
+        background-tint: transparent 0%;
+    }
+
     DataBrowserScreen .data-browser-grid > .datatable--fixed-cursor {
         background: #3EB489;
         color: black;
@@ -1429,6 +1435,11 @@ class SchemaBrowserScreen(Screen[None]):
         background: #3EB489;
         color: black;
         text-style: bold;
+    }
+
+    SchemaBrowserScreen #browse-tree:focus {
+        outline: none;
+        background-tint: transparent 0%;
     }
 
     SchemaBrowserScreen #browse-tree:focus > .tree--cursor {
