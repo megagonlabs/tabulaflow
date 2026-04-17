@@ -419,14 +419,14 @@ class DataBrowserScreen(Screen[None]):
 
     DEFAULT_CSS = """
     DataBrowserScreen {
-        background: $surface;
+        background: $background;
     }
 
     DataBrowserScreen .data-browser-grid {
         height: 1fr;
         margin: 0 1;
         border: solid #3EB489;
-        background: $surface;
+        background: $background;
         color: $text;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
@@ -756,14 +756,14 @@ class CellBrowserScreen(Screen[None]):
 
     DEFAULT_CSS = """
     CellBrowserScreen {
-        background: $surface;
+        background: $background;
     }
 
     CellBrowserScreen TextArea {
         height: 1fr;
         margin: 0 1;
         border: solid white;
-        background: $surface;
+        background: $background;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
         scrollbar-color-active: #3EB489;
@@ -937,14 +937,14 @@ class QueryBrowserScreen(Screen[None]):
 
     DEFAULT_CSS = """
     QueryBrowserScreen {
-        background: $surface;
+        background: $background;
     }
 
     QueryBrowserScreen TextArea {
         height: 1fr;
         margin: 0 1;
         border: solid white;
-        background: $surface;
+        background: $background;
         scrollbar-color: #666666;
         scrollbar-color-hover: #3EB489;
         scrollbar-color-active: #3EB489;
@@ -1022,14 +1022,14 @@ class ChartBrowserScreen(Screen[None]):
 
     DEFAULT_CSS = """
     ChartBrowserScreen {
-        background: $surface;
+        background: $background;
     }
 
     ChartBrowserScreen .chart-browser-content {
         height: 1fr;
         margin: 0 1;
         padding: 1 2;
-        background: $surface;
+        background: $background;
         color: $text;
     }
 
