@@ -108,14 +108,27 @@ def _fetch_hf_description(dataset_id: str) -> str | None:
 def _hf_api_get(endpoint: str, dataset_id: str, **params: str) -> dict[str, Any]:
     """Make a GET request to the HuggingFace datasets-server API."""
     import json
+    from urllib.error import HTTPError
     from urllib.parse import urlencode
     from urllib.request import Request, urlopen
 
     query = {"dataset": dataset_id, **params}
     url = f"https://datasets-server.huggingface.co/{endpoint}?{urlencode(query)}"
     req = Request(url, headers={"User-Agent": "mintq"})
-    with urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read())  # type: ignore[no-any-return]
+    try:
+        with urlopen(req, timeout=30) as resp:
+            return json.loads(resp.read())  # type: ignore[no-any-return]
+    except HTTPError as e:
+        if e.code in (501, 500):
+            try:
+                detail = json.loads(e.read().decode()).get("error", "")
+            except Exception:
+                detail = ""
+            msg = f"Dataset '{dataset_id}' is not indexed by the HuggingFace datasets server (HTTP {e.code})."
+            if detail:
+                msg += f"\nServer response: {detail}"
+            raise ValueError(msg) from None
+        raise
 
 
 def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
