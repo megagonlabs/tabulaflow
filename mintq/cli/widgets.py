@@ -731,6 +731,8 @@ class DataBrowserScreen(Screen[None]):
             return Text(f"{value:,}", justify="right")
 
         s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+        if s == "<binary: skipped>":
+            return Text(s, style="dim italic")
         if len(s) > DataBrowserScreen._MAX_CELL_LEN:
             t = Text(s[: DataBrowserScreen._MAX_CELL_LEN - 3])
             t.append("...", style="dim")
