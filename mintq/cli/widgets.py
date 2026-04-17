@@ -1594,15 +1594,41 @@ class SchemaBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
+    def on_tree_node_highlighted(self, event: object) -> None:
+        """Update hint bar when cursor moves."""
+        self._update_hint()
+
+    def _cursor_has_preview(self) -> bool:
+        """Return True if the cursor is on a table node with sampled_df."""
+        from textual.widgets import Tree
+
+        from mintq.schema import SQLSchema
+
+        tree = self.query_one("#browse-tree", Tree)
+        try:
+            node = tree._tree_lines[tree.cursor_line].path[-1]
+        except (IndexError, AttributeError):
+            return False
+        node_data: _NodeData | None = node.data
+        if node_data is None or node_data.kind != _NODE_KIND_TABLE:
+            return False
+        connector = self._registry.get(node_data.alias)
+        schema = connector.schema
+        if not isinstance(schema, SQLSchema):
+            return False
+        table = next(
+            (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
+            None,
+        )
+        return table is not None and table.sampled_df is not None and not table.sampled_df.empty
+
     def _update_hint(self) -> None:
         hint_fg = "dim"
-        segments: list[tuple[str, str]] = [
-            ("Esc", ACCENT_BOLD),
-            (" Back    ", hint_fg),
-            ("F", ACCENT_BOLD),
-            (" Preview table", hint_fg),
-        ]
         hint = Text()
-        for text, style in segments:
-            hint.append(text, style=style)
+        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append(" Back", style=hint_fg)
+        if self._cursor_has_preview():
+            hint.append("    ", style=hint_fg)
+            hint.append("F", style=ACCENT_BOLD)
+            hint.append(" Preview table", style=hint_fg)
         self._hint.update(hint)
