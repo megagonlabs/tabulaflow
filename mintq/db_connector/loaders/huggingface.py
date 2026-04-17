@@ -230,6 +230,25 @@ def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
     return split_sizes
 
 
+def _dtype_has_blob(dtype: str) -> bool:
+    """Return True if a DuckDB type contains BLOB (including nested structs/lists)."""
+    return "BLOB" in dtype.upper()
+
+
+def _build_sample_columns(conn: duckdb.DuckDBPyConnection, source: str) -> str:
+    """Build a SELECT column list, replacing BLOB-containing columns with NULL."""
+    cols = conn.execute(f"DESCRIBE SELECT * FROM {source} LIMIT 0").fetchall()
+    parts: list[str] = []
+    for name, dtype, *_ in cols:
+        quoted = f'"{name}"'
+        if _dtype_has_blob(dtype):
+            parts.append(f"NULL AS {quoted}")
+            logger.info("Nulling BLOB column '%s' (%s) in sample", name, dtype)
+        else:
+            parts.append(quoted)
+    return ", ".join(parts) if parts else "*"
+
+
 def _create_tables(
     conn: duckdb.DuckDBPyConnection,
     dataset_id: str,
@@ -270,12 +289,20 @@ def _create_tables(
             table_names.append(base_name)
 
             # Materialized 1k sample from the first parquet file.
+            # Null out BLOB columns (images, audio) to avoid downloading
+            # huge binary data just for a preview.
             sample_name = f"{base_name}_sample"
             first_url = urls[0]
-            sample_sql = f"CREATE TABLE \"{sample_name}\" AS SELECT * FROM read_parquet('{first_url}') LIMIT 1000"
+            first_source = f"read_parquet('{first_url}')"
+            columns = _build_sample_columns(conn, first_source)
+            sample_sql = f'CREATE TABLE "{sample_name}" AS SELECT {columns} FROM {first_source} LIMIT 1000'
             logger.info("Creating TABLE '%s' (at most 1k sample) from first parquet file", sample_name)
-            conn.execute(sample_sql)
-            table_names.append(sample_name)
+            try:
+                conn.execute(sample_sql)
+                table_names.append(sample_name)
+            except Exception:
+                logger.warning("Failed to create sample table '%s'; skipping", sample_name)
+                conn.execute(f'DROP TABLE IF EXISTS "{sample_name}"')
 
     return table_names
 
