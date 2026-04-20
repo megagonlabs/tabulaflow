@@ -20,7 +20,8 @@ from mintq.config import mintq_config
 
 logger = logging.getLogger(__name__)
 
-_DF_SERIALIZATION_FORMAT = "feather_base64_v1"
+_DF_SERIALIZATION_FORMAT = "parquet_base64_v1"
+_DF_SERIALIZATION_FORMAT_FEATHER = "feather_base64_v1"
 _DF_PREVIEW_MAX_ROWS = 20
 
 
@@ -105,8 +106,9 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
 def _json_stringify_nested_columns(df: pd.DataFrame) -> pd.DataFrame:
     """JSON-stringify object columns containing dicts/lists.
 
-    Feather mangles nested structures on round-trip (merges dict keys, converts
-    lists to ndarray). Converting to JSON strings preserves the original values.
+    Parquet/Feather infer a struct schema for dicts, merging keys across rows and
+    filling missing keys with None.  Converting to JSON strings preserves the
+    original values exactly.
     """
     df = df.copy()
     for col in df.columns:
@@ -195,34 +197,43 @@ def _coerce_for_arrow(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
-    """Serialize a DataFrame as Feather bytes in a single JSON payload."""
+    """Serialize a DataFrame as Parquet bytes in a single JSON payload."""
     if df is None:
         return None
     if df.columns.empty:
         df = pd.DataFrame({"_empty": pd.Series([], dtype="object")}).iloc[:0]
     df = _coerce_for_arrow(df)
     buffer = io.BytesIO()
-    import pyarrow.feather as feather
-
-    feather.write_feather(df, buffer)
+    df.to_parquet(buffer, engine="pyarrow")
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
         "format": _DF_SERIALIZATION_FORMAT,
         "preview": _build_readable_df_preview(df),
-        "feather_base64": encoded,
+        "parquet_base64": encoded,
     }
 
 
 def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFrame | None:
-    """Deserialize either new Feather payloads or legacy schema+records dicts."""
+    """Deserialize Parquet, Feather, or legacy schema+records payloads."""
     if v is None or isinstance(v, pd.DataFrame):
         return v
-    if isinstance(v, dict) and v.get("format") == _DF_SERIALIZATION_FORMAT:
+    if not isinstance(v, dict):
+        return v
+
+    fmt = v.get("format")
+
+    if fmt == _DF_SERIALIZATION_FORMAT:
+        raw = base64.b64decode(v["parquet_base64"])
+        df = pd.read_parquet(io.BytesIO(raw), engine="pyarrow")
+        if list(df.columns) == ["_empty"] and df.empty:
+            return pd.DataFrame()
+        return df
+
+    if fmt == _DF_SERIALIZATION_FORMAT_FEATHER:
         raw = base64.b64decode(v["feather_base64"])
-        buffer = io.BytesIO(raw)
         import pyarrow.feather as feather
 
-        df = feather.read_feather(buffer)
+        df = feather.read_feather(io.BytesIO(raw))
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
         return df

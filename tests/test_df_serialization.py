@@ -5,12 +5,13 @@ from pandas.testing import assert_frame_equal
 from mintq.schema import (
     ExecResult,
     _DF_SERIALIZATION_FORMAT,
+    _DF_SERIALIZATION_FORMAT_FEATHER,
     _deserialize_dataframe,
     _serialize_dataframe,
 )
 
 
-def test_dataframe_round_trip_feather_payload() -> None:
+def test_dataframe_round_trip_parquet_payload() -> None:
     df = pd.DataFrame(
         {
             "id": [1, 2, 3],
@@ -24,7 +25,7 @@ def test_dataframe_round_trip_feather_payload() -> None:
     serialized = _serialize_dataframe(df)
     assert serialized is not None
     assert serialized["format"] == _DF_SERIALIZATION_FORMAT
-    assert "feather_base64" in serialized
+    assert "parquet_base64" in serialized
     assert "preview" in serialized
     assert serialized["preview"]["num_rows"] == 3
     assert len(serialized["preview"]["sample_data"]) == 3
@@ -33,6 +34,29 @@ def test_dataframe_round_trip_feather_payload() -> None:
     assert deserialized is not None
     assert_frame_equal(df, deserialized, check_dtype=True, check_index_type=True)
     assert all(isinstance(v, Decimal) for v in deserialized["amount"])
+
+
+def test_dataframe_deserialize_feather_payload() -> None:
+    """Feather payloads from older caches should still deserialize."""
+    import base64
+    import io
+
+    import pyarrow.feather as feather
+
+    df = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
+    buf = io.BytesIO()
+    feather.write_feather(df, buf)
+    encoded = base64.b64encode(buf.getvalue()).decode("ascii")
+
+    payload = {
+        "format": _DF_SERIALIZATION_FORMAT_FEATHER,
+        "feather_base64": encoded,
+        "preview": {"sample_data": [], "num_rows": 2},
+    }
+
+    deserialized = _deserialize_dataframe(payload)
+    assert deserialized is not None
+    assert_frame_equal(df, deserialized, check_dtype=True)
 
 
 def test_dataframe_deserialize_legacy_payload() -> None:
@@ -45,6 +69,30 @@ def test_dataframe_deserialize_legacy_payload() -> None:
     expected = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
     expected = expected.astype({"x": "int64", "y": "object"})
     assert_frame_equal(expected, deserialized, check_dtype=True)
+
+
+def test_dataframe_round_trip_nested_columns() -> None:
+    """Nested dicts/lists must survive sanitize + serialize round-trip without key merging."""
+    import json
+    from mintq.schema import _sanitize_df
+
+    df = pd.DataFrame(
+        {
+            "id": [1, 2],
+            "meta": [{"a": 1, "b": 2}, {"a": 3, "c": 4}],
+            "tags": [["x", "y"], ["z"]],
+        }
+    )
+
+    sanitized = _sanitize_df(df)
+    serialized = _serialize_dataframe(sanitized)
+    deserialized = _deserialize_dataframe(serialized)
+
+    assert deserialized is not None
+    assert json.loads(deserialized.loc[0, "meta"]) == {"a": 1, "b": 2}
+    assert json.loads(deserialized.loc[1, "meta"]) == {"a": 3, "c": 4}
+    assert json.loads(deserialized.loc[0, "tags"]) == ["x", "y"]
+    assert json.loads(deserialized.loc[1, "tags"]) == ["z"]
 
 
 def test_exec_result_json_round_trip_dataframe() -> None:

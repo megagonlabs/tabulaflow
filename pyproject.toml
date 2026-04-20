@@ -83,5 +83,6 @@ ignore_missing_imports = true
 exclude = ["scripts/test_readme.py", "scripts/mcp_client.py"]
 
 [tool.pytest.ini_options]
+testpaths = ["tests"]
 norecursedirs = ["data/*"]
 asyncio_mode = "auto"
