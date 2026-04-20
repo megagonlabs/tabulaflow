@@ -1,5 +1,79 @@
 # mintq
 
+### Installation 
+
+```bash
+git clone git@github.com:megagon-internal/mintq.git
+cd mintq
+uv venv
+make sync
+```
+
+### Quick Start
+
+
+```bash
+export OPENAI_API_KEY=...  # not needed if you are only browsing data
+uv run mintq
+```
+
+Connect to a database (Huggingface, local csv/excel files, SQL databases, etc.), and say "Analyze".
+
+
+### Utility Commands
+
+We use `make` to manage a few common commands we frequently use (see [`Makefile`](Makefile) for their definitions):
+
+```bash
+make format          # format and lint
+make mypy            # type check with mypy
+make sync            # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
+make last-trajectory # print the path to the last trajectory of mintq-cli agent
+```
+
+### Use Cases
+
+- Chatting to SQL databases
+- Chatting to local files (csv, excel, json, …)
+- Chatting to built-in public data sources (Huggingface, FRED, Wikidata …)
+  - "Analyze the query template distribution of CypherBench"
+  - "GDP and unemployment rates in the last 5 quarters"
+- Data manipulation
+  - "Transform this dataset to the OpenAI finetuning format"
+- Building data from web (covers all functionalities of Blue-delibird)
+  - "Find all data agent benchmarks in 2025"
+  - "List all popular scuba diving destinations and the flight prices from SFO on July 1st."
+- Support semantic operators (handles all data questions that Blue can handle)
+  - "Tag questions that are ambiguous where both pred and gold are valid in results_gpt5.json"
+  - "Tune the prompt for 5 iterations on this dataset"
+- Supports cross-data-source querying
+  - "What is the difference of GITHUB_REPOS and GITHUB_REPOS_DATE?"
+- Supports outputting multiple tables
+  - "Analyze this dataset" → distribution of domains, question complexity, ground-truth
+
+Most useful for the lab:
+- Data analysis, visualization and manipulation
+- Error analysis of model predictions
+- Literature survey
+
+Partially replaces:
+- Partially replaces DBeaver for data browsing
+- Replaces current open-source text-to-SQL agents: Chat2DB, PandasAI, DataBao
+- Partially replaces Jupyter Notebook workflows for data analysis and visualization
+- Partially replaces OpenAI Deep Research agents on challenging data building tasks
+
+### Use Cases
+
+---
+
+===== BELOW IS OUTDATED =====
+
+===== BELOW IS OUTDATED =====
+
+===== BELOW IS OUTDATED =====
+
+---
+
 A **Min**imalist **T**ext-to-**Q**uery Library that offers:
 
 📐 **Everything Structured**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
