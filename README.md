@@ -1033,7 +1033,9 @@ April 16
 - [x] Huggingface: fallback to datasets
 
 April 20
-- [ ] Switch to parquet
+- [x] Switch to parquet for df serialization
+- [ ] Improve run_subagent tool - identity columns
+- [ ]
 
 
 - [ ] Support images in huggingface datasets
