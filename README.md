@@ -1034,8 +1034,12 @@ April 16
 
 April 20
 - [x] Switch to parquet for df serialization
-- [ ] Improve run_subagent tool - identity columns
-- [ ]
+- [ ] Improve run_subagent tool
+  - [ ] Identity columns
+  - [ ] Write trajectory and error to each row
+  - [ ] Prompt tuning use case
+- [ ] Improve transfer_record?
+- [ ] Query history management - write to duckdb?
 
 
 - [ ] Support images in huggingface datasets
