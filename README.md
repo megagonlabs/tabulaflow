@@ -1030,10 +1030,12 @@ April 16
 - [x] Fix bug: Tool response mixed up when parallel called
 - [x] Schema browser
 - [x] Fix cell browser crash on large content
+- [x] Huggingface: fallback to datasets
 
-
+April 20
 - [ ] Switch to parquet
-- [ ] Huggingface: fallback to datasets
+
+
 - [ ] Support images in huggingface datasets
 - [ ] Data browser
 - [ ] /reconnect
