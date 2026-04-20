@@ -84,7 +84,8 @@ async def test_run_query_with_null_column(db_connector: SQLConnector) -> None:
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
     result: str = await tool("SELECT NULL as all_null FROM users")
 
-    assert "warning: a column is entirely null" in result
+    assert "all_null" in result
+    assert "[NULL]" in result
     assert tool.metrics().num_calls == 1
 
 
