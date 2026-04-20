@@ -62,8 +62,6 @@ Partially replaces:
 - Partially replaces Jupyter Notebook workflows for data analysis and visualization
 - Partially replaces OpenAI Deep Research agents on challenging data building tasks
 
-### Use Cases
-
 ---
 
 ===== BELOW IS OUTDATED =====
