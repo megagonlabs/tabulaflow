@@ -68,6 +68,28 @@ def _contains_write_statement(query: str) -> re.Match[str] | None:
     return None
 
 
+# DDL statements that modify the catalog. Used to serialize DDL on dialects
+# with optimistic concurrency (DuckDB, SQLite) where concurrent DDL on the
+# same object causes write-write conflict errors.
+_DDL_STATEMENT_RE = re.compile(
+    r"^\s*"
+    r"(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"  # skip leading SQL comments
+    r"(?:CREATE|ALTER|DROP|TRUNCATE|RENAME|ATTACH|DETACH)\b",
+    re.IGNORECASE | re.DOTALL,
+)
+
+# Dialects that need DDL serialization.
+_DDL_SERIAL_DIALECTS = frozenset({"duckdb", "sqlite"})
+
+
+def _contains_ddl_statement(query: str) -> bool:
+    """Return True if any statement in the query is a DDL operation."""
+    for stmt in sqlparse.split(query):
+        if _DDL_STATEMENT_RE.match(stmt):
+            return True
+    return False
+
+
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
@@ -105,17 +127,36 @@ class ThrottledEngine:
     engine: AsyncEngine | sqlalchemy.engine.Engine
     dbms_semaphore: asyncio.Semaphore | None
     db_semaphore: asyncio.Semaphore | None
+    _ddl_lock: asyncio.Lock | None = dataclasses.field(default=None, init=False)
+
+    def __post_init__(self) -> None:
+        if self.engine.dialect.name in _DDL_SERIAL_DIALECTS:
+            self._ddl_lock = asyncio.Lock()
 
     @asynccontextmanager
-    async def throttle(self) -> AsyncGenerator[None, None]:
-        semaphores = [sem for sem in [self.dbms_semaphore, self.db_semaphore] if sem is not None]
-        for sem in semaphores:
-            await sem.acquire()
+    async def throttle(self, *, ddl: bool = False) -> AsyncGenerator[None, None]:
+        """Acquire concurrency semaphores (and optionally the DDL lock).
+
+        Args:
+            ddl: When True and the engine's dialect requires DDL
+                serialization (DuckDB, SQLite), acquire a per-engine lock
+                so that concurrent DDL statements don't cause catalog
+                write-write conflicts.
+        """
+        locks: list[asyncio.Lock | asyncio.Semaphore] = []
+        if ddl and self._ddl_lock is not None:
+            locks.append(self._ddl_lock)
+        if self.dbms_semaphore is not None:
+            locks.append(self.dbms_semaphore)
+        if self.db_semaphore is not None:
+            locks.append(self.db_semaphore)
+        for lock in locks:
+            await lock.acquire()
         try:
             yield
         finally:
-            for sem in reversed(semaphores):
-                sem.release()
+            for lock in reversed(locks):
+                lock.release()
 
     def _run_query_s(
         self,
@@ -210,9 +251,8 @@ class ThrottledEngine:
         timeout: int | None = None,
         return_df: bool = False,
     ) -> QueryResult:
-        # Note: str queries are passed through to _run_query_s / _run_query_a
-        # which handle the text() conversion or exec_driver_sql routing internally.
-        async with self.throttle():
+        ddl = isinstance(query, str) and _contains_ddl_statement(query)
+        async with self.throttle(ddl=ddl):
             t0 = time.time()
             try:
                 if self.engine_type == "async":
