@@ -55,7 +55,7 @@ class RegistryTransferRecordTool:
             mode: ``append`` to insert rows, ``replace`` to recreate table.
         """
         try:
-            record = self._history.get(record_id)
+            record = await self._history.get(record_id)
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
 

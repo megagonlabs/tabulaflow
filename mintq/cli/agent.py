@@ -255,6 +255,18 @@ class ChatAgent:
         self.model = model
         self._build_agent()
 
+    def set_workspace(self, connector: NL2QDBConnector) -> None:
+        """Attach a workspace connector for persisting query-history DataFrames."""
+        from mintq.db_connector.sql_conn import SQLConnector
+        from mintq.toolhub.registry_run_query import QueryHistory
+
+        if not isinstance(connector, SQLConnector):
+            return
+        self._query_history = QueryHistory(spill_connector=connector)
+        self._tools.run_query._history = self._query_history
+        self._tools.transfer_record._history = self._query_history
+        self._tools.render_chart._history = self._query_history
+
     @staticmethod
     def database_info(connector: NL2QDBConnector) -> str:
         """Build a concise database summary string."""
@@ -332,7 +344,7 @@ class ChatAgent:
                     answer_text = event.result.output
                     break
 
-                _handle_stream_event(event, progress, self._query_history, self._tools.get_table_schema)
+                await _handle_stream_event(event, progress, self._query_history, self._tools.get_table_schema)
                 await asyncio.sleep(0)
 
         finally:
@@ -340,7 +352,7 @@ class ChatAgent:
             progress.finish()
 
         self._save_trajectory_for_debug()
-        return _build_chat_result(answer_text, self._query_history)
+        return await _build_chat_result(answer_text, self._query_history)
 
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory and keep recent history bounded."""
@@ -382,12 +394,12 @@ class ChatAgent:
             current.replace(first_backup)
 
 
-def _build_chat_result(
+async def _build_chat_result(
     answer_text: str,
     query_history: QueryHistory,
 ) -> ChatResult:
     display_text, refs = _extract_result_refs(answer_text)
-    records = _records_from_refs(refs, query_history)
+    records = await _records_from_refs(refs, query_history)
     primary_record_index: int | None = 0 if records else None
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
 
@@ -422,14 +434,14 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
     return display_text.strip(), refs
 
 
-def _records_from_refs(
+async def _records_from_refs(
     refs: Iterable[tuple[str, str | None]],
     query_history: QueryHistory,
 ) -> list[ChatResultRecord]:
     records: list[ChatResultRecord] = []
     for record_id, label in refs:
         try:
-            query_record = query_history.get(record_id)
+            query_record = await query_history.get(record_id)
         except (KeyError, ValueError):
             continue
         records.append(_chat_result_record_from_query_record(query_record, label))
@@ -456,7 +468,7 @@ def _chat_result_record_from_query_record(
 # ---------------------------------------------------------------------------
 
 
-def _handle_stream_event(
+async def _handle_stream_event(
     event: object,
     progress: ProgressSink,
     query_history: QueryHistory,
@@ -474,7 +486,7 @@ def _handle_stream_event(
     elif isinstance(event, FunctionToolResultEvent):
         tool_call_id = event.tool_call_id
         result_tool_name = event.result.tool_name or ""
-        result_summary = _summarize_result(result_tool_name, query_history, get_table_schema_tool)
+        result_summary = await _summarize_result(result_tool_name, query_history, get_table_schema_tool)
         progress.tool_end(tool_call_id, result_tool_name, result_summary)
 
     elif isinstance(event, PartDeltaEvent):
@@ -546,14 +558,15 @@ def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str
     return str(args)[:80]
 
 
-def _summarize_result(
+async def _summarize_result(
     tool_name: str,
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
 ) -> str:
     if tool_name == "run_query":
         try:
-            pred = query_history.last().pred_query
+            record = await query_history.last()
+            pred = record.pred_query
             if pred.exec_result and pred.exec_result.df is not None:
                 return f"{len(pred.exec_result.df)} rows"
             if pred.exec_result and pred.exec_result.error:

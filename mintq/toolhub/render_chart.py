@@ -168,7 +168,7 @@ class RenderPlotextChartTool:
             return f"(error: {e})"
 
         try:
-            record = self._history.get(record_id) if record_id else self._history.last()
+            record = await self._history.get(record_id) if record_id else await self._history.last()
         except KeyError:
             return f"(error: unknown record_id {record_id!r})"
         except ValueError:

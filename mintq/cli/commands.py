@@ -107,6 +107,7 @@ class SessionState:
             enable_query_caching=False,
         )
         self.registry.register(WORKSPACE_ALIAS, connector)
+        self.chat_agent.set_workspace(connector)
         self.chat_agent.add_database([(WORKSPACE_ALIAS, connector)])
 
     @property
