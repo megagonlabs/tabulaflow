@@ -8,7 +8,7 @@ from pydantic_ai import Tool
 
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.db_connector.sql_conn import SQLConnector
-from mintq.schema import TableRef
+
 from mintq.toolhub.registry_run_query import QueryHistory
 
 
@@ -87,14 +87,6 @@ class RegistryTransferRecordTool:
             )
         except ValueError as e:
             return f"(error: {e})"
-
-        # Best effort schema refresh so schema tools can inspect new/updated table.
-        try:
-            await connector.refresh_schema_async(
-                tables=[TableRef(schema_name=target_schema, table_name=target_table)]
-            )
-        except Exception:
-            pass
 
         target_name = f"{target_schema}.{target_table}" if target_schema else target_table
         return (

@@ -1283,6 +1283,10 @@ class SQLConnector:
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(None, _write_sync)
 
+        await self.refresh_schema_async(
+            tables=[TableRef(schema_name=schema_name, table_name=table_name)]
+        )
+
         return len(df)
 
     @staticmethod
