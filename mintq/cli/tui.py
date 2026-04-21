@@ -677,7 +677,11 @@ LIMIT 4000"""
         session.last_result = result
         if result.records:
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
-            result_widget = AgentResultWidget(result, width=self.size.width - 11)
+            result_widget = AgentResultWidget(
+                result,
+                width=self.size.width - 11,
+                query_history=session.chat_agent._query_history,
+            )
             chat_log.mount(result_widget)
 
         # Defer scroll until after layout reflow so the final content height is known.

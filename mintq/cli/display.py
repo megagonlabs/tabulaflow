@@ -183,18 +183,18 @@ def build_result_views(
 ) -> tuple[
     list[str],
     dict[str, RenderableType],
-    dict[str, pd.DataFrame],
+    dict[str, tuple[str, int, int]],
     dict[str, tuple[str, str]],
-    dict[str, tuple[pd.DataFrame, dict[str, object]]],
+    dict[str, tuple[str, dict[str, object]]],
 ]:
     """Build ordered view keys and their renderables from a ChatResult.
 
     Returns:
-        (ordered_keys, views, data_views, query_views, chart_views) where
+        (ordered_keys, views, data_refs, query_views, chart_refs) where
         ordered_keys defines tab order, views maps key -> Rich renderable,
-        data_views maps Data tab keys to their underlying DataFrame,
+        data_refs maps Data tab keys to (record_id, num_rows, num_cols),
         query_views maps Query tab keys to (raw_query, lexer),
-        and chart_views maps Chart tab keys to (df, vegalite_spec).
+        and chart_refs maps Chart tab keys to (record_id, vegalite_spec).
     """
     from mintq.cli.agent import ChatResult
 
@@ -204,9 +204,9 @@ def build_result_views(
     chart_keys: list[str] = []
     data_keys: list[str] = []
     query_keys: list[str] = []
-    data_views: dict[str, pd.DataFrame] = {}
+    data_refs: dict[str, tuple[str, int, int]] = {}
     query_views: dict[str, tuple[str, str]] = {}
-    chart_views: dict[str, tuple[pd.DataFrame, dict[str, object]]] = {}
+    chart_refs: dict[str, tuple[str, dict[str, object]]] = {}
 
     use_labels = len(result.records) > 1
     used_labels: set[str] = set()
@@ -222,11 +222,11 @@ def build_result_views(
         if record.chart_spec is not None and record.df is not None:
             views[chart_key] = build_chart(record.df, record.chart_spec, width)
             chart_keys.append(chart_key)
-            chart_views[chart_key] = (record.df, record.chart_spec)
+            chart_refs[chart_key] = (record.record_id, record.chart_spec)
         if record.df is not None and not record.df.empty:
             views[data_key] = build_table(record.df)
             data_keys.append(data_key)
-            data_views[data_key] = record.df
+            data_refs[data_key] = (record.record_id, len(record.df), len(record.df.columns))
         if record.query:
             views[query_key] = build_query(record.query, lexer=record.query_lexer)
             query_keys.append(query_key)
@@ -237,7 +237,11 @@ def build_result_views(
     ordered_keys.extend(data_keys)
     ordered_keys.extend(query_keys)
 
-    return ordered_keys, views, data_views, query_views, chart_views
+    # Release DF references — previews have been rendered to Rich renderables.
+    for record in result.records:
+        record.df = None
+
+    return ordered_keys, views, data_refs, query_views, chart_refs
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:

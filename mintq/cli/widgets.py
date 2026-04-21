@@ -1110,13 +1110,20 @@ class AgentResultWidget(Widget):
 
     current_tab: reactive[int] = reactive(0, init=False)
 
-    def __init__(self, result: ChatResult, width: int = 80) -> None:
+    def __init__(
+        self,
+        result: ChatResult,
+        width: int = 80,
+        query_history: object | None = None,
+    ) -> None:
         super().__init__()
         from mintq.cli.display import build_result_views
+        from mintq.toolhub.query_history import QueryHistory
 
-        self._ordered_keys, self._views, self._data_views, self._query_views, self._chart_views = build_result_views(
+        self._ordered_keys, self._views, self._data_refs, self._query_views, self._chart_refs = build_result_views(
             result, width
         )
+        self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._content = Static(id="result-content")
         self._mounted = False
         self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
@@ -1168,7 +1175,7 @@ class AgentResultWidget(Widget):
         current_key = self._current_key()
 
         hint = Text()
-        if current_key in self._chart_views or current_key in self._data_views or current_key in self._query_views:
+        if current_key in self._chart_refs or current_key in self._data_refs or current_key in self._query_views:
             if hint:
                 hint.append("    ")
             hint.append("Enter", style=ACCENT_BOLD)
@@ -1255,14 +1262,14 @@ class AgentResultWidget(Widget):
 
         if event.widget is self._content:
             key = self._current_key()
-            if key in self._chart_views and self._is_chart_region_click(key=key, x=event.x, y=event.y):
-                self.action_open_full_screen()
+            if key in self._chart_refs and self._is_chart_region_click(key=key, x=event.x, y=event.y):
+                self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
-            if key in self._data_views and self._is_table_region_click(key=key, x=event.x, y=event.y):
-                self.action_open_full_screen()
+            if key in self._data_refs and self._is_table_region_click(key=key, x=event.x, y=event.y):
+                self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
             if key in self._query_views:
-                self.action_open_full_screen()
+                self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
 
     def _is_chart_region_click(self, *, key: str, x: int, y: int) -> bool:
@@ -1291,10 +1298,11 @@ class AgentResultWidget(Widget):
 
     def _data_preview_has_footer(self, key: str) -> bool:
         """Data preview shows a one-line footer only when rows/cols are truncated."""
-        df = self._data_views.get(key)
-        if df is None:
+        ref = self._data_refs.get(key)
+        if ref is None:
             return False
-        return len(df) > DATA_PREVIEW_MAX_ROWS or len(df.columns) > DATA_PREVIEW_MAX_COLUMNS
+        _record_id, num_rows, num_cols = ref
+        return num_rows > DATA_PREVIEW_MAX_ROWS or num_cols > DATA_PREVIEW_MAX_COLUMNS
 
     def _data_preview_table_width(self, key: str) -> int:
         """Measure rendered width of the data preview table area."""
@@ -1362,24 +1370,41 @@ class AgentResultWidget(Widget):
         """Return focus to the input bar."""
         self.app.query_one("#input-bar").focus()
 
-    def action_open_full_screen(self) -> None:
+    async def action_open_full_screen(self) -> None:
         """Open full-screen viewer for the active Chart, Data, or Query tab."""
         key = self._current_key()
         if key is None:
             return
-        chart_data = self._chart_views.get(key)
-        if chart_data is not None:
-            df, spec = chart_data
-            self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))
+        chart_ref = self._chart_refs.get(key)
+        if chart_ref is not None:
+            record_id, spec = chart_ref
+            df = await self._fetch_df(record_id)
+            if df is not None:
+                self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))
             return
-        df = self._data_views.get(key)
-        if df is not None:
-            self.app.push_screen(DataBrowserScreen(title=key, df=df))
+        data_ref = self._data_refs.get(key)
+        if data_ref is not None:
+            record_id, _num_rows, _num_cols = data_ref
+            df = await self._fetch_df(record_id)
+            if df is not None:
+                self.app.push_screen(DataBrowserScreen(title=key, df=df))
             return
         query_data = self._query_views.get(key)
         if query_data is not None:
             query, lexer = query_data
             self.app.push_screen(QueryBrowserScreen(title=key, query=query, lexer=lexer))
+
+    async def _fetch_df(self, record_id: str) -> pd.DataFrame | None:
+        """Fetch a DataFrame from QueryHistory, hydrating from DuckDB if needed."""
+        if self._query_history is None:
+            return None
+        try:
+            record = await self._query_history.get(record_id)
+        except (KeyError, ValueError):
+            return None
+        if record.pred_query.exec_result is None:
+            return None
+        return record.pred_query.exec_result.df
 
 
 # ---------------------------------------------------------------------------
