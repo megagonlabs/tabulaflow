@@ -65,6 +65,7 @@ class RegistryRunSubagentForEachRowTool:
         key_columns: list[str],
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
+        sql_filter: str | None = None,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -103,6 +104,10 @@ class RegistryRunSubagentForEachRowTool:
                 subagent as context. If omitted, all table columns are included.
             output_columns: Columns the subagent should update. If provided, all
                 must already exist in the target table.
+            sql_filter: A ``SELECT *`` query to select which rows to process.
+                Must be a SELECT * query against table_name (e.g.
+                ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
+                If omitted, all rows are processed.
         """
         try:
             tool = self._get_tool(db_alias)
@@ -111,7 +116,7 @@ class RegistryRunSubagentForEachRowTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         except TypeError as e:
             return f"(error: {e})"
-        return await tool(table_name, task_instruction, key_columns, input_columns, output_columns)
+        return await tool(table_name, task_instruction, key_columns, input_columns, output_columns, sql_filter=sql_filter)
 
     def as_pydantic_ai_tool(self) -> Tool:
         """Return pydantic-ai Tool wrapper."""

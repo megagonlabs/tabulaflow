@@ -100,6 +100,7 @@ class RunSubagentForEachRowTool:
         key_columns: list[str],
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
+        sql_filter: str | None = None,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -137,8 +138,13 @@ class RunSubagentForEachRowTool:
                 subagent as context. If omitted, all table columns are included.
             output_columns: Columns the subagent should update. If provided, all
                 must already exist in the target table.
+            sql_filter: A ``SELECT *`` query to select which rows to process.
+                Must be a SELECT * query against table_name (e.g.
+                ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
+                If omitted, all rows are processed.
         """
-        select_result = await self.db_connector.run_query_async(f"SELECT * FROM {table_name}")
+        query = sql_filter if sql_filter is not None else f"SELECT * FROM {table_name}"
+        select_result = await self.db_connector.run_query_async(query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
             return f"(error: failed to load rows from {table_name}: {detail})"
