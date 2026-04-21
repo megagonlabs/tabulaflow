@@ -45,9 +45,11 @@ class QueryHistory:
     def __init__(
         self,
         *,
-        max_in_memory: int = 1,
+        max_in_memory: int = 5,
         spill_connector: SQLConnector | None = None,
     ) -> None:
+        if max_in_memory < 1:
+            raise ValueError("max_in_memory must be >= 1")
         self._records: dict[str, QueryRecord] = {}
         self._next_query_id = 1
         self._max_in_memory = max_in_memory

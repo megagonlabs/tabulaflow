@@ -24,6 +24,10 @@ def _make_error_pred_query() -> PredQuery:
 class TestNoConnector:
     """Without a spill connector, everything stays in memory."""
 
+    def test_rejects_zero_max_in_memory(self):
+        with pytest.raises(ValueError, match="max_in_memory must be >= 1"):
+            QueryHistory(max_in_memory=0)
+
     @pytest.mark.anyio
     async def test_no_eviction(self):
         h = QueryHistory(max_in_memory=2)
