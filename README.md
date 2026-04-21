@@ -17,8 +17,7 @@ export OPENAI_API_KEY=...  # not needed if you are only browsing data
 uv run mintq
 ```
 
-Connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), and say "Analyze".
-
+Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either run `/browse` to manually browse the data or say "Analyze" to have LLM analyze the data.
 
 ## Utility Commands (for developers)
 
