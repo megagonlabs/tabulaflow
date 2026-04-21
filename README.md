@@ -74,7 +74,7 @@ April 20
 
 April 21
 - [x] Json loading
-- [ ] Fix running two write queries fail
+- [x] Fix error on concurrent DDLs
 - [ ] Improve run_subagent tool
   - [x] Key columns
   - [ ] Write trajectory and error to each row
