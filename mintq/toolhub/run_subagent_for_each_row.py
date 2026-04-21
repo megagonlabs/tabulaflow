@@ -223,7 +223,6 @@ class RunSubagentForEachRowTool:
         trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
         trajectory_param_expr = _JSON_PARAM_EXPR.get(dialect, _DEFAULT_JSON_PARAM_EXPR)
         if self.store_metadata:
-            added_columns = False
             for col in _INTERNAL_COLUMNS:
                 if col not in all_columns:
                     if col == _COL_SUCCESS:
@@ -235,9 +234,6 @@ class RunSubagentForEachRowTool:
                     await self.db_connector.run_query_async(
                         f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"
                     )
-                    added_columns = True
-            if added_columns:
-                await self.db_connector.refresh_schema_async()
 
         completed = 0
 
@@ -314,6 +310,8 @@ class RunSubagentForEachRowTool:
         errors = await asyncio.gather(
             *(_throttled_process_one_row(row_idx, row) for row_idx, row in enumerate(rows, start=1))
         )
+        await self.db_connector.refresh_schema_async()
+
         error_messages = [e for e in errors if e is not None]
         failed = len(error_messages)
         updated = total - failed
