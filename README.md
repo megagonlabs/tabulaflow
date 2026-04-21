@@ -69,15 +69,16 @@ Partially replaces:
 
 April 20
 - [x] Switch to parquet for df serialization
+- [x] Query history with persistence to workspace DuckDB
 - [ ] Improve run_subagent tool
   - [ ] Identity columns
   - [ ] Write trajectory and error to each row
   - [ ] Prompt tuning use case
-- [ ] Improve transfer_record?
-- [ ] Query history management - write to duckdb?
+
 
 
 - General
+  - [ ] Improve transfer_record?
   - [ ] /reconnect
   - [ ] Copy to clipboard
   - [ ] Session resume
