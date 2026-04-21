@@ -1,10 +1,12 @@
+import asyncio
+
 import pytest
 import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 from mintq.toolhub.run_query import RunQueryTool, LLMParameter
-from mintq.db_connector.sql_conn import SQLConnector
+from mintq.db_connector.sql_conn import SQLConnector, _contains_ddl_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
 INIT_SQL = [
@@ -128,3 +130,39 @@ async def test_run_query_timeout(db_connector: SQLConnector) -> None:
     assert tool.metrics().error_timeout == 1
     assert tool.metrics().error_query_failed == 0
     assert tool.metrics().num_calls == 1
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        ("ALTER TABLE t ADD COLUMN c TEXT", True),
+        ("CREATE TABLE t (id INT)", True),
+        ("DROP TABLE t", True),
+        ("TRUNCATE TABLE t", True),
+        ("RENAME TABLE t TO t2", True),
+        ("  -- comment\n  ALTER TABLE t ADD COLUMN c TEXT", True),
+        ("SELECT 1", False),
+        ("INSERT INTO t VALUES (1)", False),
+        ("UPDATE t SET x = 1", False),
+        ("DELETE FROM t WHERE id = 1", False),
+        # Multi-statement: DDL in second statement
+        ("SELECT 1; ALTER TABLE t ADD COLUMN c TEXT", True),
+    ],
+)
+def test_contains_ddl_statement(query: str, expected: bool) -> None:
+    assert _contains_ddl_statement(query) == expected
+
+
+@pytest.mark.asyncio
+async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:
+    """Concurrent ALTER TABLE statements should succeed thanks to DDL lock."""
+    db_connector.read_only = False
+
+    async def alter(col: str) -> None:
+        await db_connector.run_query_async(f"ALTER TABLE users ADD COLUMN {col} TEXT")
+
+    results = await asyncio.gather(
+        alter("extra_a"), alter("extra_b"), return_exceptions=True
+    )
+    errors = [r for r in results if isinstance(r, Exception)]
+    assert errors == [], f"Concurrent ALTER failed: {errors}"
