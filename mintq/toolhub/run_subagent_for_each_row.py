@@ -8,11 +8,13 @@ from collections.abc import Callable
 from typing import ClassVar
 
 import jinja2
+import sqlalchemy
 from pydantic import BaseModel
 from pydantic_ai import Agent, Tool
 
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
+from mintq.schema import SQLDialect, Trajectory
 from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.run_query import RunQueryTool
@@ -47,6 +49,49 @@ Row location:
 {% endif %}""".strip()
 
 
+_COL_SUCCESS = "_subagent_success"
+_COL_MESSAGE = "_subagent_message"
+_COL_TRAJECTORY = "_subagent_trajectory"
+_INTERNAL_COLUMNS = [_COL_SUCCESS, _COL_MESSAGE, _COL_TRAJECTORY]
+
+# Dialects that support a native JSON column type and the SQL type name to use.
+_JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
+    "snowflake": "VARIANT",
+    "postgres": "JSONB",
+    "mysql": "JSON",
+    "duckdb": "JSON",
+    "bigquery": "JSON",
+    "clickhouse": "String",  # no native JSON; fall back to String (≈TEXT)
+}
+
+# Snowflake VARIANT requires PARSE_JSON() to cast a string parameter to VARIANT.
+_JSON_PARAM_EXPR: dict[SQLDialect, str] = {
+    "snowflake": "PARSE_JSON(:_v_trajectory)",
+}
+_DEFAULT_JSON_PARAM_EXPR = ":_v_trajectory"
+
+
+def _build_key_where(key_columns: list[str], key_payload: dict[str, object]) -> tuple[str, dict[str, object]]:
+    """Build a WHERE clause from key columns using named parameters.
+
+    Returns:
+        A ``(clause, params)`` tuple where *clause* is a SQL fragment like
+        ``col1 = :_k_col1 AND col2 IS NULL`` and *params* maps parameter
+        names to values.
+    """
+    parts: list[str] = []
+    params: dict[str, object] = {}
+    for col in key_columns:
+        val = key_payload[col]
+        if val is None:
+            parts.append(f"{col} IS NULL")
+        else:
+            param_name = f"_k_{col}"
+            parts.append(f"{col} = :{param_name}")
+            params[param_name] = val
+    return " AND ".join(parts), params
+
+
 class SubagentRowResult(BaseModel):
     success: bool
     message: str
@@ -70,6 +115,7 @@ class RunSubagentForEachRowTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: dict[str, object] | None = None,
         max_concurrency: int = 200,
+        store_metadata: bool = False,
     ) -> None:
         """Initialize the tool.
 
@@ -80,6 +126,9 @@ class RunSubagentForEachRowTool:
                 each subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of row subagents to run
                 concurrently.
+            store_metadata: If True, write ``_subagent_success``,
+                ``_subagent_message``, and ``_subagent_trajectory`` columns
+                back to the target table after each row.
         """
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
@@ -87,6 +136,7 @@ class RunSubagentForEachRowTool:
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
+        self.store_metadata = store_metadata
         self.on_row_complete: Callable[[int, int], None] | None = None
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
@@ -157,7 +207,8 @@ class RunSubagentForEachRowTool:
         missing_id = [c for c in key_columns if c not in all_columns]
         if missing_id:
             return f"(error: key_columns not found in table {table_name!r}: {missing_id})"
-        ctx_cols = input_columns or all_columns
+        _internal = set(_INTERNAL_COLUMNS)
+        ctx_cols = input_columns or [c for c in all_columns if c not in _internal]
         missing_ctx = [c for c in ctx_cols if c not in all_columns]
         if missing_ctx:
             return f"(error: input_columns not found in table {table_name!r}: {missing_ctx})"
@@ -167,7 +218,48 @@ class RunSubagentForEachRowTool:
         id_cols_set = set(key_columns)
         extra_ctx_cols = [c for c in ctx_cols if c not in id_cols_set]
 
+        # Ensure _subagent_* columns exist on the target table.
+        dialect = self.db_connector.language
+        trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
+        trajectory_param_expr = _JSON_PARAM_EXPR.get(dialect, _DEFAULT_JSON_PARAM_EXPR)
+        if self.store_metadata:
+            added_columns = False
+            for col in _INTERNAL_COLUMNS:
+                if col not in all_columns:
+                    if col == _COL_SUCCESS:
+                        dtype = "BOOLEAN"
+                    elif col == _COL_TRAJECTORY:
+                        dtype = trajectory_dtype
+                    else:
+                        dtype = "TEXT"
+                    await self.db_connector.run_query_async(
+                        f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"
+                    )
+                    added_columns = True
+            if added_columns:
+                await self.db_connector.refresh_schema_async()
+
         completed = 0
+
+        async def _save_row_metadata(
+            key_payload: dict[str, object],
+            success: bool,
+            message: str,
+            trajectory: str,
+        ) -> None:
+            """Write subagent metadata columns for one row."""
+            where_clause, params = _build_key_where(key_columns, key_payload)
+            params["_v_success"] = success
+            params["_v_message"] = message
+            params["_v_trajectory"] = trajectory
+            stmt = sqlalchemy.text(
+                f"UPDATE {table_name} "
+                f"SET {_COL_SUCCESS} = :_v_success, "
+                f"{_COL_MESSAGE} = :_v_message, "
+                f"{_COL_TRAJECTORY} = {trajectory_param_expr} "
+                f"WHERE {where_clause}"
+            )
+            await self.db_connector.run_query_async(stmt, params)
 
         async def _process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
@@ -191,19 +283,25 @@ class RunSubagentForEachRowTool:
                 row_context_json=json.dumps(row_context, ensure_ascii=True, default=str) if row_context else None,
                 output_columns_json=json.dumps(output_columns, ensure_ascii=True) if output_columns else None,
             )
+            error_msg: str | None = None
+            metadata: tuple[bool, str, str] | None = None
             try:
                 result = await subagent.run(prompt)
                 output = result.output
+                traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
+                metadata = (output.success, output.message, traj.model_dump_json())
                 if not output.success:
-                    return f"row {row_idx}: {output.message}"
+                    error_msg = f"row {row_idx}: {output.message}"
             except Exception as e:
-                return f"row {row_idx}: {type(e).__name__}: {e}"
+                error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
             finally:
+                if self.store_metadata and metadata is not None:
+                    await _save_row_metadata(key_payload, *metadata)
                 completed += 1
                 if self.on_row_complete is not None:
                     self.on_row_complete(completed, total)
                     await asyncio.sleep(0)
-            return None
+            return error_msg
 
         rows = df.to_dict(orient="records")
         total = len(rows)
@@ -225,6 +323,11 @@ class RunSubagentForEachRowTool:
         )
         if error_messages:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in error_messages[:5])
+            if self.store_metadata:
+                summary += (
+                    f"\nQuery {_COL_SUCCESS}, {_COL_MESSAGE}, {_COL_TRAJECTORY} "
+                    f"columns in {table_name} for full details."
+                )
         return summary
 
     def as_pydantic_ai_tool(self) -> Tool:

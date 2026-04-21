@@ -27,6 +27,7 @@ class RegistryRunSubagentForEachRowTool:
         *,
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: dict[str, object] | None = None,
+        store_metadata: bool = False,
     ) -> None:
         """Initialize the tool.
 
@@ -35,10 +36,14 @@ class RegistryRunSubagentForEachRowTool:
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
+            store_metadata: If True, write ``_subagent_success``,
+                ``_subagent_message``, and ``_subagent_trajectory`` columns
+                back to the target table after each row.
         """
         self.registry = registry
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
+        self.store_metadata = store_metadata
         self.on_row_complete: Callable[[int, int], None] | None = None
         self._tools: dict[str, RunSubagentForEachRowTool] = {}
 
@@ -52,7 +57,12 @@ class RegistryRunSubagentForEachRowTool:
                     f"run_subagent_for_each_row is only supported for SQL connectors, "
                     f"not {connector.connector_type!r}"
                 )
-            tool = RunSubagentForEachRowTool(connector, subagent_llm=self.subagent_llm, model_settings=self.model_settings)
+            tool = RunSubagentForEachRowTool(
+                connector,
+                subagent_llm=self.subagent_llm,
+                model_settings=self.model_settings,
+                store_metadata=self.store_metadata,
+            )
             self._tools[db_alias] = tool
         tool.on_row_complete = self.on_row_complete
         return tool

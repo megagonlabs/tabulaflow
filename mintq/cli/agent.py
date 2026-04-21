@@ -243,6 +243,7 @@ class ChatAgent:
             registry_run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
                 self.registry,
                 model_settings={"openai_service_tier": "priority"},
+                store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
         )
