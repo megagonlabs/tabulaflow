@@ -24,6 +24,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+
+class _DatasetServerUnavailableError(Exception):
+    """The HuggingFace datasets-server cannot serve this dataset."""
+
+
 _HF_DATASET_RE = re.compile(
     r"^https?://huggingface\.co/datasets/"
     r"(?P<owner>[^/]+)/(?P<dataset>[^/]+)"
@@ -127,7 +132,7 @@ def _hf_api_get(endpoint: str, dataset_id: str, **params: str) -> dict[str, Any]
             msg = f"Dataset '{dataset_id}' is not indexed by the HuggingFace datasets server (HTTP {e.code})."
             if detail:
                 msg += f"\nServer response: {detail}"
-            raise ValueError(msg) from None
+            raise _DatasetServerUnavailableError(msg) from None
         raise
 
 
@@ -143,7 +148,7 @@ def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
     data = _hf_api_get("splits", dataset_id)
     splits: list[dict[str, Any]] = data.get("splits", [])
     if not splits:
-        raise ValueError(
+        raise _DatasetServerUnavailableError(
             f"No splits found for dataset '{dataset_id}'. "
             "The dataset may be gated, private, or not yet indexed."
         )
@@ -226,7 +231,7 @@ def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
             split_sizes[entry["split"]] = int(entry.get("num_bytes_parquet_files", 0))
 
     if not split_sizes:
-        raise ValueError(f"No splits found for '{dataset_id}' config '{config}'.")
+        raise _DatasetServerUnavailableError(f"No splits found for '{dataset_id}' config '{config}'.")
     return split_sizes
 
 
@@ -438,7 +443,7 @@ def _load_hf_into_duckdb(
     try:
         config = _resolve_config(dataset_id, subset)
         split_sizes = _discover_splits_and_size(dataset_id, config)
-    except ValueError:
+    except _DatasetServerUnavailableError:
         # datasets-server unavailable — fall back to datasets library.
         return _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
 
