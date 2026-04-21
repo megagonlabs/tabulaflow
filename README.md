@@ -71,7 +71,7 @@ April 20
 - [x] Switch to parquet for df serialization
 - [x] Query history with persistence to workspace DuckDB
 - [ ] Improve run_subagent tool
-  - [ ] Identity columns
+  - [x] Key columns
   - [ ] Write trajectory and error to each row
   - [ ] Prompt tuning use case
 
