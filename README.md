@@ -77,14 +77,16 @@ April 20
 - [ ] Query history management - write to duckdb?
 
 
-- [ ] Support multi-modal data browsing (images, audio, video, etc.)
-- [ ] /reconnect
-- [ ] Semantic join - cross join
-- [ ] Query browser - show language and database
-- [ ] Refresh for get_column_json_schema and get_db_document
-- [ ] Copy to clipboard
-- [ ] Session resume
-- [ ] Data export
+- General
+  - [ ] /reconnect
+  - [ ] Copy to clipboard
+  - [ ] Session resume
+  - [ ] Semantic join - cross join
+  - [ ] Data export
+- Data/Query Browser
+  - [ ] Support multi-modal data browsing (images, audio, video, etc.)
+  - [ ] Query browser - show language and database
+  - [ ] Refresh for get_column_json_schema and get_db_document
 - Delibird
   - [ ] Building from web
   - [ ] Building from files
@@ -104,7 +106,9 @@ April 20
   - [ ] Running inference
   - [ ] Semantic operators
   - [ ] Web deep research (replace aisheets)
-
+- Study other open-source projects
+  - [ ] Claude code - tool description in system prompt or tool schema?
+  - [ ] OpenClaw
 
 
 ---
