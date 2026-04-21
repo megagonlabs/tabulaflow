@@ -867,7 +867,9 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, st
                 # DuckDB defaults this to 16 MiB, which fails on common nested JSON payloads.
                 sql = (
                     f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto("
-                    f"'{escaped}', maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES})"
+                    f"'{escaped}', "
+                    f"maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES}, "
+                    "ignore_errors=true)"
                 )
             else:
                 raise ValueError(f"Unsupported file format: {ext}")
