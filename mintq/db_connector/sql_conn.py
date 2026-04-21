@@ -864,11 +864,13 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, st
             elif ext == ".parquet":
                 sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_parquet('{escaped}')"
             elif ext in (".json", ".jsonl", ".ndjson"):
-                # DuckDB defaults this to 16 MiB, which fails on common nested JSON payloads.
+                # Unnest first-level keys into columns while keeping nested
+                # objects/arrays as JSON values.
                 sql = (
                     f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto("
                     f"'{escaped}', "
                     f"maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES}, "
+                    "maximum_depth=1, "
                     "ignore_errors=true)"
                 )
             else:
