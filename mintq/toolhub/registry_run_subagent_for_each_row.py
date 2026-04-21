@@ -62,6 +62,7 @@ class RegistryRunSubagentForEachRowTool:
         db_alias: str,
         table_name: str,
         task_instruction: str,
+        key_columns: list[str],
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
     ) -> str:
@@ -96,8 +97,10 @@ class RegistryRunSubagentForEachRowTool:
             task_instruction: Concise task instructions for processing each row.
                 Use clear, unambiguous instructions. Mention the output columns,
                 their data types, and format requirements.
+            key_columns: Columns the subagent uses in the WHERE clause to
+                locate each row.
             input_columns: Columns to include in the row payload sent to the
-                subagent. If omitted, all table columns are included.
+                subagent as context. If omitted, all table columns are included.
             output_columns: Columns the subagent should update. If provided, all
                 must already exist in the target table.
         """
@@ -108,7 +111,7 @@ class RegistryRunSubagentForEachRowTool:
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
         except TypeError as e:
             return f"(error: {e})"
-        return await tool(table_name, task_instruction, input_columns, output_columns)
+        return await tool(table_name, task_instruction, key_columns, input_columns, output_columns)
 
     def as_pydantic_ai_tool(self) -> Tool:
         """Return pydantic-ai Tool wrapper."""

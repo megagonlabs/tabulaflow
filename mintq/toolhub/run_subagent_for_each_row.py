@@ -21,10 +21,10 @@ from mintq.toolhub.run_query import RunQueryTool
 _SUBAGENT_SYSTEM_PROMPT = """\
 You are a row-level database update subagent.
 
-- You are given one target row payload and its identity columns.
+- You are given one target row's key columns and optionally additional context.
 - After gathering all the information you need, you should update the target row via `run_query`.
-- Use the given columns in the WHERE clause to target that row.
-  - If a row-identity value is null, use `IS NULL` in SQL instead of `= NULL`.
+- Use the key columns in the WHERE clause to target that row.
+  - If a key column value is null, use `IS NULL` in SQL instead of `= NULL`.
 - After executing the update query, return structured output with:
   - success: true if update succeeded, false otherwise.
   - message: concise status or error detail.""".strip()
@@ -35,8 +35,12 @@ Task instruction:
 
 Row location:
 - Table: {{ table_name }}
-- Use the columns below to identify this row:
-{{ row_payload_json }}
+- Identity columns (use in WHERE clause to target this row):
+{{ key_payload_json }}
+{% if row_context_json %}
+- Additional row context:
+{{ row_context_json }}
+{% endif %}
 {% if output_columns_json %}
 - Update only these columns:
 {{ output_columns_json }}
@@ -93,6 +97,7 @@ class RunSubagentForEachRowTool:
         self,
         table_name: str,
         task_instruction: str,
+        key_columns: list[str],
         input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
     ) -> str:
@@ -126,8 +131,10 @@ class RunSubagentForEachRowTool:
             task_instruction: Concise task instructions for processing each row.
                 Use clear, unambiguous instructions. Mention the output columns,
                 their data types, and format requirements.
+            key_columns: Columns the subagent uses in the WHERE clause to
+                locate each row.
             input_columns: Columns to include in the row payload sent to the
-                subagent. If omitted, all table columns are included.
+                subagent as context. If omitted, all table columns are included.
             output_columns: Columns the subagent should update. If provided, all
                 must already exist in the target table.
         """
@@ -141,13 +148,18 @@ class RunSubagentForEachRowTool:
         if not all_columns:
             return f"(error: table {table_name!r} has no columns)"
 
-        row_identity_columns = input_columns or all_columns
-        missing = [c for c in row_identity_columns if c not in all_columns]
-        if missing:
-            return f"(error: input_columns not found in table {table_name!r}: {missing})"
+        missing_id = [c for c in key_columns if c not in all_columns]
+        if missing_id:
+            return f"(error: key_columns not found in table {table_name!r}: {missing_id})"
+        ctx_cols = input_columns or all_columns
+        missing_ctx = [c for c in ctx_cols if c not in all_columns]
+        if missing_ctx:
+            return f"(error: input_columns not found in table {table_name!r}: {missing_ctx})"
         missing_output_columns = [c for c in (output_columns or []) if c not in all_columns]
         if missing_output_columns:
             return f"(error: output_columns not found in table {table_name!r}: {missing_output_columns})"
+        id_cols_set = set(key_columns)
+        extra_ctx_cols = [c for c in ctx_cols if c not in id_cols_set]
 
         completed = 0
 
@@ -164,11 +176,13 @@ class RunSubagentForEachRowTool:
                 output_type=SubagentRowResult,
                 model_settings=self.model_settings,
             )
-            identity_payload = {col: row.get(col) for col in row_identity_columns}
+            key_payload = {col: row.get(col) for col in key_columns}
+            row_context = {col: row.get(col) for col in extra_ctx_cols} if extra_ctx_cols else None
             prompt = self._row_prompt_template.render(
                 task_instruction=task_instruction,
                 table_name=table_name,
-                row_payload_json=json.dumps(identity_payload, ensure_ascii=True, default=str),
+                key_payload_json=json.dumps(key_payload, ensure_ascii=True, default=str),
+                row_context_json=json.dumps(row_context, ensure_ascii=True, default=str) if row_context else None,
                 output_columns_json=json.dumps(output_columns, ensure_ascii=True) if output_columns else None,
             )
             try:
