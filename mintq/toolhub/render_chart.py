@@ -8,7 +8,7 @@ from typing import Any, ClassVar
 import pandas as pd
 from pydantic_ai import Tool
 
-from mintq.toolhub.registry_run_query import QueryHistory
+from mintq.toolhub.query_history import QueryHistory
 
 
 _SUPPORTED_MARKS = {"bar", "line", "point", "rect"}

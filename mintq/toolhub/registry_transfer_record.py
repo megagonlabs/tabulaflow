@@ -9,7 +9,7 @@ from pydantic_ai import Tool
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.db_connector.sql_conn import SQLConnector
 
-from mintq.toolhub.registry_run_query import QueryHistory
+from mintq.toolhub.query_history import QueryHistory
 
 
 class RegistryTransferRecordTool:

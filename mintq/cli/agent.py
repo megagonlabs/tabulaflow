@@ -258,7 +258,7 @@ class ChatAgent:
     def set_workspace(self, connector: NL2QDBConnector) -> None:
         """Attach a workspace connector for persisting query-history DataFrames."""
         from mintq.db_connector.sql_conn import SQLConnector
-        from mintq.toolhub.registry_run_query import QueryHistory
+        from mintq.toolhub.query_history import QueryHistory
 
         if not isinstance(connector, SQLConnector):
             return

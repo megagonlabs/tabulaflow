@@ -13,7 +13,8 @@ from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonS
 from mintq.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from mintq.toolhub.registry_get_schema import RegistryGetSchemaTool
 from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
-from mintq.toolhub.registry_run_query import QueryHistory, QueryRecord, RegistryRunQueryTool
+from mintq.toolhub.query_history import QueryHistory, QueryRecord
+from mintq.toolhub.registry_run_query import RegistryRunQueryTool
 from mintq.toolhub.registry_run_subagent_for_each_row import RegistryRunSubagentForEachRowTool
 from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool

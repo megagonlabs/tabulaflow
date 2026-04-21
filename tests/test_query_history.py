@@ -4,7 +4,7 @@ import pandas as pd
 import pytest
 
 from mintq.schema import ExecResult, PredQuery
-from mintq.toolhub.registry_run_query import QueryHistory
+from mintq.toolhub.query_history import QueryHistory
 
 
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
