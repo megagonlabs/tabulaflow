@@ -71,13 +71,16 @@ Partially replaces:
 April 20
 - [x] Switch to parquet for df serialization
 - [x] Query history with persistence to workspace DuckDB
+- [x] key_columns in run_subagent tool
+
+April 21
+- [x] Json loading
+- [ ] Fix running two write queries fail
 - [ ] Improve run_subagent tool
   - [x] Key columns
   - [ ] Write trajectory and error to each row
   - [ ] Prompt tuning use case
   - [ ] SELECT * query for filtering
-
-
 
 - General
   - [ ] Improve transfer_record?
@@ -86,10 +89,11 @@ April 20
   - [ ] Session resume
   - [ ] Semantic join - cross join
   - [ ] Data export
-- Data/Query Browser
+- Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
   - [ ] Refresh for get_column_json_schema and get_db_document
+  - [ ] Pagination for cell browser
 - Delibird
   - [ ] Building from web
   - [ ] Building from files
