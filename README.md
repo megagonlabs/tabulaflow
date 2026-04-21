@@ -46,6 +46,7 @@ make last-trajectory # print the path to the last trajectory of mintq-cli agent
 - Support semantic operators (handles all data questions that Blue can handle)
   - "Tag questions that are ambiguous where both pred and gold are valid in results_gpt5.json"
   - "Tune the prompt for 5 iterations on this dataset"
+  - "Translate this dataset into English and Chinese"
 - Supports cross-data-source querying
   - "What is the difference of GITHUB_REPOS and GITHUB_REPOS_DATE?"
 - Supports outputting multiple tables
@@ -74,6 +75,7 @@ April 20
   - [x] Key columns
   - [ ] Write trajectory and error to each row
   - [ ] Prompt tuning use case
+  - [ ] SELECT * query for filtering
 
 
 
