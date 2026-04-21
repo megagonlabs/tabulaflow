@@ -803,6 +803,7 @@ async def build_schema_async(
 
 
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
+_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES = 4 * 1024 * 1024 * 1024
 
 
 def _table_name_from_path(file_path: str, *, include_ext: bool = False) -> str:
@@ -863,7 +864,11 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, st
             elif ext == ".parquet":
                 sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_parquet('{escaped}')"
             elif ext in (".json", ".jsonl", ".ndjson"):
-                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto('{escaped}')"
+                # DuckDB defaults this to 16 MiB, which fails on common nested JSON payloads.
+                sql = (
+                    f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto("
+                    f"'{escaped}', maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES})"
+                )
             else:
                 raise ValueError(f"Unsupported file format: {ext}")
 
