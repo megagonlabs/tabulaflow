@@ -127,7 +127,7 @@ class RunSubagentForEachRowTool:
         key_columns: list[str],
         output_columns: list[str] | None = None,
         sql_filter: str | None = None,
-        mode: Literal["agentic", "direct"] = "agentic",
+        mode: Literal["agentic", "direct"] = "direct",
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -150,12 +150,12 @@ class RunSubagentForEachRowTool:
           the tool completes, a standard SQL JOIN on the new column(s) produces
           the final result.
 
-        In ``agentic`` mode (default), each subagent has ``run_query`` access and
-        writes updates itself. In ``direct`` mode, the subagent receives no tools
-        and only produces text output; this tool writes the output to the
+        In ``direct`` mode (default), the subagent receives no tools and only
+        produces text output; this tool writes the output to the
         ``output_columns`` automatically. Use ``direct`` mode when you need
         to strictly control the subagent's context (e.g. when running inference
-        on a dataset).
+        on a dataset). In ``agentic`` mode, each subagent has ``run_query``
+        access and writes updates itself.
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
@@ -172,10 +172,10 @@ class RunSubagentForEachRowTool:
                 Must be a SELECT * query against table_name (e.g.
                 ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
                 If omitted, all rows are processed.
-            mode: Execution mode. ``agentic`` (default) gives the subagent
-                tools to query and update the database. ``direct`` gives no
-                tools — the subagent produces text output and this tool writes
-                it to ``output_columns``.
+            mode: Execution mode. ``direct`` (default) gives no tools — the
+                subagent produces text output and this tool writes it to
+                ``output_columns``. ``agentic`` gives the subagent tools to
+                query and update the database.
         """
         if mode == "direct":
             if not output_columns or len(output_columns) != 1:
