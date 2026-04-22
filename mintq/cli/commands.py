@@ -425,7 +425,8 @@ def _global_id_from_url(url: str) -> str:
     """Derive a stable global_id from a database URL, stripping credentials."""
     parsed = urlparse(url)
     # Keep scheme, host, port, path (database name) — drop user/password.
-    stripped = parsed._replace(netloc=parsed.hostname + (f":{parsed.port}" if parsed.port else ""))
+    host = parsed.hostname or ""
+    stripped = parsed._replace(netloc=host + (f":{parsed.port}" if parsed.port else ""))
     safe = re.sub(r"[^a-zA-Z0-9_]", "_", urlunparse(stripped))
     return f"cli+{safe}"
 
