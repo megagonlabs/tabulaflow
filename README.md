@@ -77,9 +77,9 @@ April 21
 - [x] Fix error on concurrent DDLs
 - [ ] Improve run_subagent tool
   - [x] Key columns
-  - [ ] Write trajectory and error to each row
+  - [x] Write trajectory and error to each row
+  - [x] sql_filter for filtering
   - [ ] Prompt tuning use case
-  - [ ] SELECT * query for filtering
 
 - General
   - [ ] Improve transfer_record?
@@ -88,6 +88,8 @@ April 21
   - [ ] Session resume
   - [ ] Semantic join - cross join
   - [ ] Data export
+  - [ ] Support interrupting preview loading
+  - [ ] Support interrupting agent
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
