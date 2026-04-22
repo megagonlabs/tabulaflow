@@ -55,6 +55,9 @@ _JSON_PARAM_EXPR: dict[SQLDialect, str] = {
 }
 _DEFAULT_JSON_PARAM_EXPR = ":_v_trajectory"
 
+_JINJA_ENV = jinja2.Environment(undefined=jinja2.Undefined)
+_JINJA_ENV.filters["fromjson"] = lambda v: json.loads(v) if isinstance(v, str) else v
+
 
 def _build_key_where(key_columns: list[str], key_payload: dict[str, object]) -> tuple[str, dict[str, object]]:
     """Build a WHERE clause from key columns using named parameters.
@@ -126,7 +129,7 @@ class RunSubagentForEachRowTool:
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
         self._get_column_json_schema_tool = GetColumnJsonSchemaTool(db_connector.schema)
-        self._agentic_system_prompt_template = jinja2.Template(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
+        self._agentic_system_prompt_template = _JINJA_ENV.from_string(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
 
     async def __call__(
         self,
@@ -169,7 +172,8 @@ class RunSubagentForEachRowTool:
             table_name: Target table name. Can be qualified (e.g. schema.table).
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate column values.
-                Example: ``"Classify the sentiment of: {{ review_text }}"``.
+                For JSON columns, use ``{{ (col | fromjson).field }}`` to access
+                nested fields. Example: ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns the subagent uses in the WHERE clause to
                 locate each row.
             output_columns: Columns the subagent should update. In ``direct``
@@ -208,7 +212,7 @@ class RunSubagentForEachRowTool:
 
         # Compile the task instruction as a Jinja2 template.
         try:
-            task_template = jinja2.Template(task_instruction)
+            task_template = _JINJA_ENV.from_string(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
 

@@ -110,7 +110,8 @@ class RegistryRunSubagentForEachRowTool:
             table_name: Target table name. Can be qualified (e.g. schema.table).
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate column values.
-                Example: ``"Classify the sentiment of: {{ review_text }}"``.
+                For JSON columns, use ``{{ (col | fromjson).field }}`` to access
+                nested fields. Example: ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns the subagent uses in the WHERE clause to
                 locate each row.
             output_columns: Columns the subagent should update. In ``direct``
