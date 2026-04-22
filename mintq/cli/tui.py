@@ -586,10 +586,6 @@ LIMIT 4000"""
 
         spinner: SpinnerWidget | None = None
         if slow:
-            # Remove bottom margin on user message for tight command output.
-            children = list(chat_log.children)
-            if children and isinstance(children[-1], UserMessage):
-                children[-1].styles.margin = (1, 0, 0, 0)
             label = "Connecting..." if cmd == "/connect" else "Disconnecting..."
             spinner = SpinnerWidget(label)
             chat_log.mount(spinner)
