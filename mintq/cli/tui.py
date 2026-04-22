@@ -6,6 +6,7 @@ import logging
 import os
 from typing import TYPE_CHECKING
 
+from rich.text import Text
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import Input
@@ -558,7 +559,7 @@ LIMIT 4000"""
 
         if not session.registry.list_aliases():
             chat_log.mount(UserMessage(text))
-            msg = SystemMessage("[red]No database connected.[/red] Use /connect first.")
+            msg = SystemMessage(Text.from_markup("[red]No database connected.[/red] Use /connect first."))
             chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
