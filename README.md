@@ -75,13 +75,14 @@ April 20
 April 21
 - [x] Json loading
 - [x] Fix error on concurrent DDLs
-- [ ] Improve run_subagent tool
-  - [x] sql_filter for filtering
-  - [x] Write trajectory and error to each row
-  - [ ] Prompt tuning use case
 - [x] Improve data browsing
   - [x] Live browsing
   - [x] Error on preview loading
+- [x] Improve run_subagent tool
+  - [x] sql_filter for filtering
+  - [x] Write trajectory and error metadata to each row
+  - [x] Prompt tuning use case - direct mode
+  - [x] Use sqlalchemy statement
 
 - General
   - [ ] Improve transfer_record?
@@ -92,6 +93,7 @@ April 21
   - [ ] Data export
   - [ ] Support interrupting preview loading
   - [ ] Support interrupting agent
+  - [ ] Pass db doc on connect for small dbs?
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
