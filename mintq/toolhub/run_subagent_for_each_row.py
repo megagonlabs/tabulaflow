@@ -5,7 +5,7 @@ from __future__ import annotations
 import asyncio
 import json
 from collections.abc import Callable
-from typing import ClassVar
+from typing import ClassVar, Literal
 
 import jinja2
 import sqlalchemy
@@ -20,33 +20,18 @@ from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.run_query import RunQueryTool
 
 
-_SUBAGENT_SYSTEM_PROMPT = """\
+_AGENTIC_SYSTEM_PROMPT_TEMPLATE = """\
 You are a row-level database update subagent.
 
-- You are given one target row's key columns and optionally additional context.
-- After gathering all the information you need, you should update the target row via `run_query`.
-- Use the key columns in the WHERE clause to target that row.
+- Update the target row in table `{{ table_name }}` via `run_query`.
+- Key columns for the WHERE clause: {{ key_columns_json }}
   - If a key column value is null, use `IS NULL` in SQL instead of `= NULL`.
+{% if output_columns_json %}\
+- Update only these columns: {{ output_columns_json }}
+{% endif %}\
 - After executing the update query, return structured output with:
   - success: true if update succeeded, false otherwise.
   - message: concise status or error detail.""".strip()
-
-_SUBAGENT_ROW_PROMPT_TEMPLATE = """\
-Task instruction:
-{{ task_instruction }}
-
-Row location:
-- Table: {{ table_name }}
-- Identity columns (use in WHERE clause to target this row):
-{{ key_payload_json }}
-{% if row_context_json %}
-- Additional row context:
-{{ row_context_json }}
-{% endif %}
-{% if output_columns_json %}
-- Update only these columns:
-{{ output_columns_json }}
-{% endif %}""".strip()
 
 
 _COL_SUCCESS = "_subagent_success"
@@ -141,16 +126,16 @@ class RunSubagentForEachRowTool:
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
         self._get_column_json_schema_tool = GetColumnJsonSchemaTool(db_connector.schema)
-        self._row_prompt_template = jinja2.Template(_SUBAGENT_ROW_PROMPT_TEMPLATE)
+        self._agentic_system_prompt_template = jinja2.Template(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
 
     async def __call__(
         self,
         table_name: str,
         task_instruction: str,
         key_columns: list[str],
-        input_columns: list[str] | None = None,
         output_columns: list[str] | None = None,
         sql_filter: str | None = None,
+        mode: Literal["agentic", "direct"] = "agentic",
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -173,26 +158,36 @@ class RunSubagentForEachRowTool:
           the tool completes, a standard SQL JOIN on the new column(s) produces
           the final result.
 
-        Each subagent has ``run_query`` access, so it can look up other tables as
-        needed for join resolution. All target output columns must already exist in
-        the table.
+        In ``agentic`` mode (default), each subagent has ``run_query`` access and
+        writes updates itself. In ``direct`` mode, the subagent receives no tools
+        and only produces text output; this tool writes the output to the
+        ``output_columns`` automatically. Only use ``direct`` mode when you need
+        to strictly control the subagent's context (e.g. when running inference
+        on a dataset).
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
-            task_instruction: Concise task instructions for processing each row.
-                Use clear, unambiguous instructions. Mention the output columns,
-                their data types, and format requirements.
+            task_instruction: A Jinja2 template rendered per-row as the subagent
+                prompt. Use ``{{ column_name }}`` to interpolate column values.
+                Example: ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns the subagent uses in the WHERE clause to
                 locate each row.
-            input_columns: Columns to include in the row payload sent to the
-                subagent as context. If omitted, all table columns are included.
-            output_columns: Columns the subagent should update. If provided, all
-                must already exist in the target table.
+            output_columns: Columns the subagent should update. In ``direct``
+                mode, must be exactly one column. If provided, all must
+                already exist in the target table.
             sql_filter: A ``SELECT *`` query to select which rows to process.
                 Must be a SELECT * query against table_name (e.g.
                 ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
                 If omitted, all rows are processed.
+            mode: Execution mode. ``agentic`` (default) gives the subagent
+                tools to query and update the database. ``direct`` gives no
+                tools — the subagent produces text output and this tool writes
+                it to ``output_columns``.
         """
+        if mode == "direct":
+            if not output_columns or len(output_columns) != 1:
+                return "(error: output_columns must be exactly one column in direct mode)"
+
         query = sql_filter if sql_filter is not None else f"SELECT * FROM {table_name}"
         select_result = await self.db_connector.run_query_async(query)
         if select_result.error is not None or select_result.df is None:
@@ -207,16 +202,15 @@ class RunSubagentForEachRowTool:
         missing_id = [c for c in key_columns if c not in all_columns]
         if missing_id:
             return f"(error: key_columns not found in table {table_name!r}: {missing_id})"
-        _internal = set(_INTERNAL_COLUMNS)
-        ctx_cols = input_columns or [c for c in all_columns if c not in _internal]
-        missing_ctx = [c for c in ctx_cols if c not in all_columns]
-        if missing_ctx:
-            return f"(error: input_columns not found in table {table_name!r}: {missing_ctx})"
         missing_output_columns = [c for c in (output_columns or []) if c not in all_columns]
         if missing_output_columns:
             return f"(error: output_columns not found in table {table_name!r}: {missing_output_columns})"
-        id_cols_set = set(key_columns)
-        extra_ctx_cols = [c for c in ctx_cols if c not in id_cols_set]
+
+        # Compile the task instruction as a Jinja2 template.
+        try:
+            task_template = jinja2.Template(task_instruction)
+        except jinja2.TemplateSyntaxError as e:
+            return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
 
         # Ensure _subagent_* columns exist on the target table.
         dialect = self.db_connector.language
@@ -234,6 +228,21 @@ class RunSubagentForEachRowTool:
                     await self.db_connector.run_query_async(
                         f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"
                     )
+
+        # Resolve the single output column name for direct mode.
+        direct_output_col: str | None = None
+        if mode == "direct":
+            assert output_columns is not None and len(output_columns) == 1
+            direct_output_col = output_columns[0]
+
+        # Build the agentic system prompt (static across rows).
+        agentic_system_prompt: str | None = None
+        if mode == "agentic":
+            agentic_system_prompt = self._agentic_system_prompt_template.render(
+                table_name=table_name,
+                key_columns_json=json.dumps(key_columns, ensure_ascii=True),
+                output_columns_json=json.dumps(output_columns, ensure_ascii=True) if output_columns else None,
+            )
 
         completed = 0
 
@@ -257,8 +266,26 @@ class RunSubagentForEachRowTool:
             )
             await self.db_connector.run_query_async(stmt, params)
 
-        async def _process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
+        async def _write_row_output(
+            key_payload: dict[str, object],
+            output_values: dict[str, object],
+        ) -> None:
+            """Write direct-mode output values to the target row."""
+            where_clause, params = _build_key_where(key_columns, key_payload)
+            set_parts: list[str] = []
+            for col, val in output_values.items():
+                param_name = f"_o_{col}"
+                set_parts.append(f"{col} = :{param_name}")
+                params[param_name] = val
+            stmt = sqlalchemy.text(
+                f"UPDATE {table_name} SET {', '.join(set_parts)} WHERE {where_clause}"
+            )
+            await self.db_connector.run_query_async(stmt, params)
+
+        async def _process_one_row_agentic(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
+            assert agentic_system_prompt is not None
+            prompt = task_template.render(row)
             subagent = Agent(
                 model=self.subagent_llm,
                 tools=[
@@ -266,19 +293,11 @@ class RunSubagentForEachRowTool:
                     self._get_table_schema_tool.as_pydantic_ai_tool(),
                     self._get_column_json_schema_tool.as_pydantic_ai_tool(),
                 ],
-                instructions=_SUBAGENT_SYSTEM_PROMPT,
+                instructions=agentic_system_prompt,
                 output_type=SubagentRowResult,
                 model_settings=self.model_settings,
             )
             key_payload = {col: row.get(col) for col in key_columns}
-            row_context = {col: row.get(col) for col in extra_ctx_cols} if extra_ctx_cols else None
-            prompt = self._row_prompt_template.render(
-                task_instruction=task_instruction,
-                table_name=table_name,
-                key_payload_json=json.dumps(key_payload, ensure_ascii=True, default=str),
-                row_context_json=json.dumps(row_context, ensure_ascii=True, default=str) if row_context else None,
-                output_columns_json=json.dumps(output_columns, ensure_ascii=True) if output_columns else None,
-            )
             error_msg: str | None = None
             metadata: tuple[bool, str, str] | None = None
             try:
@@ -299,16 +318,47 @@ class RunSubagentForEachRowTool:
                     await asyncio.sleep(0)
             return error_msg
 
+        async def _process_one_row_direct(row_idx: int, row: dict[str, object]) -> str | None:
+            nonlocal completed
+            assert direct_output_col is not None
+            prompt = task_template.render(row)
+            subagent = Agent(
+                model=self.subagent_llm,
+                tools=[],
+                output_type=str,
+                model_settings=self.model_settings,
+            )
+            key_payload = {col: row.get(col) for col in key_columns}
+            error_msg: str | None = None
+            metadata: tuple[bool, str, str] | None = None
+            try:
+                result = await subagent.run(prompt)
+                output = result.output
+                await _write_row_output(key_payload, {direct_output_col: output})
+                traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
+                metadata = (True, output, traj.model_dump_json())
+            except Exception as e:
+                error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
+            finally:
+                if self.store_metadata and metadata is not None:
+                    await _save_row_metadata(key_payload, *metadata)
+                completed += 1
+                if self.on_row_complete is not None:
+                    self.on_row_complete(completed, total)
+                    await asyncio.sleep(0)
+            return error_msg
+
+        process_fn = _process_one_row_direct if mode == "direct" else _process_one_row_agentic
         rows = df.to_dict(orient="records")
         total = len(rows)
         semaphore = asyncio.Semaphore(self.max_concurrency)
 
-        async def _throttled_process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
+        async def _throttled(row_idx: int, row: dict[str, object]) -> str | None:
             async with semaphore:
-                return await _process_one_row(row_idx, row)
+                return await process_fn(row_idx, row)
 
         errors = await asyncio.gather(
-            *(_throttled_process_one_row(row_idx, row) for row_idx, row in enumerate(rows, start=1))
+            *(_throttled(row_idx, row) for row_idx, row in enumerate(rows, start=1))
         )
         await self.db_connector.refresh_schema_async()
 
