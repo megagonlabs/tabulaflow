@@ -1692,7 +1692,8 @@ class SchemaBrowserScreen(Screen[None]):
         self._status.update(Text("Loading preview...", style="dim"))
         result = await connector.run_query_async(stmt, timeout=30)
         if result.error is not None:
-            self._status.update(Text(f"Preview error: {result.error.message}", style="bold red"))
+            msg = result.error.message.replace("\n", " ").strip()
+            self._status.update(Text.from_markup(f"[red]Preview error:[/red] {msg}"))
             return
         self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()
