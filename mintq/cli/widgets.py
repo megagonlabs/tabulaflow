@@ -1688,8 +1688,13 @@ class SchemaBrowserScreen(Screen[None]):
             node_data.table_name,
             schema=node_data.schema_name,
         )
-        stmt = sqlalchemy.select("*").select_from(tbl).limit(10)
-        result = await connector.run_query_async(stmt)
+        stmt = sqlalchemy.select("*").select_from(tbl).limit(50)
+        self._status.update(Text("Loading preview...", style="dim"))
+        result = await connector.run_query_async(stmt, timeout=30)
+        if result.error is not None:
+            self._status.update(Text(f"Preview error: {result.error.message}", style="bold red"))
+            return
+        self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()
 
         title = (
