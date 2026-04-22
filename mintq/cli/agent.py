@@ -85,7 +85,7 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 - `workspace` is a session-local scratch space for transformation tables. Tables created in `workspace` persist for the entire session.
 - First, use `transfer_record` to move data into or out of `workspace`.
   - To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
-- Use `registry_run_subagent_for_each_row` when you need row-wise LLM processing that writes updates back to an existing table. Prefer this over fuzzy regex matching or LIKE-based SQL for semantic operations (e.g., classifying free text, joining on product names with naming variations, extracting sentiment from text).
+- Use `run_subagent_for_each_row` when you need row-wise LLM processing that writes updates back to an existing table. Prefer this over fuzzy regex matching or LIKE-based SQL for semantic operations (e.g., classifying free text, joining on product names with naming variations, extracting sentiment from text).
 - When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
 </data_transformation_tasks_internal>
 
@@ -131,7 +131,7 @@ There is no shared key between office_code and facility_name. The mapping requir
 Steps:
 1. Transfer both tables into `workspace`.
 2. Add a resolved/normalized column to one (or both) tables.
-3. Use `registry_run_subagent_for_each_row` to populate the new column by matching values across tables.
+3. Use `run_subagent_for_each_row` to populate the new column by matching values across tables.
    - (preferred) approach (a): When resolving values against a column in the other table, instruct the subagent to query it at runtime — do not embed a large vocabulary in the task instruction.
    - approach (b): When normalizing both sides, specify the canonical form (e.g., "normalize to IATA airport code").
 4. Join on the resolved column with a standard SQL query.
@@ -202,7 +202,7 @@ class Toolset:
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
     transfer_record: RegistryTransferRecordTool
-    registry_run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
+    run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
     render_chart: RenderPlotextChartTool
 
 
@@ -240,7 +240,7 @@ class ChatAgent:
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
-            registry_run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
+            run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
                 self.registry,
                 model_settings={"openai_service_tier": "priority"},
                 store_metadata=True,
@@ -312,7 +312,7 @@ class ChatAgent:
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.transfer_record.as_pydantic_ai_tool(),
-                self._tools.registry_run_subagent_for_each_row.as_pydantic_ai_tool(),
+                self._tools.run_subagent_for_each_row.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
             ],
             instructions=self._system_prompt,
@@ -328,7 +328,7 @@ class ChatAgent:
         from pydantic_ai.run import AgentRunResultEvent
 
         progress.start()
-        self._tools.registry_run_subagent_for_each_row.on_row_complete = (
+        self._tools.run_subagent_for_each_row.on_row_complete = (
             lambda c, t: progress.tool_progress(c, t)
         )
 
@@ -349,7 +349,7 @@ class ChatAgent:
                 await asyncio.sleep(0)
 
         finally:
-            self._tools.registry_run_subagent_for_each_row.on_row_complete = None
+            self._tools.run_subagent_for_each_row.on_row_complete = None
             progress.finish()
 
         self._save_trajectory_for_debug()
