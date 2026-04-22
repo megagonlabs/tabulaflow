@@ -309,6 +309,7 @@ class RunSubagentForEachRowTool:
                     error_msg = f"row {row_idx}: {output.message}"
             except Exception as e:
                 error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
+                metadata = (False, error_msg, "")
             finally:
                 if self.store_metadata and metadata is not None:
                     await _save_row_metadata(key_payload, *metadata)
@@ -339,6 +340,7 @@ class RunSubagentForEachRowTool:
                 metadata = (True, output, traj.model_dump_json())
             except Exception as e:
                 error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
+                metadata = (False, error_msg, "")
             finally:
                 if self.store_metadata and metadata is not None:
                     await _save_row_metadata(key_payload, *metadata)
