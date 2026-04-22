@@ -94,6 +94,7 @@ April 21
   - [ ] Support interrupting preview loading
   - [ ] Support interrupting agent
   - [ ] Pass db doc on connect for small dbs?
+  - [ ] Multimodal data processing in subagent
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
