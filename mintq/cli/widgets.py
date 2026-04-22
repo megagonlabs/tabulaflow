@@ -1650,8 +1650,14 @@ class SchemaBrowserScreen(Screen[None]):
 
     # -- actions --------------------------------------------------------------
 
-    def action_open_preview(self) -> None:
-        """Open DataBrowserScreen for the table under the cursor using sampled_df."""
+    async def action_open_preview(self) -> None:
+        """Open DataBrowserScreen for the table under the cursor.
+
+        For writable SQL connectors (``read_only=False``), runs a live
+        ``SELECT * ... LIMIT 10`` so the preview reflects the current
+        database state.  For read-only or non-SQL connectors, falls back
+        to the cached ``sampled_df``.
+        """
         from textual.widgets import Tree
 
         from mintq.schema import SQLSchema
@@ -1672,7 +1678,19 @@ class SchemaBrowserScreen(Screen[None]):
             (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
             None,
         )
-        if table is None or table.sampled_df is None or table.sampled_df.empty:
+        if table is None:
+            return
+
+        import sqlalchemy
+
+        tbl = sqlalchemy.table(
+            node_data.table_name,
+            schema=node_data.schema_name,
+        )
+        stmt = sqlalchemy.select("*").select_from(tbl).limit(10)
+        result = await connector.run_query_async(stmt)
+        df = result.df
+        if df is None or df.empty:
             return
 
         title = (
@@ -1680,7 +1698,7 @@ class SchemaBrowserScreen(Screen[None]):
             if node_data.schema_name
             else f"{node_data.alias}: {node_data.table_name} (preview)"
         )
-        self.app.push_screen(DataBrowserScreen(title=title, df=table.sampled_df))
+        self.app.push_screen(DataBrowserScreen(title=title, df=df))
 
     # -- actions & hints -----------------------------------------------------
 
