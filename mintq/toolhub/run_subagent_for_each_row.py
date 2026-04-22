@@ -374,11 +374,11 @@ class RunSubagentForEachRowTool:
         )
         if error_messages:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in error_messages[:5])
-            if self.store_metadata:
-                summary += (
-                    f"\nQuery {_COL_SUCCESS}, {_COL_MESSAGE}, {_COL_TRAJECTORY} "
-                    f"columns in {table_name} for full details."
-                )
+        if self.store_metadata:
+            summary += (
+                f"\nMetadata stored in columns {_COL_SUCCESS}, {_COL_MESSAGE}, "
+                f"{_COL_TRAJECTORY} of {table_name}."
+            )
         return summary
 
     def as_pydantic_ai_tool(self) -> Tool:
