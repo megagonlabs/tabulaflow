@@ -1681,6 +1681,7 @@ class SchemaBrowserScreen(Screen[None]):
         if table is None:
             return
 
+        import pandas as pd
         import sqlalchemy
 
         tbl = sqlalchemy.table(
@@ -1689,9 +1690,7 @@ class SchemaBrowserScreen(Screen[None]):
         )
         stmt = sqlalchemy.select("*").select_from(tbl).limit(10)
         result = await connector.run_query_async(stmt)
-        df = result.df
-        if df is None or df.empty:
-            return
+        df = result.df if result.df is not None else pd.DataFrame()
 
         title = (
             f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} (preview)"
