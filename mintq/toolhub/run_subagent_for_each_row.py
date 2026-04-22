@@ -49,35 +49,24 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
     "clickhouse": "String",  # no native JSON; fall back to String (≈TEXT)
 }
 
-# Snowflake VARIANT requires PARSE_JSON() to cast a string parameter to VARIANT.
-_JSON_PARAM_EXPR: dict[SQLDialect, str] = {
-    "snowflake": "PARSE_JSON(:_v_trajectory)",
-}
-_DEFAULT_JSON_PARAM_EXPR = ":_v_trajectory"
+
+# Dialects that require PARSE_JSON() to store a JSON string into a native column.
+_DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.Undefined)
 _JINJA_ENV.filters["fromjson"] = lambda v: json.loads(v) if isinstance(v, str) else v
 
 
-def _build_key_where(key_columns: list[str], key_payload: dict[str, object]) -> tuple[str, dict[str, object]]:
-    """Build a WHERE clause from key columns using named parameters.
-
-    Returns:
-        A ``(clause, params)`` tuple where *clause* is a SQL fragment like
-        ``col1 = :_k_col1 AND col2 IS NULL`` and *params* maps parameter
-        names to values.
-    """
-    parts: list[str] = []
-    params: dict[str, object] = {}
-    for col in key_columns:
-        val = key_payload[col]
-        if val is None:
-            parts.append(f"{col} IS NULL")
-        else:
-            param_name = f"_k_{col}"
-            parts.append(f"{col} = :{param_name}")
-            params[param_name] = val
-    return " AND ".join(parts), params
+def _key_where_clause(
+    key_columns: list[str], key_payload: dict[str, object]
+) -> sqlalchemy.ColumnElement[bool]:
+    """Build a SQLAlchemy WHERE clause from key columns."""
+    conditions: list[sqlalchemy.ColumnElement[bool]] = []
+    for col_name in key_columns:
+        val = key_payload[col_name]
+        col: sqlalchemy.ColumnClause[object] = sqlalchemy.column(col_name)
+        conditions.append(col.is_(None) if val is None else col == val)
+    return sqlalchemy.and_(*conditions)
 
 
 class SubagentRowResult(BaseModel):
@@ -219,7 +208,6 @@ class RunSubagentForEachRowTool:
         # Ensure _subagent_* columns exist on the target table.
         dialect = self.db_connector.language
         trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
-        trajectory_param_expr = _JSON_PARAM_EXPR.get(dialect, _DEFAULT_JSON_PARAM_EXPR)
         if self.store_metadata:
             for col in _INTERNAL_COLUMNS:
                 if col not in all_columns:
@@ -250,6 +238,16 @@ class RunSubagentForEachRowTool:
 
         completed = 0
 
+        # Build a SQLAlchemy table with all columns referenced in SET clauses.
+        sa_col_names: set[str] = set(key_columns)
+        if self.store_metadata:
+            sa_col_names.update(_INTERNAL_COLUMNS)
+        if output_columns:
+            sa_col_names.update(output_columns)
+        sa_table = sqlalchemy.table(
+            table_name, *[sqlalchemy.column(c) for c in sa_col_names]
+        )
+
         async def _save_row_metadata(
             key_payload: dict[str, object],
             success: bool,
@@ -257,34 +255,33 @@ class RunSubagentForEachRowTool:
             trajectory: str,
         ) -> None:
             """Write subagent metadata columns for one row."""
-            where_clause, params = _build_key_where(key_columns, key_payload)
-            params["_v_success"] = success
-            params["_v_message"] = message
-            params["_v_trajectory"] = trajectory
-            stmt = sqlalchemy.text(
-                f"UPDATE {table_name} "
-                f"SET {_COL_SUCCESS} = :_v_success, "
-                f"{_COL_MESSAGE} = :_v_message, "
-                f"{_COL_TRAJECTORY} = {trajectory_param_expr} "
-                f"WHERE {where_clause}"
+            traj_val: object = (
+                sqlalchemy.func.parse_json(trajectory)
+                if dialect in _DIALECTS_WITH_PARSE_JSON
+                else trajectory
             )
-            await self.db_connector.run_query_async(stmt, params)
+            stmt = (
+                sqlalchemy.update(sa_table)
+                .where(_key_where_clause(key_columns, key_payload))
+                .values({
+                    sa_table.c[_COL_SUCCESS]: success,
+                    sa_table.c[_COL_MESSAGE]: message,
+                    sa_table.c[_COL_TRAJECTORY]: traj_val,
+                })
+            )
+            await self.db_connector.run_query_async(stmt)
 
         async def _write_row_output(
             key_payload: dict[str, object],
             output_values: dict[str, object],
         ) -> None:
             """Write direct-mode output values to the target row."""
-            where_clause, params = _build_key_where(key_columns, key_payload)
-            set_parts: list[str] = []
-            for col, val in output_values.items():
-                param_name = f"_o_{col}"
-                set_parts.append(f"{col} = :{param_name}")
-                params[param_name] = val
-            stmt = sqlalchemy.text(
-                f"UPDATE {table_name} SET {', '.join(set_parts)} WHERE {where_clause}"
+            stmt = (
+                sqlalchemy.update(sa_table)
+                .where(_key_where_clause(key_columns, key_payload))
+                .values({sa_table.c[col]: val for col, val in output_values.items()})
             )
-            await self.db_connector.run_query_async(stmt, params)
+            await self.db_connector.run_query_async(stmt)
 
         async def _process_one_row_agentic(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
