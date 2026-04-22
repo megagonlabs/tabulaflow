@@ -76,10 +76,12 @@ April 21
 - [x] Json loading
 - [x] Fix error on concurrent DDLs
 - [ ] Improve run_subagent tool
-  - [x] Key columns
-  - [x] Write trajectory and error to each row
   - [x] sql_filter for filtering
+  - [x] Write trajectory and error to each row
   - [ ] Prompt tuning use case
+- [x] Improve data browsing
+  - [x] Live browsing
+  - [x] Error on preview loading
 
 - General
   - [ ] Improve transfer_record?
