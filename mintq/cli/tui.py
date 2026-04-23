@@ -67,6 +67,7 @@ class MintqApp(App[None]):
         if self._debug_enabled():
             chat_log.mount(self._build_debug_small_result_widget())
             chat_log.mount(self._build_debug_chart_result_widget())
+            chat_log.mount(self._build_debug_quad_result_widget())
             chat_log.mount(self._build_debug_multi_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
@@ -510,6 +511,127 @@ LIMIT 4000"""
                     chart_spec=None,
                     query_lexer="sql",
                 )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
+
+    def _build_debug_quad_result_widget(self) -> AgentResultWidget:
+        """Compact 4-record fixture exercising every view-kind combination."""
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        # Record 1: Chart + Data + Query
+        regions_df = pd.DataFrame(
+            {
+                "region": ["Northeast", "Southeast", "Midwest", "West"],
+                "revenue": [1_245_300, 982_450, 1_108_720, 1_530_900],
+                "orders": [8421, 6307, 7210, 10_845],
+            }
+        )
+        regions_chart: dict[str, object] = {
+            "mark": "bar",
+            "encoding": {
+                "x": {"field": "region", "type": "nominal"},
+                "y": {"field": "revenue", "type": "quantitative"},
+            },
+            "title": "Revenue by Region",
+        }
+        regions_query = (
+            "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\n"
+            "FROM sales GROUP BY region ORDER BY revenue DESC"
+        )
+
+        # Record 2: Data + Query (no chart)
+        products_df = pd.DataFrame(
+            {
+                "sku": ["SKU-00042", "SKU-01337", "SKU-00218", "SKU-00999", "SKU-00024"],
+                "product_name": [
+                    "Wireless Headphones",
+                    "USB-C Hub",
+                    "Mechanical Keyboard",
+                    "4K Monitor",
+                    "Ergonomic Mouse",
+                ],
+                "units_sold": [1420, 980, 760, 540, 870],
+                "revenue": [198_800, 39_200, 91_200, 162_000, 43_500],
+            }
+        )
+        products_query = (
+            "SELECT sku, product_name, SUM(quantity) AS units_sold, SUM(amount) AS revenue\n"
+            "FROM order_items JOIN products USING (sku)\n"
+            "GROUP BY sku, product_name\n"
+            "ORDER BY revenue DESC LIMIT 5"
+        )
+
+        # Record 3: Chart + Data + Query — different shape
+        channels_df = pd.DataFrame(
+            {
+                "channel": ["online", "in_store", "phone", "marketplace"],
+                "avg_order": [82.4, 124.7, 61.2, 95.3],
+                "tx": [12_480, 8_915, 2_204, 5_612],
+            }
+        )
+        channels_chart: dict[str, object] = {
+            "mark": "bar",
+            "encoding": {
+                "x": {"field": "channel", "type": "nominal"},
+                "y": {"field": "tx", "type": "quantitative"},
+            },
+            "title": "Transactions by Channel",
+        }
+        channels_query = (
+            "SELECT channel, AVG(amount) AS avg_order, COUNT(*) AS tx\nFROM sales GROUP BY channel ORDER BY tx DESC"
+        )
+
+        # Record 4: Query-only
+        low_stock_query = (
+            "SELECT sku, product_name, stock_on_hand, reorder_point\n"
+            "FROM inventory\n"
+            "WHERE stock_on_hand < reorder_point\n"
+            "ORDER BY (reorder_point - stock_on_hand) DESC"
+        )
+
+        result = ChatResult(
+            text="Debug quad-record result",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG_QUAD_1",
+                    label="top_regions",
+                    query=regions_query,
+                    df=regions_df,
+                    chart_spec=regions_chart,
+                    query_lexer="sql",
+                ),
+                ChatResultRecord(
+                    record_id="QDEBUG_QUAD_2",
+                    label="top_products",
+                    query=products_query,
+                    df=products_df,
+                    chart_spec=None,
+                    query_lexer="sql",
+                ),
+                ChatResultRecord(
+                    record_id="QDEBUG_QUAD_3",
+                    label="channel_mix",
+                    query=channels_query,
+                    df=channels_df,
+                    chart_spec=channels_chart,
+                    query_lexer="sql",
+                ),
+                ChatResultRecord(
+                    record_id="QDEBUG_QUAD_4",
+                    label="low_stock_alerts",
+                    query=low_stock_query,
+                    df=None,
+                    chart_spec=None,
+                    query_lexer="sql",
+                ),
             ],
             primary_record_index=0,
         )
