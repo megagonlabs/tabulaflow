@@ -1119,9 +1119,26 @@ class AgentResultWidget(Widget):
         background: $surface;
     }
 
-    AgentResultWidget .top-bar {
+    AgentResultWidget .top-bar-row {
+        layout: horizontal;
         height: auto;
         margin: 0 0 1 0;
+    }
+
+    AgentResultWidget .record-bar {
+        width: 1fr;
+        height: auto;
+        overflow-x: hidden;
+    }
+
+    AgentResultWidget .view-stepper {
+        width: auto;
+        height: auto;
+    }
+
+    AgentResultWidget .bottom-hint {
+        height: auto;
+        margin: 1 0 0 0;
     }
 
     """
@@ -1143,11 +1160,16 @@ class AgentResultWidget(Widget):
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._content = Static(id="result-content")
         self._mounted = False
-        self._top_bar_widget: Static | None = None
-        # Record pills: (row, col_start, col_end) indexed the same as records.
+        self._record_bar_widget: Static | None = None
+        self._view_stepper_widget: Static | None = None
+        self._bottom_hint_widget: Static | None = None
+        # Record hit areas: (record_index, col_start, col_end) relative to the
+        # record bar widget. Indices can be non-contiguous when a sliding
+        # window is in effect.
         self._record_hit_areas: list[tuple[int, int, int]] = []
-        # View stepper: target is "prev" or "next".
-        self._view_hit_areas: list[tuple[str, int, int, int]] = []
+        # View hit areas: (target, col_start, col_end) relative to the view
+        # stepper widget. Target is "prev" or "next".
+        self._view_hit_areas: list[tuple[str, int, int]] = []
 
     @property
     def _has_top_bar(self) -> bool:
@@ -1155,18 +1177,32 @@ class AgentResultWidget(Widget):
         return bool(self._records)
 
     def compose(self) -> ComposeResult:
+        from textual.containers import Horizontal
+
         if self._has_top_bar:
-            self._top_bar_widget = Static(classes="top-bar")
-            yield self._top_bar_widget
+            self._record_bar_widget = Static(classes="record-bar")
+            self._view_stepper_widget = Static(classes="view-stepper")
+            yield Horizontal(
+                self._record_bar_widget,
+                self._view_stepper_widget,
+                classes="top-bar-row",
+            )
         yield self._content
+        if self._has_top_bar:
+            self._bottom_hint_widget = Static(classes="bottom-hint")
+            yield self._bottom_hint_widget
 
     def on_mount(self) -> None:
         self._mounted = True
         self._refresh_all()
 
     def on_resize(self) -> None:
-        if self._top_bar_widget is not None:
-            self._update_top_bar()
+        if self._record_bar_widget is not None:
+            self._update_record_bar()
+        if self._view_stepper_widget is not None:
+            self._update_view_stepper()
+        if self._bottom_hint_widget is not None:
+            self._update_bottom_hint()
 
     def watch_current_record(self) -> None:
         if not self._mounted:
@@ -1186,8 +1222,12 @@ class AgentResultWidget(Widget):
 
     def _refresh_all(self) -> None:
         self._update_content()
-        if self._top_bar_widget is not None:
-            self._update_top_bar()
+        if self._record_bar_widget is not None:
+            self._update_record_bar()
+        if self._view_stepper_widget is not None:
+            self._update_view_stepper()
+        if self._bottom_hint_widget is not None:
+            self._update_bottom_hint()
         if self._is_last_chat_item():
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
@@ -1214,125 +1254,174 @@ class AgentResultWidget(Widget):
         idx = min(self.current_view, len(rec.views) - 1)
         return rec.views[idx]
 
-    def _update_top_bar(self) -> None:
-        """Render the view stepper and record pills on a single line.
+    def _select_visible_records(self, available_width: int) -> tuple[list[int], bool, bool]:
+        """Pick the record indices that fit in ``available_width``.
 
-        Layout: ``◂ Chart ▸      pill   pill   pill        Enter … [/] … ←/→…``
-          - the view stepper renders whenever the current record has any views
-            (always both chevrons, always accent-green),
-          - record pills always render; the active record is highlighted,
-          - the right-aligned hint lists whichever keybindings currently apply.
+        The sliding window always contains ``current_record`` and grows
+        outward (preferring the right) until another pill wouldn't fit.
+        Reserves space for a one-character ellipsis marker on each side
+        that ends up truncated.
         """
-        from rich.align import Align
-        from rich.columns import Columns
+        n = len(self._records)
+        if n == 0:
+            return [], False, False
+        pill_widths = [len(r.label) + 2 for r in self._records]  # " label "
+        SEP = 1  # space between pills
+        MARKER = 2  # "‹ " or " ›"
+
+        current = min(self.current_record, n - 1)
+        left = right = current
+        used = pill_widths[current]
+
+        def overhead() -> int:
+            return (MARKER if left > 0 else 0) + (MARKER if right < n - 1 else 0)
+
+        if used + overhead() > available_width and n > 1:
+            # Even the current pill alone doesn't fit with markers — bail out
+            # gracefully and just return the current pill; it'll be clipped by
+            # the widget's overflow-x: hidden, but the keyboard still works.
+            return [current], left > 0, right < n - 1
+
+        while True:
+            # Prefer extending right so the leading pills stay stable during
+            # left-to-right reading.
+            if right < n - 1:
+                cost = SEP + pill_widths[right + 1]
+                if used + cost + overhead() <= available_width:
+                    right += 1
+                    used += cost
+                    continue
+            if left > 0:
+                cost = pill_widths[left - 1] + SEP
+                if used + cost + overhead() <= available_width:
+                    left -= 1
+                    used += cost
+                    continue
+            break
+
+        return list(range(left, right + 1)), left > 0, right < n - 1
+
+    def _update_record_bar(self) -> None:
+        """Render record pills left-anchored with a sliding window on overflow.
+
+        Hit areas are stored relative to ``self._record_bar_widget`` so the
+        click handler can test ``event.x``/``event.y`` directly without
+        worrying about the enclosing layout.
+        """
+        from rich.style import Style
+
+        if self._record_bar_widget is None:
+            return
+
+        available_width = self._record_bar_widget.size.width or 80
+        visible, trunc_left, trunc_right = self._select_visible_records(available_width)
+
+        line = Text(no_wrap=True, overflow="crop")
+        self._record_hit_areas = []
+        col = 0
+        dim_sep_style = Style(dim=True)
+
+        if trunc_left:
+            line.append_text(Text("‹ ", style=dim_sep_style))
+            col += 2
+
+        for idx, rec_idx in enumerate(visible):
+            if idx > 0:
+                line.append_text(Text(" "))
+                col += 1
+            r = self._records[rec_idx]
+            pill = f" {r.label} "
+            col_start = col
+            pill_style = (
+                Style(bold=True, color="black", bgcolor=ACCENT) if rec_idx == self.current_record else Style(dim=True)
+            )
+            line.append_text(Text(pill, style=pill_style))
+            col += len(pill)
+            self._record_hit_areas.append((rec_idx, col_start, col))
+
+        if trunc_right:
+            line.append_text(Text(" ›", style=dim_sep_style))
+            col += 2
+
+        self._record_bar_widget.update(line)
+
+    def _update_view_stepper(self) -> None:
+        """Render the view stepper with an optional switch-view hint on its left.
+
+        Hit areas are stored relative to ``self._view_stepper_widget``.
+        """
         from rich.style import Style
 
         from mintq.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
-        if self._top_bar_widget is None:
+        if self._view_stepper_widget is None:
             return
 
         rec = self._current_record_or_none()
         has_views = rec is not None and bool(rec.views)
         view_interactive = rec is not None and len(rec.views) > 1
-        record_interactive = len(self._records) > 1
 
-        # Hint reflects the applicable keybindings.
-        hint = Text()
-        if has_views:
-            hint.append("Enter", style=ACCENT_BOLD)
-            hint.append(" Full Screen", style="dim")
-        if view_interactive:
-            if hint.plain:
-                hint.append("    ")
-            hint.append("[/]", style=ACCENT_BOLD)
-            hint.append(" Switch View", style="dim")
-        if record_interactive:
-            if hint.plain:
-                hint.append("    ")
-            hint.append("←/→", style=ACCENT_BOLD)
-            hint.append(" Switch Record", style="dim")
-
-        wrap_width = self._top_bar_widget.size.width or 80
-        hint_width = len(hint.plain)
-        side_by_side = (wrap_width - hint_width - 1) >= 20 and bool(hint.plain)
-        tab_wrap_width = max(1, (wrap_width - hint_width - 1) if side_by_side else wrap_width)
-
-        line = Text()
-        self._record_hit_areas = []
         self._view_hit_areas = []
-        row, col = 0, 0
+        if not has_views:
+            self._view_stepper_widget.update(Text(""))
+            return
+        assert rec is not None
 
         chevron_style = Style(bold=True, color=ACCENT)
         label_style = Style(bold=True, color=ACCENT)
+        dim_sep_style = Style(dim=True)
 
-        # View stepper first — chevrons always render in mint green.
-        if has_views:
-            assert rec is not None
-            cur_idx = min(self.current_view, len(rec.views) - 1)
-            cur_kind = rec.views[cur_idx].kind
+        cur_kind = rec.views[min(self.current_view, len(rec.views) - 1)].kind
+        max_kind_width = max(len(k) for k in (VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY))
+        pad = max_kind_width - len(cur_kind)
 
-            line.append_text(Text("◂", style=chevron_style))
-            self._view_hit_areas.append(("prev", row, col, col + 1))
-            col += 1
-            line.append_text(Text(" "))
-            col += 1
+        line = Text(no_wrap=True)
+        col = 0
 
-            line.append_text(Text(cur_kind, style=label_style))
-            col += len(cur_kind)
+        if view_interactive:
+            line.append_text(Text("[/]", style=ACCENT_BOLD))
+            col += 3
+            line.append_text(Text(" Switch View", style="dim"))
+            col += len(" Switch View")
+            line.append_text(Text("  ·  ", style=dim_sep_style))
+            col += 5
 
-            line.append_text(Text(" "))
-            col += 1
-            line.append_text(Text("▸", style=chevron_style))
-            self._view_hit_areas.append(("next", row, col, col + 1))
-            col += 1
+        # Left-pad short kinds outside the stepper so the stepper itself stays
+        # visually tight and its right edge stays pinned.
+        if pad > 0:
+            line.append_text(Text(" " * pad))
+            col += pad
 
-            # Pad after the right chevron so the stepper width stays constant
-            # across view kinds and the record tabs don't shift horizontally.
-            max_kind_width = max(len(k) for k in (VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY))
-            trailing = max_kind_width - len(cur_kind)
-            if trailing > 0:
-                line.append_text(Text(" " * trailing))
-                col += trailing
+        prev_x = col
+        line.append_text(Text("◂", style=chevron_style))
+        col += 1
+        line.append_text(Text(" "))
+        col += 1
+        line.append_text(Text(cur_kind, style=label_style))
+        col += len(cur_kind)
+        line.append_text(Text(" "))
+        col += 1
+        next_x = col
+        line.append_text(Text("▸", style=chevron_style))
+        col += 1
 
-        # Separator between the stepper and record pills.
-        if has_views and self._records:
-            gap = "      "
-            if col + len(gap) > tab_wrap_width:
-                line.append_text(Text("\n"))
-                row += 1
-                col = 0
-            else:
-                line.append_text(Text(gap))
-                col += len(gap)
+        self._view_hit_areas.append(("prev", prev_x, prev_x + 1))
+        self._view_hit_areas.append(("next", next_x, next_x + 1))
 
-        # Record pills — always render when there are records, even a single one.
-        for i, r in enumerate(self._records):
-            pill = f" {r.label} "
-            sep = " " if col > 0 and i > 0 else ""
-            needed = len(sep) + len(pill)
-            if col > 0 and col + needed > tab_wrap_width:
-                line.append_text(Text("\n"))
-                row += 1
-                col = 0
-                sep = ""
-            if sep:
-                line.append_text(Text(" "))
-                col += 1
-            col_start = col
-            style = Style(bold=True, color="black", bgcolor=ACCENT) if i == self.current_record else Style(dim=True)
-            line.append_text(Text(pill, style=style))
-            col += len(pill)
-            self._record_hit_areas.append((row, col_start, col))
+        self._view_stepper_widget.update(line)
 
-        renderable: RenderableType
-        if not hint.plain:
-            renderable = line
-        elif side_by_side:
-            renderable = Columns([line, Align.right(hint)], expand=True, equal=False, padding=(0, 1))
-        else:
-            renderable = Group(line, Align.right(hint))
-        self._top_bar_widget.update(renderable)
+    def _update_bottom_hint(self) -> None:
+        """Render the 'Enter Full Screen' affordance below the preview."""
+        if self._bottom_hint_widget is None:
+            return
+        view = self._current_view_or_none()
+        if view is None:
+            self._bottom_hint_widget.update(Text(""))
+            return
+        hint = Text()
+        hint.append("Enter", style=ACCENT_BOLD)
+        hint.append(" Full Screen", style="dim")
+        self._bottom_hint_widget.update(hint)
 
     def _update_content(self) -> None:
         view = self._current_view_or_none()
@@ -1347,14 +1436,21 @@ class AgentResultWidget(Widget):
 
         assert isinstance(event, Click)
 
-        if self._top_bar_widget is not None and event.widget is self._top_bar_widget:
-            for i, (row, col_start, col_end) in enumerate(self._record_hit_areas):
-                if event.y == row and col_start <= event.x < col_end:
-                    if i != self.current_record:
-                        self._switch_record(i)
+        if self._record_bar_widget is not None and event.widget is self._record_bar_widget:
+            if event.y != 0:
+                return
+            for rec_idx, col_start, col_end in self._record_hit_areas:
+                if col_start <= event.x < col_end:
+                    if rec_idx != self.current_record:
+                        self._switch_record(rec_idx)
                     return
-            for target, row, col_start, col_end in self._view_hit_areas:
-                if event.y == row and col_start <= event.x < col_end:
+            return
+
+        if self._view_stepper_widget is not None and event.widget is self._view_stepper_widget:
+            if event.y != 0:
+                return
+            for target, col_start, col_end in self._view_hit_areas:
+                if col_start <= event.x < col_end:
                     if target == "prev":
                         self.action_prev_view()
                     elif target == "next":
@@ -1455,8 +1551,8 @@ class AgentResultWidget(Widget):
     can_focus = True
 
     BINDINGS = [
-        ("]", "next_view", "Next view"),
-        ("[", "prev_view", "Previous view"),
+        ("right_square_bracket", "next_view", "Next view"),
+        ("left_square_bracket", "prev_view", "Previous view"),
         ("right", "next_record", "Next record"),
         ("left", "prev_record", "Previous record"),
         ("enter", "open_full_screen", "Full screen"),
