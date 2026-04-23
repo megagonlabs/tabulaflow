@@ -1129,6 +1129,7 @@ class AgentResultWidget(Widget):
         width: 1fr;
         height: auto;
         overflow-x: hidden;
+        margin: 0 4 0 0;
     }
 
     AgentResultWidget .view-stepper {
