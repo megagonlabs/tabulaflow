@@ -46,6 +46,8 @@ make last-trajectory # print the path to the last trajectory of mintq-cli agent
   - "Tag questions that are ambiguous where both pred and gold are valid in results_gpt5.json"
   - "Tune the prompt for 5 iterations on this dataset"
   - "Translate this dataset into English and Chinese"
+- Labeling data
+  - "Label 10 samples" -> Manual review -> "Label all data"
 - Supports cross-data-source querying
   - "What is the difference of GITHUB_REPOS and GITHUB_REPOS_DATE?"
 - Supports outputting multiple tables
