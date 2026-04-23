@@ -1164,10 +1164,10 @@ class AgentResultWidget(Widget):
         self._record_bar_widget: Static | None = None
         self._view_stepper_widget: Static | None = None
         self._bottom_hint_widget: Static | None = None
-        # Record hit areas: (record_index, col_start, col_end) relative to the
-        # record bar widget. Indices can be non-contiguous when a sliding
-        # window is in effect.
-        self._record_hit_areas: list[tuple[int, int, int]] = []
+        # Record hit areas: (record_index, col_start, col_end, row) relative
+        # to the record bar widget. Pills wrap across multiple rows when they
+        # don't all fit on a single line.
+        self._record_hit_areas: list[tuple[int, int, int, int]] = []
         # View hit areas: (target, col_start, col_end) relative to the view
         # stepper widget. Target is "prev" or "next".
         self._view_hit_areas: list[tuple[str, int, int]] = []
@@ -1255,66 +1255,18 @@ class AgentResultWidget(Widget):
         idx = min(self.current_view, len(rec.views) - 1)
         return rec.views[idx]
 
-    def _select_visible_records(self, available_width: int, reserved_trailing: int = 0) -> tuple[list[int], bool, bool]:
-        """Pick the record indices that fit in ``available_width``.
-
-        The sliding window always contains ``current_record`` and grows
-        outward (preferring the right) until another pill wouldn't fit.
-        Reserves space for a one-character ellipsis marker on each side
-        that ends up truncated, plus ``reserved_trailing`` columns after the
-        pills (e.g. for a switch-record hint).
-        """
-        n = len(self._records)
-        if n == 0:
-            return [], False, False
-        pill_widths = [len(r.label) + 2 for r in self._records]  # " label "
-        SEP = 1  # space between pills
-        MARKER = 2  # "‹ " or " ›"
-
-        budget = max(0, available_width - reserved_trailing)
-
-        current = min(self.current_record, n - 1)
-        left = right = current
-        used = pill_widths[current]
-
-        def overhead() -> int:
-            return (MARKER if left > 0 else 0) + (MARKER if right < n - 1 else 0)
-
-        if used + overhead() > budget and n > 1:
-            # Even the current pill alone doesn't fit with markers — bail out
-            # gracefully and just return the current pill; it'll be clipped by
-            # the widget's overflow-x: hidden, but the keyboard still works.
-            return [current], left > 0, right < n - 1
-
-        while True:
-            # Prefer extending right so the leading pills stay stable during
-            # left-to-right reading.
-            if right < n - 1:
-                cost = SEP + pill_widths[right + 1]
-                if used + cost + overhead() <= budget:
-                    right += 1
-                    used += cost
-                    continue
-            if left > 0:
-                cost = pill_widths[left - 1] + SEP
-                if used + cost + overhead() <= budget:
-                    left -= 1
-                    used += cost
-                    continue
-            break
-
-        return list(range(left, right + 1)), left > 0, right < n - 1
-
     def _update_record_bar(self) -> None:
-        """Render record pills left-anchored with a sliding window on overflow.
+        """Render record pills left-anchored, wrapping across multiple lines.
 
-        When more than one record exists, a ``·  ←/→ Switch Record`` hint is
-        appended after the visible pills; its width is reserved in the
-        sliding-window budget so pills never get pushed off-screen by the hint.
+        All pills are shown; when the row fills, subsequent pills wrap to a
+        new line. When more than one record exists, a ``·  ←/→ Switch Record``
+        hint is appended inline after the final pill if it fits on the last
+        line, otherwise on a new line below.
 
-        Hit areas are stored relative to ``self._record_bar_widget`` so the
-        click handler can test ``event.x``/``event.y`` directly without
-        worrying about the enclosing layout.
+        Hit areas are stored as ``(record_index, col_start, col_end, row)``
+        relative to ``self._record_bar_widget`` so the click handler can test
+        ``event.x``/``event.y`` directly without worrying about the enclosing
+        layout.
         """
         from rich.style import Style
 
@@ -1324,43 +1276,42 @@ class AgentResultWidget(Widget):
         available_width = self._record_bar_widget.size.width or 80
         record_interactive = len(self._records) > 1
 
-        # Reserve room for the trailing hint when it will be shown. The hint
-        # layout is: "  ·  ←/→ Switch Record" = 5 + 3 + 14 = 22 cols.
         HINT_SEP = "  ·  "
         HINT_KEY = "←/→"
         HINT_TEXT = " Switch Record"
         hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if record_interactive else 0
 
-        visible, trunc_left, trunc_right = self._select_visible_records(available_width, reserved_trailing=hint_width)
+        SEP = 1  # space between pills on the same row
+        dim_style = Style(dim=True)
 
         line = Text(no_wrap=True, overflow="crop")
         self._record_hit_areas = []
+        row = 0
         col = 0
-        dim_style = Style(dim=True)
 
-        if trunc_left:
-            line.append_text(Text("‹ ", style=dim_style))
-            col += 2
-
-        for idx, rec_idx in enumerate(visible):
-            if idx > 0:
-                line.append_text(Text(" "))
-                col += 1
-            r = self._records[rec_idx]
+        for rec_idx, r in enumerate(self._records):
             pill = f" {r.label} "
+            pill_width = len(pill)
+            needed = pill_width + (SEP if col > 0 else 0)
+            if col > 0 and col + needed > available_width:
+                line.append("\n")
+                row += 1
+                col = 0
+                needed = pill_width
+            if col > 0:
+                line.append(" ")
+                col += 1
             col_start = col
             pill_style = (
                 Style(bold=True, color="black", bgcolor=ACCENT) if rec_idx == self.current_record else Style(dim=True)
             )
             line.append_text(Text(pill, style=pill_style))
-            col += len(pill)
-            self._record_hit_areas.append((rec_idx, col_start, col))
-
-        if trunc_right:
-            line.append_text(Text(" ›", style=dim_style))
-            col += 2
+            col += pill_width
+            self._record_hit_areas.append((rec_idx, col_start, col, row))
 
         if record_interactive:
+            if col + hint_width > available_width:
+                line.append("\n")
             line.append_text(Text(HINT_SEP, style=dim_style))
             line.append_text(Text(HINT_KEY, style=ACCENT_BOLD))
             line.append_text(Text(HINT_TEXT, style="dim"))
@@ -1459,10 +1410,8 @@ class AgentResultWidget(Widget):
         assert isinstance(event, Click)
 
         if self._record_bar_widget is not None and event.widget is self._record_bar_widget:
-            if event.y != 0:
-                return
-            for rec_idx, col_start, col_end in self._record_hit_areas:
-                if col_start <= event.x < col_end:
+            for rec_idx, col_start, col_end, row in self._record_hit_areas:
+                if row == event.y and col_start <= event.x < col_end:
                     if rec_idx != self.current_record:
                         self._switch_record(rec_idx)
                     return
