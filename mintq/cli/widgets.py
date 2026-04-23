@@ -1351,6 +1351,11 @@ class AgentResultWidget(Widget):
         line = Text(no_wrap=True)
         col = 0
 
+        # Always reserve the Switch View hint width so the stepper's total
+        # width stays constant across records. If we rendered this block only
+        # when the record has multiple views, clicking a single-view record
+        # would shrink the stepper and — since it shares a row with the
+        # ``width: 1fr`` record bar — cause the record pills to re-wrap.
         if view_interactive:
             line.append_text(Text("[/]", style=ACCENT_BOLD))
             col += 3
@@ -1358,6 +1363,10 @@ class AgentResultWidget(Widget):
             col += len(" Switch View")
             line.append_text(Text("  ·  ", style=dim_sep_style))
             col += 5
+        else:
+            reserved = 3 + len(" Switch View") + 5
+            line.append_text(Text(" " * reserved))
+            col += reserved
 
         # Left-pad short kinds outside the stepper so the stepper itself stays
         # visually tight and its right edge stays pinned.
