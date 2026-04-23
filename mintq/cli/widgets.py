@@ -1150,13 +1150,9 @@ class AgentResultWidget(Widget):
         self._view_hit_areas: list[tuple[str, int, int, int]] = []
 
     @property
-    def _has_record_bar(self) -> bool:
-        return len(self._records) > 1
-
-    @property
     def _has_top_bar(self) -> bool:
-        """Show the top bar when there is anything to switch between."""
-        return self._has_record_bar or any(len(r.views) > 1 for r in self._records)
+        """Top bar exists whenever the result has any displayable records."""
+        return bool(self._records)
 
     def compose(self) -> ComposeResult:
         if self._has_top_bar:
@@ -1221,10 +1217,10 @@ class AgentResultWidget(Widget):
     def _update_top_bar(self) -> None:
         """Render the view stepper and record pills on a single line.
 
-        Layout: ``◂ Chart ▸      pill   pill   pill        Enter … [ ] … Shift+…``
-          - the view stepper always renders both chevrons; a chevron is dimmed
-            when at the first/last view (or when there is only one view),
-          - record pills are shown only when there is more than one record,
+        Layout: ``◂ Chart ▸      pill   pill   pill        Enter … [/] … ←/→…``
+          - the view stepper renders whenever the current record has any views
+            (always both chevrons, always accent-green),
+          - record pills always render; the active record is highlighted,
           - the right-aligned hint lists whichever keybindings currently apply.
         """
         from rich.align import Align
@@ -1237,9 +1233,9 @@ class AgentResultWidget(Widget):
             return
 
         rec = self._current_record_or_none()
-        has_record_bar = self._has_record_bar
         has_views = rec is not None and bool(rec.views)
         view_interactive = rec is not None and len(rec.views) > 1
+        record_interactive = len(self._records) > 1
 
         # Hint reflects the applicable keybindings.
         hint = Text()
@@ -1251,7 +1247,7 @@ class AgentResultWidget(Widget):
                 hint.append("    ")
             hint.append("[/]", style=ACCENT_BOLD)
             hint.append(" Switch View", style="dim")
-        if has_record_bar:
+        if record_interactive:
             if hint.plain:
                 hint.append("    ")
             hint.append("←/→", style=ACCENT_BOLD)
@@ -1300,7 +1296,7 @@ class AgentResultWidget(Widget):
                 col += trailing
 
         # Separator between the stepper and record pills.
-        if has_views and has_record_bar:
+        if has_views and self._records:
             gap = "      "
             if col + len(gap) > tab_wrap_width:
                 line.append_text(Text("\n"))
@@ -1310,25 +1306,24 @@ class AgentResultWidget(Widget):
                 line.append_text(Text(gap))
                 col += len(gap)
 
-        # Record pills.
-        if has_record_bar:
-            for i, r in enumerate(self._records):
-                pill = f" {r.label} "
-                sep = " " if col > 0 and i > 0 else ""
-                needed = len(sep) + len(pill)
-                if col > 0 and col + needed > tab_wrap_width:
-                    line.append_text(Text("\n"))
-                    row += 1
-                    col = 0
-                    sep = ""
-                if sep:
-                    line.append_text(Text(" "))
-                    col += 1
-                col_start = col
-                style = Style(bold=True, color="black", bgcolor=ACCENT) if i == self.current_record else Style(dim=True)
-                line.append_text(Text(pill, style=style))
-                col += len(pill)
-                self._record_hit_areas.append((row, col_start, col))
+        # Record pills — always render when there are records, even a single one.
+        for i, r in enumerate(self._records):
+            pill = f" {r.label} "
+            sep = " " if col > 0 and i > 0 else ""
+            needed = len(sep) + len(pill)
+            if col > 0 and col + needed > tab_wrap_width:
+                line.append_text(Text("\n"))
+                row += 1
+                col = 0
+                sep = ""
+            if sep:
+                line.append_text(Text(" "))
+                col += 1
+            col_start = col
+            style = Style(bold=True, color="black", bgcolor=ACCENT) if i == self.current_record else Style(dim=True)
+            line.append_text(Text(pill, style=style))
+            col += len(pill)
+            self._record_hit_areas.append((row, col_start, col))
 
         renderable: RenderableType
         if not hint.plain:
@@ -1507,7 +1502,7 @@ class AgentResultWidget(Widget):
         view = self._current_view_or_none()
         if rec is None or view is None:
             return
-        title = f"{view.kind} ({rec.label})" if self._has_record_bar else view.kind
+        title = f"{view.kind} ({rec.label})"
 
         if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
             df = await self._fetch_df(rec.record_id)
