@@ -54,8 +54,7 @@ class RegistryRunSubagentForEachRowTool:
             connector = self.registry.get(db_alias)
             if connector.connector_type != "sql":
                 raise TypeError(
-                    f"run_subagent_for_each_row is only supported for SQL connectors, "
-                    f"not {connector.connector_type!r}"
+                    f"run_subagent_for_each_row is only supported for SQL connectors, not {connector.connector_type!r}"
                 )
             tool = RunSubagentForEachRowTool(
                 connector,
@@ -134,8 +133,12 @@ class RegistryRunSubagentForEachRowTool:
         except TypeError as e:
             return f"(error: {e})"
         return await tool(
-            table_name, task_instruction, key_columns,
-            output_columns=output_columns, sql_filter=sql_filter, mode=mode,
+            table_name,
+            task_instruction,
+            key_columns,
+            output_columns=output_columns,
+            sql_filter=sql_filter,
+            mode=mode,
         )
 
     def as_pydantic_ai_tool(self) -> Tool:

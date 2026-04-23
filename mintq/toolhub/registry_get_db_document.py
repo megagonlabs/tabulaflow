@@ -97,7 +97,9 @@ class RegistryGetDBDocumentTool:
         )
 
         if use_summarizer:
-            db_summarizer = DBSummarizer(llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings)
+            db_summarizer = DBSummarizer(
+                llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings
+            )
             db_summary = await db_summarizer.preprocess_async(connector)
             document = db_summary.db_summary_markdown
         else:

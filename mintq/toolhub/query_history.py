@@ -115,7 +115,10 @@ class QueryHistory:
         try:
             await self._ensure_schema()
             await self._spill_connector.write_dataframe_async(
-                df=df, table_name=record_id, schema_name=_QH_SCHEMA, mode="replace",
+                df=df,
+                table_name=record_id,
+                schema_name=_QH_SCHEMA,
+                mode="replace",
             )
         except Exception:
             logger.warning("Failed to persist %s to workspace", record_id, exc_info=True)
@@ -134,9 +137,7 @@ class QueryHistory:
     async def _hydrate(self, record_id: str, record: QueryRecord) -> None:
         """Load a spilled DF back from the workspace DuckDB."""
         assert self._spill_connector is not None
-        result = await self._spill_connector.run_query_async(
-            f'SELECT * FROM "{_QH_SCHEMA}"."{record_id}"'
-        )
+        result = await self._spill_connector.run_query_async(f'SELECT * FROM "{_QH_SCHEMA}"."{record_id}"')
         record.pred_query.exec_result.df = result.df  # type: ignore[union-attr]
         self._spilled.discard(record_id)
         self._in_memory.append(record_id)

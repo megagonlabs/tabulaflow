@@ -907,7 +907,7 @@ def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, st
                 # Unnest first-level keys into columns while keeping nested
                 # objects/arrays as JSON values.
                 sql = (
-                    f"CREATE TABLE \"{name}\" AS SELECT * FROM read_json_auto("
+                    f'CREATE TABLE "{name}" AS SELECT * FROM read_json_auto('
                     f"'{escaped}', "
                     f"maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES}, "
                     "maximum_depth=1, "
@@ -1053,7 +1053,7 @@ class SQLConnector:
                 dbapi_conn.execute("PRAGMA enable_progress_bar=false")
                 if db_dir:
                     dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
-                for sql in (duckdb_init_sql or []):
+                for sql in duckdb_init_sql or []:
                     dbapi_conn.execute(sql)
 
             event.listen(sync_engine, "connect", _duckdb_on_connect)
@@ -1332,9 +1332,7 @@ class SQLConnector:
                 loop = asyncio.get_running_loop()
                 await loop.run_in_executor(None, _write_sync)
 
-        await self.refresh_schema_async(
-            tables=[TableRef(schema_name=schema_name, table_name=table_name)]
-        )
+        await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
 
         return len(df)
 

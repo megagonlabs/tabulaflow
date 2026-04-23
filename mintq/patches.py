@@ -14,7 +14,7 @@ import asyncio
 import json
 import re
 from contextlib import AsyncExitStack
-from typing import Any, Callable, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 from aiolimiter import AsyncLimiter
 import pydantic_ai.models
@@ -24,8 +24,7 @@ from mintq.config import mintq_config
 
 if TYPE_CHECKING:
     from pydantic_ai.messages import ModelMessage, ModelResponse
-    from pydantic_ai.models import KnownModelName, Model, ModelRequestParameters
-    from pydantic_ai.providers import Provider
+    from pydantic_ai.models import ModelRequestParameters
     from pydantic_ai.settings import ModelSettings
 
 
@@ -234,7 +233,6 @@ _original_infer_model = pydantic_ai.models.infer_model
 
 
 def _patched_infer_model(model: Any, *args: Any, **kwargs: Any) -> Any:
-
     result: Any
     if isinstance(model, str) and model.startswith("google-vertex:claude"):
         import os

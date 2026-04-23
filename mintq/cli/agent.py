@@ -236,7 +236,9 @@ class ChatAgent:
         self._query_history = QueryHistory()
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history),
-            get_db_document=RegistryGetDBDocumentTool(self.registry, model_settings={"openai_service_tier": "priority"}),
+            get_db_document=RegistryGetDBDocumentTool(
+                self.registry, model_settings={"openai_service_tier": "priority"}
+            ),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
@@ -328,9 +330,7 @@ class ChatAgent:
         from pydantic_ai.run import AgentRunResultEvent
 
         progress.start()
-        self._tools.run_subagent_for_each_row.on_row_complete = (
-            lambda c, t: progress.tool_progress(c, t)
-        )
+        self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
 
         try:
             assert self._pydantic_ai_agent is not None

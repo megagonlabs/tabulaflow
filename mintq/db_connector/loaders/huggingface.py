@@ -149,8 +149,7 @@ def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
     splits: list[dict[str, Any]] = data.get("splits", [])
     if not splits:
         raise _DatasetServerUnavailableError(
-            f"No splits found for dataset '{dataset_id}'. "
-            "The dataset may be gated, private, or not yet indexed."
+            f"No splits found for dataset '{dataset_id}'. The dataset may be gated, private, or not yet indexed."
         )
     return splits
 
@@ -198,9 +197,7 @@ def _resolve_config(dataset_id: str, subset: str | None) -> str:
 
     if subset is not None:
         if subset not in configs:
-            raise ValueError(
-                f"Subset '{subset}' not found. Available subsets: {', '.join(configs)}"
-            )
+            raise ValueError(f"Subset '{subset}' not found. Available subsets: {', '.join(configs)}")
         return subset
 
     if "default" in configs:
@@ -273,9 +270,7 @@ def _create_tables(
     for split_name, size in split_sizes.items():
         urls = _fetch_parquet_urls(dataset_id, config, split_name)
         if not urls:
-            raise ValueError(
-                f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'."
-            )
+            raise ValueError(f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'.")
         url_list = ", ".join(f"'{u}'" for u in urls)
         source = f"read_parquet([{url_list}])"
 
@@ -333,9 +328,7 @@ def _try_cache(db_path: str) -> list[str] | None:
     with duckdb.connect(db_path, read_only=True) as conn:
         tables = sorted(
             r[0]
-            for r in conn.sql(
-                "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'"
-            ).fetchall()
+            for r in conn.sql("SELECT table_name FROM information_schema.tables WHERE table_schema = 'main'").fetchall()
         )
     if tables:
         logger.info("Using cached DuckDB file with tables: %s", ", ".join(tables))
@@ -449,9 +442,7 @@ def _load_hf_into_duckdb(
 
     if split_filter:
         if split_filter not in split_sizes:
-            raise ValueError(
-                f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}"
-            )
+            raise ValueError(f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}")
         splits = [split_filter]
     else:
         splits = sorted(split_sizes)
@@ -510,7 +501,11 @@ async def load_hf_dataset(
 
     loop = asyncio.get_running_loop()
     db_path, table_names = await loop.run_in_executor(
-        None, _load_hf_into_duckdb, dataset_id, subset, split,
+        None,
+        _load_hf_into_duckdb,
+        dataset_id,
+        subset,
+        split,
     )
 
     # Derive global_id from the DuckDB cache path so the schema cache key
@@ -530,10 +525,7 @@ async def load_hf_dataset(
 
                 summarizer = TextSummarizer()
                 hf_description = await summarizer.summarize(hf_description)
-            description = (
-                f"Source: HuggingFace dataset {dataset_url}\n\n"
-                f"<readme>\n{hf_description}\n</readme>"
-            )
+            description = f"Source: HuggingFace dataset {dataset_url}\n\n<readme>\n{hf_description}\n</readme>"
 
     url = f"duckdb:///{db_path}"
     connector = await SQLConnector.from_url_async(

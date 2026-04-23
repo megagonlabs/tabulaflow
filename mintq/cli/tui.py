@@ -25,6 +25,7 @@ from mintq.cli.widgets import (
 
 if TYPE_CHECKING:
     from mintq.cli.agent import ChatResult
+    from mintq.toolhub.query_history import QueryHistory
 
 logger = logging.getLogger(__name__)
 
@@ -66,10 +67,41 @@ class MintqApp(App[None]):
         if self._debug_enabled():
             chat_log.mount(self._build_debug_small_result_widget())
             chat_log.mount(self._build_debug_chart_result_widget())
+            chat_log.mount(self._build_debug_multi_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self.run_worker(self._ensure_session())
+
+    @staticmethod
+    def _debug_history_for(result: "ChatResult") -> "QueryHistory":
+        """Build a QueryHistory populated with the DFs from a debug ChatResult.
+
+        Pokes records directly into the in-memory maps because debug widgets
+        have no spill connector, so the async ``add()`` path would just be an
+        awkward way to do the same in-memory bookkeeping.
+        """
+        from mintq.schema import ExecResult, PredQuery
+        from mintq.toolhub.query_history import QueryHistory, QueryRecord
+
+        history = QueryHistory()
+        for record in result.records:
+            if record.df is None:
+                continue
+            pred_query = PredQuery(
+                id=record.record_id,
+                query=record.query or "",
+                exec_result=ExecResult(df=record.df),
+            )
+            query_record = QueryRecord(
+                record_id=record.record_id,
+                connector_type="sql",
+                db_alias="debug",
+                pred_query=pred_query,
+            )
+            history._records[record.record_id] = query_record
+            history._in_memory.append(record.record_id)
+        return history
 
     @staticmethod
     def _debug_enabled() -> bool:
@@ -93,14 +125,34 @@ class MintqApp(App[None]):
 
         regions = ["Northeast", "Southeast", "Midwest", "West", "Southwest"]
         states = ["NY", "CA", "TX", "FL", "IL", "PA", "OH", "GA", "NC", "MI"]
-        cities = ["New York", "Los Angeles", "Chicago", "Houston", "Phoenix",
-                  "Philadelphia", "San Antonio", "San Diego", "Dallas", "Austin"]
+        cities = [
+            "New York",
+            "Los Angeles",
+            "Chicago",
+            "Houston",
+            "Phoenix",
+            "Philadelphia",
+            "San Antonio",
+            "San Diego",
+            "Dallas",
+            "Austin",
+        ]
         store_types = ["flagship", "mall", "outlet", "pop-up", "warehouse"]
         channels = ["online", "in_store", "phone", "marketplace"]
         payment_methods = ["credit_card", "debit_card", "cash", "apple_pay", "paypal"]
         statuses = ["completed", "pending", "refunded", "cancelled", "disputed"]
-        categories = ["Electronics", "Clothing", "Grocery", "Home & Garden",
-                      "Sports", "Books", "Toys", "Beauty", "Automotive", "Jewelry"]
+        categories = [
+            "Electronics",
+            "Clothing",
+            "Grocery",
+            "Home & Garden",
+            "Sports",
+            "Books",
+            "Toys",
+            "Beauty",
+            "Automotive",
+            "Jewelry",
+        ]
         base_date = datetime.date(2024, 1, 1)
         base_dt = datetime.datetime(2024, 1, 1, 8, 0, 0)
 
@@ -168,64 +220,93 @@ class MintqApp(App[None]):
             "customer_email": [maybe_none(f"user{r % 3000}@example.com", r, 7) for r in range(rows)],
             "manager_name": [f"Manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)}" for r in range(rows)],
             "manager_email": [f"mgr{r % 80}@corp.example.com" for r in range(rows)],
-            "notes": [maybe_none(
-                (
-                    f"URGENT: Escalated to regional manager due to customer complaint ref#{r:06d}. "
-                    f"Original order placed on {rand_date(r)} via {channels[r % len(channels)]}. "
-                    f"Customer requested full refund plus store credit for inconvenience. "
-                    f"District manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)} approved exception. "
-                    f"Follow-up scheduled for next business day. See ticket SUPPORT-{r * 3:07d} for details."
-                ) if r % 200 == 0 or r in (3, 17, 34) else (
-                    f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
-                    f"processed via {channels[r % len(channels)]}."
-                ),
-                r, 4,
-            ) for r in range(rows)],
-            "tags": [[categories[r % len(categories)], channels[r % len(channels)]] for r in range(rows)],
-            "metadata_json": [
-                json.dumps({
-                    "source": channels[r % len(channels)],
-                    "version": f"2.{r % 10}.{r % 5}",
-                    "flags": {"priority": r % 11 == 0, "reviewed": r % 3 == 0},
-                    "timestamps": {
-                        "created": f"2024-{(r % 12) + 1:02d}-{(r % 28) + 1:02d}T{r % 24:02d}:{r % 60:02d}:00Z",
-                        "updated": f"2024-{(r % 12) + 1:02d}-{min((r % 28) + 3, 28):02d}T{r % 24:02d}:{r % 60:02d}:00Z",
-                    },
-                    "tags": [categories[r % len(categories)], categories[(r + 3) % len(categories)]],
-                    "metrics": {"clicks": r * 7 % 500, "impressions": r * 13 % 10000, "ctr": round((r * 7 % 500) / max(1, r * 13 % 10000), 4)},
-                }) for r in range(rows)
-            ],
-            "config_json": [maybe_none(
-                json.dumps({
-                    "rules": [
-                        {"field": "amount", "op": ">" if r % 2 == 0 else "<=", "value": 100 + r % 900},
-                        {"field": "category", "op": "in", "value": [categories[r % len(categories)], categories[(r + 1) % len(categories)]]},
-                    ],
-                    "actions": [{"type": "discount", "pct": round((r % 30) * 0.5, 1)}, {"type": "notify", "channel": "email"}],
-                    "enabled": r % 5 != 0,
-                    "description": f"Auto-rule for {regions[r % len(regions)]} region, batch {r // 100 + 1}",
-                }), r, 6,
-            ) for r in range(rows)],
-            "sql_snippet": [maybe_none(
-                f"SELECT t.id, t.name, SUM(o.amount) AS total\nFROM transactions t\nJOIN orders o ON t.id = o.txn_id\nWHERE o.status = 'completed'\n  AND o.region = '{regions[r % len(regions)]}'\nGROUP BY t.id, t.name\nHAVING SUM(o.amount) > {100 + r % 900}\nORDER BY total DESC\nLIMIT {10 + r % 40};",
-                r, 7,
-            ) for r in range(rows)],
-            "python_snippet": [maybe_none(
-                f"def process_batch_{r}(items: list[dict]) -> float:\n    total = 0.0\n    for item in items:\n        if item['status'] == 'completed':\n            total += item['amount'] * (1 - item.get('discount', 0))\n    return round(total, 2)",
-                r, 8,
-            ) for r in range(rows)],
-            "native_list": [
-                [categories[r % len(categories)], r * 3, {"nested": True, "id": r}]
+            "notes": [
+                maybe_none(
+                    (
+                        f"URGENT: Escalated to regional manager due to customer complaint ref#{r:06d}. "
+                        f"Original order placed on {rand_date(r)} via {channels[r % len(channels)]}. "
+                        f"Customer requested full refund plus store credit for inconvenience. "
+                        f"District manager {chr(65 + r % 26)}{chr(65 + (r * 7) % 26)} approved exception. "
+                        f"Follow-up scheduled for next business day. See ticket SUPPORT-{r * 3:07d} for details."
+                    )
+                    if r % 200 == 0 or r in (3, 17, 34)
+                    else (
+                        f"{'Priority order. ' if r % 11 == 0 else ''}Batch {r // 100 + 1}, "
+                        f"processed via {channels[r % len(channels)]}."
+                    ),
+                    r,
+                    4,
+                )
                 for r in range(rows)
             ],
+            "tags": [[categories[r % len(categories)], channels[r % len(channels)]] for r in range(rows)],
+            "metadata_json": [
+                json.dumps(
+                    {
+                        "source": channels[r % len(channels)],
+                        "version": f"2.{r % 10}.{r % 5}",
+                        "flags": {"priority": r % 11 == 0, "reviewed": r % 3 == 0},
+                        "timestamps": {
+                            "created": f"2024-{(r % 12) + 1:02d}-{(r % 28) + 1:02d}T{r % 24:02d}:{r % 60:02d}:00Z",
+                            "updated": f"2024-{(r % 12) + 1:02d}-{min((r % 28) + 3, 28):02d}T{r % 24:02d}:{r % 60:02d}:00Z",
+                        },
+                        "tags": [categories[r % len(categories)], categories[(r + 3) % len(categories)]],
+                        "metrics": {
+                            "clicks": r * 7 % 500,
+                            "impressions": r * 13 % 10000,
+                            "ctr": round((r * 7 % 500) / max(1, r * 13 % 10000), 4),
+                        },
+                    }
+                )
+                for r in range(rows)
+            ],
+            "config_json": [
+                maybe_none(
+                    json.dumps(
+                        {
+                            "rules": [
+                                {"field": "amount", "op": ">" if r % 2 == 0 else "<=", "value": 100 + r % 900},
+                                {
+                                    "field": "category",
+                                    "op": "in",
+                                    "value": [categories[r % len(categories)], categories[(r + 1) % len(categories)]],
+                                },
+                            ],
+                            "actions": [
+                                {"type": "discount", "pct": round((r % 30) * 0.5, 1)},
+                                {"type": "notify", "channel": "email"},
+                            ],
+                            "enabled": r % 5 != 0,
+                            "description": f"Auto-rule for {regions[r % len(regions)]} region, batch {r // 100 + 1}",
+                        }
+                    ),
+                    r,
+                    6,
+                )
+                for r in range(rows)
+            ],
+            "sql_snippet": [
+                maybe_none(
+                    f"SELECT t.id, t.name, SUM(o.amount) AS total\nFROM transactions t\nJOIN orders o ON t.id = o.txn_id\nWHERE o.status = 'completed'\n  AND o.region = '{regions[r % len(regions)]}'\nGROUP BY t.id, t.name\nHAVING SUM(o.amount) > {100 + r % 900}\nORDER BY total DESC\nLIMIT {10 + r % 40};",
+                    r,
+                    7,
+                )
+                for r in range(rows)
+            ],
+            "python_snippet": [
+                maybe_none(
+                    f"def process_batch_{r}(items: list[dict]) -> float:\n    total = 0.0\n    for item in items:\n        if item['status'] == 'completed':\n            total += item['amount'] * (1 - item.get('discount', 0))\n    return round(total, 2)",
+                    r,
+                    8,
+                )
+                for r in range(rows)
+            ],
+            "native_list": [[categories[r % len(categories)], r * 3, {"nested": True, "id": r}] for r in range(rows)],
             "native_dict": [
                 {"id": r, "region": regions[r % len(regions)], "amounts": [round(r * 1.5, 2), round(r * 2.3, 2)]}
                 for r in range(rows)
             ],
-            "str_list": [
-                str([states[r % len(states)], cities[r % len(cities)], r % 100])
-                for r in range(rows)
-            ],
+            "str_list": [str([states[r % len(states)], cities[r % len(cities)], r % 100]) for r in range(rows)],
             "str_dict": [
                 str({"key": f"item_{r}", "value": round(r * 0.7, 2), "tags": [categories[r % len(categories)]]})
                 for r in range(rows)
@@ -390,7 +471,11 @@ LIMIT 4000"""
             ],
             primary_record_index=0,
         )
-        return AgentResultWidget(result, width=self.size.width - 11)
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
 
     def _build_debug_small_result_widget(self) -> AgentResultWidget:
         import pandas as pd
@@ -428,7 +513,225 @@ LIMIT 4000"""
             ],
             primary_record_index=0,
         )
-        return AgentResultWidget(result, width=self.size.width - 11)
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
+
+    def _build_debug_multi_result_widget(self) -> AgentResultWidget:
+        """Exercises the two-level tab UI with 15 records of varying view kinds."""
+        import random
+
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        rng = random.Random(20260423)
+
+        # (label, sql, columns, row_hint) — one entry per record. The view mix
+        # (chart / data / query) is chosen below based on the record's index so
+        # we exercise every combination while stepping through.
+        record_specs: list[tuple[str, str, list[str], int]] = [
+            (
+                "top_regions",
+                "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\nFROM sales GROUP BY region ORDER BY revenue DESC",
+                ["region", "revenue", "orders"],
+                5,
+            ),
+            (
+                "top_products",
+                "SELECT sku, product_name, SUM(quantity) AS units_sold, SUM(amount) AS revenue\nFROM order_items JOIN products USING (sku)\nGROUP BY sku, product_name ORDER BY revenue DESC LIMIT 8",
+                ["sku", "product_name", "units_sold", "revenue"],
+                8,
+            ),
+            (
+                "low_stock_alerts",
+                "SELECT sku, product_name, stock_on_hand, reorder_point\nFROM inventory\nWHERE stock_on_hand < reorder_point\nORDER BY (reorder_point - stock_on_hand) DESC",
+                ["sku", "product_name", "stock", "reorder_point"],
+                6,
+            ),
+            (
+                "monthly_revenue",
+                "SELECT DATE_TRUNC('month', sale_date) AS month, SUM(amount) AS revenue\nFROM sales GROUP BY 1 ORDER BY 1",
+                ["month", "revenue", "orders"],
+                12,
+            ),
+            (
+                "top_customers",
+                "SELECT customer_id, COUNT(*) AS orders, SUM(amount) AS lifetime_value\nFROM sales GROUP BY customer_id ORDER BY lifetime_value DESC LIMIT 10",
+                ["customer_id", "orders", "lifetime_value"],
+                10,
+            ),
+            (
+                "returns_summary",
+                "SELECT category, COUNT(*) AS returns, SUM(refund_amount) AS refunded\nFROM returns GROUP BY category ORDER BY refunded DESC",
+                ["category", "returns", "refunded"],
+                7,
+            ),
+            (
+                "channel_performance",
+                "SELECT channel, AVG(amount) AS avg_order, SUM(amount) AS revenue\nFROM sales GROUP BY channel ORDER BY revenue DESC",
+                ["channel", "avg_order", "revenue"],
+                4,
+            ),
+            (
+                "state_rankings",
+                "SELECT state, SUM(amount) AS revenue, RANK() OVER (ORDER BY SUM(amount) DESC) AS rank\nFROM sales GROUP BY state",
+                ["state", "revenue", "rank"],
+                10,
+            ),
+            (
+                "category_growth",
+                "SELECT category, revenue, revenue - LAG(revenue) OVER (PARTITION BY category ORDER BY month) AS mom_delta\nFROM monthly_category_revenue",
+                ["category", "revenue", "mom_delta"],
+                10,
+            ),
+            (
+                "employee_stats",
+                "SELECT employee_id, COUNT(*) AS tx, SUM(amount) AS revenue\nFROM sales GROUP BY employee_id ORDER BY revenue DESC LIMIT 12",
+                ["employee_id", "tx", "revenue"],
+                12,
+            ),
+            (
+                "shipping_costs",
+                "SELECT carrier, AVG(shipping_cost) AS avg_cost, SUM(shipping_cost) AS total_cost\nFROM shipments GROUP BY carrier",
+                ["carrier", "avg_cost", "total_cost"],
+                5,
+            ),
+            (
+                "payment_methods",
+                "SELECT payment_method, COUNT(*) AS tx, SUM(amount) AS revenue\nFROM sales GROUP BY payment_method ORDER BY revenue DESC",
+                ["payment_method", "tx", "revenue"],
+                5,
+            ),
+            (
+                "refund_trends",
+                "WITH monthly_refunds AS (...)\nSELECT month, refund_count, refund_amount FROM monthly_refunds ORDER BY month",
+                ["month", "refund_count", "refund_amount"],
+                12,
+            ),
+            (
+                "new_signups",
+                "SELECT DATE_TRUNC('week', signup_at) AS week, COUNT(*) AS signups\nFROM users GROUP BY 1 ORDER BY 1",
+                ["week", "signups"],
+                8,
+            ),
+            (
+                "churn_risk",
+                "SELECT customer_id, last_order_days, predicted_churn_prob\nFROM churn_model\nORDER BY predicted_churn_prob DESC LIMIT 15",
+                ["customer_id", "last_order_days", "predicted_churn_prob"],
+                15,
+            ),
+        ]
+
+        def _make_df(columns: list[str], n_rows: int) -> pd.DataFrame:
+            data: dict[str, list[object]] = {}
+            for col in columns:
+                lower = col.lower()
+                if lower.endswith("_id") or lower == "customer_id" or lower == "employee_id":
+                    data[col] = [f"ID-{rng.randrange(10000, 99999)}" for _ in range(n_rows)]
+                elif lower == "sku":
+                    data[col] = [f"SKU-{rng.randrange(1, 9999):05d}" for _ in range(n_rows)]
+                elif lower == "product_name":
+                    names = [
+                        "Wireless Headphones",
+                        "USB-C Hub",
+                        "Mechanical Keyboard",
+                        "4K Monitor",
+                        "Desk Lamp",
+                        "Ergonomic Mouse",
+                        "Standing Desk",
+                        "Webcam",
+                    ]
+                    data[col] = [rng.choice(names) for _ in range(n_rows)]
+                elif lower == "region":
+                    data[col] = ["Northeast", "Southeast", "Midwest", "West", "Southwest"][:n_rows]
+                elif lower == "state":
+                    states = ["NY", "CA", "TX", "FL", "IL", "PA", "OH", "GA", "NC", "MI"]
+                    data[col] = states[:n_rows]
+                elif lower == "category":
+                    cats = ["Electronics", "Clothing", "Grocery", "Home", "Sports", "Books", "Toys"]
+                    data[col] = [rng.choice(cats) for _ in range(n_rows)]
+                elif lower == "channel":
+                    data[col] = ["online", "in_store", "phone", "marketplace"][:n_rows]
+                elif lower == "payment_method":
+                    data[col] = ["credit_card", "debit_card", "cash", "apple_pay", "paypal"][:n_rows]
+                elif lower == "carrier":
+                    data[col] = ["UPS", "FedEx", "USPS", "DHL", "OnTrac"][:n_rows]
+                elif lower == "month":
+                    data[col] = [f"2025-{m:02d}" for m in range(1, n_rows + 1)]
+                elif lower == "week":
+                    data[col] = [f"2026-W{w:02d}" for w in range(1, n_rows + 1)]
+                elif "rank" in lower:
+                    data[col] = list(range(1, n_rows + 1))
+                elif "prob" in lower:
+                    data[col] = [round(rng.random(), 3) for _ in range(n_rows)]
+                elif any(k in lower for k in ("revenue", "cost", "value", "amount", "refunded")):
+                    data[col] = [round(rng.uniform(5_000, 250_000), 2) for _ in range(n_rows)]
+                elif lower == "avg_order" or lower == "avg_cost":
+                    data[col] = [round(rng.uniform(20, 400), 2) for _ in range(n_rows)]
+                elif lower == "mom_delta":
+                    data[col] = [round(rng.uniform(-50_000, 50_000), 2) for _ in range(n_rows)]
+                elif "days" in lower:
+                    data[col] = [rng.randrange(1, 180) for _ in range(n_rows)]
+                else:  # generic integer counts: orders, tx, returns, signups, units_sold, stock, reorder_point, etc.
+                    data[col] = [rng.randrange(10, 5000) for _ in range(n_rows)]
+            return pd.DataFrame(data)
+
+        def _chart_spec_for(columns: list[str], label: str) -> dict[str, object] | None:
+            if len(columns) < 2:
+                return None
+            x_col = columns[0]
+            y_col = None
+            for c in columns[1:]:
+                if any(
+                    k in c.lower() for k in ("revenue", "count", "orders", "tx", "amount", "cost", "signups", "returns")
+                ):
+                    y_col = c
+                    break
+            if y_col is None:
+                y_col = columns[1]
+            return {
+                "mark": "bar",
+                "encoding": {
+                    "x": {"field": x_col, "type": "nominal"},
+                    "y": {"field": y_col, "type": "quantitative"},
+                },
+                "title": label.replace("_", " ").title(),
+            }
+
+        records: list[ChatResultRecord] = []
+        for i, (label, query, columns, n_rows) in enumerate(record_specs):
+            # Every 3rd record is query-only, every 2nd of the rest has a chart,
+            # so the final mix is: 5 chart+data+query, 5 data+query, 5 query-only.
+            if i % 3 == 2:
+                df = None
+                chart_spec: dict[str, object] | None = None
+            else:
+                df = _make_df(columns, n_rows)
+                chart_spec = _chart_spec_for(columns, label) if i % 3 == 0 else None
+            records.append(
+                ChatResultRecord(
+                    record_id=f"QDEBUG_MULTI_{i + 1}",
+                    label=label,
+                    query=query,
+                    df=df,
+                    chart_spec=chart_spec,
+                    query_lexer="sql",
+                )
+            )
+
+        result = ChatResult(
+            text="Debug multi-record result",
+            records=records,
+            primary_record_index=0,
+        )
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
 
     def _build_debug_chart_result_widget(self) -> AgentResultWidget:
         import pandas as pd
@@ -464,7 +767,11 @@ LIMIT 4000"""
             ],
             primary_record_index=0,
         )
-        return AgentResultWidget(result, width=self.size.width - 11)
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
 
     def _setup_logging(self) -> None:
         from logging.handlers import RotatingFileHandler

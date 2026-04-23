@@ -161,8 +161,6 @@ async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:
     async def alter(col: str) -> None:
         await db_connector.run_query_async(f"ALTER TABLE users ADD COLUMN {col} TEXT")
 
-    results = await asyncio.gather(
-        alter("extra_a"), alter("extra_b"), return_exceptions=True
-    )
+    results = await asyncio.gather(alter("extra_a"), alter("extra_b"), return_exceptions=True)
     errors = [r for r in results if isinstance(r, Exception)]
     assert errors == [], f"Concurrent ALTER failed: {errors}"

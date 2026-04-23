@@ -22,7 +22,6 @@ from textual.widgets import DataTable, Input, Static, TextArea
 from mintq.cli.display import (
     DATA_PREVIEW_MAX_COLUMNS,
     DATA_PREVIEW_MAX_ROWS,
-    QUERY_PREVIEW_MAX_LINES,
 )
 from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT
 
@@ -31,6 +30,7 @@ if TYPE_CHECKING:
     from rich.console import RenderableType
 
     from mintq.cli.agent import ChatResult
+    from mintq.cli.display import RecordGroup, ViewItem
 
 
 # ---------------------------------------------------------------------------
@@ -79,7 +79,7 @@ class MintqSuggester(Suggester):
         return None
 
     def _suggest_connect_path(self, value: str) -> str | None:
-        raw = value[len("/connect "):]
+        raw = value[len("/connect ") :]
         if not raw:
             return None
 
@@ -879,20 +879,23 @@ class CellBrowserScreen(Screen[None]):
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
             if len(json_str) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                json_str = json_str[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(json_str):,} chars total, truncated)"
+                json_str = (
+                    json_str[: CellBrowserScreen._MAX_CELL_DISPLAY]
+                    + f"\n\n... ({len(json_str):,} chars total, truncated)"
+                )
             return json_str, "json"
 
         s = str(value)
         if CellBrowserScreen._SQL_RE.match(s):
             if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
+                s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "sql"
         if CellBrowserScreen._PY_RE.match(s):
             if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
+                s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "python"
         if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-            s = s[:CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
+            s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
         return s, None
 
     def compose(self) -> ComposeResult:
@@ -914,9 +917,7 @@ class CellBrowserScreen(Screen[None]):
         text_area.theme = "dracula-transparent"
 
         status_text = f"{self._column_name} ({self._dtype_str})  |  Row {self._row_number:,}"
-        self.query_one(".cell-browser-status", Static).update(
-            Text(status_text, style="dim")
-        )
+        self.query_one(".cell-browser-status", Static).update(Text(status_text, style="dim"))
 
         hint = Text()
         hint.append("Esc", style=ACCENT_BOLD)
@@ -975,10 +976,25 @@ class QueryBrowserScreen(Screen[None]):
     ]
 
     # Languages supported by Textual's TextArea.
-    _SUPPORTED_LANGUAGES = frozenset({
-        "bash", "css", "go", "html", "java", "javascript", "json",
-        "markdown", "python", "regex", "rust", "sql", "toml", "xml", "yaml",
-    })
+    _SUPPORTED_LANGUAGES = frozenset(
+        {
+            "bash",
+            "css",
+            "go",
+            "html",
+            "java",
+            "javascript",
+            "json",
+            "markdown",
+            "python",
+            "regex",
+            "rust",
+            "sql",
+            "toml",
+            "xml",
+            "yaml",
+        }
+    )
 
     def __init__(self, *, title: str, query: str, lexer: str = "sql") -> None:
         super().__init__()
@@ -1045,9 +1061,7 @@ class ChartBrowserScreen(Screen[None]):
         Binding("escape", "close_browser", "Back", show=True),
     ]
 
-    def __init__(
-        self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]
-    ) -> None:
+    def __init__(self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]) -> None:
         super().__init__()
         self._title = title
         self._df = df
@@ -1091,7 +1105,11 @@ class ChartBrowserScreen(Screen[None]):
 
 
 class AgentResultWidget(Widget):
-    """Displays an agent result with interactive tab switching."""
+    """Displays an agent result with two-level tab switching.
+
+    Top bar: records (shown when there is more than one record).
+    Bottom bar: view kinds (Chart / Data / Query) for the selected record.
+    """
 
     DEFAULT_CSS = """
     AgentResultWidget {
@@ -1101,14 +1119,15 @@ class AgentResultWidget(Widget):
         background: $surface;
     }
 
-    AgentResultWidget .tab-bar {
+    AgentResultWidget .top-bar {
         height: auto;
         margin: 0 0 1 0;
     }
 
     """
 
-    current_tab: reactive[int] = reactive(0, init=False)
+    current_record: reactive[int] = reactive(0, init=False)
+    current_view: reactive[int] = reactive(0, init=False)
 
     def __init__(
         self,
@@ -1120,39 +1139,59 @@ class AgentResultWidget(Widget):
         from mintq.cli.display import build_result_views
         from mintq.toolhub.query_history import QueryHistory
 
-        self._ordered_keys, self._views, self._data_refs, self._query_views, self._chart_refs = build_result_views(
-            result, width
-        )
+        self._records = build_result_views(result, width)
         self._query_history: QueryHistory | None = query_history if isinstance(query_history, QueryHistory) else None
         self._content = Static(id="result-content")
         self._mounted = False
-        self._tab_hit_areas: list[tuple[int, int, int]] = []  # (row, col_start, col_end)
+        self._top_bar_widget: Static | None = None
+        # Record pills: (row, col_start, col_end) indexed the same as records.
+        self._record_hit_areas: list[tuple[int, int, int]] = []
+        # View stepper: target is "prev" or "next".
+        self._view_hit_areas: list[tuple[str, int, int, int]] = []
 
     @property
-    def has_tabs(self) -> bool:
-        return len(self._ordered_keys) > 1
+    def _has_record_bar(self) -> bool:
+        return len(self._records) > 1
+
+    @property
+    def _has_top_bar(self) -> bool:
+        """Show the top bar when there is anything to switch between."""
+        return self._has_record_bar or any(len(r.views) > 1 for r in self._records)
 
     def compose(self) -> ComposeResult:
-        if self.has_tabs:
-            self._tab_bar_widget = Static(classes="tab-bar")
-        if self.has_tabs:
-            yield self._tab_bar_widget
+        if self._has_top_bar:
+            self._top_bar_widget = Static(classes="top-bar")
+            yield self._top_bar_widget
         yield self._content
 
     def on_mount(self) -> None:
         self._mounted = True
-        self._update_content()
+        self._refresh_all()
 
     def on_resize(self) -> None:
-        if self.has_tabs:
-            self._update_tab_bar()
+        if self._top_bar_widget is not None:
+            self._update_top_bar()
 
-    def watch_current_tab(self) -> None:
+    def watch_current_record(self) -> None:
         if not self._mounted:
             return
+        # Clamp current_view to the new record's view count; setting it will
+        # trigger watch_current_view which calls _refresh_all.
+        rec = self._current_record_or_none()
+        if rec is not None and self.current_view >= len(rec.views):
+            self.current_view = max(0, len(rec.views) - 1)
+            return
+        self._refresh_all()
+
+    def watch_current_view(self) -> None:
+        if not self._mounted:
+            return
+        self._refresh_all()
+
+    def _refresh_all(self) -> None:
         self._update_content()
-        if self.has_tabs:
-            self._update_tab_bar()
+        if self._top_bar_widget is not None:
+            self._update_top_bar()
         if self._is_last_chat_item():
             chat_log = self.app.query_one("#chat-log")
             chat_log.scroll_end(animate=False)
@@ -1166,175 +1205,265 @@ class AgentResultWidget(Widget):
         children = list(chat_log.children)
         return bool(children) and children[-1] is self
 
-    def _update_tab_bar(self) -> None:
+    def _current_record_or_none(self) -> "RecordGroup | None":
+        if not self._records:
+            return None
+        idx = min(self.current_record, len(self._records) - 1)
+        return self._records[idx]
+
+    def _current_view_or_none(self) -> "ViewItem | None":
+        rec = self._current_record_or_none()
+        if rec is None or not rec.views:
+            return None
+        idx = min(self.current_view, len(rec.views) - 1)
+        return rec.views[idx]
+
+    def _update_top_bar(self) -> None:
+        """Render the view stepper and record pills on a single line.
+
+        Layout: ``◂ Chart ▸      pill   pill   pill        Enter … [ ] … Shift+…``
+          - the view stepper always renders both chevrons; a chevron is dimmed
+            when at the first/last view (or when there is only one view),
+          - record pills are shown only when there is more than one record,
+          - the right-aligned hint lists whichever keybindings currently apply.
+        """
         from rich.align import Align
         from rich.columns import Columns
         from rich.style import Style
 
-        wrap_width = self._tab_bar_widget.size.width or 80
-        current_key = self._current_key()
+        from mintq.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
+        if self._top_bar_widget is None:
+            return
+
+        rec = self._current_record_or_none()
+        has_record_bar = self._has_record_bar
+        has_views = rec is not None and bool(rec.views)
+        view_interactive = rec is not None and len(rec.views) > 1
+
+        # Hint reflects the applicable keybindings.
         hint = Text()
-        if current_key in self._chart_refs or current_key in self._data_refs or current_key in self._query_views:
-            if hint:
-                hint.append("    ")
+        if has_views:
             hint.append("Enter", style=ACCENT_BOLD)
             hint.append(" Full Screen", style="dim")
-        if hint:
-            hint.append("    ")
-        hint.append("←/→", style=ACCENT_BOLD)
-        hint.append(" Switch Tab", style="dim")
+        if view_interactive:
+            if hint.plain:
+                hint.append("    ")
+            hint.append("[/]", style=ACCENT_BOLD)
+            hint.append(" Switch View", style="dim")
+        if has_record_bar:
+            if hint.plain:
+                hint.append("    ")
+            hint.append("←/→", style=ACCENT_BOLD)
+            hint.append(" Switch Record", style="dim")
 
-        # Keep tab wrapping stable; if there isn't enough room for a side-by-side layout,
-        # render hints on a right-aligned second line.
+        wrap_width = self._top_bar_widget.size.width or 80
         hint_width = len(hint.plain)
-        side_by_side = (wrap_width - hint_width - 1) >= 20
+        side_by_side = (wrap_width - hint_width - 1) >= 20 and bool(hint.plain)
         tab_wrap_width = max(1, (wrap_width - hint_width - 1) if side_by_side else wrap_width)
 
-        # Build styled text and compute hit areas by simulating layout.
-        # Visual width uses raw key; Rich Text uses escaped key for markup safety.
         line = Text()
-        self._tab_hit_areas = []
+        self._record_hit_areas = []
+        self._view_hit_areas = []
         row, col = 0, 0
-        for i, key in enumerate(self._ordered_keys):
-            label = f" {key} "
-            sep = " " if i > 0 else ""
-            needed = len(sep) + len(label)
-            if col > 0 and col + needed > tab_wrap_width:
+
+        chevron_style = Style(bold=True, color=ACCENT)
+        label_style = Style(bold=True, color=ACCENT)
+
+        # View stepper first — chevrons always render in mint green.
+        if has_views:
+            assert rec is not None
+            cur_idx = min(self.current_view, len(rec.views) - 1)
+            cur_kind = rec.views[cur_idx].kind
+
+            line.append_text(Text("◂", style=chevron_style))
+            self._view_hit_areas.append(("prev", row, col, col + 1))
+            col += 1
+            line.append_text(Text(" "))
+            col += 1
+
+            line.append_text(Text(cur_kind, style=label_style))
+            col += len(cur_kind)
+
+            line.append_text(Text(" "))
+            col += 1
+            line.append_text(Text("▸", style=chevron_style))
+            self._view_hit_areas.append(("next", row, col, col + 1))
+            col += 1
+
+            # Pad after the right chevron so the stepper width stays constant
+            # across view kinds and the record tabs don't shift horizontally.
+            max_kind_width = max(len(k) for k in (VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY))
+            trailing = max_kind_width - len(cur_kind)
+            if trailing > 0:
+                line.append_text(Text(" " * trailing))
+                col += trailing
+
+        # Separator between the stepper and record pills.
+        if has_views and has_record_bar:
+            gap = "      "
+            if col + len(gap) > tab_wrap_width:
                 line.append_text(Text("\n"))
                 row += 1
                 col = 0
-                sep = ""
-            if sep:
-                line.append_text(Text(" "))
-                col += 1
-            col_start = col
-            style = Style(bold=True, color="black", bgcolor="#3EB489") if i == self.current_tab else Style(dim=True)
-            line.append_text(Text(label, style=style))
-            col += len(label)
-            self._tab_hit_areas.append((row, col_start, col))
-        if side_by_side:
-            self._tab_bar_widget.update(
-                Columns(
-                    [line, Align.right(hint)],
-                    expand=True,
-                    equal=False,
-                    padding=(0, 1),
-                )
-            )
+            else:
+                line.append_text(Text(gap))
+                col += len(gap)
+
+        # Record pills.
+        if has_record_bar:
+            for i, r in enumerate(self._records):
+                pill = f" {r.label} "
+                sep = " " if col > 0 and i > 0 else ""
+                needed = len(sep) + len(pill)
+                if col > 0 and col + needed > tab_wrap_width:
+                    line.append_text(Text("\n"))
+                    row += 1
+                    col = 0
+                    sep = ""
+                if sep:
+                    line.append_text(Text(" "))
+                    col += 1
+                col_start = col
+                style = Style(bold=True, color="black", bgcolor=ACCENT) if i == self.current_record else Style(dim=True)
+                line.append_text(Text(pill, style=style))
+                col += len(pill)
+                self._record_hit_areas.append((row, col_start, col))
+
+        renderable: RenderableType
+        if not hint.plain:
+            renderable = line
+        elif side_by_side:
+            renderable = Columns([line, Align.right(hint)], expand=True, equal=False, padding=(0, 1))
         else:
-            self._tab_bar_widget.update(Group(line, Align.right(hint)))
+            renderable = Group(line, Align.right(hint))
+        self._top_bar_widget.update(renderable)
 
     def _update_content(self) -> None:
-        from mintq.cli.display import build_query
-
-        if not self._ordered_keys:
+        view = self._current_view_or_none()
+        if view is None:
             self._content.update(Text("No results to display.", style="dim"))
             return
-        idx = min(self.current_tab, len(self._ordered_keys) - 1)
-        key = self._ordered_keys[idx]
-        query_view = self._query_views.get(key)
-        if query_view is not None:
-            query, lexer = query_view
-            renderable = build_query(query, max_lines=QUERY_PREVIEW_MAX_LINES, lexer=lexer)
-        else:
-            renderable = self._views.get(key, Text(""))
-        self._content.update(renderable)
-
-    def _current_key(self) -> str | None:
-        if not self._ordered_keys:
-            return None
-        idx = min(self.current_tab, len(self._ordered_keys) - 1)
-        return self._ordered_keys[idx]
+        self._content.update(view.renderable)
 
     def on_click(self, event: object) -> None:
-        """Handle clicks on tab labels."""
+        """Handle clicks on tab labels and content regions."""
         from textual.events import Click
 
         assert isinstance(event, Click)
 
-        if self.has_tabs and event.widget is self._tab_bar_widget:
-            for i, (row, col_start, col_end) in enumerate(self._tab_hit_areas):
+        if self._top_bar_widget is not None and event.widget is self._top_bar_widget:
+            for i, (row, col_start, col_end) in enumerate(self._record_hit_areas):
                 if event.y == row and col_start <= event.x < col_end:
-                    self.current_tab = i
-                    break
+                    if i != self.current_record:
+                        self._switch_record(i)
+                    return
+            for target, row, col_start, col_end in self._view_hit_areas:
+                if event.y == row and col_start <= event.x < col_end:
+                    if target == "prev":
+                        self.action_prev_view()
+                    elif target == "next":
+                        self.action_next_view()
+                    return
             return
 
         if event.widget is self._content:
-            key = self._current_key()
-            if key in self._chart_refs and self._is_chart_region_click(key=key, x=event.x, y=event.y):
+            view = self._current_view_or_none()
+            if view is None:
+                return
+            from mintq.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
+
+            if view.kind == VIEW_KIND_CHART and self._is_chart_region_click(view, event.x, event.y):
                 self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
-            if key in self._data_refs and self._is_table_region_click(key=key, x=event.x, y=event.y):
+            if view.kind == VIEW_KIND_DATA and self._is_table_region_click(view, event.x, event.y):
                 self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
-            if key in self._query_views:
+            if view.kind == VIEW_KIND_QUERY:
                 self.run_worker(self.action_open_full_screen(), exclusive=True)
                 return
 
-    def _is_chart_region_click(self, *, key: str, x: int, y: int) -> bool:
+    def _is_chart_region_click(self, view: "ViewItem", x: int, y: int) -> bool:
         """Return True when click lands within the rendered chart area."""
         if x < 0 or y < 0:
             return False
-        renderable = self._views.get(key)
-        if renderable is None:
-            return False
         options = self.app.console.options.update(width=max(1, self._content.size.width))
-        measurement = self.app.console.measure(renderable, options=options)
-        return x < measurement.maximum
+        measurement = self.app.console.measure(view.renderable, options=options)
+        return bool(x < measurement.maximum)
 
-    def _is_table_region_click(self, *, key: str, x: int, y: int) -> bool:
+    def _is_table_region_click(self, view: "ViewItem", x: int, y: int) -> bool:
         """Return True when click lands within the visible data-table preview area."""
         if x < 0 or y < 0:
             return False
         content_height = self._content.size.height
         if content_height <= 0:
             return False
-        table_width = self._data_preview_table_width(key)
+        table_width = self._data_preview_table_width(view)
         if table_width <= 0 or x >= table_width:
             return False
-        footer_lines = 1 if self._data_preview_has_footer(key) else 0
+        footer_lines = 1 if self._data_preview_has_footer(view) else 0
         return y < (content_height - footer_lines)
 
-    def _data_preview_has_footer(self, key: str) -> bool:
+    def _data_preview_has_footer(self, view: "ViewItem") -> bool:
         """Data preview shows a one-line footer only when rows/cols are truncated."""
-        ref = self._data_refs.get(key)
-        if ref is None:
+        if view.data_shape is None:
             return False
-        _record_id, num_rows, num_cols = ref
+        num_rows, num_cols = view.data_shape
         return num_rows > DATA_PREVIEW_MAX_ROWS or num_cols > DATA_PREVIEW_MAX_COLUMNS
 
-    def _data_preview_table_width(self, key: str) -> int:
+    def _data_preview_table_width(self, view: "ViewItem") -> int:
         """Measure rendered width of the data preview table area."""
-        renderable = self._views.get(key)
-        if renderable is None:
-            return 0
-        table_renderable = renderable
-        if isinstance(renderable, Group):
-            renderables = tuple(getattr(renderable, "renderables", ()))
+        table_renderable = view.renderable
+        if isinstance(table_renderable, Group):
+            renderables = tuple(getattr(table_renderable, "renderables", ()))
             if not renderables:
                 return 0
             table_renderable = renderables[0]
         options = self.app.console.options.update(width=max(1, self._content.size.width))
         measurement = self.app.console.measure(table_renderable, options=options)
-        return measurement.maximum
+        return int(measurement.maximum)
 
+    def _switch_record(self, new_idx: int) -> None:
+        """Change the active record, preserving the current view kind if possible."""
+        if not self._records or new_idx == self.current_record:
+            return
+        current_view = self._current_view_or_none()
+        target_kind = current_view.kind if current_view is not None else None
+        new_rec = self._records[new_idx]
+        new_view_idx = 0
+        if target_kind is not None:
+            for i, v in enumerate(new_rec.views):
+                if v.kind == target_kind:
+                    new_view_idx = i
+                    break
+        self.current_record = new_idx
+        self.current_view = new_view_idx
 
-    def action_next_tab(self) -> None:
-        if self._ordered_keys:
-            self.current_tab = (self.current_tab + 1) % len(self._ordered_keys)
+    def action_next_view(self) -> None:
+        rec = self._current_record_or_none()
+        if rec is not None and len(rec.views) > 1:
+            self.current_view = (self.current_view + 1) % len(rec.views)
 
-    def action_prev_tab(self) -> None:
-        if self._ordered_keys:
-            self.current_tab = (self.current_tab - 1) % len(self._ordered_keys)
+    def action_prev_view(self) -> None:
+        rec = self._current_record_or_none()
+        if rec is not None and len(rec.views) > 1:
+            self.current_view = (self.current_view - 1) % len(rec.views)
+
+    def action_next_record(self) -> None:
+        if len(self._records) > 1:
+            self._switch_record((self.current_record + 1) % len(self._records))
+
+    def action_prev_record(self) -> None:
+        if len(self._records) > 1:
+            self._switch_record((self.current_record - 1) % len(self._records))
 
     can_focus = True
 
     BINDINGS = [
-        ("right", "next_tab", "Next tab"),
-        ("left", "prev_tab", "Previous tab"),
-        ("tab", "next_tab", "Next tab"),
-        ("shift+tab", "prev_tab", "Previous tab"),
+        ("]", "next_view", "Next view"),
+        ("[", "prev_view", "Previous view"),
+        ("right", "next_record", "Next record"),
+        ("left", "prev_record", "Previous record"),
         ("enter", "open_full_screen", "Full screen"),
         ("up", "focus_prev_result", "Previous result"),
         ("down", "focus_next_result", "Next result"),
@@ -1372,27 +1501,27 @@ class AgentResultWidget(Widget):
 
     async def action_open_full_screen(self) -> None:
         """Open full-screen viewer for the active Chart, Data, or Query tab."""
-        key = self._current_key()
-        if key is None:
+        from mintq.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
+
+        rec = self._current_record_or_none()
+        view = self._current_view_or_none()
+        if rec is None or view is None:
             return
-        chart_ref = self._chart_refs.get(key)
-        if chart_ref is not None:
-            record_id, spec = chart_ref
-            df = await self._fetch_df(record_id)
+        title = f"{view.kind} ({rec.label})" if self._has_record_bar else view.kind
+
+        if view.kind == VIEW_KIND_CHART and view.chart_spec is not None:
+            df = await self._fetch_df(rec.record_id)
             if df is not None:
-                self.app.push_screen(ChartBrowserScreen(title=key, df=df, vegalite_spec=spec))
+                self.app.push_screen(ChartBrowserScreen(title=title, df=df, vegalite_spec=view.chart_spec))
             return
-        data_ref = self._data_refs.get(key)
-        if data_ref is not None:
-            record_id, _num_rows, _num_cols = data_ref
-            df = await self._fetch_df(record_id)
+        if view.kind == VIEW_KIND_DATA:
+            df = await self._fetch_df(rec.record_id)
             if df is not None:
-                self.app.push_screen(DataBrowserScreen(title=key, df=df))
+                self.app.push_screen(DataBrowserScreen(title=title, df=df))
             return
-        query_data = self._query_views.get(key)
-        if query_data is not None:
-            query, lexer = query_data
-            self.app.push_screen(QueryBrowserScreen(title=key, query=query, lexer=lexer))
+        if view.kind == VIEW_KIND_QUERY and view.query is not None:
+            query, lexer = view.query
+            self.app.push_screen(QueryBrowserScreen(title=title, query=query, lexer=lexer))
 
     async def _fetch_df(self, record_id: str) -> pd.DataFrame | None:
         """Fetch a DataFrame from QueryHistory, hydrating from DuckDB if needed."""
@@ -1799,11 +1928,7 @@ class SchemaBrowserScreen(Screen[None]):
 
         elif node_data.kind in (_NODE_KIND_TABLE, _NODE_KIND_COLUMN):
             table = next(
-                (
-                    t
-                    for t in schema.tables
-                    if t.name == node_data.table_name and t.schema_name == node_data.schema_name
-                ),
+                (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
                 None,
             )
             if table:

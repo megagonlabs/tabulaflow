@@ -337,9 +337,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         session.registry.register(alias, connector)
         info = session.chat_agent.database_info(connector)
         session.chat_agent.add_database([(alias, connector)])
-        return CommandResult(
-            output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim")
-        )
+        return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
     # --- HuggingFace dataset connections ---
     from mintq.db_connector.loaders import is_hf_dataset_url
@@ -398,7 +396,9 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
 
     try:
         connector = await load_hf_dataset(
-            url, db_name=alias, read_only=True,
+            url,
+            db_name=alias,
+            read_only=True,
         )
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))
@@ -406,9 +406,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     session.registry.register(alias, connector)
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
-    return CommandResult(
-        output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim")
-    )
+    return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
 
 async def execute_connect_with_password(url: str, alias: str, password: str, session: SessionState) -> CommandResult:
@@ -455,9 +453,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         session.registry.register(alias, neo_connector)
         info = session.chat_agent.database_info(neo_connector)
         session.chat_agent.add_database([(alias, neo_connector)])
-        return CommandResult(
-            output=Text(f"✓ Connected to {alias} ({info})", style="dim")
-        )
+        return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
     try:
         engine_kwargs = _engine_kwargs_for_url(url)

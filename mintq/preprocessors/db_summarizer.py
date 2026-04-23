@@ -88,9 +88,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
                 return DBSummary(db_summary_markdown=f"# Database: `{schema.name}`\n\nThis database has no tables.")
             if self.compressor is not None:
                 schema = self.compressor.compress(schema)
-            user_prompt = format_user_prompt(
-                self.sql_formatter.format(schema, add_description=True)
-            )
+            user_prompt = format_user_prompt(self.sql_formatter.format(schema, add_description=True))
         elif db_connector.connector_type == "property_graph":
             graph_schema = db_connector.schema
             if not graph_schema.nodes and not graph_schema.relationships:

@@ -57,9 +57,7 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.Undefined)
 _JINJA_ENV.filters["fromjson"] = lambda v: json.loads(v) if isinstance(v, str) else v
 
 
-def _key_where_clause(
-    key_columns: list[str], key_payload: dict[str, object]
-) -> sqlalchemy.ColumnElement[bool]:
+def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
     """Build a SQLAlchemy WHERE clause from key columns."""
     conditions: list[sqlalchemy.ColumnElement[bool]] = []
     for col_name in key_columns:
@@ -217,9 +215,7 @@ class RunSubagentForEachRowTool:
                         dtype = trajectory_dtype
                     else:
                         dtype = "TEXT"
-                    await self.db_connector.run_query_async(
-                        f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}"
-                    )
+                    await self.db_connector.run_query_async(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}")
 
         # Resolve the single output column name for direct mode.
         direct_output_col: str | None = None
@@ -244,9 +240,7 @@ class RunSubagentForEachRowTool:
             sa_col_names.update(_INTERNAL_COLUMNS)
         if output_columns:
             sa_col_names.update(output_columns)
-        sa_table = sqlalchemy.table(
-            table_name, *[sqlalchemy.column(c) for c in sa_col_names]
-        )
+        sa_table = sqlalchemy.table(table_name, *[sqlalchemy.column(c) for c in sa_col_names])
 
         async def _save_row_metadata(
             key_payload: dict[str, object],
@@ -256,18 +250,18 @@ class RunSubagentForEachRowTool:
         ) -> None:
             """Write subagent metadata columns for one row."""
             traj_val: object = (
-                sqlalchemy.func.parse_json(trajectory)
-                if dialect in _DIALECTS_WITH_PARSE_JSON
-                else trajectory
+                sqlalchemy.func.parse_json(trajectory) if dialect in _DIALECTS_WITH_PARSE_JSON else trajectory
             )
             stmt = (
                 sqlalchemy.update(sa_table)
                 .where(_key_where_clause(key_columns, key_payload))
-                .values({
-                    sa_table.c[_COL_SUCCESS]: success,
-                    sa_table.c[_COL_MESSAGE]: message,
-                    sa_table.c[_COL_TRAJECTORY]: traj_val,
-                })
+                .values(
+                    {
+                        sa_table.c[_COL_SUCCESS]: success,
+                        sa_table.c[_COL_MESSAGE]: message,
+                        sa_table.c[_COL_TRAJECTORY]: traj_val,
+                    }
+                )
             )
             await self.db_connector.run_query_async(stmt)
 
@@ -360,9 +354,7 @@ class RunSubagentForEachRowTool:
             async with semaphore:
                 return await process_fn(row_idx, row)
 
-        errors = await asyncio.gather(
-            *(_throttled(row_idx, row) for row_idx, row in enumerate(rows, start=1))
-        )
+        errors = await asyncio.gather(*(_throttled(row_idx, row) for row_idx, row in enumerate(rows, start=1)))
         await self.db_connector.refresh_schema_async()
 
         error_messages = [e for e in errors if e is not None]
@@ -376,8 +368,7 @@ class RunSubagentForEachRowTool:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in error_messages[:5])
         if self.store_metadata:
             summary += (
-                f"\nMetadata stored in columns {_COL_SUCCESS}, {_COL_MESSAGE}, "
-                f"{_COL_TRAJECTORY} of {table_name}."
+                f"\nMetadata stored in columns {_COL_SUCCESS}, {_COL_MESSAGE}, {_COL_TRAJECTORY} of {table_name}."
             )
         return summary
 

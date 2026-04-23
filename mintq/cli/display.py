@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 from rich.align import Align
@@ -66,7 +67,6 @@ def build_banner(*, model: str) -> RenderableType:
             border_style=ACCENT,
         ),
     )
-
 
 
 def build_query(
@@ -177,71 +177,84 @@ def build_chart(
 # ---------------------------------------------------------------------------
 
 
-def build_result_views(
-    result: object,
-    width: int = 80,
-) -> tuple[
-    list[str],
-    dict[str, RenderableType],
-    dict[str, tuple[str, int, int]],
-    dict[str, tuple[str, str]],
-    dict[str, tuple[str, dict[str, object]]],
-]:
-    """Build ordered view keys and their renderables from a ChatResult.
+VIEW_KIND_CHART = "Chart"
+VIEW_KIND_DATA = "Data"
+VIEW_KIND_QUERY = "Query"
 
-    Returns:
-        (ordered_keys, views, data_refs, query_views, chart_refs) where
-        ordered_keys defines tab order, views maps key -> Rich renderable,
-        data_refs maps Data tab keys to (record_id, num_rows, num_cols),
-        query_views maps Query tab keys to (raw_query, lexer),
-        and chart_refs maps Chart tab keys to (record_id, vegalite_spec).
+
+@dataclass
+class ViewItem:
+    """A single view (Chart/Data/Query) belonging to one record."""
+
+    kind: str
+    renderable: RenderableType
+    # Populated only for the matching kind; others are None.
+    chart_spec: dict[str, object] | None = None
+    data_shape: tuple[int, int] | None = None  # (num_rows, num_cols)
+    query: tuple[str, str] | None = None  # (raw_query, lexer)
+
+
+@dataclass
+class RecordGroup:
+    """Display-ready views for one record, ordered Chart -> Data -> Query."""
+
+    label: str
+    record_id: str
+    views: list[ViewItem] = field(default_factory=list)
+
+
+def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
+    """Build per-record view groups from a ChatResult.
+
+    The returned list preserves record order; within each record, views are
+    ordered Chart -> Data -> Query and absent kinds are omitted. Records with
+    no views at all are dropped.
     """
     from mintq.cli.agent import ChatResult
 
     assert isinstance(result, ChatResult)
 
-    views: dict[str, RenderableType] = {}
-    chart_keys: list[str] = []
-    data_keys: list[str] = []
-    query_keys: list[str] = []
-    data_refs: dict[str, tuple[str, int, int]] = {}
-    query_views: dict[str, tuple[str, str]] = {}
-    chart_refs: dict[str, tuple[str, dict[str, object]]] = {}
-
-    use_labels = len(result.records) > 1
+    groups: list[RecordGroup] = []
     used_labels: set[str] = set()
     for record in result.records:
         base_label = record.label or record.record_id
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
-        chart_key = f"Chart ({label})" if use_labels else "Chart"
-        data_key = f"Data ({label})" if use_labels else "Data"
-        query_key = f"Query ({label})" if use_labels else "Query"
-
+        views: list[ViewItem] = []
         if record.chart_spec is not None and record.df is not None:
-            views[chart_key] = build_chart(record.df, record.chart_spec, width)
-            chart_keys.append(chart_key)
-            chart_refs[chart_key] = (record.record_id, record.chart_spec)
+            views.append(
+                ViewItem(
+                    kind=VIEW_KIND_CHART,
+                    renderable=build_chart(record.df, record.chart_spec, width),
+                    chart_spec=record.chart_spec,
+                )
+            )
         if record.df is not None and not record.df.empty:
-            views[data_key] = build_table(record.df)
-            data_keys.append(data_key)
-            data_refs[data_key] = (record.record_id, len(record.df), len(record.df.columns))
+            views.append(
+                ViewItem(
+                    kind=VIEW_KIND_DATA,
+                    renderable=build_table(record.df),
+                    data_shape=(len(record.df), len(record.df.columns)),
+                )
+            )
         if record.query:
-            views[query_key] = build_query(record.query, lexer=record.query_lexer)
-            query_keys.append(query_key)
-            query_views[query_key] = (record.query, record.query_lexer)
+            views.append(
+                ViewItem(
+                    kind=VIEW_KIND_QUERY,
+                    renderable=build_query(record.query, lexer=record.query_lexer),
+                    query=(record.query, record.query_lexer),
+                )
+            )
 
-    ordered_keys: list[str] = []
-    ordered_keys.extend(chart_keys)
-    ordered_keys.extend(data_keys)
-    ordered_keys.extend(query_keys)
+        if views:
+            groups.append(RecordGroup(label=label, record_id=record.record_id, views=views))
 
     # Release DF references — previews have been rendered to Rich renderables.
     for record in result.records:
         record.df = None
 
-    return ordered_keys, views, data_refs, query_views, chart_refs
+    return groups
 
 
 def _unique_record_label(base_label: str, used: set[str]) -> str:
