@@ -95,6 +95,8 @@ April 21
   - [ ] Support interrupting agent
   - [ ] Pass db doc on connect for small dbs?
   - [ ] Multimodal data processing in subagent
+  - [ ] Disalbe compression for small dbs?
+  - [ ] Enriched with other data in huggingface repo
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
