@@ -18,8 +18,6 @@ import re
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
-    import duckdb
-
     from mintq.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
@@ -170,15 +168,6 @@ def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _init_duckdb(db_path: str) -> duckdb.DuckDBPyConnection:
-    """Create a DuckDB connection with httpfs."""
-    import duckdb
-
-    conn = duckdb.connect(db_path)
-    conn.execute("INSTALL httpfs; LOAD httpfs;")
-    return conn
-
-
 def _resolve_config(dataset_id: str, subset: str | None) -> str:
     """Resolve which config to use via the HuggingFace API.
 
@@ -237,11 +226,15 @@ def _dtype_has_blob(dtype: str) -> bool:
     return "BLOB" in dtype.upper()
 
 
-def _build_sample_columns(conn: duckdb.DuckDBPyConnection, source: str) -> str:
+async def _build_sample_columns_async(connector: SQLConnector, source: str) -> str:
     """Build a SELECT column list, replacing BLOB-containing columns with NULL."""
-    cols = conn.execute(f"DESCRIBE SELECT * FROM {source} LIMIT 0").fetchall()
+    result = await connector.run_query_async(f"DESCRIBE SELECT * FROM {source} LIMIT 0")
+    if result.error is not None or result.df is None:
+        return "*"
     parts: list[str] = []
-    for name, dtype, *_ in cols:
+    for row in result.df.itertuples(index=False):
+        name = row[0]
+        dtype = row[1]
         quoted = f'"{name}"'
         if _dtype_has_blob(dtype):
             parts.append(f"'<binary: skipped>' AS {quoted}")
@@ -251,8 +244,15 @@ def _build_sample_columns(conn: duckdb.DuckDBPyConnection, source: str) -> str:
     return ", ".join(parts) if parts else "*"
 
 
-def _create_tables(
-    conn: duckdb.DuckDBPyConnection,
+async def _run_or_raise(connector: SQLConnector, sql: str, desc: str) -> None:
+    """Run a statement and raise if it errored."""
+    result = await connector.run_query_async(sql)
+    if result.error is not None:
+        raise RuntimeError(f"{desc} failed: {result.error.message}")
+
+
+async def _create_tables_async(
+    connector: SQLConnector,
     dataset_id: str,
     config: str,
     split_sizes: dict[str, int],
@@ -268,7 +268,7 @@ def _create_tables(
     table_names: list[str] = []
 
     for split_name, size in split_sizes.items():
-        urls = _fetch_parquet_urls(dataset_id, config, split_name)
+        urls = await asyncio.to_thread(_fetch_parquet_urls, dataset_id, config, split_name)
         if not urls:
             raise ValueError(f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'.")
         url_list = ", ".join(f"'{u}'" for u in urls)
@@ -277,32 +277,37 @@ def _create_tables(
         base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
         materialize = size > 0 and size < MATERIALIZE_THRESHOLD_BYTES
         if materialize:
-            sql = f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}'
             logger.info("Creating TABLE '%s' from %d parquet files", base_name, len(urls))
+            await _run_or_raise(
+                connector,
+                f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}',
+                f"CREATE TABLE {base_name}",
+            )
             table_names.append(base_name)
-            conn.execute(sql)
         else:
             # Full-data view over all parquet files.
-            view_sql = f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}'
             logger.info("Creating VIEW '%s' from %d parquet files", base_name, len(urls))
-            conn.execute(view_sql)
+            await _run_or_raise(
+                connector,
+                f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}',
+                f"CREATE VIEW {base_name}",
+            )
             table_names.append(base_name)
 
             # Materialized 1k sample from the first parquet file.
             # Null out BLOB columns (images, audio) to avoid downloading
             # huge binary data just for a preview.
             sample_name = f"{base_name}_sample"
-            first_url = urls[0]
-            first_source = f"read_parquet('{first_url}')"
-            columns = _build_sample_columns(conn, first_source)
+            first_source = f"read_parquet('{urls[0]}')"
+            columns = await _build_sample_columns_async(connector, first_source)
             sample_sql = f'CREATE TABLE "{sample_name}" AS SELECT {columns} FROM {first_source} LIMIT 1000'
             logger.info("Creating TABLE '%s' (at most 1k sample) from first parquet file", sample_name)
-            try:
-                conn.execute(sample_sql)
+            sample_result = await connector.run_query_async(sample_sql)
+            if sample_result.error is None:
                 table_names.append(sample_name)
-            except Exception:
+            else:
                 logger.warning("Failed to create sample table '%s'; skipping", sample_name)
-                conn.execute(f'DROP TABLE IF EXISTS "{sample_name}"')
+                await connector.run_query_async(f'DROP TABLE IF EXISTS "{sample_name}"')
 
     return table_names
 
@@ -338,7 +343,24 @@ def _try_cache(db_path: str) -> list[str] | None:
     return None
 
 
-def _load_hf_via_datasets_lib(
+async def _open_loader_connector(db_path: str) -> SQLConnector:
+    """Open a writable DuckDB SQLConnector for the loader phase, with
+    httpfs installed.  Cancellation during the subsequent loading goes
+    through ``ThrottledEngine.aclose`` like any other sync-driver query."""
+    from mintq.db_connector.sql_conn import SQLConnector
+
+    return await SQLConnector.from_url_async(
+        global_id=f"hf-loader+{os.path.splitext(os.path.basename(db_path))[0]}",
+        url=f"duckdb:///{db_path}",
+        db_name=os.path.basename(db_path),
+        read_only=False,
+        enable_schema_caching=False,
+        enable_query_caching=False,
+        duckdb_init_sql=["INSTALL httpfs; LOAD httpfs;"],
+    )
+
+
+async def _load_hf_via_datasets_lib(
     dataset_id: str,
     subset: str | None,
     split_filter: str | None,
@@ -368,9 +390,11 @@ def _load_hf_via_datasets_lib(
     if split_filter is not None:
         kwargs["split"] = split_filter
 
-    loaded = ds.load_dataset(dataset_id, **kwargs)
+    # ``datasets.load_dataset`` is a blocking download; run it off the loop.
+    # The thread itself remains uncancellable (no async API exists for this
+    # library), but the DuckDB work below is cancellable via the SQLConnector.
+    loaded = await asyncio.to_thread(ds.load_dataset, dataset_id, **kwargs)
 
-    # Normalise to a dict of splits.
     if isinstance(loaded, ds.DatasetDict):
         split_dict: dict[str, ds.Dataset] = dict(loaded)
     else:
@@ -380,29 +404,32 @@ def _load_hf_via_datasets_lib(
 
     config_label = subset or "default"
     db_file = _db_path(cache_dir, dataset_id, config_label, split_filter)
-    conn = _init_duckdb(db_file)
 
-    table_names: list[str] = []
+    connector = await _open_loader_connector(db_file)
     try:
+        table_names: list[str] = []
         with tempfile.TemporaryDirectory() as tmpdir:
             for split_name, split_ds in sorted(split_dict.items()):
                 base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
                 parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
-                split_ds.to_parquet(parquet_path)
+                await asyncio.to_thread(split_ds.to_parquet, parquet_path)
 
                 source = f"read_parquet('{parquet_path}')"
-                columns = _build_sample_columns(conn, source)
-                sql = f'CREATE TABLE "{base_name}" AS SELECT {columns} FROM {source}'
+                columns = await _build_sample_columns_async(connector, source)
                 logger.info("Creating TABLE '%s' from datasets library", base_name)
-                conn.execute(sql)
+                await _run_or_raise(
+                    connector,
+                    f'CREATE TABLE "{base_name}" AS SELECT {columns} FROM {source}',
+                    f"CREATE TABLE {base_name}",
+                )
                 table_names.append(base_name)
     finally:
-        conn.close()
+        await connector.disconnect_async()
 
     return db_file, table_names
 
 
-def _load_hf_into_duckdb(
+async def _load_hf_into_duckdb(
     dataset_id: str,
     subset: str | None,
     split_filter: str | None,
@@ -424,25 +451,27 @@ def _load_hf_into_duckdb(
     cache_dir = os.path.join(mintq_config.cache_dir, "hf")
     os.makedirs(cache_dir, exist_ok=True)
 
-    # Try cache before making any API calls.  If subset is given we know the
-    # config; otherwise guess "default" (the most common case).
+    # Try cache before making any API calls.  If subset is given we know
+    # the config; otherwise guess "default" (the most common case).
     candidate_config = subset or "default"
     db_path = _db_path(cache_dir, dataset_id, candidate_config, split_filter)
-    cached = _try_cache(db_path)
+    cached = await asyncio.to_thread(_try_cache, db_path)
     if cached is not None:
         return db_path, cached
 
     # Cache miss — resolve config and discover splits via API.
     try:
-        config = _resolve_config(dataset_id, subset)
-        split_sizes = _discover_splits_and_size(dataset_id, config)
+        config = await asyncio.to_thread(_resolve_config, dataset_id, subset)
+        split_sizes = await asyncio.to_thread(_discover_splits_and_size, dataset_id, config)
     except _DatasetServerUnavailableError:
         # datasets-server unavailable — fall back to datasets library.
-        return _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
+        return await _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
 
     if split_filter:
         if split_filter not in split_sizes:
-            raise ValueError(f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}")
+            raise ValueError(
+                f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}"
+            )
         splits = [split_filter]
     else:
         splits = sorted(split_sizes)
@@ -450,7 +479,7 @@ def _load_hf_into_duckdb(
     # Re-check cache if resolved config differs from the candidate.
     if config != candidate_config:
         db_path = _db_path(cache_dir, dataset_id, config, split_filter)
-        cached = _try_cache(db_path)
+        cached = await asyncio.to_thread(_try_cache, db_path)
         if cached is not None:
             return db_path, cached
 
@@ -459,12 +488,12 @@ def _load_hf_into_duckdb(
     size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
 
-    conn = _init_duckdb(db_path)
+    connector = await _open_loader_connector(db_path)
     try:
-        table_names = _create_tables(conn, dataset_id, config, loaded_sizes)
+        table_names = await _create_tables_async(connector, dataset_id, config, loaded_sizes)
         return db_path, table_names
     finally:
-        conn.close()
+        await connector.disconnect_async()
 
 
 # ---------------------------------------------------------------------------
@@ -499,14 +528,7 @@ async def load_hf_dataset(
     if db_name is None:
         db_name = dataset_id.split("/")[-1]
 
-    loop = asyncio.get_running_loop()
-    db_path, table_names = await loop.run_in_executor(
-        None,
-        _load_hf_into_duckdb,
-        dataset_id,
-        subset,
-        split,
-    )
+    db_path, _ = await _load_hf_into_duckdb(dataset_id, subset, split)
 
     # Derive global_id from the DuckDB cache path so the schema cache key
     # is stable across sessions regardless of the user-chosen alias.
@@ -518,7 +540,7 @@ async def load_hf_dataset(
     schema_cache_path = os.path.join(mintq_config.cache_dir, "schemas", f"{global_id}.json")
     description: str | None = None
     if not os.path.exists(schema_cache_path):
-        hf_description = await loop.run_in_executor(None, _fetch_hf_description, dataset_id)
+        hf_description = await asyncio.to_thread(_fetch_hf_description, dataset_id)
         if hf_description:
             if len(hf_description) > 5000:
                 from mintq.preprocessors.components.text_summarizer import TextSummarizer

@@ -4,6 +4,7 @@ import json
 import re
 import logging
 import tempfile
+import threading
 import warnings
 
 import sqlparse
@@ -128,10 +129,103 @@ class ThrottledEngine:
     dbms_semaphore: asyncio.Semaphore | None
     db_semaphore: asyncio.Semaphore | None
     _ddl_lock: asyncio.Lock | None = dataclasses.field(default=None, init=False)
+    # Track in-flight sync-driver raw DBAPI connections so we can abort
+    # queries on cancellation.  Sync-driver queries run in a thread-pool
+    # executor and cannot be cancelled via ``asyncio`` alone — we need to
+    # call the driver's native cancel primitive (e.g. DuckDB
+    # ``conn.interrupt()``) from a separate thread, then wait for the
+    # executor thread to return the connection before disposing the pool.
+    _inflight_sync_conns: set[Any] = dataclasses.field(default_factory=set, init=False)
+    _inflight_sync_lock: threading.Lock = dataclasses.field(default_factory=threading.Lock, init=False)
 
     def __post_init__(self) -> None:
         if self.engine.dialect.name in _DDL_SERIAL_DIALECTS:
             self._ddl_lock = asyncio.Lock()
+        # Track raw DBAPI connections via pool checkout/checkin events for
+        # sync engines.  This covers the full lifetime of a checked-out
+        # connection, including setup inside ``engine.begin()`` before
+        # our own code runs — important because cancellation can arrive
+        # at any moment.
+        if self.engine_type == "sync":
+            sync_engine = self.engine
+        else:
+            sync_engine = self.engine.sync_engine  # type: ignore[union-attr]
+
+        def _on_checkout(dbapi_conn: Any, _rec: Any, _proxy: Any) -> None:
+            with self._inflight_sync_lock:
+                self._inflight_sync_conns.add(dbapi_conn)
+
+        def _on_checkin(dbapi_conn: Any, _rec: Any) -> None:
+            with self._inflight_sync_lock:
+                self._inflight_sync_conns.discard(dbapi_conn)
+
+        event.listen(sync_engine, "checkout", _on_checkout)
+        event.listen(sync_engine, "checkin", _on_checkin)
+
+    @classmethod
+    def from_url(
+        cls,
+        url: str | SQLAlchemyURL,
+        *,
+        max_concurrency_per_db: int = 8,
+        dbms_semaphore: asyncio.Semaphore | None = None,
+        read_only: bool = True,
+        duckdb_init_sql: list[str] | None = None,
+        **engine_kwargs: Any,
+    ) -> "ThrottledEngine":
+        """Build an engine from ``url`` and wrap it.
+
+        Centralises engine creation (async vs sync dialect selection,
+        DuckDB connect_args, DuckDB on-connect pragmas) so callers don't
+        have to juggle a bare SQLAlchemy engine alongside a ThrottledEngine.
+        """
+        engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
+
+        # Open DuckDB in native read-only mode so it doesn't hold a file lock.
+        if read_only and str(url).startswith("duckdb"):
+            connect_args = engine_kwargs.setdefault("connect_args", {})
+            connect_args.setdefault("read_only", True)
+
+        engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
+        engine: AsyncEngine | sqlalchemy.engine.Engine
+        if engine_type == "async":
+            engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+        else:
+            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
+
+        # DuckDB prints a noisy progress bar to stdout for long-running
+        # queries; suppress it so it doesn't pollute pipeline logs.
+        # Also set file_search_path so relative paths inside views
+        # (e.g. read_csv_auto('data/foo.csv')) resolve against the
+        # database file's directory rather than the process CWD.
+        if str(url).startswith("duckdb"):
+            url_str = str(url)
+            db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
+            sync_engine = engine.sync_engine if isinstance(engine, AsyncEngine) else engine
+
+            def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
+                dbapi_conn.execute("PRAGMA enable_progress_bar=false")
+                if db_dir:
+                    dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
+                for sql in duckdb_init_sql or []:
+                    dbapi_conn.execute(sql)
+
+            event.listen(sync_engine, "connect", _duckdb_on_connect)
+
+        db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
+        return cls(engine_type, engine, dbms_semaphore, db_semaphore)
+
+    @asynccontextmanager
+    async def cleanup_on_failure(self) -> AsyncGenerator[None, None]:
+        """Run the enclosed block, disposing the engine (with in-flight
+        cancellation) only if an exception propagates out.  On clean exit
+        the engine stays alive for its owning caller.
+        """
+        try:
+            yield
+        except BaseException:
+            await self.aclose()
+            raise
 
     @asynccontextmanager
     async def throttle(self, *, ddl: bool = False) -> AsyncGenerator[None, None]:
@@ -179,6 +273,74 @@ class ThrottledEngine:
             if return_df:
                 return pd.DataFrame(rows, columns=result.keys())
             return rows
+
+    def _cancel_inflight(self) -> None:
+        """Signal all in-flight sync-driver queries to abort.
+
+        Calls the underlying driver's native cancel/interrupt primitive on
+        each tracked raw DBAPI connection.  Safe to call from the asyncio
+        event loop while queries are blocked in C code on executor threads;
+        the driver's cancel is designed to be cross-thread.
+
+        Returns immediately — the executor threads raise and release their
+        connections shortly after.  Call :meth:`aclose` to wait for that
+        release and then dispose the engine.
+        """
+        if self.engine_type != "sync":
+            return
+        dialect = self.engine.dialect.name
+        with self._inflight_sync_lock:
+            conns = list(self._inflight_sync_conns)
+        for raw in conns:
+            try:
+                if dialect in ("duckdb", "sqlite"):
+                    raw.interrupt()
+                elif dialect == "postgresql":
+                    raw.cancel()
+                # snowflake: no per-connection cancel API; skip.  Other
+                # dialects fall through — queries run to completion.
+            except Exception:
+                logger.debug("_cancel_inflight failed on %s", dialect, exc_info=True)
+
+    async def aclose(self, timeout: float = 5.0) -> None:
+        """Cancel any in-flight sync queries, wait for their executor
+        threads to release their connections, then dispose the engine.
+
+        This is the right shutdown primitive for sync dialects: a bare
+        ``engine.dispose()`` cannot close connections still checked out by
+        a running executor thread, leaving zombie connections that collide
+        with subsequent opens on the same file (e.g. DuckDB's "different
+        configuration" error).  For a clean shutdown with no in-flight
+        work this is a fast no-op past the small grace period.
+
+        Note: ``loop.run_in_executor`` wraps the thread's future in an
+        asyncio Future that is considered "done" the moment it's cancelled,
+        even while the thread keeps running.  That means awaiting the
+        asyncio futures is unreliable here — we poll the raw-connection set
+        instead, since a connection is only removed after ``_run_query_s`` /
+        ``_run_inspector`` exits its ``with engine.begin()`` / ``.connect()``
+        block (i.e. the thread has actually finished).
+        """
+        # Small grace period so any executor thread that was mid-checkout at
+        # cancel time has a chance to register its connection with our
+        # ``checkout`` event listener before we start polling.  Without this,
+        # the poll may see an empty set and exit before the thread finishes
+        # acquiring the connection it's about to run a query on.
+        await asyncio.sleep(0.05)
+        self._cancel_inflight()
+        deadline = time.monotonic() + timeout
+        while time.monotonic() < deadline:
+            with self._inflight_sync_lock:
+                if not self._inflight_sync_conns:
+                    break
+            await asyncio.sleep(0.02)
+            # Re-issue cancel: some threads may have entered checkout after
+            # our first call to ``_cancel_inflight``.
+            self._cancel_inflight()
+        if self.engine_type == "async":
+            await self.engine.dispose()  # type: ignore[misc]
+        else:
+            self.engine.dispose()
 
     async def _run_query_a(
         self,
@@ -865,61 +1027,45 @@ def _table_name_from_path(file_path: str, *, include_ext: bool = False) -> str:
     return name.lower() or "data"
 
 
-def _load_files_into_duckdb(db_path: str, file_paths: list[str]) -> dict[str, str]:
-    """Create DuckDB tables from data files (runs synchronously).
+def _assign_table_names(file_paths: list[str]) -> list[tuple[str, str]]:
+    """Return ``(table_name, file_path)`` pairs with suffixed uniqueness."""
+    used_names: set[str] = set()
+    out: list[tuple[str, str]] = []
+    for file_path in file_paths:
+        base_name = _table_name_from_path(file_path, include_ext=False)
+        name = base_name
+        suffix = 2
+        while name in used_names:
+            name = f"{base_name}_{suffix}"
+            suffix += 1
+        used_names.add(name)
+        out.append((name, file_path))
+    return out
 
-    Returns:
-        Mapping of table name → source file path.
-    """
-    import duckdb
 
-    conn = duckdb.connect(db_path)
-    table_file_map: dict[str, str] = {}
-    try:
-        needs_spatial = any(os.path.splitext(p)[1].lower() in (".xlsx", ".xls") for p in file_paths)
-        if needs_spatial:
-            conn.install_extension("spatial")
-            conn.load_extension("spatial")
-
-        used_names: set[str] = set()
-        for file_path in file_paths:
-            base_name = _table_name_from_path(file_path, include_ext=False)
-            name = base_name
-            suffix = 2
-            while name in used_names:
-                name = f"{base_name}_{suffix}"
-                suffix += 1
-            used_names.add(name)
-            table_file_map[name] = file_path
-
-            ext = os.path.splitext(file_path)[1].lower()
-            escaped = file_path.replace("'", "''")
-
-            if ext == ".csv":
-                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}')"
-            elif ext == ".tsv":
-                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}', delim='\\t')"
-            elif ext in (".xlsx", ".xls"):
-                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM st_read('{escaped}')"
-            elif ext == ".parquet":
-                sql = f"CREATE TABLE \"{name}\" AS SELECT * FROM read_parquet('{escaped}')"
-            elif ext in (".json", ".jsonl", ".ndjson"):
-                # Unnest first-level keys into columns while keeping nested
-                # objects/arrays as JSON values.
-                sql = (
-                    f'CREATE TABLE "{name}" AS SELECT * FROM read_json_auto('
-                    f"'{escaped}', "
-                    f"maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES}, "
-                    "maximum_depth=1, "
-                    "ignore_errors=true)"
-                )
-            else:
-                raise ValueError(f"Unsupported file format: {ext}")
-
-            conn.execute(sql)
-    finally:
-        conn.close()
-    return table_file_map
+def _create_table_sql_for_file(name: str, file_path: str) -> str:
+    """Build a CREATE TABLE AS SELECT statement for a DuckDB-supported data file."""
+    ext = os.path.splitext(file_path)[1].lower()
+    escaped = file_path.replace("'", "''")
+    if ext == ".csv":
+        return f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}')"
+    if ext == ".tsv":
+        return f"CREATE TABLE \"{name}\" AS SELECT * FROM read_csv_auto('{escaped}', delim='\\t')"
+    if ext in (".xlsx", ".xls"):
+        return f"CREATE TABLE \"{name}\" AS SELECT * FROM st_read('{escaped}')"
+    if ext == ".parquet":
+        return f"CREATE TABLE \"{name}\" AS SELECT * FROM read_parquet('{escaped}')"
+    if ext in (".json", ".jsonl", ".ndjson"):
+        # Unnest first-level keys into columns while keeping nested
+        # objects/arrays as JSON values.
+        return (
+            f'CREATE TABLE "{name}" AS SELECT * FROM read_json_auto('
+            f"'{escaped}', "
+            f"maximum_object_size={_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES}, "
+            "maximum_depth=1, "
+            "ignore_errors=true)"
+        )
+    raise ValueError(f"Unsupported file format: {ext}")
 
 
 @dataclass
@@ -1026,46 +1172,15 @@ class SQLConnector:
             A fully initialised :class:`SQLConnector` instance ready to
             execute queries.
         """
-        engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
-
-        # Open DuckDB in native read-only mode so it doesn't hold a file lock.
-        if read_only and str(url).startswith("duckdb"):
-            connect_args = engine_kwargs.setdefault("connect_args", {})
-            connect_args.setdefault("read_only", True)
-
-        engine_type: Literal["async", "sync"] = "async" if _is_async_url(url) else "sync"
-        if engine_type == "async":
-            engine = create_async_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)
-        else:
-            engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)  # type: ignore
-
-        # Any failure (including asyncio.CancelledError) after engine creation
-        # must dispose the engine, otherwise open connections leak and DuckDB
-        # files stay locked.
-        success = False
-        try:
-            # DuckDB prints a noisy progress bar to stdout for long-running
-            # queries; suppress it so it doesn't pollute pipeline logs.
-            # Also set file_search_path so relative paths inside views
-            # (e.g. read_csv_auto('data/foo.csv')) resolve against the
-            # database file's directory rather than the process CWD.
-            if str(url).startswith("duckdb"):
-                url_str = str(url)
-                db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
-                sync_engine = engine.sync_engine if engine_type == "async" else engine
-
-                def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
-                    dbapi_conn.execute("PRAGMA enable_progress_bar=false")
-                    if db_dir:
-                        dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
-                    for sql in duckdb_init_sql or []:
-                        dbapi_conn.execute(sql)
-
-                event.listen(sync_engine, "connect", _duckdb_on_connect)
-
-            db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
-            t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
-
+        t_eng = ThrottledEngine.from_url(
+            url,
+            max_concurrency_per_db=max_concurrency_per_db,
+            dbms_semaphore=dbms_semaphore,
+            read_only=read_only,
+            duckdb_init_sql=duckdb_init_sql,
+            **engine_kwargs,
+        )
+        async with t_eng.cleanup_on_failure():
             # Eagerly open one connection to surface file-lock errors (DuckDB)
             # or credential / network issues immediately rather than at first query.
             await t_eng.run_query_async("SELECT 1")
@@ -1083,7 +1198,7 @@ class SQLConnector:
                     description=description,
                 )
             language: SQLDialect = schema.dialect  # type: ignore[assignment]
-            connector = cls(
+            return cls(
                 global_id,
                 schema,
                 language,
@@ -1098,17 +1213,6 @@ class SQLConnector:
                 if column_stats_mode is not None
                 else mintq_config.column_stats_mode,
             )
-            success = True
-            return connector
-        finally:
-            if not success:
-                try:
-                    if engine_type == "async":
-                        await engine.dispose()
-                    else:
-                        engine.dispose()  # type: ignore[unused-coroutine]
-                except Exception:
-                    logger.exception("Failed to dispose engine during failed SQLConnector init")
 
     @classmethod
     async def from_files_async(
@@ -1171,38 +1275,82 @@ class SQLConnector:
             os.close(fd)
             os.unlink(db_path)
 
-        loop = asyncio.get_running_loop()
-        table_file_map: dict[str, str] = await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)
-
-        success = False
+        table_file_map = dict(_assign_table_names(resolved))
+        url = f"duckdb:///{db_path}"
         try:
-            url = f"duckdb:///{db_path}"
-            connector = await cls.from_url_async(
+            # Open writable so we can run CREATE TABLEs.  Going through
+            # from_url_async means cancellation here rides on the usual
+            # ThrottledEngine interrupt path — no raw-duckdb special case.
+            loader = await cls.from_url_async(
                 global_id=global_id,
                 url=url,
                 db_name=db_name,
-                read_only=read_only,
-                enable_schema_caching=enable_schema_caching,
-                enable_query_caching=enable_query_caching,
+                read_only=False,
+                enable_schema_caching=False,
+                enable_query_caching=False,
             )
-            connector._temp_db_path = db_path
-
-            for table in connector.schema.tables:
-                source_file = table_file_map.get(table.name)
-                if source_file:
-                    table.description = f"Imported from {os.path.basename(source_file)}"
-
-            file_list = "\n".join(resolved)
-            connector.schema.description = f"Source: local files\n\n{file_list}"
-
-            success = True
-            return connector
-        finally:
-            if not success and data_dir is None:
+        except BaseException:
+            if data_dir is None and os.path.exists(db_path):
                 try:
                     os.unlink(db_path)
                 except OSError:
                     pass
+            raise
+
+        try:
+            needs_spatial = any(os.path.splitext(p)[1].lower() in (".xlsx", ".xls") for p in resolved)
+            if needs_spatial:
+                await loader.run_query_async("INSTALL spatial; LOAD spatial;")
+            for name, file_path in table_file_map.items():
+                sql = _create_table_sql_for_file(name, file_path)
+                result = await loader.run_query_async(sql)
+                if result.error is not None:
+                    raise RuntimeError(f"Failed to load {file_path}: {result.error.message}")
+        except BaseException:
+            await loader.disconnect_async()
+            if data_dir is None and os.path.exists(db_path):
+                try:
+                    os.unlink(db_path)
+                except OSError:
+                    pass
+            raise
+
+        if read_only:
+            # Close the writable connector and reopen read-only for the caller.
+            await loader.disconnect_async()
+            try:
+                connector = await cls.from_url_async(
+                    global_id=global_id,
+                    url=url,
+                    db_name=db_name,
+                    read_only=True,
+                    enable_schema_caching=enable_schema_caching,
+                    enable_query_caching=enable_query_caching,
+                )
+            except BaseException:
+                if data_dir is None and os.path.exists(db_path):
+                    try:
+                        os.unlink(db_path)
+                    except OSError:
+                        pass
+                raise
+        else:
+            # Caller wants read-write — reuse the loader and refresh the
+            # schema so the tables we just created are visible.
+            await loader.refresh_schema_async()
+            connector = loader
+
+        connector._temp_db_path = db_path
+
+        for table in connector.schema.tables:
+            source_file = table_file_map.get(table.name)
+            if source_file:
+                table.description = f"Imported from {os.path.basename(source_file)}"
+
+        file_list = "\n".join(resolved)
+        connector.schema.description = f"Source: local files\n\n{file_list}"
+
+        return connector
 
     async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
@@ -1218,10 +1366,7 @@ class SQLConnector:
         If this connector was created via :meth:`from_files_async`, the
         temporary DuckDB file is also deleted.
         """
-        if self._t_eng.engine_type == "async":
-            await self._t_eng.engine.dispose()  # type: ignore
-        else:
-            self._t_eng.engine.dispose()
+        await self._t_eng.aclose()
         if self._temp_db_path is not None:
             try:
                 os.unlink(self._temp_db_path)
