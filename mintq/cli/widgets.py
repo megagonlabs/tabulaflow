@@ -1397,17 +1397,48 @@ class AgentResultWidget(Widget):
         self._view_stepper_widget.update(line)
 
     def _update_bottom_hint(self) -> None:
-        """Render the 'Enter Full Screen' affordance below the preview."""
+        """Render the 'Enter Inspect' affordance below the preview.
+
+        For data views, the truncation caption ('showing N of M rows/cols') is
+        right-aligned on the same line.
+        """
         if self._bottom_hint_widget is None:
             return
         view = self._current_view_or_none()
         if view is None:
             self._bottom_hint_widget.update(Text(""))
             return
-        hint = Text()
+
+        hint = Text(no_wrap=True)
         hint.append("Enter", style=KEY_HINT)
-        hint.append(" Full Screen", style="dim")
-        self._bottom_hint_widget.update(hint)
+        hint.append(" Inspect", style="dim")
+
+        caption = self._data_preview_caption(view)
+        if not caption:
+            self._bottom_hint_widget.update(hint)
+            return
+
+        available = self._bottom_hint_widget.size.width or 0
+        pad = available - hint.cell_len - len(caption)
+        line = Text(no_wrap=True)
+        line.append_text(hint)
+        line.append(" " * max(1, pad))
+        line.append(caption, style="dim")
+        self._bottom_hint_widget.update(line)
+
+    def _data_preview_caption(self, view: "ViewItem") -> str:
+        """Return the truncation caption for a data view, or empty string."""
+        from mintq.cli.display import VIEW_KIND_DATA
+
+        if view.kind != VIEW_KIND_DATA or view.data_shape is None:
+            return ""
+        num_rows, num_cols = view.data_shape
+        parts: list[str] = []
+        if num_rows > DATA_PREVIEW_MAX_ROWS:
+            parts.append(f"showing {DATA_PREVIEW_MAX_ROWS} of {num_rows} rows")
+        if num_cols > DATA_PREVIEW_MAX_COLUMNS:
+            parts.append(f"showing {DATA_PREVIEW_MAX_COLUMNS} of {num_cols} columns")
+        return " | ".join(parts)
 
     def _update_content(self) -> None:
         view = self._current_view_or_none()
@@ -1476,26 +1507,12 @@ class AgentResultWidget(Widget):
         table_width = self._data_preview_table_width(view)
         if table_width <= 0 or x >= table_width:
             return False
-        footer_lines = 1 if self._data_preview_has_footer(view) else 0
-        return y < (content_height - footer_lines)
-
-    def _data_preview_has_footer(self, view: "ViewItem") -> bool:
-        """Data preview shows a one-line footer only when rows/cols are truncated."""
-        if view.data_shape is None:
-            return False
-        num_rows, num_cols = view.data_shape
-        return num_rows > DATA_PREVIEW_MAX_ROWS or num_cols > DATA_PREVIEW_MAX_COLUMNS
+        return y < content_height
 
     def _data_preview_table_width(self, view: "ViewItem") -> int:
         """Measure rendered width of the data preview table area."""
-        table_renderable = view.renderable
-        if isinstance(table_renderable, Group):
-            renderables = tuple(getattr(table_renderable, "renderables", ()))
-            if not renderables:
-                return 0
-            table_renderable = renderables[0]
         options = self.app.console.options.update(width=max(1, self._content.size.width))
-        measurement = self.app.console.measure(table_renderable, options=options)
+        measurement = self.app.console.measure(view.renderable, options=options)
         return int(measurement.maximum)
 
     def _switch_record(self, new_idx: int) -> None:

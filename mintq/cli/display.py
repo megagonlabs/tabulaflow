@@ -106,13 +106,33 @@ def _cell_max_width(n_columns: int) -> int:
     return max(8, _TABLE_BUDGET // max(n_columns, 1))
 
 
+def data_preview_caption(
+    df: pd.DataFrame,
+    max_rows: int = DATA_PREVIEW_MAX_ROWS,
+    max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
+) -> str:
+    """Return the 'showing N of M ...' caption for a truncated preview, or empty."""
+    parts: list[str] = []
+    if len(df) > max_rows:
+        parts.append(f"showing {max_rows} of {len(df)} rows")
+    if len(df.columns) > max_columns:
+        parts.append(f"showing {max_columns} of {len(df.columns)} columns")
+    return " | ".join(parts)
+
+
 def build_table(
     df: pd.DataFrame,
     max_rows: int = DATA_PREVIEW_MAX_ROWS,
     max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
     action_hint: str | None = None,
+    include_footer: bool = True,
 ) -> RenderableType:
-    """Build a DataFrame as a Rich table renderable."""
+    """Build a DataFrame as a Rich table renderable.
+
+    When ``include_footer`` is False, returns just the table without the
+    truncation caption / action_hint footer — the caller is responsible for
+    rendering those elsewhere (e.g. in a separate hint bar).
+    """
     table = Table(
         show_header=True,
         header_style=ACCENT_BOLD,
@@ -126,20 +146,17 @@ def build_table(
     for col in display_columns:
         table.add_column(str(col), no_wrap=True)
 
-    truncated = len(df) > max_rows
     display_df = df.loc[:, display_columns].head(max_rows)
     for _, row in display_df.iterrows():
         table.add_row(*(_format_table_cell(v, cell_width) for v in row))
 
-    caption_parts: list[str] = []
-    if truncated:
-        caption_parts.append(f"showing {max_rows} of {len(df)} rows")
-    if truncated_cols:
-        caption_parts.append(f"showing {max_columns} of {len(df.columns)} columns")
-    if not caption_parts and not action_hint:
+    if not include_footer:
         return table
 
-    stats_text = " | ".join(caption_parts)
+    stats_text = data_preview_caption(df, max_rows, max_columns)
+    if not stats_text and not action_hint:
+        return table
+
     footer: Columns | Text
     if action_hint:
         left = Text(f"[ {action_hint} ]", style=KEY_HINT)
@@ -234,7 +251,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_DATA,
-                    renderable=build_table(record.df),
+                    renderable=build_table(record.df, include_footer=False),
                     data_shape=(len(record.df), len(record.df.columns)),
                 )
             )
