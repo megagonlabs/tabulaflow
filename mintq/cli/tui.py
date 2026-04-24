@@ -53,7 +53,7 @@ class MintqApp(App[None]):
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
-        self._current_turn_worker: object | None = None
+        self._current_worker: object | None = None
         self._last_idle_interrupt_ts: float = 0.0
         self._saved_input_placeholder: str | None = None
 
@@ -940,8 +940,8 @@ LIMIT 4000"""
         input placeholder; a second press within the window quits."""
         import time
 
-        if self._busy and self._current_turn_worker is not None:
-            self._current_turn_worker.cancel()  # type: ignore[attr-defined]
+        if self._busy and self._current_worker is not None:
+            self._current_worker.cancel()  # type: ignore[attr-defined]
             self._last_idle_interrupt_ts = 0.0
             return
 
@@ -1022,7 +1022,7 @@ LIMIT 4000"""
             self._busy = True
             chat_log.mount(UserMessage(text))
             chat_log.scroll_end(animate=False)
-            self.run_worker(self._handle_slash_command(text, chat_log))
+            self._current_worker = self.run_worker(self._handle_slash_command(text, chat_log))
             return
 
         session = await self._ensure_session()
@@ -1038,7 +1038,7 @@ LIMIT 4000"""
         chat_log.scroll_end(animate=False)
 
         self._busy = True
-        self._current_turn_worker = self.run_worker(
+        self._current_worker = self.run_worker(
             self._run_agent(text, session, chat_log), exclusive=True
         )
 
@@ -1068,12 +1068,21 @@ LIMIT 4000"""
                 if spinner._label != refined:
                     spinner.update_label(refined)
 
+        import asyncio
+
         try:
             session = await self._ensure_session()
             result = await handle_command(text, session)
+        except asyncio.CancelledError:
+            if spinner is not None:
+                await spinner.remove()
+            chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
+            chat_log.scroll_end(animate=False)
+            raise
         finally:
             self._busy = False
-            if spinner is not None:
+            self._current_worker = None
+            if spinner is not None and spinner.is_mounted:
                 await spinner.remove()
 
         self._show_command_result(result, session, chat_log)
@@ -1145,7 +1154,7 @@ LIMIT 4000"""
             return
         finally:
             self._busy = False
-            self._current_turn_worker = None
+            self._current_worker = None
 
         if progress._streaming_text != result.text:
             progress._streaming_text = result.text

@@ -1039,58 +1039,76 @@ class SQLConnector:
         else:
             engine = create_engine(url, pool_size=max_concurrency_per_db, **engine_kwargs)  # type: ignore
 
-        # DuckDB prints a noisy progress bar to stdout for long-running
-        # queries; suppress it so it doesn't pollute pipeline logs.
-        # Also set file_search_path so relative paths inside views
-        # (e.g. read_csv_auto('data/foo.csv')) resolve against the
-        # database file's directory rather than the process CWD.
-        if str(url).startswith("duckdb"):
-            url_str = str(url)
-            db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
-            sync_engine = engine.sync_engine if engine_type == "async" else engine
+        # Any failure (including asyncio.CancelledError) after engine creation
+        # must dispose the engine, otherwise open connections leak and DuckDB
+        # files stay locked.
+        success = False
+        try:
+            # DuckDB prints a noisy progress bar to stdout for long-running
+            # queries; suppress it so it doesn't pollute pipeline logs.
+            # Also set file_search_path so relative paths inside views
+            # (e.g. read_csv_auto('data/foo.csv')) resolve against the
+            # database file's directory rather than the process CWD.
+            if str(url).startswith("duckdb"):
+                url_str = str(url)
+                db_dir = os.path.dirname(os.path.abspath(url_str.replace("duckdb:///", "", 1)))
+                sync_engine = engine.sync_engine if engine_type == "async" else engine
 
-            def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
-                dbapi_conn.execute("PRAGMA enable_progress_bar=false")
-                if db_dir:
-                    dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
-                for sql in duckdb_init_sql or []:
-                    dbapi_conn.execute(sql)
+                def _duckdb_on_connect(dbapi_conn: Any, _rec: Any) -> None:
+                    dbapi_conn.execute("PRAGMA enable_progress_bar=false")
+                    if db_dir:
+                        dbapi_conn.execute(f"SET file_search_path='{db_dir}'")
+                    for sql in duckdb_init_sql or []:
+                        dbapi_conn.execute(sql)
 
-            event.listen(sync_engine, "connect", _duckdb_on_connect)
+                event.listen(sync_engine, "connect", _duckdb_on_connect)
 
-        db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
-        t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
+            db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
+            t_eng = ThrottledEngine(engine_type, engine, dbms_semaphore, db_semaphore)
 
-        # Eagerly open one connection to surface file-lock errors (DuckDB)
-        # or credential / network issues immediately rather than at first query.
-        await t_eng.run_query_async("SELECT 1")
+            # Eagerly open one connection to surface file-lock errors (DuckDB)
+            # or credential / network issues immediately rather than at first query.
+            await t_eng.run_query_async("SELECT 1")
 
-        if schema is None:
-            schema = await load_schema_with_cache_async(
+            if schema is None:
+                schema = await load_schema_with_cache_async(
+                    global_id,
+                    db_name,
+                    t_eng,
+                    group_date_partitioned_tables,
+                    group_table_regexes,
+                    include_schema_names=include_schema_names,
+                    enable_schema_caching=enable_schema_caching,
+                    column_stats_mode=column_stats_mode,
+                    description=description,
+                )
+            language: SQLDialect = schema.dialect  # type: ignore[assignment]
+            connector = cls(
                 global_id,
-                db_name,
+                schema,
+                language,
                 t_eng,
-                group_date_partitioned_tables,
-                group_table_regexes,
-                include_schema_names=include_schema_names,
+                read_only=read_only,
                 enable_schema_caching=enable_schema_caching,
-                column_stats_mode=column_stats_mode,
-                description=description,
+                enable_query_caching=enable_query_caching,
+                _group_date_partitioned_tables=group_date_partitioned_tables,
+                _group_table_regexes=list(group_table_regexes),
+                _include_schema_names=include_schema_names,
+                _column_stats_mode=column_stats_mode
+                if column_stats_mode is not None
+                else mintq_config.column_stats_mode,
             )
-        language: SQLDialect = schema.dialect  # type: ignore[assignment]
-        return cls(
-            global_id,
-            schema,
-            language,
-            t_eng,
-            read_only=read_only,
-            enable_schema_caching=enable_schema_caching,
-            enable_query_caching=enable_query_caching,
-            _group_date_partitioned_tables=group_date_partitioned_tables,
-            _group_table_regexes=list(group_table_regexes),
-            _include_schema_names=include_schema_names,
-            _column_stats_mode=column_stats_mode if column_stats_mode is not None else mintq_config.column_stats_mode,
-        )
+            success = True
+            return connector
+        finally:
+            if not success:
+                try:
+                    if engine_type == "async":
+                        await engine.dispose()
+                    else:
+                        engine.dispose()  # type: ignore[unused-coroutine]
+                except Exception:
+                    logger.exception("Failed to dispose engine during failed SQLConnector init")
 
     @classmethod
     async def from_files_async(
@@ -1156,26 +1174,35 @@ class SQLConnector:
         loop = asyncio.get_running_loop()
         table_file_map: dict[str, str] = await loop.run_in_executor(None, _load_files_into_duckdb, db_path, resolved)
 
-        url = f"duckdb:///{db_path}"
-        connector = await cls.from_url_async(
-            global_id=global_id,
-            url=url,
-            db_name=db_name,
-            read_only=read_only,
-            enable_schema_caching=enable_schema_caching,
-            enable_query_caching=enable_query_caching,
-        )
-        connector._temp_db_path = db_path
+        success = False
+        try:
+            url = f"duckdb:///{db_path}"
+            connector = await cls.from_url_async(
+                global_id=global_id,
+                url=url,
+                db_name=db_name,
+                read_only=read_only,
+                enable_schema_caching=enable_schema_caching,
+                enable_query_caching=enable_query_caching,
+            )
+            connector._temp_db_path = db_path
 
-        for table in connector.schema.tables:
-            source_file = table_file_map.get(table.name)
-            if source_file:
-                table.description = f"Imported from {os.path.basename(source_file)}"
+            for table in connector.schema.tables:
+                source_file = table_file_map.get(table.name)
+                if source_file:
+                    table.description = f"Imported from {os.path.basename(source_file)}"
 
-        file_list = "\n".join(resolved)
-        connector.schema.description = f"Source: local files\n\n{file_list}"
+            file_list = "\n".join(resolved)
+            connector.schema.description = f"Source: local files\n\n{file_list}"
 
-        return connector
+            success = True
+            return connector
+        finally:
+            if not success and data_dir is None:
+                try:
+                    os.unlink(db_path)
+                except OSError:
+                    pass
 
     async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
