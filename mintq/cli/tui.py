@@ -957,6 +957,17 @@ LIMIT 4000"""
         inp.placeholder = "Press Ctrl+C again to quit"
         self.set_timer(self._INTERRUPT_DOUBLE_PRESS_WINDOW, self._restore_input_placeholder)
 
+    def _restore_input_text(self, text: str) -> None:
+        """Put `text` back into the input bar and focus it. Used after a
+        cancelled turn so the user can edit and resubmit."""
+        try:
+            inp = self.query_one("#input-bar", Input)
+        except Exception:
+            return
+        inp.value = text
+        inp.cursor_position = len(text)
+        inp.focus()
+
     def _restore_input_placeholder(self) -> None:
         import time
 
@@ -1020,9 +1031,12 @@ LIMIT 4000"""
 
         if text.startswith(COMMAND_PREFIX):
             self._busy = True
-            chat_log.mount(UserMessage(text))
+            user_msg = UserMessage(text)
+            chat_log.mount(user_msg)
             chat_log.scroll_end(animate=False)
-            self._current_worker = self.run_worker(self._handle_slash_command(text, chat_log))
+            self._current_worker = self.run_worker(
+                self._handle_slash_command(text, chat_log, user_msg)
+            )
             return
 
         session = await self._ensure_session()
@@ -1034,12 +1048,13 @@ LIMIT 4000"""
             chat_log.scroll_end(animate=False)
             return
 
-        chat_log.mount(UserMessage(text))
+        user_msg = UserMessage(text)
+        chat_log.mount(user_msg)
         chat_log.scroll_end(animate=False)
 
         self._busy = True
         self._current_worker = self.run_worker(
-            self._run_agent(text, session, chat_log), exclusive=True
+            self._run_agent(text, session, chat_log, user_msg), exclusive=True
         )
 
     @staticmethod
@@ -1051,6 +1066,7 @@ LIMIT 4000"""
         self,
         text: str,
         chat_log: VerticalScroll,
+        user_msg: UserMessage,
     ) -> None:
         parts = text.split()
         cmd = parts[0].lower() if parts else ""
@@ -1074,10 +1090,11 @@ LIMIT 4000"""
             session = await self._ensure_session()
             result = await handle_command(text, session)
         except asyncio.CancelledError:
-            if spinner is not None:
+            if spinner is not None and spinner.is_mounted:
                 await spinner.remove()
-            chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
-            chat_log.scroll_end(animate=False)
+            if user_msg.is_mounted:
+                await user_msg.remove()
+            self._restore_input_text(text)
             raise
         finally:
             self._busy = False
@@ -1132,6 +1149,7 @@ LIMIT 4000"""
         question: str,
         session: SessionState,
         chat_log: VerticalScroll,
+        user_msg: UserMessage,
     ) -> None:
         import asyncio
 
@@ -1142,9 +1160,11 @@ LIMIT 4000"""
         try:
             result: ChatResult = await session.chat_agent.run(question, progress)
         except asyncio.CancelledError:
-            await progress.remove()
-            chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
-            chat_log.scroll_end(animate=False)
+            if progress.is_mounted:
+                await progress.remove()
+            if user_msg.is_mounted:
+                await user_msg.remove()
+            self._restore_input_text(question)
             raise
         except Exception as e:
             await progress.remove()
