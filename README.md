@@ -86,6 +86,12 @@ April 21
   - [x] Prompt tuning use case - direct mode
   - [x] Use sqlalchemy statement
 
+April 22
+- [x] Result preview UI
+
+April 23
+- [x] Result preview UI
+
 - General
   - [ ] Improve transfer_record?
   - [ ] /reconnect
