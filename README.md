@@ -96,6 +96,7 @@ April 23
 
 April 24
 - [ ] Refactor
+  - [ ] Zoom out and see sql_conn.py
   - [ ] from_files_async to loaders/
   - [ ] no schema building option for SQLConnector.from_url_async
   - [ ] Check other SQLConnector method cancellation
