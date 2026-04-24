@@ -17,6 +17,8 @@ import os
 import re
 from typing import TYPE_CHECKING, Any
 
+import httpx
+
 if TYPE_CHECKING:
     from mintq.db_connector.sql_conn import SQLConnector
 
@@ -108,33 +110,46 @@ def _fetch_hf_description(dataset_id: str) -> str | None:
         return None
 
 
-def _hf_api_get(endpoint: str, dataset_id: str, **params: str) -> dict[str, Any]:
-    """Make a GET request to the HuggingFace datasets-server API."""
-    import json
-    from urllib.error import HTTPError
-    from urllib.parse import urlencode
-    from urllib.request import Request, urlopen
+_hf_client: tuple[httpx.AsyncClient, asyncio.AbstractEventLoop] | None = None
 
+
+def _get_hf_client() -> httpx.AsyncClient:
+    """Return a cached AsyncClient, recreating if the running loop changed.
+
+    ``httpx.AsyncClient`` is bound to the event loop that created it; this
+    guards against tests or other code that runs multiple ``asyncio.run()``
+    calls in the same process.
+    """
+    global _hf_client
+    loop = asyncio.get_running_loop()
+    if _hf_client is None or _hf_client[1] is not loop:
+        _hf_client = (httpx.AsyncClient(timeout=30, headers={"User-Agent": "mintq"}), loop)
+    return _hf_client[0]
+
+
+async def _hf_api_get(endpoint: str, dataset_id: str, **params: str) -> dict[str, Any]:
+    """Make a GET request to the HuggingFace datasets-server API.
+
+    Uses a cached ``httpx.AsyncClient`` so subsequent calls reuse the TCP
+    connection, and so cancellation propagates cleanly.
+    """
+    url = f"https://datasets-server.huggingface.co/{endpoint}"
     query = {"dataset": dataset_id, **params}
-    url = f"https://datasets-server.huggingface.co/{endpoint}?{urlencode(query)}"
-    req = Request(url, headers={"User-Agent": "mintq"})
-    try:
-        with urlopen(req, timeout=30) as resp:
-            return json.loads(resp.read())  # type: ignore[no-any-return]
-    except HTTPError as e:
-        if e.code in (501, 500):
-            try:
-                detail = json.loads(e.read().decode()).get("error", "")
-            except Exception:
-                detail = ""
-            msg = f"Dataset '{dataset_id}' is not indexed by the HuggingFace datasets server (HTTP {e.code})."
-            if detail:
-                msg += f"\nServer response: {detail}"
-            raise _DatasetServerUnavailableError(msg) from None
-        raise
+    resp = await _get_hf_client().get(url, params=query)
+    if resp.status_code in (500, 501):
+        try:
+            detail = resp.json().get("error", "")
+        except Exception:
+            detail = ""
+        msg = f"Dataset '{dataset_id}' is not indexed by the HuggingFace datasets server (HTTP {resp.status_code})."
+        if detail:
+            msg += f"\nServer response: {detail}"
+        raise _DatasetServerUnavailableError(msg)
+    resp.raise_for_status()
+    return resp.json()  # type: ignore[no-any-return]
 
 
-def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
+async def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
     """Fetch split entries from the HuggingFace datasets-server API.
 
     Returns:
@@ -143,7 +158,7 @@ def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
     Raises:
         ValueError: If the dataset has no splits.
     """
-    data = _hf_api_get("splits", dataset_id)
+    data = await _hf_api_get("splits", dataset_id)
     splits: list[dict[str, Any]] = data.get("splits", [])
     if not splits:
         raise _DatasetServerUnavailableError(
@@ -152,14 +167,14 @@ def _fetch_splits_from_api(dataset_id: str) -> list[dict[str, Any]]:
     return splits
 
 
-def _fetch_configs_from_api(dataset_id: str) -> list[str]:
+async def _fetch_configs_from_api(dataset_id: str) -> list[str]:
     """Fetch available config names via the HuggingFace datasets-server API."""
-    return sorted({s["config"] for s in _fetch_splits_from_api(dataset_id)})
+    return sorted({s["config"] for s in await _fetch_splits_from_api(dataset_id)})
 
 
-def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
+async def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
     """Fetch direct parquet file URLs for a specific config/split."""
-    data = _hf_api_get("parquet", dataset_id, config=config, split=split)
+    data = await _hf_api_get("parquet", dataset_id, config=config, split=split)
     return [f["url"] for f in data.get("parquet_files", []) if f.get("split") == split]
 
 
@@ -168,7 +183,7 @@ def _fetch_parquet_urls(dataset_id: str, config: str, split: str) -> list[str]:
 # ---------------------------------------------------------------------------
 
 
-def _resolve_config(dataset_id: str, subset: str | None) -> str:
+async def _resolve_config(dataset_id: str, subset: str | None) -> str:
     """Resolve which config to use via the HuggingFace API.
 
     Args:
@@ -182,7 +197,7 @@ def _resolve_config(dataset_id: str, subset: str | None) -> str:
         ValueError: If the config doesn't exist or multiple configs exist
             and none was specified.
     """
-    configs = _fetch_configs_from_api(dataset_id)
+    configs = await _fetch_configs_from_api(dataset_id)
 
     if subset is not None:
         if subset not in configs:
@@ -203,13 +218,13 @@ def _resolve_config(dataset_id: str, subset: str | None) -> str:
     )
 
 
-def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
+async def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, int]:
     """Discover splits and per-split sizes via the HuggingFace API.
 
     Returns:
         A dict mapping split name to parquet size in bytes.
     """
-    data = _hf_api_get("size", dataset_id)
+    data = await _hf_api_get("size", dataset_id)
 
     split_sizes: dict[str, int] = {}
     for entry in data.get("size", {}).get("splits", []):
@@ -268,7 +283,7 @@ async def _create_tables_async(
     table_names: list[str] = []
 
     for split_name, size in split_sizes.items():
-        urls = await asyncio.to_thread(_fetch_parquet_urls, dataset_id, config, split_name)
+        urls = await _fetch_parquet_urls(dataset_id, config, split_name)
         if not urls:
             raise ValueError(f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'.")
         url_list = ", ".join(f"'{u}'" for u in urls)
@@ -461,8 +476,8 @@ async def _load_hf_into_duckdb(
 
     # Cache miss — resolve config and discover splits via API.
     try:
-        config = await asyncio.to_thread(_resolve_config, dataset_id, subset)
-        split_sizes = await asyncio.to_thread(_discover_splits_and_size, dataset_id, config)
+        config = await _resolve_config(dataset_id, subset)
+        split_sizes = await _discover_splits_and_size(dataset_id, config)
     except _DatasetServerUnavailableError:
         # datasets-server unavailable — fall back to datasets library.
         return await _load_hf_via_datasets_lib(dataset_id, subset, split_filter, cache_dir)
