@@ -1313,7 +1313,9 @@ class AgentResultWidget(Widget):
             if col + hint_width > available_width:
                 line.append("\n")
             line.append_text(Text(HINT_SEP, style=dim_style))
-            line.append_text(Text(HINT_KEY, style=KEY_HINT))
+            line.append_text(Text("←", style=KEY_HINT))
+            line.append_text(Text("/", style="dim"))
+            line.append_text(Text("→", style=KEY_HINT))
             line.append_text(Text(HINT_TEXT, style="dim"))
 
         self._record_bar_widget.update(line)
@@ -1357,7 +1359,9 @@ class AgentResultWidget(Widget):
         # would shrink the stepper and — since it shares a row with the
         # ``width: 1fr`` record bar — cause the record pills to re-wrap.
         if view_interactive:
-            line.append_text(Text("[/]", style=KEY_HINT))
+            line.append_text(Text("[", style=KEY_HINT))
+            line.append_text(Text("/", style="dim"))
+            line.append_text(Text("]", style=KEY_HINT))
             col += 3
             line.append_text(Text(" Switch View", style="dim"))
             col += len(" Switch View")
