@@ -23,7 +23,7 @@ from mintq.cli.display import (
     DATA_PREVIEW_MAX_COLUMNS,
     DATA_PREVIEW_MAX_ROWS,
 )
-from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT
+from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, KEY_HINT
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -647,13 +647,13 @@ class DataBrowserScreen(Screen[None]):
     def _update_hint(self) -> None:
         hint_fg = "dim"
         hint_segments: list[tuple[str, str]] = [
-            ("Esc", ACCENT_BOLD),
+            ("Esc", KEY_HINT),
             (" Back    ", hint_fg),
-            ("Enter", ACCENT_BOLD),
+            ("Enter", KEY_HINT),
             (" View Cell    ", hint_fg),
-            ("[", ACCENT_BOLD),
+            ("[", KEY_HINT),
             (" Prev Page    ", hint_fg),
-            ("]", ACCENT_BOLD),
+            ("]", KEY_HINT),
             (" Next Page    ", hint_fg),
         ]
         hint = Text()
@@ -920,7 +920,7 @@ class CellBrowserScreen(Screen[None]):
         self.query_one(".cell-browser-status", Static).update(Text(status_text, style="dim"))
 
         hint = Text()
-        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
@@ -1020,7 +1020,7 @@ class QueryBrowserScreen(Screen[None]):
         text_area.theme = "dracula-transparent"
 
         hint_text = Text()
-        hint_text.append("Esc", style=ACCENT_BOLD)
+        hint_text.append("Esc", style=KEY_HINT)
         hint_text.append(" Back    ", style="dim")
         self.query_one(".query-browser-hint", Static).update(hint_text)
 
@@ -1094,7 +1094,7 @@ class ChartBrowserScreen(Screen[None]):
         self._content.update(renderable)
 
         hint = Text()
-        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         self._hint.update(hint)
 
@@ -1313,7 +1313,7 @@ class AgentResultWidget(Widget):
             if col + hint_width > available_width:
                 line.append("\n")
             line.append_text(Text(HINT_SEP, style=dim_style))
-            line.append_text(Text(HINT_KEY, style=ACCENT_BOLD))
+            line.append_text(Text(HINT_KEY, style=KEY_HINT))
             line.append_text(Text(HINT_TEXT, style="dim"))
 
         self._record_bar_widget.update(line)
@@ -1357,7 +1357,7 @@ class AgentResultWidget(Widget):
         # would shrink the stepper and — since it shares a row with the
         # ``width: 1fr`` record bar — cause the record pills to re-wrap.
         if view_interactive:
-            line.append_text(Text("[/]", style=ACCENT_BOLD))
+            line.append_text(Text("[/]", style=KEY_HINT))
             col += 3
             line.append_text(Text(" Switch View", style="dim"))
             col += len(" Switch View")
@@ -1401,7 +1401,7 @@ class AgentResultWidget(Widget):
             self._bottom_hint_widget.update(Text(""))
             return
         hint = Text()
-        hint.append("Enter", style=ACCENT_BOLD)
+        hint.append("Enter", style=KEY_HINT)
         hint.append(" Full Screen", style="dim")
         self._bottom_hint_widget.update(hint)
 
@@ -2020,10 +2020,10 @@ class SchemaBrowserScreen(Screen[None]):
     def _update_hint(self) -> None:
         hint_fg = "dim"
         hint = Text()
-        hint.append("Esc", style=ACCENT_BOLD)
+        hint.append("Esc", style=KEY_HINT)
         hint.append(" Back", style=hint_fg)
         if self._cursor_has_preview():
             hint.append("    ", style=hint_fg)
-            hint.append("Enter", style=ACCENT_BOLD)
+            hint.append("Enter", style=KEY_HINT)
             hint.append(" Preview table", style=hint_fg)
         self._hint.update(hint)

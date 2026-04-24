@@ -17,7 +17,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from mintq.cli.theme import ACCENT, ACCENT_BOLD
+from mintq.cli.theme import ACCENT, ACCENT_BOLD, KEY_HINT
 
 MINTQ_THEME = Theme(
     {
@@ -142,7 +142,7 @@ def build_table(
     stats_text = " | ".join(caption_parts)
     footer: Columns | Text
     if action_hint:
-        left = Text(f"[ {action_hint} ]", style=ACCENT_BOLD)
+        left = Text(f"[ {action_hint} ]", style=KEY_HINT)
         right = Text(stats_text, style="dim") if stats_text else Text("")
         footer = Columns([left, Align.right(right)], expand=True, equal=False)
     else:

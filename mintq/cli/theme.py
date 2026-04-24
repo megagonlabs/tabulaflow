@@ -10,6 +10,11 @@ ACCENT_BOLD = f"bold {ACCENT}"
 ACCENT_RGB = (62, 180, 137)
 ACCENT_DIM_RGB = (100, 160, 130)
 
+# Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
+# Kept separate from ACCENT so the two can evolve independently.
+KEY_HINT_COLOR = "#9EC8B2"
+KEY_HINT = f"bold {KEY_HINT_COLOR}"
+
 
 def _make_transparent_dracula() -> TextAreaTheme:
     """Dracula TextArea theme with backgrounds removed so CSS $surface shows through."""
