@@ -968,10 +968,14 @@ LIMIT 4000"""
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a
-        cancelled turn so the user can edit and resubmit."""
+        cancelled turn so the user can edit and resubmit. If the input
+        already has content (the user started typing something new during
+        the turn), leave it alone."""
         try:
             inp = self.query_one("#input-bar", Input)
         except Exception:
+            return
+        if inp.value:
             return
         inp.value = text
         inp.cursor_position = len(text)
