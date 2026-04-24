@@ -91,6 +91,16 @@ April 22
 
 April 23
 - [x] Result preview UI
+- [x] Ctrl+C
+- [x] Cancellation for sql_conn.py
+
+April 24
+- [ ] Refactor
+  - [ ] from_files_async to loaders/
+  - [ ] no schema building option for SQLConnector.from_url_async
+  - [ ] Check other SQLConnector method cancellation
+  - [ ] Check ThrottledEngine API, whether engine used externally
+  - [ ] Test for the bug
 
 - General
   - [ ] Improve transfer_record?
