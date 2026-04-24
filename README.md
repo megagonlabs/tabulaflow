@@ -110,6 +110,8 @@ April 23
   - [ ] Query browser - show language and database
   - [ ] Refresh for get_column_json_schema and get_db_document
   - [ ] Pagination for cell browser
+  - [ ] /export
+  - [ ] /import with auto LLM import
 - Delibird
   - [ ] Building from web
   - [ ] Building from files
