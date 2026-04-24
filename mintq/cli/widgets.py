@@ -652,9 +652,9 @@ class DataBrowserScreen(Screen[None]):
             ("Enter", KEY_HINT),
             (" View Cell    ", hint_fg),
             ("[", KEY_HINT),
-            (" Prev Page    ", hint_fg),
+            ("/", hint_fg),
             ("]", KEY_HINT),
-            (" Next Page    ", hint_fg),
+            (" Prev/Next Page", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
