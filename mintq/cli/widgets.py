@@ -1276,7 +1276,7 @@ class AgentResultWidget(Widget):
         available_width = self._record_bar_widget.size.width or 80
         record_interactive = len(self._records) > 1
 
-        HINT_SEP = "  ·  "
+        HINT_SEP = " · "
         HINT_KEY = "←/→"
         HINT_TEXT = " Switch Record"
         hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if record_interactive else 0
@@ -1365,10 +1365,10 @@ class AgentResultWidget(Widget):
             col += 3
             line.append_text(Text(" Switch View", style="dim"))
             col += len(" Switch View")
-            line.append_text(Text("  ·  ", style=dim_sep_style))
-            col += 5
+            line.append_text(Text(" · ", style=dim_sep_style))
+            col += 3
         else:
-            reserved = 3 + len(" Switch View") + 5
+            reserved = 3 + len(" Switch View") + 3
             line.append_text(Text(" " * reserved))
             col += reserved
 
