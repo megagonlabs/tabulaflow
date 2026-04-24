@@ -936,12 +936,22 @@ LIMIT 4000"""
         os.environ.setdefault("GLOG_minloglevel", "3")
 
     def action_interrupt_or_quit(self) -> None:
-        """Ctrl+C: cancel the in-flight turn. When idle, show a hint in the
-        input placeholder; a second press within the window quits."""
+        """Ctrl+C:
+        - If a turn is running: cancel it.
+        - Else if the input has text: clear it.
+        - Else (input empty): show the quit hint; a second press within the
+          window quits.
+        """
         import time
 
         if self._busy and self._current_worker is not None:
             self._current_worker.cancel()  # type: ignore[attr-defined]
+            self._last_idle_interrupt_ts = 0.0
+            return
+
+        inp = self.query_one("#input-bar", Input)
+        if inp.value:
+            inp.value = ""
             self._last_idle_interrupt_ts = 0.0
             return
 
@@ -951,7 +961,6 @@ LIMIT 4000"""
             return
 
         self._last_idle_interrupt_ts = now
-        inp = self.query_one("#input-bar", Input)
         if self._saved_input_placeholder is None:
             self._saved_input_placeholder = inp.placeholder
         inp.placeholder = "Press Ctrl+C again to quit"
