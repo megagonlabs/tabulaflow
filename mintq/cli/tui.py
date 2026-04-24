@@ -36,9 +36,11 @@ class MintqApp(App[None]):
     CSS_PATH = "tui.tcss"
 
     BINDINGS = [
-        ("ctrl+c", "quit", "Quit"),
+        ("ctrl+c", "interrupt_or_quit", "Interrupt / Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
     ]
+
+    _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
 
     def __init__(self, *, model: str, agent: str) -> None:
         import asyncio
@@ -51,6 +53,9 @@ class MintqApp(App[None]):
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
+        self._current_turn_worker: object | None = None
+        self._last_idle_interrupt_ts: float = 0.0
+        self._saved_input_placeholder: str | None = None
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
@@ -930,6 +935,42 @@ LIMIT 4000"""
         os.environ.setdefault("GRPC_VERBOSITY", "ERROR")
         os.environ.setdefault("GLOG_minloglevel", "3")
 
+    def action_interrupt_or_quit(self) -> None:
+        """Ctrl+C: cancel the in-flight turn. When idle, show a hint in the
+        input placeholder; a second press within the window quits."""
+        import time
+
+        if self._busy and self._current_turn_worker is not None:
+            self._current_turn_worker.cancel()  # type: ignore[attr-defined]
+            self._last_idle_interrupt_ts = 0.0
+            return
+
+        now = time.monotonic()
+        if (now - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW:
+            self.exit()
+            return
+
+        self._last_idle_interrupt_ts = now
+        inp = self.query_one("#input-bar", Input)
+        if self._saved_input_placeholder is None:
+            self._saved_input_placeholder = inp.placeholder
+        inp.placeholder = "Press Ctrl+C again to quit"
+        self.set_timer(self._INTERRUPT_DOUBLE_PRESS_WINDOW, self._restore_input_placeholder)
+
+    def _restore_input_placeholder(self) -> None:
+        import time
+
+        if (time.monotonic() - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW:
+            return
+        if self._saved_input_placeholder is None:
+            return
+        try:
+            inp = self.query_one("#input-bar", Input)
+        except Exception:
+            return
+        inp.placeholder = self._saved_input_placeholder
+        self._saved_input_placeholder = None
+
     def action_toggle_focus(self) -> None:
         """Toggle focus between input bar and result widgets."""
         inp = self.query_one("#input-bar", Input)
@@ -997,7 +1038,9 @@ LIMIT 4000"""
         chat_log.scroll_end(animate=False)
 
         self._busy = True
-        self.run_worker(self._run_agent(text, session, chat_log), exclusive=True)
+        self._current_turn_worker = self.run_worker(
+            self._run_agent(text, session, chat_log), exclusive=True
+        )
 
     @staticmethod
     async def _connect_spinner_label(parts: list[str]) -> str:
@@ -1081,12 +1124,19 @@ LIMIT 4000"""
         session: SessionState,
         chat_log: VerticalScroll,
     ) -> None:
+        import asyncio
+
         progress = AgentProgressWidget()
         chat_log.mount(progress)
         chat_log.scroll_end(animate=False)
 
         try:
             result: ChatResult = await session.chat_agent.run(question, progress)
+        except asyncio.CancelledError:
+            await progress.remove()
+            chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
+            chat_log.scroll_end(animate=False)
+            raise
         except Exception as e:
             await progress.remove()
             msg = SystemMessage(f"[red]Agent error:[/red] {e}")
@@ -1095,6 +1145,7 @@ LIMIT 4000"""
             return
         finally:
             self._busy = False
+            self._current_turn_worker = None
 
         if progress._streaming_text != result.text:
             progress._streaming_text = result.text
