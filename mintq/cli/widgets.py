@@ -1379,7 +1379,10 @@ class AgentResultWidget(Widget):
             col += pad
 
         prev_x = col
-        line.append_text(Text("◂", style=chevron_style))
+        if view_interactive:
+            line.append_text(Text("◂", style=chevron_style))
+        else:
+            line.append_text(Text(" "))
         col += 1
         line.append_text(Text(" "))
         col += 1
@@ -1388,11 +1391,15 @@ class AgentResultWidget(Widget):
         line.append_text(Text(" "))
         col += 1
         next_x = col
-        line.append_text(Text("▸", style=chevron_style))
+        if view_interactive:
+            line.append_text(Text("▸", style=chevron_style))
+        else:
+            line.append_text(Text(" "))
         col += 1
 
-        self._view_hit_areas.append(("prev", prev_x, prev_x + 1))
-        self._view_hit_areas.append(("next", next_x, next_x + 1))
+        if view_interactive:
+            self._view_hit_areas.append(("prev", prev_x, prev_x + 1))
+            self._view_hit_areas.append(("next", next_x, next_x + 1))
 
         self._view_stepper_widget.update(line)
 
