@@ -1107,6 +1107,8 @@ LIMIT 4000"""
                 await spinner.remove()
             if user_msg.is_mounted:
                 await user_msg.remove()
+            chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
+            chat_log.scroll_end(animate=False)
             self._restore_input_text(text)
             raise
         finally:
@@ -1177,6 +1179,8 @@ LIMIT 4000"""
                 await progress.remove()
             if user_msg.is_mounted:
                 await user_msg.remove()
+            chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
+            chat_log.scroll_end(animate=False)
             self._restore_input_text(question)
             raise
         except Exception as e:
