@@ -250,7 +250,9 @@ async def handle_command(text: str, session: SessionState) -> CommandResult:
 
     handler = COMMANDS.get(cmd)
     if handler is None:
-        return CommandResult(output=Text(f"Unknown command: {cmd}. Type /help for available commands.", style="red"))
+        return CommandResult(
+            output=Text.from_markup(f"[red]Unknown command:[/red] {cmd}. Type /help for available commands.")
+        )
 
     return await handler(args, session)  # type: ignore[operator, no-any-return]
 
