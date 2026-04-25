@@ -100,10 +100,12 @@ April 24
   - [x] from_files_async to loaders/
   - [x] Test for the bug
   - [x] UI bug, spinner with error
+  - [x] Cancellation for write_dataframe_async and run_query_async
   - [ ] Zoom out and see sql_conn.py
-  - [ ] no schema building option for SQLConnector.from_url_async
-  - [ ] Check other SQLConnector method cancellation
   - [ ] Check ThrottledEngine API, whether engine used externally
+s
+- [ ] Enter Inspect to the right
+- [ ] Bug: dataset readme not fetched
 
 - General
   - [ ] Improve transfer_record?
@@ -118,6 +120,7 @@ April 24
   - [ ] Multimodal data processing in subagent
   - [ ] Disalbe compression for small dbs?
   - [ ] Enriched with other data in huggingface repo
+  - [ ] Show query latency
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
