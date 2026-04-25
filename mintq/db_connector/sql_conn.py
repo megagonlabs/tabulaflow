@@ -185,14 +185,22 @@ class _CancelStrategy:
         """Abort the query identified by ``handle``.  Override per dialect."""
         raise NotImplementedError
 
-    def abort_from_dbapi_conn(self, raw: Any) -> None:
-        """Bulk-cancel hook used by :meth:`ThrottledEngine.aclose`.
+    def cancel_all(self) -> None:
+        """Abort every in-flight query on this engine — used by
+        :meth:`ThrottledEngine.aclose` for full shutdown.
 
-        Default: same as :meth:`abort` — assumes handle == raw DBAPI conn.
-        Override (or set ``None``) for dialects where the raw conn alone
-        isn't sufficient.
+        Default: walk ``engine._inflight_sync_conns`` and call
+        :meth:`abort` on each (correct when handle == raw DBAPI conn,
+        which is the common case).  Override for dialects that track
+        their own per-engine state — e.g. snowflake's cursor map.
         """
-        self.abort(raw)
+        with self.engine._inflight_sync_lock:
+            conns = list(self.engine._inflight_sync_conns)
+        for raw in conns:
+            try:
+                self.abort(raw)
+            except Exception:
+                logger.debug("abort failed for %s", self.name, exc_info=True)
 
 
 class _DuckDBCancel(_CancelStrategy):
@@ -219,16 +227,18 @@ class _PostgresCancel(_CancelStrategy):
 class _SnowflakeCancel(_CancelStrategy):
     """Cursor-level cancellation via ``cursor.abort_query()``.
 
-    Snowflake has no per-connection cancel API, so we register
-    SQLAlchemy ``before_cursor_execute`` / ``after_cursor_execute``
-    listeners and stash the in-flight cursor keyed by the SQLAlchemy
-    Connection's ``id``.  ``capture`` returns that id; ``abort`` looks
-    up the cursor and calls ``abort_query()``, which sends an HTTP
-    cancel to Snowflake — cross-thread safe.
+    Snowflake has no per-connection cancel API; cancellation lives on
+    the cursor (which holds the query id).  We register SQLAlchemy
+    ``before_cursor_execute`` / ``after_cursor_execute`` listeners and
+    stash the in-flight cursor keyed by the SQLAlchemy Connection's
+    ``id``.  ``capture`` returns that id; ``abort`` looks up the cursor
+    and calls ``abort_query()``, which sends an HTTP cancel to
+    Snowflake — cross-thread safe.
 
-    Bulk cancel via ``aclose`` is a no-op (we only have raw DBAPI conns
-    there, no way to map back to cursors).  ``aclose`` will instead
-    wait for natural query completion.  Per-call cancel still works.
+    Bulk cancel via :meth:`cancel_all` walks the cursor map directly
+    (rather than the engine's raw-conn set), so ``aclose`` actually
+    aborts in-flight queries on Snowflake instead of waiting for
+    natural completion.
     """
 
     name = "snowflake"
@@ -258,10 +268,12 @@ class _SnowflakeCancel(_CancelStrategy):
         if cursor is not None:
             cursor.abort_query()
 
-    def abort_from_dbapi_conn(self, raw: Any) -> None:
-        # Bulk cancel via raw DBAPI conn isn't supported — see class
-        # docstring.  Silently skip.
-        return None
+    def cancel_all(self) -> None:
+        for cursor in list(self._cursors.values()):
+            try:
+                cursor.abort_query()
+            except Exception:
+                logger.debug("abort_query failed", exc_info=True)
 
 
 _CANCEL_STRATEGY_CLASSES: dict[str, type[_CancelStrategy]] = {
@@ -480,25 +492,12 @@ class ThrottledEngine:
         in-flight query when only one was cancelled would be
         collateral damage.
 
-        Delegates to ``strategy.abort_from_dbapi_conn`` for each
-        tracked raw DBAPI connection.  For dialects where that's
-        ``None`` (e.g. snowflake's cursor-based cancel), this is a
-        no-op and ``aclose`` falls back to waiting for natural
-        completion.
+        Delegates to the strategy's :meth:`cancel_all`, which the
+        strategy implements using whatever per-engine state it tracks.
         """
         if self._cancel_strategy is None:
             return
-        with self._inflight_sync_lock:
-            conns = list(self._inflight_sync_conns)
-        for raw in conns:
-            try:
-                self._cancel_strategy.abort_from_dbapi_conn(raw)
-            except Exception:
-                logger.debug(
-                    "abort_from_dbapi_conn failed for %s",
-                    self._cancel_strategy.name,
-                    exc_info=True,
-                )
+        self._cancel_strategy.cancel_all()
 
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
