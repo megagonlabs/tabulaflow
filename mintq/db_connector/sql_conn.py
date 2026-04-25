@@ -224,24 +224,17 @@ class _PostgresCancel(_CancelStrategy):
         handle.cancel()
 
 
-class _SnowflakeCancel(_CancelStrategy):
-    """Cursor-level cancellation via ``cursor.abort_query()``.
+class _CursorTrackingCancel(_CancelStrategy):
+    """Shared base for dialects whose cancel primitive is on the cursor
+    rather than the connection (Snowflake, BigQuery).
 
-    Snowflake has no per-connection cancel API; cancellation lives on
-    the cursor (which holds the query id).  We register SQLAlchemy
-    ``before_cursor_execute`` / ``after_cursor_execute`` listeners and
-    stash the in-flight cursor keyed by the SQLAlchemy Connection's
-    ``id``.  ``capture`` returns that id; ``abort`` looks up the cursor
-    and calls ``abort_query()``, which sends an HTTP cancel to
-    Snowflake — cross-thread safe.
-
-    Bulk cancel via :meth:`cancel_all` walks the cursor map directly
-    (rather than the engine's raw-conn set), so ``aclose`` actually
-    aborts in-flight queries on Snowflake instead of waiting for
-    natural completion.
+    Registers SQLAlchemy ``before_cursor_execute`` / ``after_cursor_execute``
+    listeners on the engine and stashes the in-flight cursor keyed by
+    the SQLAlchemy Connection's ``id``.  ``capture`` returns that id;
+    ``abort`` and ``cancel_all`` look up the cursor and call the
+    subclass's :meth:`_cancel_cursor`, which is the only thing
+    subclasses need to override.
     """
-
-    name = "snowflake"
 
     def install(self) -> None:
         self._cursors: dict[int, Any] = {}
@@ -263,17 +256,113 @@ class _SnowflakeCancel(_CancelStrategy):
     def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
         return id(conn)
 
+    def _cancel_cursor(self, cursor: Any) -> None:
+        """Subclass-specific cancel call (e.g. ``cursor.abort_query()``)."""
+        raise NotImplementedError
+
     def abort(self, handle: Any) -> None:
         cursor = self._cursors.get(handle)
-        if cursor is not None:
-            cursor.abort_query()
+        if cursor is None:
+            return
+        try:
+            self._cancel_cursor(cursor)
+        except Exception:
+            logger.debug("cursor cancel failed for %s", self.name, exc_info=True)
 
     def cancel_all(self) -> None:
         for cursor in list(self._cursors.values()):
             try:
-                cursor.abort_query()
+                self._cancel_cursor(cursor)
             except Exception:
-                logger.debug("abort_query failed", exc_info=True)
+                logger.debug("cursor cancel failed for %s", self.name, exc_info=True)
+
+
+class _SnowflakeCancel(_CursorTrackingCancel):
+    """Snowflake: HTTP cancel via ``cursor.abort_query()`` (cross-thread safe)."""
+
+    name = "snowflake"
+
+    def _cancel_cursor(self, cursor: Any) -> None:
+        cursor.abort_query()
+
+
+class _BigQueryCancel(_CursorTrackingCancel):
+    """BigQuery: ``Job.cancel()`` via the cursor's current ``query_job``.
+
+    The dbapi cursor populates ``query_job`` on ``execute()``;
+    :meth:`Job.cancel` issues a REST cancel for the running BigQuery
+    job (cross-thread safe — it's just an HTTP call).
+    """
+
+    name = "bigquery"
+
+    def _cancel_cursor(self, cursor: Any) -> None:
+        job = getattr(cursor, "query_job", None)
+        if job is not None:
+            job.cancel()
+
+
+class _MySQLCancel(_CancelStrategy):
+    """MySQL: ``KILL QUERY <thread_id>`` from a side connection.
+
+    MySQL's cancel is a SQL statement, not a wire-protocol primitive;
+    the original connection is busy waiting for the query result, so
+    we must open a separate connection to issue ``KILL``.
+
+    ``capture`` records the busy connection's session ``thread_id``
+    eagerly (so we don't need to touch the busy conn at cancel time).
+    ``abort`` opens a fresh DBAPI connection from the engine's connect
+    args and runs ``KILL QUERY <id>``.  ``cancel_all`` does the same
+    for every tracked in-flight raw conn.
+    """
+
+    name = "mysql"
+
+    def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
+        raw = conn.connection.driver_connection
+        return raw.thread_id() if raw is not None else None
+
+    def abort(self, handle: Any) -> None:
+        if handle is None:
+            return
+        try:
+            self._kill(int(handle))
+        except Exception:
+            logger.debug("KILL QUERY failed", exc_info=True)
+
+    def cancel_all(self) -> None:
+        with self.engine._inflight_sync_lock:
+            conns = list(self.engine._inflight_sync_conns)
+        for raw in conns:
+            try:
+                tid = raw.thread_id()
+            except Exception:
+                logger.debug("could not read thread_id", exc_info=True)
+                continue
+            try:
+                self._kill(int(tid))
+            except Exception:
+                logger.debug("KILL QUERY failed", exc_info=True)
+
+    def _kill(self, thread_id: int) -> None:
+        sync_engine = (
+            self.engine.engine
+            if self.engine.engine_type == "sync"
+            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+        )
+        cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
+        dbapi = sync_engine.dialect.dbapi
+        if dbapi is None:
+            return
+        side = dbapi.connect(*cargs, **ckwargs)
+        try:
+            cur = side.cursor()
+            try:
+                cur.execute(f"KILL QUERY {thread_id}")
+            finally:
+                cur.close()
+        finally:
+            side.close()
 
 
 _CANCEL_STRATEGY_CLASSES: dict[str, type[_CancelStrategy]] = {
@@ -281,8 +370,8 @@ _CANCEL_STRATEGY_CLASSES: dict[str, type[_CancelStrategy]] = {
     "sqlite": _SqliteCancel,
     "postgresql": _PostgresCancel,
     "snowflake": _SnowflakeCancel,
-    # Future: mysql (KILL QUERY thread_id from a side connection),
-    # bigquery (Job.cancel via the BQ client).
+    "bigquery": _BigQueryCancel,
+    "mysql": _MySQLCancel,
 }
 
 
