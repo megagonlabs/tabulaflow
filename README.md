@@ -103,7 +103,8 @@ April 24
   - [x] Cancellation for write_dataframe_async and run_query_async
   - [ ] Zoom out and see sql_conn.py
   - [ ] Check ThrottledEngine API, whether engine used externally
-s
+  - [ ] Refactor async branch and ThrottledEngine
+
 - [ ] Enter Inspect to the right
 - [ ] Bug: dataset readme not fetched
 
