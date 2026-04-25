@@ -134,6 +134,7 @@ class HistoryInput(Input):
     BINDINGS = [
         Binding("up", "history_prev", "Previous command", priority=True),
         Binding("down", "history_next", "Next command", priority=True),
+        Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
     ]
 
@@ -202,6 +203,12 @@ class HistoryInput(Input):
         if self._suggestion:
             self.value = self._suggestion
             self.cursor_position = len(self.value)
+
+    def action_quit_only(self) -> None:
+        """Forward Ctrl+D to the app-level quit-only handler when focused."""
+        # Input consumes Ctrl+D by default; forward explicitly so the app can
+        # apply its double-press quit logic.
+        self.app.action_quit_only()  # type: ignore[attr-defined]
 
 
 # ---------------------------------------------------------------------------

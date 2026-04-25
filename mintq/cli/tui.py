@@ -37,6 +37,7 @@ class MintqApp(App[None]):
 
     BINDINGS = [
         ("ctrl+c", "interrupt_or_quit", "Interrupt / Quit"),
+        ("ctrl+d", "quit_only", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
     ]
 
@@ -56,6 +57,7 @@ class MintqApp(App[None]):
         self._current_worker: object | None = None
         self._last_idle_interrupt_ts: float = 0.0
         self._saved_input_placeholder: str | None = None
+        self._last_quit_hint_key: str = "Ctrl+C"
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
@@ -942,8 +944,6 @@ LIMIT 4000"""
         - Else (input empty): show the quit hint; a second press within the
           window quits.
         """
-        import time
-
         if self._busy and self._current_worker is not None:
             self._current_worker.cancel()  # type: ignore[attr-defined]
             self._last_idle_interrupt_ts = 0.0
@@ -955,15 +955,41 @@ LIMIT 4000"""
             self._last_idle_interrupt_ts = 0.0
             return
 
+        self._confirm_idle_quit("Ctrl+C", inp)
+
+    def action_quit_only(self) -> None:
+        """Ctrl+D:
+        - Never interrupts a running turn.
+        - Else mirrors idle quit behavior (double press within the window).
+        """
+        if self._busy:
+            return
+
+        inp = self.query_one("#input-bar", Input)
+        if inp.value:
+            inp.value = ""
+            self._last_idle_interrupt_ts = 0.0
+            return
+
+        self._confirm_idle_quit("Ctrl+D", inp)
+
+    def _confirm_idle_quit(self, key: str, inp: Input) -> None:
+        """Quit only when the same idle quit key is pressed twice."""
+        import time
+
         now = time.monotonic()
-        if (now - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW:
+        if (
+            self._last_quit_hint_key == key
+            and (now - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW
+        ):
             self.exit()
             return
 
         self._last_idle_interrupt_ts = now
+        self._last_quit_hint_key = key
         if self._saved_input_placeholder is None:
             self._saved_input_placeholder = inp.placeholder
-        inp.placeholder = "Press Ctrl+C again to quit"
+        inp.placeholder = f"Press {self._last_quit_hint_key} again to quit"
         self.set_timer(self._INTERRUPT_DOUBLE_PRESS_WINDOW, self._restore_input_placeholder)
 
     def _restore_input_text(self, text: str) -> None:
