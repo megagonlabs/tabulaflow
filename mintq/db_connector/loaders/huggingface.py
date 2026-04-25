@@ -240,61 +240,54 @@ async def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, i
     return split_sizes
 
 
-async def _build_hf_operations(
+async def _build_hf_splits(
     dataset_id: str,
     config: str,
     split_sizes: dict[str, int],
 ) -> tuple[list[dict[str, Any]], list[str]]:
-    """Build the subprocess-worker operation list for an HF dataset.
+    """Build the subprocess-worker split list for an HF dataset.
 
     Uses the HuggingFace datasets-server ``/parquet`` API to get direct
     download URLs, avoiding DuckDB ``hf://`` glob resolution which triggers
     HTTP HEAD requests that are easily rate-limited (429).
 
-    Returns ``(operations, table_names)``.  ``table_names`` is the
-    best-guess list of tables that should exist after loading (a sample
-    table with ``allow_fail=True`` may be silently dropped by the worker
-    if DESCRIBE or CREATE fails).
+    Returns ``(splits, table_names)``.  ``table_names`` is the best-guess
+    list of tables that should exist after loading (a sample split with
+    ``optional=True`` may be silently dropped by the worker if its
+    DESCRIBE or CREATE fails).
     """
-    operations: list[dict[str, Any]] = [
-        {"type": "exec", "sql": "INSTALL httpfs; LOAD httpfs;"},
-    ]
+    splits: list[dict[str, Any]] = []
     table_names: list[str] = []
 
     for split_name, size in split_sizes.items():
         urls = await _fetch_parquet_urls(dataset_id, config, split_name)
         if not urls:
             raise ValueError(f"No parquet files found for '{dataset_id}' config '{config}' split '{split_name}'.")
-        url_list = ", ".join(f"'{u}'" for u in urls)
-        source = f"read_parquet([{url_list}])"
 
         base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
         materialize = size > 0 and size < MATERIALIZE_THRESHOLD_BYTES
         if materialize:
             logger.info("Queueing TABLE '%s' from %d parquet files", base_name, len(urls))
-            operations.append(
-                {"type": "exec", "sql": f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}'}
-            )
+            splits.append({"name": base_name, "kind": "table", "urls": urls})
             table_names.append(base_name)
         else:
             logger.info("Queueing VIEW '%s' from %d parquet files", base_name, len(urls))
-            operations.append(
-                {"type": "exec", "sql": f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}'}
-            )
+            splits.append({"name": base_name, "kind": "view", "urls": urls})
             table_names.append(base_name)
             sample_name = f"{base_name}_sample"
-            operations.append(
+            splits.append(
                 {
-                    "type": "create_sample",
-                    "target": sample_name,
-                    "source": f"read_parquet('{urls[0]}')",
+                    "name": sample_name,
+                    "kind": "table",
+                    "urls": [urls[0]],
+                    "blob_strip": True,
                     "limit": 1000,
-                    "allow_fail": True,
+                    "optional": True,
                 }
             )
             table_names.append(sample_name)
 
-    return operations, table_names
+    return splits, table_names
 
 
 def _db_path(cache_dir: str, dataset_id: str, config: str, split_filter: str | None) -> str:
@@ -337,16 +330,17 @@ async def _load_hf_via_datasets_lib(
     """Fallback loader using the ``datasets`` library for datasets not indexed
     by the HuggingFace datasets-server (e.g. those with custom loading scripts).
 
-    Downloads via ``datasets.load_dataset()``, exports each split to parquet,
-    and loads them into DuckDB via a subprocess.
+    Runs the entire flow — ``datasets.load_dataset()`` download, parquet
+    export, DuckDB load — inside a subprocess.  Both the download and the
+    parquet export are blocking and have no async cancellation API; the
+    subprocess lets a Ctrl+C kill them cleanly via ``proc.terminate()``.
 
     Returns:
-        A tuple of (db_path, table_names).
+        A tuple of (db_path, table_names).  ``table_names`` is the
+        best-guess list of tables created (the actual list is whatever
+        ``ds.load_dataset`` produced, which we don't know up front;
+        downstream consumers ignore it).
     """
-    import tempfile
-
-    import datasets as ds
-
     from mintq.db_connector.loaders.runner import run_loader_subprocess
 
     logger.info(
@@ -354,54 +348,21 @@ async def _load_hf_via_datasets_lib(
         dataset_id,
     )
 
-    kwargs: dict[str, Any] = {}
-    if subset is not None:
-        kwargs["name"] = subset
-    if split_filter is not None:
-        kwargs["split"] = split_filter
-
-    # ``datasets.load_dataset`` is a blocking download; run it off the loop.
-    # The thread itself remains uncancellable (no async API exists for this
-    # library), but the DuckDB work below runs in a subprocess that we can
-    # kill cleanly on cancellation.
-    loaded = await asyncio.to_thread(ds.load_dataset, dataset_id, **kwargs)
-
-    if isinstance(loaded, ds.DatasetDict):
-        split_dict: dict[str, ds.Dataset] = dict(loaded)
-    else:
-        # Single split returned when split_filter is specified.
-        split_name = split_filter or "data"
-        split_dict = {split_name: loaded}
-
     config_label = subset or "default"
     db_file = _db_path(cache_dir, dataset_id, config_label, split_filter)
 
-    with tempfile.TemporaryDirectory() as tmpdir:
-        operations: list[dict[str, Any]] = []
-        table_names: list[str] = []
-        for split_name, split_ds in sorted(split_dict.items()):
-            base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
-            parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
-            await asyncio.to_thread(split_ds.to_parquet, parquet_path)
-            logger.info("Queueing TABLE '%s' from datasets library", base_name)
-            # Use create_sample so BLOB columns (images, audio) are
-            # stripped from the table preview sent to the LLM.
-            operations.append(
-                {
-                    "type": "create_sample",
-                    "target": base_name,
-                    "source": f"read_parquet('{parquet_path}')",
-                    # No limit → materialize full split (use a huge cap).
-                    "limit": 2**63 - 1,
-                }
-            )
-            table_names.append(base_name)
-        await run_loader_subprocess(
-            "mintq.db_connector.loaders.huggingface",
-            {"db_path": db_file, "operations": operations},
-        )
+    await run_loader_subprocess(
+        "mintq.db_connector.loaders.huggingface",
+        {
+            "mode": "datasets_lib",
+            "db_path": db_file,
+            "dataset_id": dataset_id,
+            "subset": subset,
+            "split_filter": split_filter,
+        },
+    )
 
-    return db_file, table_names
+    return db_file, []
 
 
 async def _load_hf_into_duckdb(
@@ -465,11 +426,11 @@ async def _load_hf_into_duckdb(
     size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
 
-    operations, table_names = await _build_hf_operations(dataset_id, config, loaded_sizes)
+    payload_splits, table_names = await _build_hf_splits(dataset_id, config, loaded_sizes)
     try:
         await run_loader_subprocess(
             "mintq.db_connector.loaders.huggingface",
-            {"db_path": db_path, "operations": operations},
+            {"mode": "parquet_urls", "db_path": db_path, "splits": payload_splits},
         )
     except BaseException:
         # Partial state from a killed worker would make _try_cache flag the
@@ -555,78 +516,159 @@ async def load_hf_dataset(
 # ---------------------------------------------------------------------------
 
 
-def _dtype_has_blob(dtype: str) -> bool:
-    return "BLOB" in dtype.upper()
-
-
-def _build_sample_create_sql(conn: Any, target: str, source: str, limit: int) -> str:
-    """CREATE TABLE <target> from <source> LIMIT <limit>, replacing BLOB
-    columns with a placeholder literal so images/audio aren't materialized
-    into the sample preview."""
+def _build_split_columns(conn: Any, source: str, blob_strip: bool) -> str:
+    """Return a SELECT-list that drops BLOB columns when ``blob_strip`` is
+    set; otherwise just ``*``."""
+    if not blob_strip:
+        return "*"
     cols = conn.execute(f"DESCRIBE SELECT * FROM {source} LIMIT 0").fetchall()
     parts: list[str] = []
     for row in cols:
         name, dtype = row[0], row[1]
         quoted = f'"{name}"'
-        if _dtype_has_blob(dtype):
+        if "BLOB" in dtype.upper():
             parts.append(f"'<binary: skipped>' AS {quoted}")
         else:
             parts.append(quoted)
-    columns = ", ".join(parts) if parts else "*"
-    return f'CREATE TABLE "{target}" AS SELECT {columns} FROM {source} LIMIT {limit}'
+    return ", ".join(parts) if parts else "*"
+
+
+def _create_split(conn: Any, split: dict[str, Any]) -> None:
+    """Realize one entry from the worker payload's ``splits`` list."""
+    name = split["name"]
+    kind = split["kind"]
+    urls = split["urls"]
+    blob_strip = bool(split.get("blob_strip", False))
+    limit = split.get("limit")
+
+    if not urls:
+        raise ValueError(f"split '{name}' has no urls")
+    url_list = ", ".join(f"'{u}'" for u in urls)
+    source = f"read_parquet([{url_list}])"
+    columns = _build_split_columns(conn, source, blob_strip)
+
+    if kind == "table":
+        sql = f'CREATE TABLE "{name}" AS SELECT {columns} FROM {source}'
+        if limit is not None:
+            sql += f" LIMIT {int(limit)}"
+    elif kind == "view":
+        sql = f'CREATE VIEW "{name}" AS SELECT {columns} FROM {source}'
+    else:
+        raise ValueError(f"unknown split kind: {kind!r}")
+    conn.execute(sql)
+
+
+def _run_parquet_urls(payload: dict[str, Any]) -> None:
+    """Worker handler for ``mode == "parquet_urls"``.
+
+    Loads each split entry by issuing CREATE TABLE / CREATE VIEW against
+    the parquet URLs already discovered in the parent.
+    """
+    import duckdb
+
+    db_path: str = payload["db_path"]
+    splits: list[dict[str, Any]] = payload["splits"]
+
+    conn = duckdb.connect(db_path)
+    try:
+        conn.execute("INSTALL httpfs")
+        conn.execute("LOAD httpfs")
+        for split in splits:
+            try:
+                _create_split(conn, split)
+            except Exception as exc:
+                if split.get("optional"):
+                    print(
+                        f"WARN: optional split failed: {split.get('name', '?')}: {exc}",
+                        file=sys.stderr,
+                    )
+                    try:
+                        conn.execute(f'DROP TABLE IF EXISTS "{split["name"]}"')
+                        conn.execute(f'DROP VIEW IF EXISTS "{split["name"]}"')
+                    except Exception:
+                        pass
+                    continue
+                raise
+    finally:
+        conn.close()
+
+
+def _run_datasets_lib(payload: dict[str, Any]) -> None:
+    """Worker handler for ``mode == "datasets_lib"`` — the fallback path
+    for datasets the HuggingFace datasets-server doesn't index.
+
+    Imports the heavy ``datasets`` library (only when this branch runs),
+    downloads the dataset, exports each split to a temp parquet file,
+    then materializes them into DuckDB with BLOB columns stripped.
+
+    The whole flow runs inside the subprocess so a parent ``terminate()``
+    cleanly kills any in-flight download or parquet write.
+    """
+    import tempfile
+
+    import datasets as ds
+    import duckdb
+
+    db_path: str = payload["db_path"]
+    dataset_id: str = payload["dataset_id"]
+    subset: str | None = payload.get("subset")
+    split_filter: str | None = payload.get("split_filter")
+
+    kwargs: dict[str, Any] = {}
+    if subset is not None:
+        kwargs["name"] = subset
+    if split_filter is not None:
+        kwargs["split"] = split_filter
+
+    loaded = ds.load_dataset(dataset_id, **kwargs)
+    if isinstance(loaded, ds.DatasetDict):
+        split_dict: dict[str, ds.Dataset] = dict(loaded)
+    else:
+        # Single split returned when split_filter is specified.
+        split_name = split_filter or "data"
+        split_dict = {split_name: loaded}
+
+    with tempfile.TemporaryDirectory() as tmpdir:
+        conn = duckdb.connect(db_path)
+        try:
+            for split_name, split_ds in sorted(split_dict.items()):
+                base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
+                parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
+                split_ds.to_parquet(parquet_path)
+                _create_split(
+                    conn,
+                    {
+                        "name": base_name,
+                        "kind": "table",
+                        "urls": [parquet_path],
+                        "blob_strip": True,
+                    },
+                )
+        finally:
+            conn.close()
 
 
 def _worker_main() -> int:
     """Subprocess entry point.
 
-    Payload schema::
+    Dispatches on ``payload["mode"]``:
 
-        {
-            "db_path": str,
-            "operations": [
-                {"type": "exec", "sql": str, "allow_fail": bool?},
-                {"type": "create_sample", "target": str, "source": str,
-                 "limit": int?, "allow_fail": bool?},
-                ...
-            ]
-        }
+    ``"parquet_urls"`` — fast path; loads splits the parent has already
+    resolved to direct parquet URLs.  Imports only ``duckdb``.
+
+    ``"datasets_lib"`` — fallback for datasets the HF datasets-server
+    doesn't index.  Imports the (heavy) ``datasets`` library, downloads,
+    exports parquet, and materializes into DuckDB — all inside this
+    subprocess so a parent terminate kills it cleanly.
     """
-    import duckdb  # deferred — only the worker needs this
-
     payload = json.loads(sys.stdin.read())
-    db_path: str = payload["db_path"]
-    operations: list[dict[str, Any]] = payload["operations"]
-
-    conn = duckdb.connect(db_path)
-    try:
-        for op in operations:
-            op_type = op["type"]
-            try:
-                if op_type == "exec":
-                    conn.execute(op["sql"])
-                elif op_type == "create_sample":
-                    sql = _build_sample_create_sql(
-                        conn, op["target"], op["source"], op.get("limit", 1000)
-                    )
-                    conn.execute(sql)
-                else:
-                    raise ValueError(f"unknown operation type: {op_type}")
-            except Exception as exc:
-                if op.get("allow_fail"):
-                    target = op.get("target") or op.get("sql", "")[:80]
-                    print(
-                        f"WARN: operation failed (allow_fail): {target}: {exc}",
-                        file=sys.stderr,
-                    )
-                    if "target" in op:
-                        try:
-                            conn.execute(f'DROP TABLE IF EXISTS "{op["target"]}"')
-                        except Exception:
-                            pass
-                    continue
-                raise
-    finally:
-        conn.close()
+    mode = payload.get("mode", "parquet_urls")
+    if mode == "parquet_urls":
+        _run_parquet_urls(payload)
+    elif mode == "datasets_lib":
+        _run_datasets_lib(payload)
+    else:
+        raise ValueError(f"unknown worker mode: {mode!r}")
     return 0
 
 
