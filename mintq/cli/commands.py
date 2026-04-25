@@ -90,6 +90,23 @@ class SessionState:
             trajectory_log_dir=trajectories_dir,
         )
         self.last_result: object | None = None
+        # Maps a "what's this connection's source" key (frozenset of file
+        # paths, normalized URL, etc.) to the alias under which it is
+        # registered.  Used by ``/connect`` to detect duplicate sources
+        # being registered under different aliases.
+        self._sources: dict[object, str] = {}
+
+    def find_alias_by_source(self, key: object) -> str | None:
+        """Return the alias registered for ``key``, or None."""
+        return self._sources.get(key)
+
+    def register_source(self, key: object, alias: str) -> None:
+        """Record that ``alias`` is associated with the source ``key``."""
+        self._sources[key] = alias
+
+    def unregister_alias_sources(self, alias: str) -> None:
+        """Remove every source entry pointing at ``alias``."""
+        self._sources = {k: v for k, v in self._sources.items() if v != alias}
 
     async def connect_workspace_db(self) -> None:
         """Create and register the per-session workspace DuckDB."""
@@ -308,6 +325,20 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                     f"  /connect {' '.join(os.path.basename(f) for f in file_args)}[/dim]"
                 )
             )
+
+        # Source-identity dedup: reject if the same set of files is
+        # already loaded under another alias (regardless of what alias
+        # was requested this time).
+        source_key = ("files", frozenset(os.path.abspath(os.path.expanduser(f)) for f in file_args))
+        existing = session.find_alias_by_source(source_key)
+        if existing is not None:
+            return CommandResult(
+                output=Text.from_markup(
+                    f"[red]Already loaded as[/red] {existing}. "
+                    f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
+                )
+            )
+
         alias_args = [a for a in non_file_args if not _is_db_file(a)]
         if alias_args:
             alias = _sanitize_alias(alias_args[0])
@@ -347,6 +378,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
             return CommandResult(output=Text.from_markup(f"[red]Failed to load files:[/red] {e}"))
 
         session.registry.register(alias, connector)
+        session.register_source(source_key, alias)
         info = session.chat_agent.database_info(connector)
         session.chat_agent.add_database([(alias, connector)])
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
@@ -369,6 +401,16 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     raw = args[0]
     url = _normalize_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
+
+    url_source_key = ("url", url)
+    existing = session.find_alias_by_source(url_source_key)
+    if existing is not None:
+        return CommandResult(
+            output=Text.from_markup(
+                f"[red]Already connected as[/red] {existing}. "
+                f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reconnect."
+            )
+        )
 
     if session.registry.has(alias):
         return CommandResult(
@@ -395,6 +437,16 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     except ValueError as e:
         return CommandResult(output=Text.from_markup(f"[red]{e}[/red]"))
 
+    source_key = ("hf", url)
+    existing = session.find_alias_by_source(source_key)
+    if existing is not None:
+        return CommandResult(
+            output=Text.from_markup(
+                f"[red]Already loaded as[/red] {existing}. "
+                f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
+            )
+        )
+
     default_alias = _sanitize_alias(dataset_id.split("/")[-1])
     alias = _sanitize_alias(args[1]) if len(args) > 1 else default_alias
 
@@ -416,6 +468,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
         return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))
 
     session.registry.register(alias, connector)
+    session.register_source(source_key, alias)
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
@@ -463,6 +516,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
             return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
         session.registry.register(alias, neo_connector)
+        session.register_source(("url", url), alias)
         info = session.chat_agent.database_info(neo_connector)
         session.chat_agent.add_database([(alias, neo_connector)])
         return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
@@ -488,6 +542,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
     session.registry.register(alias, connector)
+    session.register_source(("url", url), alias)
     info = session.chat_agent.database_info(connector)
     session.chat_agent.add_database([(alias, connector)])
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
@@ -507,6 +562,7 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         alias = args[0]
 
     if await session.registry.unregister_async(alias):
+        session.unregister_alias_sources(alias)
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
         return CommandResult(output=Text.from_markup(f"[red]No connection named:[/red] {alias}"))
