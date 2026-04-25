@@ -183,7 +183,13 @@ _ASYNC_DRIVER_UPGRADES: dict[str, str] = {
     "sqlite": "sqlite+aiosqlite",
     "postgresql": "postgresql+asyncpg",
     "postgres": "postgresql+asyncpg",
-    "mysql": "mysql+asyncmy",
+    # mysql intentionally left out: asyncmy has no working cancellation
+    # primitive (no protocol-level cancel; KILL QUERY would need a side
+    # connection that asyncmy doesn't wire up).  Falling back to the
+    # sync default driver lets ``_MySQLCancel`` issue KILL QUERY on
+    # Ctrl+C / asyncio cancel, which actually rolls back in-flight
+    # writes.  Power users wanting async can pass ``mysql+asyncmy://...``
+    # explicitly and accept the broken cancel semantics.
 }
 
 
