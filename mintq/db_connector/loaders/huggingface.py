@@ -12,14 +12,16 @@ Authentication is handled natively by DuckDB via the HuggingFace token at
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
 import os
 import re
+import sys
 from typing import TYPE_CHECKING, Any
 
-import httpx
-
 if TYPE_CHECKING:
+    import httpx
+
     from mintq.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
@@ -120,6 +122,8 @@ def _get_hf_client() -> httpx.AsyncClient:
     guards against tests or other code that runs multiple ``asyncio.run()``
     calls in the same process.
     """
+    import httpx  # lazy — keep worker subprocess startup minimal
+
     global _hf_client
     loop = asyncio.get_running_loop()
     if _hf_client is None or _hf_client[1] is not loop:
@@ -236,50 +240,25 @@ async def _discover_splits_and_size(dataset_id: str, config: str) -> dict[str, i
     return split_sizes
 
 
-def _dtype_has_blob(dtype: str) -> bool:
-    """Return True if a DuckDB type contains BLOB (including nested structs/lists)."""
-    return "BLOB" in dtype.upper()
-
-
-async def _build_sample_columns_async(connector: SQLConnector, source: str) -> str:
-    """Build a SELECT column list, replacing BLOB-containing columns with NULL."""
-    result = await connector.run_query_async(f"DESCRIBE SELECT * FROM {source} LIMIT 0")
-    if result.error is not None or result.df is None:
-        return "*"
-    parts: list[str] = []
-    for row in result.df.itertuples(index=False):
-        name = row[0]
-        dtype = row[1]
-        quoted = f'"{name}"'
-        if _dtype_has_blob(dtype):
-            parts.append(f"'<binary: skipped>' AS {quoted}")
-            logger.info("Skipping BLOB column '%s' (%s) in sample", name, dtype)
-        else:
-            parts.append(quoted)
-    return ", ".join(parts) if parts else "*"
-
-
-async def _run_or_raise(connector: SQLConnector, sql: str, desc: str) -> None:
-    """Run a statement and raise if it errored."""
-    result = await connector.run_query_async(sql)
-    if result.error is not None:
-        raise RuntimeError(f"{desc} failed: {result.error.message}")
-
-
-async def _create_tables_async(
-    connector: SQLConnector,
+async def _build_hf_operations(
     dataset_id: str,
     config: str,
     split_sizes: dict[str, int],
-) -> list[str]:
-    """Create DuckDB tables or views from explicit parquet URLs.
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """Build the subprocess-worker operation list for an HF dataset.
 
     Uses the HuggingFace datasets-server ``/parquet`` API to get direct
     download URLs, avoiding DuckDB ``hf://`` glob resolution which triggers
     HTTP HEAD requests that are easily rate-limited (429).
 
-    Each split is independently materialized or sampled based on its size.
+    Returns ``(operations, table_names)``.  ``table_names`` is the
+    best-guess list of tables that should exist after loading (a sample
+    table with ``allow_fail=True`` may be silently dropped by the worker
+    if DESCRIBE or CREATE fails).
     """
+    operations: list[dict[str, Any]] = [
+        {"type": "exec", "sql": "INSTALL httpfs; LOAD httpfs;"},
+    ]
     table_names: list[str] = []
 
     for split_name, size in split_sizes.items():
@@ -292,39 +271,30 @@ async def _create_tables_async(
         base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
         materialize = size > 0 and size < MATERIALIZE_THRESHOLD_BYTES
         if materialize:
-            logger.info("Creating TABLE '%s' from %d parquet files", base_name, len(urls))
-            await _run_or_raise(
-                connector,
-                f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}',
-                f"CREATE TABLE {base_name}",
+            logger.info("Queueing TABLE '%s' from %d parquet files", base_name, len(urls))
+            operations.append(
+                {"type": "exec", "sql": f'CREATE TABLE "{base_name}" AS SELECT * FROM {source}'}
             )
             table_names.append(base_name)
         else:
-            # Full-data view over all parquet files.
-            logger.info("Creating VIEW '%s' from %d parquet files", base_name, len(urls))
-            await _run_or_raise(
-                connector,
-                f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}',
-                f"CREATE VIEW {base_name}",
+            logger.info("Queueing VIEW '%s' from %d parquet files", base_name, len(urls))
+            operations.append(
+                {"type": "exec", "sql": f'CREATE VIEW "{base_name}" AS SELECT * FROM {source}'}
             )
             table_names.append(base_name)
-
-            # Materialized 1k sample from the first parquet file.
-            # Null out BLOB columns (images, audio) to avoid downloading
-            # huge binary data just for a preview.
             sample_name = f"{base_name}_sample"
-            first_source = f"read_parquet('{urls[0]}')"
-            columns = await _build_sample_columns_async(connector, first_source)
-            sample_sql = f'CREATE TABLE "{sample_name}" AS SELECT {columns} FROM {first_source} LIMIT 1000'
-            logger.info("Creating TABLE '%s' (at most 1k sample) from first parquet file", sample_name)
-            sample_result = await connector.run_query_async(sample_sql)
-            if sample_result.error is None:
-                table_names.append(sample_name)
-            else:
-                logger.warning("Failed to create sample table '%s'; skipping", sample_name)
-                await connector.run_query_async(f'DROP TABLE IF EXISTS "{sample_name}"')
+            operations.append(
+                {
+                    "type": "create_sample",
+                    "target": sample_name,
+                    "source": f"read_parquet('{urls[0]}')",
+                    "limit": 1000,
+                    "allow_fail": True,
+                }
+            )
+            table_names.append(sample_name)
 
-    return table_names
+    return operations, table_names
 
 
 def _db_path(cache_dir: str, dataset_id: str, config: str, split_filter: str | None) -> str:
@@ -358,23 +328,6 @@ def _try_cache(db_path: str) -> list[str] | None:
     return None
 
 
-async def _open_loader_connector(db_path: str) -> SQLConnector:
-    """Open a writable DuckDB SQLConnector for the loader phase, with
-    httpfs installed.  Cancellation during the subsequent loading goes
-    through ``ThrottledEngine.aclose`` like any other sync-driver query."""
-    from mintq.db_connector.sql_conn import SQLConnector
-
-    return await SQLConnector.from_url_async(
-        global_id=f"hf-loader+{os.path.splitext(os.path.basename(db_path))[0]}",
-        url=f"duckdb:///{db_path}",
-        db_name=os.path.basename(db_path),
-        read_only=False,
-        enable_schema_caching=False,
-        enable_query_caching=False,
-        duckdb_init_sql=["INSTALL httpfs; LOAD httpfs;"],
-    )
-
-
 async def _load_hf_via_datasets_lib(
     dataset_id: str,
     subset: str | None,
@@ -385,7 +338,7 @@ async def _load_hf_via_datasets_lib(
     by the HuggingFace datasets-server (e.g. those with custom loading scripts).
 
     Downloads via ``datasets.load_dataset()``, exports each split to parquet,
-    and loads them into DuckDB.
+    and loads them into DuckDB via a subprocess.
 
     Returns:
         A tuple of (db_path, table_names).
@@ -393,6 +346,8 @@ async def _load_hf_via_datasets_lib(
     import tempfile
 
     import datasets as ds
+
+    from mintq.db_connector.loaders.runner import run_loader_subprocess
 
     logger.info(
         "Falling back to datasets library for '%s' (not available via datasets-server)",
@@ -407,7 +362,8 @@ async def _load_hf_via_datasets_lib(
 
     # ``datasets.load_dataset`` is a blocking download; run it off the loop.
     # The thread itself remains uncancellable (no async API exists for this
-    # library), but the DuckDB work below is cancellable via the SQLConnector.
+    # library), but the DuckDB work below runs in a subprocess that we can
+    # kill cleanly on cancellation.
     loaded = await asyncio.to_thread(ds.load_dataset, dataset_id, **kwargs)
 
     if isinstance(loaded, ds.DatasetDict):
@@ -420,26 +376,30 @@ async def _load_hf_via_datasets_lib(
     config_label = subset or "default"
     db_file = _db_path(cache_dir, dataset_id, config_label, split_filter)
 
-    connector = await _open_loader_connector(db_file)
-    try:
+    with tempfile.TemporaryDirectory() as tmpdir:
+        operations: list[dict[str, Any]] = []
         table_names: list[str] = []
-        with tempfile.TemporaryDirectory() as tmpdir:
-            for split_name, split_ds in sorted(split_dict.items()):
-                base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
-                parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
-                await asyncio.to_thread(split_ds.to_parquet, parquet_path)
-
-                source = f"read_parquet('{parquet_path}')"
-                columns = await _build_sample_columns_async(connector, source)
-                logger.info("Creating TABLE '%s' from datasets library", base_name)
-                await _run_or_raise(
-                    connector,
-                    f'CREATE TABLE "{base_name}" AS SELECT {columns} FROM {source}',
-                    f"CREATE TABLE {base_name}",
-                )
-                table_names.append(base_name)
-    finally:
-        await connector.disconnect_async()
+        for split_name, split_ds in sorted(split_dict.items()):
+            base_name = re.sub(r"[^a-zA-Z0-9_]", "_", split_name).lower()
+            parquet_path = os.path.join(tmpdir, f"{base_name}.parquet")
+            await asyncio.to_thread(split_ds.to_parquet, parquet_path)
+            logger.info("Queueing TABLE '%s' from datasets library", base_name)
+            # Use create_sample so BLOB columns (images, audio) are
+            # stripped from the table preview sent to the LLM.
+            operations.append(
+                {
+                    "type": "create_sample",
+                    "target": base_name,
+                    "source": f"read_parquet('{parquet_path}')",
+                    # No limit → materialize full split (use a huge cap).
+                    "limit": 2**63 - 1,
+                }
+            )
+            table_names.append(base_name)
+        await run_loader_subprocess(
+            "mintq.db_connector.loaders.huggingface",
+            {"db_path": db_file, "operations": operations},
+        )
 
     return db_file, table_names
 
@@ -453,7 +413,8 @@ async def _load_hf_into_duckdb(
 
     Discovery (config resolution, split listing, size estimation) uses the
     HuggingFace datasets-server API to avoid DuckDB HTTP HEAD requests that
-    trigger 429 rate limiting.  Only the final table/view creation uses DuckDB.
+    trigger 429 rate limiting.  The actual DuckDB work runs in a subprocess
+    so that cancellation terminates it cleanly.
 
     Falls back to the ``datasets`` library when the datasets-server API is
     unavailable (e.g. for datasets with custom loading scripts).
@@ -462,6 +423,7 @@ async def _load_hf_into_duckdb(
         A tuple of (db_path, table_names).
     """
     from mintq.config import mintq_config
+    from mintq.db_connector.loaders.runner import run_loader_subprocess
 
     cache_dir = os.path.join(mintq_config.cache_dir, "hf")
     os.makedirs(cache_dir, exist_ok=True)
@@ -503,12 +465,22 @@ async def _load_hf_into_duckdb(
     size_str = _format_size(loaded_total) if loaded_total > 0 else "unknown size"
     logger.info("Loading HF dataset '%s' (%s, %d splits)", dataset_id, size_str, len(splits))
 
-    connector = await _open_loader_connector(db_path)
+    operations, table_names = await _build_hf_operations(dataset_id, config, loaded_sizes)
     try:
-        table_names = await _create_tables_async(connector, dataset_id, config, loaded_sizes)
-        return db_path, table_names
-    finally:
-        await connector.disconnect_async()
+        await run_loader_subprocess(
+            "mintq.db_connector.loaders.huggingface",
+            {"db_path": db_path, "operations": operations},
+        )
+    except BaseException:
+        # Partial state from a killed worker would make _try_cache flag the
+        # file as complete; remove it so the next attempt reloads cleanly.
+        if os.path.exists(db_path):
+            try:
+                os.unlink(db_path)
+            except OSError:
+                pass
+        raise
+    return db_path, table_names
 
 
 # ---------------------------------------------------------------------------
@@ -576,3 +548,91 @@ async def load_hf_dataset(
         description=description,
     )
     return connector
+
+
+# ---------------------------------------------------------------------------
+# Subprocess worker
+# ---------------------------------------------------------------------------
+
+
+def _dtype_has_blob(dtype: str) -> bool:
+    return "BLOB" in dtype.upper()
+
+
+def _build_sample_create_sql(conn: Any, target: str, source: str, limit: int) -> str:
+    """CREATE TABLE <target> from <source> LIMIT <limit>, replacing BLOB
+    columns with a placeholder literal so images/audio aren't materialized
+    into the sample preview."""
+    cols = conn.execute(f"DESCRIBE SELECT * FROM {source} LIMIT 0").fetchall()
+    parts: list[str] = []
+    for row in cols:
+        name, dtype = row[0], row[1]
+        quoted = f'"{name}"'
+        if _dtype_has_blob(dtype):
+            parts.append(f"'<binary: skipped>' AS {quoted}")
+        else:
+            parts.append(quoted)
+    columns = ", ".join(parts) if parts else "*"
+    return f'CREATE TABLE "{target}" AS SELECT {columns} FROM {source} LIMIT {limit}'
+
+
+def _worker_main() -> int:
+    """Subprocess entry point.
+
+    Payload schema::
+
+        {
+            "db_path": str,
+            "operations": [
+                {"type": "exec", "sql": str, "allow_fail": bool?},
+                {"type": "create_sample", "target": str, "source": str,
+                 "limit": int?, "allow_fail": bool?},
+                ...
+            ]
+        }
+    """
+    import duckdb  # deferred — only the worker needs this
+
+    payload = json.loads(sys.stdin.read())
+    db_path: str = payload["db_path"]
+    operations: list[dict[str, Any]] = payload["operations"]
+
+    conn = duckdb.connect(db_path)
+    try:
+        for op in operations:
+            op_type = op["type"]
+            try:
+                if op_type == "exec":
+                    conn.execute(op["sql"])
+                elif op_type == "create_sample":
+                    sql = _build_sample_create_sql(
+                        conn, op["target"], op["source"], op.get("limit", 1000)
+                    )
+                    conn.execute(sql)
+                else:
+                    raise ValueError(f"unknown operation type: {op_type}")
+            except Exception as exc:
+                if op.get("allow_fail"):
+                    target = op.get("target") or op.get("sql", "")[:80]
+                    print(
+                        f"WARN: operation failed (allow_fail): {target}: {exc}",
+                        file=sys.stderr,
+                    )
+                    if "target" in op:
+                        try:
+                            conn.execute(f'DROP TABLE IF EXISTS "{op["target"]}"')
+                        except Exception:
+                            pass
+                    continue
+                raise
+    finally:
+        conn.close()
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(_worker_main())
+    except Exception as exc:  # noqa: BLE001 - top-level safety net
+        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
+        sys.exit(1)

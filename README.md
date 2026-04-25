@@ -102,6 +102,7 @@ April 24
   - [ ] Check other SQLConnector method cancellation
   - [ ] Check ThrottledEngine API, whether engine used externally
   - [ ] Test for the bug
+  - [ ] UI bug, spinner with error
 
 - General
   - [ ] Improve transfer_record?

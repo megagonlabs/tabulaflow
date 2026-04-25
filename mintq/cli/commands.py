@@ -317,12 +317,12 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 )
             )
 
-        from mintq.db_connector.sql_conn import SQLConnector
+        from mintq.db_connector.loaders.files import load_files
 
         global_id = f"cli+{alias}"
         file_label = ", ".join(os.path.basename(f) for f in file_args)
         try:
-            connector = await SQLConnector.from_files_async(
+            connector = await load_files(
                 global_id=global_id,
                 file_paths=file_args,
                 db_name=alias,

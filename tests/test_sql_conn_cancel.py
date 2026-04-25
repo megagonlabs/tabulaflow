@@ -8,8 +8,6 @@ configuration than existing connections"``.
 """
 
 import asyncio
-import os
-import tempfile
 from pathlib import Path
 
 import duckdb
@@ -122,15 +120,20 @@ async def test_aclose_is_safe_with_nothing_in_flight(tmp_path: Path) -> None:
     await t_eng2.aclose()
 
 
-async def test_from_files_cancel_retry_mixed_config(tmp_path: Path) -> None:
-    """Same regression as above but via the CSV-backed load path."""
+async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
+    """``load_files`` runs its load phase in a subprocess; a cancel should
+    kill that subprocess, leave no leaked DuckDB state, and allow a fresh
+    retry to the same path to succeed and load all rows.
+    """
     import pandas as pd
 
+    from mintq.db_connector.loaders.files import load_files
+
     csv = tmp_path / "data.csv"
-    pd.DataFrame({"x": list(range(500000)) * 4}).to_csv(csv, index=False)
+    pd.DataFrame({"x": list(range(200000)) * 4}).to_csv(csv, index=False)
 
     task = asyncio.create_task(
-        SQLConnector.from_files_async(
+        load_files(
             global_id="cancel-files",
             file_paths=[str(csv)],
             db_name="mydata",
@@ -140,20 +143,22 @@ async def test_from_files_cancel_retry_mixed_config(tmp_path: Path) -> None:
             enable_query_caching=False,
         )
     )
-    await asyncio.sleep(0.1)
+    await asyncio.sleep(0.05)
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
 
-    db_path = tmp_path / "mydata.duckdb"
-    if not db_path.exists():
-        pytest.skip("cancel fired before the DuckDB file was created")
-
-    connector = await SQLConnector.from_url_async(
+    # Retry — fresh load, same db_name (same on-disk path).  If the
+    # previous subprocess leaked a file lock, this would fail.
+    connector = await load_files(
         global_id="retry-files",
-        url=f"duckdb:///{db_path}",
+        file_paths=[str(csv)],
         db_name="mydata",
-        read_only=False,
+        data_dir=str(tmp_path),
+        read_only=True,
         enable_schema_caching=False,
+        enable_query_caching=False,
     )
+    result = await connector.run_query_async("SELECT COUNT(*) FROM data")
+    assert result.df is not None and result.df.iloc[0, 0] == 800000
     await connector.disconnect_async()
