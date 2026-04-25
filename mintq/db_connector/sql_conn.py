@@ -160,9 +160,16 @@ class _CancelStrategy:
     """Base class for per-dialect cancellation strategies.
 
     Subclasses are instantiated once per :class:`ThrottledEngine` (so
-    they may hold per-engine state).  The default behaviour assumes the
-    cancel handle is the raw DBAPI connection; override ``capture`` /
-    ``abort`` for dialects that need something else.
+    they may hold per-engine state).  Each subclass owns its async
+    behaviour: :meth:`aabort` and :meth:`acancel_all` decide on their
+    own whether to run sync code inline or off-load via
+    :func:`asyncio.to_thread` — the base class doesn't second-guess.
+
+    Subclasses must override :meth:`aabort`.  The default
+    :meth:`acancel_all` walks ``engine._inflight_sync_conns`` and calls
+    :meth:`aabort` on each — correct when the cancel handle is the raw
+    DBAPI connection.  Override for richer state (e.g. snowflake's
+    cursor map) or to parallelise.
     """
 
     name: str = "default"
@@ -181,47 +188,66 @@ class _CancelStrategy:
         Default: the raw DBAPI connection."""
         return conn.connection.driver_connection
 
-    def abort(self, handle: Any) -> None:
-        """Abort the query identified by ``handle``.  Override per dialect."""
+    async def aabort(self, handle: Any) -> None:
+        """Abort the query identified by ``handle``.  Override per dialect.
+
+        Implementations should swallow and debug-log any errors — the
+        caller (which is itself usually in a cancellation flow) doesn't
+        want to see secondary exceptions.
+        """
         raise NotImplementedError
 
-    def cancel_all(self) -> None:
+    async def acancel_all(self) -> None:
         """Abort every in-flight query on this engine — used by
         :meth:`ThrottledEngine.aclose` for full shutdown.
 
-        Default: walk ``engine._inflight_sync_conns`` and call
-        :meth:`abort` on each (correct when handle == raw DBAPI conn,
-        which is the common case).  Override for dialects that track
-        their own per-engine state — e.g. snowflake's cursor map.
+        Default: walk ``engine._inflight_sync_conns`` and ``aabort``
+        each.  Override to parallelise via ``asyncio.gather`` (typical
+        for HTTP-based cancels) or to walk a per-engine state map
+        instead (e.g. snowflake's cursors).
         """
         with self.engine._inflight_sync_lock:
             conns = list(self.engine._inflight_sync_conns)
         for raw in conns:
-            try:
-                self.abort(raw)
-            except Exception:
-                logger.debug("abort failed for %s", self.name, exc_info=True)
+            await self.aabort(raw)
 
 
 class _DuckDBCancel(_CancelStrategy):
     name = "duckdb"
 
-    def abort(self, handle: Any) -> None:
-        handle.interrupt()
+    async def aabort(self, handle: Any) -> None:
+        try:
+            handle.interrupt()  # μs, no thread needed
+        except Exception:
+            logger.debug("interrupt failed for duckdb", exc_info=True)
 
 
 class _SqliteCancel(_CancelStrategy):
     name = "sqlite"
 
-    def abort(self, handle: Any) -> None:
-        handle.interrupt()
+    async def aabort(self, handle: Any) -> None:
+        try:
+            handle.interrupt()  # μs, no thread needed
+        except Exception:
+            logger.debug("interrupt failed for sqlite", exc_info=True)
 
 
 class _PostgresCancel(_CancelStrategy):
     name = "postgresql"
 
-    def abort(self, handle: Any) -> None:
-        handle.cancel()
+    async def aabort(self, handle: Any) -> None:
+        try:
+            await asyncio.to_thread(handle.cancel)  # opens a side TCP conn
+        except Exception:
+            logger.debug("cancel failed for postgresql", exc_info=True)
+
+    async def acancel_all(self) -> None:
+        with self.engine._inflight_sync_lock:
+            conns = list(self.engine._inflight_sync_conns)
+        await asyncio.gather(
+            *(asyncio.to_thread(raw.cancel) for raw in conns),
+            return_exceptions=True,
+        )
 
 
 class _CursorTrackingCancel(_CancelStrategy):
@@ -231,9 +257,13 @@ class _CursorTrackingCancel(_CancelStrategy):
     Registers SQLAlchemy ``before_cursor_execute`` / ``after_cursor_execute``
     listeners on the engine and stashes the in-flight cursor keyed by
     the SQLAlchemy Connection's ``id``.  ``capture`` returns that id;
-    ``abort`` and ``cancel_all`` look up the cursor and call the
-    subclass's :meth:`_cancel_cursor`, which is the only thing
-    subclasses need to override.
+    :meth:`aabort` looks up the cursor and runs the subclass-specific
+    cancel via :func:`asyncio.to_thread` (it's blocking HTTP).
+    :meth:`acancel_all` walks the cursor map and parallelises via
+    :func:`asyncio.gather`.
+
+    Subclasses only override :meth:`_cancel_cursor` (sync, called
+    inside :func:`asyncio.to_thread`).
     """
 
     def install(self) -> None:
@@ -257,24 +287,26 @@ class _CursorTrackingCancel(_CancelStrategy):
         return id(conn)
 
     def _cancel_cursor(self, cursor: Any) -> None:
-        """Subclass-specific cancel call (e.g. ``cursor.abort_query()``)."""
+        """Subclass-specific cancel call (e.g. ``cursor.abort_query()``).
+        Runs in a worker thread."""
         raise NotImplementedError
 
-    def abort(self, handle: Any) -> None:
+    async def aabort(self, handle: Any) -> None:
         cursor = self._cursors.get(handle)
         if cursor is None:
             return
         try:
-            self._cancel_cursor(cursor)
+            await asyncio.to_thread(self._cancel_cursor, cursor)
         except Exception:
             logger.debug("cursor cancel failed for %s", self.name, exc_info=True)
 
-    def cancel_all(self) -> None:
-        for cursor in list(self._cursors.values()):
-            try:
-                self._cancel_cursor(cursor)
-            except Exception:
-                logger.debug("cursor cancel failed for %s", self.name, exc_info=True)
+    async def acancel_all(self) -> None:
+        cursors = list(self._cursors.values())
+        # One cancel-HTTP per cursor, fired concurrently.
+        await asyncio.gather(
+            *(asyncio.to_thread(self._cancel_cursor, c) for c in cursors),
+            return_exceptions=True,
+        )
 
 
 class _SnowflakeCancel(_CursorTrackingCancel):
@@ -307,13 +339,14 @@ class _MySQLCancel(_CancelStrategy):
 
     MySQL's cancel is a SQL statement, not a wire-protocol primitive;
     the original connection is busy waiting for the query result, so
-    we must open a separate connection to issue ``KILL``.
+    we must open a separate connection to issue ``KILL``.  That's
+    blocking network I/O — every cancel runs in a worker thread.
 
     ``capture`` records the busy connection's session ``thread_id``
-    eagerly (so we don't need to touch the busy conn at cancel time).
-    ``abort`` opens a fresh DBAPI connection from the engine's connect
-    args and runs ``KILL QUERY <id>``.  ``cancel_all`` does the same
-    for every tracked in-flight raw conn.
+    eagerly (so we don't touch the busy conn at cancel time).
+    :meth:`aabort` opens a fresh DBAPI connection and runs
+    ``KILL QUERY <id>``.  :meth:`acancel_all` parallelises across all
+    tracked in-flight conns.
     """
 
     name = "mysql"
@@ -322,27 +355,27 @@ class _MySQLCancel(_CancelStrategy):
         raw = conn.connection.driver_connection
         return raw.thread_id() if raw is not None else None
 
-    def abort(self, handle: Any) -> None:
+    async def aabort(self, handle: Any) -> None:
         if handle is None:
             return
         try:
-            self._kill(int(handle))
+            await asyncio.to_thread(self._kill, int(handle))
         except Exception:
             logger.debug("KILL QUERY failed", exc_info=True)
 
-    def cancel_all(self) -> None:
+    async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
             conns = list(self.engine._inflight_sync_conns)
+        thread_ids: list[int] = []
         for raw in conns:
             try:
-                tid = raw.thread_id()
+                thread_ids.append(int(raw.thread_id()))
             except Exception:
                 logger.debug("could not read thread_id", exc_info=True)
-                continue
-            try:
-                self._kill(int(tid))
-            except Exception:
-                logger.debug("KILL QUERY failed", exc_info=True)
+        await asyncio.gather(
+            *(asyncio.to_thread(self._kill, tid) for tid in thread_ids),
+            return_exceptions=True,
+        )
 
     def _kill(self, thread_id: int) -> None:
         sync_engine = (
@@ -551,28 +584,23 @@ class ThrottledEngine:
                 if cancel_handle_box is not None:
                     cancel_handle_box[0] = None
 
-    def _abort_handle(self, handle: Any) -> None:
+    async def _abort_handle(self, handle: Any) -> None:
         """Abort one in-flight sync-driver query via the dialect's
         cancellation strategy.
 
-        Safe to call from the asyncio event loop while the query is
-        blocked in C code on an executor thread — strategies are
-        required to be cross-thread safe.  Returns immediately; the
-        executor thread raises and releases its connection shortly
-        after.
+        Strategies declare ``is_blocking`` for whether their cancel
+        primitive does network I/O.  Blocking strategies run in a
+        worker thread (event loop stays responsive); non-blocking ones
+        (DuckDB / SQLite — just a C-level flag flip) run inline to
+        avoid pointless thread-spawn overhead.
 
-        No-op if the dialect has no registered strategy (in which case
-        the query runs to completion and the asyncio task's
-        ``CancelledError`` is the only thing the caller observes).
+        No-op if the dialect has no registered strategy.
         """
         if handle is None or self._cancel_strategy is None:
             return
-        try:
-            self._cancel_strategy.abort(handle)
-        except Exception:
-            logger.debug("abort failed for %s", self._cancel_strategy.name, exc_info=True)
+        await self._cancel_strategy.aabort(handle)
 
-    def _cancel_inflight(self) -> None:
+    async def _cancel_inflight(self) -> None:
         """Abort every in-flight sync-driver query on this engine.
 
         Used by :meth:`aclose` for full engine shutdown.  Per-call
@@ -581,12 +609,11 @@ class ThrottledEngine:
         in-flight query when only one was cancelled would be
         collateral damage.
 
-        Delegates to the strategy's :meth:`cancel_all`, which the
-        strategy implements using whatever per-engine state it tracks.
+        Delegates to the strategy's async :meth:`acancel_all`.
         """
         if self._cancel_strategy is None:
             return
-        self._cancel_strategy.cancel_all()
+        await self._cancel_strategy.acancel_all()
 
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
@@ -613,7 +640,7 @@ class ThrottledEngine:
         # the poll may see an empty set and exit before the thread finishes
         # acquiring the connection it's about to run a query on.
         await asyncio.sleep(0.05)
-        self._cancel_inflight()
+        await self._cancel_inflight()
         deadline = time.monotonic() + timeout
         while time.monotonic() < deadline:
             with self._inflight_sync_lock:
@@ -622,7 +649,7 @@ class ThrottledEngine:
             await asyncio.sleep(0.02)
             # Re-issue cancel: some threads may have entered checkout after
             # our first call to ``_cancel_inflight``.
-            self._cancel_inflight()
+            await self._cancel_inflight()
         if self.engine_type == "async":
             await self.engine.dispose()  # type: ignore[misc]
         else:
@@ -728,7 +755,7 @@ class ThrottledEngine:
                     except (asyncio.CancelledError, asyncio.TimeoutError):
                         # Abort only this query — never all in-flight on
                         # the engine.
-                        self._abort_handle(cancel_handle_box[0])
+                        await self._abort_handle(cancel_handle_box[0])
                         raise
                     return QueryResult(result=result, latency_seconds=time.time() - t0)
             except asyncio.TimeoutError:
@@ -1612,7 +1639,7 @@ class SQLConnector:
                     # Abort the write so its transaction is rolled back
                     # rather than allowed to commit in the zombie thread.
                     # Only this call's handle is targeted.
-                    self._t_eng._abort_handle(cancel_handle_box[0])
+                    await self._t_eng._abort_handle(cancel_handle_box[0])
                     raise
 
         await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
