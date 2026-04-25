@@ -162,3 +162,80 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     result = await connector.run_query_async("SELECT COUNT(*) FROM data")
     assert result.df is not None and result.df.iloc[0, 0] == 800000
     await connector.disconnect_async()
+
+
+async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
+    """Cancelling a ``write_dataframe_async`` mid-flight must abort the
+    in-flight write and roll back the transaction — the target table
+    must not exist after the cancel propagates.
+    """
+    import pandas as pd
+
+    async def body() -> None:
+        db_path = str(tmp_path / "w.duckdb")
+        duckdb.connect(db_path).close()
+        connector = await SQLConnector.from_url_async(
+            global_id="w", url=f"duckdb:///{db_path}", db_name="t",
+            read_only=False, enable_schema_caching=False, enable_query_caching=False,
+        )
+        df = pd.DataFrame({"x": range(500_000), "y": range(500_000)})
+
+        task = asyncio.create_task(connector.write_dataframe_async(df, "mytbl", mode="replace"))
+        await asyncio.sleep(0.05)
+        task.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await task
+
+        r = await connector.run_query_async(
+            "SELECT COUNT(*) FROM information_schema.tables "
+            "WHERE table_name = 'mytbl' AND table_schema = 'main'"
+        )
+        assert r.df is not None and r.df.iloc[0, 0] == 0
+        await connector.disconnect_async()
+
+    # Bound the test: a regression that leaves the cancelled write's
+    # connection wedged would otherwise stall ``aclose``'s 5s drain loop
+    # and look like a hang.
+    await asyncio.wait_for(body(), timeout=20)
+
+
+async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
+    """Cancelling one in-flight query must not abort other queries
+    running concurrently on the same connector — guards against
+    accidentally calling the bulk ``_cancel_inflight`` from a per-call
+    cancellation site.
+    """
+
+    async def body() -> None:
+        db_path = str(tmp_path / "iso.duckdb")
+        duckdb.connect(db_path).close()
+        connector = await SQLConnector.from_url_async(
+            global_id="iso", url=f"duckdb:///{db_path}", db_name="t",
+            read_only=False, enable_schema_caching=False, enable_query_caching=False,
+        )
+
+        slow_sql = "CREATE TABLE {name} AS SELECT range AS x, range * 2 AS y FROM range(5_000_000)"
+        t_cancel = asyncio.create_task(connector.run_query_async(slow_sql.format(name="cancelled_table")))
+        t_keep = asyncio.create_task(connector.run_query_async(slow_sql.format(name="kept_table")))
+
+        await asyncio.sleep(0.1)
+        t_cancel.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await t_cancel
+
+        # The non-cancelled query must still complete normally.
+        keep_result = await t_keep
+        assert keep_result.error is None
+
+        r = await connector.run_query_async(
+            "SELECT table_name FROM information_schema.tables "
+            "WHERE table_schema = 'main' ORDER BY table_name"
+        )
+        assert r.df is not None
+        tables = list(r.df.iloc[:, 0])
+        assert "kept_table" in tables
+        assert "cancelled_table" not in tables
+
+        await connector.disconnect_async()
+
+    await asyncio.wait_for(body(), timeout=20)

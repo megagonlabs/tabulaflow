@@ -256,50 +256,71 @@ class ThrottledEngine:
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
+        raw_conn_box: list[Any] | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.begin() as conn:  # type: ignore
-            if isinstance(statement, str):
-                # We use exec_driver_sql to avoid sqlalchemy.text() parameter
-                # parsing, which misinterprets :identifier patterns (e.g.
-                # Snowflake Scripting variables, VARIANT path access) as bind
-                # parameters. exec_driver_sql sends the raw SQL string directly
-                # to the DBAPI driver, so parameters (if any) must already use
-                # the driver's native paramstyle (e.g. %(name)s for pyformat).
-                result = conn.exec_driver_sql(statement, parameters or None)
-            else:
-                result = conn.execute(statement, parameters)
-            rows = result.fetchall()
-            if return_df:
-                return pd.DataFrame(rows, columns=result.keys())
-            return rows
+            # Publish the raw DBAPI connection so the calling task can
+            # interrupt this specific query on cancel/timeout.  Cleared
+            # before exiting so a successful run leaves the box empty.
+            if raw_conn_box is not None:
+                raw_conn_box[0] = conn.connection.driver_connection
+            try:
+                if isinstance(statement, str):
+                    # We use exec_driver_sql to avoid sqlalchemy.text() parameter
+                    # parsing, which misinterprets :identifier patterns (e.g.
+                    # Snowflake Scripting variables, VARIANT path access) as bind
+                    # parameters. exec_driver_sql sends the raw SQL string directly
+                    # to the DBAPI driver, so parameters (if any) must already use
+                    # the driver's native paramstyle (e.g. %(name)s for pyformat).
+                    result = conn.exec_driver_sql(statement, parameters or None)
+                else:
+                    result = conn.execute(statement, parameters)
+                rows = result.fetchall()
+                if return_df:
+                    return pd.DataFrame(rows, columns=result.keys())
+                return rows
+            finally:
+                if raw_conn_box is not None:
+                    raw_conn_box[0] = None
 
-    def _cancel_inflight(self) -> None:
-        """Signal all in-flight sync-driver queries to abort.
+    def _cancel_raw_conn(self, raw: Any) -> None:
+        """Signal a single in-flight sync-driver query to abort.
 
-        Calls the underlying driver's native cancel/interrupt primitive on
-        each tracked raw DBAPI connection.  Safe to call from the asyncio
-        event loop while queries are blocked in C code on executor threads;
-        the driver's cancel is designed to be cross-thread.
+        Calls the underlying driver's native cancel/interrupt primitive
+        on ``raw``.  Safe to call from the asyncio event loop while a
+        query is blocked in C code on an executor thread — the driver's
+        cancel is designed to be cross-thread.
 
-        Returns immediately — the executor threads raise and release their
-        connections shortly after.  Call :meth:`aclose` to wait for that
-        release and then dispose the engine.
+        Returns immediately; the executor thread raises and releases the
+        connection shortly after.
         """
         if self.engine_type != "sync":
             return
         dialect = self.engine.dialect.name
+        try:
+            if dialect in ("duckdb", "sqlite"):
+                raw.interrupt()
+            elif dialect == "postgresql":
+                raw.cancel()
+            # snowflake: no per-connection cancel API; skip.  Other
+            # dialects fall through — query runs to completion.
+        except Exception:
+            logger.debug("_cancel_raw_conn failed on %s", dialect, exc_info=True)
+
+    def _cancel_inflight(self) -> None:
+        """Signal every in-flight sync-driver query on this engine to abort.
+
+        Used by :meth:`aclose` for full engine shutdown.  For per-call
+        cancellation, capture the specific connection and call
+        :meth:`_cancel_raw_conn` instead — interrupting all in-flight
+        queries when only one was cancelled would be collateral damage.
+        """
+        if self.engine_type != "sync":
+            return
         with self._inflight_sync_lock:
             conns = list(self._inflight_sync_conns)
         for raw in conns:
-            try:
-                if dialect in ("duckdb", "sqlite"):
-                    raw.interrupt()
-                elif dialect == "postgresql":
-                    raw.cancel()
-                # snowflake: no per-connection cancel API; skip.  Other
-                # dialects fall through — queries run to completion.
-            except Exception:
-                logger.debug("_cancel_inflight failed on %s", dialect, exc_info=True)
+            self._cancel_raw_conn(raw)
 
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
@@ -432,13 +453,20 @@ class ThrottledEngine:
                         )
                 else:
                     loop = asyncio.get_running_loop()
-                    return QueryResult(
-                        result=await asyncio.wait_for(
-                            loop.run_in_executor(None, self._run_query_s, query, parameters, return_df),
-                            timeout=timeout,
-                        ),
-                        latency_seconds=time.time() - t0,
+                    raw_conn_box: list[Any] = [None]
+                    fut = loop.run_in_executor(
+                        None, self._run_query_s, query, parameters, return_df, raw_conn_box
                     )
+                    try:
+                        result = await asyncio.wait_for(fut, timeout=timeout)
+                    except (asyncio.CancelledError, asyncio.TimeoutError):
+                        # Interrupt only this query's connection — not all
+                        # in-flight queries on the engine.
+                        raw = raw_conn_box[0]
+                        if raw is not None:
+                            self._cancel_raw_conn(raw)
+                        raise
+                    return QueryResult(result=result, latency_seconds=time.time() - t0)
             except asyncio.TimeoutError:
                 raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
 
@@ -1288,19 +1316,35 @@ class SQLConnector:
                     )
             else:
                 sync_engine = self._t_eng.engine
+                raw_conn_box: list[Any] = [None]
 
                 def _write_sync() -> None:
                     with sync_engine.begin() as conn:  # type: ignore[union-attr]
-                        self._write_df_to_sql(
-                            df=df,
-                            conn=conn,
-                            table_name=table_name,
-                            schema_name=schema_name,
-                            if_exists=if_exists,
-                        )
+                        # Publish the raw DBAPI connection so an outer
+                        # cancel can interrupt this specific write.
+                        raw_conn_box[0] = conn.connection.driver_connection
+                        try:
+                            self._write_df_to_sql(
+                                df=df,
+                                conn=conn,
+                                table_name=table_name,
+                                schema_name=schema_name,
+                                if_exists=if_exists,
+                            )
+                        finally:
+                            raw_conn_box[0] = None
 
                 loop = asyncio.get_running_loop()
-                await loop.run_in_executor(None, _write_sync)
+                try:
+                    await loop.run_in_executor(None, _write_sync)
+                except asyncio.CancelledError:
+                    # Interrupt the write so its transaction is rolled
+                    # back rather than allowed to commit in the zombie
+                    # thread.  Only this call's connection is targeted.
+                    raw = raw_conn_box[0]
+                    if raw is not None:
+                        self._t_eng._cancel_raw_conn(raw)
+                    raise
 
         await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
 
