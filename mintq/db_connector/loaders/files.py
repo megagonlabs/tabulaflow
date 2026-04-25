@@ -105,10 +105,12 @@ async def load_files(
     preserve.  When ``data_dir`` is None the temp file is also deleted
     by :meth:`SQLConnector.disconnect_async`.
 
-    Cancellation: the load runs in-process via the SQLConnector's
-    standard query path; ``await``-cancelling the call interrupts the
-    in-flight ``CREATE TABLE`` via DuckDB ``conn.interrupt()`` and
-    cleans up any partial DB file before re-raising.
+    Atomicity: ``load_files`` either returns a successfully-loaded
+    :class:`SQLConnector` or leaves no DB file at the target path.  Any
+    failure mid-load (cancellation, exception, error from the loader)
+    unlinks the partial file before re-raising.  Cancellation
+    propagates through the SQLConnector's standard query path —
+    DuckDB's ``conn.interrupt()`` aborts the in-flight ``CREATE TABLE``.
 
     Read-only enforcement: the DuckDB connection is always opened
     read-write (DDL is required for the load).  ``read_only=True`` is
