@@ -1,27 +1,20 @@
 """Load local data files (CSV / TSV / XLSX / Parquet / JSON) into a
 DuckDB-backed :class:`SQLConnector`.
 
-The DuckDB load phase runs in a subprocess (via ``python -m`` on this
-module's ``__main__``) so cancellation terminates it at the OS level —
-the only reliable way to stop long-running native I/O inside DuckDB.
+The DuckDB load runs in-process via the SQLConnector's normal query path,
+so cancellation propagates through ``ThrottledEngine.aclose`` (DuckDB
+``interrupt()`` reliably aborts local CREATE TABLE operations).
 """
 
 from __future__ import annotations
 
-import json
 import os
 import re
-import sys
 import tempfile
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from mintq.db_connector.sql_conn import SQLConnector
-
-
-# ---------------------------------------------------------------------------
-# Shared constants and helpers (used by both parent and worker)
-# ---------------------------------------------------------------------------
 
 
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
@@ -88,11 +81,6 @@ def _create_table_sql_for_file(name: str, file_path: str) -> str:
     raise ValueError(f"Unsupported file format: {ext}")
 
 
-# ---------------------------------------------------------------------------
-# Parent-side entry point
-# ---------------------------------------------------------------------------
-
-
 async def load_files(
     global_id: str,
     file_paths: list[str],
@@ -105,12 +93,28 @@ async def load_files(
 ) -> SQLConnector:
     """Create a connector from CSV, Excel, Parquet, or JSON files.
 
-    Each file is loaded into a DuckDB table backed by a database file.
-    The file is cleaned up when :meth:`SQLConnector.disconnect_async` is
-    called.
+    Each file is loaded into a DuckDB table.  Supported formats:
+    ``.csv``, ``.tsv``, ``.xlsx``, ``.xls``, ``.parquet``, ``.json``,
+    ``.jsonl``, ``.ndjson``.
 
-    Supported formats: ``.csv``, ``.tsv``, ``.xlsx``, ``.xls``,
-    ``.parquet``, ``.json``, ``.jsonl``, ``.ndjson``.
+    File ownership: ``load_files`` claims the path
+    ``<data_dir>/<db_name>.duckdb`` (or a fresh temp file when
+    ``data_dir`` is None).  **Any existing file at that path is silently
+    deleted before the load** — the DB is always (re)built from
+    scratch.  Don't point ``data_dir``+``db_name`` at a file you want to
+    preserve.  When ``data_dir`` is None the temp file is also deleted
+    by :meth:`SQLConnector.disconnect_async`.
+
+    Cancellation: the load runs in-process via the SQLConnector's
+    standard query path; ``await``-cancelling the call interrupts the
+    in-flight ``CREATE TABLE`` via DuckDB ``conn.interrupt()`` and
+    cleans up any partial DB file before re-raising.
+
+    Read-only enforcement: the DuckDB connection is always opened
+    read-write (DDL is required for the load).  ``read_only=True`` is
+    enforced at the SQLConnector layer — write statements via
+    :meth:`SQLConnector.run_query_async` are blocked.  This is sufficient
+    when the calling session is the sole owner of the cache file.
 
     Args:
         global_id: Globally unique identifier for this connection, also
@@ -118,16 +122,18 @@ async def load_files(
         file_paths: Paths to data files to load.
         db_name: Display name for the database. Defaults to the first
             file's stem.
-        data_dir: Directory to store the DuckDB file. If ``None``, a
-            system temp directory is used.
-        read_only: If True, block write statements.
+        data_dir: Directory to store the DuckDB file.  If ``None``, a
+            system temp directory is used and the file is unlinked on
+            disconnect.
+        read_only: If True, block write statements at the SQLConnector
+            layer.  The underlying DuckDB connection is always opened
+            read-write so the loader can issue CREATE TABLE statements.
         enable_schema_caching: Whether to cache the inferred schema.
         enable_query_caching: Whether to cache query results.
 
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
-    from mintq.db_connector.loaders.runner import run_loader_subprocess
     from mintq.db_connector.sql_conn import SQLConnector
 
     seen: set[str] = set()
@@ -156,32 +162,28 @@ async def load_files(
         os.close(fd)
         os.unlink(db_path)
 
+    # Always start from a fresh DB.  A partial file may exist from a
+    # prior call that was cancelled mid-load; CREATE TABLE would fail
+    # against it with "Table already exists".
+    if os.path.exists(db_path):
+        try:
+            os.unlink(db_path)
+        except OSError:
+            pass
+
     table_file_map = dict(_assign_table_names(resolved))
     needs_spatial = any(os.path.splitext(p)[1].lower() in (".xlsx", ".xls") for p in resolved)
-    payload = {
-        "db_path": db_path,
-        "install_spatial": needs_spatial,
-        "tables": [{"name": name, "path": path} for name, path in table_file_map.items()],
-    }
-
-    try:
-        await run_loader_subprocess("mintq.db_connector.loaders.files", payload)
-    except BaseException:
-        if data_dir is None and os.path.exists(db_path):
-            try:
-                os.unlink(db_path)
-            except OSError:
-                pass
-        raise
+    duckdb_init_sql = ["INSTALL spatial; LOAD spatial;"] if needs_spatial else None
 
     try:
         connector = await SQLConnector.from_url_async(
             global_id=global_id,
             url=f"duckdb:///{db_path}",
             db_name=db_name,
-            read_only=read_only,
+            read_only=False,  # need DDL for the load; SQLConnector.read_only set below
             enable_schema_caching=enable_schema_caching,
             enable_query_caching=enable_query_caching,
+            duckdb_init_sql=duckdb_init_sql,
         )
     except BaseException:
         if data_dir is None and os.path.exists(db_path):
@@ -191,6 +193,22 @@ async def load_files(
                 pass
         raise
 
+    try:
+        for name, file_path in table_file_map.items():
+            result = await connector.run_query_async(_create_table_sql_for_file(name, file_path))
+            if result.error is not None:
+                raise RuntimeError(f"Failed to load {file_path}: {result.error.message}")
+        await connector.refresh_schema_async()
+    except BaseException:
+        await connector.disconnect_async()
+        if data_dir is None and os.path.exists(db_path):
+            try:
+                os.unlink(db_path)
+            except OSError:
+                pass
+        raise
+
+    connector.read_only = read_only
     connector._temp_db_path = db_path
 
     for table in connector.schema.tables:
@@ -202,47 +220,3 @@ async def load_files(
     connector.schema.description = f"Source: local files\n\n{file_list}"
 
     return connector
-
-
-# ---------------------------------------------------------------------------
-# Subprocess worker
-# ---------------------------------------------------------------------------
-
-
-def _worker_main() -> int:
-    """Subprocess entry point.  Opens DuckDB at ``db_path`` and runs one
-    CREATE TABLE per entry in ``tables``.
-
-    Payload schema::
-
-        {
-            "db_path": str,
-            "install_spatial": bool,
-            "tables": [{"name": str, "path": str}, ...]
-        }
-    """
-    import duckdb  # deferred — only the worker needs this
-
-    payload = json.loads(sys.stdin.read())
-    db_path: str = payload["db_path"]
-    install_spatial: bool = bool(payload.get("install_spatial", False))
-    tables: list[dict[str, str]] = payload["tables"]
-
-    conn = duckdb.connect(db_path)
-    try:
-        if install_spatial:
-            conn.execute("INSTALL spatial")
-            conn.execute("LOAD spatial")
-        for tbl in tables:
-            conn.execute(_create_table_sql_for_file(tbl["name"], tbl["path"]))
-    finally:
-        conn.close()
-    return 0
-
-
-if __name__ == "__main__":
-    try:
-        sys.exit(_worker_main())
-    except Exception as exc:  # noqa: BLE001 - top-level safety net
-        print(f"{type(exc).__name__}: {exc}", file=sys.stderr)
-        sys.exit(1)
