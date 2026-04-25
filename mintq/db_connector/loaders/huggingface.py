@@ -351,16 +351,27 @@ async def _load_hf_via_datasets_lib(
     config_label = subset or "default"
     db_file = _db_path(cache_dir, dataset_id, config_label, split_filter)
 
-    await run_loader_subprocess(
-        "mintq.db_connector.loaders.huggingface",
-        {
-            "mode": "datasets_lib",
-            "db_path": db_file,
-            "dataset_id": dataset_id,
-            "subset": subset,
-            "split_filter": split_filter,
-        },
-    )
+    try:
+        await run_loader_subprocess(
+            "mintq.db_connector.loaders.huggingface",
+            {
+                "mode": "datasets_lib",
+                "db_path": db_file,
+                "dataset_id": dataset_id,
+                "subset": subset,
+                "split_filter": split_filter,
+            },
+        )
+    except BaseException:
+        # A killed subprocess can leave a partial DuckDB file at db_file
+        # — _try_cache would later treat it as a valid cache hit if it
+        # has any tables.  Remove it so the next attempt reloads cleanly.
+        if os.path.exists(db_file):
+            try:
+                os.unlink(db_file)
+            except OSError:
+                pass
+        raise
 
     return db_file, []
 
