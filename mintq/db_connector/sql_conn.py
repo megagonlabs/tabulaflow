@@ -121,6 +121,159 @@ def _is_async_url(url: str | SQLAlchemyURL) -> bool:
     return any(d in driver for d in _ASYNC_DRIVERS)
 
 
+# ---------------------------------------------------------------------------
+# Per-dialect cancellation strategies
+# ---------------------------------------------------------------------------
+#
+# Cancelling a sync-driver query in flight requires a driver-specific
+# primitive: DuckDB / SQLite expose ``conn.interrupt()``; psycopg /
+# psycopg2 expose ``conn.cancel()``; Snowflake expects
+# ``cursor.abort_query()``; MySQL needs ``KILL QUERY <id>`` from a
+# separate connection; BigQuery cancels at the Job level.
+# ``ThrottledEngine`` doesn't bake any of those in directly — it
+# instantiates a :class:`_CancelStrategy` subclass for its dialect and
+# delegates.
+#
+# A strategy provides three things:
+#   * ``capture(conn)`` — called inside ``with engine.begin() as conn``
+#     to extract the opaque handle this dialect needs for cancellation.
+#     For the simple cases this is the raw DBAPI connection.  For
+#     Snowflake it's a SQLAlchemy connection id used to look up a
+#     captured cursor.
+#   * ``abort(handle)`` — called from another thread to abort the query
+#     identified by ``handle``.  Idempotent; exceptions are swallowed
+#     by the caller.
+#   * ``abort_from_dbapi_conn(raw)`` — bulk-cancel hook for ``aclose``,
+#     which only knows raw DBAPI connections.  Defaults to ``abort`` for
+#     dialects whose handle == raw conn; explicitly ``None`` for
+#     dialects (snowflake) where the raw conn isn't enough — bulk
+#     cancel becomes a no-op there and ``aclose`` falls back to
+#     waiting for natural completion.
+#
+# Dialects without a registered strategy fall back to a no-op cancel —
+# the asyncio task's ``CancelledError`` propagates immediately but the
+# executor thread runs the query to completion (and any transaction
+# commits).  Add a subclass below when this matters for a new dialect.
+
+
+class _CancelStrategy:
+    """Base class for per-dialect cancellation strategies.
+
+    Subclasses are instantiated once per :class:`ThrottledEngine` (so
+    they may hold per-engine state).  The default behaviour assumes the
+    cancel handle is the raw DBAPI connection; override ``capture`` /
+    ``abort`` for dialects that need something else.
+    """
+
+    name: str = "default"
+
+    def __init__(self, engine: "ThrottledEngine") -> None:
+        self.engine = engine
+        self.install()
+
+    def install(self) -> None:
+        """Hook for one-time setup (e.g. registering SQLAlchemy event
+        listeners).  Default: nothing."""
+        return None
+
+    def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
+        """Extract the cancel handle from a live SQLAlchemy connection.
+        Default: the raw DBAPI connection."""
+        return conn.connection.driver_connection
+
+    def abort(self, handle: Any) -> None:
+        """Abort the query identified by ``handle``.  Override per dialect."""
+        raise NotImplementedError
+
+    def abort_from_dbapi_conn(self, raw: Any) -> None:
+        """Bulk-cancel hook used by :meth:`ThrottledEngine.aclose`.
+
+        Default: same as :meth:`abort` — assumes handle == raw DBAPI conn.
+        Override (or set ``None``) for dialects where the raw conn alone
+        isn't sufficient.
+        """
+        self.abort(raw)
+
+
+class _DuckDBCancel(_CancelStrategy):
+    name = "duckdb"
+
+    def abort(self, handle: Any) -> None:
+        handle.interrupt()
+
+
+class _SqliteCancel(_CancelStrategy):
+    name = "sqlite"
+
+    def abort(self, handle: Any) -> None:
+        handle.interrupt()
+
+
+class _PostgresCancel(_CancelStrategy):
+    name = "postgresql"
+
+    def abort(self, handle: Any) -> None:
+        handle.cancel()
+
+
+class _SnowflakeCancel(_CancelStrategy):
+    """Cursor-level cancellation via ``cursor.abort_query()``.
+
+    Snowflake has no per-connection cancel API, so we register
+    SQLAlchemy ``before_cursor_execute`` / ``after_cursor_execute``
+    listeners and stash the in-flight cursor keyed by the SQLAlchemy
+    Connection's ``id``.  ``capture`` returns that id; ``abort`` looks
+    up the cursor and calls ``abort_query()``, which sends an HTTP
+    cancel to Snowflake — cross-thread safe.
+
+    Bulk cancel via ``aclose`` is a no-op (we only have raw DBAPI conns
+    there, no way to map back to cursors).  ``aclose`` will instead
+    wait for natural query completion.  Per-call cancel still works.
+    """
+
+    name = "snowflake"
+
+    def install(self) -> None:
+        self._cursors: dict[int, Any] = {}
+        sync_engine = (
+            self.engine.engine
+            if self.engine.engine_type == "sync"
+            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+        )
+
+        def _set(conn: Any, cursor: Any, *_args: Any, **_kwargs: Any) -> None:
+            self._cursors[id(conn)] = cursor
+
+        def _clear(conn: Any, _cursor: Any, *_args: Any, **_kwargs: Any) -> None:
+            self._cursors.pop(id(conn), None)
+
+        event.listen(sync_engine, "before_cursor_execute", _set)
+        event.listen(sync_engine, "after_cursor_execute", _clear)
+
+    def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
+        return id(conn)
+
+    def abort(self, handle: Any) -> None:
+        cursor = self._cursors.get(handle)
+        if cursor is not None:
+            cursor.abort_query()
+
+    def abort_from_dbapi_conn(self, raw: Any) -> None:
+        # Bulk cancel via raw DBAPI conn isn't supported — see class
+        # docstring.  Silently skip.
+        return None
+
+
+_CANCEL_STRATEGY_CLASSES: dict[str, type[_CancelStrategy]] = {
+    "duckdb": _DuckDBCancel,
+    "sqlite": _SqliteCancel,
+    "postgresql": _PostgresCancel,
+    "snowflake": _SnowflakeCancel,
+    # Future: mysql (KILL QUERY thread_id from a side connection),
+    # bigquery (Job.cancel via the BQ client).
+}
+
+
 @dataclass
 class ThrottledEngine:
     engine_type: Literal["async", "sync"]
@@ -131,15 +284,24 @@ class ThrottledEngine:
     # Track in-flight sync-driver raw DBAPI connections so we can abort
     # queries on cancellation.  Sync-driver queries run in a thread-pool
     # executor and cannot be cancelled via ``asyncio`` alone — we need to
-    # call the driver's native cancel primitive (e.g. DuckDB
-    # ``conn.interrupt()``) from a separate thread, then wait for the
-    # executor thread to return the connection before disposing the pool.
+    # call the dialect's cancel primitive (see ``_CANCEL_STRATEGIES``) from
+    # a separate thread, then wait for the executor thread to return the
+    # connection before disposing the pool.
     _inflight_sync_conns: set[Any] = dataclasses.field(default_factory=set, init=False)
     _inflight_sync_lock: threading.Lock = dataclasses.field(default_factory=threading.Lock, init=False)
+    _cancel_strategy: _CancelStrategy | None = dataclasses.field(default=None, init=False)
 
     def __post_init__(self) -> None:
         if self.engine.dialect.name in _DDL_SERIAL_DIALECTS:
             self._ddl_lock = asyncio.Lock()
+        # Cancellation is a sync-driver concern (async drivers honour
+        # asyncio cancel natively).  Instantiate the dialect's strategy
+        # so it can register any per-engine state (e.g. event listeners).
+        if self.engine_type == "sync":
+            strategy_cls = _CANCEL_STRATEGY_CLASSES.get(self.engine.dialect.name)
+            if strategy_cls is not None:
+                self._cancel_strategy = strategy_cls(self)
+
         # Track raw DBAPI connections via pool checkout/checkin events for
         # sync engines.  This covers the full lifetime of a checked-out
         # connection, including setup inside ``engine.begin()`` before
@@ -256,14 +418,19 @@ class ThrottledEngine:
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
-        raw_conn_box: list[Any] | None = None,
+        cancel_handle_box: list[Any] | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.begin() as conn:  # type: ignore
-            # Publish the raw DBAPI connection so the calling task can
-            # interrupt this specific query on cancel/timeout.  Cleared
-            # before exiting so a successful run leaves the box empty.
-            if raw_conn_box is not None:
-                raw_conn_box[0] = conn.connection.driver_connection
+            # Publish the dialect's cancel handle so the calling task can
+            # abort this specific query on cancel/timeout.  Cleared before
+            # exiting so a successful run leaves the box empty.
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = self._cancel_strategy.capture(conn)
+                except Exception:
+                    logger.debug(
+                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
             try:
                 if isinstance(statement, str):
                     # We use exec_driver_sql to avoid sqlalchemy.text() parameter
@@ -280,47 +447,58 @@ class ThrottledEngine:
                     return pd.DataFrame(rows, columns=result.keys())
                 return rows
             finally:
-                if raw_conn_box is not None:
-                    raw_conn_box[0] = None
+                if cancel_handle_box is not None:
+                    cancel_handle_box[0] = None
 
-    def _cancel_raw_conn(self, raw: Any) -> None:
-        """Signal a single in-flight sync-driver query to abort.
+    def _abort_handle(self, handle: Any) -> None:
+        """Abort one in-flight sync-driver query via the dialect's
+        cancellation strategy.
 
-        Calls the underlying driver's native cancel/interrupt primitive
-        on ``raw``.  Safe to call from the asyncio event loop while a
-        query is blocked in C code on an executor thread — the driver's
-        cancel is designed to be cross-thread.
+        Safe to call from the asyncio event loop while the query is
+        blocked in C code on an executor thread — strategies are
+        required to be cross-thread safe.  Returns immediately; the
+        executor thread raises and releases its connection shortly
+        after.
 
-        Returns immediately; the executor thread raises and releases the
-        connection shortly after.
+        No-op if the dialect has no registered strategy (in which case
+        the query runs to completion and the asyncio task's
+        ``CancelledError`` is the only thing the caller observes).
         """
-        if self.engine_type != "sync":
+        if handle is None or self._cancel_strategy is None:
             return
-        dialect = self.engine.dialect.name
         try:
-            if dialect in ("duckdb", "sqlite"):
-                raw.interrupt()
-            elif dialect == "postgresql":
-                raw.cancel()
-            # snowflake: no per-connection cancel API; skip.  Other
-            # dialects fall through — query runs to completion.
+            self._cancel_strategy.abort(handle)
         except Exception:
-            logger.debug("_cancel_raw_conn failed on %s", dialect, exc_info=True)
+            logger.debug("abort failed for %s", self._cancel_strategy.name, exc_info=True)
 
     def _cancel_inflight(self) -> None:
-        """Signal every in-flight sync-driver query on this engine to abort.
+        """Abort every in-flight sync-driver query on this engine.
 
-        Used by :meth:`aclose` for full engine shutdown.  For per-call
-        cancellation, capture the specific connection and call
-        :meth:`_cancel_raw_conn` instead — interrupting all in-flight
-        queries when only one was cancelled would be collateral damage.
+        Used by :meth:`aclose` for full engine shutdown.  Per-call
+        cancellation should capture the specific handle inside the
+        worker and call :meth:`_abort_handle` — aborting *every*
+        in-flight query when only one was cancelled would be
+        collateral damage.
+
+        Delegates to ``strategy.abort_from_dbapi_conn`` for each
+        tracked raw DBAPI connection.  For dialects where that's
+        ``None`` (e.g. snowflake's cursor-based cancel), this is a
+        no-op and ``aclose`` falls back to waiting for natural
+        completion.
         """
-        if self.engine_type != "sync":
+        if self._cancel_strategy is None:
             return
         with self._inflight_sync_lock:
             conns = list(self._inflight_sync_conns)
         for raw in conns:
-            self._cancel_raw_conn(raw)
+            try:
+                self._cancel_strategy.abort_from_dbapi_conn(raw)
+            except Exception:
+                logger.debug(
+                    "abort_from_dbapi_conn failed for %s",
+                    self._cancel_strategy.name,
+                    exc_info=True,
+                )
 
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
@@ -453,18 +631,16 @@ class ThrottledEngine:
                         )
                 else:
                     loop = asyncio.get_running_loop()
-                    raw_conn_box: list[Any] = [None]
+                    cancel_handle_box: list[Any] = [None]
                     fut = loop.run_in_executor(
-                        None, self._run_query_s, query, parameters, return_df, raw_conn_box
+                        None, self._run_query_s, query, parameters, return_df, cancel_handle_box
                     )
                     try:
                         result = await asyncio.wait_for(fut, timeout=timeout)
                     except (asyncio.CancelledError, asyncio.TimeoutError):
-                        # Interrupt only this query's connection — not all
-                        # in-flight queries on the engine.
-                        raw = raw_conn_box[0]
-                        if raw is not None:
-                            self._cancel_raw_conn(raw)
+                        # Abort only this query — never all in-flight on
+                        # the engine.
+                        self._abort_handle(cancel_handle_box[0])
                         raise
                     return QueryResult(result=result, latency_seconds=time.time() - t0)
             except asyncio.TimeoutError:
@@ -1316,13 +1492,20 @@ class SQLConnector:
                     )
             else:
                 sync_engine = self._t_eng.engine
-                raw_conn_box: list[Any] = [None]
+                cancel_handle_box: list[Any] = [None]
+                strategy = self._t_eng._cancel_strategy
 
                 def _write_sync() -> None:
                     with sync_engine.begin() as conn:  # type: ignore[union-attr]
-                        # Publish the raw DBAPI connection so an outer
-                        # cancel can interrupt this specific write.
-                        raw_conn_box[0] = conn.connection.driver_connection
+                        # Publish the dialect's cancel handle so an outer
+                        # cancel can abort this specific write.
+                        if strategy is not None:
+                            try:
+                                cancel_handle_box[0] = strategy.capture(conn)
+                            except Exception:
+                                logger.debug(
+                                    "capture failed for %s", strategy.name, exc_info=True
+                                )
                         try:
                             self._write_df_to_sql(
                                 df=df,
@@ -1332,18 +1515,16 @@ class SQLConnector:
                                 if_exists=if_exists,
                             )
                         finally:
-                            raw_conn_box[0] = None
+                            cancel_handle_box[0] = None
 
                 loop = asyncio.get_running_loop()
                 try:
                     await loop.run_in_executor(None, _write_sync)
                 except asyncio.CancelledError:
-                    # Interrupt the write so its transaction is rolled
-                    # back rather than allowed to commit in the zombie
-                    # thread.  Only this call's connection is targeted.
-                    raw = raw_conn_box[0]
-                    if raw is not None:
-                        self._t_eng._cancel_raw_conn(raw)
+                    # Abort the write so its transaction is rolled back
+                    # rather than allowed to commit in the zombie thread.
+                    # Only this call's handle is targeted.
+                    self._t_eng._abort_handle(cancel_handle_box[0])
                     raise
 
         await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
