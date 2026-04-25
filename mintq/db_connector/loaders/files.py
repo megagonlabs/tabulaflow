@@ -186,7 +186,7 @@ async def load_files(
             duckdb_init_sql=duckdb_init_sql,
         )
     except BaseException:
-        if data_dir is None and os.path.exists(db_path):
+        if os.path.exists(db_path):
             try:
                 os.unlink(db_path)
             except OSError:
@@ -201,7 +201,7 @@ async def load_files(
         await connector.refresh_schema_async()
     except BaseException:
         await connector.disconnect_async()
-        if data_dir is None and os.path.exists(db_path):
+        if os.path.exists(db_path):
             try:
                 os.unlink(db_path)
             except OSError:
