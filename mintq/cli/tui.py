@@ -1045,7 +1045,7 @@ LIMIT 4000"""
         if text.startswith(COMMAND_PREFIX):
             self._busy = True
             user_msg = UserMessage(text)
-            chat_log.mount(user_msg)
+            await chat_log.mount(user_msg)
             chat_log.scroll_end(animate=False)
             self._current_worker = self.run_worker(
                 self._handle_slash_command(text, chat_log, user_msg)
@@ -1055,14 +1055,14 @@ LIMIT 4000"""
         session = await self._ensure_session()
 
         if not session.registry.list_aliases():
-            chat_log.mount(UserMessage(text))
+            await chat_log.mount(UserMessage(text))
             msg = SystemMessage(Text.from_markup("[red]No database connected.[/red] Use /connect first."))
-            chat_log.mount(msg)
+            await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
 
         user_msg = UserMessage(text)
-        chat_log.mount(user_msg)
+        await chat_log.mount(user_msg)
         chat_log.scroll_end(animate=False)
 
         self._busy = True
@@ -1089,7 +1089,11 @@ LIMIT 4000"""
         if slow:
             label = "Connecting..." if cmd == "/connect" else "Disconnecting..."
             spinner = SpinnerWidget(label)
-            chat_log.mount(spinner)
+            # Await the mount: a fast-failing handle_command (e.g. validation
+            # error) may return without yielding, never giving the event loop
+            # a chance to process a non-awaited mount before we hit the
+            # ``finally`` — leaving the spinner queued-but-not-removed.
+            await chat_log.mount(spinner)
             chat_log.scroll_end(animate=False)
             # Refine label with dataset size info (non-blocking).
             if cmd == "/connect":
@@ -1103,18 +1107,15 @@ LIMIT 4000"""
             session = await self._ensure_session()
             result = await handle_command(text, session)
         except asyncio.CancelledError:
-            if spinner is not None and spinner.is_mounted:
-                await spinner.remove()
-            if user_msg.is_mounted:
-                await user_msg.remove()
-            chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
+            await user_msg.remove()
+            await chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
             self._restore_input_text(text)
             raise
         finally:
             self._busy = False
             self._current_worker = None
-            if spinner is not None and spinner.is_mounted:
+            if spinner is not None:
                 await spinner.remove()
 
         self._show_command_result(result, session, chat_log)
@@ -1169,24 +1170,22 @@ LIMIT 4000"""
         import asyncio
 
         progress = AgentProgressWidget()
-        chat_log.mount(progress)
+        await chat_log.mount(progress)
         chat_log.scroll_end(animate=False)
 
         try:
             result: ChatResult = await session.chat_agent.run(question, progress)
         except asyncio.CancelledError:
-            if progress.is_mounted:
-                await progress.remove()
-            if user_msg.is_mounted:
-                await user_msg.remove()
-            chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
+            await progress.remove()
+            await user_msg.remove()
+            await chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
             self._restore_input_text(question)
             raise
         except Exception as e:
             await progress.remove()
             msg = SystemMessage(f"[red]Agent error:[/red] {e}")
-            chat_log.mount(msg)
+            await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
         finally:
@@ -1205,7 +1204,7 @@ LIMIT 4000"""
                 width=self.size.width - 11,
                 query_history=session.chat_agent._query_history,
             )
-            chat_log.mount(result_widget)
+            await chat_log.mount(result_widget)
 
         # Defer scroll until after layout reflow so the final content height is known.
         self.call_after_refresh(chat_log.scroll_end, animate=False)
