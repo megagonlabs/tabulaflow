@@ -96,13 +96,14 @@ April 23
 
 April 24
 - [ ] Refactor
+  - [x] Use subprocess for loaders
+  - [x] from_files_async to loaders/
+  - [x] Test for the bug
+  - [x] UI bug, spinner with error
   - [ ] Zoom out and see sql_conn.py
-  - [ ] from_files_async to loaders/
   - [ ] no schema building option for SQLConnector.from_url_async
   - [ ] Check other SQLConnector method cancellation
   - [ ] Check ThrottledEngine API, whether engine used externally
-  - [ ] Test for the bug
-  - [ ] UI bug, spinner with error
 
 - General
   - [ ] Improve transfer_record?
