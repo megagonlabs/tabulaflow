@@ -105,6 +105,13 @@ async def load_files(
     preserve.  When ``data_dir`` is None the temp file is also deleted
     by :meth:`SQLConnector.disconnect_async`.
 
+    Concurrency precondition: the caller must ensure ``(data_dir,
+    db_name)`` is unique across live :class:`SQLConnector` instances in
+    the process.  Two simultaneous ``load_files`` calls resolving to the
+    same path will corrupt each other (the second's unlink-existing
+    step deletes the first's open DB file).  The mintq CLI guarantees
+    this via the alias-uniqueness check on ``/connect``.
+
     Atomicity: ``load_files`` either returns a successfully-loaded
     :class:`SQLConnector` or leaves no DB file at the target path.  Any
     failure mid-load (cancellation, exception, error from the loader)

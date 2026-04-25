@@ -309,15 +309,25 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 )
             )
         alias_args = [a for a in non_file_args if not _is_db_file(a)]
-        alias = _sanitize_alias(alias_args[0]) if alias_args else _alias_from_files(file_args)
-
-        if session.registry.has(alias):
-            return CommandResult(
-                output=Text.from_markup(
-                    f"[red]Alias already in use:[/red] {alias}. "
-                    "Disconnect first or provide a different alias: /connect <files...> <alias>"
+        if alias_args:
+            alias = _sanitize_alias(alias_args[0])
+            if session.registry.has(alias):
+                return CommandResult(
+                    output=Text.from_markup(
+                        f"[red]Alias already in use:[/red] {alias}. "
+                        "Disconnect first or provide a different alias: /connect <files...> <alias>"
+                    )
                 )
-            )
+        else:
+            # Auto-derived alias — suffix on collision so different files
+            # mapping to the same default name don't fight (e.g. /A/data.csv
+            # and /B/data.csv both default to "data").
+            base_alias = _alias_from_files(file_args)
+            alias = base_alias
+            suffix = 2
+            while session.registry.has(alias):
+                alias = f"{base_alias}_{suffix}"
+                suffix += 1
 
         from mintq.db_connector.loaders.files import load_files
 
