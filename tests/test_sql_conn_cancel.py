@@ -79,7 +79,7 @@ async def test_cleanup_on_failure_runs_on_exception(tmp_path: Path) -> None:
     # Engine's pool should be empty after disposal — a fresh connection
     # must therefore be a freshly-opened one, not a reused one.  Just
     # assert dispose completed without error by opening again.
-    _ = await t_eng.run_query_async("SELECT 1")
+    _ = await t_eng.execute_async("SELECT 1")
 
 
 async def test_cleanup_on_failure_leaves_engine_alive_on_success(tmp_path: Path) -> None:
@@ -91,13 +91,13 @@ async def test_cleanup_on_failure_leaves_engine_alive_on_success(tmp_path: Path)
     t_eng = ThrottledEngine.from_url(f"duckdb:///{db_path}", read_only=True)
 
     async with t_eng.cleanup_on_failure():
-        await t_eng.run_query_async("SELECT 1")
+        await t_eng.execute_async("SELECT 1")
 
     # Engine must still be usable; if it had been disposed, this would
     # open a new connection and still succeed, so we instead assert the
     # underlying pool hasn't been shut down.  SQLAlchemy disposes mean
     # pool is replaced; check via a query.
-    result = await t_eng.run_query_async("SELECT 1")
+    result = await t_eng.execute_async("SELECT 1")
     assert result.result[0][0] == 1
 
     await t_eng.aclose()
@@ -109,14 +109,14 @@ async def test_aclose_is_safe_with_nothing_in_flight(tmp_path: Path) -> None:
     db_path = str(tmp_path / "idle.duckdb")
     duckdb.connect(db_path).close()
     t_eng = ThrottledEngine.from_url(f"duckdb:///{db_path}", read_only=True)
-    await t_eng.run_query_async("SELECT 1")  # warm the pool
+    await t_eng.execute_async("SELECT 1")  # warm the pool
 
     await t_eng.aclose()
 
     # A subsequent open with a *different* config should succeed — if
     # aclose left a zombie, DuckDB would reject this.
     t_eng2 = ThrottledEngine.from_url(f"duckdb:///{db_path}", read_only=False)
-    await t_eng2.run_query_async("SELECT 1")
+    await t_eng2.execute_async("SELECT 1")
     await t_eng2.aclose()
 
 

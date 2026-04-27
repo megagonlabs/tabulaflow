@@ -187,7 +187,7 @@ class _CancelStrategy:
 
     def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
         """Extract the cancel handle from a *sync* SQLAlchemy connection.
-        Called inside the executor thread that runs ``_run_query_sync_engine``.
+        Called inside the executor thread that runs ``_execute_sync_engine``.
 
         Default: the raw DBAPI connection.  Override per dialect.
         """
@@ -195,7 +195,7 @@ class _CancelStrategy:
 
     async def acapture(self, conn: "sqlalchemy.ext.asyncio.AsyncConnection") -> Any:
         """Extract the cancel handle from an *async* SQLAlchemy connection.
-        Called on the event loop inside ``_run_query_async_engine``.
+        Called on the event loop inside ``_execute_async_engine``.
 
         Default: ``await conn.get_raw_connection()`` then return its
         ``driver_connection`` (i.e. the underlying DBAPI connection).
@@ -834,7 +834,7 @@ class ThrottledEngine:
         asyncio Future that is considered "done" the moment it's cancelled,
         even while the thread keeps running.  That means awaiting the
         asyncio futures is unreliable here — we poll the raw-connection set
-        instead, since a connection is only removed after ``_run_query_sync_engine`` /
+        instead, since a connection is only removed after ``_execute_sync_engine`` /
         ``_run_inspector`` exits its ``with engine.begin()`` / ``.connect()``
         block (i.e. the thread has actually finished).
         """
@@ -884,14 +884,14 @@ class ThrottledEngine:
             for lock in reversed(locks):
                 lock.release()
 
-    async def run_query_async(
+    async def execute_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         timeout: int | None = None,
         return_df: bool = False,
     ) -> QueryResult:
-        """Run a query, with timeout and cancel both routed through the
+        """Execute a query, with timeout and cancel both routed through the
         same :class:`_CancelStrategy` plumbing.
 
         Sync engines run the query in an executor thread; async engines
@@ -949,12 +949,12 @@ class ThrottledEngine:
             inner: asyncio.Future[Any]
             if self.engine_type == "async":
                 inner = asyncio.create_task(
-                    self._run_query_async_engine(query, parameters, return_df, cancel_handle_box)
+                    self._execute_async_engine(query, parameters, return_df, cancel_handle_box)
                 )
             else:
                 loop = asyncio.get_running_loop()
                 inner = loop.run_in_executor(
-                    None, self._run_query_sync_engine, query, parameters, return_df, cancel_handle_box
+                    None, self._execute_sync_engine, query, parameters, return_df, cancel_handle_box
                 )
             try:
                 result = await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
@@ -972,7 +972,7 @@ class ThrottledEngine:
                 raise
             return QueryResult(result=result, latency_seconds=time.time() - t0)
 
-    def _run_query_sync_engine(
+    def _execute_sync_engine(
         self,
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
@@ -983,7 +983,7 @@ class ThrottledEngine:
             # Publish the dialect's cancel handle so the calling task can
             # abort this specific query on cancel/timeout.  We deliberately
             # do NOT clear the box on success: it is a one-shot owned by
-            # ``run_query_async`` and GC'd when that returns; an eager
+            # ``execute_async`` and GC'd when that returns; an eager
             # clear here would race the outer cancel handler reading it.
             if cancel_handle_box is not None and self._cancel_strategy is not None:
                 try:
@@ -1005,20 +1005,20 @@ class ThrottledEngine:
                 return pd.DataFrame(rows, columns=result.keys())
             return rows
 
-    async def _run_query_async_engine(
+    async def _execute_async_engine(
         self,
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         cancel_handle_box: list[Any] | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        """Async-engine query path.  Mirrors :meth:`_run_query_sync_engine` for the
+        """Async-engine query path.  Mirrors :meth:`_execute_sync_engine` for the
         async case: optionally publishes a cancel handle (via the
         strategy's :meth:`_CancelStrategy.acapture`) so the calling task
         can abort this specific query on cancel/timeout.
         """
         async with self.engine.begin() as conn:  # type: ignore
-            # See _run_query_sync_engine for the box-ownership rationale.
+            # See _execute_sync_engine for the box-ownership rationale.
             if cancel_handle_box is not None and self._cancel_strategy is not None:
                 try:
                     cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
@@ -1315,7 +1315,7 @@ async def build_column_async(
                 col = tbl.c[column["name"]]
                 sampled_rows = int(sample_pct / 100 * num_rows)
 
-        num_null = (await t_eng.run_query_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
+        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
             0
         ]
         null_ratio = num_null / sampled_rows
@@ -1325,9 +1325,9 @@ async def build_column_async(
             use_snowflake_hll = t_eng.engine.dialect.name == "snowflake" and column_stats_mode != "always_precise"
             if use_snowflake_hll:
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
-                num_unique = int((await t_eng.run_query_async(select(func.hll(col)).select_from(tbl))).result[0][0])
+                num_unique = int((await t_eng.execute_async(select(func.hll(col)).select_from(tbl))).result[0][0])
             elif can_use_distinct:
-                num_unique = (await t_eng.run_query_async(select(func.count(distinct(col))).select_from(tbl))).result[
+                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).result[
                     0
                 ][0]
         unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
@@ -1339,7 +1339,7 @@ async def build_column_async(
         examples = []
     elif dtype in CATEGORICAL_TYPES and num_unique is not None:
         examples = (
-            await t_eng.run_query_async(
+            await t_eng.execute_async(
                 select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
             )
         ).result
@@ -1352,7 +1352,7 @@ async def build_column_async(
             stmt = select(subq.c._v).distinct().limit(5)
         else:
             stmt = select(subq.c._v).limit(5)
-        examples = (await t_eng.run_query_async(stmt)).result
+        examples = (await t_eng.execute_async(stmt)).result
         examples = [_convert(row[0]) for row in examples]
 
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
@@ -1366,7 +1366,7 @@ async def build_column_async(
         )
         if is_json_type or is_text_with_json:
             json_sample_rows = (
-                await t_eng.run_query_async(
+                await t_eng.execute_async(
                     select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
                 )
             ).result
@@ -1413,7 +1413,7 @@ async def build_table_async(
         count_timeout = _VIEW_COUNT_TIMEOUT if is_view else _TABLE_COUNT_TIMEOUT
         try:
             num_rows = (
-                await t_eng.run_query_async(
+                await t_eng.execute_async(
                     select(func.count()).select_from(tbl),
                     timeout=count_timeout,
                 )
@@ -1459,7 +1459,7 @@ async def build_table_async(
     if is_view and column_stats_mode == "always_skip":
         sampled_df = None
     else:
-        sampled_df = (await t_eng.run_query_async(select("*").select_from(tbl).limit(10), return_df=True)).result
+        sampled_df = (await t_eng.execute_async(select("*").select_from(tbl).limit(10), return_df=True)).result
 
     return SQLTableSchema(
         name=table_name,
@@ -1744,7 +1744,7 @@ class SQLConnector:
         async with t_eng.cleanup_on_failure():
             # Eagerly open one connection to surface file-lock errors (DuckDB)
             # or credential / network issues immediately rather than at first query.
-            await t_eng.run_query_async("SELECT 1")
+            await t_eng.execute_async("SELECT 1")
 
             if schema is None:
                 schema = await load_schema_with_cache_async(
@@ -1935,7 +1935,7 @@ class SQLConnector:
                             schema_name=schema_name,
                             if_exists=if_exists,
                         )
-                        # See ``_run_query_sync_engine`` for why we don't clear
+                        # See ``_execute_sync_engine`` for why we don't clear
                         # ``cancel_handle_box`` here.
 
                 loop = asyncio.get_running_loop()
@@ -2016,7 +2016,7 @@ class SQLConnector:
           unchanged.  Wrap the call in a Task to cancel it from
           elsewhere (see Example below).
 
-        See :meth:`ThrottledEngine.run_query_async` for the full
+        See :meth:`ThrottledEngine.execute_async` for the full
         transaction / rollback contract, including the caveat that
         **MySQL and Oracle DDL auto-commit per statement** — cancel
         stops execution but cannot undo committed effects on those
@@ -2103,7 +2103,7 @@ class SQLConnector:
         # --- execute query ---
         df, error, latency_seconds = None, None, None
         try:
-            result = await self._t_eng.run_query_async(query, parameters, timeout, return_df=True)
+            result = await self._t_eng.execute_async(query, parameters, timeout, return_df=True)
             df = result.result
             latency_seconds = result.latency_seconds
         except Exception as e:
