@@ -1071,31 +1071,28 @@ class ThrottledEngine:
 
 @dataclass
 class AsyncInspector:
+    """Async wrapper around a SQLAlchemy ``Inspector``.
+
+    Proxies attribute access via ``__getattr__``: ``inspector.get_columns(...)``
+    returns a coroutine that runs the matching sync ``Inspector`` method
+    through the engine's throttle and either an executor thread (sync
+    engines) or ``conn.run_sync`` (async engines, via SQLAlchemy's
+    greenlet bridge).  Any inspector method works without a hand-written
+    wrapper.
+    """
+
     t_eng: ThrottledEngine
-
-    def _run_inspector_conn(
-        self,
-        conn: sqlalchemy.engine.Connection,
-        method: str,
-        args: tuple[Any, ...],
-        kwargs: dict[str, Any],
-    ) -> Any:
-        inspector = inspect(conn)
-        return getattr(inspector, method)(*args, **kwargs)
-
-    def _run_inspector(self, method: str, args: tuple[Any, ...], kwargs: dict[str, Any]) -> Any:
-        with self.t_eng.engine.connect() as conn:  # type: ignore
-            return self._run_inspector_conn(conn, method, args, kwargs)
 
     def __getattr__(self, method: str) -> Any:
         async def _stub_async(*args: Any, **kwargs: Any) -> Any:
+            def call(c: Any) -> Any:
+                return getattr(inspect(c), method)(*args, **kwargs)
+
             async with self.t_eng.throttle():
                 if self.t_eng.engine_type == "async":
                     async with self.t_eng.engine.connect() as conn:  # type: ignore
-                        return await conn.run_sync(self._run_inspector_conn, method, args, kwargs)
-                else:
-                    loop = asyncio.get_running_loop()
-                    return await loop.run_in_executor(None, self._run_inspector, method, args, kwargs)
+                        return await conn.run_sync(call)
+                return await asyncio.to_thread(call, self.t_eng.engine)
 
         return _stub_async
 
