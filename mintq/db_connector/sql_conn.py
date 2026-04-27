@@ -250,13 +250,18 @@ class _SqliteCancel(_CancelStrategy):
 
 
 class _PostgresCancel(_CancelStrategy):
+    """Postgres / CockroachDB: ``Connection.cancel()`` over a side TCP
+    connection.  Works for psycopg2, psycopg3, and any DBAPI-shaped
+    driver that exposes ``.cancel()`` on the connection.
+    """
+
     name = "postgresql"
 
     async def aabort(self, handle: Any) -> None:
         try:
             await asyncio.to_thread(handle.cancel)  # opens a side TCP conn
         except Exception:
-            logger.debug("cancel failed for postgresql", exc_info=True)
+            logger.debug("cancel failed for %s", self.name, exc_info=True)
 
     async def acancel_all(self) -> None:
         with self.engine._inflight_sync_lock:
@@ -265,6 +270,15 @@ class _PostgresCancel(_CancelStrategy):
             *(asyncio.to_thread(raw.cancel) for raw in conns),
             return_exceptions=True,
         )
+
+
+class _OracleCancel(_PostgresCancel):
+    """Oracle (sync): ``Connection.cancel()`` sends an OCI break to the
+    server.  Cross-thread safe.  Same shape as :class:`_PostgresCancel`
+    — only ``name`` differs.
+    """
+
+    name = "oracle"
 
 
 class _CursorTrackingCancel(_CancelStrategy):
@@ -349,6 +363,48 @@ class _BigQueryCancel(_CursorTrackingCancel):
         job = getattr(cursor, "query_job", None)
         if job is not None:
             job.cancel()
+
+
+class _SimpleCursorCancel(_CursorTrackingCancel):
+    """For dialects whose cursor exposes a plain ``.cancel()`` method
+    (Trino, Databricks, Athena, ClickHouse-native, Vertica, …).
+    Subclasses set ``name``; the cancel call is uniform.
+    """
+
+    def _cancel_cursor(self, cursor: Any) -> None:
+        cursor.cancel()
+
+
+class _TrinoCancel(_SimpleCursorCancel):
+    """Trino / Presto / Starburst: ``cursor.cancel()`` issues a DELETE
+    on the running query URL to abort it server-side."""
+
+    name = "trino"
+
+
+class _DatabricksCancel(_SimpleCursorCancel):
+    """Databricks SQL Warehouse: ``cursor.cancel()`` aborts the running
+    statement via the Databricks SQL connector."""
+
+    name = "databricks"
+
+
+class _AthenaCancel(_SimpleCursorCancel):
+    """AWS Athena: ``cursor.cancel()`` calls ``StopQueryExecution``.
+
+    SQLAlchemy registers ``pyathena`` under dialect.name == ``awsathena``.
+    """
+
+    name = "awsathena"
+
+
+class _ClickHouseCancel(_SimpleCursorCancel):
+    """ClickHouse (native ``clickhouse-driver``): ``cursor.cancel()``
+    sends a Cancel packet on the wire.  HTTP-based variants
+    (``clickhouse-connect``) need a separate strategy if used.
+    """
+
+    name = "clickhouse"
 
 
 class _KillQueryCancel(_CancelStrategy):
@@ -461,6 +517,105 @@ class _AsyncMySQLCancel(_KillQueryCancel):
             await side.ensure_closed()
 
 
+class _MSSQLCancel(_CancelStrategy):
+    """MSSQL: ``KILL <session_id>`` from a side connection.
+
+    SQL Server has no protocol-level cancel.  KILL is session-level
+    (not query-level), so it terminates the entire session — heavier
+    than MySQL's ``KILL QUERY``.  For our use case (Ctrl+C / asyncio
+    cancel) this is acceptable: SQLAlchemy's pool fetches a fresh
+    connection on the next operation.
+
+    The session id is ``@@SPID``; we capture it once per fresh DBAPI
+    connection via a connect-event hook (one extra round trip per pool
+    miss) and look it up by ``id(conn)``.
+    """
+
+    name = "mssql"
+
+    def install(self) -> None:
+        self._spids: dict[int, int] = {}
+        sync_engine = (
+            self.engine.engine
+            if self.engine.engine_type == "sync"
+            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+        )
+
+        def _capture_spid(dbapi_conn: Any, _rec: Any) -> None:
+            try:
+                cur = dbapi_conn.cursor()
+                try:
+                    cur.execute("SELECT @@SPID")
+                    self._spids[id(dbapi_conn)] = int(cur.fetchone()[0])
+                finally:
+                    cur.close()
+            except Exception:
+                logger.debug("could not capture @@SPID", exc_info=True)
+
+        def _drop_spid(dbapi_conn: Any, _rec: Any) -> None:
+            self._spids.pop(id(dbapi_conn), None)
+
+        event.listen(sync_engine, "connect", _capture_spid)
+        event.listen(sync_engine, "close", _drop_spid)
+
+    def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
+        raw = conn.connection.driver_connection
+        return self._spids.get(id(raw))
+
+    async def aabort(self, handle: Any) -> None:
+        if handle is None:
+            return
+        try:
+            await asyncio.to_thread(self._kill, int(handle))
+        except Exception:
+            logger.debug("KILL failed for mssql", exc_info=True)
+
+    async def acancel_all(self) -> None:
+        with self.engine._inflight_sync_lock:
+            conns = list(self.engine._inflight_sync_conns)
+        spids = [self._spids.get(id(c)) for c in conns]
+        await asyncio.gather(
+            *(asyncio.to_thread(self._kill, s) for s in spids if s is not None),
+            return_exceptions=True,
+        )
+
+    def _kill(self, session_id: int) -> None:
+        sync_engine = (
+            self.engine.engine
+            if self.engine.engine_type == "sync"
+            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+        )
+        cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
+        dbapi = sync_engine.dialect.dbapi
+        if dbapi is None:
+            return
+        side = dbapi.connect(*cargs, **ckwargs)
+        try:
+            cur = side.cursor()
+            try:
+                cur.execute(f"KILL {session_id}")
+            finally:
+                cur.close()
+        finally:
+            side.close()
+
+
+class _AsyncOracleCancel(_CancelStrategy):
+    """Async-mode oracledb: ``await Connection.cancel()`` sends an OCI
+    break.  oracledb 2.x+ async mode exposes ``AsyncConnection.cancel``
+    as a coroutine; the default :meth:`acapture` returns the
+    ``AsyncConnection`` from the SQLAlchemy ``AsyncConnection``.
+    """
+
+    name = "oracle"
+
+    async def aabort(self, handle: Any) -> None:
+        try:
+            await handle.cancel()
+        except Exception:
+            logger.debug("cancel failed for oracle (async)", exc_info=True)
+
+
 class _AsyncSqliteCancel(_CancelStrategy):
     """aiosqlite: ``conn.interrupt()`` on the underlying ``aiosqlite.Connection``.
 
@@ -491,22 +646,29 @@ _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "duckdb": _DuckDBCancel,
     "sqlite": _SqliteCancel,
     "postgresql": _PostgresCancel,
+    "cockroachdb": _PostgresCancel,  # Postgres wire protocol
     "snowflake": _SnowflakeCancel,
     "bigquery": _BigQueryCancel,
     "mysql": _MySQLCancel,
+    "mariadb": _MySQLCancel,  # identical KILL QUERY primitive
+    "oracle": _OracleCancel,
+    "mssql": _MSSQLCancel,
+    "trino": _TrinoCancel,
+    "databricks": _DatabricksCancel,
+    "awsathena": _AthenaCancel,
+    "clickhouse": _ClickHouseCancel,
 }
 
 # Async-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
 # when ``ThrottledEngine.engine_type == "async"``.  Dialects whose async
-# driver self-cancels on asyncio task cancel (asyncpg in particular)
+# driver self-cancels on asyncio task cancel (asyncpg, psycopg3 async)
 # don't need an entry — the absence of a strategy means "trust the
-# driver".  Add entries for drivers that need our help: aiosqlite (no
-# protocol-level cancel; needs ``interrupt()``), asyncmy (no cancel
-# primitive at all; would need KILL QUERY from a side connection — not
-# yet implemented).
+# driver".  Entries below cover drivers that need our help.
 _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
-    "sqlite": _AsyncSqliteCancel,
-    "mysql": _AsyncMySQLCancel,
+    "sqlite": _AsyncSqliteCancel,    # aiosqlite worker thread
+    "mysql": _AsyncMySQLCancel,      # asyncmy / aiomysql: KILL QUERY
+    "mariadb": _AsyncMySQLCancel,
+    "oracle": _AsyncOracleCancel,    # oracledb async: OCI break
 }
 
 
@@ -516,11 +678,15 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 # for a combination that's known to need one.  The intent is to make a
 # missing strategy noisy rather than silent.
 _DIALECTS_NEEDING_STRATEGY: dict[str, set[str]] = {
-    "sync": {"duckdb", "sqlite", "postgresql", "snowflake", "bigquery", "mysql"},
-    # Async drivers: asyncpg self-cancels on task cancel; aiosqlite and
-    # asyncmy don't (and we provide strategies for them).  Add new
-    # async dialects here as they're integrated.
-    "async": {"sqlite", "mysql"},
+    "sync": {
+        "duckdb", "sqlite", "postgresql", "cockroachdb",
+        "snowflake", "bigquery", "mysql", "mariadb",
+        "oracle", "mssql", "trino", "databricks",
+        "awsathena", "clickhouse",
+    },
+    # Async drivers that don't self-cancel on task cancel.  asyncpg and
+    # psycopg3 async self-cancel (no entry needed).
+    "async": {"sqlite", "mysql", "mariadb", "oracle"},
 }
 
 
