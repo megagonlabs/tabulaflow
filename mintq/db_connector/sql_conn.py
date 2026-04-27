@@ -350,19 +350,19 @@ class _BigQueryCancel(_CursorTrackingCancel):
             job.cancel()
 
 
-class _MySQLCancel(_CancelStrategy):
-    """MySQL: ``KILL QUERY <thread_id>`` from a side connection.
+class _KillQueryCancel(_CancelStrategy):
+    """MySQL-family cancel via ``KILL QUERY <thread_id>`` from a side
+    connection.
 
-    MySQL's cancel is a SQL statement, not a wire-protocol primitive;
-    the original connection is busy waiting for the query result, so
-    we must open a separate connection to issue ``KILL``.  That's
-    blocking network I/O — every cancel runs in a worker thread.
+    MySQL has no protocol-level cancel; the cancel primitive is a SQL
+    statement, and the original connection is busy waiting for the
+    query result, so we open a separate connection to issue ``KILL``.
+    The handle is the busy connection's session ``thread_id``, captured
+    eagerly so we don't need to touch the busy connection at cancel
+    time.
 
-    ``capture`` records the busy connection's session ``thread_id``
-    eagerly (so we don't touch the busy conn at cancel time).
-    :meth:`aabort` opens a fresh DBAPI connection and runs
-    ``KILL QUERY <id>``.  :meth:`acancel_all` parallelises across all
-    tracked in-flight conns.
+    Subclasses implement :meth:`_kill_one` for the engine-type-specific
+    side-connection open path (sync DBAPI vs async driver).
     """
 
     name = "mysql"
@@ -371,11 +371,20 @@ class _MySQLCancel(_CancelStrategy):
         raw = conn.connection.driver_connection
         return raw.thread_id() if raw is not None else None
 
+    async def acapture(self, conn: "sqlalchemy.ext.asyncio.AsyncConnection") -> Any:
+        raw = await conn.get_raw_connection()
+        ac = raw.driver_connection
+        try:
+            return ac.thread_id() if ac is not None else None
+        except Exception:
+            logger.debug("could not read thread_id (async)", exc_info=True)
+            return None
+
     async def aabort(self, handle: Any) -> None:
         if handle is None:
             return
         try:
-            await asyncio.to_thread(self._kill, int(handle))
+            await self._kill_one(int(handle))
         except Exception:
             logger.debug("KILL QUERY failed", exc_info=True)
 
@@ -389,16 +398,24 @@ class _MySQLCancel(_CancelStrategy):
             except Exception:
                 logger.debug("could not read thread_id", exc_info=True)
         await asyncio.gather(
-            *(asyncio.to_thread(self._kill, tid) for tid in thread_ids),
+            *(self._kill_one(tid) for tid in thread_ids),
             return_exceptions=True,
         )
 
-    def _kill(self, thread_id: int) -> None:
-        sync_engine = (
-            self.engine.engine
-            if self.engine.engine_type == "sync"
-            else self.engine.engine.sync_engine  # type: ignore[union-attr]
-        )
+    async def _kill_one(self, thread_id: int) -> None:
+        """Open a side connection and run ``KILL QUERY``.  Subclass-specific."""
+        raise NotImplementedError
+
+
+class _MySQLCancel(_KillQueryCancel):
+    """Sync-driver MySQL: KILL QUERY via a fresh sync DBAPI connection,
+    dispatched to a worker thread (blocking network I/O)."""
+
+    async def _kill_one(self, thread_id: int) -> None:
+        await asyncio.to_thread(self._kill_sync, thread_id)
+
+    def _kill_sync(self, thread_id: int) -> None:
+        sync_engine = self.engine.engine  # type: ignore[assignment]
         cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
         dbapi = sync_engine.dialect.dbapi
         if dbapi is None:
@@ -412,6 +429,31 @@ class _MySQLCancel(_CancelStrategy):
                 cur.close()
         finally:
             side.close()
+
+
+class _AsyncMySQLCancel(_KillQueryCancel):
+    """asyncmy MySQL: KILL QUERY via a fresh async ``asyncmy.connect``.
+
+    No worker thread — the side connection is async too, so the cancel
+    is just a couple of awaits on the event loop.
+    """
+
+    async def _kill_one(self, thread_id: int) -> None:
+        import asyncmy
+
+        url = self.engine.engine.url  # AsyncEngine.url
+        side = await asyncmy.connect(
+            host=url.host,
+            port=url.port or 3306,
+            user=url.username,
+            password=url.password or "",
+            database=url.database,
+        )
+        try:
+            async with side.cursor() as cur:
+                await cur.execute(f"KILL QUERY {thread_id}")
+        finally:
+            await side.ensure_closed()
 
 
 class _AsyncSqliteCancel(_CancelStrategy):
@@ -459,6 +501,21 @@ _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 # yet implemented).
 _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "sqlite": _AsyncSqliteCancel,
+    "mysql": _AsyncMySQLCancel,
+}
+
+
+# Dialect/engine-type pairs known to *need* a strategy — i.e. the driver
+# does not self-cancel on asyncio task cancel.  Used by ``__post_init__``
+# to log a warning when an engine is built without a registered strategy
+# for a combination that's known to need one.  The intent is to make a
+# missing strategy noisy rather than silent.
+_DIALECTS_NEEDING_STRATEGY: dict[str, set[str]] = {
+    "sync": {"duckdb", "sqlite", "postgresql", "snowflake", "bigquery", "mysql"},
+    # Async drivers: asyncpg self-cancels on task cancel; aiosqlite and
+    # asyncmy don't (and we provide strategies for them).  Add new
+    # async dialects here as they're integrated.
+    "async": {"sqlite", "mysql"},
 }
 
 
@@ -494,6 +551,13 @@ class ThrottledEngine:
             strategy_cls = _ASYNC_CANCEL_STRATEGIES.get(self.engine.dialect.name)
         if strategy_cls is not None:
             self._cancel_strategy = strategy_cls(self)
+        elif self.engine.dialect.name in _DIALECTS_NEEDING_STRATEGY[self.engine_type]:
+            logger.warning(
+                "no cancel strategy registered for %s/%s engine — task cancel "
+                "and timeout may not stop a running query",
+                self.engine.dialect.name,
+                self.engine_type,
+            )
 
         # Track raw DBAPI connections via pool checkout/checkin events for
         # sync engines.  This covers the full lifetime of a checked-out
