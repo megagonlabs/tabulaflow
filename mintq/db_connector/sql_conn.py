@@ -647,6 +647,8 @@ _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "sqlite": _SqliteCancel,
     "postgresql": _PostgresCancel,
     "cockroachdb": _PostgresCancel,  # Postgres wire protocol
+    "redshift": _PostgresCancel,     # AWS Redshift via psycopg2/psycopg
+    "yugabytedb": _PostgresCancel,   # distributed Postgres-compatible
     "snowflake": _SnowflakeCancel,
     "bigquery": _BigQueryCancel,
     "mysql": _MySQLCancel,
@@ -680,6 +682,7 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 _DIALECTS_NEEDING_STRATEGY: dict[str, set[str]] = {
     "sync": {
         "duckdb", "sqlite", "postgresql", "cockroachdb",
+        "redshift", "yugabytedb",
         "snowflake", "bigquery", "mysql", "mariadb",
         "oracle", "mssql", "trino", "databricks",
         "awsathena", "clickhouse",
