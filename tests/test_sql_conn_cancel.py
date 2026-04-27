@@ -239,3 +239,85 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
         await connector.disconnect_async()
 
     await asyncio.wait_for(body(), timeout=20)
+
+
+# ---------------------------------------------------------------------------
+# Async-engine path: aiosqlite (no protocol-level cancel — strategy must
+# fire ``conn.interrupt()`` for either timeout or cancel to work).
+# ---------------------------------------------------------------------------
+
+
+async def _make_async_sqlite_connector(tmp_path: Path) -> SQLConnector:
+    """Build a SQLConnector backed by aiosqlite with a table large enough
+    that a recursive CTE-style query takes long enough to land a cancel."""
+    import sqlalchemy
+
+    db_path = str(tmp_path / "async.sqlite")
+    # Pre-create with a "numbers" table we can self-cross-join for slowness.
+    eng = sqlalchemy.create_engine(f"sqlite:///{db_path}")
+    with eng.connect() as conn:
+        conn.execute(sqlalchemy.text("CREATE TABLE numbers (n INTEGER)"))
+        conn.execute(
+            sqlalchemy.text(
+                "WITH RECURSIVE seq(n) AS (SELECT 1 UNION ALL SELECT n+1 FROM seq WHERE n<5000) "
+                "INSERT INTO numbers SELECT n FROM seq"
+            )
+        )
+        conn.commit()
+    eng.dispose()
+
+    return await SQLConnector.from_url_async(
+        global_id="async-sqlite",
+        url=f"sqlite+aiosqlite:///{db_path}",
+        db_name="t",
+        read_only=True,
+        enable_schema_caching=False,
+    )
+
+
+# A self-cross-join over a 5K-row table → 25 million rows.  Slow enough
+# that a 50ms cancel reliably lands while it's running, fast enough that
+# tests don't drag if the cancel mechanism breaks (we cap with wait_for
+# in each test).
+_SLOW_AIOSQLITE_QUERY = "SELECT COUNT(*) FROM numbers a, numbers b, numbers c"
+
+
+async def test_aiosqlite_cancel_aborts_query(tmp_path: Path) -> None:
+    """Cancelling a long aiosqlite query must trigger ``interrupt()`` on
+    the underlying sqlite3 connection and raise ``CancelledError``
+    promptly — without the strategy, aiosqlite's worker thread would
+    keep running until the query naturally completes."""
+
+    async def body() -> None:
+        connector = await _make_async_sqlite_connector(tmp_path)
+        try:
+            task = asyncio.create_task(connector.run_query_async(_SLOW_AIOSQLITE_QUERY))
+            await asyncio.sleep(0.05)
+            task.cancel()
+            with pytest.raises(asyncio.CancelledError):
+                await task
+        finally:
+            await connector.disconnect_async()
+
+    await asyncio.wait_for(body(), timeout=20)
+
+
+async def test_aiosqlite_timeout_aborts_query(tmp_path: Path) -> None:
+    """``timeout=`` on aiosqlite must use the same ``interrupt()``
+    primitive — the unified path treats timeout as just "cancel after N
+    seconds" and routes through the strategy.  ``SQLConnector`` surfaces
+    query-level failures as ``result.error`` (not raised), so we assert
+    on the surfaced error rather than ``pytest.raises``.
+    """
+
+    async def body() -> None:
+        connector = await _make_async_sqlite_connector(tmp_path)
+        try:
+            result = await connector.run_query_async(_SLOW_AIOSQLITE_QUERY, timeout=1)
+            assert result.error is not None
+            assert result.error.exc_type == "TimeoutError"
+        finally:
+            await connector.disconnect_async()
+
+    # Outer cap well above the inner timeout to leave room for cleanup.
+    await asyncio.wait_for(body(), timeout=20)

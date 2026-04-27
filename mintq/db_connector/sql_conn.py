@@ -15,6 +15,7 @@ import pandas as pd
 import os
 import time
 import asyncio
+import contextlib
 from contextlib import asynccontextmanager
 import sqlalchemy
 from sqlalchemy.exc import SAWarning
@@ -184,9 +185,24 @@ class _CancelStrategy:
         return None
 
     def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
-        """Extract the cancel handle from a live SQLAlchemy connection.
-        Default: the raw DBAPI connection."""
+        """Extract the cancel handle from a *sync* SQLAlchemy connection.
+        Called inside the executor thread that runs ``_run_query_s``.
+
+        Default: the raw DBAPI connection.  Override per dialect.
+        """
         return conn.connection.driver_connection
+
+    async def acapture(self, conn: "sqlalchemy.ext.asyncio.AsyncConnection") -> Any:
+        """Extract the cancel handle from an *async* SQLAlchemy connection.
+        Called on the event loop inside ``_run_query_a``.
+
+        Default: ``await conn.get_raw_connection()`` then return its
+        ``driver_connection`` (i.e. the underlying DBAPI connection).
+        Override for dialects that need cursor-level capture or other
+        special handling.
+        """
+        raw = await conn.get_raw_connection()
+        return raw.driver_connection
 
     async def aabort(self, handle: Any) -> None:
         """Abort the query identified by ``handle``.  Override per dialect.
@@ -398,13 +414,51 @@ class _MySQLCancel(_CancelStrategy):
             side.close()
 
 
-_CANCEL_STRATEGY_CLASSES: dict[str, type[_CancelStrategy]] = {
+class _AsyncSqliteCancel(_CancelStrategy):
+    """aiosqlite: ``conn.interrupt()`` on the underlying ``aiosqlite.Connection``.
+
+    aiosqlite runs sqlite3 in a worker thread; an asyncio task cancel
+    abandons the await but the worker keeps executing the SQL until
+    ``Connection.interrupt()`` is called on the wrapper.  Same shape as
+    :class:`_SqliteCancel` but the handle comes from the *async*
+    SQLAlchemy connection — the default :meth:`acapture` does the right
+    thing (it returns the aiosqlite ``Connection`` via
+    ``await conn.get_raw_connection()`` + ``.driver_connection``).
+
+    ``aiosqlite.Connection.interrupt`` is ``async def`` (it dispatches
+    to the worker thread), so we ``await`` it.
+    """
+
+    name = "sqlite"
+
+    async def aabort(self, handle: Any) -> None:
+        try:
+            await handle.interrupt()
+        except Exception:
+            logger.debug("interrupt failed for aiosqlite", exc_info=True)
+
+
+# Sync-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
+# when ``ThrottledEngine.engine_type == "sync"``.
+_SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "duckdb": _DuckDBCancel,
     "sqlite": _SqliteCancel,
     "postgresql": _PostgresCancel,
     "snowflake": _SnowflakeCancel,
     "bigquery": _BigQueryCancel,
     "mysql": _MySQLCancel,
+}
+
+# Async-engine strategies — keyed by SQLAlchemy dialect.name.  Selected
+# when ``ThrottledEngine.engine_type == "async"``.  Dialects whose async
+# driver self-cancels on asyncio task cancel (asyncpg in particular)
+# don't need an entry — the absence of a strategy means "trust the
+# driver".  Add entries for drivers that need our help: aiosqlite (no
+# protocol-level cancel; needs ``interrupt()``), asyncmy (no cancel
+# primitive at all; would need KILL QUERY from a side connection — not
+# yet implemented).
+_ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
+    "sqlite": _AsyncSqliteCancel,
 }
 
 
@@ -428,13 +482,18 @@ class ThrottledEngine:
     def __post_init__(self) -> None:
         if self.engine.dialect.name in _DDL_SERIAL_DIALECTS:
             self._ddl_lock = asyncio.Lock()
-        # Cancellation is a sync-driver concern (async drivers honour
-        # asyncio cancel natively).  Instantiate the dialect's strategy
-        # so it can register any per-engine state (e.g. event listeners).
+        # Pick a cancel strategy from the appropriate registry for this
+        # engine type.  Sync engines need help cancelling executor-thread
+        # queries; async engines may also need help if their driver
+        # doesn't self-cancel on asyncio task cancel (e.g. aiosqlite).
         if self.engine_type == "sync":
-            strategy_cls = _CANCEL_STRATEGY_CLASSES.get(self.engine.dialect.name)
-            if strategy_cls is not None:
-                self._cancel_strategy = strategy_cls(self)
+            strategy_cls: type[_CancelStrategy] | None = _SYNC_CANCEL_STRATEGIES.get(
+                self.engine.dialect.name
+            )
+        else:
+            strategy_cls = _ASYNC_CANCEL_STRATEGIES.get(self.engine.dialect.name)
+        if strategy_cls is not None:
+            self._cancel_strategy = strategy_cls(self)
 
         # Track raw DBAPI connections via pool checkout/checkin events for
         # sync engines.  This covers the full lifetime of a checked-out
@@ -556,8 +615,10 @@ class ThrottledEngine:
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
         with self.engine.begin() as conn:  # type: ignore
             # Publish the dialect's cancel handle so the calling task can
-            # abort this specific query on cancel/timeout.  Cleared before
-            # exiting so a successful run leaves the box empty.
+            # abort this specific query on cancel/timeout.  We deliberately
+            # do NOT clear the box on success: it is a one-shot owned by
+            # ``run_query_async`` and GC'd when that returns; an eager
+            # clear here would race the outer cancel handler reading it.
             if cancel_handle_box is not None and self._cancel_strategy is not None:
                 try:
                     cancel_handle_box[0] = self._cancel_strategy.capture(conn)
@@ -565,36 +626,28 @@ class ThrottledEngine:
                     logger.debug(
                         "capture failed for %s", self._cancel_strategy.name, exc_info=True
                     )
-            try:
-                if isinstance(statement, str):
-                    # We use exec_driver_sql to avoid sqlalchemy.text() parameter
-                    # parsing, which misinterprets :identifier patterns (e.g.
-                    # Snowflake Scripting variables, VARIANT path access) as bind
-                    # parameters. exec_driver_sql sends the raw SQL string directly
-                    # to the DBAPI driver, so parameters (if any) must already use
-                    # the driver's native paramstyle (e.g. %(name)s for pyformat).
-                    result = conn.exec_driver_sql(statement, parameters or None)
-                else:
-                    result = conn.execute(statement, parameters)
-                rows = result.fetchall()
-                if return_df:
-                    return pd.DataFrame(rows, columns=result.keys())
-                return rows
-            finally:
-                if cancel_handle_box is not None:
-                    cancel_handle_box[0] = None
+            if isinstance(statement, str):
+                # exec_driver_sql avoids sqlalchemy.text() parameter parsing,
+                # which misinterprets :identifier patterns (Snowflake Scripting
+                # variables, VARIANT path access) as bind parameters.  Params
+                # must use the driver's native paramstyle (e.g. %(name)s).
+                result = conn.exec_driver_sql(statement, parameters or None)
+            else:
+                result = conn.execute(statement, parameters)
+            rows = result.fetchall()
+            if return_df:
+                return pd.DataFrame(rows, columns=result.keys())
+            return rows
 
     async def _abort_handle(self, handle: Any) -> None:
-        """Abort one in-flight sync-driver query via the dialect's
-        cancellation strategy.
+        """Abort one in-flight query via the dialect's cancellation
+        strategy.
 
-        Strategies declare ``is_blocking`` for whether their cancel
-        primitive does network I/O.  Blocking strategies run in a
-        worker thread (event loop stays responsive); non-blocking ones
-        (DuckDB / SQLite — just a C-level flag flip) run inline to
-        avoid pointless thread-spawn overhead.
-
-        No-op if the dialect has no registered strategy.
+        Strategies own their async behaviour: simple in-process
+        primitives (DuckDB / SQLite ``interrupt()``) run inline, while
+        network-I/O ones (Postgres / Snowflake / BigQuery / MySQL) run
+        in a worker thread.  No-op if the dialect has no registered
+        strategy.
         """
         if handle is None or self._cancel_strategy is None:
             return
@@ -660,10 +713,23 @@ class ThrottledEngine:
         statement: str | sqlalchemy.sql.expression.Executable,
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
+        cancel_handle_box: list[Any] | None = None,
     ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        """Async-engine query path.  Mirrors :meth:`_run_query_s` for the
+        async case: optionally publishes a cancel handle (via the
+        strategy's :meth:`_CancelStrategy.acapture`) so the calling task
+        can abort this specific query on cancel/timeout.
+        """
         async with self.engine.begin() as conn:  # type: ignore
+            # See _run_query_s for the box-ownership rationale.
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
+                except Exception:
+                    logger.debug(
+                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
             if isinstance(statement, str):
-                # See _run_query_s for rationale on exec_driver_sql.
                 result = await conn.exec_driver_sql(statement, parameters or None)
                 rows = list(result.fetchall())
             else:
@@ -676,49 +742,6 @@ class ThrottledEngine:
             return pd.DataFrame(rows, columns=result.keys())
         return rows
 
-    def _create_interrupter(self, conn: sqlalchemy.ext.asyncio.AsyncConnection, timeout: int) -> asyncio.Task[None]:
-        async def interrupt_after() -> None:
-            await asyncio.sleep(timeout)
-            raw_conn = await conn.get_raw_connection()
-            await raw_conn.driver_connection.interrupt()  # type: ignore
-
-        return asyncio.create_task(interrupt_after())
-
-    async def _run_query_aiosqlite(
-        self,
-        statement: str | sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
-        return_df: bool = False,
-        timeout: int | None = None,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        """The generic wait_for solution does not work for sqlite. We need to use sqlite's native conn.interrupt() mechanism."""
-        async with self.engine.begin() as conn:  # type: ignore
-            if timeout is not None:
-                interrupter = self._create_interrupter(conn, timeout)
-
-            try:
-                if isinstance(statement, str):
-                    # See _run_query_s for rationale on exec_driver_sql.
-                    result = await conn.exec_driver_sql(statement, parameters or None)
-                    rows = list(result.fetchall())
-                else:
-                    rows = []
-                    result = await conn.stream(statement, parameters)
-                    async for row in result:
-                        rows.append(row)
-            except sqlalchemy.exc.OperationalError as e:
-                if "interrupted" in str(e).lower():
-                    raise asyncio.TimeoutError()
-                else:
-                    raise e
-            finally:
-                if timeout is not None:
-                    interrupter.cancel()
-
-        if return_df:
-            return pd.DataFrame(rows, columns=result.keys())
-        return rows
-
     async def run_query_async(
         self,
         query: str | sqlalchemy.sql.expression.Executable,
@@ -726,40 +749,55 @@ class ThrottledEngine:
         timeout: int | None = None,
         return_df: bool = False,
     ) -> QueryResult:
+        """Run a query, with timeout and cancel both routed through the
+        same :class:`_CancelStrategy` plumbing.
+
+        Sync engines run the query in an executor thread; async engines
+        run it as a coroutine.  Either way:
+
+        * The inner call publishes a cancel handle via
+          ``cancel_handle_box`` (when a strategy exists for the dialect).
+        * ``asyncio.wait_for`` enforces ``timeout``.
+        * On either ``CancelledError`` (caller cancelled the task) or
+          ``TimeoutError`` (deadline expired), we abort *just this
+          query's* handle via :meth:`_abort_handle` and re-raise.
+        """
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
             t0 = time.time()
+            cancel_handle_box: list[Any] = [None]
+            # Shield the inner from outer cancel propagation: without it,
+            # ``Task.cancel()`` cascades into the inner's
+            # ``async with engine.begin()`` __aexit__, whose rollback can
+            # raise ``OperationalError`` *over* our ``CancelledError``.
+            # With shield we (1) see the cancel cleanly, (2) abort via the
+            # strategy first so the connection is in a known state, then
+            # (3) cancel the inner explicitly so it unwinds.
+            inner: asyncio.Future[Any]
+            if self.engine_type == "async":
+                inner = asyncio.create_task(
+                    self._run_query_a(query, parameters, return_df, cancel_handle_box)
+                )
+            else:
+                loop = asyncio.get_running_loop()
+                inner = loop.run_in_executor(
+                    None, self._run_query_s, query, parameters, return_df, cancel_handle_box
+                )
             try:
-                if self.engine_type == "async":
-                    if self.engine.dialect.name == "sqlite":
-                        return QueryResult(
-                            result=await self._run_query_aiosqlite(query, parameters, return_df, timeout),
-                            latency_seconds=time.time() - t0,
-                        )
-                    else:
-                        return QueryResult(
-                            result=await asyncio.wait_for(
-                                self._run_query_a(query, parameters, return_df),
-                                timeout=timeout,
-                            ),
-                            latency_seconds=time.time() - t0,
-                        )
-                else:
-                    loop = asyncio.get_running_loop()
-                    cancel_handle_box: list[Any] = [None]
-                    fut = loop.run_in_executor(
-                        None, self._run_query_s, query, parameters, return_df, cancel_handle_box
-                    )
-                    try:
-                        result = await asyncio.wait_for(fut, timeout=timeout)
-                    except (asyncio.CancelledError, asyncio.TimeoutError):
-                        # Abort only this query — never all in-flight on
-                        # the engine.
-                        await self._abort_handle(cancel_handle_box[0])
-                        raise
-                    return QueryResult(result=result, latency_seconds=time.time() - t0)
-            except asyncio.TimeoutError:
-                raise TimeoutError(f"Query {query} timed out after {timeout} seconds")
+                result = await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
+            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+                await self._abort_handle(cancel_handle_box[0])
+                if not inner.done():
+                    inner.cancel()
+                # Drain to suppress "Task was destroyed but it is pending".
+                with contextlib.suppress(BaseException):
+                    await inner
+                if isinstance(exc, asyncio.TimeoutError):
+                    raise TimeoutError(
+                        f"Query {query} timed out after {timeout} seconds"
+                    ) from exc
+                raise
+            return QueryResult(result=result, latency_seconds=time.time() - t0)
 
 
 @dataclass
@@ -1621,16 +1659,15 @@ class SQLConnector:
                                 logger.debug(
                                     "capture failed for %s", strategy.name, exc_info=True
                                 )
-                        try:
-                            self._write_df_to_sql(
-                                df=df,
-                                conn=conn,
-                                table_name=table_name,
-                                schema_name=schema_name,
-                                if_exists=if_exists,
-                            )
-                        finally:
-                            cancel_handle_box[0] = None
+                        self._write_df_to_sql(
+                            df=df,
+                            conn=conn,
+                            table_name=table_name,
+                            schema_name=schema_name,
+                            if_exists=if_exists,
+                        )
+                        # See ``_run_query_s`` for why we don't clear
+                        # ``cancel_handle_box`` here.
 
                 loop = asyncio.get_running_loop()
                 try:
