@@ -903,6 +903,37 @@ class ThrottledEngine:
         * On either ``CancelledError`` (caller cancelled the task) or
           ``TimeoutError`` (deadline expired), we abort *just this
           query's* handle via :meth:`_abort_handle` and re-raise.
+
+        Cancellation / timeout contract:
+
+        * ``CancelledError`` (caller's task cancel) and ``timeout=``
+          go through the same path: abort the in-flight query via the
+          dialect's strategy, then unwind.  Timeout is just "cancel
+          after N seconds."
+        * Statements run inside ``engine.begin()`` — on cancel, the
+          transaction rolls back **if the dialect is transactional**.
+          Postgres / DuckDB / SQLite / MSSQL-in-explicit-txn: full
+          rollback.  **MySQL and Oracle DDL implicitly auto-commit
+          per statement** — cancel stops execution but cannot undo
+          what already committed.  This is a dialect property, not
+          a mechanism flaw.
+        * After cancel, the connection is usable for the next call.
+          On dialects where the cancel kills the session (MSSQL), the
+          pool fetches a fresh connection on the next operation.
+        * Multi-statement strings cancel at the currently-running
+          statement; statements not yet reached don't execute.
+          Statements that already executed before cancel follow the
+          dialect's normal commit semantics inside the txn.
+        * Procedural blocks (Snowflake Scripting, PL/SQL, T-SQL
+          batches) are one statement to the driver; cancel aborts
+          the whole block at the next break point.
+
+        Args:
+            query: A raw SQL string or a SQLAlchemy ``Executable``.
+            parameters: Bind parameters (driver-native paramstyle for
+                raw strings, e.g. ``%(name)s`` for pyformat).
+            timeout: Per-query deadline in seconds.  ``None`` disables.
+            return_df: Wrap rows in a ``pandas.DataFrame``.
         """
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
@@ -1970,16 +2001,59 @@ class SQLConnector:
         ``:identifier`` patterns (e.g. VARIANT path access) to be
         executed without interference.
 
+        Two surfaces stop a running query, both routed through the
+        dialect's cancel strategy (``interrupt()``, ``cancel()``,
+        ``KILL QUERY``, ``cursor.cancel()``, …):
+
+        - ``timeout=N`` — per-query deadline.  On expiry the query is
+          aborted and the returned :class:`ExecResult` carries
+          ``error.exc_type == "TimeoutError"``.  Query-level failures
+          (timeouts, syntax errors, …) are returned in
+          ``ExecResult.error``, never raised.
+        - ``asyncio.Task.cancel()`` on the awaiting task — the caller
+          wants the query to stop.  ``CancelledError`` is
+          ``BaseException`` and propagates through this method
+          unchanged.  Wrap the call in a Task to cancel it from
+          elsewhere (see Example below).
+
+        See :meth:`ThrottledEngine.run_query_async` for the full
+        transaction / rollback contract, including the caveat that
+        **MySQL and Oracle DDL auto-commit per statement** — cancel
+        stops execution but cannot undo committed effects on those
+        dialects.
+
         Args:
             query: A raw SQL string or a SQLAlchemy ``Executable``.
             parameters: Bind parameters.  For raw SQL strings these must
                 use the driver's native paramstyle (e.g. ``%(name)s``
                 for pyformat drivers).
             timeout: Query timeout in seconds. ``None`` means no timeout.
+                On expiry, the result's ``error.exc_type`` is
+                ``"TimeoutError"`` (not raised).
 
         Returns:
             An :class:`ExecResult` containing the result DataFrame (or
             an error) and latency information.
+
+        Raises:
+            asyncio.CancelledError: If the awaiting task was cancelled.
+                Propagates as-is; not wrapped in :class:`ExecResult`.
+
+        Example:
+            Cancel a long-running query from elsewhere (e.g. a Ctrl+C
+            handler or an external trigger):
+
+            .. code-block:: python
+
+                task = asyncio.create_task(
+                    connector.run_query_async("SELECT ... long-running")
+                )
+                # ... on Ctrl+C / external trigger:
+                task.cancel()
+                try:
+                    result = await task
+                except asyncio.CancelledError:
+                    ...  # query was aborted server-side
         """
         # --- read-only guard (checks every statement in multi-statement strings) ---
         query_str = str(query) if not isinstance(query, str) else query
