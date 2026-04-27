@@ -1,5 +1,6 @@
 import copy
 import hashlib
+import importlib
 import json
 import re
 import logging
@@ -432,22 +433,26 @@ class _MySQLCancel(_KillQueryCancel):
 
 
 class _AsyncMySQLCancel(_KillQueryCancel):
-    """asyncmy MySQL: KILL QUERY via a fresh async ``asyncmy.connect``.
+    """Async-driver MySQL: KILL QUERY via a fresh async side connection.
 
-    No worker thread — the side connection is async too, so the cancel
-    is just a couple of awaits on the event loop.
+    Driver-agnostic: imports the module SQLAlchemy chose for this engine
+    (``dialect.driver`` — typically ``asyncmy`` or ``aiomysql``) and uses
+    its ``connect()`` directly.  Both drivers descend from PyMySQL and
+    share the relevant surface (kwargs to ``connect``, ``conn.cursor()``
+    as an async context manager, ``await cur.execute``,
+    ``await conn.ensure_closed()``).
     """
 
     async def _kill_one(self, thread_id: int) -> None:
-        import asyncmy
-
         url = self.engine.engine.url  # AsyncEngine.url
-        side = await asyncmy.connect(
+        driver = url.get_driver_name()  # "asyncmy" / "aiomysql" / ...
+        module = importlib.import_module(driver)
+        side = await module.connect(
             host=url.host,
             port=url.port or 3306,
             user=url.username,
             password=url.password or "",
-            database=url.database,
+            db=url.database,
         )
         try:
             async with side.cursor() as cur:
