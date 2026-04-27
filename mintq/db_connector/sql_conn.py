@@ -186,7 +186,7 @@ class _CancelStrategy:
 
     def capture(self, conn: sqlalchemy.engine.Connection) -> Any:
         """Extract the cancel handle from a *sync* SQLAlchemy connection.
-        Called inside the executor thread that runs ``_run_query_s``.
+        Called inside the executor thread that runs ``_run_query_sync_engine``.
 
         Default: the raw DBAPI connection.  Override per dialect.
         """
@@ -194,7 +194,7 @@ class _CancelStrategy:
 
     async def acapture(self, conn: "sqlalchemy.ext.asyncio.AsyncConnection") -> Any:
         """Extract the cancel handle from an *async* SQLAlchemy connection.
-        Called on the event loop inside ``_run_query_a``.
+        Called on the event loop inside ``_run_query_async_engine``.
 
         Default: ``await conn.get_raw_connection()`` then return its
         ``driver_connection`` (i.e. the underlying DBAPI connection).
@@ -581,93 +581,6 @@ class ThrottledEngine:
             await self.aclose()
             raise
 
-    @asynccontextmanager
-    async def throttle(self, *, ddl: bool = False) -> AsyncGenerator[None, None]:
-        """Acquire concurrency semaphores (and optionally the DDL lock).
-
-        Args:
-            ddl: When True and the engine's dialect requires DDL
-                serialization (DuckDB, SQLite), acquire a per-engine lock
-                so that concurrent DDL statements don't cause catalog
-                write-write conflicts.
-        """
-        locks: list[asyncio.Lock | asyncio.Semaphore] = []
-        if ddl and self._ddl_lock is not None:
-            locks.append(self._ddl_lock)
-        if self.dbms_semaphore is not None:
-            locks.append(self.dbms_semaphore)
-        if self.db_semaphore is not None:
-            locks.append(self.db_semaphore)
-        for lock in locks:
-            await lock.acquire()
-        try:
-            yield
-        finally:
-            for lock in reversed(locks):
-                lock.release()
-
-    def _run_query_s(
-        self,
-        statement: str | sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
-        return_df: bool = False,
-        cancel_handle_box: list[Any] | None = None,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        with self.engine.begin() as conn:  # type: ignore
-            # Publish the dialect's cancel handle so the calling task can
-            # abort this specific query on cancel/timeout.  We deliberately
-            # do NOT clear the box on success: it is a one-shot owned by
-            # ``run_query_async`` and GC'd when that returns; an eager
-            # clear here would race the outer cancel handler reading it.
-            if cancel_handle_box is not None and self._cancel_strategy is not None:
-                try:
-                    cancel_handle_box[0] = self._cancel_strategy.capture(conn)
-                except Exception:
-                    logger.debug(
-                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
-            if isinstance(statement, str):
-                # exec_driver_sql avoids sqlalchemy.text() parameter parsing,
-                # which misinterprets :identifier patterns (Snowflake Scripting
-                # variables, VARIANT path access) as bind parameters.  Params
-                # must use the driver's native paramstyle (e.g. %(name)s).
-                result = conn.exec_driver_sql(statement, parameters or None)
-            else:
-                result = conn.execute(statement, parameters)
-            rows = result.fetchall()
-            if return_df:
-                return pd.DataFrame(rows, columns=result.keys())
-            return rows
-
-    async def _abort_handle(self, handle: Any) -> None:
-        """Abort one in-flight query via the dialect's cancellation
-        strategy.
-
-        Strategies own their async behaviour: simple in-process
-        primitives (DuckDB / SQLite ``interrupt()``) run inline, while
-        network-I/O ones (Postgres / Snowflake / BigQuery / MySQL) run
-        in a worker thread.  No-op if the dialect has no registered
-        strategy.
-        """
-        if handle is None or self._cancel_strategy is None:
-            return
-        await self._cancel_strategy.aabort(handle)
-
-    async def _cancel_inflight(self) -> None:
-        """Abort every in-flight sync-driver query on this engine.
-
-        Used by :meth:`aclose` for full engine shutdown.  Per-call
-        cancellation should capture the specific handle inside the
-        worker and call :meth:`_abort_handle` — aborting *every*
-        in-flight query when only one was cancelled would be
-        collateral damage.
-
-        Delegates to the strategy's async :meth:`acancel_all`.
-        """
-        if self._cancel_strategy is None:
-            return
-        await self._cancel_strategy.acancel_all()
-
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
         threads to release their connections, then dispose the engine.
@@ -683,7 +596,7 @@ class ThrottledEngine:
         asyncio Future that is considered "done" the moment it's cancelled,
         even while the thread keeps running.  That means awaiting the
         asyncio futures is unreliable here — we poll the raw-connection set
-        instead, since a connection is only removed after ``_run_query_s`` /
+        instead, since a connection is only removed after ``_run_query_sync_engine`` /
         ``_run_inspector`` exits its ``with engine.begin()`` / ``.connect()``
         block (i.e. the thread has actually finished).
         """
@@ -708,39 +621,30 @@ class ThrottledEngine:
         else:
             self.engine.dispose()
 
-    async def _run_query_a(
-        self,
-        statement: str | sqlalchemy.sql.expression.Executable,
-        parameters: Sequence[Any] | Mapping[str, Any] = (),
-        return_df: bool = False,
-        cancel_handle_box: list[Any] | None = None,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
-        """Async-engine query path.  Mirrors :meth:`_run_query_s` for the
-        async case: optionally publishes a cancel handle (via the
-        strategy's :meth:`_CancelStrategy.acapture`) so the calling task
-        can abort this specific query on cancel/timeout.
-        """
-        async with self.engine.begin() as conn:  # type: ignore
-            # See _run_query_s for the box-ownership rationale.
-            if cancel_handle_box is not None and self._cancel_strategy is not None:
-                try:
-                    cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
-                except Exception:
-                    logger.debug(
-                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
-            if isinstance(statement, str):
-                result = await conn.exec_driver_sql(statement, parameters or None)
-                rows = list(result.fetchall())
-            else:
-                rows = []
-                result = await conn.stream(statement, parameters)
-                async for row in result:
-                    rows.append(row)
+    @asynccontextmanager
+    async def throttle(self, *, ddl: bool = False) -> AsyncGenerator[None, None]:
+        """Acquire concurrency semaphores (and optionally the DDL lock).
 
-        if return_df:
-            return pd.DataFrame(rows, columns=result.keys())
-        return rows
+        Args:
+            ddl: When True and the engine's dialect requires DDL
+                serialization (DuckDB, SQLite), acquire a per-engine lock
+                so that concurrent DDL statements don't cause catalog
+                write-write conflicts.
+        """
+        locks: list[asyncio.Lock | asyncio.Semaphore] = []
+        if ddl and self._ddl_lock is not None:
+            locks.append(self._ddl_lock)
+        if self.dbms_semaphore is not None:
+            locks.append(self.dbms_semaphore)
+        if self.db_semaphore is not None:
+            locks.append(self.db_semaphore)
+        for lock in locks:
+            await lock.acquire()
+        try:
+            yield
+        finally:
+            for lock in reversed(locks):
+                lock.release()
 
     async def run_query_async(
         self,
@@ -776,12 +680,12 @@ class ThrottledEngine:
             inner: asyncio.Future[Any]
             if self.engine_type == "async":
                 inner = asyncio.create_task(
-                    self._run_query_a(query, parameters, return_df, cancel_handle_box)
+                    self._run_query_async_engine(query, parameters, return_df, cancel_handle_box)
                 )
             else:
                 loop = asyncio.get_running_loop()
                 inner = loop.run_in_executor(
-                    None, self._run_query_s, query, parameters, return_df, cancel_handle_box
+                    None, self._run_query_sync_engine, query, parameters, return_df, cancel_handle_box
                 )
             try:
                 result = await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
@@ -798,6 +702,102 @@ class ThrottledEngine:
                     ) from exc
                 raise
             return QueryResult(result=result, latency_seconds=time.time() - t0)
+
+    def _run_query_sync_engine(
+        self,
+        statement: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        return_df: bool = False,
+        cancel_handle_box: list[Any] | None = None,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        with self.engine.begin() as conn:  # type: ignore
+            # Publish the dialect's cancel handle so the calling task can
+            # abort this specific query on cancel/timeout.  We deliberately
+            # do NOT clear the box on success: it is a one-shot owned by
+            # ``run_query_async`` and GC'd when that returns; an eager
+            # clear here would race the outer cancel handler reading it.
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = self._cancel_strategy.capture(conn)
+                except Exception:
+                    logger.debug(
+                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
+            if isinstance(statement, str):
+                # exec_driver_sql avoids sqlalchemy.text() parameter parsing,
+                # which misinterprets :identifier patterns (Snowflake Scripting
+                # variables, VARIANT path access) as bind parameters.  Params
+                # must use the driver's native paramstyle (e.g. %(name)s).
+                result = conn.exec_driver_sql(statement, parameters or None)
+            else:
+                result = conn.execute(statement, parameters)
+            rows = result.fetchall()
+            if return_df:
+                return pd.DataFrame(rows, columns=result.keys())
+            return rows
+
+    async def _run_query_async_engine(
+        self,
+        statement: str | sqlalchemy.sql.expression.Executable,
+        parameters: Sequence[Any] | Mapping[str, Any] = (),
+        return_df: bool = False,
+        cancel_handle_box: list[Any] | None = None,
+    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+        """Async-engine query path.  Mirrors :meth:`_run_query_sync_engine` for the
+        async case: optionally publishes a cancel handle (via the
+        strategy's :meth:`_CancelStrategy.acapture`) so the calling task
+        can abort this specific query on cancel/timeout.
+        """
+        async with self.engine.begin() as conn:  # type: ignore
+            # See _run_query_sync_engine for the box-ownership rationale.
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
+                except Exception:
+                    logger.debug(
+                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
+            if isinstance(statement, str):
+                result = await conn.exec_driver_sql(statement, parameters or None)
+                rows = list(result.fetchall())
+            else:
+                rows = []
+                result = await conn.stream(statement, parameters)
+                async for row in result:
+                    rows.append(row)
+
+        if return_df:
+            return pd.DataFrame(rows, columns=result.keys())
+        return rows
+
+    async def _abort_handle(self, handle: Any) -> None:
+        """Abort one in-flight query via the dialect's cancellation
+        strategy.
+
+        Strategies own their async behaviour: simple in-process
+        primitives (DuckDB / SQLite ``interrupt()``) run inline, while
+        network-I/O ones (Postgres / Snowflake / BigQuery / MySQL) run
+        in a worker thread.  No-op if the dialect has no registered
+        strategy.
+        """
+        if handle is None or self._cancel_strategy is None:
+            return
+        await self._cancel_strategy.aabort(handle)
+
+    async def _cancel_inflight(self) -> None:
+        """Abort every in-flight sync-driver query on this engine.
+
+        Used by :meth:`aclose` for full engine shutdown.  Per-call
+        cancellation should capture the specific handle inside the
+        worker and call :meth:`_abort_handle` — aborting *every*
+        in-flight query when only one was cancelled would be
+        collateral damage.
+
+        Delegates to the strategy's async :meth:`acancel_all`.
+        """
+        if self._cancel_strategy is None:
+            return
+        await self._cancel_strategy.acancel_all()
 
 
 @dataclass
@@ -1666,7 +1666,7 @@ class SQLConnector:
                             schema_name=schema_name,
                             if_exists=if_exists,
                         )
-                        # See ``_run_query_s`` for why we don't clear
+                        # See ``_run_query_sync_engine`` for why we don't clear
                         # ``cancel_handle_box`` here.
 
                 loop = asyncio.get_running_loop()
