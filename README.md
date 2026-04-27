@@ -95,18 +95,24 @@ April 23
 - [x] Cancellation for sql_conn.py
 
 April 24
-- [ ] Refactor
+- [ ] Refactor sql_conn.py
   - [x] Use subprocess for loaders
   - [x] from_files_async to loaders/
   - [x] Test for the bug
   - [x] UI bug, spinner with error
   - [x] Cancellation for write_dataframe_async and run_query_async
+
+April 27
+- [ ] Refactor sql_conn.py
+  - [x] Combine timeout and cancellation handling
+  - [x] remove aiosqlite path
+  - [x] Cancellation for all sql dialects, sync and async
   - [ ] Zoom out and see sql_conn.py
   - [ ] Check ThrottledEngine API, whether engine used externally
-  - [ ] Refactor async branch and ThrottledEngine
 
 - [ ] Enter Inspect to the right
 - [ ] Bug: dataset readme not fetched
+- [ ] Pydantic AI partial trajectory on interrupt
 
 - General
   - [ ] Improve transfer_record?
