@@ -1,3 +1,75 @@
+"""Schema-aware async SQL client built on SQLAlchemy.
+
+Layers operational features on top of SQLAlchemy that PEP 249 and
+``databases``-style libraries don't cover as a unit.  Cross-dialect
+cancellation is the headline gap — Java/JDBC, Go's ``database/sql``,
+.NET's ``DbCommand`` all expose unified cancel APIs; Python doesn't.
+
+What this module adds on top of SQLAlchemy
+==========================================
+
+**Timeout and cancellation.**  Per-dialect :class:`_CancelStrategy`
+covering 14+ sync dialects and the async variants that don't
+self-cancel on ``asyncio.Task.cancel()``.  ``CancelledError`` and
+``timeout=`` share one path: timeout is "cancel after N seconds."
+
+**Concurrency control.**  :class:`ThrottledEngine` adds per-DB and
+shared per-DBMS asyncio semaphores (independent of pool size) and a
+DDL lock for dialects where concurrent ``CREATE TABLE`` causes
+catalog conflicts (DuckDB, SQLite).
+
+**Sync / async unification.**  One ``execute_async`` API regardless
+of whether the underlying engine is sync (run via executor) or async
+(awaited natively).
+
+**Unified schema data structure.**  Schema introspection produces a
+single dialect-agnostic :class:`mintq.schema.SQLSchema` shape (tables,
+columns, types, primary/foreign keys, optional column statistics)
+regardless of whether the source is DuckDB, Snowflake, BigQuery,
+MySQL, etc.  Downstream consumers (agents, BI tools, schema
+browsers) see one structure across all backends.
+
+**Schema lifecycle.**  :class:`SQLConnector` introspects at
+construction (via :class:`AsyncInspector`), caches to disk (keyed by
+``global_id``), and refreshes on demand or after writes.  Build
+knobs are bundled in :class:`_SchemaBuildConfig` so refresh uses the
+original config.
+
+**Read-only safety guard.**  :func:`_contains_write_statement`
+(sqlparse-based) blocks DML/DDL/DCL/stored-proc invocations when
+``read_only=True``, surfacing a ``ReadOnlyViolationError`` in
+:class:`ExecResult`.
+
+**Query result caching.**  Memory + disk cache keyed by query,
+parameters, and timeout.
+
+**Errors-as-data.**  :meth:`SQLConnector.run_query_async` returns
+errors in :class:`ExecResult` rather than raising — except
+``CancelledError``, which propagates.
+
+**DataFrame writing with rollback.**
+:meth:`SQLConnector.write_dataframe_async` runs ``pandas.to_sql``
+inside the cancel-strategy plumbing, so a cancelled write rolls
+back on transactional dialects.
+
+Architecture
+============
+
+::
+
+    SQLAlchemy.Engine / AsyncEngine
+            │
+            ▼
+    ThrottledEngine        (cancel + throttle + timeout)
+            │
+            ▼
+    SQLConnector           (schema + caching + read-only)
+
+Loaders (``loaders/files.py``, ``loaders/huggingface.py``) build a
+:class:`SQLConnector` from non-SQL sources (CSV, Parquet, HF
+datasets) by materializing into DuckDB.
+"""
+
 import copy
 import hashlib
 import importlib
