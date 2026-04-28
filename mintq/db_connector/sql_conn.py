@@ -1771,15 +1771,30 @@ class _SchemaBuildConfig:
 
 @dataclass
 class SQLConnector:
-    """Database connector that wraps a SQLAlchemy engine with concurrency
-    control, schema caching, and query result caching.
+    """Schema-aware async SQL database client.
 
-    Raw SQL strings are executed via ``exec_driver_sql``, which sends them
-    directly to the DBAPI driver without any SQLAlchemy parameter parsing.
-    This means procedural / scripting blocks (e.g. Snowflake Scripting
-    ``DECLARE … BEGIN … END``, ``EXECUTE IMMEDIATE``) and dialect-specific
-    syntax that uses ``:identifier`` patterns (e.g. Snowflake VARIANT path
-    access) are fully supported.
+    Combines:
+
+    - a :class:`ThrottledEngine` for cancellable, throttled query
+      execution across sync and async dialects
+    - a live :class:`SQLSchema` introspected at construction and
+      refreshed on demand (with optional disk cache)
+    - read-only safety guards for borderline queries
+    - optional query result caching
+
+    For raw query execution without the schema / caching layer, use
+    :class:`ThrottledEngine` directly — that's what the loaders do
+    when building a connector from source files.
+
+    Suitable as the database layer for any tool that needs both query
+    execution and live schema metadata: NL2SQL agents, schema
+    browsers, query-by-example UIs, ETL jobs, catalog-aware data
+    pipelines.
+
+    Raw SQL strings go to the DBAPI driver via ``exec_driver_sql``,
+    bypassing SQLAlchemy's parameter parsing — procedural blocks
+    (Snowflake Scripting, PL/SQL, T-SQL batches) and dialect-specific
+    ``:identifier`` syntax work unchanged.
     """
 
     connector_type: ClassVar[Literal["sql"]] = "sql"
