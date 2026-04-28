@@ -24,9 +24,12 @@ cancel primitive (``interrupt()``, ``cancel()``, ``KILL QUERY``,
 ``asyncio.Task.cancel()``.
 
 **Concurrency control.**  Per-DB and shared per-DBMS asyncio
-semaphores (independent of pool size) and a DDL lock for dialects
-where concurrent ``CREATE TABLE`` causes catalog conflicts (DuckDB,
-SQLite).
+semaphores (independent of pool size) for shaping request rate across
+many connectors — useful for cloud warehouses like Snowflake,
+BigQuery, or Databricks where concurrent-query limits and per-query
+billing make a hard cap valuable across an entire eval run, not just
+per database.  Plus a DDL lock for dialects where concurrent
+``CREATE TABLE`` causes catalog conflicts (DuckDB, SQLite).
 
 **Schema lifecycle.**  :class:`SQLConnector` introspects at
 construction, caches to disk (keyed by ``global_id``), and refreshes
