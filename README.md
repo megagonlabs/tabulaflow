@@ -110,9 +110,10 @@ April 27
   - [x] Check ThrottledEngine API, whether engine used externally
   - [x] Access sql_conn.py and refactor
   - [x] Documentation for sql_conn.py
+- [x] Fix huggingface readme fetching
 
+- [ ] Fix https://huggingface.co/datasets/stellalisy/HorizonBench
 - [ ] Enter Inspect to the right
-- [ ] Bug: dataset readme not fetched
 - [ ] Pydantic AI partial trajectory on interrupt
 
 - General
