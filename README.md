@@ -101,14 +101,15 @@ April 24
   - [x] Test for the bug
   - [x] UI bug, spinner with error
   - [x] Cancellation for write_dataframe_async and run_query_async
-
+  
 April 27
-- [ ] Refactor sql_conn.py
+- [x] Refactor sql_conn.py
   - [x] Combine timeout and cancellation handling
   - [x] remove aiosqlite path
   - [x] Cancellation for all sql dialects, sync and async
   - [x] Check ThrottledEngine API, whether engine used externally
-  - [x] Zoom out and see sql_conn.py
+  - [x] Access sql_conn.py and refactor
+  - [x] Documentation for sql_conn.py
 
 - [ ] Enter Inspect to the right
 - [ ] Bug: dataset readme not fetched
