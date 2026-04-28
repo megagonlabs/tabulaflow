@@ -1770,8 +1770,12 @@ class SQLConnector:
 
     connector_type: ClassVar[Literal["sql"]] = "sql"
     global_id: str
+    # ``schema`` is *live state*: ``refresh_schema_async`` and
+    # ``write_dataframe_async`` replace this attribute with a fresh
+    # :class:`SQLSchema` object.  External code holding a reference to
+    # the old object will see stale data — re-read ``connector.schema``
+    # after any operation that may mutate the database.
     schema: SQLSchema
-    language: SQLDialect
     _t_eng: ThrottledEngine
     read_only: bool = True
     enable_schema_caching: bool = True
@@ -1787,6 +1791,10 @@ class SQLConnector:
     # vocabulary into ``SQLConnector``.
     _on_disconnect: Callable[[], None] | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
+
+    @property
+    def language(self) -> SQLDialect:
+        return self.schema.dialect  # type: ignore[return-value]
 
     def save_schema_cache(self) -> None:
         """Write the current schema to the cache file if caching is enabled."""
@@ -1895,11 +1903,9 @@ class SQLConnector:
                     column_stats_mode=column_stats_mode,
                     description=description,
                 )
-            language: SQLDialect = schema.dialect  # type: ignore[assignment]
             return cls(
                 global_id,
                 schema,
-                language,
                 t_eng,
                 read_only=read_only,
                 enable_schema_caching=enable_schema_caching,
@@ -2026,6 +2032,13 @@ class SQLConnector:
         mode: Literal["append", "replace"] = "append",
     ) -> int:
         """Write a DataFrame into a database table.
+
+        On success, automatically refreshes ``self.schema`` for the
+        target table via :meth:`refresh_schema_async` so the connector
+        reflects the new column types and (for ``mode="replace"``) the
+        new table identity.  This costs one extra round trip per write
+        — callers that batch many writes may prefer to skip per-write
+        refresh and call :meth:`refresh_schema_async` once at the end.
 
         Args:
             df: DataFrame to persist.
