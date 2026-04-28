@@ -1413,8 +1413,8 @@ class AgentResultWidget(Widget):
     def _update_bottom_hint(self) -> None:
         """Render the 'Enter Inspect' affordance below the preview.
 
-        For data views, the truncation caption ('showing N of M rows/cols') is
-        right-aligned on the same line.
+        The hint is right-aligned. For data views, the truncation caption
+        ('showing N of M rows/cols') is left-aligned on the same line.
         """
         if self._bottom_hint_widget is None:
             return
@@ -1428,16 +1428,15 @@ class AgentResultWidget(Widget):
         hint.append(" Inspect", style="dim")
 
         caption = self._data_preview_caption(view)
-        if not caption:
-            self._bottom_hint_widget.update(hint)
-            return
-
         available = self._bottom_hint_widget.size.width or 0
-        pad = available - hint.cell_len - len(caption)
         line = Text(no_wrap=True)
-        line.append_text(hint)
+        if caption:
+            line.append(caption, style="dim")
+            pad = available - hint.cell_len - len(caption)
+        else:
+            pad = available - hint.cell_len
         line.append(" " * max(1, pad))
-        line.append(caption, style="dim")
+        line.append_text(hint)
         self._bottom_hint_widget.update(line)
 
     def _data_preview_caption(self, view: "ViewItem") -> str:
