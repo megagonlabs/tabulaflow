@@ -8,7 +8,7 @@ import threading
 import warnings
 
 import sqlparse
-from typing import Any, ClassVar, Sequence, Mapping, Literal, AsyncGenerator
+from typing import Any, Awaitable, Callable, ClassVar, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
 import dataclasses
 from dataclasses import dataclass
 import collections
@@ -38,6 +38,8 @@ from mintq.config import mintq_config, ColumnStatsMode
 from mintq.db_connector.utils import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 # Statements that modify data or schema.  The pattern matches the first
 # non-whitespace, non-comment keyword in a single SQL statement.
@@ -938,39 +940,97 @@ class ThrottledEngine:
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
             t0 = time.time()
-            cancel_handle_box: list[Any] = [None]
-            # Shield the inner from outer cancel propagation: without it,
-            # ``Task.cancel()`` cascades into the inner's
-            # ``async with engine.begin()`` __aexit__, whose rollback can
-            # raise ``OperationalError`` *over* our ``CancelledError``.
-            # With shield we (1) see the cancel cleanly, (2) abort via the
-            # strategy first so the connection is in a known state, then
-            # (3) cancel the inner explicitly so it unwinds.
-            inner: asyncio.Future[Any]
-            if self.engine_type == "async":
-                inner = asyncio.create_task(
-                    self._execute_async_engine(query, parameters, return_df, cancel_handle_box)
-                )
-            else:
-                loop = asyncio.get_running_loop()
-                inner = loop.run_in_executor(
-                    None, self._execute_sync_engine, query, parameters, return_df, cancel_handle_box
-                )
-            try:
-                result = await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
-            except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
-                await self._abort_handle(cancel_handle_box[0])
-                if not inner.done():
-                    inner.cancel()
-                # Drain to suppress "Task was destroyed but it is pending".
-                with contextlib.suppress(BaseException):
-                    await inner
-                if isinstance(exc, asyncio.TimeoutError):
-                    raise TimeoutError(
-                        f"Query {query} timed out after {timeout} seconds"
-                    ) from exc
-                raise
+            result = await self._dispatch_with_cancel(
+                sync_inner=lambda box: self._execute_sync_engine(
+                    query, parameters, return_df, box
+                ),
+                async_inner=lambda box: self._execute_async_engine(
+                    query, parameters, return_df, box
+                ),
+                timeout=timeout,
+                timeout_label=f"Query {query}",
+            )
             return QueryResult(result=result, latency_seconds=time.time() - t0)
+
+    async def run_with_conn_async(
+        self,
+        callback: Callable[[sqlalchemy.engine.Connection], _T],
+        *,
+        ddl: bool = False,
+        timeout: int | None = None,
+    ) -> _T:
+        """Run a sync callable inside the engine's transaction + throttle
+        + cancel-strategy plumbing.
+
+        Use this for operations that don't fit ``execute_async`` —
+        pandas ``to_sql``, multi-step DBAPI sequences, or anything that
+        needs a live ``Connection`` rather than a single SQL string.
+        The callback receives a sync ``Connection``; for async engines
+        it is bridged via ``conn.run_sync``.
+
+        Cancellation / timeout semantics match :meth:`execute_async`.
+
+        Args:
+            callback: Sync callable taking a ``Connection`` and returning
+                ``_T``.
+            ddl: When True and the dialect requires DDL serialization,
+                acquire the per-engine DDL lock.
+            timeout: Per-call deadline in seconds.  ``None`` disables.
+        """
+        async with self.throttle(ddl=ddl):
+            return await self._dispatch_with_cancel(
+                sync_inner=lambda box: self._run_callback_sync_engine(callback, box),
+                async_inner=lambda box: self._run_callback_async_engine(callback, box),
+                timeout=timeout,
+                timeout_label="Operation",
+            )
+
+    async def _dispatch_with_cancel(
+        self,
+        *,
+        sync_inner: Callable[[list[Any]], _T],
+        async_inner: Callable[[list[Any]], Awaitable[_T]],
+        timeout: int | None,
+        timeout_label: str,
+    ) -> _T:
+        """Run an inner worker (sync via executor, async via task) with
+        the cancel-handle dance: shield from outer cancel propagation,
+        abort the captured handle on cancel/timeout, then drain the
+        inner.
+
+        Both ``sync_inner`` and ``async_inner`` receive a
+        ``cancel_handle_box`` (a single-element list) into which they
+        publish the dialect's cancel handle once captured.
+
+        Shielding the inner is essential: without it, ``Task.cancel()``
+        cascades into the inner's ``async with engine.begin()``
+        ``__aexit__``, whose rollback can raise ``OperationalError``
+        *over* our ``CancelledError``.  With shield we (1) see the
+        cancel cleanly, (2) abort via the strategy first so the
+        connection is in a known state, then (3) cancel the inner
+        explicitly so it unwinds.
+        """
+        cancel_handle_box: list[Any] = [None]
+        inner: asyncio.Future[Any]
+        if self.engine_type == "async":
+            inner = asyncio.create_task(async_inner(cancel_handle_box))
+        else:
+            loop = asyncio.get_running_loop()
+            inner = loop.run_in_executor(None, sync_inner, cancel_handle_box)
+        try:
+            return await asyncio.wait_for(asyncio.shield(inner), timeout=timeout)
+        except (asyncio.CancelledError, asyncio.TimeoutError) as exc:
+            await self._abort_handle(cancel_handle_box[0])
+            if not inner.done():
+                inner.cancel()
+            # Drain to suppress "Task was destroyed but it is pending".
+            with contextlib.suppress(BaseException):
+                await inner
+            if isinstance(exc, asyncio.TimeoutError):
+                raise TimeoutError(
+                    f"{timeout_label} timed out after {timeout} seconds"
+                ) from exc
+            raise
 
     def _execute_sync_engine(
         self,
@@ -1038,6 +1098,43 @@ class ThrottledEngine:
         if return_df:
             return pd.DataFrame(rows, columns=result.keys())
         return rows
+
+    def _run_callback_sync_engine(
+        self,
+        callback: Callable[[sqlalchemy.engine.Connection], Any],
+        cancel_handle_box: list[Any] | None = None,
+    ) -> Any:
+        """Sync-engine worker for :meth:`run_with_conn_async` — opens a
+        transactional connection, publishes the cancel handle, runs the
+        callback.  See ``_execute_sync_engine`` for the box-ownership
+        rationale."""
+        with self.engine.begin() as conn:  # type: ignore
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = self._cancel_strategy.capture(conn)
+                except Exception:
+                    logger.debug(
+                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
+            return callback(conn)
+
+    async def _run_callback_async_engine(
+        self,
+        callback: Callable[[sqlalchemy.engine.Connection], Any],
+        cancel_handle_box: list[Any] | None = None,
+    ) -> Any:
+        """Async-engine worker for :meth:`run_with_conn_async` — opens a
+        transactional connection, publishes the cancel handle, then
+        bridges the sync callback via ``conn.run_sync``."""
+        async with self.engine.begin() as conn:  # type: ignore
+            if cancel_handle_box is not None and self._cancel_strategy is not None:
+                try:
+                    cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
+                except Exception:
+                    logger.debug(
+                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
+                    )
+            return await conn.run_sync(callback)
 
     async def _abort_handle(self, handle: Any) -> None:
         """Abort one in-flight query via the dialect's cancellation
@@ -1895,55 +1992,15 @@ class SQLConnector:
 
         if_exists: Literal["append", "replace"] = "replace" if mode == "replace" else "append"
 
-        async with self._t_eng.throttle():
-            if self._t_eng.engine_type == "async":
-                async_engine = self._t_eng.engine
-                assert isinstance(async_engine, AsyncEngine)
-                async with async_engine.begin() as conn:
-                    await conn.run_sync(
-                        lambda sync_conn: self._write_df_to_sql(
-                            df=df,
-                            conn=sync_conn,
-                            table_name=table_name,
-                            schema_name=schema_name,
-                            if_exists=if_exists,
-                        )
-                    )
-            else:
-                sync_engine = self._t_eng.engine
-                cancel_handle_box: list[Any] = [None]
-                strategy = self._t_eng._cancel_strategy
-
-                def _write_sync() -> None:
-                    with sync_engine.begin() as conn:  # type: ignore[union-attr]
-                        # Publish the dialect's cancel handle so an outer
-                        # cancel can abort this specific write.
-                        if strategy is not None:
-                            try:
-                                cancel_handle_box[0] = strategy.capture(conn)
-                            except Exception:
-                                logger.debug(
-                                    "capture failed for %s", strategy.name, exc_info=True
-                                )
-                        self._write_df_to_sql(
-                            df=df,
-                            conn=conn,
-                            table_name=table_name,
-                            schema_name=schema_name,
-                            if_exists=if_exists,
-                        )
-                        # See ``_execute_sync_engine`` for why we don't clear
-                        # ``cancel_handle_box`` here.
-
-                loop = asyncio.get_running_loop()
-                try:
-                    await loop.run_in_executor(None, _write_sync)
-                except asyncio.CancelledError:
-                    # Abort the write so its transaction is rolled back
-                    # rather than allowed to commit in the zombie thread.
-                    # Only this call's handle is targeted.
-                    await self._t_eng._abort_handle(cancel_handle_box[0])
-                    raise
+        await self._t_eng.run_with_conn_async(
+            lambda conn: self._write_df_to_sql(
+                df=df,
+                conn=conn,
+                table_name=table_name,
+                schema_name=schema_name,
+                if_exists=if_exists,
+            ),
+        )
 
         await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
 
