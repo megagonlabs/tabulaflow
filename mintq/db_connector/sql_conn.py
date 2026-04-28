@@ -1,10 +1,5 @@
 """Schema-aware async SQL client built on SQLAlchemy.
 
-Layers operational features on top of SQLAlchemy that PEP 249 and
-``databases``-style libraries don't cover as a unit.  Cross-dialect
-cancellation is the headline gap — Java/JDBC, Go's ``database/sql``,
-.NET's ``DbCommand`` all expose unified cancel APIs; Python doesn't.
-
 What this module adds on top of SQLAlchemy
 ==========================================
 
@@ -883,11 +878,33 @@ class ThrottledEngine:
         duckdb_init_sql: list[str] | None = None,
         **engine_kwargs: Any,
     ) -> "ThrottledEngine":
-        """Build an engine from ``url`` and wrap it.
+        """Build a SQLAlchemy engine from ``url`` and wrap it.
 
         Centralises engine creation (async vs sync dialect selection,
-        DuckDB connect_args, DuckDB on-connect pragmas) so callers don't
-        have to juggle a bare SQLAlchemy engine alongside a ThrottledEngine.
+        DuckDB connect_args, DuckDB on-connect pragmas) so callers
+        don't have to juggle a bare SQLAlchemy engine alongside a
+        :class:`ThrottledEngine`.
+
+        Args:
+            url: SQLAlchemy database URL, sync or async (e.g.
+                ``"duckdb:///:memory:"`` or
+                ``"postgresql+asyncpg://..."``).
+            max_concurrency_per_db: Cap on concurrent queries against
+                this database.  Also the underlying pool size.
+            dbms_semaphore: Optional semaphore shared across all
+                engines targeting the same DBMS, for global rate
+                shaping.
+            read_only: When True and the URL is a DuckDB file, opens in
+                native read-only mode so no file lock is held.
+            duckdb_init_sql: Optional list of SQL statements to run on
+                every fresh DuckDB connection (e.g.
+                ``"INSTALL spatial; LOAD spatial;"``).
+            **engine_kwargs: Extra kwargs forwarded to
+                :func:`sqlalchemy.create_engine` /
+                :func:`sqlalchemy.ext.asyncio.create_async_engine`.
+
+        Returns:
+            A :class:`ThrottledEngine` wrapping the new engine.
         """
         engine_kwargs.setdefault("echo", False)  # avoid excessive logging from engine
 
@@ -930,19 +947,26 @@ class ThrottledEngine:
         threads to release their connections, then dispose the engine.
 
         This is the right shutdown primitive for sync dialects: a bare
-        ``engine.dispose()`` cannot close connections still checked out by
-        a running executor thread, leaving zombie connections that collide
-        with subsequent opens on the same file (e.g. DuckDB's "different
-        configuration" error).  For a clean shutdown with no in-flight
-        work this is a fast no-op past the small grace period.
+        ``engine.dispose()`` cannot close connections still checked out
+        by a running executor thread, leaving zombie connections that
+        collide with subsequent opens on the same file (e.g. DuckDB's
+        "different configuration" error).  For a clean shutdown with no
+        in-flight work this is a fast no-op past the small grace
+        period.
 
         Note: ``loop.run_in_executor`` wraps the thread's future in an
-        asyncio Future that is considered "done" the moment it's cancelled,
-        even while the thread keeps running.  That means awaiting the
-        asyncio futures is unreliable here — we poll the raw-connection set
-        instead, since a connection is only removed after ``_execute_sync_engine`` /
-        ``_run_inspector`` exits its ``with engine.begin()`` / ``.connect()``
-        block (i.e. the thread has actually finished).
+        asyncio Future that is considered "done" the moment it's
+        cancelled, even while the thread keeps running.  Awaiting those
+        asyncio futures is unreliable — we poll the raw-connection set
+        instead, since a connection is only removed after
+        ``_execute_sync_engine`` / ``_run_inspector`` exits its
+        ``with engine.begin()`` / ``.connect()`` block (i.e. the thread
+        has actually finished).
+
+        Args:
+            timeout: Maximum seconds to wait for executor threads to
+                release their connections after cancellation.  Past
+                this deadline the engine is disposed regardless.
         """
         # Small grace period so any executor thread that was mid-checkout at
         # cancel time has a chance to register its connection with our
@@ -997,49 +1021,44 @@ class ThrottledEngine:
         timeout: int | None = None,
         return_df: bool = False,
     ) -> QueryResult:
-        """Execute a query, with timeout and cancel both routed through the
-        same :class:`_CancelStrategy` plumbing.
-
-        Sync engines run the query in an executor thread; async engines
-        run it as a coroutine.  Either way:
-
-        * The inner call publishes a cancel handle via
-          ``cancel_handle_box`` (when a strategy exists for the dialect).
-        * ``asyncio.wait_for`` enforces ``timeout``.
-        * On either ``CancelledError`` (caller cancelled the task) or
-          ``TimeoutError`` (deadline expired), we abort *just this
-          query's* handle via :meth:`_abort_handle` and re-raise.
+        """Execute a query with timeout and cancellation routed through
+        the dialect's :class:`_CancelStrategy`.
 
         Cancellation / timeout contract:
 
-        * ``CancelledError`` (caller's task cancel) and ``timeout=``
-          go through the same path: abort the in-flight query via the
-          dialect's strategy, then unwind.  Timeout is just "cancel
-          after N seconds."
+        * ``CancelledError`` and ``timeout=`` share one code path —
+          timeout is "cancel after N seconds."  Both abort the
+          in-flight query via the dialect's strategy, then unwind.
         * Statements run inside ``engine.begin()`` — on cancel, the
           transaction rolls back **if the dialect is transactional**.
           Postgres / DuckDB / SQLite / MSSQL-in-explicit-txn: full
-          rollback.  **MySQL and Oracle DDL implicitly auto-commit
-          per statement** — cancel stops execution but cannot undo
-          what already committed.  This is a dialect property, not
-          a mechanism flaw.
+          rollback.  **MySQL and Oracle DDL auto-commit per
+          statement** — cancel stops execution but cannot undo what
+          already committed (a dialect property, not a flaw here).
         * After cancel, the connection is usable for the next call.
-          On dialects where the cancel kills the session (MSSQL), the
-          pool fetches a fresh connection on the next operation.
+          On dialects where cancel kills the session (MSSQL), the pool
+          fetches a fresh connection.
         * Multi-statement strings cancel at the currently-running
           statement; statements not yet reached don't execute.
-          Statements that already executed before cancel follow the
-          dialect's normal commit semantics inside the txn.
         * Procedural blocks (Snowflake Scripting, PL/SQL, T-SQL
-          batches) are one statement to the driver; cancel aborts
-          the whole block at the next break point.
+          batches) are one statement to the driver; cancel aborts the
+          whole block at the next break point.
 
         Args:
             query: A raw SQL string or a SQLAlchemy ``Executable``.
-            parameters: Bind parameters (driver-native paramstyle for
-                raw strings, e.g. ``%(name)s`` for pyformat).
+            parameters: Bind parameters.  Raw strings must use the
+                driver's native paramstyle (e.g. ``%(name)s`` for
+                pyformat).
             timeout: Per-query deadline in seconds.  ``None`` disables.
             return_df: Wrap rows in a ``pandas.DataFrame``.
+
+        Returns:
+            A :class:`QueryResult` carrying rows (or DataFrame) and
+            elapsed latency.
+
+        Raises:
+            asyncio.CancelledError: If the awaiting task is cancelled.
+            TimeoutError: If ``timeout`` expires.
         """
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
@@ -1309,13 +1328,42 @@ async def load_schema_with_cache_async(
     column_stats_mode: ColumnStatsMode | None = None,
     description: str | None = None,
 ) -> SQLSchema:
-    """Loads the database schema, utilizing a cache if available and enabled.
+    """Load the database schema, using the on-disk cache when available
+    and enabled.
+
+    Reads the cache at ``<cache_dir>/schemas/<global_id>.json`` if it
+    exists and caching is enabled; otherwise introspects the live
+    database via :func:`build_schema_async`, writes the result back to
+    the cache (when caching is enabled and the schema is non-empty),
+    and returns it.
 
     Args:
-        enable_schema_caching: If False, skip schema cache read/write
-            regardless of global config.  Useful for mutable databases
-            where cached schemas would be stale.
-        description: Optional database description to store in the schema.
+        global_id: Unique identifier used as the cache filename and
+            the per-database lock key.
+        db_name: Human-readable database name stored in
+            ``schema.name``.
+        t_eng: The :class:`ThrottledEngine` whose schema to load.
+        group_date_partitioned_tables: When True, tables sharing a
+            common prefix/suffix that differ only in a date-like
+            numeric segment are grouped into a single logical entry.
+        group_table_regexes: Regex patterns identifying additional
+            table groupings.
+        include_schema_names: When provided, restrict introspection
+            to these schemas only.
+        enable_schema_caching: When False, skip cache read/write
+            regardless of the global config.  Useful for mutable
+            databases where a stale cache would mislead callers.
+        column_stats_mode: Override for ``mintq_config.column_stats_mode``;
+            controls whether column-level statistics are computed.
+        description: Optional database description stored in
+            ``schema.description``.
+
+    Returns:
+        The loaded :class:`SQLSchema`.
+
+    Raises:
+        FileNotFoundError: If ``mintq_config.schema_cache_required`` is
+            set and the cache file is missing.
     """
     schema_cache_dir = os.path.join(mintq_config.cache_dir, "schemas")
     os.makedirs(schema_cache_dir, exist_ok=True)
