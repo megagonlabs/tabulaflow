@@ -1755,6 +1755,20 @@ async def build_schema_async(
     return SQLSchema(name=db_name, dialect=dialect, tables=tables)
 
 
+@dataclass(frozen=True)
+class _SchemaBuildConfig:
+    """Knobs that control how :func:`build_schema_async` and
+    :func:`build_table_async` introspect and post-process a database
+    schema.  Stored on :class:`SQLConnector` so
+    :meth:`refresh_schema_async` can rebuild with the same config.
+    """
+
+    group_date_partitioned_tables: bool = True
+    group_table_regexes: list[str] = dataclasses.field(default_factory=list)
+    include_schema_names: list[str] | None = None
+    column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+
+
 @dataclass
 class SQLConnector:
     """Database connector that wraps a SQLAlchemy engine with concurrency
@@ -1780,10 +1794,7 @@ class SQLConnector:
     read_only: bool = True
     enable_schema_caching: bool = True
     enable_query_caching: bool = False
-    _group_date_partitioned_tables: bool = True
-    _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
-    _include_schema_names: list[str] | None = None
-    _column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
+    _schema_build_config: _SchemaBuildConfig = dataclasses.field(default_factory=_SchemaBuildConfig)
     # Optional cleanup the loader registers (e.g. "delete the DuckDB
     # cache file I generated for this connector").  Called from
     # ``disconnect_async`` after the engine is closed.  Lets loaders own
@@ -1910,12 +1921,14 @@ class SQLConnector:
                 read_only=read_only,
                 enable_schema_caching=enable_schema_caching,
                 enable_query_caching=enable_query_caching,
-                _group_date_partitioned_tables=group_date_partitioned_tables,
-                _group_table_regexes=list(group_table_regexes),
-                _include_schema_names=include_schema_names,
-                _column_stats_mode=column_stats_mode
-                if column_stats_mode is not None
-                else mintq_config.column_stats_mode,
+                _schema_build_config=_SchemaBuildConfig(
+                    group_date_partitioned_tables=group_date_partitioned_tables,
+                    group_table_regexes=list(group_table_regexes),
+                    include_schema_names=include_schema_names,
+                    column_stats_mode=column_stats_mode
+                    if column_stats_mode is not None
+                    else mintq_config.column_stats_mode,
+                ),
             )
         except BaseException:
             try:
@@ -1991,7 +2004,7 @@ class SQLConnector:
                             ref.table_name,
                             ref.schema_name,
                             is_view=ref.table_name in view_names_by_schema.get(ref.schema_name, set()),
-                            column_stats_mode=self._column_stats_mode,
+                            column_stats_mode=self._schema_build_config.column_stats_mode,
                         )
                         for ref in tables
                     ]
@@ -2009,14 +2022,15 @@ class SQLConnector:
                     tables=kept,
                 )
             else:
+                cfg = self._schema_build_config
                 self.schema = await build_schema_async(
                     self._t_eng,
                     self.schema.name,
                     self.schema.dialect,  # type: ignore[arg-type]
-                    self._group_date_partitioned_tables,
-                    self._group_table_regexes,
-                    column_stats_mode=self._column_stats_mode,
-                    include_schema_names=self._include_schema_names,
+                    cfg.group_date_partitioned_tables,
+                    cfg.group_table_regexes,
+                    column_stats_mode=cfg.column_stats_mode,
+                    include_schema_names=cfg.include_schema_names,
                 )
 
             self.save_schema_cache()
