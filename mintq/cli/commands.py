@@ -283,7 +283,9 @@ async def _cmd_help(args: list[str], session: SessionState) -> CommandResult:
 
 
 async def _cmd_exit(args: list[str], session: SessionState) -> CommandResult:
-    await session.registry.disconnect_all_async()
+    # Disconnect happens in the TUI's exit path so all quit triggers
+    # (slash command, idle Ctrl+C / Ctrl+D double-press, …) share one
+    # cleanup site.  See ``MintqApp._request_exit``.
     return CommandResult(should_quit=True)
 
 

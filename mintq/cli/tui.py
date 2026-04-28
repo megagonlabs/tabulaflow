@@ -982,7 +982,7 @@ LIMIT 4000"""
             self._last_quit_hint_key == key
             and (now - self._last_idle_interrupt_ts) < self._INTERRUPT_DOUBLE_PRESS_WINDOW
         ):
-            self.exit()
+            self._request_exit()
             return
 
         self._last_idle_interrupt_ts = now
@@ -991,6 +991,26 @@ LIMIT 4000"""
             self._saved_input_placeholder = inp.placeholder
         inp.placeholder = f"Press {self._last_quit_hint_key} again to quit"
         self.set_timer(self._INTERRUPT_DOUBLE_PRESS_WINDOW, self._restore_input_placeholder)
+
+    def _request_exit(self) -> None:
+        """Single quit path: disconnect all registered connectors, then
+        exit the app.  Every quit trigger (slash command, idle Ctrl+C /
+        Ctrl+D double-press, …) routes through here so DB connections
+        and DuckDB file locks are always released cleanly.
+        """
+        if self._session is None:
+            self.exit()
+            return
+        self.run_worker(self._shutdown_then_exit(), exclusive=False, group="shutdown")
+
+    async def _shutdown_then_exit(self) -> None:
+        assert self._session is not None
+        try:
+            await self._session.registry.disconnect_all_async()
+        except Exception:
+            logger.debug("disconnect_all_async failed during exit", exc_info=True)
+        finally:
+            self.exit()
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a
@@ -1157,7 +1177,7 @@ LIMIT 4000"""
         assert isinstance(result, CommandResult)
 
         if result.should_quit:
-            self.exit()
+            self._request_exit()
             return
 
         if result.password_prompt:
