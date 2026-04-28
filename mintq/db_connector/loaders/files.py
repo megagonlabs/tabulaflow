@@ -218,7 +218,19 @@ async def load_files(
         raise
 
     connector.read_only = read_only
-    connector._temp_db_path = db_path
+
+    # The DuckDB cache file is loader-owned: the source CSV/parquet/Excel
+    # files are the truth; this file is regenerable.  Delete it on
+    # disconnect so ``data_dir`` directories don't accumulate stale caches.
+    cache_path = db_path
+
+    def _cleanup_cache() -> None:
+        try:
+            os.unlink(cache_path)
+        except OSError:
+            pass
+
+    connector.register_disconnect_hook(_cleanup_cache)
 
     for table in connector.schema.tables:
         source_file = table_file_map.get(table.name)

@@ -1792,7 +1792,12 @@ class SQLConnector:
     _group_table_regexes: list[str] = dataclasses.field(default_factory=list)
     _include_schema_names: list[str] | None = None
     _column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
-    _temp_db_path: str | None = None
+    # Optional cleanup the loader registers (e.g. "delete the DuckDB
+    # cache file I generated for this connector").  Called from
+    # ``disconnect_async`` after the engine is closed.  Lets loaders own
+    # their resource lifecycle without leaking loader-specific
+    # vocabulary into ``SQLConnector``.
+    _on_disconnect: Callable[[], None] | None = None
     _schema_lock: asyncio.Lock = dataclasses.field(default_factory=asyncio.Lock)
 
     def save_schema_cache(self) -> None:
@@ -1913,6 +1918,16 @@ class SQLConnector:
                 else mintq_config.column_stats_mode,
             )
 
+    def register_disconnect_hook(self, callback: Callable[[], None]) -> None:
+        """Register a callback to run after :meth:`disconnect_async`
+        closes the engine.
+
+        Useful for loader-side cleanup (e.g. deleting a generated cache
+        file) without coupling the connector to the loader's specific
+        resources.  Replaces any previously-registered hook.
+        """
+        self._on_disconnect = callback
+
     async def disconnect_async(self) -> None:
         """Close all pooled connections in the underlying SQLAlchemy engine.
 
@@ -1924,17 +1939,16 @@ class SQLConnector:
         After disconnect, ``schema`` remains in memory and SQLAlchemy will
         transparently create new connections on demand.
 
-        If this connector was created with ``_temp_db_path`` set (e.g. via
-        :func:`mintq.db_connector.loaders.files.load_files` with no
-        ``data_dir``), the temporary DuckDB file is also deleted.
+        If a hook was registered via :meth:`register_disconnect_hook`,
+        it runs after the engine is closed.
         """
         await self._t_eng.aclose()
-        if self._temp_db_path is not None:
+        if self._on_disconnect is not None:
             try:
-                os.unlink(self._temp_db_path)
-            except OSError:
-                pass
-            self._temp_db_path = None
+                self._on_disconnect()
+            except Exception:
+                logger.debug("disconnect callback failed", exc_info=True)
+            self._on_disconnect = None
 
     async def refresh_schema_async(
         self,
