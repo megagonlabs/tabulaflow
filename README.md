@@ -107,8 +107,8 @@ April 27
   - [x] Combine timeout and cancellation handling
   - [x] remove aiosqlite path
   - [x] Cancellation for all sql dialects, sync and async
-  - [ ] Zoom out and see sql_conn.py
-  - [ ] Check ThrottledEngine API, whether engine used externally
+  - [x] Check ThrottledEngine API, whether engine used externally
+  - [x] Zoom out and see sql_conn.py
 
 - [ ] Enter Inspect to the right
 - [ ] Bug: dataset readme not fetched
