@@ -5,7 +5,7 @@ What this module adds on top of SQLAlchemy
 
 **Unified async API over sync and async engines.**  One
 :meth:`SQLConnector.run_query_async` call works regardless of whether
-the underlying driver is sync (psycopg2, mysqlclient, duckdb, ...)
+the underlying driver is sync (psycopg2, snowflake, bigquery, duckdb, ...)
 or async (asyncpg, aiosqlite, asyncmy, ...).  Callers don't need to
 know which kind of dialect they're talking to.
 
