@@ -61,48 +61,6 @@ async def test_cancel_then_retry_mixed_config(duckdb_with_tables: str) -> None:
     await connector.disconnect_async()
 
 
-async def test_cleanup_on_failure_runs_on_exception(tmp_path: Path) -> None:
-    """``cleanup_on_failure`` must dispose the engine when the enclosed
-    block raises."""
-    db_path = str(tmp_path / "cf.duckdb")
-    duckdb.connect(db_path).close()  # create empty DB file
-
-    t_eng = ThrottledEngine.from_url(f"duckdb:///{db_path}", read_only=True)
-
-    class Sentinel(Exception):
-        pass
-
-    with pytest.raises(Sentinel):
-        async with t_eng.cleanup_on_failure():
-            raise Sentinel
-
-    # Engine's pool should be empty after disposal — a fresh connection
-    # must therefore be a freshly-opened one, not a reused one.  Just
-    # assert dispose completed without error by opening again.
-    _ = await t_eng.execute_async("SELECT 1")
-
-
-async def test_cleanup_on_failure_leaves_engine_alive_on_success(tmp_path: Path) -> None:
-    """On clean exit, ``cleanup_on_failure`` must NOT dispose the engine —
-    the enclosing caller typically still owns it (e.g. a SQLConnector it
-    just constructed)."""
-    db_path = str(tmp_path / "cf-ok.duckdb")
-    duckdb.connect(db_path).close()
-    t_eng = ThrottledEngine.from_url(f"duckdb:///{db_path}", read_only=True)
-
-    async with t_eng.cleanup_on_failure():
-        await t_eng.execute_async("SELECT 1")
-
-    # Engine must still be usable; if it had been disposed, this would
-    # open a new connection and still succeed, so we instead assert the
-    # underlying pool hasn't been shut down.  SQLAlchemy disposes mean
-    # pool is replaced; check via a query.
-    result = await t_eng.execute_async("SELECT 1")
-    assert result.result[0][0] == 1
-
-    await t_eng.aclose()
-
-
 async def test_aclose_is_safe_with_nothing_in_flight(tmp_path: Path) -> None:
     """``aclose`` must complete quickly when there are no in-flight
     queries and leave no residue."""

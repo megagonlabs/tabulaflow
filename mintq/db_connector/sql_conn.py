@@ -853,18 +853,6 @@ class ThrottledEngine:
         db_semaphore = asyncio.Semaphore(max_concurrency_per_db)
         return cls(engine_type, engine, dbms_semaphore, db_semaphore)
 
-    @asynccontextmanager
-    async def cleanup_on_failure(self) -> AsyncGenerator[None, None]:
-        """Run the enclosed block, disposing the engine (with in-flight
-        cancellation) only if an exception propagates out.  On clean exit
-        the engine stays alive for its owning caller.
-        """
-        try:
-            yield
-        except BaseException:
-            await self.aclose()
-            raise
-
     async def aclose(self, timeout: float = 5.0) -> None:
         """Cancel any in-flight sync queries, wait for their executor
         threads to release their connections, then dispose the engine.
@@ -1884,7 +1872,13 @@ class SQLConnector:
             duckdb_init_sql=duckdb_init_sql,
             **engine_kwargs,
         )
-        async with t_eng.cleanup_on_failure():
+        # If anything below raises (or the awaiting task is cancelled
+        # mid-schema-build), dispose ``t_eng`` — leaving it alive would
+        # leak zombie executor threads holding DuckDB connections that
+        # collide with subsequent opens.  ``aclose`` cancels in-flight
+        # work and disposes the pool; we suppress its own errors so they
+        # don't mask the original construction failure.
+        try:
             # Eagerly open one connection to surface file-lock errors (DuckDB)
             # or credential / network issues immediately rather than at first query.
             await t_eng.execute_async("SELECT 1")
@@ -1917,6 +1911,12 @@ class SQLConnector:
                 if column_stats_mode is not None
                 else mintq_config.column_stats_mode,
             )
+        except BaseException:
+            try:
+                await t_eng.aclose()
+            except Exception:
+                logger.debug("aclose during construction failed", exc_info=True)
+            raise
 
     def register_disconnect_hook(self, callback: Callable[[], None]) -> None:
         """Register a callback to run after :meth:`disconnect_async`
