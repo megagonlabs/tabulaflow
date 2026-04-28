@@ -93,20 +93,25 @@ def _format_size(n_bytes: int) -> str:
     return f"{n_bytes:.1f} TB"
 
 
-def _fetch_hf_description(dataset_id: str) -> str | None:
+async def _fetch_hf_description(dataset_id: str) -> str | None:
     """Fetch the full dataset README from HuggingFace Hub.
 
-    Downloads the README.md file directly rather than using dataset_info(),
-    which returns a truncated description for large dataset cards.
+    Uses a direct HTTP GET against ``raw/main/README.md`` with a hard
+    timeout, sharing the module-level :func:`_get_hf_client` connection
+    pool.  The previous implementation went through
+    ``huggingface_hub.hf_hub_download``, which has been observed to
+    hang indefinitely on this code path (no top-level timeout, retries
+    inside the local cache machinery).  ``dataset_info()`` is not an
+    option — it truncates descriptions for large dataset cards.
     """
     try:
-        from huggingface_hub import hf_hub_download
-
-        path = hf_hub_download(dataset_id, "README.md", repo_type="dataset")
-        with open(path, encoding="utf-8") as f:
-            content = f.read()
+        client = _get_hf_client()
+        url = f"https://huggingface.co/datasets/{dataset_id}/raw/main/README.md"
+        r = await client.get(url, timeout=15, follow_redirects=True)
+        if r.status_code != 200:
+            return None
         # Strip YAML frontmatter.
-        content = re.sub(r"^---\n.*?\n---\n", "", content, flags=re.DOTALL).strip()
+        content = re.sub(r"^---\n.*?\n---\n", "", r.text, flags=re.DOTALL).strip()
         return content or None
     except Exception:
         return None
@@ -499,7 +504,7 @@ async def load_hf_dataset(
     schema_cache_path = os.path.join(mintq_config.cache_dir, "schemas", f"{global_id}.json")
     description: str | None = None
     if not os.path.exists(schema_cache_path):
-        hf_description = await asyncio.to_thread(_fetch_hf_description, dataset_id)
+        hf_description = await _fetch_hf_description(dataset_id)
         if hf_description:
             if len(hf_description) > 5000:
                 from mintq.preprocessors.components.text_summarizer import TextSummarizer
