@@ -3,19 +3,11 @@
 What this module adds on top of SQLAlchemy
 ==========================================
 
-**Timeout and cancellation.**  Per-dialect :class:`_CancelStrategy`
-covering 14+ sync dialects and the async variants that don't
-self-cancel on ``asyncio.Task.cancel()``.  ``CancelledError`` and
-``timeout=`` share one path: timeout is "cancel after N seconds."
-
-**Concurrency control.**  :class:`ThrottledEngine` adds per-DB and
-shared per-DBMS asyncio semaphores (independent of pool size) and a
-DDL lock for dialects where concurrent ``CREATE TABLE`` causes
-catalog conflicts (DuckDB, SQLite).
-
-**Sync / async unification.**  One ``execute_async`` API regardless
-of whether the underlying engine is sync (run via executor) or async
-(awaited natively).
+**Unified async API over sync and async engines.**  One
+:meth:`SQLConnector.run_query_async` call works regardless of whether
+the underlying driver is sync (psycopg2, mysqlclient, duckdb, ...)
+or async (asyncpg, aiosqlite, asyncmy, ...).  Callers don't need to
+know which kind of dialect they're talking to.
 
 **Unified schema data structure.**  Schema introspection produces a
 single dialect-agnostic :class:`mintq.schema.SQLSchema` shape (tables,
@@ -24,19 +16,31 @@ regardless of whether the source is DuckDB, Snowflake, BigQuery,
 MySQL, etc.  Downstream consumers (agents, BI tools, schema
 browsers) see one structure across all backends.
 
+**Timeout and cancellation.**  ``SQLConnector.run_query_async(...,
+timeout=N)`` and ``task.cancel()`` share one path: a per-dialect
+cancel primitive (``interrupt()``, ``cancel()``, ``KILL QUERY``,
+``cursor.cancel()``, ...) actually stops the running query.  Covers
+14+ sync dialects and the async variants that don't self-cancel on
+``asyncio.Task.cancel()``.
+
+**Concurrency control.**  Per-DB and shared per-DBMS asyncio
+semaphores (independent of pool size) and a DDL lock for dialects
+where concurrent ``CREATE TABLE`` causes catalog conflicts (DuckDB,
+SQLite).
+
 **Schema lifecycle.**  :class:`SQLConnector` introspects at
-construction (via :class:`AsyncInspector`), caches to disk (keyed by
-``global_id``), and refreshes on demand or after writes.  Build
-knobs are bundled in :class:`_SchemaBuildConfig` so refresh uses the
-original config.
+construction, caches to disk (keyed by ``global_id``), and refreshes
+on demand via :meth:`SQLConnector.refresh_schema_async` or
+automatically after writes.
 
-**Read-only safety guard.**  :func:`_contains_write_statement`
-(sqlparse-based) blocks DML/DDL/DCL/stored-proc invocations when
-``read_only=True``, surfacing a ``ReadOnlyViolationError`` in
-:class:`ExecResult`.
+**Read-only safety guard.**  ``SQLConnector(read_only=True)`` blocks
+DML/DDL/DCL/stored-proc invocations and surfaces a
+``ReadOnlyViolationError`` in :class:`ExecResult`.  Statement
+classification is sqlparse-based and dialect-agnostic.
 
-**Query result caching.**  Memory + disk cache keyed by query,
-parameters, and timeout.
+**Query result caching.**  Optional memory + disk cache keyed by
+query, parameters, and timeout.  Enabled via
+``SQLConnector(enable_query_caching=True)``.
 
 **Errors-as-data.**  :meth:`SQLConnector.run_query_async` returns
 errors in :class:`ExecResult` rather than raising — except
