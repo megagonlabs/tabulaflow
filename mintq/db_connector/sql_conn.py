@@ -41,55 +41,99 @@ logger = logging.getLogger(__name__)
 
 _T = TypeVar("_T")
 
-# Statements that modify data or schema.  The pattern matches the first
-# non-whitespace, non-comment keyword in a single SQL statement.
-_WRITE_STATEMENT_RE = re.compile(
-    r"^\s*"
-    r"(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"  # skip leading SQL comments
-    r"(?P<keyword>"
-    r"INSERT|UPDATE|DELETE|MERGE|UPSERT|REPLACE"  # DML
-    r"|CREATE|ALTER|DROP|TRUNCATE|RENAME"  # DDL
-    r"|GRANT|REVOKE"  # DCL
-    r"|CALL|EXECUTE(?!\s+IMMEDIATE\b)|EXEC(?!UTE)"  # stored procs (not EXECUTE IMMEDIATE)
-    r"|COPY|LOAD|UNLOAD|PUT|GET|REMOVE"  # bulk / file ops (Snowflake, etc.)
-    r"|ATTACH|DETACH"  # database attachment
-    r")\b",
-    re.IGNORECASE | re.DOTALL,
-)
+# Keywords that mark a statement as data-modifying.  Used by the
+# read-only guard.  False positives are preferred over false negatives:
+# blocking a borderline query is mildly annoying; letting an unsafe
+# write through bypasses the safety.
+_WRITE_KEYWORDS = frozenset({
+    # DML
+    "INSERT", "UPDATE", "DELETE", "MERGE", "UPSERT", "REPLACE",
+    # DDL
+    "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME",
+    # DCL
+    "GRANT", "REVOKE",
+    # Stored procs / dynamic execution.  ``EXECUTE IMMEDIATE`` is
+    # excluded inside ``_first_keyword`` — its dynamic SQL is opaque.
+    "CALL", "EXECUTE", "EXEC",
+    # Bulk / file ops (Snowflake, etc.)
+    "COPY", "LOAD", "UNLOAD", "PUT", "GET", "REMOVE",
+    # Database attachment
+    "ATTACH", "DETACH",
+})
 
-
-def _contains_write_statement(query: str) -> re.Match[str] | None:
-    """Check every statement in a (possibly multi-statement) query string.
-
-    Uses ``sqlparse.split`` to split on statement boundaries and tests each
-    fragment against ``_WRITE_STATEMENT_RE``.  Returns the first match found,
-    or ``None`` if all statements are read-only.
-    """
-    for stmt in sqlparse.split(query):
-        m = _WRITE_STATEMENT_RE.match(stmt)
-        if m:
-            return m
-    return None
-
-
-# DDL statements that modify the catalog. Used to serialize DDL on dialects
-# with optimistic concurrency (DuckDB, SQLite) where concurrent DDL on the
-# same object causes write-write conflict errors.
-_DDL_STATEMENT_RE = re.compile(
-    r"^\s*"
-    r"(?:--[^\n]*\n\s*|/\*.*?\*/\s*)*"  # skip leading SQL comments
-    r"(?:CREATE|ALTER|DROP|TRUNCATE|RENAME|ATTACH|DETACH)\b",
-    re.IGNORECASE | re.DOTALL,
-)
+# DDL subset of write keywords — used to acquire the per-engine DDL
+# lock on dialects with optimistic concurrency (DuckDB, SQLite) where
+# concurrent DDL on the same object causes catalog conflicts.
+_DDL_KEYWORDS = frozenset({
+    "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH",
+})
 
 # Dialects that need DDL serialization.
 _DDL_SERIAL_DIALECTS = frozenset({"duckdb", "sqlite"})
 
 
+def _first_keyword(stmt: sqlparse.sql.Statement) -> str | None:
+    """Return the first significant keyword of ``stmt`` (uppercased),
+    skipping leading whitespace and comments.
+
+    Returns ``None`` if the statement starts with something other than
+    a keyword (punctuation, an identifier, etc.) or contains no
+    significant tokens.
+
+    Special case: ``EXECUTE IMMEDIATE`` returns ``None`` — the dynamic
+    SQL inside is opaque, so we can't classify the outer statement
+    from the leading keyword alone.  Matches the original regex's
+    behaviour.
+    """
+    keywords: list[str] = []
+    for tok in stmt.flatten():
+        if tok.is_whitespace:
+            continue
+        ttype = tok.ttype
+        if ttype is None:
+            continue
+        if ttype in sqlparse.tokens.Comment:
+            continue
+        # Accept Keyword (any subtype: DML, DDL, CTE) or Name.
+        # Dialect-specific keywords like ``ATTACH`` / ``DETACH`` /
+        # ``UNLOAD`` are tagged as ``Name`` by sqlparse rather than
+        # ``Keyword`` because they're not in its built-in vocabulary;
+        # the keyword-set check at the call site filters out genuine
+        # identifiers.
+        if ttype in sqlparse.tokens.Keyword or ttype is sqlparse.tokens.Name:
+            keywords.append(tok.value.upper())
+            if len(keywords) >= 2:
+                break
+            continue
+        # First significant token is something else (punctuation,
+        # literal): not a leading keyword.
+        if not keywords:
+            return None
+        break
+    if not keywords:
+        return None
+    if keywords[0] == "EXECUTE" and len(keywords) > 1 and keywords[1] == "IMMEDIATE":
+        return None
+    return keywords[0]
+
+
+def _contains_write_statement(query: str) -> str | None:
+    """Return the first write/DDL/DCL keyword (uppercased) if any
+    statement in ``query`` is a write, or ``None`` if all statements
+    are read-only.
+    """
+    for stmt in sqlparse.parse(query):
+        kw = _first_keyword(stmt)
+        if kw is not None and kw in _WRITE_KEYWORDS:
+            return kw
+    return None
+
+
 def _contains_ddl_statement(query: str) -> bool:
-    """Return True if any statement in the query is a DDL operation."""
-    for stmt in sqlparse.split(query):
-        if _DDL_STATEMENT_RE.match(stmt):
+    """Return True if any statement in ``query`` is a DDL operation."""
+    for stmt in sqlparse.parse(query):
+        kw = _first_keyword(stmt)
+        if kw is not None and kw in _DDL_KEYWORDS:
             return True
     return False
 
@@ -2112,12 +2156,12 @@ class SQLConnector:
         # --- read-only guard (checks every statement in multi-statement strings) ---
         query_str = str(query) if not isinstance(query, str) else query
         if self.read_only:
-            write_match = _contains_write_statement(query_str)
-            if write_match:
+            write_keyword = _contains_write_statement(query_str)
+            if write_keyword:
                 return ExecResult(
                     error=ErrorInfo(
                         exc_type="ReadOnlyViolationError",
-                        message=f"Write statement blocked (read_only=True): {write_match.group('keyword').upper()} ...",
+                        message=f"Write statement blocked (read_only=True): {write_keyword} ...",
                     ),
                 )
 

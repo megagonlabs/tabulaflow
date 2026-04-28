@@ -6,7 +6,7 @@ import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 from mintq.toolhub.run_query import RunQueryTool, LLMParameter
-from mintq.db_connector.sql_conn import SQLConnector, _contains_ddl_statement
+from mintq.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
 INIT_SQL = [
@@ -151,6 +151,57 @@ async def test_run_query_timeout(db_connector: SQLConnector) -> None:
 )
 def test_contains_ddl_statement(query: str, expected: bool) -> None:
     assert _contains_ddl_statement(query) == expected
+
+
+@pytest.mark.parametrize(
+    "query, expected",
+    [
+        # Read-only — no match
+        ("SELECT 1", None),
+        ("SELECT * FROM t WHERE id = 1", None),
+        ("WITH cte AS (SELECT 1) SELECT * FROM cte", None),
+        ("", None),
+        ("   ", None),
+        ("-- just a comment", None),
+        # DML
+        ("INSERT INTO t VALUES (1)", "INSERT"),
+        ("UPDATE t SET x = 1", "UPDATE"),
+        ("DELETE FROM t WHERE id = 1", "DELETE"),
+        ("MERGE INTO t USING s ON t.id = s.id WHEN MATCHED THEN UPDATE SET x = s.x", "MERGE"),
+        # DDL
+        ("CREATE TABLE t (a INT)", "CREATE"),
+        ("ALTER TABLE t ADD COLUMN c TEXT", "ALTER"),
+        ("DROP TABLE t", "DROP"),
+        ("TRUNCATE TABLE t", "TRUNCATE"),
+        # DCL
+        ("GRANT SELECT ON t TO u", "GRANT"),
+        ("REVOKE SELECT ON t FROM u", "REVOKE"),
+        # Stored procs
+        ("CALL my_proc()", "CALL"),
+        ("EXEC sp_who", "EXEC"),
+        # Bulk / file ops (Snowflake et al.)
+        ("COPY t FROM 's3://b/k'", "COPY"),
+        ("LOAD DATA INFILE 'f.csv' INTO TABLE t", "LOAD"),
+        ("UNLOAD ('SELECT * FROM t') TO 's3://b/k'", "UNLOAD"),
+        # Database attachment
+        ("ATTACH 'other.duckdb' AS other", "ATTACH"),
+        ("DETACH other", "DETACH"),
+        # Comments before keyword
+        ("  -- read-only check\n  INSERT INTO t VALUES (1)", "INSERT"),
+        ("/* block */ DELETE FROM t", "DELETE"),
+        ("-- one\n-- two\nUPDATE t SET x = 1", "UPDATE"),
+        # Multi-statement: write in second statement
+        ("SELECT 1; INSERT INTO t VALUES (1)", "INSERT"),
+        ("SELECT 1; SELECT 2", None),
+        # EXECUTE IMMEDIATE: opaque dynamic SQL — explicitly NOT treated as a write
+        ("EXECUTE IMMEDIATE 'INSERT INTO t VALUES (1)'", None),
+        ("EXECUTE IMMEDIATE 'SELECT 1'", None),
+        # Bare EXECUTE (without IMMEDIATE) — treated as write (stored proc invocation)
+        ("EXECUTE my_proc", "EXECUTE"),
+    ],
+)
+def test_contains_write_statement(query: str, expected: str | None) -> None:
+    assert _contains_write_statement(query) == expected
 
 
 @pytest.mark.asyncio
