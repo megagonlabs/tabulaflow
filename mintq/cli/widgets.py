@@ -360,10 +360,14 @@ class UserMessage(Static):
     """
 
     def __init__(self, text: str) -> None:
-        line = Text()
-        line.append("┃ ", style=ACCENT_BOLD)
-        line.append(text)
-        super().__init__(line)
+        content = Text()
+        lines = text.split("\n")
+        for i, line in enumerate(lines):
+            if i > 0:
+                content.append("\n")
+            content.append("┃ ", style=ACCENT_BOLD)
+            content.append(line)
+        super().__init__(content)
 
 
 class SystemMessage(Static):

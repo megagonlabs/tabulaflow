@@ -93,7 +93,7 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 
 <plan_mode>
 If the user says "plan first" or "discuss first", present a plan and wait for approval before executing.
-- Lightweight read-only tools are allowed to undertand the data, task and ground the plan.
+- Multiple lightweight read-only tool calls are allowed to undertand the data, task and ground the plan.
 - Do NOT run heavy or stateful tools yet (e.g. `run_subagent_for_each_row`, `transfer_record`, `render_chart`, or any writes to `workspace`).
 </plan_mode>
 
