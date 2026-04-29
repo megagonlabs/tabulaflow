@@ -101,7 +101,7 @@ April 24
   - [x] Test for the bug
   - [x] UI bug, spinner with error
   - [x] Cancellation for write_dataframe_async and run_query_async
-  
+
 April 27
 - [x] Refactor sql_conn.py
   - [x] Combine timeout and cancellation handling
@@ -112,7 +112,8 @@ April 27
   - [x] Documentation for sql_conn.py
 - [x] Fix huggingface readme fetching
 
-- [ ] Fix https://huggingface.co/datasets/stellalisy/HorizonBench
+April 28
+- [x] Submitted issue on duckdb for https://huggingface.co/datasets/stellalisy/HorizonBench
 - [ ] Enter Inspect to the right
 - [ ] Pydantic AI partial trajectory on interrupt
 
@@ -127,7 +128,7 @@ April 27
   - [ ] Support interrupting agent
   - [ ] Pass db doc on connect for small dbs?
   - [ ] Multimodal data processing in subagent
-  - [ ] Disalbe compression for small dbs?
+  - [ ] Disable compression for small dbs?
   - [ ] Enriched with other data in huggingface repo
   - [ ] Show query latency
 - Data/Cell/Query Browser
