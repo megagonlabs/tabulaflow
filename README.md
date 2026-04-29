@@ -114,8 +114,11 @@ April 27
 
 April 28
 - [x] Submitted issue on duckdb for https://huggingface.co/datasets/stellalisy/HorizonBench
-- [ ] Enter Inspect to the right
-- [ ] Pydantic AI partial trajectory on interrupt
+- [x] "Enter Inspect" aligned to the right
+- [x] Pydantic AI partial trajectory on interrupt
+
+- [ ] Ambrosia
+- [ ] Web search
 
 - General
   - [ ] Improve transfer_record?
