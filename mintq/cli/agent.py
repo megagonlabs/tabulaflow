@@ -386,8 +386,8 @@ class ChatAgent:
             if interrupted:
                 progress.freeze_as_interrupted()
             progress.finish()
+            self._save_trajectory_for_debug()
 
-        self._save_trajectory_for_debug()
         result = await _build_chat_result(answer_text, self._query_history)
         result.usage = final_usage
         return result
