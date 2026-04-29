@@ -647,6 +647,8 @@ class DataBrowserScreen(Screen[None]):
                 marker = "▼" if self._sort_reverse else "▲"
                 label = f"{label} {marker}"
             header_labels.append(label)
+        # Textual's DataTable.clear() always resets scroll_x; save and restore.
+        scroll_x = self._table.scroll_x
         self._table.clear(columns=True)
         self._table.add_columns(*header_labels)
 
@@ -656,6 +658,7 @@ class DataBrowserScreen(Screen[None]):
             cells = [row_label] + [self._format_cell(v) for v in row]
             self._table.add_row(*cells)
 
+        self._table.scroll_to(x=scroll_x, y=0, animate=False)
         self._update_status()
         self._update_hint()
 
