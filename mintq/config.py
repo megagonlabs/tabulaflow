@@ -36,9 +36,9 @@ class _MintqSettings(BaseSettings):
     instrument_prefix: str = "exp"
     disable_bigquery_tracing: bool = True
     df_max_rows: int | None = 100000
-    max_llm_concurrency: int | None = 16
+    max_llm_concurrency: int | None = 32
     max_llm_requests_per_minute: int | None = 600
-    max_embedding_concurrency: int | None = 4
+    max_embedding_concurrency: int | None = 8
     max_embedding_requests_per_minute: int | None = 150
     dataset: str = "bird-sql"
     split: str = "dev"
