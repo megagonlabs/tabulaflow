@@ -427,7 +427,7 @@ class AgentProgressWidget(Widget):
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
         self._tool_spinner = Spinner("dots", style="dim")
-        self._tool_progress_pct: int | None = None
+        self._tool_progress: tuple[int, int] | None = None
         self._frozen = False
         self._timer: Timer | None = None
         self._usage: Usage | None = None
@@ -494,13 +494,12 @@ class AgentProgressWidget(Widget):
         self._refresh(layout=True, scroll=True)
 
     def tool_progress(self, completed: int, total: int) -> None:
-        """Update the running tool step with a progress percentage."""
-        pct = round(100 * completed / total) if total > 0 else 0
-        self._tool_progress_pct = pct
+        """Update the running tool step with a (completed/total) counter."""
+        self._tool_progress = (completed, total)
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
                 base_label = self._steps[i][3].split(" → ")[0]
-                self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {pct}%")
+                self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {completed}/{total}")
                 break
         self._refresh(layout=True, scroll=True)
 
@@ -509,13 +508,14 @@ class AgentProgressWidget(Widget):
             step = self._steps[i]
             if step[0] == "running" and step[1] == tool_call_id:
                 label = step[3]
-                if self._tool_progress_pct is not None:
+                if self._tool_progress is not None:
                     base_label = label.split(" → ")[0]
-                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → 100%")
+                    total = self._tool_progress[1]
+                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → {total}/{total}")
                 else:
                     self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
                 break
-        self._tool_progress_pct = None
+        self._tool_progress = None
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
 
