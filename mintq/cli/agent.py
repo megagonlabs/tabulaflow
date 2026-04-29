@@ -463,7 +463,11 @@ def _patch_interrupted_messages(messages: list[ModelMessage]) -> list[ModelMessa
                     ToolReturnPart(
                         tool_name=p.tool_name,
                         tool_call_id=p.tool_call_id,
-                        content="(interrupted by user before this tool finished)",
+                        content=(
+                            "(interrupted by user; no result captured. "
+                            "The tool may have completed before cancellation — any side effects "
+                            "(e.g. writes) may or may not have taken effect.)"
+                        ),
                     )
                     for p in pending
                 ]
