@@ -22,7 +22,7 @@ from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static, TextArea
 
 from mintq.cli.display import DATA_PREVIEW_MAX_ROWS
-from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, KEY_HINT
+from mintq.cli.theme import ACCENT, DRACULA_TRANSPARENT, KEY_HINT
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -352,22 +352,16 @@ class BannerWidget(Static):
 class UserMessage(Static):
     """Displays a user input message."""
 
-    DEFAULT_CSS = """
-    UserMessage {
+    DEFAULT_CSS = f"""
+    UserMessage {{
         margin: 1 0 1 0;
         padding: 0 1;
-    }
+        border-left: heavy {ACCENT};
+    }}
     """
 
     def __init__(self, text: str) -> None:
-        content = Text()
-        lines = text.split("\n")
-        for i, line in enumerate(lines):
-            if i > 0:
-                content.append("\n")
-            content.append("┃ ", style=ACCENT_BOLD)
-            content.append(line)
-        super().__init__(content)
+        super().__init__(Text(text))
 
 
 class SystemMessage(Static):
