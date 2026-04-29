@@ -430,6 +430,10 @@ class AgentProgressWidget(Widget):
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
+        # If we never produced any content, collapse out of the layout so the
+        # following "Interrupted" line sits flush against the user prompt.
+        if not self._steps and not self._streaming_text:
+            self.display = False
         self._refresh(layout=True)
 
     def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
