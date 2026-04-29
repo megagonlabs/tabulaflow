@@ -116,7 +116,9 @@ April 28
 - [x] Submitted issue on duckdb for https://huggingface.co/datasets/stellalisy/HorizonBench
 - [x] "Enter Inspect" aligned to the right
 - [x] Pydantic AI partial trajectory on interrupt
-
+- [ ] Fix missing record label
+- [ ] Fix scroll on column sorting
+- [ ] Fix first column suppressed
 - [ ] Ambrosia
 - [ ] Web search
 
