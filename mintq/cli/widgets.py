@@ -31,6 +31,7 @@ if TYPE_CHECKING:
 
     from mintq.cli.agent import ChatResult
     from mintq.cli.display import RecordGroup, ViewItem
+    from mintq.schema import Usage
 
 
 # ---------------------------------------------------------------------------
@@ -312,6 +313,8 @@ class AgentProgressWidget(Widget):
         self._tool_progress_pct: int | None = None
         self._frozen = False
         self._timer: Timer | None = None
+        self._usage: Usage | None = None
+        self._interrupted: bool = False
 
     def on_mount(self) -> None:
         self._timer = self.set_interval(1 / 12, self.refresh)
@@ -323,8 +326,14 @@ class AgentProgressWidget(Widget):
         for status, _tool_call_id, _name, label in self._steps:
             if status == "running":
                 has_running = True
-                self._tool_spinner.text = Text(label, style="dim")
-                parts.append(self._tool_spinner)
+                if self._frozen:
+                    line = Text()
+                    line.append("⊘ ", style="dim")
+                    line.append(label, style="dim")
+                    parts.append(line)
+                else:
+                    self._tool_spinner.text = Text(label, style="dim")
+                    parts.append(self._tool_spinner)
             else:
                 line = Text()
                 line.append("→ ", style="dim")
@@ -332,8 +341,11 @@ class AgentProgressWidget(Widget):
                 parts.append(line)
 
         if self._status_text and not has_running:
-            self._status_spinner.text = Text(self._status_text, style="dim")
-            parts.append(self._status_spinner)
+            if self._frozen:
+                parts.append(Text(self._status_text, style="dim"))
+            else:
+                self._status_spinner.text = Text(self._status_text, style="dim")
+                parts.append(self._status_spinner)
 
         if self._streaming_text:
             if self._steps:
@@ -406,6 +418,19 @@ class AgentProgressWidget(Widget):
     def set_status(self, text: str) -> None:
         self._status_text = text
         self._refresh()
+
+    def usage_update(self, usage: Usage) -> None:
+        self._usage = usage
+        self._refresh()
+
+    def freeze_as_interrupted(self) -> None:
+        self._interrupted = True
+        self._status_text = None
+        self._frozen = True
+        if self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        self._refresh(layout=True)
 
     def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
         try:

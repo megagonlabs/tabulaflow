@@ -18,6 +18,7 @@ if TYPE_CHECKING:
 
     from mintq.db_connector.base import NL2QDBConnector
     from mintq.db_connector.db_registry import DBRegistry
+    from mintq.schema import Usage
     from mintq.toolhub import (
         QueryHistory,
         QueryRecord,
@@ -155,6 +156,8 @@ class ProgressSink(Protocol):
     def tool_progress(self, completed: int, total: int) -> None: ...
     def text_delta(self, delta: str) -> None: ...
     def set_status(self, text: str) -> None: ...
+    def usage_update(self, usage: Usage) -> None: ...
+    def freeze_as_interrupted(self) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -181,6 +184,7 @@ class ChatResult:
     text: str
     records: list[ChatResultRecord] = field(default_factory=list)
     primary_record_index: int | None = 0
+    usage: Usage | None = None
 
     @property
     def primary_record(self) -> ChatResultRecord | None:
@@ -219,6 +223,7 @@ class ChatAgent:
     _pydantic_ai_agent: Agent[None, str] | None = None
     _query_history: QueryHistory = field(init=False)
     _tools: Toolset = field(init=False)
+    last_usage: Usage | None = None
 
     def __post_init__(self) -> None:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -326,34 +331,66 @@ class ChatAgent:
         )
 
     async def run(self, question: str, progress: ProgressSink) -> ChatResult:
-        """Run the agent on a user question, streaming progress to the sink."""
-        from pydantic_ai.run import AgentRunResultEvent
+        """Run the agent on a user question, streaming progress to the sink.
+
+        Uses ``agent.iter()`` so that on cancellation we can still snapshot the
+        partial trajectory and accumulated usage from the live ``AgentRun``.
+        """
+        from pydantic_ai import CallToolsNode, ModelRequestNode
+
+        from mintq.schema import Usage
 
         progress.start()
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
 
-        try:
-            assert self._pydantic_ai_agent is not None
+        assert self._pydantic_ai_agent is not None
 
-            answer_text = ""
-            async for event in self._pydantic_ai_agent.run_stream_events(
+        answer_text = ""
+        final_usage: Usage | None = None
+        interrupted = False
+
+        try:
+            async with self._pydantic_ai_agent.iter(
                 question,
                 message_history=self._message_history or None,
-            ):
-                if isinstance(event, AgentRunResultEvent):
-                    self._message_history = list(event.result.all_messages())
-                    answer_text = event.result.output
-                    break
-
-                await _handle_stream_event(event, progress, self._query_history, self._tools.get_table_schema)
-                await asyncio.sleep(0)
+            ) as agent_run:
+                try:
+                    async for node in agent_run:
+                        if not isinstance(node, (ModelRequestNode, CallToolsNode)):
+                            continue
+                        async with node.stream(agent_run.ctx) as stream:
+                            async for event in stream:
+                                await _handle_stream_event(
+                                    event, progress, self._query_history, self._tools.get_table_schema
+                                )
+                                await asyncio.sleep(0)
+                        progress.usage_update(Usage.from_pydantic_ai_usage(agent_run.usage(), self.model))
+                except asyncio.CancelledError:
+                    interrupted = True
+                    raise
+                finally:
+                    final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
+                    partial_messages = list(agent_run.all_messages())
+                    if interrupted:
+                        self._message_history = _patch_interrupted_messages(partial_messages)
+                    else:
+                        self._message_history = partial_messages
+                    self.last_usage = final_usage
+                    if agent_run.result is not None:
+                        answer_text = agent_run.result.output
 
         finally:
             self._tools.run_subagent_for_each_row.on_row_complete = None
+            if final_usage is not None:
+                progress.usage_update(final_usage)
+            if interrupted:
+                progress.freeze_as_interrupted()
             progress.finish()
 
         self._save_trajectory_for_debug()
-        return await _build_chat_result(answer_text, self._query_history)
+        result = await _build_chat_result(answer_text, self._query_history)
+        result.usage = final_usage
+        return result
 
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory and keep recent history bounded."""
@@ -403,6 +440,37 @@ async def _build_chat_result(
     records = await _records_from_refs(refs, query_history)
     primary_record_index: int | None = 0 if records else None
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
+
+
+def _patch_interrupted_messages(messages: list[ModelMessage]) -> list[ModelMessage]:
+    """Make ``messages`` valid as ``message_history`` for the next agent run.
+
+    Pydantic-ai's ``CallToolsNode`` only appends the aggregated tool-return
+    ``ModelRequest`` once all tools finish, so a mid-run interrupt always leaves
+    the trailing ``ModelResponse`` with unanswered ``ToolCallPart``s — close
+    each with a synthetic result, then append the user-notice turn.
+    """
+    from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
+
+    out = list(messages)
+    last = out[-1] if out else None
+    pending = [p for p in last.parts if isinstance(p, ToolCallPart)] if isinstance(last, ModelResponse) else []
+
+    if pending:
+        out.append(
+            ModelRequest(
+                parts=[
+                    ToolReturnPart(
+                        tool_name=p.tool_name,
+                        tool_call_id=p.tool_call_id,
+                        content="(interrupted by user before this tool finished)",
+                    )
+                    for p in pending
+                ]
+            )
+        )
+    out.append(ModelRequest(parts=[UserPromptPart(content="[Interrupted by user.]")]))
+    return out
 
 
 _SEPARATOR = "---"

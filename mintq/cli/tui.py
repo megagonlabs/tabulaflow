@@ -1222,9 +1222,10 @@ LIMIT 4000"""
         try:
             result: ChatResult = await session.chat_agent.run(question, progress)
         except asyncio.CancelledError:
-            await progress.remove()
-            await user_msg.remove()
-            await chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
+            # Keep the partial progress widget visible — ChatAgent has already
+            # frozen it via progress.freeze_as_interrupted() with the resume
+            # hint and final usage.
+            await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
             self._restore_input_text(question)
             raise
