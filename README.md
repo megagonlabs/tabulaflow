@@ -118,7 +118,8 @@ April 28
 - [x] Pydantic AI partial trajectory on interrupt
 - [x] Fix missing record label
 - [x] Fix scroll on column sorting
-- [ ] Fix first column suppressed
+- [x] Fix first column suppressed
+- [ ] Copy to input box
 - [ ] Ambrosia
 - [ ] Web search
 
