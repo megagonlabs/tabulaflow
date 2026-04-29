@@ -133,8 +133,12 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
         db_path = str(tmp_path / "w.duckdb")
         duckdb.connect(db_path).close()
         connector = await SQLConnector.from_url_async(
-            global_id="w", url=f"duckdb:///{db_path}", db_name="t",
-            read_only=False, enable_schema_caching=False, enable_query_caching=False,
+            global_id="w",
+            url=f"duckdb:///{db_path}",
+            db_name="t",
+            read_only=False,
+            enable_schema_caching=False,
+            enable_query_caching=False,
         )
         df = pd.DataFrame({"x": range(500_000), "y": range(500_000)})
 
@@ -145,8 +149,7 @@ async def test_write_dataframe_cancel_rolls_back(tmp_path: Path) -> None:
             await task
 
         r = await connector.run_query_async(
-            "SELECT COUNT(*) FROM information_schema.tables "
-            "WHERE table_name = 'mytbl' AND table_schema = 'main'"
+            "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'mytbl' AND table_schema = 'main'"
         )
         assert r.df is not None and r.df.iloc[0, 0] == 0
         await connector.disconnect_async()
@@ -168,8 +171,12 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
         db_path = str(tmp_path / "iso.duckdb")
         duckdb.connect(db_path).close()
         connector = await SQLConnector.from_url_async(
-            global_id="iso", url=f"duckdb:///{db_path}", db_name="t",
-            read_only=False, enable_schema_caching=False, enable_query_caching=False,
+            global_id="iso",
+            url=f"duckdb:///{db_path}",
+            db_name="t",
+            read_only=False,
+            enable_schema_caching=False,
+            enable_query_caching=False,
         )
 
         slow_sql = "CREATE TABLE {name} AS SELECT range AS x, range * 2 AS y FROM range(5_000_000)"
@@ -186,8 +193,7 @@ async def test_cancel_isolates_to_one_query(tmp_path: Path) -> None:
         assert keep_result.error is None
 
         r = await connector.run_query_async(
-            "SELECT table_name FROM information_schema.tables "
-            "WHERE table_schema = 'main' ORDER BY table_name"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'main' ORDER BY table_name"
         )
         assert r.df is not None
         tables = list(r.df.iloc[:, 0])

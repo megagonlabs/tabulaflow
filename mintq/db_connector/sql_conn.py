@@ -118,28 +118,56 @@ _T = TypeVar("_T")
 # read-only guard.  False positives are preferred over false negatives:
 # blocking a borderline query is mildly annoying; letting an unsafe
 # write through bypasses the safety.
-_WRITE_KEYWORDS = frozenset({
-    # DML
-    "INSERT", "UPDATE", "DELETE", "MERGE", "UPSERT", "REPLACE",
-    # DDL
-    "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME",
-    # DCL
-    "GRANT", "REVOKE",
-    # Stored procs / dynamic execution.  ``EXECUTE IMMEDIATE`` is
-    # excluded inside ``_first_keyword`` — its dynamic SQL is opaque.
-    "CALL", "EXECUTE", "EXEC",
-    # Bulk / file ops (Snowflake, etc.)
-    "COPY", "LOAD", "UNLOAD", "PUT", "GET", "REMOVE",
-    # Database attachment
-    "ATTACH", "DETACH",
-})
+_WRITE_KEYWORDS = frozenset(
+    {
+        # DML
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "UPSERT",
+        "REPLACE",
+        # DDL
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "RENAME",
+        # DCL
+        "GRANT",
+        "REVOKE",
+        # Stored procs / dynamic execution.  ``EXECUTE IMMEDIATE`` is
+        # excluded inside ``_first_keyword`` — its dynamic SQL is opaque.
+        "CALL",
+        "EXECUTE",
+        "EXEC",
+        # Bulk / file ops (Snowflake, etc.)
+        "COPY",
+        "LOAD",
+        "UNLOAD",
+        "PUT",
+        "GET",
+        "REMOVE",
+        # Database attachment
+        "ATTACH",
+        "DETACH",
+    }
+)
 
 # DDL subset of write keywords — used to acquire the per-engine DDL
 # lock on dialects with optimistic concurrency (DuckDB, SQLite) where
 # concurrent DDL on the same object causes catalog conflicts.
-_DDL_KEYWORDS = frozenset({
-    "CREATE", "ALTER", "DROP", "TRUNCATE", "RENAME", "ATTACH", "DETACH",
-})
+_DDL_KEYWORDS = frozenset(
+    {
+        "CREATE",
+        "ALTER",
+        "DROP",
+        "TRUNCATE",
+        "RENAME",
+        "ATTACH",
+        "DETACH",
+    }
+)
 
 # Dialects that need DDL serialization.
 _DDL_SERIAL_DIALECTS = frozenset({"duckdb", "sqlite"})
@@ -419,9 +447,7 @@ class _CursorTrackingCancel(_CancelStrategy):
     def install(self) -> None:
         self._cursors: dict[int, Any] = {}
         sync_engine = (
-            self.engine.engine
-            if self.engine.engine_type == "sync"
-            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+            self.engine.engine if self.engine.engine_type == "sync" else self.engine.engine.sync_engine  # type: ignore[union-attr]
         )
 
         def _set(conn: Any, cursor: Any, *_args: Any, **_kwargs: Any) -> None:
@@ -655,9 +681,7 @@ class _MSSQLCancel(_CancelStrategy):
     def install(self) -> None:
         self._spids: dict[int, int] = {}
         sync_engine = (
-            self.engine.engine
-            if self.engine.engine_type == "sync"
-            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+            self.engine.engine if self.engine.engine_type == "sync" else self.engine.engine.sync_engine  # type: ignore[union-attr]
         )
 
         def _capture_spid(dbapi_conn: Any, _rec: Any) -> None:
@@ -700,9 +724,7 @@ class _MSSQLCancel(_CancelStrategy):
 
     def _kill(self, session_id: int) -> None:
         sync_engine = (
-            self.engine.engine
-            if self.engine.engine_type == "sync"
-            else self.engine.engine.sync_engine  # type: ignore[union-attr]
+            self.engine.engine if self.engine.engine_type == "sync" else self.engine.engine.sync_engine  # type: ignore[union-attr]
         )
         cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
         dbapi = sync_engine.dialect.dbapi
@@ -766,8 +788,8 @@ _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
     "sqlite": _SqliteCancel,
     "postgresql": _PostgresCancel,
     "cockroachdb": _PostgresCancel,  # Postgres wire protocol
-    "redshift": _PostgresCancel,     # AWS Redshift via psycopg2/psycopg
-    "yugabytedb": _PostgresCancel,   # distributed Postgres-compatible
+    "redshift": _PostgresCancel,  # AWS Redshift via psycopg2/psycopg
+    "yugabytedb": _PostgresCancel,  # distributed Postgres-compatible
     "snowflake": _SnowflakeCancel,
     "bigquery": _BigQueryCancel,
     "mysql": _MySQLCancel,
@@ -786,10 +808,10 @@ _SYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 # don't need an entry — the absence of a strategy means "trust the
 # driver".  Entries below cover drivers that need our help.
 _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
-    "sqlite": _AsyncSqliteCancel,    # aiosqlite worker thread
-    "mysql": _AsyncMySQLCancel,      # asyncmy / aiomysql: KILL QUERY
+    "sqlite": _AsyncSqliteCancel,  # aiosqlite worker thread
+    "mysql": _AsyncMySQLCancel,  # asyncmy / aiomysql: KILL QUERY
     "mariadb": _AsyncMySQLCancel,
-    "oracle": _AsyncOracleCancel,    # oracledb async: OCI break
+    "oracle": _AsyncOracleCancel,  # oracledb async: OCI break
 }
 
 
@@ -800,11 +822,22 @@ _ASYNC_CANCEL_STRATEGIES: dict[str, type[_CancelStrategy]] = {
 # missing strategy noisy rather than silent.
 _DIALECTS_NEEDING_STRATEGY: dict[str, set[str]] = {
     "sync": {
-        "duckdb", "sqlite", "postgresql", "cockroachdb",
-        "redshift", "yugabytedb",
-        "snowflake", "bigquery", "mysql", "mariadb",
-        "oracle", "mssql", "trino", "databricks",
-        "awsathena", "clickhouse",
+        "duckdb",
+        "sqlite",
+        "postgresql",
+        "cockroachdb",
+        "redshift",
+        "yugabytedb",
+        "snowflake",
+        "bigquery",
+        "mysql",
+        "mariadb",
+        "oracle",
+        "mssql",
+        "trino",
+        "databricks",
+        "awsathena",
+        "clickhouse",
     },
     # Async drivers that don't self-cancel on task cancel.  asyncpg and
     # psycopg3 async self-cancel (no entry needed).
@@ -837,17 +870,14 @@ class ThrottledEngine:
         # queries; async engines may also need help if their driver
         # doesn't self-cancel on asyncio task cancel (e.g. aiosqlite).
         if self.engine_type == "sync":
-            strategy_cls: type[_CancelStrategy] | None = _SYNC_CANCEL_STRATEGIES.get(
-                self.engine.dialect.name
-            )
+            strategy_cls: type[_CancelStrategy] | None = _SYNC_CANCEL_STRATEGIES.get(self.engine.dialect.name)
         else:
             strategy_cls = _ASYNC_CANCEL_STRATEGIES.get(self.engine.dialect.name)
         if strategy_cls is not None:
             self._cancel_strategy = strategy_cls(self)
         elif self.engine.dialect.name in _DIALECTS_NEEDING_STRATEGY[self.engine_type]:
             logger.warning(
-                "no cancel strategy registered for %s/%s engine — task cancel "
-                "and timeout may not stop a running query",
+                "no cancel strategy registered for %s/%s engine — task cancel and timeout may not stop a running query",
                 self.engine.dialect.name,
                 self.engine_type,
             )
@@ -1070,12 +1100,8 @@ class ThrottledEngine:
         async with self.throttle(ddl=ddl):
             t0 = time.time()
             result = await self._dispatch_with_cancel(
-                sync_inner=lambda box: self._execute_sync_engine(
-                    query, parameters, return_df, box
-                ),
-                async_inner=lambda box: self._execute_async_engine(
-                    query, parameters, return_df, box
-                ),
+                sync_inner=lambda box: self._execute_sync_engine(query, parameters, return_df, box),
+                async_inner=lambda box: self._execute_async_engine(query, parameters, return_df, box),
                 timeout=timeout,
                 timeout_label=f"Query {query}",
             )
@@ -1156,9 +1182,7 @@ class ThrottledEngine:
             with contextlib.suppress(BaseException):
                 await inner
             if isinstance(exc, asyncio.TimeoutError):
-                raise TimeoutError(
-                    f"{timeout_label} timed out after {timeout} seconds"
-                ) from exc
+                raise TimeoutError(f"{timeout_label} timed out after {timeout} seconds") from exc
             raise
 
     def _execute_sync_engine(
@@ -1178,9 +1202,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = self._cancel_strategy.capture(conn)
                 except Exception:
-                    logger.debug(
-                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
+                    logger.debug("capture failed for %s", self._cancel_strategy.name, exc_info=True)
             if isinstance(statement, str):
                 # exec_driver_sql avoids sqlalchemy.text() parameter parsing,
                 # which misinterprets :identifier patterns (Snowflake Scripting
@@ -1212,9 +1234,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
                 except Exception:
-                    logger.debug(
-                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
+                    logger.debug("acapture failed for %s", self._cancel_strategy.name, exc_info=True)
             if isinstance(statement, str):
                 result = await conn.exec_driver_sql(statement, parameters or None)
                 rows = list(result.fetchall())
@@ -1242,9 +1262,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = self._cancel_strategy.capture(conn)
                 except Exception:
-                    logger.debug(
-                        "capture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
+                    logger.debug("capture failed for %s", self._cancel_strategy.name, exc_info=True)
             return callback(conn)
 
     async def _run_callback_async_engine(
@@ -1260,9 +1278,7 @@ class ThrottledEngine:
                 try:
                     cancel_handle_box[0] = await self._cancel_strategy.acapture(conn)
                 except Exception:
-                    logger.debug(
-                        "acapture failed for %s", self._cancel_strategy.name, exc_info=True
-                    )
+                    logger.debug("acapture failed for %s", self._cancel_strategy.name, exc_info=True)
             return await conn.run_sync(callback)
 
     async def _abort_handle(self, handle: Any) -> None:
@@ -1567,9 +1583,7 @@ async def build_column_async(
                 col = tbl.c[column["name"]]
                 sampled_rows = int(sample_pct / 100 * num_rows)
 
-        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][
-            0
-        ]
+        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][0]
         null_ratio = num_null / sampled_rows
 
         num_unique = None
@@ -1579,9 +1593,9 @@ async def build_column_async(
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
                 num_unique = int((await t_eng.execute_async(select(func.hll(col)).select_from(tbl))).result[0][0])
             elif can_use_distinct:
-                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).result[
+                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).result[0][
                     0
-                ][0]
+                ]
         unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
 
     examples: list[Any]

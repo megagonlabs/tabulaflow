@@ -10,6 +10,7 @@ from rich.spinner import Spinner
 from rich.text import Text
 from pathlib import Path
 
+from textual import events
 from textual.binding import Binding
 from textual.reactive import reactive
 from textual.suggester import Suggester
@@ -125,9 +126,42 @@ class MintqSuggester(Suggester):
 
 _MAX_HISTORY_ENTRIES = 500
 
+_PASTE_TOKEN_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
+
+# History-file paste-region encoding. Each saved line stays single-line by
+# wrapping pasted regions in ``<<<PASTE...PASTE>>>`` markers and escaping
+# special chars inside (``\``, real newlines, ``\r``, and ``>`` so the close
+# marker can never appear inside encoded content).
+_PASTE_REGION_PATTERN = re.compile(r"<<<PASTE(.*?)PASTE>>>")
+_PASTE_DECODE_PATTERN = re.compile(r"\\([\\nr>])")
+_PASTE_DECODE_MAP = {"\\": "\\", "n": "\n", "r": "\r", ">": ">"}
+
+
+def _has_newline(text: str) -> bool:
+    return "\n" in text or "\r" in text
+
+
+def _normalize_newlines(text: str) -> str:
+    return text.replace("\r\n", "\n").replace("\r", "\n")
+
+
+def _encode_paste_content(text: str) -> str:
+    return text.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace(">", "\\>")
+
+
+def _decode_paste_content(text: str) -> str:
+    return _PASTE_DECODE_PATTERN.sub(lambda m: _PASTE_DECODE_MAP[m.group(1)], text)
+
 
 class HistoryInput(Input):
-    """Input widget with file-backed command history (Up/Down arrows)."""
+    """Input widget with file-backed command history (Up/Down arrows).
+
+    Multi-line pastes (text containing a newline) are stashed in an in-memory
+    registry and replaced with a compact ``[Pasted text #N +M lines]`` token
+    so the input bar stays single-line. Submitted text is expanded back to
+    the original via :meth:`expand_paste_tokens` before being handed to the
+    agent or slash-command handler.
+    """
 
     BINDINGS = [
         Binding("up", "history_prev", "Previous command", priority=True),
@@ -142,22 +176,59 @@ class HistoryInput(Input):
         self._history: list[str] = []
         self._history_index: int = -1
         self._saved_input: str = ""
+        self._paste_registry: dict[int, str] = {}
+        self._paste_counter: int = 0
         self._load_history()
 
     def _load_history(self) -> None:
-        if self._history_path.is_file():
-            lines = self._history_path.read_text(encoding="utf-8").splitlines()
-            self._history = lines[-_MAX_HISTORY_ENTRIES:]
+        """Load history entries, decoding ``<<<PASTE...PASTE>>>`` regions
+        into freshly-registered paste tokens. ``self._history`` holds the
+        placeholder form so Up/Down restore puts a single-line value into
+        the input bar."""
+        if not self._history_path.is_file():
+            return
+        lines = self._history_path.read_text(encoding="utf-8").splitlines()
+        self._history = [self._parse_paste_regions(line) for line in lines[-_MAX_HISTORY_ENTRIES:]]
 
     def _save_history(self) -> None:
+        """Persist history, re-encoding placeholder tokens back into
+        marker-wrapped regions so the file stays one entry per line and
+        survives across sessions."""
         self._history_path.parent.mkdir(parents=True, exist_ok=True)
-        self._history_path.write_text(
-            "\n".join(self._history[-_MAX_HISTORY_ENTRIES:]) + "\n",
-            encoding="utf-8",
-        )
+        serialized = [self._serialize_for_history(entry) for entry in self._history[-_MAX_HISTORY_ENTRIES:]]
+        self._history_path.write_text("\n".join(serialized) + "\n", encoding="utf-8")
+
+    def _parse_paste_regions(self, line: str) -> str:
+        """Replace ``<<<PASTE...PASTE>>>`` regions with placeholder tokens,
+        stashing decoded content in the paste registry."""
+
+        def repl(m: re.Match[str]) -> str:
+            decoded = _decode_paste_content(m.group(1))
+            self._paste_counter += 1
+            n = self._paste_counter
+            self._paste_registry[n] = decoded
+            line_count = decoded.count("\n") + 1
+            return f"[Pasted text #{n} +{line_count} lines]"
+
+        return _PASTE_REGION_PATTERN.sub(repl, line)
+
+    def _serialize_for_history(self, placeholder_text: str) -> str:
+        """Replace placeholder tokens with marker-wrapped, encoded paste
+        content. Tokens whose registry entry is missing (shouldn't happen
+        in normal flow) are left as-is."""
+
+        def repl(m: re.Match[str]) -> str:
+            n = int(m.group(1))
+            original = self._paste_registry.get(n)
+            if original is None:
+                return m.group(0)
+            return f"<<<PASTE{_encode_paste_content(original)}PASTE>>>"
+
+        return _PASTE_TOKEN_PATTERN.sub(repl, placeholder_text)
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
-        """Automatically add submitted text to history."""
+        """Append the submitted text (placeholder form) to history. The
+        save step re-encodes tokens back to marker form."""
         self._add_to_history(event.value)
 
     def _add_to_history(self, text: str) -> None:
@@ -207,6 +278,60 @@ class HistoryInput(Input):
         # Input consumes Ctrl+D by default; forward explicitly so the app can
         # apply its double-press quit logic.
         self.app.action_quit_only()  # type: ignore[attr-defined]
+
+    def _on_paste(self, event: events.Paste) -> None:
+        """Intercept bracketed-paste events with newlines and stash them.
+
+        Textual dispatches ``_on_paste`` for every class in the MRO. For
+        single-line pastes we return without doing anything so the parent's
+        ``Input._on_paste`` runs normally via that same MRO walk — calling
+        ``super()._on_paste`` here would double-insert. For multi-line we
+        do the insertion and call ``prevent_default`` to break the MRO walk
+        (``stop`` only stops DOM bubbling, not in-widget dispatch).
+
+        Bracketed paste from macOS terminals delivers line breaks as ``\\r``
+        rather than ``\\n``, so we treat either as a newline and normalize.
+        """
+        text = event.text
+        if not text or not _has_newline(text):
+            return
+        self._insert_paste_token(_normalize_newlines(text))
+        event.prevent_default()
+        event.stop()
+
+    def action_paste(self) -> None:
+        """Override Ctrl+V so pastes from Textual's clipboard route through
+        the same multi-line stash logic as terminal bracketed paste."""
+        clipboard = getattr(self.app, "clipboard", "") or ""
+        if _has_newline(clipboard):
+            self._insert_paste_token(_normalize_newlines(clipboard))
+            return
+        super().action_paste()
+
+    def _insert_paste_token(self, text: str) -> None:
+        self._paste_counter += 1
+        n = self._paste_counter
+        line_count = text.count("\n") + 1
+        self._paste_registry[n] = text
+        token = f"[Pasted text #{n} +{line_count} lines]"
+        selection = self.selection
+        if selection.is_empty:
+            self.insert_text_at_cursor(token)
+        else:
+            self.replace(token, *selection)
+
+    def expand_paste_tokens(self, text: str) -> str:
+        """Replace every ``[Pasted text #N +M lines]`` token with the original
+        pasted text. Unknown indices are left untouched so users can still
+        type the literal token if they really mean to."""
+        if not self._paste_registry:
+            return text
+
+        def repl(m: re.Match[str]) -> str:
+            n = int(m.group(1))
+            return self._paste_registry.get(n, m.group(0))
+
+        return _PASTE_TOKEN_PATTERN.sub(repl, text)
 
 
 # ---------------------------------------------------------------------------

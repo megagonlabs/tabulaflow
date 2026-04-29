@@ -1077,12 +1077,15 @@ LIMIT 4000"""
             return self._session
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
-        text = event.value.strip()
-        if not text:
+        display_text = event.value.strip()
+        if not display_text:
             return
 
         if self._busy:
             return
+
+        inp = event.input
+        text = inp.expand_paste_tokens(display_text) if isinstance(inp, HistoryInput) else display_text
 
         event.input.clear()
 
@@ -1093,9 +1096,7 @@ LIMIT 4000"""
             user_msg = UserMessage(text)
             await chat_log.mount(user_msg)
             chat_log.scroll_end(animate=False)
-            self._current_worker = self.run_worker(
-                self._handle_slash_command(text, chat_log, user_msg)
-            )
+            self._current_worker = self.run_worker(self._handle_slash_command(text, chat_log, user_msg, display_text))
             return
 
         session = await self._ensure_session()
@@ -1113,7 +1114,7 @@ LIMIT 4000"""
 
         self._busy = True
         self._current_worker = self.run_worker(
-            self._run_agent(text, session, chat_log, user_msg), exclusive=True
+            self._run_agent(text, session, chat_log, user_msg, display_text), exclusive=True
         )
 
     @staticmethod
@@ -1126,6 +1127,7 @@ LIMIT 4000"""
         text: str,
         chat_log: VerticalScroll,
         user_msg: UserMessage,
+        display_text: str | None = None,
     ) -> None:
         parts = text.split()
         cmd = parts[0].lower() if parts else ""
@@ -1156,7 +1158,7 @@ LIMIT 4000"""
             await user_msg.remove()
             await chat_log.mount(SystemMessage("\n[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
-            self._restore_input_text(text)
+            self._restore_input_text(display_text if display_text is not None else text)
             raise
         finally:
             self._busy = False
@@ -1212,6 +1214,7 @@ LIMIT 4000"""
         session: SessionState,
         chat_log: VerticalScroll,
         user_msg: UserMessage,
+        display_text: str | None = None,
     ) -> None:
         import asyncio
 
@@ -1227,7 +1230,7 @@ LIMIT 4000"""
             # hint and final usage.
             await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
-            self._restore_input_text(question)
+            self._restore_input_text(display_text if display_text is not None else question)
             raise
         except Exception as e:
             await progress.remove()

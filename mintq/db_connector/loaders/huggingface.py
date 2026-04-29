@@ -423,9 +423,7 @@ async def _load_hf_into_duckdb(
 
     if split_filter:
         if split_filter not in split_sizes:
-            raise ValueError(
-                f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}"
-            )
+            raise ValueError(f"Split '{split_filter}' not found. Available splits: {', '.join(sorted(split_sizes))}")
         splits = [split_filter]
     else:
         splits = sorted(split_sizes)

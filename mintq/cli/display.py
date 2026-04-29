@@ -271,9 +271,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
                 )
             )
         if record.df is not None and not record.df.empty:
-            renderable, shown_cols = build_table(
-                record.df, available_width=width, include_footer=False
-            )
+            renderable, shown_cols = build_table(record.df, available_width=width, include_footer=False)
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_DATA,
