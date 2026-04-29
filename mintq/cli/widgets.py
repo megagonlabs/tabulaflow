@@ -1146,7 +1146,6 @@ class AgentResultWidget(Widget):
 
     AgentResultWidget .bottom-hint {
         height: auto;
-        margin: 1 0 0 0;
     }
 
     """
