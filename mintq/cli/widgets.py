@@ -19,10 +19,7 @@ from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static, TextArea
 
-from mintq.cli.display import (
-    DATA_PREVIEW_MAX_COLUMNS,
-    DATA_PREVIEW_MAX_ROWS,
-)
+from mintq.cli.display import DATA_PREVIEW_MAX_ROWS
 from mintq.cli.theme import ACCENT, ACCENT_BOLD, DRACULA_TRANSPARENT, KEY_HINT
 
 if TYPE_CHECKING:
@@ -1477,11 +1474,12 @@ class AgentResultWidget(Widget):
         if view.kind != VIEW_KIND_DATA or view.data_shape is None:
             return ""
         num_rows, num_cols = view.data_shape
+        shown_cols = view.shown_cols if view.shown_cols is not None else num_cols
         parts: list[str] = []
         if num_rows > DATA_PREVIEW_MAX_ROWS:
             parts.append(f"showing {DATA_PREVIEW_MAX_ROWS} of {num_rows} rows")
-        if num_cols > DATA_PREVIEW_MAX_COLUMNS:
-            parts.append(f"showing {DATA_PREVIEW_MAX_COLUMNS} of {num_cols} columns")
+        if num_cols > shown_cols:
+            parts.append(f"showing {shown_cols} of {num_cols} columns")
         return " | ".join(parts)
 
     def _update_content(self) -> None:

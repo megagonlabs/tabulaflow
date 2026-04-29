@@ -31,7 +31,7 @@ MINTQ_THEME = Theme(
 )
 
 DATA_PREVIEW_MAX_ROWS = 5
-DATA_PREVIEW_MAX_COLUMNS = 8
+DATA_PREVIEW_MAX_COLUMNS = 10
 QUERY_PREVIEW_MAX_LINES = 7
 
 if TYPE_CHECKING:
@@ -98,64 +98,89 @@ def build_query(
     return syntax
 
 
-_TABLE_BUDGET = 100
+# Per-column overhead in a box.SQUARE table with default padding (0, 1):
+# 1 right border + 2 horizontal padding cells. Plus one leftmost border for the table.
+_COL_OVERHEAD = 3
+_TABLE_BORDER = 1
+_MIN_CELL_WIDTH = 8
 
 
-def _cell_max_width(n_columns: int) -> int:
-    """Divide the table width budget evenly among columns."""
-    return max(8, _TABLE_BUDGET // max(n_columns, 1))
+def compute_preview_layout(
+    n_total_cols: int,
+    available_width: int,
+    max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
+) -> tuple[int, int]:
+    """Decide how many columns to show and how wide each cell should be.
+
+    Drops trailing columns when even minimum-width cells would overflow the
+    available width, then distributes leftover space evenly across the kept
+    columns. Always returns at least one shown column when the dataframe has
+    any, even if the result will technically overflow — Rich will clip it
+    rather than producing border-only "ghost" columns.
+    """
+    capped = min(n_total_cols, max_columns)
+    if capped <= 0:
+        return 0, _MIN_CELL_WIDTH
+    n_fit = (available_width - _TABLE_BORDER) // (_MIN_CELL_WIDTH + _COL_OVERHEAD)
+    n_show = max(1, min(capped, n_fit))
+    usable = available_width - _TABLE_BORDER - n_show * _COL_OVERHEAD
+    cell_width = max(_MIN_CELL_WIDTH, usable // n_show)
+    return n_show, cell_width
 
 
 def data_preview_caption(
     df: pd.DataFrame,
-    max_rows: int = DATA_PREVIEW_MAX_ROWS,
-    max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
+    max_rows: int,
+    shown_cols: int,
 ) -> str:
     """Return the 'showing N of M ...' caption for a truncated preview, or empty."""
     parts: list[str] = []
     if len(df) > max_rows:
         parts.append(f"showing {max_rows} of {len(df)} rows")
-    if len(df.columns) > max_columns:
-        parts.append(f"showing {max_columns} of {len(df.columns)} columns")
+    if len(df.columns) > shown_cols:
+        parts.append(f"showing {shown_cols} of {len(df.columns)} columns")
     return " | ".join(parts)
 
 
 def build_table(
     df: pd.DataFrame,
+    available_width: int = 80,
     max_rows: int = DATA_PREVIEW_MAX_ROWS,
     max_columns: int = DATA_PREVIEW_MAX_COLUMNS,
     action_hint: str | None = None,
     include_footer: bool = True,
-) -> RenderableType:
-    """Build a DataFrame as a Rich table renderable.
+) -> tuple[RenderableType, int]:
+    """Build a DataFrame preview as a Rich renderable.
 
-    When ``include_footer`` is False, returns just the table without the
-    truncation caption / action_hint footer — the caller is responsible for
-    rendering those elsewhere (e.g. in a separate hint bar).
+    Returns (renderable, shown_cols). ``shown_cols`` is the number of columns
+    actually rendered after width-aware dropping — callers use it to keep the
+    truncation caption in sync with what the user sees.
+
+    When ``include_footer`` is False, the renderable is just the table; the
+    caller is responsible for rendering the caption / action_hint elsewhere.
     """
+    n_show, cell_width = compute_preview_layout(len(df.columns), available_width, max_columns)
+    display_columns = list(df.columns[:n_show])
+
     table = Table(
         show_header=True,
         header_style=ACCENT_BOLD,
         show_lines=False,
         box=box.SQUARE,
     )
-    truncated_cols = len(df.columns) > max_columns
-    display_columns = list(df.columns[:max_columns]) if truncated_cols else list(df.columns)
-    cell_width = _cell_max_width(len(display_columns))
-
     for col in display_columns:
-        table.add_column(str(col), no_wrap=True)
+        table.add_column(str(col), no_wrap=True, max_width=cell_width, overflow="ellipsis")
 
     display_df = df.loc[:, display_columns].head(max_rows)
     for _, row in display_df.iterrows():
-        table.add_row(*(_format_table_cell(v, cell_width) for v in row))
+        table.add_row(*(_format_table_cell(v) for v in row))
 
     if not include_footer:
-        return table
+        return table, n_show
 
-    stats_text = data_preview_caption(df, max_rows, max_columns)
+    stats_text = data_preview_caption(df, max_rows, n_show)
     if not stats_text and not action_hint:
-        return table
+        return table, n_show
 
     footer: Columns | Text
     if action_hint:
@@ -164,15 +189,12 @@ def build_table(
         footer = Columns([left, Align.right(right)], expand=True, equal=False)
     else:
         footer = Text(stats_text, style="dim")
-    return Group(table, footer)
+    return Group(table, footer), n_show
 
 
-def _format_table_cell(value: object, max_width: int = 20) -> str:
-    """Normalize cell text for compact single-line preview rendering."""
-    s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
-    if len(s) > max_width:
-        return s[: max_width - 1] + "…"
-    return s
+def _format_table_cell(value: object) -> str:
+    """Normalize cell text to a single line; column-level max_width handles truncation."""
+    return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
 
 
 def build_chart(
@@ -208,6 +230,7 @@ class ViewItem:
     # Populated only for the matching kind; others are None.
     chart_spec: dict[str, object] | None = None
     data_shape: tuple[int, int] | None = None  # (num_rows, num_cols)
+    shown_cols: int | None = None  # columns actually rendered in the preview
     query: tuple[str, str] | None = None  # (raw_query, lexer)
 
 
@@ -248,11 +271,15 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
                 )
             )
         if record.df is not None and not record.df.empty:
+            renderable, shown_cols = build_table(
+                record.df, available_width=width, include_footer=False
+            )
             views.append(
                 ViewItem(
                     kind=VIEW_KIND_DATA,
-                    renderable=build_table(record.df, include_footer=False),
+                    renderable=renderable,
                     data_shape=(len(record.df), len(record.df.columns)),
+                    shown_cols=shown_cols,
                 )
             )
         if record.query:
