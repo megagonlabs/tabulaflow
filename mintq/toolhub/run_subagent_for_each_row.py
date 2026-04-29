@@ -152,7 +152,7 @@ class RunSubagentForEachRowTool:
         produces text output; this tool writes the output to the
         ``output_columns`` automatically. Use ``direct`` mode when you need
         to strictly control the subagent's context (e.g. when running inference
-        on a dataset). In ``agentic`` mode, each subagent has ``run_query``
+        or labeling data). In ``agentic`` mode, each subagent has ``run_query``
         access and writes updates itself.
 
         Args:
