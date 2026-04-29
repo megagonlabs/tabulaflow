@@ -119,8 +119,11 @@ April 28
 - [x] Fix missing record label
 - [x] Fix scroll on column sorting
 - [x] Fix first column suppressed
-- [ ] Copy to input box
-- [ ] Ambrosia
+- [x] Copy to input box
+- [x] Ambrosia use case
+- [ ] Run sub agent - show num instead of percentage
+- [ ] Fix "plan first" ignored
+- [ ] Pass instructions to subagent
 - [ ] Web search
 
 - General

@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import json
 import re
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypedDict
 
 from rich.console import Group
 from rich.spinner import Spinner
@@ -128,13 +129,14 @@ _MAX_HISTORY_ENTRIES = 500
 
 _PASTE_TOKEN_PATTERN = re.compile(r"\[Pasted text #(\d+) \+(\d+) lines\]")
 
-# History-file paste-region encoding. Each saved line stays single-line by
-# wrapping pasted regions in ``<<<PASTE...PASTE>>>`` markers and escaping
-# special chars inside (``\``, real newlines, ``\r``, and ``>`` so the close
-# marker can never appear inside encoded content).
-_PASTE_REGION_PATTERN = re.compile(r"<<<PASTE(.*?)PASTE>>>")
-_PASTE_DECODE_PATTERN = re.compile(r"\\([\\nr>])")
-_PASTE_DECODE_MAP = {"\\": "\\", "n": "\n", "r": "\r", ">": ">"}
+
+class _PasteRecord(TypedDict):
+    """In-memory shape mirrors the on-disk ``pastedContents`` value so save
+    and load are trivial mirror operations."""
+
+    id: int  # redundant with the dict key, kept to match Claude Code's on-disk format
+    type: str  # always "text" today; extension point for "image" / "file" without a format break
+    content: str
 
 
 def _has_newline(text: str) -> bool:
@@ -143,14 +145,6 @@ def _has_newline(text: str) -> bool:
 
 def _normalize_newlines(text: str) -> str:
     return text.replace("\r\n", "\n").replace("\r", "\n")
-
-
-def _encode_paste_content(text: str) -> str:
-    return text.replace("\\", "\\\\").replace("\n", "\\n").replace("\r", "\\r").replace(">", "\\>")
-
-
-def _decode_paste_content(text: str) -> str:
-    return _PASTE_DECODE_PATTERN.sub(lambda m: _PASTE_DECODE_MAP[m.group(1)], text)
 
 
 class HistoryInput(Input):
@@ -176,59 +170,62 @@ class HistoryInput(Input):
         self._history: list[str] = []
         self._history_index: int = -1
         self._saved_input: str = ""
-        self._paste_registry: dict[int, str] = {}
+        self._pasted_contents: dict[int, _PasteRecord] = {}
         self._paste_counter: int = 0
         self._load_history()
 
+    def _register_paste(self, content: str) -> int:
+        """Stash ``content`` under a fresh paste id and return the id."""
+        self._paste_counter += 1
+        pid = self._paste_counter
+        self._pasted_contents[pid] = {"id": pid, "type": "text", "content": content}
+        return pid
+
     def _load_history(self) -> None:
-        """Load history entries, decoding ``<<<PASTE...PASTE>>>`` regions
-        into freshly-registered paste tokens. ``self._history`` holds the
-        placeholder form so Up/Down restore puts a single-line value into
-        the input bar."""
+        """Load history from JSONL. Each record is ``{display, pastedContents}``.
+        Paste ids from disk are remapped to fresh in-session ids so they don't
+        collide with new pastes; the ``display`` string is rewritten to match."""
         if not self._history_path.is_file():
             return
-        lines = self._history_path.read_text(encoding="utf-8").splitlines()
-        self._history = [self._parse_paste_regions(line) for line in lines[-_MAX_HISTORY_ENTRIES:]]
+        loaded: list[str] = []
+        for raw in self._history_path.read_text(encoding="utf-8").splitlines()[-_MAX_HISTORY_ENTRIES:]:
+            if not raw.strip():
+                continue
+            record = json.loads(raw)
+            display: str = record["display"]
+            pasted: dict[str, _PasteRecord] = record.get("pastedContents") or {}
+
+            id_remap = {int(old): self._register_paste(rec["content"]) for old, rec in pasted.items()}
+
+            def remap(m: re.Match[str]) -> str:
+                new = id_remap.get(int(m.group(1)))
+                return m.group(0) if new is None else f"[Pasted text #{new} +{m.group(2)} lines]"
+
+            loaded.append(_PASTE_TOKEN_PATTERN.sub(remap, display))
+        self._history = loaded
 
     def _save_history(self) -> None:
-        """Persist history, re-encoding placeholder tokens back into
-        marker-wrapped regions so the file stays one entry per line and
-        survives across sessions."""
+        """Persist history as JSONL — one ``{display, pastedContents}`` record
+        per line. ``pastedContents`` only includes paste ids actually
+        referenced by that entry."""
         self._history_path.parent.mkdir(parents=True, exist_ok=True)
-        serialized = [self._serialize_for_history(entry) for entry in self._history[-_MAX_HISTORY_ENTRIES:]]
-        self._history_path.write_text("\n".join(serialized) + "\n", encoding="utf-8")
+        lines = [
+            json.dumps(self._build_history_record(entry), ensure_ascii=False)
+            for entry in self._history[-_MAX_HISTORY_ENTRIES:]
+        ]
+        self._history_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
-    def _parse_paste_regions(self, line: str) -> str:
-        """Replace ``<<<PASTE...PASTE>>>`` regions with placeholder tokens,
-        stashing decoded content in the paste registry."""
-
-        def repl(m: re.Match[str]) -> str:
-            decoded = _decode_paste_content(m.group(1))
-            self._paste_counter += 1
-            n = self._paste_counter
-            self._paste_registry[n] = decoded
-            line_count = decoded.count("\n") + 1
-            return f"[Pasted text #{n} +{line_count} lines]"
-
-        return _PASTE_REGION_PATTERN.sub(repl, line)
-
-    def _serialize_for_history(self, placeholder_text: str) -> str:
-        """Replace placeholder tokens with marker-wrapped, encoded paste
-        content. Tokens whose registry entry is missing (shouldn't happen
-        in normal flow) are left as-is."""
-
-        def repl(m: re.Match[str]) -> str:
-            n = int(m.group(1))
-            original = self._paste_registry.get(n)
-            if original is None:
-                return m.group(0)
-            return f"<<<PASTE{_encode_paste_content(original)}PASTE>>>"
-
-        return _PASTE_TOKEN_PATTERN.sub(repl, placeholder_text)
+    def _build_history_record(self, placeholder_text: str) -> dict[str, object]:
+        pasted: dict[str, _PasteRecord] = {}
+        for m in _PASTE_TOKEN_PATTERN.finditer(placeholder_text):
+            rec = self._pasted_contents.get(int(m.group(1)))
+            if rec is not None:
+                pasted[str(rec["id"])] = rec
+        return {"display": placeholder_text, "pastedContents": pasted}
 
     def on_input_submitted(self, event: Input.Submitted) -> None:
         """Append the submitted text (placeholder form) to history. The
-        save step re-encodes tokens back to marker form."""
+        save step bundles each entry with its referenced paste contents."""
         self._add_to_history(event.value)
 
     def _add_to_history(self, text: str) -> None:
@@ -309,11 +306,9 @@ class HistoryInput(Input):
         super().action_paste()
 
     def _insert_paste_token(self, text: str) -> None:
-        self._paste_counter += 1
-        n = self._paste_counter
+        pid = self._register_paste(text)
         line_count = text.count("\n") + 1
-        self._paste_registry[n] = text
-        token = f"[Pasted text #{n} +{line_count} lines]"
+        token = f"[Pasted text #{pid} +{line_count} lines]"
         selection = self.selection
         if selection.is_empty:
             self.insert_text_at_cursor(token)
@@ -324,12 +319,12 @@ class HistoryInput(Input):
         """Replace every ``[Pasted text #N +M lines]`` token with the original
         pasted text. Unknown indices are left untouched so users can still
         type the literal token if they really mean to."""
-        if not self._paste_registry:
+        if not self._pasted_contents:
             return text
 
         def repl(m: re.Match[str]) -> str:
-            n = int(m.group(1))
-            return self._paste_registry.get(n, m.group(0))
+            rec = self._pasted_contents.get(int(m.group(1)))
+            return m.group(0) if rec is None else rec["content"]
 
         return _PASTE_TOKEN_PATTERN.sub(repl, text)
 

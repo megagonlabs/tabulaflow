@@ -41,6 +41,6 @@ class RuntimePaths:
             trajectories_dir=trajectories_dir,
             data_dir=data_dir,
             workspace_db_path=session_dir / "workspace.duckdb",
-            history_path=root / "history",
+            history_path=root / "history.jsonl",
             cli_log_path=logs_dir / "cli.log",
         )
