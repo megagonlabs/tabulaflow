@@ -299,7 +299,7 @@ class ChatAgent:
         if not databases:
             return
         lines = [
-            "[internal: data sources now available — use these aliases in db_alias tool args. "
+            "[system: data sources now available — use these aliases in db_alias tool args. "
             "Do NOT expose alias names, dialect, or engine details to the user.]"
         ]
         for alias, connector in databases:
@@ -476,16 +476,16 @@ def _patch_interrupted_messages(
                         tool_name=p.tool_name,
                         tool_call_id=p.tool_call_id,
                         content=(
-                            "(interrupted by user; no result captured. "
+                            "[system: interrupted by user before result was captured. "
                             "The tool may have completed before cancellation — any side effects "
-                            "(e.g. writes) may or may not have taken effect.)"
+                            "(e.g. writes) may or may not have taken effect.]"
                         ),
                     )
                     for p in pending
                 ]
             )
         )
-    out.append(ModelRequest(parts=[UserPromptPart(content="[Interrupted by user.]")]))
+    out.append(ModelRequest(parts=[UserPromptPart(content="[system: the user interrupted the previous run.]")]))
     return out
 
 
