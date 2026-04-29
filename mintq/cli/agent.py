@@ -14,7 +14,7 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 if TYPE_CHECKING:
     import pandas as pd
     from pydantic_ai import Agent
-    from pydantic_ai.messages import ModelMessage
+    from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
     from mintq.db_connector.base import NL2QDBConnector
     from mintq.db_connector.db_registry import DBRegistry
@@ -337,6 +337,7 @@ class ChatAgent:
         partial trajectory and accumulated usage from the live ``AgentRun``.
         """
         from pydantic_ai import CallToolsNode, ModelRequestNode
+        from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 
         from mintq.schema import Usage
 
@@ -348,6 +349,7 @@ class ChatAgent:
         answer_text = ""
         final_usage: Usage | None = None
         interrupted = False
+        completed_results: dict[str, ToolReturnPart] = {}
 
         try:
             async with self._pydantic_ai_agent.iter(
@@ -360,6 +362,10 @@ class ChatAgent:
                             continue
                         async with node.stream(agent_run.ctx) as stream:
                             async for event in stream:
+                                if isinstance(event, FunctionToolResultEvent) and isinstance(
+                                    event.result, ToolReturnPart
+                                ):
+                                    completed_results[event.tool_call_id] = event.result
                                 await _handle_stream_event(
                                     event, progress, self._query_history, self._tools.get_table_schema
                                 )
@@ -372,7 +378,7 @@ class ChatAgent:
                     final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
                     partial_messages = list(agent_run.all_messages())
                     if interrupted:
-                        self._message_history = _patch_interrupted_messages(partial_messages)
+                        self._message_history = _patch_interrupted_messages(partial_messages, completed_results)
                     else:
                         self._message_history = partial_messages
                     self.last_usage = final_usage
@@ -442,13 +448,18 @@ async def _build_chat_result(
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
 
 
-def _patch_interrupted_messages(messages: list[ModelMessage]) -> list[ModelMessage]:
+def _patch_interrupted_messages(
+    messages: list[ModelMessage],
+    completed_results: dict[str, ToolReturnPart],
+) -> list[ModelMessage]:
     """Make ``messages`` valid as ``message_history`` for the next agent run.
 
     Pydantic-ai's ``CallToolsNode`` only appends the aggregated tool-return
-    ``ModelRequest`` once all tools finish, so a mid-run interrupt always leaves
-    the trailing ``ModelResponse`` with unanswered ``ToolCallPart``s — close
-    each with a synthetic result, then append the user-notice turn.
+    ``ModelRequest`` once all tools finish, so a mid-run interrupt always
+    leaves the trailing ``ModelResponse`` with unanswered ``ToolCallPart``s.
+    For each: substitute the real ``ToolReturnPart`` if its result event
+    reached us before cancellation, otherwise a synthetic placeholder noting
+    the result is unknown.
     """
     from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
 
@@ -460,7 +471,8 @@ def _patch_interrupted_messages(messages: list[ModelMessage]) -> list[ModelMessa
         out.append(
             ModelRequest(
                 parts=[
-                    ToolReturnPart(
+                    completed_results.get(p.tool_call_id)
+                    or ToolReturnPart(
                         tool_name=p.tool_name,
                         tool_call_id=p.tool_call_id,
                         content=(
