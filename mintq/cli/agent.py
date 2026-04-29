@@ -33,7 +33,7 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_QUERY_REF_RE = re.compile(r"\[\[result:(Q\d+)(?::([^\]]+))?\]\]")
+_QUERY_REF_RE = re.compile(r"\[\[record:(Q\d+)(?::([^\]]+))?\]\]")
 _TRAJECTORY_KEEP_LAST = 20
 
 
@@ -60,11 +60,11 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 - You can present one or multiple tables in the final response using the following format:
   - In your final response, begin with result reference lines, followed by a `---` separator, then your natural language answer.
     The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
-    - Basic form: [[result:Q<id>]] (e.g. [[result:Q3]]).
-    - Optional labeled form: [[result:Q<id>:<label>]] (e.g. [[result:Q3:num_players]]).
-    - Use labels when returning multiple records in one answer. Keep the labels as concise as possible.
+    - Format: [[record:Q<id>:<label>]] (e.g. [[record:Q3:num_players]]).
+    - Every reference MUST include a label. The label is a short, human-readable description of what the table contains (e.g. `players`, `top_movies`, `revenue_by_month`). Keep labels concise.
+    - If you are unsure what to label a record, use `result` as the default (e.g. [[record:Q3:result]]). NEVER use the record id (e.g. `Q3`, `Q41`) as the label.
     - Example format:
-      [[result:Q3]]
+      [[record:Q3:num_players]]
       ---
       There are 42 players in the database.
 - Do not reference every query you ran. Select only the most relevant results with minimal overlap.

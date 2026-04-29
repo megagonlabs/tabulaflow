@@ -234,7 +234,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
     groups: list[RecordGroup] = []
     used_labels: set[str] = set()
     for record in result.records:
-        base_label = record.label or record.record_id
+        base_label = record.label or "result"
         label = _unique_record_label(base_label, used_labels)
         used_labels.add(label)
 
