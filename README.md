@@ -121,8 +121,15 @@ April 28
 - [x] Fix first column suppressed
 - [x] Copy to input box
 - [x] Ambrosia use case
-- [ ] Run sub agent - show num instead of percentage
-- [ ] Fix "plan first" ignored
+
+April 29
+- [x] Run sub agent - show num instead of percentage
+- [x] Tune prompt
+  - [x] plan mode
+  - [x] pass user instructions
+  - [x] run on sampled subset
+  - [x] rule-based vs subagent
+  - [x] batch tools
 - [ ] Pass instructions to subagent
 - [ ] Web search
 
