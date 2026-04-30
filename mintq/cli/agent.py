@@ -109,6 +109,9 @@ These are internal implementation details — never mention them to the user.
 </registry_and_alias_internal>
 
 <tool_calling>
+General:
+- Try to batch tool calls if they can be run in parallel to reduce latency.
+
 Gathering information:
 - For most databases, call `get_db_document` to understand the database structure.
 - For SQL databases, you may use `get_table_schema` to get the schema of relevant tables before constructing the query.
