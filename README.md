@@ -140,6 +140,8 @@ April 28
   - [ ] Disable compression for small dbs?
   - [ ] Enriched with other data in huggingface repo
   - [ ] Show query latency
+  - [ ] NL tool progress
+  - [ ] "connect to data" instead of "paste data"
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
