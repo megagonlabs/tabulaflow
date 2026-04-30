@@ -119,7 +119,7 @@ April 28
 - [x] Fix missing record label
 - [x] Fix scroll on column sorting
 - [x] Fix first column suppressed
-- [x] Copy to input box
+- [x] Multi-line copy paste
 - [x] Ambrosia use case
 
 April 29
