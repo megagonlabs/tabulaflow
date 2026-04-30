@@ -130,7 +130,8 @@ April 29
   - [x] run on sampled subset
   - [x] rule-based vs subagent
   - [x] batch tools
-- [ ] Pass instructions to subagent
+
+
 - [ ] Web search
 
 - General
