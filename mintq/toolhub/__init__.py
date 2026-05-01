@@ -20,6 +20,7 @@ from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
+from mintq.toolhub.web_fetch import WebFetchTool
 
 __all__ = [
     "BaseTool",
@@ -45,4 +46,5 @@ __all__ = [
     "RunQueryTool",
     "RunSubagentForEachRowTool",
     "SearchKeywordsTool",
+    "WebFetchTool",
 ]
