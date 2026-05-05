@@ -1,10 +1,10 @@
-"""Concurrent multi-agent, multi-page browser tool built on Playwright.
+"""Concurrent multi-agent, multi-tab browser tool built on Playwright.
 
 Designed for fleets of agents browsing in parallel within one Python
 process: many agents share one Chromium (not one each), each can open
-many pages simultaneously (not one foreground at a time), and idle
-pages auto-close between turns (no manual cleanup).  The browser-use
-alternative — Chromium-per-session, single foreground page — costs
+many tabs simultaneously (not one foreground at a time), and idle
+tabs auto-close between turns (no manual cleanup).  The browser-use
+alternative — Chromium-per-session, single foreground tab — costs
 ~15 GB at 50 agents and forces every multi-source workflow through
 subagent fan-out.
 
@@ -17,17 +17,18 @@ instances coexist in-process.  ``isolated=True`` opts into a private
 context when cookie/storage isolation matters.  Browser-use launches one
 Chromium per session — at 50 agents that's 50 browsers vs one here.
 
-**Multi-page state per tool.**  Each tool tracks ``dict[int, Page]``;
-``browser_navigate`` opens a *new* page each call, addressed by
-``page=N`` in subsequent actions.  Lets the LLM fan out several
-parallel ``browser_navigate`` calls in one turn (search-and-explore),
-then drill in next turn.  Browser-use's session is single-page;
-multi-page there means subagent fan-out (N LLM loops).
+**Multi-tab state per tool.**  Each tool tracks ``dict[str, _TabState]``
+keyed by short ``"t1"``/``"t2"``-style ids; ``browser_navigate`` opens
+a *new* tab each call, addressed by ``tab="t3"`` in subsequent actions.
+Lets the LLM fan out several parallel ``browser_navigate`` calls in one
+turn (search-and-explore), then drill in next turn.  Browser-use's
+session is single-tab; multi-tab there means subagent fan-out (N LLM
+loops).
 
-**Turn-based auto-cleanup.**  Pages auto-close at the next turn if not
+**Turn-based auto-cleanup.**  Tabs auto-close at the next turn if not
 interacted with.  ``lifecycle_capability()`` returns a pydantic-ai
 ``Hooks`` capability that fires ``tick()`` on ``before_model_request``;
-``tick()`` increments the turn counter and closes idle pages.  No
+``tick()`` increments the turn counter and closes idle tabs.  No
 ``browser_close`` exposed — the agent declares interest by interaction.
 
 **Markdown with click affordances inline.**  Each tool response is one
@@ -160,7 +161,7 @@ class WebBrowserToolMetrics(BaseModel):
     num_waits: int = 0
     num_errors: int = 0
     num_popups_adopted: int = 0
-    num_pages_auto_closed: int = 0
+    num_tabs_auto_closed: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -585,15 +586,20 @@ class _RefError(Exception):
 
 
 # ---------------------------------------------------------------------------
-# Per-page state
+# Per-tab state
 # ---------------------------------------------------------------------------
 
 
 @dataclass
-class _PageState:
-    """Per-page state held by a multi-page WebBrowserTool."""
+class _TabState:
+    """Per-tab state held by a multi-tab WebBrowserTool.
 
-    page_id: int
+    The internal ``page`` field holds Playwright's ``Page`` object — that's
+    Playwright's name for what users call a tab. We expose ``tab_id`` (a
+    ``"t1"``-style string) to the LLM rather than the Playwright object.
+    """
+
+    tab_id: str
     page: "Page"
     last_touched_turn: int
     last_snapshot: PageSnapshot | None = None
@@ -601,8 +607,8 @@ class _PageState:
     op_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
-async def format_page_response(state: _PageState) -> str:
-    """Build the LLM-facing response for a page state.
+async def format_tab_response(state: _TabState) -> str:
+    """Build the LLM-facing response for a tab state.
 
     Takes a fresh snapshot, inlines refs into body markdown, and renders the
     page + other-elements view. Mutates ``state.last_snapshot`` (sets the new
@@ -620,7 +626,7 @@ async def format_page_response(state: _PageState) -> str:
         parts.append(state.popup_notice)
         parts.append("")
         state.popup_notice = None
-    parts.append(f"[page={state.page_id}]")
+    parts.append(f"[tab={state.tab_id}]")
     parts.append(f"URL: {snapshot.url}")
     if snapshot.title:
         parts.append(f"Title: {snapshot.title}")
@@ -640,11 +646,11 @@ async def format_page_response(state: _PageState) -> str:
 
 
 class WebBrowserTool:
-    """Per-agent stateful browser tool with multi-page support.
+    """Per-agent stateful browser tool with multi-tab support.
 
-    One instance can manage many Pages within a shared (or private)
-    BrowserContext. Each ``browser_navigate`` call opens a NEW page; the
-    LLM addresses subsequent actions via ``page=N`` to refer back. Pages
+    One instance can manage many tabs within a shared (or private)
+    BrowserContext. Each ``browser_navigate`` call opens a NEW tab; the
+    LLM addresses subsequent actions via ``tab="t1"`` to refer back. Tabs
     auto-close if the agent doesn't interact with them on the next turn
     (turn boundary detected via a pydantic-ai ``before_model_request`` hook
     — register it by calling ``tool.lifecycle_capability()`` and passing
@@ -657,7 +663,7 @@ class WebBrowserTool:
         self,
         manager: WebBrowserManager | None = None,
         isolated: bool = False,
-        max_pages: int = 10,
+        max_tabs: int = 10,
         headless: bool = True,
     ) -> None:
         """Initialize the tool.
@@ -669,8 +675,8 @@ class WebBrowserTool:
                 BrowserContext instead of sharing the manager's default
                 context. Use when an agent needs cookie/storage isolation
                 from peers.
-            max_pages: Cap on simultaneously-open pages for this tool.
-                Returns an error if exceeded; idle pages auto-close at
+            max_tabs: Cap on simultaneously-open tabs for this tool.
+                Returns an error if exceeded; idle tabs auto-close at
                 the next turn boundary.
             headless: Run Chromium headless. Set False for visible-window
                 debugging. Honored only on first manager construction;
@@ -678,23 +684,23 @@ class WebBrowserTool:
         """
         self._manager = manager
         self._isolated = isolated
-        self._max_pages = max_pages
+        self._max_tabs = max_tabs
         self._headless = headless
         self._owned_context: BrowserContext | None = None
-        self._pages: dict[int, _PageState] = {}
-        self._next_page_id = 1
+        self._tabs: dict[str, _TabState] = {}
+        self._next_tab_seq = 1
         self._turn_counter = 0
         self._metrics = WebBrowserToolMetrics()
 
     # === LLM-facing tool methods ============================================
 
     async def browser_navigate(self, url: str) -> str:
-        """Open a NEW page at ``url`` and return its post-load snapshot.
+        """Open a NEW tab at ``url`` and return its post-load snapshot.
 
-        Each call opens a fresh page — previously-opened pages remain open.
-        Use the ``page`` id from the response in subsequent action calls
-        (``browser_click``, etc.) to interact with this page. Pages
-        auto-close if not interacted with on the next agent turn.
+        Each call opens a fresh tab — previously-opened tabs remain open.
+        Use the ``tab`` id from the response (e.g., ``"t3"``) in subsequent
+        action calls (``browser_click``, etc.) to interact with this tab.
+        Tabs auto-close if not interacted with on the next agent turn.
 
         Issue multiple navigates in parallel within one turn to scan
         several URLs concurrently.
@@ -710,23 +716,23 @@ class WebBrowserTool:
             )
         if not parsed.netloc:
             return self._format_error("invalid URL — missing host")
-        if len(self._pages) >= self._max_pages:
+        if len(self._tabs) >= self._max_tabs:
             return self._format_error(
-                f"max_pages ({self._max_pages}) reached. "
-                f"Open pages: {sorted(self._pages.keys())}. "
-                f"Idle pages auto-close at the next turn boundary."
+                f"max_tabs ({self._max_tabs}) reached. "
+                f"Open tabs: {sorted(self._tabs.keys())}. "
+                f"Idle tabs auto-close at the next turn boundary."
             )
 
-        page_id = self._next_page_id
-        self._next_page_id += 1
+        tab_id = f"t{self._next_tab_seq}"
+        self._next_tab_seq += 1
 
         try:
             ctx = await self._ensure_context()
             page = await ctx.new_page()
         except Exception as e:
-            return self._format_error(f"failed to open page: {self._error_message(e)}")
+            return self._format_error(f"failed to open tab: {self._error_message(e)}")
 
-        page.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
+        page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))
 
         try:
             # Two-phase wait: ``load`` for the navigation guarantee, then a
@@ -746,21 +752,21 @@ class WebBrowserTool:
                 pass
             return self._format_error(f"navigation failed: {self._error_message(e)}")
 
-        state = _PageState(page_id=page_id, page=page, last_touched_turn=self._turn_counter)
-        self._pages[page_id] = state
-        return await format_page_response(state)
+        state = _TabState(tab_id=tab_id, page=page, last_touched_turn=self._turn_counter)
+        self._tabs[tab_id] = state
+        return await format_tab_response(state)
 
-    async def browser_click(self, page: int, ref: str) -> str:
-        """Click an interactive element on a specific page.
+    async def browser_click(self, tab: str, ref: str) -> str:
+        """Click an interactive element on a specific tab.
 
         Args:
-            page: The id of the page to act on (from a previous response).
-            ref: The ref string from that page's latest snapshot.
+            tab: The id of the tab to act on (from a previous response).
+            ref: The ref string from that tab's latest snapshot.
         """
         self._metrics.num_clicks += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -771,13 +777,13 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"click failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
-    async def browser_type(self, page: int, ref: str, text: str, submit: bool = False) -> str:
-        """Type text into an editable element on a specific page.
+    async def browser_type(self, tab: str, ref: str, text: str, submit: bool = False) -> str:
+        """Type text into an editable element on a specific tab.
 
         Args:
-            page: The id of the page to act on.
+            tab: The id of the tab to act on.
             ref: The ref string of the input element.
             text: The text to type. Replaces existing content.
             submit: If True, press Enter after typing. Without submit the
@@ -785,9 +791,9 @@ class WebBrowserTool:
                 beyond the input field's value (which the agent already knows).
         """
         self._metrics.num_types += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -803,16 +809,16 @@ class WebBrowserTool:
             if not submit:
                 # No submit → page state didn't change in any way the agent
                 # doesn't already know. Skip the full re-snapshot to save tokens.
-                return f"[page={page}] typed into ref={ref}"
-            return await format_page_response(state)
+                return f"[tab={tab}] typed into ref={ref}"
+            return await format_tab_response(state)
 
     async def browser_scroll(
-        self, page: int, direction: Literal["up", "down", "top", "bottom"]
+        self, tab: str, direction: Literal["up", "down", "top", "bottom"]
     ) -> str:
-        """Scroll a specific page.
+        """Scroll a specific tab.
 
         Args:
-            page: The id of the page to scroll.
+            tab: The id of the tab to scroll.
             direction: One of ``"up"``, ``"down"``, ``"top"``, ``"bottom"``.
         """
         self._metrics.num_scrolls += 1
@@ -820,9 +826,9 @@ class WebBrowserTool:
             return self._format_error(
                 f"invalid direction {direction!r}; expected up/down/top/bottom"
             )
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 if direction == "down":
@@ -837,18 +843,18 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"scroll failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
-    async def browser_back(self, page: int) -> str:
-        """Navigate back in a specific page's history.
+    async def browser_back(self, tab: str) -> str:
+        """Navigate back in a specific tab's history.
 
         Args:
-            page: The id of the page to navigate back on.
+            tab: The id of the tab to navigate back on.
         """
         self._metrics.num_backs += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 await state.page.go_back(wait_until="load", timeout=_NAV_TIMEOUT_MS)
@@ -859,25 +865,25 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
-    async def browser_press(self, page: int, key: str) -> str:
-        """Press a keyboard key on the page (no specific element required).
+    async def browser_press(self, tab: str, key: str) -> str:
+        """Press a keyboard key on a tab (no specific element required).
 
         Most useful for dismissing modals (``"Escape"``), submitting forms
         (``"Enter"``), and tab navigation (``"Tab"``). Operates on whichever
         element currently has focus, or at page level for keys like Escape.
 
         Args:
-            page: The id of the page to act on.
+            tab: The id of the tab to act on.
             key: A Playwright key name — e.g. ``"Escape"``, ``"Enter"``,
                 ``"Tab"``, ``"ArrowDown"``, ``"PageDown"``, ``"Backspace"``,
                 or a chord like ``"Control+a"`` / ``"Meta+v"``.
         """
         self._metrics.num_presses += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 await state.page.keyboard.press(key)
@@ -885,9 +891,9 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"press failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
-    async def browser_select(self, page: int, ref: str, option: str) -> str:
+    async def browser_select(self, tab: str, ref: str, option: str) -> str:
         """Select an option from a native ``<select>`` dropdown.
 
         For native HTML ``<select>`` elements (combobox role). Use this
@@ -895,15 +901,15 @@ class WebBrowserTool:
         native dropdowns reliably across browsers.
 
         Args:
-            page: The id of the page to act on.
+            tab: The id of the tab to act on.
             ref: The ref of the ``<select>`` element.
             option: The option to choose, matched by visible label or by
                 value attribute (Playwright tries both).
         """
         self._metrics.num_selects += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -914,58 +920,58 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"select failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
-    async def browser_wait(self, page: int, seconds: float = 3.0) -> str:
-        """Sleep for ``seconds`` seconds, then re-snapshot the page.
+    async def browser_wait(self, tab: str, seconds: float = 3.0) -> str:
+        """Sleep for ``seconds`` seconds, then re-snapshot the tab.
 
         Useful when a previous action triggered slow content loading and
         the auto-settle wait wasn't long enough (e.g., heavy dashboards
         that render a few seconds after the network goes idle).
 
         Args:
-            page: The id of the page to re-snapshot afterward.
+            tab: The id of the tab to re-snapshot afterward.
             seconds: How long to wait, capped at 30s.
         """
         self._metrics.num_waits += 1
-        state = self._pages.get(page)
+        state = self._tabs.get(tab)
         if state is None:
-            return self._format_error(self._unknown_page(page))
+            return self._format_error(self._unknown_tab(tab))
         seconds = max(0.0, min(seconds, 30.0))
         async with state.op_lock:
             await asyncio.sleep(seconds)
             state.last_touched_turn = self._turn_counter
-            return await format_page_response(state)
+            return await format_tab_response(state)
 
     # === Lifecycle ===========================================================
 
     async def tick(self) -> None:
-        """Advance the turn counter and close pages idle for >= 2 turns.
+        """Advance the turn counter and close tabs idle for >= 2 turns.
 
-        Called by the lifecycle capability before each model request. A page
+        Called by the lifecycle capability before each model request. A tab
         opened in turn N has ``last_touched_turn = N``. If the agent does
         not touch it in turn N+1, ``last_touched_turn`` stays at N. By the
         start of turn N+2, ``current_turn - last_touched_turn >= 2`` → close.
         """
         self._turn_counter += 1
         threshold = self._turn_counter - 2
-        to_close: list[_PageState] = []
-        for pid in list(self._pages.keys()):
-            state = self._pages.get(pid)
+        to_close: list[_TabState] = []
+        for tid in list(self._tabs.keys()):
+            state = self._tabs.get(tid)
             if state is not None and state.last_touched_turn <= threshold:
                 to_close.append(state)
-                del self._pages[pid]
+                del self._tabs[tid]
         for state in to_close:
             try:
                 await state.page.close()
             except Exception:
                 pass
-            self._metrics.num_pages_auto_closed += 1
+            self._metrics.num_tabs_auto_closed += 1
 
     async def close(self) -> None:
-        """Close all pages and (if isolated) the private context."""
-        states = list(self._pages.values())
-        self._pages.clear()
+        """Close all tabs and (if isolated) the private context."""
+        states = list(self._tabs.values())
+        self._tabs.clear()
         for state in states:
             try:
                 await state.page.close()
@@ -1034,19 +1040,19 @@ class WebBrowserTool:
         manager = await self._ensure_manager()
         return await manager.shared_context()
 
-    def _unknown_page(self, page_id: int) -> str:
-        open_ids = sorted(self._pages.keys())
-        return f"no page with id {page_id}; open pages: {open_ids or 'none'}"
+    def _unknown_tab(self, tab_id: str) -> str:
+        open_ids = sorted(self._tabs.keys())
+        return f"no tab {tab_id!r}; open tabs: {open_ids or 'none'}"
 
-    def _on_popup_sync(self, page_id: int, popup: "Page") -> None:
+    def _on_popup_sync(self, tab_id: str, popup: "Page") -> None:
         """Sync wrapper that schedules the async popup adoption."""
-        asyncio.create_task(self._on_popup(page_id, popup))
+        asyncio.create_task(self._on_popup(tab_id, popup))
 
-    async def _on_popup(self, page_id: int, popup: "Page") -> None:
-        """Adopt a site-popped tab as the active page for ``page_id``."""
-        state = self._pages.get(page_id)
+    async def _on_popup(self, tab_id: str, popup: "Page") -> None:
+        """Adopt a site-popped tab as the active page for ``tab_id``."""
+        state = self._tabs.get(tab_id)
         if state is None:
-            return  # original page was closed
+            return  # original tab was closed
         try:
             await popup.wait_for_load_state("domcontentloaded", timeout=_SETTLE_TIMEOUT_MS)
         except Exception:
@@ -1058,7 +1064,7 @@ class WebBrowserTool:
         except Exception:
             popup_url = "(unknown)"
         state.popup_notice = (
-            f"[note: previous action on page {page_id} opened a popup; "
+            f"[note: previous action on tab {tab_id} opened a popup; "
             f"this tab is now {popup_url}]"
         )
         self._metrics.num_popups_adopted += 1
@@ -1067,9 +1073,9 @@ class WebBrowserTool:
                 await old_page.close()
             except Exception:
                 pass
-        popup.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
+        popup.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))
 
-    async def _settle(self, state: _PageState) -> None:
+    async def _settle(self, state: _TabState) -> None:
         timeout = _NETWORKIDLE_WAIT_MS
         if state.last_snapshot is not None:
             try:
@@ -1084,15 +1090,15 @@ class WebBrowserTool:
         except Exception:
             pass
 
-    def _resolve_ref(self, state: _PageState, ref: str) -> "Locator":
+    def _resolve_ref(self, state: _TabState, ref: str) -> "Locator":
         if state.last_snapshot is None:
             raise _RefError(
-                f"page {state.page_id}: no snapshot available; call any action first"
+                f"page {state.tab_id}: no snapshot available; call any action first"
             )
         if ref not in state.last_snapshot.refs:
             available = sorted(state.last_snapshot.refs)
             raise _RefError(
-                f"page {state.page_id}: unknown ref {ref!r}. "
+                f"page {state.tab_id}: unknown ref {ref!r}. "
                 f"Available refs: {available[:30]}"
             )
         return state.page.locator(f"aria-ref={ref}")
