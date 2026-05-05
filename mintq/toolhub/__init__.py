@@ -26,7 +26,6 @@ from mintq.toolhub.web_browser import (
     default_manager,
     reset_default_manager,
 )
-from mintq.toolhub.web_fetch import WebFetchTool
 
 __all__ = [
     "BaseTool",
@@ -55,7 +54,6 @@ __all__ = [
     "SearchKeywordsTool",
     "WebBrowserManager",
     "WebBrowserTool",
-    "WebFetchTool",
     "default_manager",
     "reset_default_manager",
 ]
