@@ -1,4 +1,4 @@
-from mintq.toolhub.base import BaseTool
+from mintq.toolhub.base import BaseTool, BaseToolset
 from mintq.toolhub.ask_user import AskUserTool
 from mintq.toolhub.execute_bash import ExecuteBashTool
 from mintq.toolhub.file_editor import FileEditorTool
@@ -20,10 +20,12 @@ from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
+from mintq.toolhub.web_browser import WebBrowserManager, WebBrowserTool
 from mintq.toolhub.web_fetch import WebFetchTool
 
 __all__ = [
     "BaseTool",
+    "BaseToolset",
     "AskUserTool",
     "ExecuteBashTool",
     "FileEditorTool",
@@ -46,5 +48,7 @@ __all__ = [
     "RunQueryTool",
     "RunSubagentForEachRowTool",
     "SearchKeywordsTool",
+    "WebBrowserManager",
+    "WebBrowserTool",
     "WebFetchTool",
 ]
