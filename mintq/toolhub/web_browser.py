@@ -76,6 +76,11 @@ _MAX_MARKDOWN_CHARS = 30_000
 # sites, social feeds) while bounding worst-case latency on streaming pages.
 _NETWORKIDLE_WAIT_MS = 10_000
 
+# Tighter budget for in-site navigations (click/type that stays on same host).
+# Same-domain navs typically reuse cached CSS/JS and settle faster — we don't
+# need the full SPA-rendering budget. Borrowed from browser-use's heuristic.
+_NETWORKIDLE_WAIT_MS_SAME_DOMAIN = 3_000
+
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -960,10 +965,17 @@ class WebBrowserTool:
         popup.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
 
     async def _settle(self, state: _PageState) -> None:
+        timeout = _NETWORKIDLE_WAIT_MS
+        if state.last_snapshot is not None:
+            try:
+                prev_host = urlparse(state.last_snapshot.url).netloc
+                cur_host = urlparse(state.page.url).netloc
+                if prev_host and prev_host == cur_host:
+                    timeout = _NETWORKIDLE_WAIT_MS_SAME_DOMAIN
+            except Exception:
+                pass
         try:
-            await state.page.wait_for_load_state(
-                "networkidle", timeout=_NETWORKIDLE_WAIT_MS
-            )
+            await state.page.wait_for_load_state("networkidle", timeout=timeout)
         except Exception:
             pass
 
