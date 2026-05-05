@@ -1,9 +1,10 @@
-"""Stateful browser tool with per-agent isolation.
+"""Stateful browser tool with per-agent isolation and multi-page support.
 
 Singleton browser process + per-agent BrowserContext (default shared, optionally
-isolated) + one Page per tool instance. Five LLM-facing actions each return a
-filtered list of clickable elements + clean markdown content of the post-action
-page state.
+isolated). Each tool instance can manage many Pages — opened by parallel
+``browser_navigate`` calls and addressed by integer page ids in subsequent
+actions. Pages auto-close if not interacted with on the next agent turn (the
+turn boundary is detected via a pydantic-ai ``before_model_request`` hook).
 """
 
 import asyncio
@@ -83,8 +84,10 @@ class WebBrowserToolMetrics(BaseModel):
     num_types: int = 0
     num_scrolls: int = 0
     num_backs: int = 0
+    num_lists: int = 0
     num_errors: int = 0
     num_popups_adopted: int = 0
+    num_pages_auto_closed: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -546,16 +549,37 @@ class _RefError(Exception):
 
 
 # ---------------------------------------------------------------------------
+# Per-page state
+# ---------------------------------------------------------------------------
+
+
+@dataclass
+class _PageState:
+    """Per-page state held by a multi-page WebBrowserTool."""
+
+    page_id: int
+    page: "Page"
+    last_touched_turn: int
+    last_snapshot: PageSnapshot | None = None
+    popup_notice: str | None = None
+    op_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+
+
+# ---------------------------------------------------------------------------
 # Per-agent tool
 # ---------------------------------------------------------------------------
 
 
 class WebBrowserTool:
-    """Per-agent stateful browser tool.
+    """Per-agent stateful browser tool with multi-page support.
 
-    One instance owns one Page in either the shared or a private
-    BrowserContext. Exposes 5 LLM-facing actions; each returns the
-    post-action page snapshot.
+    One instance can manage many Pages within a shared (or private)
+    BrowserContext. Each ``browser_navigate`` call opens a NEW page; the
+    LLM addresses subsequent actions via ``page=N`` to refer back. Pages
+    auto-close if the agent doesn't interact with them on the next turn
+    (turn boundary detected via a pydantic-ai ``before_model_request`` hook
+    — register it by calling ``tool.lifecycle_capability()`` and passing
+    the result to ``Agent(capabilities=[...])``).
     """
 
     name: ClassVar = "web_browser"
@@ -564,6 +588,7 @@ class WebBrowserTool:
         self,
         manager: WebBrowserManager | None = None,
         isolated: bool = False,
+        max_pages: int = 10,
     ) -> None:
         """Initialize the tool.
 
@@ -574,25 +599,31 @@ class WebBrowserTool:
                 BrowserContext instead of sharing the manager's default
                 context. Use when an agent needs cookie/storage isolation
                 from peers.
+            max_pages: Cap on simultaneously-open pages for this tool.
+                Returns an error if exceeded; agent should call
+                ``browser_close`` first.
         """
         self._manager = manager
         self._isolated = isolated
+        self._max_pages = max_pages
         self._owned_context: BrowserContext | None = None
-        self._page: Page | None = None
-        self._op_lock = asyncio.Lock()
-        self._last_snapshot: PageSnapshot | None = None
-        self._popup_notice: str | None = None
+        self._pages: dict[int, _PageState] = {}
+        self._next_page_id = 1
+        self._turn_counter = 0
         self._metrics = WebBrowserToolMetrics()
 
     # === LLM-facing tool methods ============================================
 
     async def browser_navigate(self, url: str) -> str:
-        """Navigate to a URL and return the post-load page state.
+        """Open a NEW page at ``url`` and return its post-load snapshot.
 
-        The page is rendered with a headless browser and the response is an
-        aria snapshot of the page. Interactive elements are tagged with
-        ``[ref=eN]`` markers; pass those refs to ``browser_click`` and
-        ``browser_type``.
+        Each call opens a fresh page — previously-opened pages remain open.
+        Use the ``page`` id from the response in subsequent action calls
+        (``browser_click``, etc.) to interact with this page. Pages
+        auto-close if not interacted with on the next agent turn.
+
+        Issue multiple navigates in parallel within one turn to scan
+        several URLs concurrently.
 
         Args:
             url: An ``http://`` or ``https://`` URL.
@@ -605,129 +636,192 @@ class WebBrowserTool:
             )
         if not parsed.netloc:
             return self._format_error("invalid URL — missing host")
+        if len(self._pages) >= self._max_pages:
+            return self._format_error(
+                f"max_pages ({self._max_pages}) reached. "
+                f"Open pages: {sorted(self._pages.keys())}. "
+                f"Idle pages auto-close at the next turn boundary."
+            )
 
-        async with self._op_lock:
+        page_id = self._next_page_id
+        self._next_page_id += 1
+
+        try:
+            ctx = await self._ensure_context()
+            page = await ctx.new_page()
+        except Exception as e:
+            return self._format_error(f"failed to open page: {self._error_message(e)}")
+
+        page.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
+
+        try:
+            await page.goto(url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+        except Exception as e:
             try:
-                page = await self._ensure_page()
-                await page.goto(url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
-            except Exception as e:
-                return self._format_error(f"navigation failed: {self._error_message(e)}")
-            return await self._format_response()
+                await page.close()
+            except Exception:
+                pass
+            return self._format_error(f"navigation failed: {self._error_message(e)}")
 
-    async def browser_click(self, ref: str) -> str:
-        """Click an interactive element by its ref id from the latest snapshot.
+        state = _PageState(page_id=page_id, page=page, last_touched_turn=self._turn_counter)
+        self._pages[page_id] = state
+        return await self._format_response_for(state)
+
+    async def browser_click(self, page: int, ref: str) -> str:
+        """Click an interactive element on a specific page.
 
         Args:
-            ref: The ref string from the latest snapshot's ``[ref=eN]`` markers.
+            page: The id of the page to act on (from a previous response).
+            ref: The ref string from that page's latest snapshot.
         """
         self._metrics.num_clicks += 1
-        async with self._op_lock:
-            if self._page is None:
-                return self._format_error("no page; call browser_navigate first")
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
             try:
-                locator = self._resolve_ref(ref)
+                locator = self._resolve_ref(state, ref)
                 await locator.click(timeout=_SETTLE_TIMEOUT_MS)
-                await self._settle_after_action()
+                await self._settle(state)
             except _RefError as e:
                 return self._format_error(str(e))
             except Exception as e:
                 return self._format_error(f"click failed: {self._error_message(e)}")
-            return await self._format_response()
+            state.last_touched_turn = self._turn_counter
+            return await self._format_response_for(state)
 
-    async def browser_type(self, ref: str, text: str, submit: bool = False) -> str:
-        """Type text into an editable element.
+    async def browser_type(self, page: int, ref: str, text: str, submit: bool = False) -> str:
+        """Type text into an editable element on a specific page.
 
         Args:
+            page: The id of the page to act on.
             ref: The ref string of the input element.
-            text: The text to type. Replaces existing content in the field.
-            submit: If True, press Enter after typing (useful for search boxes).
+            text: The text to type. Replaces existing content.
+            submit: If True, press Enter after typing.
         """
         self._metrics.num_types += 1
-        async with self._op_lock:
-            if self._page is None:
-                return self._format_error("no page; call browser_navigate first")
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
             try:
-                locator = self._resolve_ref(ref)
+                locator = self._resolve_ref(state, ref)
                 await locator.fill(text, timeout=_SETTLE_TIMEOUT_MS)
                 if submit:
                     await locator.press("Enter")
-                    await self._settle_after_action()
+                    await self._settle(state)
             except _RefError as e:
                 return self._format_error(str(e))
             except Exception as e:
                 return self._format_error(f"type failed: {self._error_message(e)}")
-            return await self._format_response()
+            state.last_touched_turn = self._turn_counter
+            return await self._format_response_for(state)
 
     async def browser_scroll(
-        self, direction: Literal["up", "down", "top", "bottom"]
+        self, page: int, direction: Literal["up", "down", "top", "bottom"]
     ) -> str:
-        """Scroll the page.
+        """Scroll a specific page.
 
         Args:
+            page: The id of the page to scroll.
             direction: One of ``"up"``, ``"down"``, ``"top"``, ``"bottom"``.
-                ``"down"``/``"up"`` move by ~80% of the viewport height;
-                ``"top"``/``"bottom"`` jump to the start/end of the page
-                (useful for triggering infinite-scroll loaders).
         """
         self._metrics.num_scrolls += 1
         if direction not in ("up", "down", "top", "bottom"):
             return self._format_error(
                 f"invalid direction {direction!r}; expected up/down/top/bottom"
             )
-        async with self._op_lock:
-            if self._page is None:
-                return self._format_error("no page; call browser_navigate first")
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
             try:
                 if direction == "down":
-                    await self._page.evaluate(
-                        "window.scrollBy(0, window.innerHeight * 0.8)"
-                    )
+                    await state.page.evaluate("window.scrollBy(0, window.innerHeight * 0.8)")
                 elif direction == "up":
-                    await self._page.evaluate(
-                        "window.scrollBy(0, -window.innerHeight * 0.8)"
-                    )
+                    await state.page.evaluate("window.scrollBy(0, -window.innerHeight * 0.8)")
                 elif direction == "top":
-                    await self._page.evaluate("window.scrollTo(0, 0)")
-                else:  # bottom
-                    await self._page.evaluate(
-                        "window.scrollTo(0, document.body.scrollHeight)"
-                    )
-                await asyncio.sleep(0.5)  # let lazy-loaded content settle
+                    await state.page.evaluate("window.scrollTo(0, 0)")
+                else:
+                    await state.page.evaluate("window.scrollTo(0, document.body.scrollHeight)")
+                await asyncio.sleep(0.5)
             except Exception as e:
                 return self._format_error(f"scroll failed: {self._error_message(e)}")
-            return await self._format_response()
+            state.last_touched_turn = self._turn_counter
+            return await self._format_response_for(state)
 
-    async def browser_back(self) -> str:
-        """Navigate back in browser history."""
+    async def browser_back(self, page: int) -> str:
+        """Navigate back in a specific page's history.
+
+        Args:
+            page: The id of the page to navigate back on.
+        """
         self._metrics.num_backs += 1
-        async with self._op_lock:
-            if self._page is None:
-                return self._format_error("no page; call browser_navigate first")
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
             try:
-                await self._page.go_back(
-                    wait_until="networkidle", timeout=_NAV_TIMEOUT_MS
-                )
+                await state.page.go_back(wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
-            return await self._format_response()
+            state.last_touched_turn = self._turn_counter
+            return await self._format_response_for(state)
+
+    async def browser_list_pages(self) -> str:
+        """List currently-open pages with their URLs and titles."""
+        self._metrics.num_lists += 1
+        if not self._pages:
+            return "(no pages open)"
+        lines = ["Open pages:"]
+        for pid in sorted(self._pages.keys()):
+            state = self._pages[pid]
+            url = state.page.url
+            title = state.last_snapshot.title if state.last_snapshot else ""
+            suffix = f" — {title}" if title else ""
+            lines.append(f"  page={pid}: {url}{suffix}")
+        return "\n".join(lines)
 
     # === Lifecycle ===========================================================
 
+    async def tick(self) -> None:
+        """Advance the turn counter and close pages idle for >= 2 turns.
+
+        Called by the lifecycle capability before each model request. A page
+        opened in turn N has ``last_touched_turn = N``. If the agent does
+        not touch it in turn N+1, ``last_touched_turn`` stays at N. By the
+        start of turn N+2, ``current_turn - last_touched_turn >= 2`` → close.
+        """
+        self._turn_counter += 1
+        threshold = self._turn_counter - 2
+        to_close: list[_PageState] = []
+        for pid in list(self._pages.keys()):
+            state = self._pages.get(pid)
+            if state is not None and state.last_touched_turn <= threshold:
+                to_close.append(state)
+                del self._pages[pid]
+        for state in to_close:
+            try:
+                await state.page.close()
+            except Exception:
+                pass
+            self._metrics.num_pages_auto_closed += 1
+
     async def close(self) -> None:
-        """Close this tool's page and (if isolated) its private context."""
-        async with self._op_lock:
-            if self._page is not None:
-                try:
-                    await self._page.close()
-                except Exception:
-                    pass
-                self._page = None
-            if self._owned_context is not None:
-                try:
-                    await self._owned_context.close()
-                except Exception:
-                    pass
-                self._owned_context = None
+        """Close all pages and (if isolated) the private context."""
+        states = list(self._pages.values())
+        self._pages.clear()
+        for state in states:
+            try:
+                await state.page.close()
+            except Exception:
+                pass
+        if self._owned_context is not None:
+            try:
+                await self._owned_context.close()
+            except Exception:
+                pass
+            self._owned_context = None
 
     # === Pydantic-AI integration =============================================
 
@@ -738,7 +832,31 @@ class WebBrowserTool:
             Tool(self.browser_type, name="browser_type"),
             Tool(self.browser_scroll, name="browser_scroll"),
             Tool(self.browser_back, name="browser_back"),
+            Tool(self.browser_list_pages, name="browser_list_pages"),
         ]
+
+    def lifecycle_capability(self) -> object:
+        """Return a pydantic-ai ``Hooks`` capability that ticks this tool.
+
+        The returned capability subscribes to ``before_model_request`` and
+        invokes ``tick()`` on each model turn boundary. Pass it to
+        ``Agent(capabilities=[...])``.
+        """
+        try:
+            from pydantic_ai.capabilities import Hooks
+        except ImportError as e:
+            raise RuntimeError(
+                "lifecycle_capability requires pydantic-ai with Hooks support. "
+                "Upgrade pydantic-ai or call tool.tick() manually between turns."
+            ) from e
+        hooks = Hooks()
+
+        @hooks.on.before_model_request
+        async def _tick(ctx, request_context):  # type: ignore[no-untyped-def]
+            await self.tick()
+            return request_context
+
+        return hooks
 
     def metrics(self) -> WebBrowserToolMetrics:
         return self._metrics
@@ -750,38 +868,41 @@ class WebBrowserTool:
             self._manager = await WebBrowserManager.get()
         return self._manager
 
-    async def _ensure_page(self) -> "Page":
-        if self._page is not None:
-            return self._page
-        manager = await self._ensure_manager()
+    async def _ensure_context(self) -> "BrowserContext":
         if self._isolated:
-            self._owned_context = await manager.new_isolated_context()
-            ctx = self._owned_context
-        else:
-            ctx = await manager.shared_context()
-        page = await ctx.new_page()
-        page.on("popup", self._on_popup_sync)
-        self._page = page
-        return page
+            if self._owned_context is None:
+                manager = await self._ensure_manager()
+                self._owned_context = await manager.new_isolated_context()
+            return self._owned_context
+        manager = await self._ensure_manager()
+        return await manager.shared_context()
 
-    def _on_popup_sync(self, popup: "Page") -> None:
+    def _unknown_page(self, page_id: int) -> str:
+        open_ids = sorted(self._pages.keys())
+        return f"no page with id {page_id}; open pages: {open_ids or 'none'}"
+
+    def _on_popup_sync(self, page_id: int, popup: "Page") -> None:
         """Sync wrapper that schedules the async popup adoption."""
-        asyncio.create_task(self._on_popup(popup))
+        asyncio.create_task(self._on_popup(page_id, popup))
 
-    async def _on_popup(self, popup: "Page") -> None:
-        """Adopt a site-popped tab as the new active page."""
+    async def _on_popup(self, page_id: int, popup: "Page") -> None:
+        """Adopt a site-popped tab as the active page for ``page_id``."""
+        state = self._pages.get(page_id)
+        if state is None:
+            return  # original page was closed
         try:
             await popup.wait_for_load_state("domcontentloaded", timeout=_SETTLE_TIMEOUT_MS)
         except Exception:
             pass
-        old_page = self._page
-        self._page = popup
+        old_page = state.page
+        state.page = popup
         try:
             popup_url = popup.url
         except Exception:
             popup_url = "(unknown)"
-        self._popup_notice = (
-            f"[note: previous action opened a popup; the active tab is now {popup_url}]"
+        state.popup_notice = (
+            f"[note: previous action on page {page_id} opened a popup; "
+            f"this tab is now {popup_url}]"
         )
         self._metrics.num_popups_adopted += 1
         if old_page is not None and old_page is not popup:
@@ -789,26 +910,62 @@ class WebBrowserTool:
                 await old_page.close()
             except Exception:
                 pass
-        popup.on("popup", self._on_popup_sync)
+        popup.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
 
-    async def _settle_after_action(self) -> None:
-        """After an action that may navigate or load content, wait briefly."""
-        if self._page is None:
-            return
+    async def _settle(self, state: _PageState) -> None:
         try:
-            await self._page.wait_for_load_state("networkidle", timeout=_SETTLE_TIMEOUT_MS)
+            await state.page.wait_for_load_state("networkidle", timeout=_SETTLE_TIMEOUT_MS)
         except Exception:
             pass
 
-    def _resolve_ref(self, ref: str) -> "Locator":
-        if self._last_snapshot is None:
-            raise _RefError("no snapshot available; call any action first to refresh")
-        if ref not in self._last_snapshot.refs:
-            available = sorted(self._last_snapshot.refs)
-            raise _RefError(f"unknown ref {ref!r}. Available refs: {available[:30]}")
-        if self._page is None:
-            raise _RefError("no active page")
-        return self._page.locator(f"aria-ref={ref}")
+    def _resolve_ref(self, state: _PageState, ref: str) -> "Locator":
+        if state.last_snapshot is None:
+            raise _RefError(
+                f"page {state.page_id}: no snapshot available; call any action first"
+            )
+        if ref not in state.last_snapshot.refs:
+            available = sorted(state.last_snapshot.refs)
+            raise _RefError(
+                f"page {state.page_id}: unknown ref {ref!r}. "
+                f"Available refs: {available[:30]}"
+            )
+        return state.page.locator(f"aria-ref={ref}")
+
+    async def _format_response_for(self, state: _PageState) -> str:
+        snapshot = await take_snapshot(state.page)
+        state.last_snapshot = snapshot
+
+        inlined = set(_REF_PATTERN.findall(snapshot.markdown_content))
+        remaining = [
+            e for e in snapshot.interactive_elements if e.ref not in inlined
+        ]
+
+        parts: list[str] = []
+        if state.popup_notice is not None:
+            parts.append(state.popup_notice)
+            parts.append("")
+            state.popup_notice = None
+        parts.append(f"[page={state.page_id}]")
+        parts.append(f"URL: {snapshot.url}")
+        if snapshot.title:
+            parts.append(f"Title: {snapshot.title}")
+        parts.append("")
+        parts.append("# Page")
+        parts.append(snapshot.markdown_content or "(no content extracted)")
+        if remaining:
+            parts.append("")
+            parts.append("# Other interactive elements")
+            parts.append(render_interactive_elements(remaining))
+        return "\n".join(parts)
+
+    def _format_error(self, msg: str) -> str:
+        self._metrics.num_errors += 1
+        return f"(error: {msg})"
+
+    @staticmethod
+    def _error_message(e: Exception) -> str:
+        msg = str(e).strip()
+        return msg or e.__class__.__name__
 
     async def _format_response(self) -> str:
         page = self._page
