@@ -760,8 +760,8 @@ class WebBrowserTool:
         """Click an interactive element on a specific tab.
 
         Args:
-            tab: The id of the tab to act on (from a previous response).
-            ref: The ref string from that tab's latest snapshot.
+            tab: The id of the tab to act on, e.g. ``"t1"`` (from a previous response).
+            ref: The ref string from that tab's latest snapshot, e.g. ``"e15"``.
         """
         self._metrics.num_clicks += 1
         state = self._tabs.get(tab)
@@ -783,8 +783,8 @@ class WebBrowserTool:
         """Type text into an editable element on a specific tab.
 
         Args:
-            tab: The id of the tab to act on.
-            ref: The ref string of the input element.
+            tab: The id of the tab to act on, e.g. ``"t1"``.
+            ref: The ref string of the input element, e.g. ``"e15"``.
             text: The text to type. Replaces existing content.
             submit: If True, press Enter after typing. Without submit the
                 response is a short ack since the page state hasn't changed
@@ -818,7 +818,7 @@ class WebBrowserTool:
         """Scroll a specific tab.
 
         Args:
-            tab: The id of the tab to scroll.
+            tab: The id of the tab to scroll, e.g. ``"t1"``.
             direction: One of ``"up"``, ``"down"``, ``"top"``, ``"bottom"``.
         """
         self._metrics.num_scrolls += 1
@@ -849,7 +849,7 @@ class WebBrowserTool:
         """Navigate back in a specific tab's history.
 
         Args:
-            tab: The id of the tab to navigate back on.
+            tab: The id of the tab to navigate back on, e.g. ``"t1"``.
         """
         self._metrics.num_backs += 1
         state = self._tabs.get(tab)
@@ -875,7 +875,7 @@ class WebBrowserTool:
         element currently has focus, or at page level for keys like Escape.
 
         Args:
-            tab: The id of the tab to act on.
+            tab: The id of the tab to act on, e.g. ``"t1"``.
             key: A Playwright key name — e.g. ``"Escape"``, ``"Enter"``,
                 ``"Tab"``, ``"ArrowDown"``, ``"PageDown"``, ``"Backspace"``,
                 or a chord like ``"Control+a"`` / ``"Meta+v"``.
@@ -901,8 +901,8 @@ class WebBrowserTool:
         native dropdowns reliably across browsers.
 
         Args:
-            tab: The id of the tab to act on.
-            ref: The ref of the ``<select>`` element.
+            tab: The id of the tab to act on, e.g. ``"t1"``.
+            ref: The ref of the ``<select>`` element, e.g. ``"e15"``.
             option: The option to choose, matched by visible label or by
                 value attribute (Playwright tries both).
         """
@@ -930,7 +930,7 @@ class WebBrowserTool:
         that render a few seconds after the network goes idle).
 
         Args:
-            tab: The id of the tab to re-snapshot afterward.
+            tab: The id of the tab to re-snapshot afterward, e.g. ``"t1"``.
             seconds: How long to wait, capped at 30s.
         """
         self._metrics.num_waits += 1
