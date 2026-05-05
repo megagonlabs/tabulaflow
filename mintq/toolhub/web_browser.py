@@ -479,6 +479,13 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
 class WebBrowserManager:
     """Owns a Chromium browser process and a shared ``BrowserContext``.
 
+    Mental model — same as Chrome on your laptop:
+
+    - ``Chromium browser`` ≈ one running Chrome.app
+    - ``BrowserContext`` ≈ one Chrome profile (or incognito window):
+      own cookies, own storage, fully isolated from siblings
+    - ``Page`` ≈ one tab inside a context
+
     Get the process-wide default via the module-level ``default_manager()``
     accessor; construct directly only for tests or non-default lifecycle
     needs.
