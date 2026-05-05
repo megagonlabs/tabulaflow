@@ -29,6 +29,7 @@ if TYPE_CHECKING:
         RegistryRunSubagentForEachRowTool,
         RegistryTransferRecordTool,
         RenderPlotextChartTool,
+        WebBrowserTool,
     )
 
 logger = logging.getLogger(__name__)
@@ -221,6 +222,7 @@ class Toolset:
     transfer_record: RegistryTransferRecordTool
     run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
     render_chart: RenderPlotextChartTool
+    web_browser: WebBrowserTool
 
 
 @dataclass
@@ -249,6 +251,7 @@ class ChatAgent:
             RegistryRunSubagentForEachRowTool,
             RegistryTransferRecordTool,
             RenderPlotextChartTool,
+            WebBrowserTool,
         )
 
         self._query_history = QueryHistory()
@@ -266,6 +269,7 @@ class ChatAgent:
                 store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
+            web_browser=WebBrowserTool(),
         )
         self._build_agent()
 
@@ -334,7 +338,9 @@ class ChatAgent:
                 self._tools.transfer_record.as_pydantic_ai_tool(),
                 self._tools.run_subagent_for_each_row.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
+                *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
+            capabilities=[self._tools.web_browser.lifecycle_capability()],
             instructions=self._system_prompt,
             model_settings={
                 "openai_service_tier": "priority",
