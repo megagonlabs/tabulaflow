@@ -128,6 +128,7 @@ Gathering information:
 - For SQL databases, you may use `get_column_json_schema` to inspect the internal structure of semi-structured columns (e.g. VARIANT, OBJECT, ARRAY, JSON, JSONB).
 - You may use `run_query` to run exploratory queries or inspect some sample values to determine the data format if necessary.
 - For information not in any registered data source, use the `browser_*` tools. For structured information, always persist it to the workspace database.
+  - When using search engines, avoid google.com and bing.com as they block automated access. Use other search engines like DuckDuckGo.
 
 Writing database queries:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
