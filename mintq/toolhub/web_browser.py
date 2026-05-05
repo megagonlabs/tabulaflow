@@ -1,8 +1,9 @@
 """Stateful browser tool with per-agent isolation.
 
 Singleton browser process + per-agent BrowserContext (default shared, optionally
-isolated) + one Page per tool instance. Five LLM-facing actions each return an
-indexed aria snapshot of the post-action page state.
+isolated) + one Page per tool instance. Five LLM-facing actions each return a
+filtered list of clickable elements + clean markdown content of the post-action
+page state.
 """
 
 import asyncio
@@ -33,6 +34,7 @@ logger = logging.getLogger(__name__)
 
 _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
+_MAX_MARKDOWN_CHARS = 30_000
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -40,6 +42,34 @@ _USER_AGENT = (
 )
 
 _REF_PATTERN = re.compile(r"\[ref=(e\d+)\]")
+
+# Aria snapshot line: optional indent, "- role", optional `"name"`, `[ref=eN]`,
+# optional trailing attrs and colon. Captures: role, name, ref.
+_ARIA_LINE_PATTERN = re.compile(
+    r'^(?P<indent>\s*)-\s+(?P<role>[\w-]+)(?:\s+"(?P<name>[^"]*)")?'
+    r'.*?\[ref=(?P<ref>e\d+)\].*?$'
+)
+_ARIA_URL_PATTERN = re.compile(r"^\s*-\s+/url:\s*(?P<url>.+?)\s*$")
+
+_INTERACTIVE_ROLES: frozenset[str] = frozenset(
+    {
+        "button",
+        "link",
+        "textbox",
+        "combobox",
+        "checkbox",
+        "radio",
+        "menuitem",
+        "menuitemcheckbox",
+        "menuitemradio",
+        "tab",
+        "switch",
+        "slider",
+        "spinbutton",
+        "searchbox",
+        "option",
+    }
+)
 
 
 # ---------------------------------------------------------------------------
@@ -58,28 +88,173 @@ class WebBrowserToolMetrics(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Snapshot
+# Snapshot: interactive elements + clean markdown
 #
-# Thin wrapper around Playwright's ``aria_snapshot(mode="ai")``, which returns
-# a YAML rendering with ``[ref=eN]`` markers; refs resolve via the
-# ``aria-ref=eN`` locator.
+# Two complementary views of the page:
+#   1. Filtered list of interactive elements (with refs for click/type)
+#   2. Clean markdown content of the page (for reading)
+#
+# Refs come from Playwright's ``aria_snapshot(mode="ai")`` and resolve via the
+# ``aria-ref=eN`` locator. Markdown comes from lxml-cleaned ``page.content()``
+# run through markdownify (matches browser-use / OpenHands' approach).
 # ---------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class InteractiveElement:
+    ref: str
+    role: str
+    name: str
+    href: str | None = None
 
 
 @dataclass
 class PageSnapshot:
     url: str
     title: str
-    elements_yaml: str
+    interactive_elements: list[InteractiveElement] = field(default_factory=list)
+    markdown_content: str = ""
     refs: set[str] = field(default_factory=set)
 
 
-async def take_snapshot(page: "Page") -> PageSnapshot:
-    """Capture the current page as an indexed aria snapshot."""
+def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
+    """Extract interactive elements from an aria-snapshot YAML string.
+
+    Walks the YAML line-by-line. For each interactive role, captures ref +
+    name; for links, also peeks at following indented lines for ``/url:``.
+    """
+    lines = aria_yaml.split("\n")
+    elements: list[InteractiveElement] = []
+    for i, line in enumerate(lines):
+        m = _ARIA_LINE_PATTERN.match(line)
+        if m is None:
+            continue
+        role = m.group("role")
+        if role not in _INTERACTIVE_ROLES:
+            continue
+        name = m.group("name") or ""
+        ref = m.group("ref")
+        href: str | None = None
+        if role == "link":
+            # Look ahead within the link's indented block for `- /url:`
+            indent_level = len(m.group("indent"))
+            for next_line in lines[i + 1 : i + 6]:
+                if not next_line.strip():
+                    continue
+                next_indent = len(next_line) - len(next_line.lstrip())
+                if next_indent <= indent_level:
+                    break
+                um = _ARIA_URL_PATTERN.match(next_line)
+                if um is not None:
+                    href = um.group("url")
+                    break
+        elements.append(InteractiveElement(ref=ref, role=role, name=name, href=href))
+    return elements
+
+
+def render_interactive_elements(elements: list[InteractiveElement]) -> str:
+    """Render a flat list of interactive elements for the LLM."""
+    if not elements:
+        return "(no interactive elements)"
+    out: list[str] = []
+    for e in elements:
+        line = f"- [ref={e.ref}] {e.role}"
+        if e.name:
+            line += f' "{e.name}"'
+        if e.href:
+            line += f" → {e.href}"
+        out.append(line)
+    return "\n".join(out)
+
+
+async def extract_markdown(page: "Page") -> str:
+    """Extract clean markdown from the live rendered page.
+
+    Pipeline mirrors browser-use / OpenHands: live HTML → lxml.Cleaner
+    (strips scripts/styles/nav/footer/etc.) → markdownify → light cleanup.
+    """
     try:
-        elements_yaml = await page.aria_snapshot(mode="ai", timeout=_SETTLE_TIMEOUT_MS)
+        html = await page.content()
     except Exception as e:
-        elements_yaml = f"(error capturing snapshot: {e})"
+        return f"(error fetching HTML: {e})"
+
+    try:
+        import lxml.html
+        from lxml.html.clean import Cleaner
+
+        doc = lxml.html.fromstring(html)
+        cleaner = Cleaner(
+            scripts=True,
+            style=True,
+            page_structure=False,
+            embedded=True,
+            forms=False,
+            frames=True,
+            javascript=True,
+            meta=True,
+            links=False,
+            processing_instructions=True,
+            kill_tags=[
+                "nav",
+                "footer",
+                "header",
+                "svg",
+                "iframe",
+                "noscript",
+                "aside",
+                "button",
+            ],
+        )
+        doc = cleaner.clean_html(doc)
+        main_candidates = (
+            doc.xpath("//main")
+            or doc.xpath("//article")
+            or [doc.body if doc.body is not None else doc]
+        )
+        cleaned_html = lxml.html.tostring(main_candidates[0], encoding="unicode")
+    except Exception as e:
+        logger.debug("lxml cleanup failed: %s; falling back to raw HTML", e)
+        cleaned_html = html
+
+    try:
+        from markdownify import markdownify
+    except ImportError:
+        return "(error: markdownify is not installed)"
+
+    md = markdownify(
+        cleaned_html,
+        heading_style="ATX",
+        strip=["script", "style", "img"],
+        bullets="-",
+        escape_asterisks=False,
+        escape_underscores=False,
+        escape_misc=False,
+        autolinks=False,
+        default_title=False,
+    )
+    md = re.sub(r"\n{3,}", "\n\n", md).strip()
+
+    if len(md) > _MAX_MARKDOWN_CHARS:
+        truncate_at = _MAX_MARKDOWN_CHARS
+        para_break = md.rfind("\n\n", _MAX_MARKDOWN_CHARS - 500, _MAX_MARKDOWN_CHARS)
+        if para_break > 0:
+            truncate_at = para_break
+        md = (
+            md[:truncate_at]
+            + f"\n\n[content truncated at {truncate_at} of {len(md)} chars]"
+        )
+    return md
+
+
+async def take_snapshot(page: "Page") -> PageSnapshot:
+    """Capture the current page as a filtered interactive view + markdown."""
+    try:
+        aria_yaml = await page.aria_snapshot(mode="ai", timeout=_SETTLE_TIMEOUT_MS)
+    except Exception as e:
+        aria_yaml = ""
+        logger.debug("aria_snapshot failed: %s", e)
+    interactive = parse_interactive_elements(aria_yaml)
+    markdown = await extract_markdown(page)
     title = ""
     try:
         title = await page.title()
@@ -88,8 +263,9 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
     return PageSnapshot(
         url=page.url,
         title=title,
-        elements_yaml=elements_yaml,
-        refs=set(_REF_PATTERN.findall(elements_yaml)),
+        interactive_elements=interactive,
+        markdown_content=markdown,
+        refs=set(_REF_PATTERN.findall(aria_yaml)),
     )
 
 
@@ -482,8 +658,11 @@ class WebBrowserTool:
         if snapshot.title:
             parts.append(f"Title: {snapshot.title}")
         parts.append("")
-        parts.append("# Page state")
-        parts.append(snapshot.elements_yaml)
+        parts.append("# Interactive elements")
+        parts.append(render_interactive_elements(snapshot.interactive_elements))
+        parts.append("")
+        parts.append("# Page content")
+        parts.append(snapshot.markdown_content or "(no content extracted)")
         return "\n".join(parts)
 
     def _format_error(self, msg: str) -> str:
