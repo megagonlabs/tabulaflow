@@ -599,6 +599,39 @@ class _PageState:
     op_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
 
+async def format_page_response(state: _PageState) -> str:
+    """Build the LLM-facing response for a page state.
+
+    Takes a fresh snapshot, inlines refs into body markdown, and renders the
+    page + other-elements view. Mutates ``state.last_snapshot`` (sets the new
+    snapshot) and ``state.popup_notice`` (consumes any pending popup notice).
+    """
+    snapshot = await take_snapshot(state.page)
+    state.last_snapshot = snapshot
+
+    annotated_md, remaining = inline_link_refs(
+        snapshot.markdown_content, snapshot.interactive_elements
+    )
+
+    parts: list[str] = []
+    if state.popup_notice is not None:
+        parts.append(state.popup_notice)
+        parts.append("")
+        state.popup_notice = None
+    parts.append(f"[page={state.page_id}]")
+    parts.append(f"URL: {snapshot.url}")
+    if snapshot.title:
+        parts.append(f"Title: {snapshot.title}")
+    parts.append("")
+    parts.append("# Page")
+    parts.append(annotated_md or "(no content extracted)")
+    if remaining:
+        parts.append("")
+        parts.append("# Other interactive elements")
+        parts.append(render_interactive_elements(remaining))
+    return "\n".join(parts)
+
+
 # ---------------------------------------------------------------------------
 # Per-agent tool
 # ---------------------------------------------------------------------------
@@ -713,7 +746,7 @@ class WebBrowserTool:
 
         state = _PageState(page_id=page_id, page=page, last_touched_turn=self._turn_counter)
         self._pages[page_id] = state
-        return await self._format_response_for(state)
+        return await format_page_response(state)
 
     async def browser_click(self, page: int, ref: str) -> str:
         """Click an interactive element on a specific page.
@@ -736,7 +769,7 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"click failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await self._format_response_for(state)
+            return await format_page_response(state)
 
     async def browser_type(self, page: int, ref: str, text: str, submit: bool = False) -> str:
         """Type text into an editable element on a specific page.
@@ -763,7 +796,7 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"type failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await self._format_response_for(state)
+            return await format_page_response(state)
 
     async def browser_scroll(
         self, page: int, direction: Literal["up", "down", "top", "bottom"]
@@ -796,7 +829,7 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"scroll failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await self._format_response_for(state)
+            return await format_page_response(state)
 
     async def browser_back(self, page: int) -> str:
         """Navigate back in a specific page's history.
@@ -818,7 +851,7 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
-            return await self._format_response_for(state)
+            return await format_page_response(state)
 
     async def browser_list_pages(self) -> str:
         """List currently-open pages with their URLs and titles."""
@@ -991,75 +1024,6 @@ class WebBrowserTool:
                 f"Available refs: {available[:30]}"
             )
         return state.page.locator(f"aria-ref={ref}")
-
-    async def _format_response_for(self, state: _PageState) -> str:
-        snapshot = await take_snapshot(state.page)
-        state.last_snapshot = snapshot
-
-        # Inline link refs into body markdown via regex; everything else
-        # (buttons, inputs, links not in body, links with mismatched text)
-        # falls into the listed section with parent-context for disambiguation.
-        annotated_md, remaining = inline_link_refs(
-            snapshot.markdown_content, snapshot.interactive_elements
-        )
-
-        parts: list[str] = []
-        if state.popup_notice is not None:
-            parts.append(state.popup_notice)
-            parts.append("")
-            state.popup_notice = None
-        parts.append(f"[page={state.page_id}]")
-        parts.append(f"URL: {snapshot.url}")
-        if snapshot.title:
-            parts.append(f"Title: {snapshot.title}")
-        parts.append("")
-        parts.append("# Page")
-        parts.append(annotated_md or "(no content extracted)")
-        if remaining:
-            parts.append("")
-            parts.append("# Other interactive elements")
-            parts.append(render_interactive_elements(remaining))
-        return "\n".join(parts)
-
-    def _format_error(self, msg: str) -> str:
-        self._metrics.num_errors += 1
-        return f"(error: {msg})"
-
-    @staticmethod
-    def _error_message(e: Exception) -> str:
-        msg = str(e).strip()
-        return msg or e.__class__.__name__
-
-    async def _format_response(self) -> str:
-        page = self._page
-        assert page is not None
-        snapshot = await take_snapshot(page)
-        self._last_snapshot = snapshot
-
-        # Refs that landed in the markdown are inlined where the element is.
-        # Refs that didn't (chrome stripped by lxml.Cleaner, etc.) get
-        # listed below for completeness.
-        inlined = set(_REF_PATTERN.findall(snapshot.markdown_content))
-        remaining = [
-            e for e in snapshot.interactive_elements if e.ref not in inlined
-        ]
-
-        parts: list[str] = []
-        if self._popup_notice is not None:
-            parts.append(self._popup_notice)
-            parts.append("")
-            self._popup_notice = None
-        parts.append(f"URL: {snapshot.url}")
-        if snapshot.title:
-            parts.append(f"Title: {snapshot.title}")
-        parts.append("")
-        parts.append("# Page")
-        parts.append(snapshot.markdown_content or "(no content extracted)")
-        if remaining:
-            parts.append("")
-            parts.append("# Other interactive elements")
-            parts.append(render_interactive_elements(remaining))
-        return "\n".join(parts)
 
     def _format_error(self, msg: str) -> str:
         self._metrics.num_errors += 1
