@@ -1,10 +1,42 @@
-"""Stateful browser tool with per-agent isolation and multi-page support.
+"""Concurrent multi-agent, multi-page browser tool built on Playwright.
 
-Singleton browser process + per-agent BrowserContext (default shared, optionally
-isolated). Each tool instance can manage many Pages — opened by parallel
-``browser_navigate`` calls and addressed by integer page ids in subsequent
-actions. Pages auto-close if not interacted with on the next agent turn (the
-turn boundary is detected via a pydantic-ai ``before_model_request`` hook).
+Designed for fleets of agents browsing in parallel within one Python
+process: many agents share one Chromium (not one each), each can open
+many pages simultaneously (not one foreground at a time), and idle
+pages auto-close between turns (no manual cleanup).  The browser-use
+alternative — Chromium-per-session, single foreground page — costs
+~15 GB at 50 agents and forces every multi-source workflow through
+subagent fan-out.
+
+What this module adds on top of Playwright (and differs from browser-use)
+=========================================================================
+
+**One Chromium, many isolated agents.**  Singleton ``WebBrowserManager``
+owns one Chromium + a shared ``BrowserContext``; many ``WebBrowserTool``
+instances coexist in-process.  ``isolated=True`` opts into a private
+context when cookie/storage isolation matters.  Browser-use launches one
+Chromium per session — at 50 agents that's 50 browsers vs one here.
+
+**Multi-page state per tool.**  Each tool tracks ``dict[int, Page]``;
+``browser_navigate`` opens a *new* page each call, addressed by
+``page=N`` in subsequent actions.  Lets the LLM fan out several
+parallel ``browser_navigate`` calls in one turn (search-and-explore),
+then drill in next turn.  Browser-use's session is single-page;
+multi-page there means subagent fan-out (N LLM loops).
+
+**Turn-based auto-cleanup.**  Pages auto-close at the next turn if not
+interacted with.  ``lifecycle_capability()`` returns a pydantic-ai
+``Hooks`` capability that fires ``tick()`` on ``before_model_request``;
+``tick()`` increments the turn counter and closes idle pages.  No
+``browser_close`` exposed — the agent declares interest by interaction.
+
+**Markdown with click affordances inline.**  Each tool response is one
+document: page text rendered as markdown with ``[ref=eN]`` markers
+placed right after each link, button, or input.  The agent reads
+``[Subscribe](url) [ref=e15]`` mid-paragraph and clicks ref ``e15`` —
+no jumping between a "what's clickable" list and a "what does the page
+say" view.  Browser-use exposes those as two separate channels (state
+list + ``extract`` markdown).
 """
 
 import asyncio
