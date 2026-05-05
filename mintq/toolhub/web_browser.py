@@ -778,7 +778,9 @@ class WebBrowserTool:
             page: The id of the page to act on.
             ref: The ref string of the input element.
             text: The text to type. Replaces existing content.
-            submit: If True, press Enter after typing.
+            submit: If True, press Enter after typing. Without submit the
+                response is a short ack since the page state hasn't changed
+                beyond the input field's value (which the agent already knows).
         """
         self._metrics.num_types += 1
         state = self._pages.get(page)
@@ -796,6 +798,10 @@ class WebBrowserTool:
             except Exception as e:
                 return self._format_error(f"type failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
+            if not submit:
+                # No submit → page state didn't change in any way the agent
+                # doesn't already know. Skip the full re-snapshot to save tokens.
+                return f"[page={page}] typed into ref={ref}"
             return await format_page_response(state)
 
     async def browser_scroll(
