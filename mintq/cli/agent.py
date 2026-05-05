@@ -66,7 +66,8 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 </user_facing_communication>
 
 <presenting_data>
-- Present results in tabular form whenever applicable for better readability.
+- Always present results in tabular form using the format below when applicable for better readability.
+  - If the results are not available in the database, persist it to the workspace database first.
 - You can present one or multiple tables in the final response using the following format:
   - In your final response, begin with result reference lines, followed by a `---` separator, then your natural language answer.
     The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
