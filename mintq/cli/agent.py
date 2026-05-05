@@ -6,6 +6,7 @@ import asyncio
 from collections.abc import Iterable
 import json
 import logging
+import os
 from pathlib import Path
 import re
 from dataclasses import dataclass, field
@@ -36,6 +37,14 @@ logger = logging.getLogger(__name__)
 
 _QUERY_REF_RE = re.compile(r"\[\[record:(Q\d+)(?::([^\]]+))?\]\]")
 _TRAJECTORY_KEEP_LAST = 20
+
+
+def _debug_enabled() -> bool:
+    """Mirrors ``cli/tui.py``'s DEBUG check."""
+    raw = os.getenv("DEBUG")
+    if raw is None:
+        return False
+    return raw.strip().lower() not in {"", "0", "false", "no", "off"}
 
 
 SYSTEM_PROMPT = """\
@@ -269,7 +278,7 @@ class ChatAgent:
                 store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
-            web_browser=WebBrowserTool(),
+            web_browser=WebBrowserTool(headless=not _debug_enabled()),
         )
         self._build_agent()
 

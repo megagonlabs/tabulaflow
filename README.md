@@ -131,8 +131,10 @@ April 29
   - [x] rule-based vs subagent
   - [x] batch tools
 
-
+May 4
 - [ ] Web search
+  - [ ] Extraction
+  - [ ] Concurrency
 
 - General
   - [ ] Improve transfer_record?

@@ -487,17 +487,23 @@ class WebBrowserManager:
     _instance: ClassVar["WebBrowserManager | None"] = None
     _instance_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
 
-    def __init__(self) -> None:
+    def __init__(self, headless: bool = True) -> None:
+        self._headless = headless
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._shared_context: BrowserContext | None = None
         self._launch_lock = asyncio.Lock()
 
     @classmethod
-    async def get(cls) -> "WebBrowserManager":
+    async def get(cls, headless: bool = True) -> "WebBrowserManager":
+        """Return the process-wide singleton.
+
+        ``headless`` is honored only on first construction; subsequent calls
+        return the existing instance regardless of the value passed.
+        """
         async with cls._instance_lock:
             if cls._instance is None:
-                cls._instance = cls()
+                cls._instance = cls(headless=headless)
             return cls._instance
 
     async def shared_context(self) -> "BrowserContext":
@@ -567,7 +573,9 @@ class WebBrowserManager:
                 "uv add playwright && uv run playwright install chromium"
             ) from e
         self._playwright = await async_playwright().start()
-        self._browser = await self._playwright.chromium.launch(headless=True)
+        if not self._headless:
+            logger.info("Launching Chromium in headed mode")
+        self._browser = await self._playwright.chromium.launch(headless=self._headless)
         return self._browser
 
 
@@ -621,6 +629,7 @@ class WebBrowserTool:
         manager: WebBrowserManager | None = None,
         isolated: bool = False,
         max_pages: int = 10,
+        headless: bool = True,
     ) -> None:
         """Initialize the tool.
 
@@ -632,12 +641,16 @@ class WebBrowserTool:
                 context. Use when an agent needs cookie/storage isolation
                 from peers.
             max_pages: Cap on simultaneously-open pages for this tool.
-                Returns an error if exceeded; agent should call
-                ``browser_close`` first.
+                Returns an error if exceeded; idle pages auto-close at
+                the next turn boundary.
+            headless: Run Chromium headless. Set False for visible-window
+                debugging. Honored only on first manager construction;
+                subsequent tools share the existing browser regardless.
         """
         self._manager = manager
         self._isolated = isolated
         self._max_pages = max_pages
+        self._headless = headless
         self._owned_context: BrowserContext | None = None
         self._pages: dict[int, _PageState] = {}
         self._next_page_id = 1
@@ -897,7 +910,7 @@ class WebBrowserTool:
 
     async def _ensure_manager(self) -> WebBrowserManager:
         if self._manager is None:
-            self._manager = await WebBrowserManager.get()
+            self._manager = await WebBrowserManager.get(headless=self._headless)
         return self._manager
 
     async def _ensure_context(self) -> "BrowserContext":
