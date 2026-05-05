@@ -68,6 +68,14 @@ logger = logging.getLogger(__name__)
 _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
 _MAX_MARKDOWN_CHARS = 30_000
+
+# After ``load`` fires we wait for ``networkidle`` to give SPAs time to
+# render their JS-injected content. Capped because some sites (Google Flights,
+# dashboards with continuous polling) never reach networkidle within reason.
+# 10s comfortably covers most modern SPAs (React apps with API calls, news
+# sites, social feeds) while bounding worst-case latency on streaming pages.
+_NETWORKIDLE_WAIT_MS = 10_000
+
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -681,7 +689,16 @@ class WebBrowserTool:
         page.on("popup", lambda p, pid=page_id: self._on_popup_sync(pid, p))
 
         try:
-            await page.goto(url, wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+            # Two-phase wait: ``load`` for the navigation guarantee, then a
+            # bounded ``networkidle`` to give SPAs time to render their JS
+            # content. Pure ``networkidle`` goto can hang for 30s+ on
+            # streaming sites (Google Flights); pure ``load`` returns before
+            # SPA content appears. The bounded follow-up balances both.
+            await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
+            try:
+                await page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
+            except Exception:
+                pass  # SPA never settled; proceed with current state
         except Exception as e:
             try:
                 await page.close()
@@ -788,7 +805,11 @@ class WebBrowserTool:
             return self._format_error(self._unknown_page(page))
         async with state.op_lock:
             try:
-                await state.page.go_back(wait_until="networkidle", timeout=_NAV_TIMEOUT_MS)
+                await state.page.go_back(wait_until="load", timeout=_NAV_TIMEOUT_MS)
+                try:
+                    await state.page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
+                except Exception:
+                    pass
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
@@ -940,7 +961,9 @@ class WebBrowserTool:
 
     async def _settle(self, state: _PageState) -> None:
         try:
-            await state.page.wait_for_load_state("networkidle", timeout=_SETTLE_TIMEOUT_MS)
+            await state.page.wait_for_load_state(
+                "networkidle", timeout=_NETWORKIDLE_WAIT_MS
+            )
         except Exception:
             pass
 
