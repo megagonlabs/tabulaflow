@@ -1,4 +1,5 @@
-"""Concurrent multi-agent, multi-tab browser tool built on Playwright.
+"""Multi-agent, multi-tab browser tool built on Playwright designed
+for massive parallelization.
 
 Designed for fleets of agents browsing in parallel within one Python
 process: many agents share one Chromium (not one each), each can open
@@ -22,22 +23,15 @@ keyed by short ``"t1"``/``"t2"``-style ids; ``browser_navigate`` opens
 a *new* tab each call, addressed by ``tab="t3"`` in subsequent actions.
 Lets the LLM fan out several parallel ``browser_navigate`` calls in one
 turn (search-and-explore), then drill in next turn.  Browser-use's
-session is single-tab; multi-tab there means subagent fan-out (N LLM
-loops).
+session is single-tab.
 
 **Turn-based auto-cleanup.**  Tabs auto-close at the next turn if not
-interacted with.  ``lifecycle_capability()`` returns a pydantic-ai
-``Hooks`` capability that fires ``tick()`` on ``before_model_request``;
-``tick()`` increments the turn counter and closes idle tabs.  No
-``browser_close`` exposed — the agent declares interest by interaction.
+interacted with.  No ``browser_close`` exposed — the agent declares
+interest by interaction.
 
 **Markdown with click affordances inline.**  Each tool response is one
 document: page text rendered as markdown with ``[ref=eN]`` markers
-placed right after each link, button, or input.  The agent reads
-``[Subscribe](url) [ref=e15]`` mid-paragraph and clicks ref ``e15`` —
-no jumping between a "what's clickable" list and a "what does the page
-say" view.  Browser-use exposes those as two separate channels (state
-list + ``extract`` markdown).
+placed right after each link, button, or input.
 """
 
 import asyncio
