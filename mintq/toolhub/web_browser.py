@@ -104,6 +104,32 @@ _INTERACTIVE_ROLES: frozenset[str] = frozenset(
     }
 )
 
+# Roles considered "context-bearing" — used to disambiguate identical-looking
+# interactive elements in the "Other interactive elements" listing (e.g.,
+# multiple "View more" buttons distinguished by their nearest heading).
+_CONTEXT_ROLES: frozenset[str] = frozenset(
+    {
+        "heading",
+        "region",
+        "main",
+        "article",
+        "form",
+        "search",
+        "dialog",
+        "listitem",
+        "row",
+        "rowgroup",
+        "tab",
+        "tabpanel",
+        "figure",
+        "group",
+        "navigation",
+        "complementary",
+        "contentinfo",
+        "banner",
+    }
+)
+
 
 # ---------------------------------------------------------------------------
 # Metrics
@@ -141,6 +167,7 @@ class InteractiveElement:
     role: str
     name: str
     href: str | None = None
+    parent_context: tuple[str, str] | None = None  # (role, name) of nearest named ancestor
 
 
 @dataclass
@@ -155,40 +182,68 @@ class PageSnapshot:
 def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
     """Extract interactive elements from an aria-snapshot YAML string.
 
-    Walks the YAML line-by-line. For each interactive role, captures ref +
-    name; for links, also peeks at following indented lines for ``/url:``.
+    For each interactive element, also captures the nearest preceding
+    context-bearing element (heading, region, listitem, etc.) at less-or-
+    equal indentation — used to disambiguate identical-looking buttons
+    (e.g., multiple "View more" buttons in different cards) when listed
+    in the "Other interactive elements" section.
     """
     lines = aria_yaml.split("\n")
     elements: list[InteractiveElement] = []
+    # Stack of (indent, role, name) — context-bearing elements still in scope.
+    context_stack: list[tuple[int, str, str]] = []
+
     for i, line in enumerate(lines):
         m = _ARIA_LINE_PATTERN.match(line)
         if m is None:
             continue
+        indent = len(m.group("indent"))
         role = m.group("role")
-        if role not in _INTERACTIVE_ROLES:
-            continue
         name = m.group("name") or ""
         ref = m.group("ref")
+
+        # Pop ancestors at strictly greater indent (siblings stay).
+        while context_stack and context_stack[-1][0] > indent:
+            context_stack.pop()
+
+        # Push this element if it can serve as context for later siblings/children.
+        if role in _CONTEXT_ROLES and name:
+            context_stack.append((indent, role, name))
+
+        if role not in _INTERACTIVE_ROLES:
+            continue
+
         href: str | None = None
         if role == "link":
             # Look ahead within the link's indented block for `- /url:`
-            indent_level = len(m.group("indent"))
             for next_line in lines[i + 1 : i + 6]:
                 if not next_line.strip():
                     continue
                 next_indent = len(next_line) - len(next_line.lstrip())
-                if next_indent <= indent_level:
+                if next_indent <= indent:
                     break
                 um = _ARIA_URL_PATTERN.match(next_line)
                 if um is not None:
                     href = um.group("url")
                     break
-        elements.append(InteractiveElement(ref=ref, role=role, name=name, href=href))
+
+        ctx: tuple[str, str] | None = None
+        if context_stack:
+            _, c_role, c_name = context_stack[-1]
+            ctx = (c_role, c_name)
+
+        elements.append(
+            InteractiveElement(ref=ref, role=role, name=name, href=href, parent_context=ctx)
+        )
     return elements
 
 
 def render_interactive_elements(elements: list[InteractiveElement]) -> str:
-    """Render a flat list of interactive elements for the LLM."""
+    """Render a flat list of interactive elements for the LLM.
+
+    Each line: ``- [ref=eN] role "name" → href (under: heading "X")``.
+    Parent-context suffix lets the agent disambiguate same-named buttons.
+    """
     if not elements:
         return "(no interactive elements)"
     out: list[str] = []
@@ -198,185 +253,95 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
             line += f' "{e.name}"'
         if e.href:
             line += f" → {e.href}"
+        if e.parent_context:
+            ctx_role, ctx_name = e.parent_context
+            line += f' (under: {ctx_role} "{ctx_name}")'
         out.append(line)
     return "\n".join(out)
 
 
-async def _annotate_dom_with_refs(page: "Page", refs: set[str]) -> None:
-    """Inject ``data-ref`` attributes onto interactive DOM nodes.
+def inline_link_refs(
+    markdown: str, elements: list[InteractiveElement]
+) -> tuple[str, list[InteractiveElement]]:
+    """Inject ``[ref=eN]`` after matching ``[name](href)`` links in markdown.
 
-    Uses Playwright's ``aria-ref`` locator to find each AX node's underlying
-    DOM element and sets ``data-ref="eN"``. Subsequent HTML extraction
-    preserves the attribute through ``lxml.Cleaner``; the markdown converter
-    reads it to embed refs at element positions.
-
-    Per-element ``evaluate`` calls run in parallel. Failures (stale refs,
-    detached nodes, navigations mid-flight) are silently skipped.
+    Returns ``(modified_markdown, elements_not_inlined)``. Non-link elements,
+    links without href or name, and links whose markdown form doesn't match
+    all fall through to the remaining list.
     """
-    if not refs:
-        return
-
-    async def _set_one(ref: str) -> None:
-        try:
-            await page.locator(f"aria-ref={ref}").evaluate(
-                "(el, refValue) => el.setAttribute('data-ref', refValue)",
-                ref,
-                timeout=1000,
-            )
-        except Exception:
-            pass
-
-    await asyncio.gather(*(_set_one(r) for r in refs))
-
-
-def _build_ref_preserving_converter() -> "object":
-    """Build a markdownify converter subclass that emits ``[ref=eN]`` after
-    interactive elements with a ``data-ref`` attribute.
-
-    Imported lazily so we tolerate markdownify being unavailable.
-    """
-    from markdownify import MarkdownConverter
-
-    class RefPreservingConverter(MarkdownConverter):  # type: ignore[misc, valid-type]
-        @staticmethod
-        def _ref_suffix(el: object) -> str:
-            ref = el.get("data-ref")  # type: ignore[attr-defined]
-            return f" [ref={ref}]" if ref else ""
-
-        def convert_a(self, el, text, *args, **kwargs):  # type: ignore[no-untyped-def]
-            out = super().convert_a(el, text, *args, **kwargs)
-            return out + self._ref_suffix(el)
-
-        def convert_button(self, el, text, *args, **kwargs):  # type: ignore[no-untyped-def]
-            ref = self._ref_suffix(el)
-            text_clean = (text or "").strip()
-            if not text_clean and not ref:
-                return ""
-            return f"**{text_clean or 'button'}**{ref} "
-
-        def convert_input(self, el, text, *args, **kwargs):  # type: ignore[no-untyped-def]
-            ref = self._ref_suffix(el)
-            if not ref:
-                return ""
-            input_type = (el.get("type") or "text").lower()
-            if input_type in ("text", "email", "password", "search", "tel", "url", "number"):
-                label = el.get("placeholder") or el.get("aria-label") or "input"
-                value = el.get("value") or ""
-                inner = f'value="{value}"' if value else f'placeholder="{label}"'
-                return f"[textbox {inner}{ref}] "
-            if input_type in ("checkbox", "radio"):
-                checked = "✓ " if el.get("checked") is not None else ""
-                label = el.get("aria-label") or ""
-                name = (label + " ").strip()
-                return f"[{input_type} {checked}{name}{ref}] "
-            if input_type in ("submit", "button"):
-                return f"**{el.get('value') or input_type}**{ref} "
-            return ""
-
-        def convert_textarea(self, el, text, *args, **kwargs):  # type: ignore[no-untyped-def]
-            ref = self._ref_suffix(el)
-            if not ref:
-                return ""
-            label = el.get("placeholder") or el.get("aria-label") or "textarea"
-            return f"[textarea {label}{ref}] "
-
-        def convert_select(self, el, text, *args, **kwargs):  # type: ignore[no-untyped-def]
-            ref = self._ref_suffix(el)
-            if not ref:
-                return ""
-            label = el.get("aria-label") or "combobox"
-            return f"[combobox {label}{ref}] "
-
-    return RefPreservingConverter
-
-
-_INLINE_TAGS: frozenset[str] = frozenset(
-    {
-        "span", "em", "i", "strong", "b", "u", "s", "small",
-        "sub", "sup", "mark", "cite", "q", "time", "abbr",
-        "code", "var", "samp", "kbd",
-    }
-)
-
-
-def _prune_hidden_duplicates(doc: object) -> None:
-    """Remove subtrees that contain no ``data-ref`` descendants.
-
-    aria_snapshot's mode='ai' filters hidden content from Chromium's
-    accessibility tree, so visible elements get ``data-ref`` attrs (via
-    ``_annotate_dom_with_refs``). Hidden duplicates (e.g., tab content
-    rendered redundantly in the DOM, mobile/desktop variant menus, SEO
-    duplicates) have no ``data-ref`` and would otherwise leak into markdown
-    via the raw HTML path.
-
-    Algorithm: bottom-up mark elements whose subtree contains a ``data-ref``,
-    then remove unmarked elements at the boundary. For inline formatting
-    elements (em, strong, span, etc.) being removed, their text content is
-    preserved by merging into surrounding text — so a paragraph with a
-    ``data-ref`` doesn't lose ``<em>important</em>`` when em itself has no
-    ref of its own.
-    """
-    # Mark elements whose subtree contains a data-ref (bottom-up).
-    for el in reversed(list(doc.iter())):  # type: ignore[attr-defined]
-        if el.get("data-ref"):
-            el.set("_kr", "1")
-        else:
-            for child in el:
-                if child.get("_kr") == "1":
-                    el.set("_kr", "1")
-                    break
-    # Collect boundary elements (unmarked, parent marked).
-    to_remove = []
-    for el in doc.iter():  # type: ignore[attr-defined]
-        if el.tag in ("html", "body", "head"):
+    out = markdown
+    consumed: set[str] = set()
+    for e in elements:
+        if e.role != "link" or not e.href or not e.name:
             continue
-        if el.get("_kr") == "1":
-            continue
-        parent = el.getparent()
-        if parent is None or parent.get("_kr") == "1":
-            to_remove.append(el)
-    # Remove. For inline elements, preserve text content to avoid losing
-    # mid-paragraph emphasis/formatting.
-    for el in to_remove:
-        parent = el.getparent()
-        if parent is None:
-            continue
-        prev = el.getprevious()
-        # Preserve inner text only for inline elements.
-        if el.tag in _INLINE_TAGS:
-            inner_text = "".join(el.itertext())
-            if inner_text:
-                if prev is not None:
-                    prev.tail = (prev.tail or "") + inner_text
-                else:
-                    parent.text = (parent.text or "") + inner_text
-        # Always preserve trailing text (whitespace, punctuation).
-        if el.tail:
-            if prev is not None:
-                prev.tail = (prev.tail or "") + el.tail
-            else:
-                parent.text = (parent.text or "") + el.tail
-        parent.remove(el)
-    # Cleanup the marker attribute so it doesn't leak into output.
-    for el in doc.iter():  # type: ignore[attr-defined]
-        if "_kr" in el.attrib:
-            del el.attrib["_kr"]
+        pattern = re.compile(
+            r"(\[" + re.escape(e.name) + r"\]\("
+            + re.escape(e.href) + r'(?:\s+"[^"]*")?\))(?!\s*\[ref=)'
+        )
+        new_out, n = pattern.subn(r"\1 [ref=" + e.ref + r"]", out, count=1)
+        if n > 0:
+            out = new_out
+            consumed.add(e.ref)
+    remaining = [e for e in elements if e.ref not in consumed]
+    return out, remaining
 
 
-async def extract_markdown(page: "Page", refs: set[str]) -> str:
-    """Extract clean markdown from the live rendered page with refs inlined.
+# JS-side visibility filter. Returns the page's HTML with hidden subtrees
+# removed (display:none, visibility:hidden, aria-hidden=true, opacity:0,
+# zero-size, closed <dialog>/<details>, <template>, <noscript>).
+# Catches duplicate content rendered for tab toggles, mobile/desktop
+# variants, SEO duplicates that aren't visible to a sighted user.
+_VISIBLE_HTML_JS = """
+() => {
+    const isVisible = (el) => {
+        if (!el || el.hidden) return false;
+        if (el.matches && el.matches('[aria-hidden="true"]')) return false;
+        const tag = el.tagName ? el.tagName.toLowerCase() : '';
+        if (tag === 'template' || tag === 'noscript') return false;
+        if (tag === 'dialog' && !el.open) return false;
+        if (tag === 'details' && !el.open) {
+            // keep <summary> children only — handled below by walk skipping siblings
+        }
+        const style = window.getComputedStyle(el);
+        if (style.display === 'none') return false;
+        if (style.visibility === 'hidden') return false;
+        if (style.opacity === '0') return false;
+        const rect = el.getBoundingClientRect();
+        if (rect.width === 0 && rect.height === 0) return false;
+        return true;
+    };
+    const walk = (el) => {
+        if (!isVisible(el)) return null;
+        const clone = el.cloneNode(false);
+        for (const child of el.childNodes) {
+            if (child.nodeType === Node.ELEMENT_NODE) {
+                const c = walk(child);
+                if (c) clone.appendChild(c);
+            } else {
+                clone.appendChild(child.cloneNode(true));
+            }
+        }
+        return clone;
+    };
+    const root = walk(document.documentElement);
+    return root ? root.outerHTML : document.documentElement.outerHTML;
+}
+"""
 
-    Pipeline: annotate DOM with ``data-ref`` attrs → page.content() →
-    lxml.Cleaner (strips scripts/styles/nav/footer) → prune subtrees with
-    no refs (drops hidden duplicates) → custom markdownify converter that
-    emits ``[ref=eN]`` after interactive elements.
+
+async def extract_markdown(page: "Page") -> str:
+    """Extract clean markdown from the live rendered page.
+
+    Pipeline: JS-side visibility filter (drops hidden duplicates) →
+    lxml.Cleaner (strips scripts/styles/nav/footer/etc.) → markdownify.
     """
-    await _annotate_dom_with_refs(page, refs)
-
     try:
-        html = await page.content()
-    except Exception as e:
-        return f"(error fetching HTML: {e})"
+        html = await page.evaluate(_VISIBLE_HTML_JS)
+    except Exception:
+        try:
+            html = await page.content()
+        except Exception as e:
+            return f"(error fetching HTML: {e})"
 
     try:
         import lxml.html
@@ -394,7 +359,6 @@ async def extract_markdown(page: "Page", refs: set[str]) -> str:
             meta=True,
             links=False,
             processing_instructions=True,
-            safe_attrs_only=False,  # preserve data-ref attrs we injected
             kill_tags=[
                 "nav",
                 "footer",
@@ -406,7 +370,6 @@ async def extract_markdown(page: "Page", refs: set[str]) -> str:
             ],
         )
         doc = cleaner.clean_html(doc)
-        _prune_hidden_duplicates(doc)
         main_candidates = (
             doc.xpath("//main")
             or doc.xpath("//article")
@@ -418,11 +381,12 @@ async def extract_markdown(page: "Page", refs: set[str]) -> str:
         cleaned_html = html
 
     try:
-        converter_cls = _build_ref_preserving_converter()
+        from markdownify import markdownify
     except ImportError:
         return "(error: markdownify is not installed)"
 
-    converter = converter_cls(
+    md = markdownify(
+        cleaned_html,
         heading_style="ATX",
         strip=["script", "style", "img"],
         bullets="-",
@@ -432,7 +396,6 @@ async def extract_markdown(page: "Page", refs: set[str]) -> str:
         autolinks=False,
         default_title=False,
     )
-    md = converter.convert(cleaned_html)
     md = re.sub(r"\n{3,}", "\n\n", md).strip()
 
     if len(md) > _MAX_MARKDOWN_CHARS:
@@ -456,7 +419,7 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
         logger.debug("aria_snapshot failed: %s", e)
     interactive = parse_interactive_elements(aria_yaml)
     refs = set(_REF_PATTERN.findall(aria_yaml))
-    markdown = await extract_markdown(page, refs)
+    markdown = await extract_markdown(page)
     title = ""
     try:
         title = await page.title()
@@ -998,10 +961,12 @@ class WebBrowserTool:
         snapshot = await take_snapshot(state.page)
         state.last_snapshot = snapshot
 
-        inlined = set(_REF_PATTERN.findall(snapshot.markdown_content))
-        remaining = [
-            e for e in snapshot.interactive_elements if e.ref not in inlined
-        ]
+        # Inline link refs into body markdown via regex; everything else
+        # (buttons, inputs, links not in body, links with mismatched text)
+        # falls into the listed section with parent-context for disambiguation.
+        annotated_md, remaining = inline_link_refs(
+            snapshot.markdown_content, snapshot.interactive_elements
+        )
 
         parts: list[str] = []
         if state.popup_notice is not None:
@@ -1014,7 +979,7 @@ class WebBrowserTool:
             parts.append(f"Title: {snapshot.title}")
         parts.append("")
         parts.append("# Page")
-        parts.append(snapshot.markdown_content or "(no content extracted)")
+        parts.append(annotated_md or "(no content extracted)")
         if remaining:
             parts.append("")
             parts.append("# Other interactive elements")
