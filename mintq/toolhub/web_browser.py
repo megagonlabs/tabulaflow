@@ -155,7 +155,6 @@ class WebBrowserToolMetrics(BaseModel):
     num_types: int = 0
     num_scrolls: int = 0
     num_backs: int = 0
-    num_lists: int = 0
     num_errors: int = 0
     num_popups_adopted: int = 0
     num_pages_auto_closed: int = 0
@@ -859,20 +858,6 @@ class WebBrowserTool:
             state.last_touched_turn = self._turn_counter
             return await format_page_response(state)
 
-    async def browser_list_pages(self) -> str:
-        """List currently-open pages with their URLs and titles."""
-        self._metrics.num_lists += 1
-        if not self._pages:
-            return "(no pages open)"
-        lines = ["Open pages:"]
-        for pid in sorted(self._pages.keys()):
-            state = self._pages[pid]
-            url = state.page.url
-            title = state.last_snapshot.title if state.last_snapshot else ""
-            suffix = f" — {title}" if title else ""
-            lines.append(f"  page={pid}: {url}{suffix}")
-        return "\n".join(lines)
-
     # === Lifecycle ===========================================================
 
     async def tick(self) -> None:
@@ -923,7 +908,6 @@ class WebBrowserTool:
             Tool(self.browser_type, name="browser_type"),
             Tool(self.browser_scroll, name="browser_scroll"),
             Tool(self.browser_back, name="browser_back"),
-            Tool(self.browser_list_pages, name="browser_list_pages"),
         ]
 
     def lifecycle_capability(self) -> object:
