@@ -155,6 +155,9 @@ class WebBrowserToolMetrics(BaseModel):
     num_types: int = 0
     num_scrolls: int = 0
     num_backs: int = 0
+    num_presses: int = 0
+    num_selects: int = 0
+    num_waits: int = 0
     num_errors: int = 0
     num_popups_adopted: int = 0
     num_pages_auto_closed: int = 0
@@ -858,6 +861,82 @@ class WebBrowserTool:
             state.last_touched_turn = self._turn_counter
             return await format_page_response(state)
 
+    async def browser_press(self, page: int, key: str) -> str:
+        """Press a keyboard key on the page (no specific element required).
+
+        Most useful for dismissing modals (``"Escape"``), submitting forms
+        (``"Enter"``), and tab navigation (``"Tab"``). Operates on whichever
+        element currently has focus, or at page level for keys like Escape.
+
+        Args:
+            page: The id of the page to act on.
+            key: A Playwright key name — e.g. ``"Escape"``, ``"Enter"``,
+                ``"Tab"``, ``"ArrowDown"``, ``"PageDown"``, ``"Backspace"``,
+                or a chord like ``"Control+a"`` / ``"Meta+v"``.
+        """
+        self._metrics.num_presses += 1
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
+            try:
+                await state.page.keyboard.press(key)
+                await self._settle(state)
+            except Exception as e:
+                return self._format_error(f"press failed: {self._error_message(e)}")
+            state.last_touched_turn = self._turn_counter
+            return await format_page_response(state)
+
+    async def browser_select(self, page: int, ref: str, option: str) -> str:
+        """Select an option from a native ``<select>`` dropdown.
+
+        For native HTML ``<select>`` elements (combobox role). Use this
+        instead of click+click — Playwright's ``select_option`` handles
+        native dropdowns reliably across browsers.
+
+        Args:
+            page: The id of the page to act on.
+            ref: The ref of the ``<select>`` element.
+            option: The option to choose, matched by visible label or by
+                value attribute (Playwright tries both).
+        """
+        self._metrics.num_selects += 1
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        async with state.op_lock:
+            try:
+                locator = self._resolve_ref(state, ref)
+                await locator.select_option(option, timeout=_SETTLE_TIMEOUT_MS)
+                await self._settle(state)
+            except _RefError as e:
+                return self._format_error(str(e))
+            except Exception as e:
+                return self._format_error(f"select failed: {self._error_message(e)}")
+            state.last_touched_turn = self._turn_counter
+            return await format_page_response(state)
+
+    async def browser_wait(self, page: int, seconds: float = 3.0) -> str:
+        """Sleep for ``seconds`` seconds, then re-snapshot the page.
+
+        Useful when a previous action triggered slow content loading and
+        the auto-settle wait wasn't long enough (e.g., heavy dashboards
+        that render a few seconds after the network goes idle).
+
+        Args:
+            page: The id of the page to re-snapshot afterward.
+            seconds: How long to wait, capped at 30s.
+        """
+        self._metrics.num_waits += 1
+        state = self._pages.get(page)
+        if state is None:
+            return self._format_error(self._unknown_page(page))
+        seconds = max(0.0, min(seconds, 30.0))
+        async with state.op_lock:
+            await asyncio.sleep(seconds)
+            state.last_touched_turn = self._turn_counter
+            return await format_page_response(state)
+
     # === Lifecycle ===========================================================
 
     async def tick(self) -> None:
@@ -908,6 +987,9 @@ class WebBrowserTool:
             Tool(self.browser_type, name="browser_type"),
             Tool(self.browser_scroll, name="browser_scroll"),
             Tool(self.browser_back, name="browser_back"),
+            Tool(self.browser_press, name="browser_press"),
+            Tool(self.browser_select, name="browser_select"),
+            Tool(self.browser_wait, name="browser_wait"),
         ]
 
     def lifecycle_capability(self) -> object:
