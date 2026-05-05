@@ -946,14 +946,22 @@ class WebBrowserTool:
     # === Lifecycle ===========================================================
 
     async def tick(self) -> None:
-        """Advance the turn counter and close tabs idle for >= 2 turns.
+        """Advance the turn counter and close idle tabs.
 
-        Called by the lifecycle capability before each model request. A tab
-        opened in turn N has ``last_touched_turn = N``. If the agent does
-        not touch it in turn N+1, ``last_touched_turn`` stays at N. By the
-        start of turn N+2, ``current_turn - last_touched_turn >= 2`` → close.
+        Called by the lifecycle capability before each model request.
+
+        Cleanup only runs on turns that follow browser activity. If the
+        previous turn had no browser actions (agent was doing SQL, planning,
+        etc.), all tabs are preserved — the agent can return to its browser
+        context later. When the agent does interact with the browser again,
+        the normal "tabs untouched in the past 2 turns get closed" rule
+        kicks back in.
         """
         self._turn_counter += 1
+        prev_turn = self._turn_counter - 1
+        # Skip cleanup if no browser activity in the previous turn.
+        if not any(s.last_touched_turn == prev_turn for s in self._tabs.values()):
+            return
         threshold = self._turn_counter - 2
         to_close: list[_TabState] = []
         for tid in list(self._tabs.keys()):
