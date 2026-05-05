@@ -472,57 +472,41 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
 
 
 # ---------------------------------------------------------------------------
-# Browser process manager (singleton)
+# Browser process manager
 # ---------------------------------------------------------------------------
 
 
 class WebBrowserManager:
-    """Process-wide singleton: one Chromium, one shared BrowserContext.
+    """Owns a Chromium browser process and a shared ``BrowserContext``.
 
-    Use ``await WebBrowserManager.get()`` to access. Subsequent callers
-    receive the same instance; cold-start launch is serialized by the
-    ``_launch_lock``.
+    Get the process-wide default via the module-level ``default_manager()``
+    accessor; construct directly only for tests or non-default lifecycle
+    needs.
     """
-
-    _instance: ClassVar["WebBrowserManager | None"] = None
-    _instance_lock: ClassVar[asyncio.Lock] = asyncio.Lock()
 
     def __init__(self, headless: bool = True) -> None:
         self._headless = headless
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._shared_context: BrowserContext | None = None
-        self._launch_lock = asyncio.Lock()
-
-    @classmethod
-    async def get(cls, headless: bool = True) -> "WebBrowserManager":
-        """Return the process-wide singleton.
-
-        ``headless`` is honored only on first construction; subsequent calls
-        return the existing instance regardless of the value passed.
-        """
-        async with cls._instance_lock:
-            if cls._instance is None:
-                cls._instance = cls(headless=headless)
-            return cls._instance
+        self._lock = asyncio.Lock()
 
     async def shared_context(self) -> "BrowserContext":
         """Return the shared BrowserContext, launching the browser if needed."""
         if self._shared_context is not None:
             return self._shared_context
-        async with self._launch_lock:
-            if self._shared_context is not None:
-                return self._shared_context
-            browser = await self._ensure_browser_locked()
-            self._shared_context = await browser.new_context(
-                user_agent=_USER_AGENT,
-                accept_downloads=False,
-            )
+        async with self._lock:
+            if self._shared_context is None:
+                browser = await self._ensure_browser_locked()
+                self._shared_context = await browser.new_context(
+                    user_agent=_USER_AGENT,
+                    accept_downloads=False,
+                )
             return self._shared_context
 
     async def new_isolated_context(self) -> "BrowserContext":
         """Create a fresh private BrowserContext for tools that need isolation."""
-        async with self._launch_lock:
+        async with self._lock:
             browser = await self._ensure_browser_locked()
         return await browser.new_context(
             user_agent=_USER_AGENT,
@@ -531,7 +515,7 @@ class WebBrowserManager:
 
     async def close(self) -> None:
         """Tear down the shared context, browser, and Playwright runtime."""
-        async with self._launch_lock:
+        async with self._lock:
             if self._shared_context is not None:
                 try:
                     await self._shared_context.close()
@@ -551,18 +535,10 @@ class WebBrowserManager:
                     pass
                 self._playwright = None
 
-    @classmethod
-    async def reset(cls) -> None:
-        """Close and discard the singleton. Mainly useful for tests."""
-        async with cls._instance_lock:
-            if cls._instance is not None:
-                await cls._instance.close()
-                cls._instance = None
-
     # internals ---------------------------------------------------------------
 
     async def _ensure_browser_locked(self) -> "Browser":
-        """Launch Chromium if not already running. Caller must hold ``_launch_lock``."""
+        """Launch Chromium if not already running. Caller must hold ``self._lock``."""
         if self._browser is not None and self._browser.is_connected():
             return self._browser
         try:
@@ -577,6 +553,41 @@ class WebBrowserManager:
             logger.info("Launching Chromium in headed mode")
         self._browser = await self._playwright.chromium.launch(headless=self._headless)
         return self._browser
+
+
+# ---------------------------------------------------------------------------
+# Default manager (process-wide singleton accessor)
+# ---------------------------------------------------------------------------
+
+_default_manager: WebBrowserManager | None = None
+_default_manager_lock = asyncio.Lock()
+
+
+async def default_manager(headless: bool = True) -> WebBrowserManager:
+    """Return the process-wide default manager, lazily creating it.
+
+    ``headless`` is honored only on the first call; subsequent calls
+    return the existing manager regardless of the value passed.
+    """
+    global _default_manager
+    if _default_manager is not None:
+        return _default_manager
+    async with _default_manager_lock:
+        if _default_manager is None:
+            _default_manager = WebBrowserManager(headless=headless)
+        return _default_manager
+
+
+async def reset_default_manager() -> None:
+    """Close and discard the process-wide default manager.
+
+    Mainly useful for tests that need a fresh browser between runs.
+    """
+    global _default_manager
+    async with _default_manager_lock:
+        if _default_manager is not None:
+            await _default_manager.close()
+            _default_manager = None
 
 
 # ---------------------------------------------------------------------------
@@ -910,7 +921,7 @@ class WebBrowserTool:
 
     async def _ensure_manager(self) -> WebBrowserManager:
         if self._manager is None:
-            self._manager = await WebBrowserManager.get(headless=self._headless)
+            self._manager = await default_manager(headless=self._headless)
         return self._manager
 
     async def _ensure_context(self) -> "BrowserContext":

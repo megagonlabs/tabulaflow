@@ -20,7 +20,12 @@ from mintq.toolhub.registry_transfer_record import RegistryTransferRecordTool
 from mintq.toolhub.run_query import RunQueryTool
 from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from mintq.toolhub.search_keywords import SearchKeywordsTool
-from mintq.toolhub.web_browser import WebBrowserManager, WebBrowserTool
+from mintq.toolhub.web_browser import (
+    WebBrowserManager,
+    WebBrowserTool,
+    default_manager,
+    reset_default_manager,
+)
 from mintq.toolhub.web_fetch import WebFetchTool
 
 __all__ = [
@@ -51,4 +56,6 @@ __all__ = [
     "WebBrowserManager",
     "WebBrowserTool",
     "WebFetchTool",
+    "default_manager",
+    "reset_default_manager",
 ]
