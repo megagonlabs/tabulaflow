@@ -137,6 +137,7 @@ May 4
   - [ ] Concurrency
 
 - General
+  - [ ] Stringify for JSON field (study arcs-bench)
   - [ ] Improve transfer_record?
   - [ ] /reconnect
   - [ ] Session resume
