@@ -28,7 +28,7 @@ class TestNoConnector:
         with pytest.raises(ValueError, match="max_in_memory must be >= 1"):
             QueryHistory(max_in_memory=0)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_no_eviction(self):
         h = QueryHistory(max_in_memory=2)
         for _ in range(5):
@@ -36,7 +36,7 @@ class TestNoConnector:
         assert len(h._spilled) == 0
         assert all(r.pred_query.exec_result.df is not None for r in h._records.values())
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_get_and_last(self):
         h = QueryHistory()
         await h.add("db", "sql", _make_pred_query(n_rows=3))
@@ -63,7 +63,7 @@ class TestWithConnector:
         )
         return connector
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_no_spill_within_limit(self, workspace):
         h = QueryHistory(max_in_memory=5, spill_connector=workspace)
         for _ in range(5):
@@ -71,7 +71,7 @@ class TestWithConnector:
         assert len(h._spilled) == 0
         assert len(h._in_memory) == 5
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_evicts_oldest(self, workspace):
         h = QueryHistory(max_in_memory=3, spill_connector=workspace)
         for _ in range(5):
@@ -83,7 +83,7 @@ class TestWithConnector:
         assert h._records["Q2"].pred_query.exec_result.df is None
         assert h._records["Q3"].pred_query.exec_result.df is not None
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_get_hydrates_spilled_record(self, workspace):
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query(n_rows=10))
@@ -99,7 +99,7 @@ class TestWithConnector:
         assert "Q1" not in h._spilled
         assert "Q2" in h._spilled
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_last_returns_most_recent(self, workspace):
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query(n_rows=3))
@@ -108,7 +108,7 @@ class TestWithConnector:
         assert record.record_id == "Q2"
         assert len(record.pred_query.exec_result.df) == 7
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_error_records_not_tracked(self, workspace):
         h = QueryHistory(max_in_memory=2, spill_connector=workspace)
         await h.add("db", "sql", _make_error_pred_query())
@@ -116,7 +116,7 @@ class TestWithConnector:
         assert len(h._in_memory) == 1
         assert len(h._spilled) == 0
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_roundtrip_preserves_data(self, workspace):
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
         df_original = pd.DataFrame(
@@ -138,7 +138,7 @@ class TestWithConnector:
         # round-trip, dtypes don't.
         pd.testing.assert_frame_equal(df_loaded, df_original, check_dtype=False)
 
-    @pytest.mark.anyio
+    @pytest.mark.asyncio
     async def test_attach_chart_does_not_hydrate(self, workspace):
         h = QueryHistory(max_in_memory=1, spill_connector=workspace)
         await h.add("db", "sql", _make_pred_query())
