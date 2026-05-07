@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
 from textual.app import App, ComposeResult
@@ -755,7 +755,7 @@ LIMIT 4000"""
         ]
 
         def _make_df(columns: list[str], n_rows: int) -> pd.DataFrame:
-            data: dict[str, list[object]] = {}
+            data: dict[str, list[Any]] = {}
             for col in columns:
                 lower = col.lower()
                 if lower.endswith("_id") or lower == "customer_id" or lower == "employee_id":

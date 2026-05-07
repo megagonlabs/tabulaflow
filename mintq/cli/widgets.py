@@ -993,6 +993,7 @@ class CellBrowserScreen(Screen[None]):
         import ast
         import json
 
+        obj: object
         if isinstance(value, (dict, list)):
             obj = value
         elif isinstance(value, str):
@@ -2055,6 +2056,11 @@ class SchemaBrowserScreen(Screen[None]):
         connector = self._registry.get(node_data.alias)
         schema = connector.schema
         assert isinstance(schema, SQLSchema)
+        # SQLSchema implies a SQL connector; the live preview path uses
+        # SQLAlchemy ``Executable`` which only ``BaseSQLDBConnector``
+        # accepts.
+        assert connector.connector_type == "sql"
+        assert node_data.table_name is not None
         table = next(
             (t for t in schema.tables if t.name == node_data.table_name and t.schema_name == node_data.schema_name),
             None,

@@ -726,7 +726,7 @@ class WebBrowserTool:
         except Exception as e:
             return self._format_error(f"failed to open tab: {self._error_message(e)}")
 
-        page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))
+        page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
 
         try:
             # Two-phase wait: ``load`` for the navigation guarantee, then a
@@ -1075,7 +1075,7 @@ class WebBrowserTool:
                 await old_page.close()
             except Exception:
                 pass
-        popup.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))
+        popup.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
 
     async def _settle(self, state: _TabState) -> None:
         timeout = _NETWORKIDLE_WAIT_MS

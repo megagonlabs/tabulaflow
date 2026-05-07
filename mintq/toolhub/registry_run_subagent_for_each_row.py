@@ -6,6 +6,7 @@ from collections.abc import Callable
 from typing import ClassVar, Literal
 
 from pydantic_ai import Tool
+from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
@@ -26,7 +27,7 @@ class RegistryRunSubagentForEachRowTool:
         registry: DBRegistry,
         *,
         subagent_llm: str = "openai-responses:gpt-5-mini",
-        model_settings: dict[str, object] | None = None,
+        model_settings: ModelSettings | None = None,
         store_metadata: bool = False,
     ) -> None:
         """Initialize the tool.

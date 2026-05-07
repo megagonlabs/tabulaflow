@@ -11,6 +11,7 @@ import jinja2
 import sqlalchemy
 from pydantic import BaseModel
 from pydantic_ai import Agent, Tool
+from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -88,7 +89,7 @@ class RunSubagentForEachRowTool:
         db_connector: BaseSQLDBConnector,
         *,
         subagent_llm: str = "openai-responses:gpt-5-mini",
-        model_settings: dict[str, object] | None = None,
+        model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         store_metadata: bool = False,
     ) -> None:

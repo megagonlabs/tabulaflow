@@ -12,6 +12,8 @@ import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
+from pydantic_ai.models.openai import OpenAIChatModelSettings
+
 if TYPE_CHECKING:
     import pandas as pd
     from pydantic_ai import Agent
@@ -277,7 +279,7 @@ class ChatAgent:
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
             run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
                 self.registry,
-                model_settings={"openai_service_tier": "priority"},
+                model_settings=OpenAIChatModelSettings(openai_service_tier="priority"),
                 store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),

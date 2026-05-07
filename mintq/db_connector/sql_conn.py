@@ -81,7 +81,7 @@ import threading
 import warnings
 
 import sqlparse
-from typing import Any, Awaitable, Callable, ClassVar, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
+from typing import Any, Callable, ClassVar, Coroutine, Sequence, Mapping, Literal, AsyncGenerator, TypeVar
 import dataclasses
 from dataclasses import dataclass
 import collections
@@ -679,7 +679,7 @@ class _MySQLCancel(_KillQueryCancel):
         await asyncio.to_thread(self._kill_sync, thread_id)
 
     def _kill_sync(self, thread_id: int) -> None:
-        sync_engine = self.engine.engine  # type: ignore[assignment]
+        sync_engine = self.engine.engine
         cargs, ckwargs = sync_engine.dialect.create_connect_args(sync_engine.url)
         dbapi = sync_engine.dialect.dbapi
         if dbapi is None:
@@ -1206,7 +1206,7 @@ class ThrottledEngine:
         self,
         *,
         sync_inner: Callable[[list[Any]], _T],
-        async_inner: Callable[[list[Any]], Awaitable[_T]],
+        async_inner: Callable[[list[Any]], Coroutine[Any, Any, _T]],
         timeout: int | None,
         timeout_label: str,
     ) -> _T:

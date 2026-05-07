@@ -7,7 +7,12 @@ class BaseSQLDBConnector(Protocol):
     connector_type: ClassVar[Literal["sql"]]
     global_id: str
     schema: SQLSchema
-    language: SQLDialect
+
+    # Read-only — ``SQLConnector`` derives this from ``schema.dialect``
+    # via ``@property``.  A plain class attribute on the implementation
+    # also satisfies a property-typed Protocol member.
+    @property
+    def language(self) -> SQLDialect: ...
 
     def __init__(self, global_id: str, **kwargs: Any): ...
 
@@ -35,7 +40,9 @@ class BasePropertyGraphDBConnector(Protocol):
     connector_type: ClassVar[Literal["property_graph"]]
     global_id: str
     schema: PropertyGraphSchema
-    language: NonSQLLanguage
+
+    @property
+    def language(self) -> NonSQLLanguage: ...
 
     def __init__(self, global_id: str, **kwargs: Any): ...
 
