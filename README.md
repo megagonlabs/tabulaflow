@@ -132,12 +132,15 @@ April 29
   - [x] batch tools
 
 May 4
-- [ ] Web search
-  - [ ] Extraction
-  - [ ] Concurrency
+- [x] web_browser.py
+  - [x] Extraction
+  - [x] Concurrency
 
-- [ ] int with null becomes float
-- [ ] DROP then CREATE not update schema
+May 6
+- [x] Fix df dtypes (fix int with null becomes float)
+- [x] refresh for run_query tool to allow refresh after DDL
+- [x] Fix mypy and tests
+
 - [ ] json_stringify?
 
 - General
