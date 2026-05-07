@@ -48,6 +48,10 @@ def test_to_hashable_nested() -> None:
 def test_normalize_cell_none_and_nan() -> None:
     assert _normalize_cell(None) is None
     assert _normalize_cell(float("nan")) is None
+    # ``pd.NA`` arrives from nullable extension dtypes (``Int64`` /
+    # ``boolean`` / ``string``) produced by the connector read path —
+    # must normalize to ``None`` like ``NaN`` does.
+    assert _normalize_cell(pd.NA) is None
 
 
 def test_normalize_cell_json_list() -> None:

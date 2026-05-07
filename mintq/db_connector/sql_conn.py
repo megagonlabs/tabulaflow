@@ -244,23 +244,66 @@ _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
+_INT64_MIN = -(2**63)
+_INT64_MAX = 2**63 - 1
+
+
 def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
-    """Build a DataFrame from SQL rows without promoting integer-with-null
-    columns to ``float64``.
+    """Build a DataFrame from SQL rows, mapping each column to the
+    nullable extension dtype that matches the source Python type.
 
     The default ``pd.DataFrame(rows, columns=keys)`` infers dtypes from
-    values, so any column containing ``None`` mixed with ints becomes
-    ``float64`` (NaN is a float) and bools-with-null become ``object``.
-    Constructing with ``dtype=object`` preserves the raw Python values,
-    then ``convert_dtypes`` picks the right *nullable* extension dtype
-    per column (``Int64`` / ``boolean`` / ``string`` / ``Float64``)
-    using ``pd.NA`` for nulls.
+    values: integer-with-null becomes ``float64`` (NaN is a float),
+    bool-with-null becomes ``object``.  Pandas' ``convert_dtypes`` would
+    fix the int case but also *demotes* whole-number floats (e.g.
+    ``[1.0, 2.0, None]``) to ``Int64`` — losing the source-type
+    distinction for true ``FLOAT``/``DOUBLE`` columns.
 
-    All-null columns stay as ``object`` (no inference signal).  Bytes
-    and other non-inferrable types also stay ``object``.
+    This helper inspects Python value types per column and picks the
+    matching nullable dtype directly:
+
+    * ``int`` (within signed int64 range) → ``Int64``
+    * ``int`` (outside int64 range)       → stays ``object`` — Arrow /
+      Parquet can't represent C-long-overflowing ints, and the
+      downstream ``_sanitize_df_strings`` stringifies these columns
+      before serialization
+    * ``float`` / mixed ``int+float`` → ``Float64``
+    * ``bool``        → ``boolean``
+    * ``str``         → ``string``
+    * ``Decimal`` / ``bytes`` / ``datetime`` / mixed / all-null
+                      → ``object`` (today's behaviour)
+
+    The dtype names themselves encode the backend choice: ``Int64`` /
+    ``Float64`` / ``boolean`` / ``string`` are pandas' numpy-backed
+    nullable extension dtypes (the ``numpy_nullable`` backend).  No
+    ``dtype_backend=`` argument is needed — that parameter only applies
+    when pandas is choosing the backend on your behalf (e.g.
+    ``convert_dtypes`` or ``pd.read_sql_query``).  The pyarrow
+    equivalents would be ``int64[pyarrow]`` / ``double[pyarrow]`` /
+    ``bool[pyarrow]`` / ``string[pyarrow]``.
     """
     df = pd.DataFrame(list(rows), columns=list(keys), dtype=object)
-    return df.convert_dtypes(dtype_backend="numpy_nullable")
+    for col in df.columns:
+        non_null = df[col].dropna()
+        if non_null.empty:
+            continue
+        types = {type(v) for v in non_null}
+        # ``bool`` is a subclass of ``int`` — check first.
+        if types == {bool}:
+            df[col] = df[col].astype("boolean")
+        elif types == {int}:
+            # ``astype("Int64")`` raises OverflowError on values outside
+            # the signed int64 range (Snowflake NUMBER(38), BigQuery
+            # BIGNUMERIC, Postgres unbounded NUMERIC, DuckDB HUGEINT).
+            # Leave those columns as object so ``_sanitize_df_strings``
+            # can stringify them for Arrow/Parquet compatibility.
+            if all(_INT64_MIN <= v <= _INT64_MAX for v in non_null):
+                df[col] = df[col].astype("Int64")
+        elif types <= {int, float}:
+            df[col] = df[col].astype("Float64")
+        elif types == {str}:
+            df[col] = df[col].astype("string")
+    return df
 
 
 @dataclass
