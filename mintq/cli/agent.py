@@ -270,7 +270,7 @@ class ChatAgent:
 
         self._query_history = QueryHistory()
         self._tools = Toolset(
-            run_query=RegistryRunQueryTool(self.registry, history=self._query_history),
+            run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry, model_settings={"openai_service_tier": "priority"}
             ),

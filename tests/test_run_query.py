@@ -205,6 +205,63 @@ def test_contains_write_statement(query: str, expected: str | None) -> None:
 
 
 @pytest.mark.asyncio
+async def test_run_query_refresh_updates_schema(db_connector: SQLConnector) -> None:
+    """DDL via run_query with refresh=True should update the connector's cached schema."""
+    db_connector.read_only = False
+    tool = RunQueryTool(db_connector, enable_params=True, enable_refresh=True, timeout=10)
+
+    table_names_before = {t.name for t in db_connector.schema.tables}
+    assert "widgets" not in table_names_before
+
+    # Without refresh: schema is stale.
+    await tool("CREATE TABLE widgets (id INTEGER PRIMARY KEY, name TEXT)", refresh=False)
+    assert "widgets" not in {t.name for t in db_connector.schema.tables}
+
+    # With refresh: schema reflects the new table.
+    result = await tool("CREATE TABLE gadgets (id INTEGER PRIMARY KEY, label TEXT)", refresh=True)
+    assert "schema refreshed" in result
+    table_names_after = {t.name for t in db_connector.schema.tables}
+    assert "widgets" in table_names_after
+    assert "gadgets" in table_names_after
+
+
+@pytest.mark.asyncio
+async def test_run_query_refresh_disabled_ignores_flag(db_connector: SQLConnector) -> None:
+    """When enable_refresh=False, refresh=True passed to __call__ is ignored."""
+    db_connector.read_only = False
+    tool = RunQueryTool(db_connector, enable_params=True, enable_refresh=False, timeout=10)
+
+    result = await tool("CREATE TABLE thingamajigs (id INTEGER PRIMARY KEY)", refresh=True)
+    assert "schema refreshed" not in result
+    assert "thingamajigs" not in {t.name for t in db_connector.schema.tables}
+
+
+def test_run_query_pydantic_tool_signatures() -> None:
+    """as_pydantic_ai_tool should select the variant matching the enabled flags."""
+    import inspect
+
+    from mintq.toolhub.run_query import RunQueryTool
+
+    class _StubConnector:
+        connector_type = "sql"
+        global_id = "stub"
+
+    stub: Any = _StubConnector()
+
+    matrix = [
+        (False, False, {"query"}),
+        (True, False, {"query", "parameters"}),
+        (False, True, {"query", "refresh"}),
+        (True, True, {"query", "parameters", "refresh"}),
+    ]
+    for enable_params, enable_refresh, expected in matrix:
+        tool = RunQueryTool(stub, enable_params=enable_params, enable_refresh=enable_refresh, timeout=None)
+        fn = tool.as_pydantic_ai_tool().function
+        params = set(inspect.signature(fn).parameters) - {"self"}
+        assert params == expected, (enable_params, enable_refresh, params)
+
+
+@pytest.mark.asyncio
 async def test_concurrent_ddl_serialized(db_connector: SQLConnector) -> None:
     """Concurrent ALTER TABLE statements should succeed thanks to DDL lock."""
     db_connector.read_only = False

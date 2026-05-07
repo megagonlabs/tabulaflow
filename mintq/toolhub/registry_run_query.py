@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import ClassVar
+from typing import Any, ClassVar
 
 from pydantic_ai import Tool
 
@@ -30,6 +30,7 @@ class RegistryRunQueryTool:
         registry: DBRegistry,
         *,
         enable_params: bool = False,
+        enable_refresh: bool = False,
         timeout: int | None | object = _UNSET,
         max_visible_rows: int = 20,
         max_cell_width: int = 200,
@@ -42,6 +43,9 @@ class RegistryRunQueryTool:
             registry: The database registry containing available connectors.
             enable_params: Whether to expose the ``parameters`` argument to
                 the LLM.
+            enable_refresh: Whether to expose the ``refresh`` argument to
+                the LLM.  When True, the agent can request a connector
+                schema refresh after DDL.
             timeout: Query timeout in seconds.  Defaults to
                 ``mintq_config.query_timeout``.
             max_visible_rows: Maximum rows shown in the formatted output.
@@ -53,6 +57,7 @@ class RegistryRunQueryTool:
         """
         self.registry = registry
         self.enable_params = enable_params
+        self.enable_refresh = enable_refresh
         self.timeout: int | None = mintq_config.query_timeout if timeout is _UNSET else timeout  # type: ignore[assignment]
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
@@ -69,6 +74,7 @@ class RegistryRunQueryTool:
         tool = RunQueryTool(
             connector,
             enable_params=self.enable_params,
+            enable_refresh=self.enable_refresh,
             timeout=self.timeout,
             max_visible_rows=self.max_visible_rows,
             max_cell_width=self.max_cell_width,
@@ -76,6 +82,31 @@ class RegistryRunQueryTool:
         )
         self._tools[db_alias] = tool
         return tool
+
+    async def _run_with_params_with_refresh(
+        self,
+        db_alias: str,
+        query: str,
+        parameters: list[LLMParameter] = [],
+        refresh: bool = False,
+    ) -> str:
+        """Execute a query against a registered database and return the results.
+
+        Returning large result sets is safe — the display is automatically
+        truncated, and full execution results are always recorded.
+
+        Args:
+            db_alias: Alias of the target database (see ``list_databases``).
+            query: The query to execute.
+            parameters: Query parameters.  A list of dictionaries, each
+                containing a ``parameter_name`` and a ``parameter_value`` field.
+            refresh: If True, re-introspect the connector's schema after
+                the query. Use only when the query changes the schema (DDL:
+                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
+                rebuild — be conservative on large cloud warehouses (e.g.
+                Snowflake).
+        """
+        return await self._execute(db_alias, query, parameters, refresh)
 
     async def _run_with_params(
         self,
@@ -94,7 +125,26 @@ class RegistryRunQueryTool:
             parameters: Query parameters.  A list of dictionaries, each
                 containing a ``parameter_name`` and a ``parameter_value`` field.
         """
-        return await self._execute(db_alias, query, parameters)
+        return await self._execute(db_alias, query, parameters, False)
+
+    async def _run_no_params_with_refresh(
+        self, db_alias: str, query: str, refresh: bool = False
+    ) -> str:
+        """Execute a query against a registered database and return the results.
+
+        Returning large result sets is safe — the display is automatically
+        truncated, and full execution results are always recorded.
+
+        Args:
+            db_alias: Alias of the target database (see ``list_databases``).
+            query: The query to execute.
+            refresh: If True, re-introspect the connector's schema after
+                the query. Use only when the query changes the schema (DDL:
+                ``CREATE`` / ``DROP`` / ``ALTER``). Triggers a full schema
+                rebuild — be conservative on large cloud warehouses (e.g.
+                Snowflake).
+        """
+        return await self._execute(db_alias, query, [], refresh)
 
     async def _run_no_params(self, db_alias: str, query: str) -> str:
         """Execute a query against a registered database and return the results.
@@ -106,20 +156,21 @@ class RegistryRunQueryTool:
             db_alias: Alias of the target database (see ``list_databases``).
             query: The query to execute.
         """
-        return await self._execute(db_alias, query, [])
+        return await self._execute(db_alias, query, [], False)
 
     async def _execute(
         self,
         db_alias: str,
         query: str,
         parameters: list[LLMParameter],
+        refresh: bool,
     ) -> str:
         try:
             tool = self._get_tool(db_alias)
         except ValueError:
             available = ", ".join(self.registry.list_aliases()) or "(none)"
             return f"(unknown db_alias: {db_alias!r}; available: {available})"
-        result = await tool(query, parameters)
+        result = await tool(query, parameters, refresh)
         pred_query = tool.last_pred_query()
         record = await self._history.add(db_alias, tool.db_connector.connector_type, pred_query)
         return f"[record_id={record.record_id}]\n{result}"
@@ -129,13 +180,16 @@ class RegistryRunQueryTool:
         db_alias: str,
         query: str,
         parameters: list[LLMParameter] | None = None,
+        refresh: bool = False,
     ) -> str:
-        if parameters is not None:
-            return await self._run_with_params(db_alias, query, parameters)
-        return await self._run_no_params(db_alias, query)
+        return await self._execute(db_alias, query, parameters or [], refresh and self.enable_refresh)
 
     def as_pydantic_ai_tool(self) -> Tool:
-        fn = self._run_with_params if self.enable_params else self._run_no_params
+        fn: Any
+        if self.enable_params:
+            fn = self._run_with_params_with_refresh if self.enable_refresh else self._run_with_params
+        else:
+            fn = self._run_no_params_with_refresh if self.enable_refresh else self._run_no_params
         return Tool(fn, name=self.name)
 
     def metrics(self) -> RunQueryToolMetrics:
