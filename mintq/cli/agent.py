@@ -272,7 +272,7 @@ class ChatAgent:
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
-                self.registry, model_settings={"openai_service_tier": "priority"}
+                self.registry, model_settings={"openai_service_tier": "priority"}, enable_refresh=True
             ),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),

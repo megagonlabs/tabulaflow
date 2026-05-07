@@ -120,7 +120,11 @@ class RegistryGetDBDocumentTool:
 
         Args:
             db_alias: Alias of the target database.
-            refresh: If True, refresh schema from the live database before rendering.
+            refresh: If True, re-introspect the schema and rebuild the
+                document. Use only when the schema changed externally (e.g.
+                another process ran DDL). Triggers a full schema rebuild and
+                LLM re-summarization — be conservative on large cloud
+                warehouses (e.g. Snowflake).
         """
         return await self._execute(db_alias, refresh)
 
