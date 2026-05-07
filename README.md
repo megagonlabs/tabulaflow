@@ -136,6 +136,10 @@ May 4
   - [ ] Extraction
   - [ ] Concurrency
 
+- [ ] int with null becomes float
+- [ ] DROP then CREATE not update schema
+- [ ] json_stringify?
+
 - General
   - [ ] Stringify for JSON field (study arcs-bench)
   - [ ] Improve transfer_record?
