@@ -1,8 +1,8 @@
 import asyncio
 import collections
-import math
 import logging
 from typing import Any, ClassVar
+import pandas as pd
 from pydantic import BaseModel
 from mintq.agenthub.base import BaseAgentConfig
 from mintq.agenthub.utils import instrument
@@ -21,7 +21,7 @@ def _normalize_value(v: Any) -> str:
 
     Handles NULL variants, float precision, and arbitrary types.
     """
-    if v is None or (isinstance(v, float) and math.isnan(v)):
+    if v is None or pd.isna(v):
         return "<NULL>"
     if isinstance(v, float):
         return str(round(v, _FLOAT_ROUND_DIGITS))

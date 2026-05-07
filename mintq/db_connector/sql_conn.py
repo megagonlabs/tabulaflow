@@ -244,6 +244,25 @@ _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 
 
+def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
+    """Build a DataFrame from SQL rows without promoting integer-with-null
+    columns to ``float64``.
+
+    The default ``pd.DataFrame(rows, columns=keys)`` infers dtypes from
+    values, so any column containing ``None`` mixed with ints becomes
+    ``float64`` (NaN is a float) and bools-with-null become ``object``.
+    Constructing with ``dtype=object`` preserves the raw Python values,
+    then ``convert_dtypes`` picks the right *nullable* extension dtype
+    per column (``Int64`` / ``boolean`` / ``string`` / ``Float64``)
+    using ``pd.NA`` for nulls.
+
+    All-null columns stay as ``object`` (no inference signal).  Bytes
+    and other non-inferrable types also stay ``object``.
+    """
+    df = pd.DataFrame(list(rows), columns=list(keys), dtype=object)
+    return df.convert_dtypes(dtype_backend="numpy_nullable")
+
+
 @dataclass
 class QueryResult:
     result: list[tuple[Any, ...]] | pd.DataFrame
@@ -1213,7 +1232,7 @@ class ThrottledEngine:
                 result = conn.execute(statement, parameters)
             rows = result.fetchall()
             if return_df:
-                return pd.DataFrame(rows, columns=result.keys())
+                return _rows_to_df(rows, result.keys())
             return rows
 
     async def _execute_async_engine(
@@ -1245,7 +1264,7 @@ class ThrottledEngine:
                     rows.append(row)
 
         if return_df:
-            return pd.DataFrame(rows, columns=result.keys())
+            return _rows_to_df(rows, result.keys())
         return rows
 
     def _run_callback_sync_engine(

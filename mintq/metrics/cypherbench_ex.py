@@ -50,7 +50,7 @@ def _normalize_cell(v: Any) -> Any:
     Handles JSON-stringified lists/dicts produced by ``ExecResult`` sanitisation,
     NaN/None, and standard scalars.
     """
-    if v is None or (isinstance(v, float) and pd.isna(v)):
+    if v is None or pd.isna(v):
         return None
     if isinstance(v, str):
         try:

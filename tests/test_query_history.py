@@ -133,7 +133,10 @@ class TestWithConnector:
 
         record = await h.get("Q1")
         df_loaded = record.pred_query.exec_result.df
-        pd.testing.assert_frame_equal(df_loaded, df_original)
+        # Hydration goes through the connector read path, which upgrades
+        # to nullable extension dtypes (Int64 / Float64 / string).  Values
+        # round-trip, dtypes don't.
+        pd.testing.assert_frame_equal(df_loaded, df_original, check_dtype=False)
 
     @pytest.mark.anyio
     async def test_attach_chart_does_not_hydrate(self, workspace):
