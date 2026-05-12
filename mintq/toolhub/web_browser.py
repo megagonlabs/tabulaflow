@@ -52,6 +52,7 @@ if TYPE_CHECKING:
         Page,
         Playwright,
     )
+    from pydantic_ai.capabilities import Hooks
 
 logger = logging.getLogger(__name__)
 
@@ -1000,7 +1001,7 @@ class WebBrowserTool:
             Tool(self.browser_wait, name="browser_wait"),
         ]
 
-    def lifecycle_capability(self) -> object:
+    def lifecycle_capability(self) -> "Hooks[None]":
         """Return a pydantic-ai ``Hooks`` capability that ticks this tool.
 
         The returned capability subscribes to ``before_model_request`` and

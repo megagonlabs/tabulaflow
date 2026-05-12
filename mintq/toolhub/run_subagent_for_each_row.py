@@ -19,6 +19,7 @@ from mintq.schema import SQLDialect, Trajectory
 from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
 from mintq.toolhub.run_query import RunQueryTool
+from mintq.toolhub.web_browser import WebBrowserTool
 
 
 _AGENTIC_SYSTEM_PROMPT_TEMPLATE = """\
@@ -127,6 +128,7 @@ class RunSubagentForEachRowTool:
         output_columns: list[str] | None = None,
         sql_filter: str | None = None,
         mode: Literal["agentic", "direct"] = "direct",
+        enable_browser_tools: bool = False,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -149,12 +151,14 @@ class RunSubagentForEachRowTool:
           the tool completes, a standard SQL JOIN on the new column(s) produces
           the final result.
 
-        In ``direct`` mode (default), the subagent receives no tools and only
-        produces text output; this tool writes the output to the
+        In ``direct`` mode (default), the subagent receives no database tools
+        and only produces text output; this tool writes the output to the
         ``output_columns`` automatically. Use ``direct`` mode when you need
         to strictly control the subagent's context (e.g. when running inference
         or labeling data). In ``agentic`` mode, each subagent has ``run_query``
-        access and writes updates itself.
+        access and writes updates itself. Set ``enable_browser_tools=True``
+        to additionally grant the subagent web-browsing tools in either mode
+        — useful when the task requires looking up information on the web.
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
@@ -171,10 +175,15 @@ class RunSubagentForEachRowTool:
                 Must be a SELECT * query against table_name (e.g.
                 ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
                 If omitted, all rows are processed.
-            mode: Execution mode. ``direct`` (default) gives no tools — the
-                subagent produces text output and this tool writes it to
-                ``output_columns``. ``agentic`` gives the subagent tools to
-                query and update the database.
+            mode: Execution mode controlling database access. ``direct``
+                (default) gives no database tools — the subagent produces
+                text output and this tool writes it to ``output_columns``.
+                ``agentic`` gives the subagent tools to query and update the
+                database. Orthogonal to ``enable_browser_tools``.
+            enable_browser_tools: If True, the per-row subagent additionally
+                receives web-browsing tools (navigate, click, type, scroll,
+                etc.). Applies in both ``direct`` and ``agentic`` modes. Use
+                for tasks that require fetching information from the web.
         """
         if mode == "direct":
             if not output_columns or len(output_columns) != 1:
@@ -282,13 +291,19 @@ class RunSubagentForEachRowTool:
             nonlocal completed
             assert agentic_system_prompt is not None
             prompt = task_template.render(row)
+            tools = [
+                self._run_query_tool.as_pydantic_ai_tool(),
+                self._get_table_schema_tool.as_pydantic_ai_tool(),
+                self._get_column_json_schema_tool.as_pydantic_ai_tool(),
+            ]
+            browser_tool: WebBrowserTool | None = None
+            if enable_browser_tools:
+                browser_tool = WebBrowserTool()
+                tools.extend(browser_tool.as_pydantic_ai_tools())
             subagent = Agent(
                 model=self.subagent_llm,
-                tools=[
-                    self._run_query_tool.as_pydantic_ai_tool(),
-                    self._get_table_schema_tool.as_pydantic_ai_tool(),
-                    self._get_column_json_schema_tool.as_pydantic_ai_tool(),
-                ],
+                tools=tools,
+                capabilities=[browser_tool.lifecycle_capability()] if browser_tool is not None else None,
                 instructions=agentic_system_prompt,
                 output_type=SubagentRowResult,
                 model_settings=self.model_settings,
@@ -307,6 +322,8 @@ class RunSubagentForEachRowTool:
                 error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
                 metadata = (False, error_msg, "")
             finally:
+                if browser_tool is not None:
+                    await browser_tool.close()
                 if self.store_metadata and metadata is not None:
                     await _save_row_metadata(key_payload, *metadata)
                 completed += 1
@@ -319,9 +336,15 @@ class RunSubagentForEachRowTool:
             nonlocal completed
             assert direct_output_col is not None
             prompt = task_template.render(row)
+            tools: list[Tool] = []
+            browser_tool: WebBrowserTool | None = None
+            if enable_browser_tools:
+                browser_tool = WebBrowserTool()
+                tools.extend(browser_tool.as_pydantic_ai_tools())
             subagent = Agent(
                 model=self.subagent_llm,
-                tools=[],
+                tools=tools,
+                capabilities=[browser_tool.lifecycle_capability()] if browser_tool is not None else None,
                 output_type=str,
                 model_settings=self.model_settings,
             )
@@ -338,6 +361,8 @@ class RunSubagentForEachRowTool:
                 error_msg = f"row {row_idx}: {type(e).__name__}: {e}"
                 metadata = (False, error_msg, "")
             finally:
+                if browser_tool is not None:
+                    await browser_tool.close()
                 if self.store_metadata and metadata is not None:
                     await _save_row_metadata(key_payload, *metadata)
                 completed += 1
