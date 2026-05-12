@@ -990,6 +990,13 @@ class WebBrowserTool:
     # === Pydantic-AI integration =============================================
 
     def as_pydantic_ai_tools(self) -> list[Tool]:
+        """Return this tool's browse actions as pydantic-ai ``Tool`` objects.
+
+        All actions share this instance's tab/snapshot state. Splat into
+        ``Agent(tools=[..., *web_browser.as_pydantic_ai_tools()])`` and pair
+        with ``capabilities=[web_browser.lifecycle_capability()]`` so idle
+        tabs are cleaned up at turn boundaries.
+        """
         return [
             Tool(self.browser_navigate, name="browser_navigate"),
             Tool(self.browser_click, name="browser_click"),

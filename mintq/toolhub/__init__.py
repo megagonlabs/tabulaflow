@@ -1,4 +1,4 @@
-from mintq.toolhub.base import BaseTool, BaseToolset
+from mintq.toolhub.base import BaseTool
 from mintq.toolhub.ask_user import AskUserTool
 from mintq.toolhub.execute_bash import ExecuteBashTool
 from mintq.toolhub.file_editor import FileEditorTool
@@ -29,7 +29,6 @@ from mintq.toolhub.web_browser import (
 
 __all__ = [
     "BaseTool",
-    "BaseToolset",
     "AskUserTool",
     "ExecuteBashTool",
     "FileEditorTool",
