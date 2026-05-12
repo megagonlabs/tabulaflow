@@ -141,6 +141,10 @@ May 6
 - [x] refresh for run_query tool to allow refresh after DDL
 - [x] Fix mypy and tests
 
+May 11
+- [x] browser tools for subagents
+
+- [ ] Fix tool response truncation for subagents
 - [ ] json_stringify?
 
 - General
