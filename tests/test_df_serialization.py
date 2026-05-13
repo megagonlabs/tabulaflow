@@ -72,8 +72,7 @@ def test_dataframe_deserialize_legacy_payload() -> None:
 
 
 def test_dataframe_round_trip_nested_columns() -> None:
-    """Nested dicts/lists must survive sanitize + serialize round-trip without key merging."""
-    import json
+    """Nested dicts/lists round-trip as native Python objects (no key merging)."""
     from mintq.schema import _sanitize_df
 
     df = pd.DataFrame(
@@ -89,10 +88,10 @@ def test_dataframe_round_trip_nested_columns() -> None:
     deserialized = _deserialize_dataframe(serialized)
 
     assert deserialized is not None
-    assert json.loads(deserialized.loc[0, "meta"]) == {"a": 1, "b": 2}
-    assert json.loads(deserialized.loc[1, "meta"]) == {"a": 3, "c": 4}
-    assert json.loads(deserialized.loc[0, "tags"]) == ["x", "y"]
-    assert json.loads(deserialized.loc[1, "tags"]) == ["z"]
+    assert deserialized.loc[0, "meta"] == {"a": 1, "b": 2}
+    assert deserialized.loc[1, "meta"] == {"a": 3, "c": 4}
+    assert deserialized.loc[0, "tags"] == ["x", "y"]
+    assert deserialized.loc[1, "tags"] == ["z"]
 
 
 def test_exec_result_json_round_trip_dataframe() -> None:

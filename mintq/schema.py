@@ -103,20 +103,25 @@ def _sanitize_df_strings(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
-def _json_stringify_nested_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """JSON-stringify object columns containing dicts/lists.
+def _encode_nested_for_arrow(df: pd.DataFrame) -> tuple[pd.DataFrame, set[str]]:
+    """JSON-stringify dict/list cells and return the names of columns touched.
 
-    Parquet/Feather infer a struct schema for dicts, merging keys across rows and
-    filling missing keys with None.  Converting to JSON strings preserves the
-    original values exactly.
+    Used at the serialization boundary only. Parquet/Feather would otherwise
+    infer a unified struct schema across rows for dict columns (merging keys,
+    filling missing ones with NULL) and a unified element type for lists —
+    destructive for heterogeneous JSON. Stringifying preserves cell values
+    exactly, and the caller tags the resulting columns with ``pa.json_()`` so
+    the round-trip stays self-describing.
     """
     df = df.copy()
+    json_cols: set[str] = set()
     for col in df.columns:
         if df[col].dtype != object:
             continue
         if df[col].dropna().map(lambda x: isinstance(x, (dict, list))).any():
             df[col] = df[col].apply(lambda x: json.dumps(x, default=str) if isinstance(x, (dict, list)) else x)
-    return df
+            json_cols.add(str(col))
+    return df, json_cols
 
 
 def _stringify_mixed_type_columns(df: pd.DataFrame) -> pd.DataFrame:
@@ -175,10 +180,15 @@ def _serialize_dataframe_legacy(df: pd.DataFrame | None) -> dict[str, Any] | Non
 
 
 def _sanitize_df(df: pd.DataFrame) -> pd.DataFrame:
-    """Sanitize a DataFrame for consistent serialization and display."""
+    """Sanitize a DataFrame for in-memory consistency.
+
+    Dict/list cells are NOT stringified here — they keep their native Python
+    types so consumers (Jinja templates, agent code) can introspect them.
+    The serialization boundary (``_serialize_dataframe``) converts them to
+    JSON-tagged columns when writing to Parquet.
+    """
     df = _deduplicate_columns(df)
     df = _sanitize_df_strings(df)
-    df = _json_stringify_nested_columns(df)
     df = _stringify_mixed_type_columns(df)
     return df
 
@@ -197,14 +207,29 @@ def _coerce_for_arrow(df: pd.DataFrame) -> pd.DataFrame:
 
 
 def _serialize_dataframe(df: pd.DataFrame | None) -> dict[str, Any] | None:
-    """Serialize a DataFrame as Parquet bytes in a single JSON payload."""
+    """Serialize a DataFrame as Parquet bytes in a single JSON payload.
+
+    Nested (dict/list) columns are JSON-encoded and tagged with ``pa.json_()``
+    so each cell is a self-contained string on disk (heterogeneity-safe) but
+    still carries enough metadata for ``_deserialize_dataframe`` to decode
+    back to native Python objects on read.
+    """
+    import pyarrow as pa
+    import pyarrow.parquet as pq
+
     if df is None:
         return None
     if df.columns.empty:
         df = pd.DataFrame({"_empty": pd.Series([], dtype="object")}).iloc[:0]
+    df, json_cols = _encode_nested_for_arrow(df)
     df = _coerce_for_arrow(df)
+    table = pa.Table.from_pandas(df)
+    if json_cols:
+        new_fields = [pa.field(f.name, pa.json_()) if f.name in json_cols else f for f in table.schema]
+        new_schema = pa.schema(new_fields, metadata=table.schema.metadata)
+        table = pa.Table.from_pandas(df, schema=new_schema)
     buffer = io.BytesIO()
-    df.to_parquet(buffer, engine="pyarrow")
+    pq.write_table(table, buffer)
     encoded = base64.b64encode(buffer.getvalue()).decode("ascii")
     return {
         "format": _DF_SERIALIZATION_FORMAT,
@@ -223,8 +248,15 @@ def _deserialize_dataframe(v: dict[str, Any] | pd.DataFrame | None) -> pd.DataFr
     fmt = v.get("format")
 
     if fmt == _DF_SERIALIZATION_FORMAT:
+        import pyarrow as pa
+        import pyarrow.parquet as pq
+
         raw = base64.b64decode(v["parquet_base64"])
-        df = pd.read_parquet(io.BytesIO(raw), engine="pyarrow")
+        table = pq.read_table(io.BytesIO(raw))
+        json_cols = [f.name for f in table.schema if isinstance(f.type, pa.JsonType)]
+        df = table.to_pandas()
+        for col in json_cols:
+            df[col] = df[col].apply(lambda x: json.loads(x) if isinstance(x, str) else x)
         if list(df.columns) == ["_empty"] and df.empty:
             return pd.DataFrame()
         return df

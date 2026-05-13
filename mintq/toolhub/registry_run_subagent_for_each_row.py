@@ -123,10 +123,10 @@ class RegistryRunSubagentForEachRowTool:
                 prompt. Use ``{{ column_name }}`` to interpolate values from the
                 ``task_query`` result; standard Jinja control flow
                 (``{% for %}``, ``{% if %}``) is available. For JSON columns,
-                project the field/array you need with the dialect's JSON
-                functions in ``task_query`` rather than parsing in the template;
-                ``{% for %}`` on a JSON string silently iterates over characters,
-                not array items. Example:
+                extract the field or cast to an array in ``task_query`` using
+                the dialect's JSON functions rather than relying on the
+                template — driver materialization varies (string vs structure)
+                and only structured projections iterate reliably. Example:
                 ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns used in the WHERE clause to locate each row in
                 ``table_name`` for write-back. Must appear in the ``task_query``
