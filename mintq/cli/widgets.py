@@ -24,6 +24,33 @@ from textual.widgets import DataTable, Input, Static, TextArea
 from mintq.cli.display import DATA_PREVIEW_MAX_ROWS
 from mintq.cli.theme import ACCENT, DRACULA_TRANSPARENT, KEY_HINT
 
+
+def _normalize_json_like(value: object) -> object:
+    """Coerce ``ndarray``/``dict``/``list`` cells into a JSON-ready structure.
+
+    Converts numpy ndarrays to lists and recursively json.loads any string leaf
+    that parses as a dict or list — so HF-style JSON-array columns
+    (``ndarray([str, str, ...])``) render as structured JSON instead of
+    backslash-escaped Python list reprs.
+    """
+    import numpy as np
+
+    if isinstance(value, np.ndarray):
+        value = value.tolist()
+    if isinstance(value, dict):
+        return {k: _normalize_json_like(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_normalize_json_like(v) for v in value]
+    if isinstance(value, str):
+        try:
+            parsed = json.loads(value)
+        except (json.JSONDecodeError, ValueError):
+            return value
+        if isinstance(parsed, (dict, list)):
+            return _normalize_json_like(parsed)
+        return value
+    return value
+
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
@@ -873,6 +900,7 @@ class DataBrowserScreen(Screen[None]):
     def _format_cell(value: object) -> Text:
         import numbers
 
+        import numpy as np
         import pandas as pd_
 
         try:
@@ -890,7 +918,14 @@ class DataBrowserScreen(Screen[None]):
         if isinstance(value, numbers.Real):
             return Text(f"{value:,}", justify="right")
 
-        s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+        if isinstance(value, (np.ndarray, list, dict)):
+            try:
+                s = json.dumps(_normalize_json_like(value), ensure_ascii=False, default=str)
+            except (TypeError, ValueError):
+                s = str(value)
+        else:
+            s = str(value)
+        s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
         if s == "<binary: skipped>":
             return Text(s, style="dim italic")
         if len(s) > DataBrowserScreen._MAX_CELL_LEN:
@@ -991,11 +1026,14 @@ class CellBrowserScreen(Screen[None]):
     def _try_as_json(value: object) -> str | None:
         """Try to pretty-print value as JSON. Returns formatted string or None."""
         import ast
-        import json
+
+        import numpy as np
 
         obj: object
-        if isinstance(value, (dict, list)):
-            obj = value
+        if isinstance(value, np.ndarray):
+            obj = _normalize_json_like(value)
+        elif isinstance(value, (dict, list)):
+            obj = _normalize_json_like(value)
         elif isinstance(value, str):
             # Try JSON first, then Python repr
             for parser in (json.loads, ast.literal_eval):
