@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass, field
 from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent
+from mintq.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent, render_column_dtype
 
 _DIALECT_QUOTING: dict[str, tuple[str, bool]] = {
     "bigquery": ("`", False),
@@ -32,6 +32,11 @@ class SQLDDLSchemaFormatter:
     include_null_ratio: bool = True
     include_json_schema: bool = True
     include_json_schema_max_fields: int | None = 20
+    max_native_dtype_chars: int = 80
+    """When ``column.native_dtype`` is set and its length is within this cap,
+    emit it as the DDL column type instead of the canonical ``dtype`` token.
+    For long composite types, the structural info is conveyed via the
+    ``<json_schema>`` comment instead."""
 
     _quote_char: str = field(default='"', init=False, repr=False)
     _always_quote_columns: bool = field(default=True, init=False, repr=False)
@@ -79,10 +84,9 @@ class SQLDDLSchemaFormatter:
         else:
             return str(value)
 
-    def _map_dtype_to_sql(self, dtype: str) -> str:
-        """Map internal dtype to SQL DDL type."""
-        # Already in SQL format, return as-is
-        return dtype
+    def _map_dtype_to_sql(self, column: SQLColumnSchema) -> str:
+        """Render a column's type for emission in DDL."""
+        return render_column_dtype(column, self.max_native_dtype_chars)
 
     def _format_sampled_df(self, table: SQLTableSchema) -> str:
         """Format a DataFrame as a markdown table (without wrapper)."""
@@ -230,7 +234,7 @@ class SQLDDLSchemaFormatter:
 
         # Column name and type
         col_name = self._quote_column(column.name)
-        col_type = self._map_dtype_to_sql(column.dtype)
+        col_type = self._map_dtype_to_sql(column)
         parts.append(f"    {col_name} {col_type}")
 
         # NULL / NOT NULL constraint

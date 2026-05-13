@@ -14,7 +14,7 @@ from sqlglot.optimizer.qualify import qualify
 from sqlglot.optimizer.scope import build_scope, Scope
 from tqdm.asyncio import tqdm_asyncio
 
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull
+from mintq.schema import AmbigNL2QTask, GoldAmbiguityPoint, NumericOrNull, SQLColumnSchema
 
 
 def extract_code(response: str) -> str:
@@ -405,6 +405,20 @@ def format_df(
     return tabulate(
         display_df, headers="keys", tablefmt=tablefmt, showindex=False, missingval="[NULL]", floatfmt=floatfmt
     )
+
+
+def render_column_dtype(column: SQLColumnSchema, max_native_dtype_chars: int = 80) -> str:
+    """Render a column's type for display to an LLM.
+
+    Prefers ``native_dtype`` when it's short — it carries scalar parameters
+    (``VARCHAR(100)``, ``DECIMAL(18, 2)``) the canonical ``dtype`` token
+    discards. Falls back to ``dtype`` for unset or overly long native
+    strings (e.g. deeply nested BigQuery RECORDs or DuckDB STRUCTs whose
+    shape is better conveyed via ``json_schema``).
+    """
+    if column.native_dtype and len(column.native_dtype) <= max_native_dtype_chars:
+        return column.native_dtype
+    return column.dtype
 
 
 def format_json_schema(

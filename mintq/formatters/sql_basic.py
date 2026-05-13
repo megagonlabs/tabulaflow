@@ -2,7 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass, field
 from mintq.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from mintq.formatters.base import formatter_registry
-from mintq.utils import flatten_multiline, format_ratio_as_percent
+from mintq.utils import flatten_multiline, format_ratio_as_percent, render_column_dtype
 from mintq.formatters.sql_ddl import _DIALECT_QUOTING, _DEFAULT_QUOTING
 
 
@@ -13,6 +13,11 @@ class SQLBasicSchemaFormatter:
     example_max_chars: int = 100
     floatfmt: str = ".8g"
     max_total_columns: int | None = None
+    max_native_dtype_chars: int = 80
+    """When ``column.native_dtype`` is set and its length is within this cap,
+    render it instead of the canonical ``dtype`` token. Picks up
+    ``VARCHAR(100)`` / ``DECIMAL(18, 2)``-style scalar parameters while
+    keeping deeply nested composites out of the rendered schema."""
 
     _quote_char: str = field(default='"', init=False, repr=False)
     _always_quote_columns: bool = field(default=True, init=False, repr=False)
@@ -139,7 +144,7 @@ class SQLBasicSchemaFormatter:
         return res
 
     def format_column(self, column: SQLColumnSchema, add_description: bool = False) -> str:
-        res = f"- {self._quote_column(column.name)}: {column.dtype}"
+        res = f"- {self._quote_column(column.name)}: {render_column_dtype(column, self.max_native_dtype_chars)}"
         if column.null_ratio is not None and column.null_ratio == 1.0:
             res += " (all values are null)"
         elif column.null_ratio is None or column.null_ratio > 0.0:
