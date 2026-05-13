@@ -109,6 +109,7 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 - Use `run_subagent_for_each_row` when you need row-wise LLM processing that writes updates back to an existing table. Prefer this over fuzzy regex matching or LIKE-based SQL for semantic operations (e.g., classifying free text, joining on product names with naming variations, extracting sentiment from text).
   - When writing task instructions for the subagent, include any specific requirements the user mentioned.
   - Treat it as an expensive tool and use it judiciously. For large tables (>= 100 rows), run it on a sampled subset before applying it to the full table.
+  - For DuckDB JSON columns in `workspace`, cast to a native list with `from_json(col, '["TYPE"]')` (or use `LIST<T>` / `STRUCT(...)` types from the start) when the subagent's `task_instruction` needs to iterate the structure. Raw `JSON` columns materialize as strings in pandas.
 - Consider whether each transformation can be handled with SQL-based rules or requires subagents, and use the appropriate method.
   - If different parts of a table need different methods, combine rule-based SQL and subagent processing as needed.
 - When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
