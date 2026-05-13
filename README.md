@@ -151,7 +151,12 @@ May 12
 - [x] Remove json stringify
 - [x] Fix json display (e.g. for JSON[])
 
-- [ ] sql_conn.py - fix column dtype for gold_ambig_points for arcs-bench
+May 13
+- Fix bugs
+  - [x] Fix dtype introspection, add native_dtype
+  - [x] Parse nested json string
+  - [x] Fix json schema rendering
+
 - [ ] "loading" for large json loading
 - [ ] Fix tool response truncation for subagents
 
