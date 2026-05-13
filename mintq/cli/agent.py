@@ -14,6 +14,13 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
+from mintq.cli.message_store import (
+    MESSAGE_THRESHOLD_CHARS,
+    MessageStore,
+    MessageStoreCapability,
+    make_snippet,
+)
+
 if TYPE_CHECKING:
     import pandas as pd
     from pydantic_ai import Agent
@@ -94,7 +101,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 </read_only_questions>
 
 <data_transformation_tasks_internal>
-These are internal implementation details — never mention them to the user.
+(internal implementation details, never mention to the user)
 You MUST use the `workspace` alias for data transformation tasks and semantic operations (e.g., LLM-based filtering, joining, or extraction). Never modify the original tables in-place.
 - `workspace` is a session-local scratch space for transformation tables. Tables created in `workspace` persist for the entire session.
 - First, use `transfer_record` to move data into or out of `workspace`.
@@ -114,12 +121,18 @@ If the user says "plan first" or "discuss first", present a plan and wait for ap
 </plan_mode>
 
 <registry_and_alias_internal>
-These are internal implementation details — never mention them to the user.
+(internal implementation details, never mention to the user)
 - Data sources are registered under aliases (e.g. `workspace`).
 - `db_alias` selects which registered data source a tool call uses.
 - Aliases are application-level handles, not SQL catalog/schema names.
 - Tables in different aliases cannot be joined directly. To join across data sources, first transfer the relevant tables into `workspace` using `transfer_record`, then join them there.
 </registry_and_alias_internal>
+
+<long_message_storage_internal>
+(internal implementation details, never mention to the user)
+Very long user prompts and long tool responses are truncated to a head+tail snippet before they reach you. The full content is mirrored into `workspace._internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)`.
+- Snippets contain a marker line `[message_id=M<n>]`, use `run_query` to read the content using the message_id.
+</long_message_storage_internal>
 
 <tool_calling>
 General:
@@ -251,6 +264,7 @@ class ChatAgent:
     _system_prompt: str = SYSTEM_PROMPT
     _pydantic_ai_agent: Agent[None, str] | None = None
     _query_history: QueryHistory = field(init=False)
+    _message_store: MessageStore = field(init=False)
     _tools: Toolset = field(init=False)
     last_usage: Usage | None = None
 
@@ -269,6 +283,7 @@ class ChatAgent:
         )
 
         self._query_history = QueryHistory()
+        self._message_store = MessageStore()
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
@@ -305,6 +320,7 @@ class ChatAgent:
         self._tools.run_query._history = self._query_history
         self._tools.transfer_record._history = self._query_history
         self._tools.render_chart._history = self._query_history
+        self._message_store.attach_connector(connector)
 
     @staticmethod
     def database_info(connector: NL2QDBConnector) -> str:
@@ -354,7 +370,24 @@ class ChatAgent:
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
-            capabilities=[self._tools.web_browser.lifecycle_capability()],
+            capabilities=[
+                self._tools.web_browser.lifecycle_capability(),
+                MessageStoreCapability(
+                    store=self._message_store,
+                    tool_allowlist=frozenset(
+                        {
+                            "browser_navigate",
+                            "browser_click",
+                            "browser_type",
+                            "browser_scroll",
+                            "browser_back",
+                            "browser_press",
+                            "browser_select",
+                            "browser_wait",
+                        }
+                    ),
+                ),
+            ],
             instructions=self._system_prompt,
             model_settings={
                 "openai_service_tier": "priority",
@@ -378,6 +411,10 @@ class ChatAgent:
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
 
         assert self._pydantic_ai_agent is not None
+
+        message_id = await self._message_store.add(kind="user_prompt", content=question)
+        if len(question) > MESSAGE_THRESHOLD_CHARS:
+            question = make_snippet(message_id, question)
 
         answer_text = ""
         final_usage: Usage | None = None

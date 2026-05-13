@@ -1,0 +1,197 @@
+"""Persistent store for user messages and tool responses, with overflow truncation.
+
+Every user prompt and tool response is mirrored into ``workspace._internal.messages``
+as a single row. When content exceeds ``MESSAGE_THRESHOLD_CHARS``, the model-visible
+form is replaced with a head + tail snippet that points back at the stored row;
+the agent retrieves the full text via SQL on the workspace database.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from typing import TYPE_CHECKING, Any, Literal
+
+from pydantic_ai.capabilities.abstract import AbstractCapability
+from pydantic_ai.messages import ToolReturn
+
+if TYPE_CHECKING:
+    from pydantic_ai import RunContext
+    from pydantic_ai.messages import ToolCallPart
+    from pydantic_ai.tools import ToolDefinition
+
+    from mintq.db_connector.sql_conn import SQLConnector
+
+logger = logging.getLogger(__name__)
+
+MESSAGE_THRESHOLD_CHARS = 4096
+MESSAGE_HEAD_CHARS = 1024
+MESSAGE_TAIL_CHARS = 256
+
+_SCHEMA = "_internal"
+_TABLE = "messages"
+_QUALIFIED = f'"{_SCHEMA}"."{_TABLE}"'
+
+MessageKind = Literal["user_prompt", "tool_return"]
+
+
+def _utcnow() -> datetime:
+    return datetime.now(timezone.utc)
+
+
+def make_snippet(message_id: str, content: str) -> str:
+    """Return the head+tail snippet shown to the LLM for an overflowed message."""
+    total = len(content)
+    head = content[:MESSAGE_HEAD_CHARS]
+    tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
+    marker = (
+        f"... [truncated, {total} chars total — full content in workspace.{_SCHEMA}.{_TABLE} "
+        f"where message_id='{message_id}']"
+    )
+    parts = [f"[message_id={message_id}]", head, marker]
+    if tail:
+        parts.append(tail)
+    return "\n".join(parts)
+
+
+class MessageStore:
+    """Append-only mirror of user prompts and tool responses in workspace DuckDB.
+
+    The store assigns sequential ``M1``, ``M2``, ... ids and persists every entry
+    even when it is below the truncation threshold so the agent can SQL-introspect
+    the conversation. The model-visible truncation logic lives separately
+    (``ChatAgent.run`` for user prompts; ``MessageStoreCapability`` for tool returns).
+    """
+
+    def __init__(self, *, spill_connector: SQLConnector | None = None) -> None:
+        self._spill_connector = spill_connector
+        self._next_id = 1
+        self._table_created = False
+        self._lock = asyncio.Lock()
+
+    def attach_connector(self, connector: SQLConnector) -> None:
+        """Bind a workspace connector after construction (mirrors QueryHistory)."""
+        self._spill_connector = connector
+        self._table_created = False
+
+    async def add(
+        self,
+        *,
+        kind: MessageKind,
+        content: str,
+        tool_name: str | None = None,
+        tool_call_id: str | None = None,
+    ) -> str:
+        """Persist one message and return its assigned id (e.g. ``"M7"``)."""
+        async with self._lock:
+            message_id = f"M{self._next_id}"
+            self._next_id += 1
+        if self._spill_connector is None:
+            return message_id
+        try:
+            await self._ensure_table()
+            await self._insert_row(
+                message_id=message_id,
+                kind=kind,
+                tool_name=tool_name,
+                tool_call_id=tool_call_id,
+                created_at=_utcnow(),
+                char_len=len(content),
+                content=content,
+            )
+        except Exception:
+            logger.warning("Failed to persist message %s to workspace", message_id, exc_info=True)
+        return message_id
+
+    async def _ensure_table(self) -> None:
+        if self._table_created or self._spill_connector is None:
+            return
+        await self._spill_connector.run_query_async(f'CREATE SCHEMA IF NOT EXISTS "{_SCHEMA}"')
+        await self._spill_connector.run_query_async(
+            f"""
+            CREATE TABLE IF NOT EXISTS {_QUALIFIED} (
+                message_id   TEXT PRIMARY KEY,
+                kind         TEXT NOT NULL,
+                tool_name    TEXT,
+                tool_call_id TEXT,
+                created_at   TIMESTAMP NOT NULL,
+                char_len     INTEGER NOT NULL,
+                content      TEXT NOT NULL
+            )
+            """.strip()
+        )
+        self._table_created = True
+
+    async def _insert_row(
+        self,
+        *,
+        message_id: str,
+        kind: MessageKind,
+        tool_name: str | None,
+        tool_call_id: str | None,
+        created_at: datetime,
+        char_len: int,
+        content: str,
+    ) -> None:
+        import pandas as pd
+
+        assert self._spill_connector is not None
+        df = pd.DataFrame(
+            [
+                {
+                    "message_id": message_id,
+                    "kind": kind,
+                    "tool_name": tool_name,
+                    "tool_call_id": tool_call_id,
+                    "created_at": created_at,
+                    "char_len": char_len,
+                    "content": content,
+                }
+            ]
+        )
+        await self._spill_connector.write_dataframe_async(
+            df=df, table_name=_TABLE, schema_name=_SCHEMA, mode="append"
+        )
+
+
+@dataclass
+class MessageStoreCapability(AbstractCapability[Any]):
+    """Mirror tool responses into the message store; truncate overflow before the LLM sees it.
+
+    Only tools whose names appear in ``tool_allowlist`` are subject to the
+    persist-and-maybe-truncate flow. Tools outside the allowlist (e.g. ``run_query``,
+    which the agent uses to read back stored messages) pass through untouched —
+    crucial to avoid re-truncation cycles when the agent fetches a stored message.
+    """
+
+    store: MessageStore
+    tool_allowlist: frozenset[str]
+    threshold_chars: int = MESSAGE_THRESHOLD_CHARS
+
+    async def after_tool_execute(
+        self,
+        ctx: RunContext[Any],
+        *,
+        call: ToolCallPart,
+        tool_def: ToolDefinition,
+        args: Any,
+        result: Any,
+    ) -> Any:
+        if tool_def.name not in self.tool_allowlist:
+            return result
+        if not isinstance(result, str):
+            return result
+        message_id = await self.store.add(
+            kind="tool_return",
+            content=result,
+            tool_name=tool_def.name,
+            tool_call_id=call.tool_call_id,
+        )
+        if len(result) <= self.threshold_chars:
+            return result
+        return ToolReturn(
+            return_value=make_snippet(message_id, result),
+            metadata={"message_id": message_id, "char_len": len(result)},
+        )
