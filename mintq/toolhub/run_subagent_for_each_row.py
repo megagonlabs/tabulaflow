@@ -55,6 +55,9 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
 # Dialects that require PARSE_JSON() to store a JSON string into a native column.
 _DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
+_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
     """Build a SQLAlchemy WHERE clause from key columns."""
     conditions: list[sqlalchemy.ColumnElement[bool]] = []
@@ -114,7 +117,7 @@ class RunSubagentForEachRowTool:
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
         self._get_column_json_schema_tool = GetColumnJsonSchemaTool(db_connector.schema)
-        self._agentic_system_prompt_template = jinja2.Template(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
+        self._agentic_system_prompt_template = _JINJA_ENV.from_string(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
 
     async def __call__(
         self,
@@ -236,7 +239,7 @@ class RunSubagentForEachRowTool:
 
         # Compile the task instruction as a Jinja2 template.
         try:
-            task_template = jinja2.Template(task_instruction)
+            task_template = _JINJA_ENV.from_string(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
 
@@ -317,7 +320,6 @@ class RunSubagentForEachRowTool:
         async def _process_one_row_agentic(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
             assert agentic_system_prompt is not None
-            prompt = task_template.render(row)
             tools = [
                 self._run_query_tool.as_pydantic_ai_tool(),
                 self._get_table_schema_tool.as_pydantic_ai_tool(),
@@ -339,6 +341,7 @@ class RunSubagentForEachRowTool:
             error_msg: str | None = None
             metadata: tuple[bool, str, str] | None = None
             try:
+                prompt = task_template.render(row)
                 result = await subagent.run(prompt)
                 output = result.output
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
@@ -362,7 +365,6 @@ class RunSubagentForEachRowTool:
         async def _process_one_row_direct(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
             assert direct_output_col is not None
-            prompt = task_template.render(row)
             tools: list[Tool] = []
             browser_tool: WebBrowserTool | None = None
             if enable_browser_tools:
@@ -379,6 +381,7 @@ class RunSubagentForEachRowTool:
             error_msg: str | None = None
             metadata: tuple[bool, str, str] | None = None
             try:
+                prompt = task_template.render(row)
                 result = await subagent.run(prompt)
                 output = result.output
                 await _write_row_output(key_payload, {direct_output_col: output})
