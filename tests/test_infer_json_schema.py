@@ -160,6 +160,51 @@ def test_plain_string_not_parsed() -> None:
     assert schema == {"type": "string"}
 
 
+def test_json_encoded_objects_nested_in_arrays_get_parsed() -> None:
+    """Arrays whose items are JSON-encoded objects (the DuckDB ``JSON[]`` case)
+    should infer object items, not string items."""
+    schema = infer_json_schema(
+        [
+            ['{"id": "A", "phrase": "foo"}', '{"id": "B", "phrase": "bar"}'],
+            ['{"id": "C", "phrase": "baz"}'],
+        ]
+    )
+    assert schema is not None
+    assert schema["type"] == "array"
+    items = schema["items"]
+    assert items["type"] == "object"
+    assert items["properties"]["id"] == {"type": "string"}
+    assert items["properties"]["phrase"] == {"type": "string"}
+
+
+def test_json_encoded_objects_nested_in_struct_fields_get_parsed() -> None:
+    """Object property values that are JSON-encoded objects should unwrap too."""
+    schema = infer_json_schema(
+        [
+            {"meta": '{"version": 1, "author": "alice"}'},
+            {"meta": '{"version": 2, "author": "bob"}'},
+        ]
+    )
+    assert schema is not None
+    meta = schema["properties"]["meta"]
+    assert meta["type"] == "object"
+    assert meta["properties"]["version"] == {"type": "integer"}
+
+
+def test_scalar_looking_strings_inside_objects_stay_strings() -> None:
+    """A property value like ``"10001"`` (ZIP code) is valid JSON for an integer,
+    but the caller stored it as a string; nested inference must not reinterpret."""
+    schema = infer_json_schema(
+        [
+            {"zip": "10001", "count": "5"},
+            {"zip": "94016", "count": "12"},
+        ]
+    )
+    assert schema is not None
+    assert schema["properties"]["zip"] == {"type": "string"}
+    assert schema["properties"]["count"] == {"type": "string"}
+
+
 def test_boolean_not_integer() -> None:
     """Booleans should be typed as 'boolean', not 'integer'."""
     schema = infer_json_schema([True, False])

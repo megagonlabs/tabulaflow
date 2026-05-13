@@ -57,10 +57,40 @@ def _parse_value(v: Any) -> Any:
     return v
 
 
+def _parse_nested_value(v: Any) -> Any:
+    """Like :func:`_parse_value` but only unwraps JSON-encoded *containers*.
+
+    At a nested level we cannot assume a string is JSON-encoded: a property
+    value like ``"10001"`` (e.g. a ZIP code) is valid JSON for integer ``10001``,
+    but the caller stored it as a string and the inference should respect that.
+    Only unwrap when the parse result is a ``dict`` or ``list`` — i.e. the
+    string clearly carries embedded JSON structure, as happens with DuckDB
+    ``JSON[]`` columns whose items come back as JSON text.
+    """
+    if not isinstance(v, str):
+        return v
+    s = v.lstrip()
+    if not s.startswith(("{", "[")):
+        return v
+    try:
+        parsed = json.loads(v)
+    except (json.JSONDecodeError, ValueError):
+        return v
+    if isinstance(parsed, (dict, list)):
+        return parsed
+    return v
+
+
 def _infer_schema(values: list[Any], *, max_depth: int, _depth: int) -> dict[str, Any]:
     """Recursively infer a JSON Schema from a list of sample values."""
     if _depth >= max_depth:
         return {}
+
+    # Unwrap JSON-encoded composites at every nested level. DuckDB ``JSON[]``
+    # columns return arrays whose items are raw JSON text, and nested struct
+    # fields can similarly carry JSON-encoded objects. Scalar-looking strings
+    # are left alone — see :func:`_parse_nested_value`.
+    values = [_parse_nested_value(v) for v in values]
 
     types: set[str] = set()
     # For objects: key -> list of values seen for that key
