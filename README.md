@@ -144,8 +144,14 @@ May 6
 May 11
 - [x] browser tools for subagents
 
+May 12
+- [x] Offload long user prompts and tool responses to message store
+- [x] Programmatic task instruction construction using task_query
+  - [x] Fix json handling
+- [x] Remove json stringify
+
+- [ ] sql_conn.py - fix column dtype for gold_ambig_points for arcs-bench
 - [ ] Fix tool response truncation for subagents
-- [ ] json_stringify?
 
 - General
   - [ ] Stringify for JSON field (study arcs-bench)
