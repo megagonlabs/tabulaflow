@@ -121,8 +121,12 @@ class RegistryRunSubagentForEachRowTool:
                 as a default.
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate values from the
-                ``task_query`` result. For JSON columns, use
-                ``{{ (col | fromjson).field }}`` to access nested fields. Example:
+                ``task_query`` result; standard Jinja control flow
+                (``{% for %}``, ``{% if %}``) is available. For JSON columns,
+                project the field/array you need with the dialect's JSON
+                functions in ``task_query`` rather than parsing in the template;
+                ``{% for %}`` on a JSON string silently iterates over characters,
+                not array items. Example:
                 ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns used in the WHERE clause to locate each row in
                 ``table_name`` for write-back. Must appear in the ``task_query``

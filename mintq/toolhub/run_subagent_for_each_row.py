@@ -55,10 +55,6 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
 # Dialects that require PARSE_JSON() to store a JSON string into a native column.
 _DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
-_JINJA_ENV = jinja2.Environment(undefined=jinja2.Undefined)
-_JINJA_ENV.filters["fromjson"] = lambda v: json.loads(v) if isinstance(v, str) else v
-
-
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
     """Build a SQLAlchemy WHERE clause from key columns."""
     conditions: list[sqlalchemy.ColumnElement[bool]] = []
@@ -118,7 +114,7 @@ class RunSubagentForEachRowTool:
         self._run_query_tool = RunQueryTool(db_connector)
         self._get_table_schema_tool = GetTableSchemaTool(db_connector, SQLDDLSchemaFormatter(), compress=True)
         self._get_column_json_schema_tool = GetColumnJsonSchemaTool(db_connector.schema)
-        self._agentic_system_prompt_template = _JINJA_ENV.from_string(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
+        self._agentic_system_prompt_template = jinja2.Template(_AGENTIC_SYSTEM_PROMPT_TEMPLATE)
 
     async def __call__(
         self,
@@ -179,8 +175,12 @@ class RunSubagentForEachRowTool:
                     WHERE r.sentiment IS NULL
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate values from the
-                ``task_query`` result. For JSON columns, use
-                ``{{ (col | fromjson).field }}`` to access nested fields. Example:
+                ``task_query`` result; standard Jinja control flow
+                (``{% for %}``, ``{% if %}``) is available. For JSON columns,
+                project the field/array you need with the dialect's JSON
+                functions in ``task_query`` rather than parsing in the template;
+                ``{% for %}`` on a JSON string silently iterates over characters,
+                not array items. Example:
                 ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns used in the WHERE clause to locate each row in
                 ``table_name`` for write-back. Must appear in the ``task_query``
@@ -236,7 +236,7 @@ class RunSubagentForEachRowTool:
 
         # Compile the task instruction as a Jinja2 template.
         try:
-            task_template = _JINJA_ENV.from_string(task_instruction)
+            task_template = jinja2.Template(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
 
