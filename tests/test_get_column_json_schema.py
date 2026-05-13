@@ -190,6 +190,50 @@ class TestFormatJsonSchemaAlwaysExpandTopLevel:
         for i in range(40):
             assert f"field_{i}" in result
 
+    def test_array_of_anyof_is_parenthesized(self) -> None:
+        """An array of a union must wrap the union in parens so ``[]`` binds
+        to the whole alternation: ``(A | B | C)[]`` not ``A | B | C[]``."""
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": {
+                "anyOf": [
+                    {"type": "string"},
+                    {"type": "integer"},
+                    {"type": "boolean"},
+                ]
+            },
+        }
+        assert format_json_schema(schema) == "(string | integer | boolean)[]"
+
+    def test_array_of_nullable_is_parenthesized(self) -> None:
+        """``T | null`` inside an array must also be parenthesized."""
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": {"anyOf": [{"type": "string"}, {"type": "null"}]},
+        }
+        assert format_json_schema(schema) == "(string | null)[]"
+
+    def test_nested_array_of_array_of_union(self) -> None:
+        """Regression: the cypherbench ``answer_json`` shape — list-of-list-of-mixed."""
+        schema: dict[str, Any] = {
+            "type": "array",
+            "items": {
+                "type": "array",
+                "items": {
+                    "anyOf": [
+                        {"type": "array", "items": {"type": "string"}},
+                        {"type": "boolean"},
+                        {"type": "integer"},
+                        {"type": "number"},
+                        {"type": "string"},
+                        {"type": "null"},
+                    ]
+                },
+            },
+        }
+        result = format_json_schema(schema)
+        assert result == "(string[] | boolean | integer | number | string | null)[][]"
+
 
 # ---------------------------------------------------------------------------
 # Tests for _resolve_json_schema_path

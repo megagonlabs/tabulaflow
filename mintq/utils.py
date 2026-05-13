@@ -421,6 +421,22 @@ def render_column_dtype(column: SQLColumnSchema, max_native_dtype_chars: int = 8
     return column.dtype
 
 
+def _is_union_schema(schema: dict[str, Any]) -> bool:
+    """Whether ``schema`` renders with a top-level ``|`` via :func:`format_json_schema`.
+
+    True when the schema has ``anyOf`` with more than one branch after
+    collapsing duplicate ``null`` entries — i.e. the rendered form is
+    ``A | B`` or ``A | null``. False for single-branch ``anyOf`` (renders
+    as a bare type) and for non-``anyOf`` schemas.
+    """
+    if "anyOf" not in schema:
+        return False
+    subtypes = schema["anyOf"]
+    non_null = [s for s in subtypes if s.get("type") != "null"]
+    has_null = len(non_null) < len(subtypes)
+    return len(non_null) >= 2 or (len(non_null) == 1 and has_null)
+
+
 def format_json_schema(
     schema: dict[str, Any],
     *,
@@ -513,6 +529,12 @@ def format_json_schema(
             inner = format_json_schema(items_schema, **kw, _depth=_depth, _budget=_budget)
             if inner.startswith("{"):
                 return f"[{inner}]"
+            # Parenthesize unions so ``[]`` binds to the whole alternation,
+            # not just the last branch: ``(A | B)[]`` rather than ``A | B[]``.
+            # Check the schema (not the rendered string) so already-parenthesized
+            # inner forms like ``(A | B)[]`` don't get double-wrapped.
+            if _is_union_schema(items_schema):
+                return f"({inner})[]"
             return f"{inner}[]"
         return "array"
 
