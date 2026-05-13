@@ -123,10 +123,11 @@ class RunSubagentForEachRowTool:
     async def __call__(
         self,
         table_name: str,
+        *,
+        task_query: str,
         task_instruction: str,
         key_columns: list[str],
         output_columns: list[str] | None = None,
-        sql_filter: str | None = None,
         mode: Literal["agentic", "direct"] = "direct",
         enable_browser_tools: bool = False,
     ) -> str:
@@ -162,19 +163,32 @@ class RunSubagentForEachRowTool:
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
+                Used as the write-back target; per-row updates locate rows here
+                via ``key_columns``.
+            task_query: SELECT query producing one row per subagent task. Free-form:
+                may join tables, compute new columns, etc. The result columns
+                become the variables available to ``task_instruction``. Must
+                include all ``key_columns``. Pass ``SELECT * FROM <table_name>``
+                as a default. Example::
+
+                    SELECT r.review_id,
+                           r.product_name,
+                           m.content AS review_text
+                    FROM reviews r
+                    JOIN workspace._internal.messages m ON r.msg_ref = m.message_id
+                    WHERE r.sentiment IS NULL
             task_instruction: A Jinja2 template rendered per-row as the subagent
-                prompt. Use ``{{ column_name }}`` to interpolate column values.
-                For JSON columns, use ``{{ (col | fromjson).field }}`` to access
-                nested fields. Example: ``"Classify the sentiment of: {{ review_text }}"``.
-            key_columns: Columns the subagent uses in the WHERE clause to
-                locate each row.
-            output_columns: Columns the subagent should update. In ``direct``
-                mode, must be exactly one column. If provided, all must
-                already exist in the target table.
-            sql_filter: A ``SELECT *`` query to select which rows to process.
-                Must be a SELECT * query against table_name (e.g.
-                ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
-                If omitted, all rows are processed.
+                prompt. Use ``{{ column_name }}`` to interpolate values from the
+                ``task_query`` result. For JSON columns, use
+                ``{{ (col | fromjson).field }}`` to access nested fields. Example:
+                ``"Classify the sentiment of: {{ review_text }}"``.
+            key_columns: Columns used in the WHERE clause to locate each row in
+                ``table_name`` for write-back. Must appear in the ``task_query``
+                result.
+            output_columns: Columns to update on ``table_name``. In ``direct``
+                mode, must be exactly one column. All must already exist on the
+                target table (they do not need to appear in the ``task_query``
+                projection).
             mode: Execution mode controlling database access. ``direct``
                 (default) gives no database tools — the subagent produces
                 text output and this tool writes it to ``output_columns``.
@@ -189,21 +203,34 @@ class RunSubagentForEachRowTool:
             if not output_columns or len(output_columns) != 1:
                 return "(error: output_columns must be exactly one column in direct mode)"
 
-        query = sql_filter if sql_filter is not None else f"SELECT * FROM {table_name}"
-        select_result = await self.db_connector.run_query_async(query)
+        select_result = await self.db_connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
-            return f"(error: failed to load rows from {table_name}: {detail})"
+            return f"(error: failed to evaluate task_query: {detail})"
 
         df = select_result.df
         all_columns = [str(c) for c in df.columns]
         if not all_columns:
-            return f"(error: table {table_name!r} has no columns)"
+            return "(error: task_query returned no columns)"
 
         missing_id = [c for c in key_columns if c not in all_columns]
         if missing_id:
-            return f"(error: key_columns not found in table {table_name!r}: {missing_id})"
-        missing_output_columns = [c for c in (output_columns or []) if c not in all_columns]
+            return f"(error: key_columns not found in task_query result: {missing_id})"
+
+        # Look up the target table's actual columns to validate output_columns and
+        # decide whether to ALTER for _subagent_* columns. task_query may project
+        # arbitrary computed/joined columns that don't correspond to table_name.
+        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {table_name} LIMIT 0")
+        if table_columns_result.error is not None or table_columns_result.df is None:
+            detail = (
+                table_columns_result.error.message
+                if table_columns_result.error is not None
+                else "no dataframe returned"
+            )
+            return f"(error: failed to inspect target table {table_name!r}: {detail})"
+        table_columns = [str(c) for c in table_columns_result.df.columns]
+
+        missing_output_columns = [c for c in (output_columns or []) if c not in table_columns]
         if missing_output_columns:
             return f"(error: output_columns not found in table {table_name!r}: {missing_output_columns})"
 
@@ -218,7 +245,7 @@ class RunSubagentForEachRowTool:
         trajectory_dtype = _JSON_TYPE_FOR_DIALECT.get(dialect, "TEXT")
         if self.store_metadata:
             for col in _INTERNAL_COLUMNS:
-                if col not in all_columns:
+                if col not in table_columns:
                     if col == _COL_SUCCESS:
                         dtype = "BOOLEAN"
                     elif col == _COL_TRAJECTORY:

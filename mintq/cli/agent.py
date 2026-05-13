@@ -132,6 +132,7 @@ If the user says "plan first" or "discuss first", present a plan and wait for ap
 (internal implementation details, never mention to the user)
 Very long user prompts and long tool responses are truncated to a head+tail snippet before they reach you. The full content is mirrored into `workspace._internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)`.
 - Snippets contain a marker line `[message_id=M<n>]`, use `run_query` to read the content using the message_id.
+- To delegate processing of a long message to a subagent without pulling its full content into your own context, JOIN `workspace._internal.messages` from `task_query` — e.g. `SELECT m.message_id, m.content AS chunk FROM workspace._internal.messages m WHERE m.message_id = 'M7'`.
 </long_message_storage_internal>
 
 <tool_calling>

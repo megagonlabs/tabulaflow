@@ -71,10 +71,11 @@ class RegistryRunSubagentForEachRowTool:
         self,
         db_alias: str,
         table_name: str,
+        *,
+        task_query: str,
         task_instruction: str,
         key_columns: list[str],
         output_columns: list[str] | None = None,
-        sql_filter: str | None = None,
         mode: Literal["agentic", "direct"] = "direct",
         enable_browser_tools: bool = False,
     ) -> str:
@@ -111,19 +112,25 @@ class RegistryRunSubagentForEachRowTool:
         Args:
             db_alias: Alias of the target database to update.
             table_name: Target table name. Can be qualified (e.g. schema.table).
+                Used as the write-back target; per-row updates locate rows here
+                via ``key_columns``.
+            task_query: SELECT query producing one row per subagent task. Free-form:
+                may join tables, compute new columns, etc. The result columns
+                become the variables available to ``task_instruction``. Must
+                include all ``key_columns``. Pass ``SELECT * FROM <table_name>``
+                as a default.
             task_instruction: A Jinja2 template rendered per-row as the subagent
-                prompt. Use ``{{ column_name }}`` to interpolate column values.
-                For JSON columns, use ``{{ (col | fromjson).field }}`` to access
-                nested fields. Example: ``"Classify the sentiment of: {{ review_text }}"``.
-            key_columns: Columns the subagent uses in the WHERE clause to
-                locate each row.
-            output_columns: Columns the subagent should update. In ``direct``
-                mode, must be exactly one column. If provided, all must
-                already exist in the target table.
-            sql_filter: A ``SELECT *`` query to select which rows to process.
-                Must be a SELECT * query against table_name (e.g.
-                ``SELECT * FROM reviews WHERE sentiment IS NULL LIMIT 10``).
-                If omitted, all rows are processed.
+                prompt. Use ``{{ column_name }}`` to interpolate values from the
+                ``task_query`` result. For JSON columns, use
+                ``{{ (col | fromjson).field }}`` to access nested fields. Example:
+                ``"Classify the sentiment of: {{ review_text }}"``.
+            key_columns: Columns used in the WHERE clause to locate each row in
+                ``table_name`` for write-back. Must appear in the ``task_query``
+                result.
+            output_columns: Columns to update on ``table_name``. In ``direct``
+                mode, must be exactly one column. All must already exist on the
+                target table (they do not need to appear in the ``task_query``
+                projection).
             mode: Execution mode controlling database access. ``direct``
                 (default) gives no database tools — the subagent produces
                 text output and this tool writes it to ``output_columns``.
@@ -143,10 +150,10 @@ class RegistryRunSubagentForEachRowTool:
             return f"(error: {e})"
         return await tool(
             table_name,
-            task_instruction,
-            key_columns,
+            task_query=task_query,
+            task_instruction=task_instruction,
+            key_columns=key_columns,
             output_columns=output_columns,
-            sql_filter=sql_filter,
             mode=mode,
             enable_browser_tools=enable_browser_tools,
         )
