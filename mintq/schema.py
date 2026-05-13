@@ -383,6 +383,13 @@ class ForeignKeySchema(BaseModel):
 class SQLColumnSchema(BaseModel):
     name: str
     dtype: str
+    """Canonical atomic type token (e.g. ``VARCHAR``, ``BIGINT``, ``ARRAY``, ``STRUCT``).
+    Used for categorical type-class checks. See ``native_dtype`` for the dialect-native string."""
+    native_dtype: str | None = None
+    """Dialect-native type string preserving parameters/nested shape
+    (e.g. ``VARCHAR(100)`` on Postgres, ``STRUCT(a INT, b VARCHAR)`` on DuckDB,
+    ``ARRAY<STRING>`` on BigQuery). Best-effort: ``None`` when neither SQLAlchemy
+    nor the dialect catalog could resolve it."""
     description: str | None = None
     """Concise description of the column"""
     detailed_description_markdown: str | None = None

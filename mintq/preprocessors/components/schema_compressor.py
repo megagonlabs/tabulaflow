@@ -215,10 +215,12 @@ class SchemaCompressor:
 
         # Use the first non-None json_schema among the columns being merged
         merged_json_schema = next((c.json_schema for c in columns if c.json_schema is not None), None)
+        merged_native_dtype = next((c.native_dtype for c in columns if c.native_dtype is not None), None)
 
         return SQLColumnSchema(
             name=columns[0].name,
             dtype=columns[0].dtype,
+            native_dtype=merged_native_dtype,
             description=columns[0].description,
             nullable=any(c.nullable for c in columns),
             null_ratio=merged_null_ratio,

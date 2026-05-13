@@ -1604,38 +1604,58 @@ _LARGE_TABLE_THRESHOLD = 1000000
 _LARGE_TABLE_SAMPLE_SIZE = 1000000
 
 
-def _normalize_duckdb_native_dtype(native: str) -> str:
-    """Normalize a raw DuckDB type string into a canonical uppercase token.
+def _canonicalize_dtype(native: str) -> str:
+    """Map a dialect-native type string into a canonical uppercase atomic token.
 
     The result is matched against CATEGORICAL_TYPES / JSON_TYPES /
     DISTINCT_SAFE_TYPES, so it must use the canonical names those
-    constants use (e.g. ``ARRAY``, ``STRUCT``, ``DECIMAL``).
+    constants use (e.g. ``ARRAY``, ``STRUCT``, ``DECIMAL``, ``VARCHAR``).
+
+    Strips parameter lists (``DECIMAL(18,2)`` → ``DECIMAL``) and collapses
+    array notations (``JSON[]``, ``ARRAY<STRING>``, ``STRUCT(...)[]``) to
+    ``ARRAY``.
     """
     s = native.strip()
-    if s.endswith("[]"):
-        return "ARRAY"
     up = s.upper()
+    if up.endswith("[]"):
+        return "ARRAY"
+    # BigQuery: ARRAY<STRING>, STRUCT<a INT64> — strip from the angle bracket
+    angle = up.find("<")
+    if angle >= 0:
+        up = up[:angle]
     paren = up.find("(")
     if paren >= 0:
         up = up[:paren]
-    return up
+    return up.strip()
 
 
-async def _resolve_native_dtype_async(
+def _compile_native_dtype(t_eng: ThrottledEngine, col_type: Any) -> str | None:
+    """Render a SQLAlchemy ``TypeEngine`` as a dialect-native DDL string.
+
+    Dialect-agnostic API: works for any type SQLAlchemy understood, in any
+    dialect. Returns ``None`` when SQLAlchemy lost the type info
+    (``NullType`` → ``CompileError``).
+    """
+    try:
+        return str(col_type.compile(dialect=t_eng.engine.dialect))
+    except sqlalchemy.exc.CompileError:
+        return None
+
+
+async def _catalog_native_dtype_async(
     t_eng: ThrottledEngine,
     schema_name: str | None,
     table_name: str,
     column_name: str,
 ) -> str | None:
-    """Resolve a column's native type when SQLAlchemy returned ``NullType``.
+    """Recover a column's native type by querying the dialect's catalog.
 
-    Works around dialect gaps where the SQLAlchemy inspector cannot
-    translate a database-native composite type (e.g. ``duckdb_engine``
-    returns ``NullType`` for ``LIST`` / ``STRUCT`` / ``MAP`` —
-    Mause/duckdb_engine#654).
+    Used when SQLAlchemy's ``TypeEngine.compile`` fails because the
+    inspector returned ``NullType`` (e.g. ``duckdb_engine`` on ``LIST`` /
+    ``STRUCT`` / ``MAP`` — Mause/duckdb_engine#654).
 
-    Returns the canonical dtype token, or ``None`` if the dialect has no
-    fallback or the lookup fails.
+    Returns ``None`` if the dialect has no implemented fallback or the
+    lookup fails.
     """
     dialect = t_eng.engine.dialect.name
     if dialect != "duckdb":
@@ -1653,14 +1673,32 @@ async def _resolve_native_dtype_async(
         )
     except Exception:
         logger.debug(
-            f"native dtype lookup failed for {schema_name}.{table_name}.{column_name}",
+            f"native dtype catalog lookup failed for {schema_name}.{table_name}.{column_name}",
             exc_info=True,
         )
         return None
     rows = result.result
     if not rows or rows[0][0] is None:
         return None
-    return _normalize_duckdb_native_dtype(str(rows[0][0]))
+    return str(rows[0][0])
+
+
+async def _resolve_native_dtype_async(
+    t_eng: ThrottledEngine,
+    schema_name: str | None,
+    table_name: str,
+    column: dict[str, Any],
+) -> str | None:
+    """Best-effort native type string for a column.
+
+    Tries the dialect-agnostic ``TypeEngine.compile`` first, then falls
+    back to the dialect's catalog for cases where SQLAlchemy lost the
+    type (``NullType``).
+    """
+    compiled = _compile_native_dtype(t_eng, column["type"])
+    if compiled is not None:
+        return compiled
+    return await _catalog_native_dtype_async(t_eng, schema_name, table_name, column["name"])
 
 
 async def build_column_async(
@@ -1679,12 +1717,12 @@ async def build_column_async(
     dtype = column["type"].__visit_name__.upper()
     if dtype == "USER_DEFINED":
         dtype = type(column["type"]).__name__.upper()
-    if dtype == "NULL":
+    native_dtype = await _resolve_native_dtype_async(t_eng, schema_name, table_name, column)
+    if dtype == "NULL" and native_dtype is not None:
         # The inspector failed to translate the native type (e.g. duckdb_engine
-        # on LIST/STRUCT/MAP). Ask the database directly.
-        resolved = await _resolve_native_dtype_async(t_eng, schema_name, table_name, column["name"])
-        if resolved is not None:
-            dtype = resolved
+        # on LIST/STRUCT/MAP). Canonicalize from the native string so the
+        # categorical type-class checks below still work.
+        dtype = _canonicalize_dtype(native_dtype)
     nullable = column["nullable"]
     can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
@@ -1770,6 +1808,7 @@ async def build_column_async(
     return SQLColumnSchema(
         name=_denorm(t_eng, column["name"]),
         dtype=dtype,
+        native_dtype=native_dtype,
         nullable=nullable,
         null_ratio=null_ratio,
         num_unique=num_unique,
