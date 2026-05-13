@@ -149,8 +149,10 @@ May 12
 - [x] Programmatic task instruction construction using task_query
   - [x] Fix json handling
 - [x] Remove json stringify
+- [x] Fix json display (e.g. for JSON[])
 
 - [ ] sql_conn.py - fix column dtype for gold_ambig_points for arcs-bench
+- [ ] "loading" for large json loading
 - [ ] Fix tool response truncation for subagents
 
 - General
@@ -168,6 +170,7 @@ May 12
   - [ ] Show query latency
   - [ ] NL tool progress
   - [ ] "connect to data" instead of "paste data"
+  - [ ] Consider huggingface compatibility when designing export format
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
