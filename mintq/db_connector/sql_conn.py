@@ -95,7 +95,7 @@ import sqlalchemy
 from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
-from sqlalchemy import create_engine, event, select, func, distinct, inspect
+from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
 from mintq.schema import (
     ErrorInfo,
     SQLDialect,
@@ -1535,6 +1535,7 @@ JSON_TYPES = [
     "OBJECT",  # Snowflake
     "ARRAY",  # Snowflake, BigQuery, PostgreSQL, DuckDB
     "STRUCT",  # BigQuery (RECORD/STRUCT), DuckDB
+    "MAP",  # DuckDB
     "JSON",  # MySQL, PostgreSQL, SQLite, DuckDB, BigQuery
     "JSONB",  # PostgreSQL
     "SUPER",  # Redshift
@@ -1603,6 +1604,65 @@ _LARGE_TABLE_THRESHOLD = 1000000
 _LARGE_TABLE_SAMPLE_SIZE = 1000000
 
 
+def _normalize_duckdb_native_dtype(native: str) -> str:
+    """Normalize a raw DuckDB type string into a canonical uppercase token.
+
+    The result is matched against CATEGORICAL_TYPES / JSON_TYPES /
+    DISTINCT_SAFE_TYPES, so it must use the canonical names those
+    constants use (e.g. ``ARRAY``, ``STRUCT``, ``DECIMAL``).
+    """
+    s = native.strip()
+    if s.endswith("[]"):
+        return "ARRAY"
+    up = s.upper()
+    paren = up.find("(")
+    if paren >= 0:
+        up = up[:paren]
+    return up
+
+
+async def _resolve_native_dtype_async(
+    t_eng: ThrottledEngine,
+    schema_name: str | None,
+    table_name: str,
+    column_name: str,
+) -> str | None:
+    """Resolve a column's native type when SQLAlchemy returned ``NullType``.
+
+    Works around dialect gaps where the SQLAlchemy inspector cannot
+    translate a database-native composite type (e.g. ``duckdb_engine``
+    returns ``NullType`` for ``LIST`` / ``STRUCT`` / ``MAP`` —
+    Mause/duckdb_engine#654).
+
+    Returns the canonical dtype token, or ``None`` if the dialect has no
+    fallback or the lookup fails.
+    """
+    dialect = t_eng.engine.dialect.name
+    if dialect != "duckdb":
+        return None
+
+    stmt = text(
+        "SELECT data_type FROM information_schema.columns "
+        "WHERE table_name = :table AND column_name = :column "
+        "AND (:schema IS NULL OR table_schema = :schema)"
+    )
+    try:
+        result = await t_eng.execute_async(
+            stmt,
+            parameters={"table": table_name, "column": column_name, "schema": schema_name},
+        )
+    except Exception:
+        logger.debug(
+            f"native dtype lookup failed for {schema_name}.{table_name}.{column_name}",
+            exc_info=True,
+        )
+        return None
+    rows = result.result
+    if not rows or rows[0][0] is None:
+        return None
+    return _normalize_duckdb_native_dtype(str(rows[0][0]))
+
+
 async def build_column_async(
     t_eng: ThrottledEngine,
     column: dict[str, Any],
@@ -1619,6 +1679,12 @@ async def build_column_async(
     dtype = column["type"].__visit_name__.upper()
     if dtype == "USER_DEFINED":
         dtype = type(column["type"]).__name__.upper()
+    if dtype == "NULL":
+        # The inspector failed to translate the native type (e.g. duckdb_engine
+        # on LIST/STRUCT/MAP). Ask the database directly.
+        resolved = await _resolve_native_dtype_async(t_eng, schema_name, table_name, column["name"])
+        if resolved is not None:
+            dtype = resolved
     nullable = column["nullable"]
     can_use_distinct = dtype in DISTINCT_SAFE_TYPES
 
