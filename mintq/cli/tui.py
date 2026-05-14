@@ -521,16 +521,19 @@ LIMIT 4000"""
         long_small = long_json(50)
         long_medium = long_json(1_500)
         long_huge = long_json(15_000)
+        long_giant = long_json(100_000)
 
         # long_wide_under_* — many lines AND every "note" line is wide but
         # still under the 500-char wrap threshold (max_line ~= note_chars + 17
         # for indent=2 nesting at depth 3). Wrap stays ON.
         long_wide_under_medium = long_json(1_500, note_chars=470)
         long_wide_under_huge = long_json(15_000, note_chars=470)
+        long_wide_under_giant = long_json(100_000, note_chars=470)
         # long_wide_over_* — many lines AND every "note" line exceeds the
         # threshold, so wrap auto-disables.
         long_wide_over_medium = long_json(1_500, note_chars=800)
         long_wide_over_huge = long_json(15_000, note_chars=800)
+        long_wide_over_giant = long_json(100_000, note_chars=800)
 
         # wide_* — single line, length controls whether wrap stays on.
         wide_just_below = "a" * 480
@@ -542,10 +545,13 @@ LIMIT 4000"""
             ("long_small", "~400 lines, max_line ~30", long_small),
             ("long_medium", "~13K lines, max_line ~30", long_medium),
             ("long_huge", "~135K lines, max_line ~30", long_huge),
+            ("long_giant", "~900K lines, max_line ~30 (~13 MB)", long_giant),
             ("long_wide_under_medium", "~13K lines, max_line ~487 (wrap ON)", long_wide_under_medium),
             ("long_wide_under_huge", "~135K lines, max_line ~487 (wrap ON)", long_wide_under_huge),
+            ("long_wide_under_giant", "~900K lines, max_line ~487 (wrap ON, ~62 MB)", long_wide_under_giant),
             ("long_wide_over_medium", "~13K lines, max_line ~817 (wrap OFF)", long_wide_over_medium),
             ("long_wide_over_huge", "~135K lines, max_line ~817 (wrap OFF)", long_wide_over_huge),
+            ("long_wide_over_giant", "~900K lines, max_line ~817 (wrap OFF, ~95 MB)", long_wide_over_giant),
             ("wide_just_below_threshold", "1 line, 480 chars (wrap ON)", wide_just_below),
             ("wide_just_above_threshold", "1 line, 520 chars (wrap OFF)", wide_just_above),
             ("wide_far_above_threshold", "1 line, 50K chars (wrap OFF)", wide_far_above),
