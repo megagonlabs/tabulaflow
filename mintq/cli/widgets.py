@@ -1237,7 +1237,7 @@ class CellBrowserScreen(Screen[None]):
         except Exception:
             opened = False
         if opened:
-            self._refresh_status(Text("opened in browser", style="dim"))
+            self._refresh_status(Text(f"opened in browser: {path}", style="dim"))
         else:
             self._refresh_status(Text(f"no browser, saved to {path}", style="dim"))
 
