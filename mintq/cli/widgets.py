@@ -726,8 +726,15 @@ class DataBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
-    def action_open_cell(self) -> None:
-        """Open cell value browser for the currently highlighted cell."""
+    async def action_open_cell(self) -> None:
+        """Open cell value browser for the currently highlighted cell.
+
+        Yields one event-loop tick after updating the status so Textual
+        gets to paint ``Loading cell...`` before we run the (CPU-bound,
+        GIL-holding) ``_format_value`` synchronously.
+        """
+        import asyncio
+
         row_idx = self._table.cursor_coordinate.row
         col_idx = self._table.cursor_coordinate.column
         # Column 0 is the row-number column; skip it.
@@ -744,12 +751,25 @@ class DataBrowserScreen(Screen[None]):
         raw_value = self._df.iloc[df_row, df_col]
         row_number = df_row + 1
         dtype_str = self._describe_dtype(self._df[col_name])
+
+        self._status.update(Text("Loading cell...", style="dim"))
+        # Wait until Textual has actually painted the new status before we
+        # block the main thread with _format_value (CPU-bound, holds GIL).
+        painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+        await painted
+        try:
+            display_text, language = CellBrowserScreen._format_value(raw_value)
+        finally:
+            self._update_status()
         self.app.push_screen(
             CellBrowserScreen(
                 column_name=col_name,
                 row_number=row_number,
                 value=raw_value,
                 dtype_str=dtype_str,
+                display_text=display_text,
+                language=language,
             )
         )
 
@@ -987,6 +1007,13 @@ class CellBrowserScreen(Screen[None]):
         Binding("escape", "close_browser", "Back", show=True),
     ]
 
+    # Skip syntax highlighting above this many rendered chars — Pygments'
+    # upfront pass blocks the UI for several seconds on multi-MB JSON.
+    _MAX_HIGHLIGHT_CHARS = 200_000
+    # Disable soft_wrap when any line exceeds this length — wrap recompute
+    # on a single very long line dominates scroll/cursor cost in TextArea.
+    _MAX_SOFT_WRAP_LINE = 500
+
     def __init__(
         self,
         *,
@@ -994,13 +1021,18 @@ class CellBrowserScreen(Screen[None]):
         row_number: int,
         value: object,
         dtype_str: str,
+        display_text: str | None = None,
+        language: str | None = None,
     ) -> None:
         super().__init__()
         self._column_name = column_name
         self._row_number = row_number
         self._raw_value = value
         self._dtype_str = dtype_str
-        self._display_text, self._language = self._format_value(value)
+        if display_text is None:
+            self._display_text, self._language = self._format_value(value)
+        else:
+            self._display_text, self._language = display_text, language
 
     _SQL_RE = re.compile(r"^\s*(SELECT|INSERT|UPDATE|DELETE|CREATE|ALTER|DROP|WITH|EXPLAIN)\b", re.IGNORECASE)
     _PY_RE = re.compile(r"^\s*(def |class |import |from |if __name__)")
@@ -1051,11 +1083,13 @@ class CellBrowserScreen(Screen[None]):
         obj = CellBrowserScreen._truncate_json_leaves(obj, CellBrowserScreen._MAX_JSON_LEAF)
         return json.dumps(obj, indent=2, ensure_ascii=False, default=str)
 
-    _MAX_CELL_DISPLAY = 10000
-
     @staticmethod
     def _format_value(value: object) -> tuple[str, str | None]:
-        """Return (display_text, language) for the cell value."""
+        """Return (display_text, language) for the cell value.
+
+        No total-size cap; per-leaf truncation (`_MAX_JSON_LEAF`) keeps any
+        individual string bounded so pretty-printed JSON has short lines.
+        """
         import pandas as pd_
 
         try:
@@ -1071,34 +1105,33 @@ class CellBrowserScreen(Screen[None]):
 
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
-            if len(json_str) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                json_str = (
-                    json_str[: CellBrowserScreen._MAX_CELL_DISPLAY]
-                    + f"\n\n... ({len(json_str):,} chars total, truncated)"
-                )
             return json_str, "json"
 
         s = str(value)
         if CellBrowserScreen._SQL_RE.match(s):
-            if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "sql"
         if CellBrowserScreen._PY_RE.match(s):
-            if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-                s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
             return s, "python"
-        if len(s) > CellBrowserScreen._MAX_CELL_DISPLAY:
-            s = s[: CellBrowserScreen._MAX_CELL_DISPLAY] + f"\n\n... ({len(s):,} chars total, truncated)"
         return s, None
 
+    def _resolved_language(self) -> str | None:
+        if self._language not in QueryBrowserScreen._SUPPORTED_LANGUAGES:
+            return None
+        if len(self._display_text) > self._MAX_HIGHLIGHT_CHARS:
+            return None
+        return self._language
+
+    def _resolved_soft_wrap(self) -> bool:
+        max_line = max((len(line) for line in self._display_text.split("\n")), default=0)
+        return max_line < self._MAX_SOFT_WRAP_LINE
+
     def compose(self) -> ComposeResult:
-        lang = self._language if self._language in QueryBrowserScreen._SUPPORTED_LANGUAGES else None
         yield TextArea(
             self._display_text,
-            language=lang,
+            language=self._resolved_language(),
             read_only=True,
             show_line_numbers=True,
-            soft_wrap=True,
+            soft_wrap=self._resolved_soft_wrap(),
         )
         yield Static(classes="cell-browser-status")
         yield Static(classes="cell-browser-gap")

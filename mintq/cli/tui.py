@@ -76,6 +76,7 @@ class MintqApp(App[None]):
             chat_log.mount(self._build_debug_chart_result_widget())
             chat_log.mount(self._build_debug_quad_result_widget())
             chat_log.mount(self._build_debug_multi_result_widget())
+            chat_log.mount(self._build_debug_huge_cell_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
@@ -472,6 +473,97 @@ LIMIT 4000"""
                     record_id="QDEBUG",
                     label="debug_4000x60",
                     query=debug_query,
+                    df=df,
+                    chart_spec=None,
+                    query_lexer="sql",
+                )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
+
+    def _build_debug_huge_cell_result_widget(self) -> AgentResultWidget:
+        """Cells of varying long/wide shapes for testing CellBrowserScreen.
+
+        - long_*: many short lines (stresses line-count / TextArea indexing)
+        - wide_*: very long single lines (stresses soft-wrap recompute;
+          soft_wrap auto-disables when any line > _MAX_SOFT_WRAP_LINE = 500)
+        """
+        import pandas as pd
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
+            # Pretty-printed lines per item are ~8; with note_chars > 0 each
+            # item also contributes a single long "note" line of that length
+            # (capped by `_MAX_JSON_LEAF = 1000` in CellBrowserScreen).
+            note = ("x" * note_chars) if note_chars else None
+            return {
+                "meta": {"n_items": n_items, "note_chars": note_chars},
+                "items": [
+                    {
+                        "id": i,
+                        "name": f"item-{i:08d}",
+                        "tags": [f"t{i % 17}", f"t{i % 31}"],
+                        "score": (i * 1009) % 10_000 / 100.0,
+                        **({"note": note} if note else {}),
+                    }
+                    for i in range(n_items)
+                ],
+            }
+
+        # long_* — many short lines, all well under 500-char wrap threshold.
+        long_small = long_json(50)
+        long_medium = long_json(1_500)
+        long_huge = long_json(15_000)
+
+        # long_wide_under_* — many lines AND every "note" line is wide but
+        # still under the 500-char wrap threshold (max_line ~= note_chars + 17
+        # for indent=2 nesting at depth 3). Wrap stays ON.
+        long_wide_under_medium = long_json(1_500, note_chars=470)
+        long_wide_under_huge = long_json(15_000, note_chars=470)
+        # long_wide_over_* — many lines AND every "note" line exceeds the
+        # threshold, so wrap auto-disables.
+        long_wide_over_medium = long_json(1_500, note_chars=800)
+        long_wide_over_huge = long_json(15_000, note_chars=800)
+
+        # wide_* — single line, length controls whether wrap stays on.
+        wide_just_below = "a" * 480
+        wide_just_above = "b" * 520
+        wide_far_above = "c" * 50_000
+        wide_extreme = "d" * 2_000_000
+
+        rows: list[tuple[str, str, object]] = [
+            ("long_small", "~400 lines, max_line ~30", long_small),
+            ("long_medium", "~13K lines, max_line ~30", long_medium),
+            ("long_huge", "~135K lines, max_line ~30", long_huge),
+            ("long_wide_under_medium", "~13K lines, max_line ~487 (wrap ON)", long_wide_under_medium),
+            ("long_wide_under_huge", "~135K lines, max_line ~487 (wrap ON)", long_wide_under_huge),
+            ("long_wide_over_medium", "~13K lines, max_line ~817 (wrap OFF)", long_wide_over_medium),
+            ("long_wide_over_huge", "~135K lines, max_line ~817 (wrap OFF)", long_wide_over_huge),
+            ("wide_just_below_threshold", "1 line, 480 chars (wrap ON)", wide_just_below),
+            ("wide_just_above_threshold", "1 line, 520 chars (wrap OFF)", wide_just_above),
+            ("wide_far_above_threshold", "1 line, 50K chars (wrap OFF)", wide_far_above),
+            ("wide_extreme", "1 line, 2M chars (wrap OFF, stress)", wide_extreme),
+        ]
+        df = pd.DataFrame(
+            {
+                "label": [r[0] for r in rows],
+                "shape": [r[1] for r in rows],
+                "value": [r[2] for r in rows],
+            }
+        )
+        result = ChatResult(
+            text="Debug long/wide cell fixture (Enter on `value` to open CellBrowserScreen)",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG_HUGE_CELL",
+                    label="debug_long_wide_cells",
+                    query="-- synthetic fixture: escalating cell sizes",
                     df=df,
                     chart_spec=None,
                     query_lexer="sql",
