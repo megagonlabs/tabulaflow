@@ -1209,9 +1209,9 @@ class CellBrowserScreen(Screen[None]):
         import webbrowser_open
 
         try:
-            data_dir: Path = self.app._runtime_paths.data_dir  # type: ignore[attr-defined]
+            dump_dir: Path = self.app._runtime_paths.cell_dumps_dir  # type: ignore[attr-defined]
         except AttributeError:
-            self._refresh_status(Text("save failed: no session data dir", style="red"))
+            self._refresh_status(Text("save failed: no cell dumps dir", style="red"))
             return
 
         try:
@@ -1220,9 +1220,8 @@ class CellBrowserScreen(Screen[None]):
             self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
             return
 
-        safe_col = re.sub(r"[^\w\-.]", "_", self._column_name)
-        ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
-        path = data_dir / f"cell_{safe_col}_row{self._row_number}_{ts}{suffix}"
+        ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S_%f")
+        path = dump_dir / f"cell_{ts}{suffix}"
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")

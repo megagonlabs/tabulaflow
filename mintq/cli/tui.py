@@ -12,7 +12,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
-from mintq.cli.runtime_paths import RuntimePaths, generate_session_id
+from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_cell_dumps
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -51,6 +51,7 @@ class MintqApp(App[None]):
         self._agent = agent
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
+        prune_old_cell_dumps(self._session_id)
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
