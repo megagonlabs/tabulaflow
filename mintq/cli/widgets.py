@@ -1239,7 +1239,7 @@ class CellBrowserScreen(Screen[None]):
         if opened:
             self._refresh_status(Text("opened in browser", style="dim"))
         else:
-            self._refresh_status(Text(f"saved: {path}", style="dim"))
+            self._refresh_status(Text(f"no browser, saved to {path}", style="dim"))
 
 
 # ---------------------------------------------------------------------------
