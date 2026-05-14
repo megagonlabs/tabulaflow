@@ -1030,6 +1030,10 @@ class CellBrowserScreen(Screen[None]):
         self._row_number = row_number
         self._raw_value = value
         self._dtype_str = dtype_str
+        # Cache the path written by ``action_open_in_browser`` so repeated
+        # presses of `b` reuse the same file (and may reuse the same
+        # browser tab) instead of writing a new dump every time.
+        self._dumped_path: Path | None = None
         if display_text is None:
             self._display_text, self._language = self._format_value(value)
         else:
@@ -1214,19 +1218,21 @@ class CellBrowserScreen(Screen[None]):
             self._refresh_status(Text("save failed: no cell dumps dir", style="red"))
             return
 
-        try:
-            text, suffix = self._serialize_full()
-        except Exception as exc:
-            self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
-            return
-
-        path = dump_dir / f"C_{secrets.token_hex(3)}{suffix}"
-        try:
-            path.parent.mkdir(parents=True, exist_ok=True)
-            path.write_text(text, encoding="utf-8")
-        except OSError as exc:
-            self._refresh_status(Text(f"write failed: {exc}", style="red"))
-            return
+        if self._dumped_path is None or not self._dumped_path.exists():
+            try:
+                text, suffix = self._serialize_full()
+            except Exception as exc:
+                self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
+                return
+            new_path = dump_dir / f"C_{secrets.token_hex(3)}{suffix}"
+            try:
+                new_path.parent.mkdir(parents=True, exist_ok=True)
+                new_path.write_text(text, encoding="utf-8")
+            except OSError as exc:
+                self._refresh_status(Text(f"write failed: {exc}", style="red"))
+                return
+            self._dumped_path = new_path
+        path = self._dumped_path
 
         # webbrowser_open.open returns None and raises on failure, so we
         # use absence of exception (combined with a default-browser probe
