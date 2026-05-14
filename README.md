@@ -156,6 +156,10 @@ May 13
   - [x] Fix dtype introspection, add native_dtype
   - [x] Parse nested json string
   - [x] Fix json schema rendering
+- Cell browser
+  - [x] Fix large cell display (no truncation and auto-disabling soft wrap)
+  - [x] "Loading cell..." status
+  - [ ] Open in browser
 
 - [ ] "loading" for large json loading
 - [ ] Fix tool response truncation for subagents
