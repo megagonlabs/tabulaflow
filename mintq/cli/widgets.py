@@ -1014,6 +1014,10 @@ class CellBrowserScreen(Screen[None]):
     # Disable soft_wrap when any line exceeds this length — wrap recompute
     # on a single very long line dominates scroll/cursor cost in TextArea.
     _MAX_SOFT_WRAP_LINE = 500
+    # Soft cap on the rendered display text. Beyond this, append a footer
+    # pointing the user at `b` for full-fidelity content via the browser
+    # (which goes through `_serialize_full`, bypassing this cap).
+    _MAX_DISPLAY_CHARS = 1_000_000
 
     def __init__(
         self,
@@ -1092,8 +1096,11 @@ class CellBrowserScreen(Screen[None]):
     def _format_value(value: object) -> tuple[str, str | None]:
         """Return (display_text, language) for the cell value.
 
-        No total-size cap; per-leaf truncation (`_MAX_JSON_LEAF`) keeps any
-        individual string bounded so pretty-printed JSON has short lines.
+        Output is soft-capped at ``_MAX_DISPLAY_CHARS``; truncated text gets
+        a footer pointing the user at `b` for full content (which goes
+        through ``_serialize_full``, bypassing this cap). Per-leaf
+        truncation (``_MAX_JSON_LEAF``) keeps individual JSON strings
+        bounded so pretty-printed JSON has short lines.
         """
         import pandas as pd_
 
@@ -1110,14 +1117,25 @@ class CellBrowserScreen(Screen[None]):
 
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
-            return json_str, "json"
+            return CellBrowserScreen._cap_display(json_str), "json"
 
         s = str(value)
         if CellBrowserScreen._SQL_RE.match(s):
-            return s, "sql"
+            return CellBrowserScreen._cap_display(s), "sql"
         if CellBrowserScreen._PY_RE.match(s):
-            return s, "python"
-        return s, None
+            return CellBrowserScreen._cap_display(s), "python"
+        return CellBrowserScreen._cap_display(s), None
+
+    @classmethod
+    def _cap_display(cls, text: str) -> str:
+        """Truncate ``text`` to ``_MAX_DISPLAY_CHARS`` and append a footer."""
+        if len(text) <= cls._MAX_DISPLAY_CHARS:
+            return text
+        return (
+            text[: cls._MAX_DISPLAY_CHARS]
+            + f"\n\n... (truncated to {cls._MAX_DISPLAY_CHARS:,} of {len(text):,} chars; "
+            "press `b` for full content in browser)"
+        )
 
     def _resolved_language(self) -> str | None:
         if self._language not in QueryBrowserScreen._SUPPORTED_LANGUAGES:
