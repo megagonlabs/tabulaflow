@@ -1228,9 +1228,12 @@ class CellBrowserScreen(Screen[None]):
             self._refresh_status(Text(f"write failed: {exc}", style="red"))
             return
 
-        opened = False
+        # webbrowser_open.open returns None and raises on failure, so we
+        # use absence of exception (combined with a default-browser probe
+        # for the headless case) as the success signal.
         try:
-            opened = webbrowser_open.open(path.absolute().as_uri())
+            webbrowser_open.open(path.absolute().as_uri())
+            opened = webbrowser_open.get_default_browser() is not None
         except Exception:
             opened = False
         if opened:
