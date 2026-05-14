@@ -51,7 +51,7 @@ class MintqApp(App[None]):
         self._agent = agent
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
-        prune_old_cell_dumps(self._session_id)
+        prune_old_cell_dumps()
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False

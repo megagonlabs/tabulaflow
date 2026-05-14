@@ -1204,7 +1204,7 @@ class CellBrowserScreen(Screen[None]):
         ``.json`` is otherwise associated. Falls back to reporting the
         saved path if no browser is available (headless / SSH).
         """
-        import datetime
+        import secrets
 
         import webbrowser_open
 
@@ -1220,8 +1220,7 @@ class CellBrowserScreen(Screen[None]):
             self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
             return
 
-        ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S_%f")
-        path = dump_dir / f"cell_{ts}{suffix}"
+        path = dump_dir / f"C_{secrets.token_hex(3)}{suffix}"
         try:
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_text(text, encoding="utf-8")

@@ -5,7 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import UTC, datetime
 import os
-import shutil
 from pathlib import Path
 import secrets
 import tempfile
@@ -41,9 +40,10 @@ class RuntimePaths:
         trajectories_dir = session_dir / "trajectories"
         data_dir = session_dir / "data"
         # Cell dumps are transient view artifacts (open in browser, look,
-        # done). Keep them out of ~/.mintq so they get OS-level cleanup
-        # instead of accumulating across sessions.
-        cell_dumps_dir = Path(tempfile.gettempdir()) / "mintq" / session_id
+        # done). Keep them out of ~/.mintq so they get OS-level cleanup,
+        # and skip the per-session subdir to keep paths short — uniqueness
+        # comes from the random per-file suffix.
+        cell_dumps_dir = Path(tempfile.gettempdir()) / "mintq"
         return cls(
             logs_dir=logs_dir,
             trajectories_dir=trajectories_dir,
@@ -55,25 +55,24 @@ class RuntimePaths:
         )
 
 
-def prune_old_cell_dumps(current_session_id: str, max_age_seconds: float = 7 * 86400.0) -> None:
-    """Delete cell-dump session dirs older than ``max_age_seconds``.
+def prune_old_cell_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
+    """Delete cell-dump files older than ``max_age_seconds``.
 
     Belt-and-suspenders on top of the OS's TMPDIR cleanup, which on macOS
     has no firm schedule. The default 7-day window covers the common
-    "left a browser tab open over a weekend / short trip" case while still
-    bounding accumulated tmp usage. The current session is always
-    preserved. Errors are swallowed so a cleanup failure never blocks app
-    startup.
+    "left a browser tab open over a weekend / short trip" case while
+    still bounding accumulated tmp usage. Errors are swallowed so a
+    cleanup failure never blocks app startup.
     """
     tmp_root = Path(tempfile.gettempdir()) / "mintq"
     if not tmp_root.is_dir():
         return
     cutoff = time.time() - max_age_seconds
-    for session_dir in tmp_root.iterdir():
-        if not session_dir.is_dir() or session_dir.name == current_session_id:
+    for entry in tmp_root.iterdir():
+        if not entry.is_file() or not entry.name.startswith("C_"):
             continue
         try:
-            if session_dir.stat().st_mtime < cutoff:
-                shutil.rmtree(session_dir, ignore_errors=True)
+            if entry.stat().st_mtime < cutoff:
+                entry.unlink()
         except OSError:
             continue
