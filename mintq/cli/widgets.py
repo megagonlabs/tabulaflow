@@ -1005,6 +1005,7 @@ class CellBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
+        Binding("b", "open_in_browser", "Open in Browser", show=True, priority=True),
     ]
 
     # Skip syntax highlighting above this many rendered chars — Pygments'
@@ -1141,17 +1142,103 @@ class CellBrowserScreen(Screen[None]):
         text_area = self.query_one(TextArea)
         text_area.register_theme(DRACULA_TRANSPARENT)
         text_area.theme = "dracula-transparent"
-
-        status_text = f"{self._column_name} ({self._dtype_str})  |  Row {self._row_number:,}"
-        self.query_one(".cell-browser-status", Static).update(Text(status_text, style="dim"))
+        self._refresh_status()
 
         hint = Text()
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
+        hint.append("b", style=KEY_HINT)
+        hint.append(" Open in Browser    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
+
+    def _refresh_status(self, extra: Text | None = None) -> None:
+        status = Text()
+        status.append(
+            f"{self._column_name} ({self._dtype_str})  |  Row {self._row_number:,}",
+            style="dim",
+        )
+        if extra is not None:
+            status.append("  |  ", style="dim")
+            status.append_text(extra)
+        self.query_one(".cell-browser-status", Static).update(status)
+
+    def _serialize_full(self) -> tuple[str, str]:
+        """Return (text, suffix) for writing the raw value at full fidelity.
+
+        Bypasses the in-app leaf truncation so the saved file is faithful.
+        """
+        import ast
+
+        value = self._raw_value
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return bytes(value).hex(" "), ".bin"
+        if isinstance(value, (dict, list)):
+            return json.dumps(value, indent=2, ensure_ascii=False, default=str), ".json"
+        if isinstance(value, str):
+            for parser in (json.loads, ast.literal_eval):
+                try:
+                    parsed = parser(value)
+                except Exception:
+                    continue
+                if isinstance(parsed, (dict, list)):
+                    return (
+                        json.dumps(parsed, indent=2, ensure_ascii=False, default=str),
+                        ".json",
+                    )
+            if self._language == "sql":
+                return value, ".sql"
+            if self._language == "python":
+                return value, ".py"
+            return value, ".txt"
+        return str(value), ".txt"
 
     def action_close_browser(self) -> None:
         self.dismiss()
+
+    def action_open_in_browser(self) -> None:
+        """Save the raw value with its native extension and open it in a browser.
+
+        Uses ``webbrowser_open`` (which queries the system's default browser
+        directly rather than going through file-extension associations) so
+        ``.json`` reaches Chrome's native tree viewer regardless of how
+        ``.json`` is otherwise associated. Falls back to reporting the
+        saved path if no browser is available (headless / SSH).
+        """
+        import datetime
+
+        import webbrowser_open
+
+        try:
+            data_dir: Path = self.app._runtime_paths.data_dir  # type: ignore[attr-defined]
+        except AttributeError:
+            self._refresh_status(Text("save failed: no session data dir", style="red"))
+            return
+
+        try:
+            text, suffix = self._serialize_full()
+        except Exception as exc:
+            self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
+            return
+
+        safe_col = re.sub(r"[^\w\-.]", "_", self._column_name)
+        ts = datetime.datetime.now().strftime("%Y%m%dT%H%M%S")
+        path = data_dir / f"cell_{safe_col}_row{self._row_number}_{ts}{suffix}"
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_text(text, encoding="utf-8")
+        except OSError as exc:
+            self._refresh_status(Text(f"write failed: {exc}", style="red"))
+            return
+
+        opened = False
+        try:
+            opened = webbrowser_open.open(path.absolute().as_uri())
+        except Exception:
+            opened = False
+        if opened:
+            self._refresh_status(Text("opened in browser", style="dim"))
+        else:
+            self._refresh_status(Text(f"saved: {path}", style="dim"))
 
 
 # ---------------------------------------------------------------------------

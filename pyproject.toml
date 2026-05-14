@@ -54,6 +54,7 @@ dependencies = [
     "markdownify>=1.2.2",
     "lxml>=6.1.0",
     "lxml-html-clean>=0.4.4",
+    "webbrowser-open>=0.3.0",
 ]
 
 [project.optional-dependencies]

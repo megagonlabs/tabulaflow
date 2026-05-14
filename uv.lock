@@ -2916,6 +2916,7 @@ dependencies = [
     { name = "textual", extra = ["syntax"] },
     { name = "tqdm" },
     { name = "typer" },
+    { name = "webbrowser-open" },
 ]
 
 [package.optional-dependencies]
@@ -2984,6 +2985,7 @@ requires-dist = [
     { name = "textual", extras = ["syntax"], specifier = ">=3.0.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
     { name = "typer", specifier = ">=0.15.0" },
+    { name = "webbrowser-open", specifier = ">=0.3.0" },
 ]
 provides-extras = ["plot"]
 
@@ -5950,6 +5952,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/24/30/6b0809f4510673dc723187aeaf24c7f5459922d01e2f794277a3dfb90345/wcwidth-0.2.14.tar.gz", hash = "sha256:4d478375d31bc5395a3c55c40ccdf3354688364cd61c4f6adacaa9215d0b3605", size = 102293, upload_time = "2025-09-22T16:29:53.023Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/af/b5/123f13c975e9f27ab9c0770f514345bd406d0e8d3b7a0723af9d43f710af/wcwidth-0.2.14-py2.py3-none-any.whl", hash = "sha256:a7bb560c8aee30f9957e5f9895805edd20602f2d7f720186dfd906e82b4982e1", size = 37286, upload_time = "2025-09-22T16:29:51.641Z" },
+]
+
+[[package]]
+name = "webbrowser-open"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/48/40/2e6eb1c513b60fe489da49bbdfca3e0d8c4ae5657352c90dad1dde2cc3c4/webbrowser_open-0.3.0.tar.gz", hash = "sha256:d751dd76e888d105d786b86ac890b9c0dd7b273d6f39e67c57a1cc7ddefe03a2", size = 14657, upload_time = "2025-02-27T12:09:16.143Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/2d/0e/16fa8d77cfefd4f09c7c21e518e8f7cc5d0c1b80c57048a38deabc13b96b/webbrowser_open-0.3.0-py3-none-any.whl", hash = "sha256:bd44ce80df1db634df3156f6b56ec2b445812e7bcff82d9f22b2217acaede23f", size = 9315, upload_time = "2025-02-27T12:09:14.089Z" },
 ]
 
 [[package]]
