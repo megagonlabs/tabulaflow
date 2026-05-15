@@ -424,6 +424,8 @@ audio, video { max-width: 240px; display: block; }
 #modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
+#modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
+#modal-body video { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
 """
 
 
@@ -465,6 +467,19 @@ _INIT_JS_TEMPLATE = """
                     }
                 };
             }
+            if (name === "media"){
+                col.cellClick = function(e, cell){
+                    var html = cell.getRow().getData()[cell.getField() + "_display"] || "";
+                    var title = cell.getColumn().getDefinition().title;
+                    // Pull the ``src`` from the rendered HTML and pop the
+                    // appropriate big-media element. PDFs/anchors keep the
+                    // default link behavior (new tab) — no modal.
+                    var imgMatch = html.match(/^<img[^>]*src="([^"]+)"/);
+                    if (imgMatch){ openModalImage(title, imgMatch[1]); return; }
+                    var vidMatch = html.match(/<video[^>]*src="([^"]+)"/);
+                    if (vidMatch){ openModalVideo(title, vidMatch[1]); return; }
+                };
+            }
         }
     });
 
@@ -501,20 +516,50 @@ _INIT_JS_TEMPLATE = """
     var modalCopy = document.getElementById("modal-copy");
     var modalClose = document.getElementById("modal-close");
 
+    // What the "copy" button writes — text body for text modals, src URL
+    // for media modals. Set whenever a modal opens.
+    var modalCopyPayload = "";
+
     function openModal(title, text){
         modalTitle.textContent = title || "";
         var pre = document.createElement("pre");
         pre.textContent = text;
         modalBody.innerHTML = "";
         modalBody.appendChild(pre);
+        modalCopyPayload = text;
         modal.classList.add("open");
     }
-    function closeModal(){ modal.classList.remove("open"); }
+    function openModalImage(title, src){
+        modalTitle.textContent = title || "";
+        modalBody.innerHTML = "";
+        var img = document.createElement("img");
+        img.src = src;
+        modalBody.appendChild(img);
+        modalCopyPayload = src;
+        modal.classList.add("open");
+    }
+    function openModalVideo(title, src){
+        modalTitle.textContent = title || "";
+        modalBody.innerHTML = "";
+        var v = document.createElement("video");
+        v.src = src;
+        v.controls = true;
+        v.preload = "metadata";
+        modalBody.appendChild(v);
+        modalCopyPayload = src;
+        modal.classList.add("open");
+    }
+    function closeModal(){
+        modal.classList.remove("open");
+        // Pause any video that was playing in the modal.
+        modalBody.innerHTML = "";
+    }
     modal.addEventListener("click", function(e){ if (e.target === modal) closeModal(); });
     modalClose.addEventListener("click", closeModal);
     modalCopy.addEventListener("click", function(){
-        var text = modalBody.textContent || "";
-        if (navigator.clipboard){ navigator.clipboard.writeText(text); }
+        if (navigator.clipboard && modalCopyPayload){
+            navigator.clipboard.writeText(modalCopyPayload);
+        }
         modalCopy.textContent = "copied";
         setTimeout(function(){ modalCopy.textContent = "copy"; }, 1200);
     });
