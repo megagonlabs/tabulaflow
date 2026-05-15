@@ -261,118 +261,77 @@ def _load_tabulator_assets() -> tuple[str, str]:
 
 
 _CUSTOM_CSS = """
-html, body { margin: 0; padding: 0; background: #0d0f12; min-height: 100%; }
+/* Page chrome only — Tabulator's bundled midnight CSS handles the table itself. */
+html, body { margin: 0; padding: 0; min-height: 100%; background: #1a1d23; color: #e6e6e6; }
 body {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    color: #d8d8d8;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    padding: 24px 16px;
-    min-height: calc(100vh - 48px);
-    box-sizing: border-box;
-}
-#banner {
-    color: #3eb489;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
-    font-weight: 600;
-    letter-spacing: 0.45em;
-    margin: 0 0 16px 0;
-    text-transform: lowercase;
+}
+
+#banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid #2c3038;
+    background: #14171c;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+}
+#logo {
+    color: #3eb489;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
     user-select: none;
 }
-#banner::before { content: "» "; opacity: 0.6; }
-#banner::after { content: " «"; opacity: 0.6; }
+#repo {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    color: #8a94a3;
+    text-decoration: none;
+    font-size: 13px;
+    padding: 4px 10px;
+    border-radius: 4px;
+    transition: background 0.12s, color 0.12s;
+}
+#repo:hover { background: #1f242c; color: #e6e6e6; }
+#repo svg { width: 16px; height: 16px; fill: currentColor; }
+
+#content { padding: 20px 24px; }
 #table-wrap {
-    max-width: 96vw;
-    border: 1px solid #3eb489;
-    border-radius: 3px;
-    background: #0d0f12;
-    overflow: hidden;
-}
-#table { max-height: calc(100vh - 120px); }
-
-/* Tabulator base */
-.tabulator {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 15px;
-    border: none;
-    background: transparent;
-}
-.tabulator-row { color: #d8d8d8; background: transparent; border-bottom: none; }
-.tabulator-row.tabulator-row-even { background-color: transparent; }
-.tabulator-row .tabulator-cell {
-    border-right: none;
-    border-top: none;
-    padding: 4px 14px;
-    background: transparent;
-}
-.tabulator-row.tabulator-selectable:hover { background-color: rgba(62, 180, 137, 0.05); cursor: default; }
-.tabulator-row .tabulator-cell.tabulator-row-header,
-.tabulator-row-header { color: #5a6470; }
-
-/* Header row: green text, mint underline, no per-cell vertical borders */
-.tabulator .tabulator-header {
-    background: transparent;
-    border-bottom: 1px solid #3eb489;
-}
-.tabulator .tabulator-header .tabulator-col {
-    background: transparent;
-    color: #3eb489;
-    font-weight: 700;
-    border-right: none;
-    padding: 8px 14px;
-}
-.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
-    background: rgba(62, 180, 137, 0.08);
-}
-.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 0; }
-
-/* Range selection — mint highlight, dark text on focused cell */
-.tabulator-row .tabulator-cell.tabulator-range-selected:not(.tabulator-range-only-cell-selected) {
-    background: rgba(62, 180, 137, 0.18);
-}
-.tabulator-row .tabulator-cell.tabulator-range-only-cell-selected,
-.tabulator .tabulator-header .tabulator-col.tabulator-range-highlight.tabulator-range-selected {
-    background: #3eb489;
-    color: #0d0f12;
+    max-width: 100%;
+    width: fit-content;
 }
 
-/* Scrollbars (Tabulator's holder) */
-.tabulator .tabulator-tableholder::-webkit-scrollbar { width: 10px; height: 10px; }
-.tabulator .tabulator-tableholder::-webkit-scrollbar-thumb { background: #2c3038; border-radius: 5px; }
-.tabulator .tabulator-tableholder::-webkit-scrollbar-thumb:hover { background: #3eb489; }
-.tabulator .tabulator-tableholder::-webkit-scrollbar-track { background: transparent; }
-
-/* Cell content helpers */
-.trunc { cursor: pointer; color: inherit; }
+/* Cell helpers shared across formatters. */
+.trunc { cursor: pointer; }
 .trunc::after { content: " …"; color: #3eb489; }
-.null { color: #5a6470; font-style: italic; }
-img { max-height: 96px; max-width: 200px; display: block; border-radius: 2px; }
+.null { color: #6a737d; font-style: italic; }
+img { max-height: 96px; max-width: 200px; display: block; }
 audio, video { max-width: 240px; display: block; }
-a { color: #3eb489; }
 
-/* Modal */
+/* Modal (ours, not Tabulator's). */
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
     align-items: center; justify-content: center; z-index: 1000; }
 #modal.open { display: flex; }
-#modal-card { background: #14171c; color: #d8d8d8; border: 1px solid #3eb489;
+#modal-card { background: #14171c; color: #e6e6e6; border: 1px solid #2c3038;
     border-radius: 4px; max-width: 80vw; max-height: 80vh; min-width: 480px;
     display: flex; flex-direction: column;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
 #modal-header { padding: 8px 14px; border-bottom: 1px solid #2c3038;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-#modal-title { font-size: 14px; color: #3eb489;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+#modal-title { font-size: 13px; color: #8a94a3; font-family: ui-monospace, monospace; }
 #modal-actions { display: flex; gap: 8px; }
-#modal-actions button { background: transparent; color: #d8d8d8;
-    border: 1px solid #3a4049; padding: 4px 14px; border-radius: 3px;
-    cursor: pointer; font-size: 13px;
-    font-family: ui-monospace, "SF Mono", Menlo, monospace; }
-#modal-actions button:hover { background: #1f242c; border-color: #3eb489; color: #3eb489; }
-#modal-body { padding: 14px 16px; overflow: auto; flex: 1; }
+#modal-actions button { padding: 4px 12px; cursor: pointer; font-size: 13px;
+    background: #2c3038; color: #e6e6e6; border: 1px solid #3a4049; border-radius: 3px; }
+#modal-actions button:hover { background: #3a4049; }
+#modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 14px; white-space: pre-wrap; word-break: break-word; color: #d8d8d8; }
+    font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
 """
 
 
@@ -417,13 +376,21 @@ _INIT_JS_TEMPLATE = """
         }
     });
 
-    var table = new Tabulator("#table", {
+    // Small tables: let the wrapper size to content so the page feels
+    // app-like. Large tables: cap height so Tabulator's virtual scroll
+    // engages (without a parseable pixel ``height`` it would render every
+    // row's DOM upfront and freeze the tab).
+    var tableOpts = {
         data: data,
         columns: cols,
-        maxHeight: "calc(100vh - 120px)",
         layout: "fitData",
         renderVerticalBuffer: 600,
         movableColumns: false,
+    };
+    if (data.length > 100){
+        tableOpts.height = Math.max(240, window.innerHeight - 100);
+    }
+    var table = new Tabulator("#table", Object.assign(tableOpts, {
         selectableRange: 1,
         selectableRangeColumns: true,
         selectableRangeRows: true,
@@ -434,7 +401,7 @@ _INIT_JS_TEMPLATE = """
         clipboardCopyConfig: { rowHeaders: false, columnHeaders: false },
         rowHeader: { resizable: false, frozen: true, headerSort: false,
             formatter: "rownum", hozAlign: "right", width: 50, cssClass: "tabulator-row-header" }
-    });
+    }));
 
     var modal = document.getElementById("modal");
     var modalBody = document.getElementById("modal-body");
@@ -669,8 +636,21 @@ def render_table_html(
         f"<style>{_CUSTOM_CSS}</style>"
         f"<script>{tabulator_js}</script>"
         "</head><body>"
-        '<div id="banner">mintq</div>'
-        '<div id="table-wrap"><div id="table"></div></div>'
+        '<header id="banner">'
+        '<span id="logo">mintq</span>'
+        '<a id="repo" href="https://github.com/megagon-internal/mintq" target="_blank" rel="noopener">'
+        '<svg viewBox="0 0 16 16" aria-hidden="true">'
+        '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38'
+        " 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53"
+        " .63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95"
+        " 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68"
+        " 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15"
+        " 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2"
+        ' 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
+        "megagon-internal/mintq"
+        "</a>"
+        "</header>"
+        '<main id="content"><div id="table-wrap"><div id="table"></div></div></main>'
         '<div id="modal" role="dialog" aria-hidden="true">'
         '<div id="modal-card">'
         '<div id="modal-header">'
