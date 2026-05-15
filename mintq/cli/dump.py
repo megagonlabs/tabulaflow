@@ -301,8 +301,22 @@ body {
 #repo:hover { background: #1f242c; color: #e6e6e6; }
 #repo svg { width: 16px; height: 16px; fill: currentColor; }
 
-#content { padding: 20px 24px; }
-#table-wrap { width: 100%; }
+#content {
+    padding: 20px 24px;
+    width: 100%;
+    box-sizing: border-box;
+}
+/* Card surface for the table — slightly elevated against page bg, with a
+   subtle border and min-height that fills the viewport so short tables
+   sit in a defined panel instead of floating against a vast page bg. */
+#table-wrap {
+    width: 100%;
+    background: #131720;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    min-height: calc(100vh - 90px);
+    overflow: hidden;
+}
 
 /* Cell helpers shared across formatters. */
 .trunc { cursor: pointer; }
@@ -317,11 +331,14 @@ audio, video { max-width: 240px; display: block; }
    dividers. */
 .tabulator,
 .tabulator .tabulator-tableholder,
-.tabulator .tabulator-table { background-color: #0f1117 !important; }
+.tabulator .tabulator-table {
+    background-color: #131720 !important;
+    border: none !important;
+}
 
 /* Header */
 .tabulator .tabulator-header {
-    background-color: #0f1117 !important;
+    background-color: #131720 !important;
     border-bottom: 1px solid #21262d;
 }
 .tabulator .tabulator-header .tabulator-col {
@@ -342,10 +359,10 @@ audio, video { max-width: 240px; display: block; }
 /* Rows: transparent so right-side blank space stays page-dark; zebra on
    cells only. Even row gets a very subtle lift, not a hard contrast. */
 .tabulator .tabulator-row { background-color: transparent !important; border: none; }
-.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: #0f1117; }
-.tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: #161a22; }
+.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: #131720; }
+.tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: #1a1f2a; }
 .tabulator .tabulator-row:hover .tabulator-cell {
-    background-color: #1b2029 !important;
+    background-color: #1f2532 !important;
 }
 .tabulator .tabulator-row .tabulator-cell {
     color: #e4e4e7;
@@ -355,7 +372,7 @@ audio, video { max-width: 240px; display: block; }
 }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
     color: #6a737d;
-    background-color: #0f1117 !important;
+    background-color: #131720 !important;
     border: none !important;
 }
 /* Kill border + frozen-column shadow on the row-number column in both
