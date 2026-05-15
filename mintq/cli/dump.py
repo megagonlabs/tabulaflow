@@ -177,9 +177,22 @@ def write_cell_dump(value: object, dumps_dir: Path) -> Path:
 
 
 def _extract_blob(value: object) -> bytes | None:
-    """Coerce a cell value into bytes if possible (handles base64 strings)."""
+    """Coerce a cell value into bytes if possible.
+
+    Handles four cases:
+      - Raw ``bytes``/``bytearray``/``memoryview``
+      - HuggingFace ``Image``/``Audio`` struct: ``{"bytes": <data>, "path": ...}``
+        (how DuckDB returns ``STRUCT(bytes BLOB, path VARCHAR)`` columns from
+        cached HF parquet)
+      - ``str`` that decodes as base64 (plain or data-URI)
+    Returns ``None`` if no recognizable blob is present.
+    """
     if isinstance(value, (bytes, bytearray, memoryview)):
         return bytes(value)
+    if isinstance(value, dict):
+        inner = value.get("bytes")
+        if isinstance(inner, (bytes, bytearray, memoryview)):
+            return bytes(inner)
     if isinstance(value, str):
         return try_decode_base64(value)
     return None

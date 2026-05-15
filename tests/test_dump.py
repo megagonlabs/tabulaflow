@@ -170,6 +170,21 @@ class TestRenderTableHtml:
         assert f"./{sib_dir.name}/" in text
         assert "data:image/png;base64," not in text
 
+    def test_hf_struct_image_column_rendered(self, tmp_path: Path) -> None:
+        """DuckDB returns HF Image columns as ``{"bytes": <png>, "path": ...}`` dicts.
+
+        Regression: the sniffer only handled raw bytes / base64 strings, so HF
+        image columns (e.g. the CIFAR-10 cache) rendered as JSON text instead
+        of inline images.
+        """
+        cell = {"bytes": PNG_MAGIC, "path": None}
+        df = pd.DataFrame({"img": [cell, cell, cell], "label": [1, 2, 3]})
+        html_path = tmp_path / "T_hfimg.html"
+        render_table_html(df, html_path)
+        text = html_path.read_text()
+        assert "<img" in text
+        assert "data:image/png;base64," in text
+
     def test_base64_string_column_rendered(self, tmp_path: Path) -> None:
         png_b64 = base64.b64encode(PNG_MAGIC + b"\x00" * 64).decode("ascii")
         df = pd.DataFrame({"img_b64": [png_b64, png_b64]})
