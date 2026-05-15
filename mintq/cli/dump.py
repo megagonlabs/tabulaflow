@@ -356,8 +356,16 @@ audio, video { max-width: 240px; display: block; }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
     color: #6a737d;
     background-color: #0f1117 !important;
-    border-right: 1px solid #21262d;
+    border: none !important;
 }
+/* Kill border + frozen-column shadow on the row-number column in both
+   header and body — midnight theme adds horizontal borders on row-header
+   cells and a frozen-column shadow that shows as a stray vertical line
+   on the left of the header. */
+.tabulator .tabulator-header .tabulator-col.tabulator-row-header,
+.tabulator .tabulator-frozen,
+.tabulator .tabulator-row .tabulator-frozen { border: none !important;
+    box-shadow: none !important; }
 
 /* Dark scrollbars (WebKit/Blink + Firefox). */
 * { scrollbar-color: #3a4049 #1a1d23; scrollbar-width: thin; }
