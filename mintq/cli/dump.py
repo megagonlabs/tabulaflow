@@ -302,10 +302,7 @@ body {
 #repo svg { width: 16px; height: 16px; fill: currentColor; }
 
 #content { padding: 20px 24px; }
-#table-wrap {
-    max-width: 100%;
-    width: fit-content;
-}
+#table-wrap { width: 100%; }
 
 /* Cell helpers shared across formatters. */
 .trunc { cursor: pointer; }
@@ -313,6 +310,35 @@ body {
 .null { color: #6a737d; font-style: italic; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio, video { max-width: 240px; display: block; }
+
+/* Tabulator overrides on top of midnight theme. */
+.tabulator .tabulator-header .tabulator-col,
+.tabulator .tabulator-header .tabulator-col .tabulator-col-title { color: #3eb489; }
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 8px; }
+
+/* Row colors: distinct zebra against the dark page bg. The midnight theme
+   ships with a fairly light gray for rows; force darker shades with
+   slightly more contrast between odd/even, and recolor the row-number
+   column to match (it has its own midnight rule). */
+.tabulator .tabulator-row.tabulator-row-odd,
+.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell.tabulator-row-header {
+    background-color: #1c1f25 !important;
+}
+.tabulator .tabulator-row.tabulator-row-even,
+.tabulator .tabulator-row.tabulator-row-even .tabulator-cell.tabulator-row-header {
+    background-color: #262a32 !important;
+}
+.tabulator .tabulator-row .tabulator-cell { color: #e6e6e6; }
+.tabulator .tabulator-row .tabulator-cell.tabulator-row-header { color: #6a737d; }
+
+/* Dark scrollbars (WebKit/Blink + Firefox). */
+* { scrollbar-color: #3a4049 #1a1d23; scrollbar-width: thin; }
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: #1a1d23; }
+::-webkit-scrollbar-thumb { background: #3a4049; border-radius: 5px;
+    border: 2px solid #1a1d23; }
+::-webkit-scrollbar-thumb:hover { background: #4a5260; }
+::-webkit-scrollbar-corner { background: #1a1d23; }
 
 /* Modal (ours, not Tabulator's). */
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
@@ -383,7 +409,7 @@ _INIT_JS_TEMPLATE = """
     var tableOpts = {
         data: data,
         columns: cols,
-        layout: "fitData",
+        layout: "fitDataFill",
         renderVerticalBuffer: 600,
         movableColumns: false,
     };
