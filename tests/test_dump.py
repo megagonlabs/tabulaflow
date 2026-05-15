@@ -184,7 +184,9 @@ class TestRenderTableHtml:
         html_path = tmp_path / "T_cap.html"
         render_table_html(df, html_path, max_rows=10)
         text = html_path.read_text()
-        assert "truncated 990 rows" in text
+        # Truncation surfaces in the document title rather than the page body
+        # (user wants only the table visible, no header chrome).
+        assert "showing 10 of 1,000 rows" in text
 
     def test_mixed_column_not_treated_as_media(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"col": [PNG_MAGIC, "plain string", 42, None, b"random"]})
@@ -192,4 +194,19 @@ class TestRenderTableHtml:
         render_table_html(df, html_path)
         text = html_path.read_text()
         # Only one PNG out of 5 entries; should not trigger the column renderer.
-        assert "<img" not in text
+        # The HTML still contains "<img" inside Tabulator's bundled JS source
+        # (img-loading helper), so check the row data instead: there should
+        # be no _display field (which the media renderer emits).
+        assert '"col_display"' not in text
+
+    def test_tabulator_assets_inlined(self, tmp_path: Path) -> None:
+        df = pd.DataFrame({"a": [1, 2, 3]})
+        html_path = tmp_path / "T_assets.html"
+        render_table_html(df, html_path)
+        text = html_path.read_text()
+        # Tabulator JS is inlined (single-file, offline).
+        assert "Tabulator" in text
+        # Modal markup is present.
+        assert 'id="modal"' in text
+        # Numeric column gets a number sorter.
+        assert '"sorter": "number"' in text or '"sorter":"number"' in text

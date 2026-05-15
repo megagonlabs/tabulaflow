@@ -235,19 +235,282 @@ def _safe_col_name(name: str) -> str:
 
 _DEFAULT_MAX_ROWS = 50_000
 _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
-_TABLE_CSS = (
-    "<style>"
-    "body{font-family:-apple-system,BlinkMacSystemFont,Segoe UI,sans-serif;"
-    "margin:0 1rem;}"
-    "table{border-collapse:collapse;margin-top:1rem;}"
-    "th,td{border:1px solid #ddd;padding:4px 8px;vertical-align:top;}"
-    "thead th{position:sticky;top:0;background:#f5f5f5;}"
-    "tbody tr:nth-child(even){background:#fafafa;}"
-    "img{max-height:120px;max-width:240px;display:block;}"
-    "audio,video{max-width:240px;display:block;}"
-    "p.meta{color:#666;margin:1rem 0;}"
-    "</style>"
-)
+# Cap on the full text stored per non-media cell (sent to Tabulator's data
+# array). Truncated text above this is replaced with a head excerpt + note;
+# users can press `b` on the source row/cell for full content.
+_CELL_TEXT_HARD_CAP = 64 * 1024
+# Display truncation in the cell view (full value still in row data; modal
+# shows full).
+_CELL_DISPLAY_CAP = 120
+
+
+def _load_tabulator_assets() -> tuple[str, str]:
+    """Load Tabulator JS + CSS from package resources.
+
+    Returns ``(js_source, css_source)``. The files are vendored under
+    ``mintq/cli/assets/tabulator/`` and read once per call (callers
+    typically invoke this once per ``render_table_html``, which is fine
+    given the file sizes).
+    """
+    from importlib.resources import files
+
+    base = files("mintq.cli.assets.tabulator")
+    js = base.joinpath("tabulator.min.js").read_text(encoding="utf-8")
+    css = base.joinpath("tabulator.min.css").read_text(encoding="utf-8")
+    return js, css
+
+
+_CUSTOM_CSS = """
+html, body { margin: 0; padding: 0; background: #0d0f12; min-height: 100%; }
+body {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    color: #d8d8d8;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+    min-height: calc(100vh - 48px);
+    box-sizing: border-box;
+}
+#banner {
+    color: #3eb489;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.45em;
+    margin: 0 0 16px 0;
+    text-transform: lowercase;
+    user-select: none;
+}
+#banner::before { content: "» "; opacity: 0.6; }
+#banner::after { content: " «"; opacity: 0.6; }
+#table-wrap {
+    max-width: 96vw;
+    border: 1px solid #3eb489;
+    border-radius: 3px;
+    background: #0d0f12;
+    overflow: hidden;
+}
+#table { max-height: calc(100vh - 120px); }
+
+/* Tabulator base */
+.tabulator {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: 15px;
+    border: none;
+    background: transparent;
+}
+.tabulator-row { color: #d8d8d8; background: transparent; border-bottom: none; }
+.tabulator-row.tabulator-row-even { background-color: transparent; }
+.tabulator-row .tabulator-cell {
+    border-right: none;
+    border-top: none;
+    padding: 4px 14px;
+    background: transparent;
+}
+.tabulator-row.tabulator-selectable:hover { background-color: rgba(62, 180, 137, 0.05); cursor: default; }
+.tabulator-row .tabulator-cell.tabulator-row-header,
+.tabulator-row-header { color: #5a6470; }
+
+/* Header row: green text, mint underline, no per-cell vertical borders */
+.tabulator .tabulator-header {
+    background: transparent;
+    border-bottom: 1px solid #3eb489;
+}
+.tabulator .tabulator-header .tabulator-col {
+    background: transparent;
+    color: #3eb489;
+    font-weight: 700;
+    border-right: none;
+    padding: 8px 14px;
+}
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
+    background: rgba(62, 180, 137, 0.08);
+}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 0; }
+
+/* Range selection — mint highlight, dark text on focused cell */
+.tabulator-row .tabulator-cell.tabulator-range-selected:not(.tabulator-range-only-cell-selected) {
+    background: rgba(62, 180, 137, 0.18);
+}
+.tabulator-row .tabulator-cell.tabulator-range-only-cell-selected,
+.tabulator .tabulator-header .tabulator-col.tabulator-range-highlight.tabulator-range-selected {
+    background: #3eb489;
+    color: #0d0f12;
+}
+
+/* Scrollbars (Tabulator's holder) */
+.tabulator .tabulator-tableholder::-webkit-scrollbar { width: 10px; height: 10px; }
+.tabulator .tabulator-tableholder::-webkit-scrollbar-thumb { background: #2c3038; border-radius: 5px; }
+.tabulator .tabulator-tableholder::-webkit-scrollbar-thumb:hover { background: #3eb489; }
+.tabulator .tabulator-tableholder::-webkit-scrollbar-track { background: transparent; }
+
+/* Cell content helpers */
+.trunc { cursor: pointer; color: inherit; }
+.trunc::after { content: " …"; color: #3eb489; }
+.null { color: #5a6470; font-style: italic; }
+img { max-height: 96px; max-width: 200px; display: block; border-radius: 2px; }
+audio, video { max-width: 240px; display: block; }
+a { color: #3eb489; }
+
+/* Modal */
+#modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
+    align-items: center; justify-content: center; z-index: 1000; }
+#modal.open { display: flex; }
+#modal-card { background: #14171c; color: #d8d8d8; border: 1px solid #3eb489;
+    border-radius: 4px; max-width: 80vw; max-height: 80vh; min-width: 480px;
+    display: flex; flex-direction: column;
+    box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
+#modal-header { padding: 8px 14px; border-bottom: 1px solid #2c3038;
+    display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
+#modal-title { font-size: 14px; color: #3eb489;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+#modal-actions { display: flex; gap: 8px; }
+#modal-actions button { background: transparent; color: #d8d8d8;
+    border: 1px solid #3a4049; padding: 4px 14px; border-radius: 3px;
+    cursor: pointer; font-size: 13px;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+#modal-actions button:hover { background: #1f242c; border-color: #3eb489; color: #3eb489; }
+#modal-body { padding: 14px 16px; overflow: auto; flex: 1; }
+#modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
+    font-size: 14px; white-space: pre-wrap; word-break: break-word; color: #d8d8d8; }
+"""
+
+
+_INIT_JS_TEMPLATE = """
+(function(){
+    var data = __DATA__;
+    var cols = __COLS__;
+
+    function escapeHtml(s){
+        return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    }
+
+    var DISPLAY_CAP = __DISPLAY_CAP__;
+    var formatters = {
+        text: function(cell){
+            var v = cell.getValue();
+            if (v == null) return '<span class="null">—</span>';
+            var s = String(v);
+            if (s.length <= DISPLAY_CAP) return escapeHtml(s);
+            var head = s.substring(0, DISPLAY_CAP).replace(/\\n/g, " ");
+            return '<div class="trunc">' + escapeHtml(head) + '</div>';
+        },
+        media: function(cell){
+            var key = cell.getField() + "_display";
+            var html = cell.getRow().getData()[key];
+            return html != null ? html : "";
+        }
+    };
+
+    cols.forEach(function(col){
+        if (typeof col.formatter === "string" && formatters[col.formatter]){
+            var name = col.formatter;
+            col.formatter = formatters[name];
+            if (name === "text"){
+                col.cellClick = function(e, cell){
+                    var v = cell.getValue();
+                    if (typeof v === "string" && v.length > DISPLAY_CAP){
+                        openModal(cell.getColumn().getDefinition().title, v);
+                    }
+                };
+            }
+        }
+    });
+
+    var table = new Tabulator("#table", {
+        data: data,
+        columns: cols,
+        maxHeight: "calc(100vh - 120px)",
+        layout: "fitData",
+        renderVerticalBuffer: 600,
+        movableColumns: false,
+        selectableRange: 1,
+        selectableRangeColumns: true,
+        selectableRangeRows: true,
+        selectableRangeClearCells: true,
+        clipboard: true,
+        clipboardCopyStyled: false,
+        clipboardCopyRowRange: "range",
+        clipboardCopyConfig: { rowHeaders: false, columnHeaders: false },
+        rowHeader: { resizable: false, frozen: true, headerSort: false,
+            formatter: "rownum", hozAlign: "right", width: 50, cssClass: "tabulator-row-header" }
+    });
+
+    var modal = document.getElementById("modal");
+    var modalBody = document.getElementById("modal-body");
+    var modalTitle = document.getElementById("modal-title");
+    var modalCopy = document.getElementById("modal-copy");
+    var modalClose = document.getElementById("modal-close");
+
+    function openModal(title, text){
+        modalTitle.textContent = title || "";
+        var pre = document.createElement("pre");
+        pre.textContent = text;
+        modalBody.innerHTML = "";
+        modalBody.appendChild(pre);
+        modal.classList.add("open");
+    }
+    function closeModal(){ modal.classList.remove("open"); }
+    modal.addEventListener("click", function(e){ if (e.target === modal) closeModal(); });
+    modalClose.addEventListener("click", closeModal);
+    modalCopy.addEventListener("click", function(){
+        var text = modalBody.textContent || "";
+        if (navigator.clipboard){ navigator.clipboard.writeText(text); }
+        modalCopy.textContent = "copied";
+        setTimeout(function(){ modalCopy.textContent = "copy"; }, 1200);
+    });
+    document.addEventListener("keydown", function(e){
+        if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
+    });
+})();
+"""
+
+
+def _is_numeric_dtype(series: "pd.Series") -> bool:
+    """Check if a series has a numeric (non-bool) dtype."""
+    import pandas as pd
+
+    return bool(pd.api.types.is_numeric_dtype(series)) and not pd.api.types.is_bool_dtype(series)
+
+
+def _is_bool_dtype(series: "pd.Series") -> bool:
+    """Check if a series has a bool dtype."""
+    import pandas as pd
+
+    return bool(pd.api.types.is_bool_dtype(series))
+
+
+def _coerce_text_value(value: object) -> object:
+    """Normalize a non-media cell value into a JSON-serializable form for Tabulator.
+
+    Returns ``None`` for null-likes, native types for numbers/bools, and
+    strings for everything else (with a head-truncation note if the value
+    exceeds ``_CELL_TEXT_HARD_CAP``).
+    """
+    import pandas as pd
+
+    try:
+        if value is None or pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, (dict, list)):
+        try:
+            value = json.dumps(value, indent=2, ensure_ascii=False, default=str)
+        except (TypeError, ValueError):
+            value = str(value)
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        # Non-media bytes (mixed columns). Show repr-ish, not raw bytes.
+        raw = bytes(value)
+        return f"<binary: {len(raw):,} bytes>"
+    s = str(value)
+    if len(s) > _CELL_TEXT_HARD_CAP:
+        return s[:_CELL_TEXT_HARD_CAP] + f"\n\n... (truncated to {_CELL_TEXT_HARD_CAP:,} of {len(s):,} chars)"
+    return s
 
 
 def render_table_html(
@@ -258,26 +521,30 @@ def render_table_html(
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
 ) -> None:
-    """Render ``df`` as a single HTML file at ``html_path``.
+    """Render ``df`` as a single HTML file at ``html_path`` using Tabulator.
 
     Binary-typed columns (detected by sampling) are rendered with inline
     ``<img>``/``<audio>``/``<video>`` markup. Blobs up to ``inline_cap``
     bytes are inlined as ``data:`` URIs; larger blobs are written to a
     sibling directory (``html_path.with_suffix("")``) and referenced by
-    relative URL. Tables longer than ``max_rows`` are truncated with a
-    footer note.
+    relative URL. Tables longer than ``max_rows`` are truncated (note
+    propagated to the document ``<title>`` only — the page itself is just
+    the table, no header chrome).
+
+    Long text cells are display-truncated; clicking a truncated cell
+    opens a modal with the full value. Numeric columns sort numerically;
+    media columns are not sortable. Range-select + Cmd/Ctrl+C copies as
+    TSV-compatible clipboard data via Tabulator's built-in clipboard.
 
     Args:
         df: DataFrame to render.
         html_path: Output HTML path. Sibling dir is derived from its stem.
-        title: Optional page title shown in the document.
+        title: Document title (browser tab); defaults to the file stem.
         max_rows: Row cap. Rows past this are dropped.
         inline_cap: Per-cell size threshold for inline vs spilled rendering.
     """
-    import pandas as pd
-
     truncated_rows = max(0, len(df) - max_rows)
-    view = df.head(max_rows).copy()
+    view = df.head(max_rows)
 
     col_types: dict[str, tuple[str, str]] = {}
     for col in view.columns:
@@ -288,61 +555,134 @@ def render_table_html(
     sib_dir = html_path.parent / html_path.stem
     sib_dir_created = False
 
-    for col, (ext, mime) in col_types.items():
-        rendered_col: list[object] = []
-        safe = _safe_col_name(col)
-        for row_idx, val in enumerate(view[col].tolist()):
-            blob = _extract_blob(val)
-            if blob is None:
-                rendered_col.append(view[col].iloc[row_idx])
-                continue
-            if len(blob) <= inline_cap:
-                b64 = base64.b64encode(blob).decode("ascii")
-                src = f"data:{mime};base64,{b64}"
-                rendered_col.append(_render_blob(src, mime, len(blob)))
-                continue
-            if not sib_dir_created:
-                try:
-                    sib_dir.mkdir(parents=True, exist_ok=True)
-                    sib_dir_created = True
-                except OSError:
-                    rendered_col.append(f"<binary: {len(blob):,} bytes (write failed)>")
+    # Build Tabulator column defs and row data.
+    column_defs: list[dict[str, object]] = []
+    fields: list[tuple[str, str]] = []  # (field_name, mode) where mode in {"media","text","num","bool"}
+    for col_idx, col in enumerate(view.columns):
+        field = f"c{col_idx}"
+        title_str = str(col)
+        if title_str in col_types:
+            column_defs.append(
+                {
+                    "title": title_str,
+                    "field": field,
+                    "formatter": "media",
+                    "headerSort": False,
+                    "resizable": True,
+                }
+            )
+            fields.append((field, "media"))
+        elif _is_bool_dtype(view[col]):
+            column_defs.append(
+                {
+                    "title": title_str,
+                    "field": field,
+                    "formatter": "tickCross",
+                    "hozAlign": "center",
+                    "resizable": True,
+                }
+            )
+            fields.append((field, "bool"))
+        elif _is_numeric_dtype(view[col]):
+            column_defs.append(
+                {
+                    "title": title_str,
+                    "field": field,
+                    "hozAlign": "right",
+                    "sorter": "number",
+                    "resizable": True,
+                }
+            )
+            fields.append((field, "num"))
+        else:
+            column_defs.append(
+                {
+                    "title": title_str,
+                    "field": field,
+                    "formatter": "text",
+                    "resizable": True,
+                }
+            )
+            fields.append((field, "text"))
+
+    rows: list[dict[str, object]] = []
+    for row_idx in range(len(view)):
+        row_data: dict[str, object] = {}
+        for col_idx, (field, mode) in enumerate(fields):
+            col_name = str(view.columns[col_idx])
+            val = view.iloc[row_idx, col_idx]
+            if mode == "media":
+                blob = _extract_blob(val)
+                ext, mime = col_types[col_name]
+                if blob is None:
+                    row_data[field] = None
+                    row_data[f"{field}_display"] = ""
                     continue
-            filename = f"r{row_idx}_c{safe}{ext}"
-            spill_path = sib_dir / filename
-            try:
-                spill_path.write_bytes(blob)
-            except OSError:
-                rendered_col.append(f"<binary: {len(blob):,} bytes (write failed)>")
-                continue
-            src = f"./{sib_dir.name}/{filename}"
-            rendered_col.append(_render_blob(src, mime, len(blob)))
-        view[col] = pd.Series(rendered_col, index=view.index, dtype=object)
+                if len(blob) <= inline_cap:
+                    b64 = base64.b64encode(blob).decode("ascii")
+                    src = f"data:{mime};base64,{b64}"
+                    row_data[field] = f"({mime})"
+                    row_data[f"{field}_display"] = _render_blob(src, mime, len(blob))
+                    continue
+                if not sib_dir_created:
+                    try:
+                        sib_dir.mkdir(parents=True, exist_ok=True)
+                        sib_dir_created = True
+                    except OSError:
+                        row_data[field] = f"<binary: {len(blob):,} bytes>"
+                        row_data[f"{field}_display"] = f"<binary: {len(blob):,} bytes (write failed)>"
+                        continue
+                safe = _safe_col_name(col_name)
+                filename = f"r{row_idx}_c{safe}{ext}"
+                spill_path = sib_dir / filename
+                try:
+                    spill_path.write_bytes(blob)
+                except OSError:
+                    row_data[field] = f"<binary: {len(blob):,} bytes>"
+                    row_data[f"{field}_display"] = f"<binary: {len(blob):,} bytes (write failed)>"
+                    continue
+                src = f"./{sib_dir.name}/{filename}"
+                row_data[field] = f"({mime}, {len(blob):,} bytes)"
+                row_data[f"{field}_display"] = _render_blob(src, mime, len(blob))
+            else:
+                row_data[field] = _coerce_text_value(val)
+        rows.append(row_data)
 
-    # to_html escapes by default; we've already injected raw HTML into the
-    # binary columns above, so flip escape off for the whole table. Non-
-    # binary columns are stringified by pandas and won't contain markup,
-    # so the risk is the column values themselves containing HTML — that's
-    # the user's data, rendering as-is matches the goal of "what's in the
-    # cell, in the browser."
-    table_html = view.to_html(escape=False, index=False, border=0)
+    tabulator_js, tabulator_css = _load_tabulator_assets()
+    # ``</`` inside an inline <script> string can prematurely end the tag.
+    data_json = json.dumps(rows, ensure_ascii=False, default=str).replace("</", "<\\/")
+    cols_json = json.dumps(column_defs, ensure_ascii=False).replace("</", "<\\/")
+    init_js = (
+        _INIT_JS_TEMPLATE.replace("__DATA__", data_json)
+        .replace("__COLS__", cols_json)
+        .replace("__DISPLAY_CAP__", str(_CELL_DISPLAY_CAP))
+    )
 
-    header_title = html.escape(title or html_path.stem)
-    meta_parts = [f"{len(df):,} rows × {len(df.columns)} columns"]
+    doc_title = title or html_path.stem
     if truncated_rows:
-        meta_parts.append(f"showing first {max_rows:,} (truncated {truncated_rows:,} rows)")
-    if col_types:
-        media_cols = ", ".join(f"{c} ({m[1]})" for c, m in col_types.items())
-        meta_parts.append(f"media columns: {media_cols}")
-    meta = " · ".join(meta_parts)
+        doc_title = f"{doc_title} (showing {max_rows:,} of {len(df):,} rows)"
 
     doc = (
-        f"<!doctype html><html><head><meta charset=utf-8>"
-        f"<title>{header_title}</title>{_TABLE_CSS}</head><body>"
-        f"<h2>{header_title}</h2>"
-        f'<p class="meta">{html.escape(meta)}</p>'
-        f"{table_html}"
-        f"</body></html>"
+        "<!doctype html><html><head><meta charset=utf-8>"
+        f"<title>{html.escape(doc_title)}</title>"
+        f"<style>{tabulator_css}</style>"
+        f"<style>{_CUSTOM_CSS}</style>"
+        f"<script>{tabulator_js}</script>"
+        "</head><body>"
+        '<div id="banner">mintq</div>'
+        '<div id="table-wrap"><div id="table"></div></div>'
+        '<div id="modal" role="dialog" aria-hidden="true">'
+        '<div id="modal-card">'
+        '<div id="modal-header">'
+        '<span id="modal-title"></span>'
+        '<div id="modal-actions">'
+        '<button id="modal-copy" type="button">copy</button>'
+        '<button id="modal-close" type="button">close</button>'
+        "</div></div>"
+        '<div id="modal-body"></div>'
+        "</div></div>"
+        f"<script>{init_js}</script>"
+        "</body></html>"
     )
     html_path.parent.mkdir(parents=True, exist_ok=True)
     html_path.write_text(doc, encoding="utf-8")

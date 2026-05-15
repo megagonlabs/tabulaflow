@@ -66,6 +66,9 @@ mintq = "mintq.cli.app:main"
 [tool.setuptools.packages.find]
 include = ["mintq*"]
 
+[tool.setuptools.package-data]
+mintq = ["cli/assets/tabulator/*"]
+
 [tool.ruff]
 line-length = 120
 include = ["mintq/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
