@@ -228,7 +228,9 @@ def _render_blob(src: str, mime: str, size: int) -> str:
 
     ``src`` is either a ``data:`` URI (inline) or a relative file URL
     (spilled to sibling file). Same markup either way; only the src
-    differs.
+    differs. Image cells size themselves via CSS caps; the page wires
+    a single ``window.load`` → ``table.redraw(true)`` so Tabulator
+    re-measures columns after images have decoded.
     """
     if mime.startswith("image/"):
         return f'<img src="{src}" loading="lazy">'
@@ -474,7 +476,7 @@ _INIT_JS_TEMPLATE = """
                     // Pull the ``src`` from the rendered HTML and pop the
                     // appropriate big-media element. PDFs/anchors keep the
                     // default link behavior (new tab) — no modal.
-                    var imgMatch = html.match(/^<img[^>]*src="([^"]+)"/);
+                    var imgMatch = html.match(/<img[^>]*src="([^"]+)"/);
                     if (imgMatch){ openModalImage(title, imgMatch[1]); return; }
                     var vidMatch = html.match(/<video[^>]*src="([^"]+)"/);
                     if (vidMatch){ openModalVideo(title, vidMatch[1]); return; }
@@ -509,6 +511,15 @@ _INIT_JS_TEMPLATE = """
         rowHeader: { resizable: false, frozen: true, headerSort: false,
             formatter: "rownum", hozAlign: "right", width: 50, cssClass: "tabulator-row-header" }
     }));
+
+    // Tabulator measures columns at init, before any <img> has decoded —
+    // image cells then size to just the header text. Trigger one redraw
+    // after all media has loaded so column widths reflect actual content.
+    // Gated on the presence of media columns: skipping the redraw on
+    // text-only tables avoids a wasted re-measure pass.
+    if (__HAS_MEDIA__){
+        window.addEventListener("load", function(){ table.redraw(true); });
+    }
 
     var modal = document.getElementById("modal");
     var modalBody = document.getElementById("modal-body");
@@ -760,6 +771,7 @@ def render_table_html(
         _INIT_JS_TEMPLATE.replace("__DATA__", data_json)
         .replace("__COLS__", cols_json)
         .replace("__DISPLAY_CAP__", str(_CELL_DISPLAY_CAP))
+        .replace("__HAS_MEDIA__", "true" if col_types else "false")
     )
 
     doc_title = title or html_path.stem
