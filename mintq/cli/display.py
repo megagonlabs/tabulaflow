@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 from rich.align import Align
 from rich.columns import Columns
 from rich.console import Group
+from rich.markup import escape as _rich_escape
 from rich.panel import Panel
 from rich.style import Style
 from rich import box
@@ -193,8 +194,14 @@ def build_table(
 
 
 def _format_table_cell(value: object) -> str:
-    """Normalize cell text to a single line; column-level max_width handles truncation."""
-    return str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+    """Normalize cell text to a single line; column-level max_width handles truncation.
+
+    Escapes Rich markup metacharacters so binary blobs (e.g. ``str(bytes)``
+    repr containing ``[/...]`` patterns) don't blow up the markup parser
+    with ``MarkupError: closing tag ... doesn't match any open tag``.
+    """
+    s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+    return _rich_escape(s)
 
 
 def build_chart(
