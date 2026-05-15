@@ -82,9 +82,7 @@ async def main() -> None:
         for gq in row.get("gold_queries", []):
             gq.pop("extra_info", None)
 
-        keep_sql = args.gold_sql == "all" or (
-            args.gold_sql == "sample" and _original_qid(task.qid) in sampled_qids
-        )
+        keep_sql = args.gold_sql == "all" or (args.gold_sql == "sample" and _original_qid(task.qid) in sampled_qids)
         if keep_sql:
             kept_rows += 1
         else:

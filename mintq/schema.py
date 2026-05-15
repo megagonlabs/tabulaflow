@@ -138,7 +138,12 @@ def _stringify_mixed_type_columns(df: pd.DataFrame) -> pd.DataFrame:
         if sample.empty or sample.map(lambda x: isinstance(x, str)).all():
             continue
         if sample.map(lambda x: isinstance(x, str)).any():
-            df[col] = df[col].where(df[col].isna(), df[col].astype(str))
+            # ``astype(str)`` on object columns goes through Cython's
+            # ``ensure_string_array``, which UTF-8-decodes bytes values
+            # instead of calling Python's ``str()``. That crashes on any
+            # binary blob (PNG, etc.). ``map(str)`` uses ``bytes.__repr__``
+            # safely. The outer ``where`` preserves real nulls.
+            df[col] = df[col].where(df[col].isna(), df[col].map(str))
     return df
 
 

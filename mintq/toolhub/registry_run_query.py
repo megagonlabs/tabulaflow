@@ -127,9 +127,7 @@ class RegistryRunQueryTool:
         """
         return await self._execute(db_alias, query, parameters, False)
 
-    async def _run_no_params_with_refresh(
-        self, db_alias: str, query: str, refresh: bool = False
-    ) -> str:
+    async def _run_no_params_with_refresh(self, db_alias: str, query: str, refresh: bool = False) -> str:
         """Execute a query against a registered database and return the results.
 
         Returning large result sets is safe — the display is automatically

@@ -51,7 +51,10 @@ def _normalize_json_like(value: object) -> object:
         return value
     return value
 
+
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     import pandas as pd
     from rich.console import RenderableType
 
@@ -524,7 +527,12 @@ class AgentProgressWidget(Widget):
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
                 base_label = self._steps[i][3].split(" → ")[0]
-                self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {completed}/{total}")
+                self._steps[i] = (
+                    "running",
+                    self._steps[i][1],
+                    self._steps[i][2],
+                    f"{base_label} → {completed}/{total}",
+                )
                 break
         self._refresh(layout=True, scroll=True)
 
@@ -585,6 +593,90 @@ class AgentProgressWidget(Widget):
                 self.app.query_one("#chat-log").scroll_end(animate=False)
         except Exception:
             pass
+
+
+# ---------------------------------------------------------------------------
+# Browser-open helpers (used by Data and Cell browsers)
+# ---------------------------------------------------------------------------
+
+
+def _open_path_in_browser(path: Path, *, status: "Callable[[Text], None]") -> bool:
+    """Open ``path`` in the system browser, reporting via ``status``.
+
+    ``webbrowser_open.open`` returns None and raises on failure; we use
+    absence of exception (combined with a default-browser probe for the
+    headless case) as the success signal.
+    """
+    import webbrowser_open
+
+    try:
+        webbrowser_open.open(path.absolute().as_uri())
+        opened = webbrowser_open.get_default_browser() is not None
+    except Exception:
+        opened = False
+    if opened:
+        status(Text(f"opened in browser: {path}", style="dim"))
+    else:
+        status(Text(f"no browser, saved to {path}", style="dim"))
+    return opened
+
+
+def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
+    """Serialize ``value`` to the dumps dir and open it in the browser.
+
+    Returns the written path on success, or ``None`` if no dumps dir is
+    configured or the write failed.
+    """
+    from mintq.cli.dump import write_cell_dump
+
+    try:
+        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
+    except AttributeError:
+        status(Text("save failed: no cell dumps dir", style="red"))
+        return None
+    try:
+        path = write_cell_dump(value, dumps_dir)
+    except OSError as exc:
+        status(Text(f"write failed: {exc}", style="red"))
+        return None
+    except Exception as exc:
+        status(Text(f"serialize failed: {exc}", style="red"))
+        return None
+    _open_path_in_browser(path, status=status)
+    return path
+
+
+def open_table_in_browser(
+    df: "pd.DataFrame",
+    title: str,
+    app: object,
+    *,
+    status: "Callable[[Text], None]",
+) -> "Path | None":
+    """Render ``df`` as inline-media HTML in the dumps dir and open it.
+
+    Returns the written HTML path on success, or ``None`` on failure.
+    """
+    import secrets
+
+    from mintq.cli.dump import render_table_html
+
+    try:
+        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
+    except AttributeError:
+        status(Text("save failed: no cell dumps dir", style="red"))
+        return None
+    html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
+    try:
+        render_table_html(df, html_path, title=title)
+    except OSError as exc:
+        status(Text(f"write failed: {exc}", style="red"))
+        return None
+    except Exception as exc:
+        status(Text(f"render failed: {exc}", style="red"))
+        return None
+    _open_path_in_browser(html_path, status=status)
+    return html_path
 
 
 # ---------------------------------------------------------------------------
@@ -689,6 +781,8 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "View cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
+        Binding("b", "open_cell_in_browser", "Cell in browser", show=True, priority=True),
+        Binding("B", "open_table_in_browser", "Table in browser", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
@@ -787,6 +881,30 @@ class DataBrowserScreen(Screen[None]):
             self._page_index = self._max_page_index
         self._render_page()
 
+    def action_open_cell_in_browser(self) -> None:
+        """Open the highlighted cell directly in the system browser."""
+        row_idx = self._table.cursor_coordinate.row
+        col_idx = self._table.cursor_coordinate.column
+        if col_idx <= 0:
+            return
+        df_col = col_idx - 1
+        if df_col >= len(self._df.columns):
+            return
+        start = self._page_index * self._page_size
+        df_row = start + row_idx
+        if df_row >= len(self._df):
+            return
+        raw_value = self._df.iloc[df_row, df_col]
+        open_cell_in_browser(raw_value, self.app, status=self._set_status_message)
+
+    def action_open_table_in_browser(self) -> None:
+        """Open the current DataFrame as HTML in the system browser."""
+        open_table_in_browser(self._df, self._title, self.app, status=self._set_status_message)
+
+    def _set_status_message(self, message: "Text") -> None:
+        """Display a transient status message from a browser-open helper."""
+        self._status.update(message)
+
     @property
     def _num_rows(self) -> int:
         return len(self._df)
@@ -855,7 +973,11 @@ class DataBrowserScreen(Screen[None]):
             ("[", KEY_HINT),
             ("/", hint_fg),
             ("]", KEY_HINT),
-            (" Prev/Next Page", hint_fg),
+            (" Prev/Next Page    ", hint_fg),
+            ("b", KEY_HINT),
+            (" Cell in Browser    ", hint_fg),
+            ("B", KEY_HINT),
+            (" Table in Browser", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
@@ -1016,7 +1138,7 @@ class CellBrowserScreen(Screen[None]):
     _MAX_SOFT_WRAP_LINE = 500
     # Soft cap on the rendered display text. Beyond this, append a footer
     # pointing the user at `b` for full-fidelity content via the browser
-    # (which goes through `_serialize_full`, bypassing this cap).
+    # (which goes through ``dump.serialize_cell``, bypassing this cap).
     _MAX_DISPLAY_CHARS = 1_000_000
 
     def __init__(
@@ -1098,7 +1220,7 @@ class CellBrowserScreen(Screen[None]):
 
         Output is soft-capped at ``_MAX_DISPLAY_CHARS``; truncated text gets
         a footer pointing the user at `b` for full content (which goes
-        through ``_serialize_full``, bypassing this cap). Per-leaf
+        through ``dump.serialize_cell``, bypassing this cap). Per-leaf
         truncation (``_MAX_JSON_LEAF``) keeps individual JSON strings
         bounded so pretty-printed JSON has short lines.
         """
@@ -1111,9 +1233,13 @@ class CellBrowserScreen(Screen[None]):
             pass
 
         if isinstance(value, (bytes, bytearray, memoryview)):
+            from mintq.cli.dump import sniff_binary
+
             raw = bytes(value)
+            sniffed = sniff_binary(raw)
+            label = sniffed[1] if sniffed else "binary"
             preview = raw[:32].hex(" ")
-            return f"<binary: {len(raw):,} bytes>\n{preview} ...", None
+            return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
 
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
@@ -1184,36 +1310,6 @@ class CellBrowserScreen(Screen[None]):
             status.append_text(extra)
         self.query_one(".cell-browser-status", Static).update(status)
 
-    def _serialize_full(self) -> tuple[str, str]:
-        """Return (text, suffix) for writing the raw value at full fidelity.
-
-        Bypasses the in-app leaf truncation so the saved file is faithful.
-        """
-        import ast
-
-        value = self._raw_value
-        if isinstance(value, (bytes, bytearray, memoryview)):
-            return bytes(value).hex(" "), ".bin"
-        if isinstance(value, (dict, list)):
-            return json.dumps(value, indent=2, ensure_ascii=False, default=str), ".json"
-        if isinstance(value, str):
-            for parser in (json.loads, ast.literal_eval):
-                try:
-                    parsed = parser(value)
-                except Exception:
-                    continue
-                if isinstance(parsed, (dict, list)):
-                    return (
-                        json.dumps(parsed, indent=2, ensure_ascii=False, default=str),
-                        ".json",
-                    )
-            if self._language == "sql":
-                return value, ".sql"
-            if self._language == "python":
-                return value, ".py"
-            return value, ".txt"
-        return str(value), ".txt"
-
     def action_close_browser(self) -> None:
         self.dismiss()
 
@@ -1226,44 +1322,13 @@ class CellBrowserScreen(Screen[None]):
         ``.json`` is otherwise associated. Falls back to reporting the
         saved path if no browser is available (headless / SSH).
         """
-        import secrets
-
-        import webbrowser_open
-
-        try:
-            dump_dir: Path = self.app._runtime_paths.cell_dumps_dir  # type: ignore[attr-defined]
-        except AttributeError:
-            self._refresh_status(Text("save failed: no cell dumps dir", style="red"))
-            return
-
         if self._dumped_path is None or not self._dumped_path.exists():
-            try:
-                text, suffix = self._serialize_full()
-            except Exception as exc:
-                self._refresh_status(Text(f"serialize failed: {exc}", style="red"))
+            path = open_cell_in_browser(self._raw_value, self.app, status=self._refresh_status)
+            if path is None:
                 return
-            new_path = dump_dir / f"C_{secrets.token_hex(3)}{suffix}"
-            try:
-                new_path.parent.mkdir(parents=True, exist_ok=True)
-                new_path.write_text(text, encoding="utf-8")
-            except OSError as exc:
-                self._refresh_status(Text(f"write failed: {exc}", style="red"))
-                return
-            self._dumped_path = new_path
-        path = self._dumped_path
-
-        # webbrowser_open.open returns None and raises on failure, so we
-        # use absence of exception (combined with a default-browser probe
-        # for the headless case) as the success signal.
-        try:
-            webbrowser_open.open(path.absolute().as_uri())
-            opened = webbrowser_open.get_default_browser() is not None
-        except Exception:
-            opened = False
-        if opened:
-            self._refresh_status(Text(f"opened in browser: {path}", style="dim"))
+            self._dumped_path = path
         else:
-            self._refresh_status(Text(f"no browser, saved to {path}", style="dim"))
+            _open_path_in_browser(self._dumped_path, status=self._refresh_status)
 
 
 # ---------------------------------------------------------------------------

@@ -12,7 +12,7 @@ from textual.containers import VerticalScroll
 from textual.widgets import Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
-from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_cell_dumps
+from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -51,7 +51,7 @@ class MintqApp(App[None]):
         self._agent = agent
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
-        prune_old_cell_dumps()
+        prune_old_dumps()
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
@@ -78,6 +78,7 @@ class MintqApp(App[None]):
             chat_log.mount(self._build_debug_quad_result_widget())
             chat_log.mount(self._build_debug_multi_result_widget())
             chat_log.mount(self._build_debug_huge_cell_result_widget())
+            chat_log.mount(self._build_debug_media_result_widget())
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
@@ -571,6 +572,125 @@ LIMIT 4000"""
                     record_id="QDEBUG_HUGE_CELL",
                     label="debug_long_wide_cells",
                     query="-- synthetic fixture: escalating cell sizes",
+                    df=df,
+                    chart_spec=None,
+                    query_lexer="sql",
+                )
+            ],
+            primary_record_index=0,
+        )
+        return AgentResultWidget(
+            result,
+            width=self.size.width - 11,
+            query_history=self._debug_history_for(result),
+        )
+
+    def _build_debug_media_result_widget(self) -> AgentResultWidget:
+        """Synthetic table with image/audio/PDF/SVG payloads.
+
+        Exercises the per-column media renderer used by the data browser's
+        ``B`` (Open Table in Browser) shortcut. Each row uses a different
+        color so the rendered thumbnails are visually distinct.
+        """
+        import io
+        import struct
+        import math
+        from base64 import b64encode
+
+        import pandas as pd
+        from PIL import Image, ImageDraw
+
+        from mintq.cli.agent import ChatResult, ChatResultRecord
+
+        def img_bytes(color: tuple[int, int, int], fmt: str, label: str) -> bytes:
+            img = Image.new("RGB", (96, 64), color=color)
+            draw = ImageDraw.Draw(img)
+            draw.text((6, 24), label, fill=(255, 255, 255))
+            buf = io.BytesIO()
+            img.save(buf, format=fmt)
+            return buf.getvalue()
+
+        def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
+            # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
+            n = int(seconds * rate)
+            samples = bytearray()
+            amp = 12_000
+            for i in range(n):
+                val = int(amp * math.sin(2 * math.pi * freq_hz * i / rate))
+                samples += struct.pack("<h", val)
+            data_size = len(samples)
+            header = b"RIFF" + struct.pack("<I", 36 + data_size) + b"WAVE"
+            header += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
+            header += b"data" + struct.pack("<I", data_size)
+            return bytes(header + samples)
+
+        def svg_bytes(color: str, label: str) -> bytes:
+            return (
+                f'<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64">'
+                f'<rect width="96" height="64" fill="{color}"/>'
+                f'<text x="6" y="38" fill="white" font-family="sans-serif" font-size="16">{label}</text>'
+                f"</svg>"
+            ).encode("utf-8")
+
+        def pdf_bytes(label: str) -> bytes:
+            img = Image.new("RGB", (240, 120), color=(245, 245, 245))
+            draw = ImageDraw.Draw(img)
+            draw.text((12, 50), f"PDF: {label}", fill=(20, 20, 20))
+            buf = io.BytesIO()
+            img.save(buf, format="PDF")
+            return buf.getvalue()
+
+        colors = [
+            ((220, 30, 30), "red"),
+            ((30, 160, 30), "green"),
+            ((30, 60, 220), "blue"),
+            ((200, 160, 20), "amber"),
+            ((150, 30, 200), "violet"),
+        ]
+        notes = [262.0, 294.0, 330.0, 349.0, 392.0]  # C D E F G
+
+        names = [name for _, name in colors]
+        png = [img_bytes(c, "PNG", name) for (c, name) in colors]
+        jpeg = [img_bytes(c, "JPEG", name) for (c, name) in colors]
+        gif = [img_bytes(c, "GIF", name) for (c, name) in colors]
+        webp = [img_bytes(c, "WEBP", name) for (c, name) in colors]
+        bmp = [img_bytes(c, "BMP", name) for (c, name) in colors]
+        svg = [svg_bytes(f"rgb{c}", name) for (c, name) in colors]
+        pdf = [pdf_bytes(name) for (_, name) in colors]
+        wav = [wav_bytes(f) for f in notes]
+
+        png_b64 = [b64encode(b).decode("ascii") for b in png]
+        png_data_uri = [f"data:image/png;base64,{s}" for s in png_b64]
+
+        # Mixed column: one PNG, rest text — should NOT be detected as media
+        # (under the 60% sniff threshold).
+        mixed = [png[0], "plain text", 42, None, "another"]
+
+        df = pd.DataFrame(
+            {
+                "name": names,
+                "png": png,
+                "jpeg": jpeg,
+                "gif": gif,
+                "webp": webp,
+                "bmp": bmp,
+                "svg": svg,
+                "pdf": pdf,
+                "wav": wav,
+                "png_b64": png_b64,
+                "png_data_uri": png_data_uri,
+                "mixed": mixed,
+            }
+        )
+
+        query = "-- synthetic media payloads (PNG/JPEG/GIF/WebP/BMP/SVG/PDF/WAV)"
+        result = ChatResult(
+            text="Debug startup media table",
+            records=[
+                ChatResultRecord(
+                    record_id="QDEBUG_MEDIA",
+                    label="debug_media",
+                    query=query,
                     df=df,
                     chart_spec=None,
                     query_lexer="sql",

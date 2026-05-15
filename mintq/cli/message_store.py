@@ -151,9 +151,7 @@ class MessageStore:
                 }
             ]
         )
-        await self._spill_connector.write_dataframe_async(
-            df=df, table_name=_TABLE, schema_name=_SCHEMA, mode="append"
-        )
+        await self._spill_connector.write_dataframe_async(df=df, table_name=_TABLE, schema_name=_SCHEMA, mode="append")
 
 
 @dataclass

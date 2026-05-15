@@ -89,7 +89,7 @@ _REF_PATTERN = re.compile(r"\[ref=(e\d+)\]")
 # optional trailing attrs and colon. Captures: role, name, ref.
 _ARIA_LINE_PATTERN = re.compile(
     r'^(?P<indent>\s*)-\s+(?P<role>[\w-]+)(?:\s+"(?P<name>[^"]*)")?'
-    r'.*?\[ref=(?P<ref>e\d+)\].*?$'
+    r".*?\[ref=(?P<ref>e\d+)\].*?$"
 )
 _ARIA_URL_PATTERN = re.compile(r"^\s*-\s+/url:\s*(?P<url>.+?)\s*$")
 
@@ -243,9 +243,7 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
             _, c_role, c_name = context_stack[-1]
             ctx = (c_role, c_name)
 
-        elements.append(
-            InteractiveElement(ref=ref, role=role, name=name, href=href, parent_context=ctx)
-        )
+        elements.append(InteractiveElement(ref=ref, role=role, name=name, href=href, parent_context=ctx))
     return elements
 
 
@@ -271,9 +269,7 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
     return "\n".join(out)
 
 
-def inline_link_refs(
-    markdown: str, elements: list[InteractiveElement]
-) -> tuple[str, list[InteractiveElement]]:
+def inline_link_refs(markdown: str, elements: list[InteractiveElement]) -> tuple[str, list[InteractiveElement]]:
     """Inject ``[ref=eN]`` after matching ``[name](href)`` links in markdown.
 
     Returns ``(modified_markdown, elements_not_inlined)``. Non-link elements,
@@ -286,8 +282,7 @@ def inline_link_refs(
         if e.role != "link" or not e.href or not e.name:
             continue
         pattern = re.compile(
-            r"(\[" + re.escape(e.name) + r"\]\("
-            + re.escape(e.href) + r'(?:\s+"[^"]*")?\))(?!\s*\[ref=)'
+            r"(\[" + re.escape(e.name) + r"\]\(" + re.escape(e.href) + r'(?:\s+"[^"]*")?\))(?!\s*\[ref=)'
         )
         new_out, n = pattern.subn(r"\1 [ref=" + e.ref + r"]", out, count=1)
         if n > 0:
@@ -381,11 +376,7 @@ async def extract_markdown(page: "Page") -> str:
             ],
         )
         doc = cleaner.clean_html(doc)
-        main_candidates = (
-            doc.xpath("//main")
-            or doc.xpath("//article")
-            or [doc.body if doc.body is not None else doc]
-        )
+        main_candidates = doc.xpath("//main") or doc.xpath("//article") or [doc.body if doc.body is not None else doc]
         cleaned_html = lxml.html.tostring(main_candidates[0], encoding="unicode")
     except Exception as e:
         logger.debug("lxml cleanup failed: %s; falling back to raw HTML", e)
@@ -414,10 +405,7 @@ async def extract_markdown(page: "Page") -> str:
         para_break = md.rfind("\n\n", _MAX_MARKDOWN_CHARS - 500, _MAX_MARKDOWN_CHARS)
         if para_break > 0:
             truncate_at = para_break
-        md = (
-            md[:truncate_at]
-            + f"\n\n[content truncated at {truncate_at} of {len(md)} chars]"
-        )
+        md = md[:truncate_at] + f"\n\n[content truncated at {truncate_at} of {len(md)} chars]"
     return md
 
 
@@ -526,8 +514,7 @@ class WebBrowserManager:
             from playwright.async_api import async_playwright
         except ImportError as e:
             raise RuntimeError(
-                "playwright is not installed. Install with: "
-                "uv add playwright && uv run playwright install chromium"
+                "playwright is not installed. Install with: uv add playwright && uv run playwright install chromium"
             ) from e
         self._playwright = await async_playwright().start()
         if not self._headless:
@@ -612,9 +599,7 @@ async def format_tab_response(state: _TabState) -> str:
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
 
-    annotated_md, remaining = inline_link_refs(
-        snapshot.markdown_content, snapshot.interactive_elements
-    )
+    annotated_md, remaining = inline_link_refs(snapshot.markdown_content, snapshot.interactive_elements)
 
     parts: list[str] = []
     if state.popup_notice is not None:
@@ -706,9 +691,7 @@ class WebBrowserTool:
         self._metrics.num_navigates += 1
         parsed = urlparse(url)
         if parsed.scheme not in ("http", "https"):
-            return self._format_error(
-                f"unsupported URL scheme {parsed.scheme!r}; only http/https allowed"
-            )
+            return self._format_error(f"unsupported URL scheme {parsed.scheme!r}; only http/https allowed")
         if not parsed.netloc:
             return self._format_error("invalid URL — missing host")
         if len(self._tabs) >= self._max_tabs:
@@ -807,9 +790,7 @@ class WebBrowserTool:
                 return f"[tab={tab}] typed into ref={ref}"
             return await format_tab_response(state)
 
-    async def browser_scroll(
-        self, tab: str, direction: Literal["up", "down", "top", "bottom"]
-    ) -> str:
+    async def browser_scroll(self, tab: str, direction: Literal["up", "down", "top", "bottom"]) -> str:
         """Scroll a specific tab.
 
         Args:
@@ -818,9 +799,7 @@ class WebBrowserTool:
         """
         self._metrics.num_scrolls += 1
         if direction not in ("up", "down", "top", "bottom"):
-            return self._format_error(
-                f"invalid direction {direction!r}; expected up/down/top/bottom"
-            )
+            return self._format_error(f"invalid direction {direction!r}; expected up/down/top/bottom")
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
@@ -1073,10 +1052,7 @@ class WebBrowserTool:
             popup_url = popup.url
         except Exception:
             popup_url = "(unknown)"
-        state.popup_notice = (
-            f"[note: previous action on tab {tab_id} opened a popup; "
-            f"this tab is now {popup_url}]"
-        )
+        state.popup_notice = f"[note: previous action on tab {tab_id} opened a popup; this tab is now {popup_url}]"
         self._metrics.num_popups_adopted += 1
         if old_page is not None and old_page is not popup:
             try:
@@ -1102,15 +1078,10 @@ class WebBrowserTool:
 
     def _resolve_ref(self, state: _TabState, ref: str) -> "Locator":
         if state.last_snapshot is None:
-            raise _RefError(
-                f"page {state.tab_id}: no snapshot available; call any action first"
-            )
+            raise _RefError(f"page {state.tab_id}: no snapshot available; call any action first")
         if ref not in state.last_snapshot.refs:
             available = sorted(state.last_snapshot.refs)
-            raise _RefError(
-                f"page {state.tab_id}: unknown ref {ref!r}. "
-                f"Available refs: {available[:30]}"
-            )
+            raise _RefError(f"page {state.tab_id}: unknown ref {ref!r}. Available refs: {available[:30]}")
         return state.page.locator(f"aria-ref={ref}")
 
     def _format_error(self, msg: str) -> str:

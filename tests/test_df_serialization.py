@@ -110,3 +110,25 @@ def test_exec_result_json_round_trip_dataframe() -> None:
     assert_frame_equal(df, loaded.df, check_dtype=True)
     assert isinstance(loaded.df.loc[0, "value"], Decimal)
     assert isinstance(loaded.df.loc[1, "value"], Decimal)
+
+
+def test_exec_result_accepts_mixed_bytes_and_str() -> None:
+    """``_stringify_mixed_type_columns`` must not crash on bytes payloads.
+
+    Regression: pandas' ``astype(str)`` UTF-8-decodes bytes via the Cython
+    string-array path. Mixed bytes+str columns (e.g. a BLOB cell alongside
+    text rows) must stringify via Python ``str()`` instead.
+    """
+    df = pd.DataFrame(
+        {
+            "mixed": [b"\x89PNG\r\n\x1a\n", "plain text", 42, None, "another"],
+        }
+    )
+    result = ExecResult(df=df)
+    assert result.df is not None
+    values = result.df["mixed"].tolist()
+    assert values[0].startswith("b'\\x89PNG")
+    assert values[1] == "plain text"
+    assert values[2] == "42"
+    assert values[3] is None
+    assert values[4] == "another"

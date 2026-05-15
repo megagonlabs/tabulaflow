@@ -29,7 +29,7 @@ class RuntimePaths:
     workspace_db_path: Path
     history_path: Path
     cli_log_path: Path
-    cell_dumps_dir: Path
+    dumps_dir: Path
 
     @classmethod
     def for_session(cls, session_id: str) -> RuntimePaths:
@@ -39,11 +39,11 @@ class RuntimePaths:
         logs_dir = session_dir / "logs"
         trajectories_dir = session_dir / "trajectories"
         data_dir = session_dir / "data"
-        # Cell dumps are transient view artifacts (open in browser, look,
-        # done). Keep them out of ~/.mintq so they get OS-level cleanup,
-        # and skip the per-session subdir to keep paths short — uniqueness
-        # comes from the random per-file suffix.
-        cell_dumps_dir = Path(tempfile.gettempdir()) / "mintq"
+        # Cell and table dumps are transient view artifacts (open in
+        # browser, look, done). Keep them out of ~/.mintq so they get
+        # OS-level cleanup, and skip the per-session subdir to keep paths
+        # short — uniqueness comes from the random per-file suffix.
+        dumps_dir = Path(tempfile.gettempdir()) / "mintq"
         return cls(
             logs_dir=logs_dir,
             trajectories_dir=trajectories_dir,
@@ -51,12 +51,17 @@ class RuntimePaths:
             workspace_db_path=session_dir / "workspace.duckdb",
             history_path=root / "history.jsonl",
             cli_log_path=logs_dir / "cli.log",
-            cell_dumps_dir=cell_dumps_dir,
+            dumps_dir=dumps_dir,
         )
 
 
-def prune_old_cell_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
-    """Delete cell-dump files older than ``max_age_seconds``.
+def prune_old_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
+    """Delete cell- and table-dump artifacts older than ``max_age_seconds``.
+
+    Cleans up two kinds of entries in the shared dumps dir:
+      - ``C_*`` cell dumps (single files)
+      - ``T_*`` table dumps (an ``.html`` file plus a sibling directory of
+        spilled media blobs sharing the same stem)
 
     Belt-and-suspenders on top of the OS's TMPDIR cleanup, which on macOS
     has no firm schedule. The default 7-day window covers the common
@@ -64,15 +69,25 @@ def prune_old_cell_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
     still bounding accumulated tmp usage. Errors are swallowed so a
     cleanup failure never blocks app startup.
     """
+    import shutil
+
     tmp_root = Path(tempfile.gettempdir()) / "mintq"
     if not tmp_root.is_dir():
         return
     cutoff = time.time() - max_age_seconds
     for entry in tmp_root.iterdir():
-        if not entry.is_file() or not entry.name.startswith("C_"):
+        name = entry.name
+        if not (name.startswith("C_") or name.startswith("T_")):
             continue
         try:
-            if entry.stat().st_mtime < cutoff:
+            if entry.stat().st_mtime >= cutoff:
+                continue
+        except OSError:
+            continue
+        try:
+            if entry.is_dir():
+                shutil.rmtree(entry, ignore_errors=True)
+            else:
                 entry.unlink()
         except OSError:
             continue
