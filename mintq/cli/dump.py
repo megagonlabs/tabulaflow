@@ -262,7 +262,7 @@ def _load_tabulator_assets() -> tuple[str, str]:
 
 _CUSTOM_CSS = """
 /* Page chrome only — Tabulator's bundled midnight CSS handles the table itself. */
-html, body { margin: 0; padding: 0; min-height: 100%; background: #1a1d23; color: #e6e6e6; }
+html, body { margin: 0; padding: 0; min-height: 100%; background: #0f1117; color: #e4e4e7; }
 body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
@@ -273,8 +273,8 @@ body {
     align-items: center;
     justify-content: space-between;
     padding: 12px 24px;
-    border-bottom: 1px solid #2c3038;
-    background: #14171c;
+    border-bottom: 1px solid #21262d;
+    background: #0f1117;
     position: sticky;
     top: 0;
     z-index: 50;
@@ -311,25 +311,53 @@ body {
 img { max-height: 96px; max-width: 200px; display: block; }
 audio, video { max-width: 240px; display: block; }
 
-/* Tabulator overrides on top of midnight theme. */
-.tabulator .tabulator-header .tabulator-col,
-.tabulator .tabulator-header .tabulator-col .tabulator-col-title { color: #3eb489; }
-.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 8px; }
+/* Tabulator overrides on top of midnight theme. Modern dark-app look:
+   one dark base for the whole surface, subtle stripe on alternate cells,
+   strong mint header with a clean underline, no per-cell vertical
+   dividers. */
+.tabulator,
+.tabulator .tabulator-tableholder,
+.tabulator .tabulator-table { background-color: #0f1117 !important; }
 
-/* Row colors: distinct zebra against the dark page bg. The midnight theme
-   ships with a fairly light gray for rows; force darker shades with
-   slightly more contrast between odd/even, and recolor the row-number
-   column to match (it has its own midnight rule). */
-.tabulator .tabulator-row.tabulator-row-odd,
-.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell.tabulator-row-header {
-    background-color: #1c1f25 !important;
+/* Header */
+.tabulator .tabulator-header {
+    background-color: #0f1117 !important;
+    border-bottom: 1px solid #21262d;
 }
-.tabulator .tabulator-row.tabulator-row-even,
-.tabulator .tabulator-row.tabulator-row-even .tabulator-cell.tabulator-row-header {
-    background-color: #262a32 !important;
+.tabulator .tabulator-header .tabulator-col {
+    background-color: transparent !important;
+    border-right: 1px solid #21262d;
 }
-.tabulator .tabulator-row .tabulator-cell { color: #e6e6e6; }
-.tabulator .tabulator-row .tabulator-cell.tabulator-row-header { color: #6a737d; }
+.tabulator .tabulator-header .tabulator-col:last-child { border-right: none; }
+.tabulator .tabulator-header .tabulator-col,
+.tabulator .tabulator-header .tabulator-col .tabulator-col-title {
+    color: #3eb489;
+    font-weight: 600;
+}
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 12px; }
+.tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
+    background-color: rgba(62, 180, 137, 0.06) !important;
+}
+
+/* Rows: transparent so right-side blank space stays page-dark; zebra on
+   cells only. Even row gets a very subtle lift, not a hard contrast. */
+.tabulator .tabulator-row { background-color: transparent !important; border: none; }
+.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: #0f1117; }
+.tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: #161a22; }
+.tabulator .tabulator-row:hover .tabulator-cell {
+    background-color: #1b2029 !important;
+}
+.tabulator .tabulator-row .tabulator-cell {
+    color: #e4e4e7;
+    border-right: none;
+    border-top: none;
+    padding: 6px 12px;
+}
+.tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
+    color: #6a737d;
+    background-color: #0f1117 !important;
+    border-right: 1px solid #21262d;
+}
 
 /* Dark scrollbars (WebKit/Blink + Firefox). */
 * { scrollbar-color: #3a4049 #1a1d23; scrollbar-width: thin; }
