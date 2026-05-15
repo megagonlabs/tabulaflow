@@ -159,9 +159,11 @@ May 13
 - Cell browser
   - [x] Fix large cell display (no truncation and auto-disabling soft wrap)
   - [x] "Loading cell..." status
-  - [ ] Open in browser
+  - [x] Open in browser
 
-- [ ] "loading" for large json loading
+May 14
+- [ ] Support images, ... in browser
+
 - [ ] Fix tool response truncation for subagents
 
 - General
