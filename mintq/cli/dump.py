@@ -340,6 +340,13 @@ body {
 .null { color: #6a737d; font-style: italic; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio, video { max-width: 240px; display: block; }
+/* Native audio controls are cream-colored across all browsers; flip via
+   filter for the dark theme. ``hue-rotate(180)`` restores any colored
+   accents (rare in audio UIs) — the net effect inverts the monochrome
+   chrome (cream → dark, dark icons → light) without inverting colored
+   content. Skip for video since video frames carry real color we don't
+   want flipped. */
+audio { filter: invert(0.92) hue-rotate(180deg); }
 
 /* Tabulator overrides on top of midnight theme. Modern dark-app look:
    one dark base for the whole surface, subtle stripe on alternate cells,
