@@ -496,7 +496,19 @@ _INIT_JS_TEMPLATE = """
         }
     };
 
+    // Tabulator's built-in ``boolean`` sorter ignores ``alignEmptyValues``,
+    // so nulls end up grouped with ``false``. Substitute a custom sorter
+    // that pins nulls to the bottom regardless of direction.
+    function boolNullLastSorter(a, b, aRow, bRow, column, dir){
+        var aNull = a == null, bNull = b == null;
+        if (aNull && bNull) return 0;
+        if (aNull) return dir === "asc" ? 1 : -1;
+        if (bNull) return dir === "asc" ? -1 : 1;
+        return (a === b) ? 0 : (a ? 1 : -1);
+    }
+
     cols.forEach(function(col){
+        if (col.sorter === "boolean") col.sorter = boolNullLastSorter;
         if (typeof col.formatter === "string" && formatters[col.formatter]){
             var name = col.formatter;
             col.formatter = formatters[name];
@@ -737,6 +749,8 @@ def render_table_html(
                     "title": title_str,
                     "field": field,
                     "formatter": "bool",
+                    "sorter": "boolean",
+                    "sorterParams": {"alignEmptyValues": "bottom"},
                     "hozAlign": "center",
                     "resizable": True,
                 }
@@ -749,6 +763,7 @@ def render_table_html(
                     "field": field,
                     "hozAlign": "right",
                     "sorter": "number",
+                    "sorterParams": {"alignEmptyValues": "bottom"},
                     "resizable": True,
                 }
             )
@@ -759,6 +774,7 @@ def render_table_html(
                     "title": title_str,
                     "field": field,
                     "formatter": "text",
+                    "sorterParams": {"alignEmptyValues": "bottom"},
                     "resizable": True,
                 }
             )
