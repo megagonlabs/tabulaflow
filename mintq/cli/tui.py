@@ -202,9 +202,12 @@ class MintqApp(App[None]):
             "discount_amount": [maybe_none(round((r % 50) * 0.75, 2), r, 5) for r in range(rows)],
             "tax_amount": [round(0.5 + (r % 300) * 0.42, 2) for r in range(rows)],
             "shipping_cost": [maybe_none(round((r % 40) * 1.25, 2), r, 8) for r in range(rows)],
-            "is_return": [r % 17 == 0 for r in range(rows)],
-            "is_gift": [r % 23 == 0 for r in range(rows)],
-            "is_loyalty_member": [r % 3 != 0 for r in range(rows)],
+            # Three bool columns, each with a different non-null pattern and
+            # null injections — verifies ✔ / ✘ / italic-dash rendering for
+            # all three states.
+            "is_return": [maybe_none(r % 17 == 0, r, 11) for r in range(rows)],
+            "is_gift": [maybe_none(r % 23 == 0, r, 9) for r in range(rows)],
+            "is_loyalty_member": [maybe_none(r % 3 != 0, r, 14) for r in range(rows)],
             "loyalty_points": [maybe_none(r * 7 % 10000, r, 3) for r in range(rows)],
             "net_revenue": [round(10.0 + (r % 1000) * 4.73 - (r % 50) * 0.75, 2) for r in range(rows)],
             "gross_profit": [round(5.0 + (r % 500) * 1.82, 2) for r in range(rows)],

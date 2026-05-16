@@ -337,7 +337,10 @@ body {
 .trunc::after { content: " …"; color: #3eb489; }
 .multiline { cursor: pointer; }
 .multiline::after { content: " ↵"; color: #3eb489; }
-.null { color: #6a737d; font-style: italic; }
+/* Boolean cells: mint check for true, dim cross for false — matches the
+   terminal data browser's bool rendering. */
+.bool-yes { color: #3eb489; font-size: 15px; }
+.bool-no { color: #6a737d; font-size: 15px; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio { max-width: 240px; display: block; }
 /* Native audio controls are cream-colored across all browsers; flip via
@@ -466,7 +469,7 @@ _INIT_JS_TEMPLATE = """
     var formatters = {
         text: function(cell){
             var v = cell.getValue();
-            if (v == null) return '<span class="null">—</span>';
+            if (v == null) return "";
             var s = String(v);
             var hasNewline = s.indexOf("\\n") >= 0;
             if (s.length <= DISPLAY_CAP && !hasNewline) return escapeHtml(s);
@@ -484,6 +487,12 @@ _INIT_JS_TEMPLATE = """
             var key = cell.getField() + "_display";
             var html = cell.getRow().getData()[key];
             return html != null ? html : "";
+        },
+        bool: function(cell){
+            var v = cell.getValue();
+            if (v == null) return "";
+            return v ? '<span class="bool-yes">\\u2714</span>'
+                     : '<span class="bool-no">\\u2718</span>';
         }
     };
 
@@ -606,10 +615,23 @@ def _is_numeric_dtype(series: "pd.Series") -> bool:
 
 
 def _is_bool_dtype(series: "pd.Series") -> bool:
-    """Check if a series has a bool dtype."""
+    """Check if a series is bool-typed, including object columns with nulls.
+
+    Pandas demotes ``bool`` to ``object`` dtype as soon as a None/NaN is
+    present. Inspect non-null values directly so columns like
+    ``[True, None, False, True]`` still route to the bool formatter.
+    """
+    import numpy as np
     import pandas as pd
 
-    return bool(pd.api.types.is_bool_dtype(series))
+    if pd.api.types.is_bool_dtype(series):
+        return True
+    if series.dtype != object:
+        return False
+    sample = series.dropna()
+    if sample.empty:
+        return False
+    return bool(sample.map(lambda v: isinstance(v, (bool, np.bool_))).all())
 
 
 def _coerce_text_value(value: object) -> object:
@@ -619,6 +641,7 @@ def _coerce_text_value(value: object) -> object:
     strings for everything else (with a head-truncation note if the value
     exceeds ``_CELL_TEXT_HARD_CAP``).
     """
+    import numpy as np
     import pandas as pd
 
     try:
@@ -626,8 +649,12 @@ def _coerce_text_value(value: object) -> object:
             return None
     except (TypeError, ValueError):
         pass
-    if isinstance(value, bool):
-        return value
+    # ``numpy.bool_`` is *not* a subclass of Python ``bool`` in NumPy >= 1.20,
+    # so check both. Without the np.bool_ branch, pandas-backed bool columns
+    # fall through to ``str(value)`` and serialize as "True"/"False" strings
+    # (which Tabulator's bool formatter then renders as truthy regardless).
+    if isinstance(value, (bool, np.bool_)):
+        return bool(value)
     if isinstance(value, (int, float)):
         return value
     if isinstance(value, (dict, list)):
@@ -709,7 +736,7 @@ def render_table_html(
                 {
                     "title": title_str,
                     "field": field,
-                    "formatter": "tickCross",
+                    "formatter": "bool",
                     "hozAlign": "center",
                     "resizable": True,
                 }
