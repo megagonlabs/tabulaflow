@@ -311,7 +311,6 @@ body {
     font-size: 13px;
     padding: 4px 10px;
     border-radius: 4px;
-    transition: background 0.12s, color 0.12s;
 }
 #repo:hover { background: #1f242c; color: #e6e6e6; }
 #repo svg { width: 16px; height: 16px; fill: currentColor; }
@@ -419,10 +418,15 @@ audio, video { max-width: 240px; display: block; }
 #modal-header { padding: 8px 14px; border-bottom: 1px solid #2c3038;
     display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 #modal-title { font-size: 13px; color: #8a94a3; font-family: ui-monospace, monospace; }
-#modal-actions { display: flex; gap: 8px; }
-#modal-actions button { padding: 4px 12px; cursor: pointer; font-size: 13px;
-    background: #2c3038; color: #e6e6e6; border: 1px solid #3a4049; border-radius: 3px; }
-#modal-actions button:hover { background: #3a4049; }
+#modal-actions { display: flex; gap: 4px; align-items: center; }
+#modal-actions button { display: inline-flex; align-items: center; gap: 6px;
+    cursor: pointer; font-size: 12px; font-family: inherit;
+    background: transparent; padding: 5px 10px; border-radius: 4px; }
+#modal-actions button svg { width: 14px; height: 14px; stroke: currentColor;
+    fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+#modal-close { color: #8a94a3; border: 1px solid transparent;
+    padding: 5px 6px; }
+#modal-close:hover { background: rgba(255, 255, 255, 0.06); color: #e4e4e7; }
 #modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
@@ -524,12 +528,7 @@ _INIT_JS_TEMPLATE = """
     var modal = document.getElementById("modal");
     var modalBody = document.getElementById("modal-body");
     var modalTitle = document.getElementById("modal-title");
-    var modalCopy = document.getElementById("modal-copy");
     var modalClose = document.getElementById("modal-close");
-
-    // What the "copy" button writes — text body for text modals, src URL
-    // for media modals. Set whenever a modal opens.
-    var modalCopyPayload = "";
 
     function openModal(title, text){
         modalTitle.textContent = title || "";
@@ -537,7 +536,6 @@ _INIT_JS_TEMPLATE = """
         pre.textContent = text;
         modalBody.innerHTML = "";
         modalBody.appendChild(pre);
-        modalCopyPayload = text;
         modal.classList.add("open");
     }
     function openModalImage(title, src){
@@ -546,7 +544,6 @@ _INIT_JS_TEMPLATE = """
         var img = document.createElement("img");
         img.src = src;
         modalBody.appendChild(img);
-        modalCopyPayload = src;
         modal.classList.add("open");
     }
     function openModalVideo(title, src){
@@ -557,23 +554,15 @@ _INIT_JS_TEMPLATE = """
         v.controls = true;
         v.preload = "metadata";
         modalBody.appendChild(v);
-        modalCopyPayload = src;
         modal.classList.add("open");
     }
     function closeModal(){
         modal.classList.remove("open");
-        // Pause any video that was playing in the modal.
+        // Clearing innerHTML pauses any playing video and frees resources.
         modalBody.innerHTML = "";
     }
     modal.addEventListener("click", function(e){ if (e.target === modal) closeModal(); });
     modalClose.addEventListener("click", closeModal);
-    modalCopy.addEventListener("click", function(){
-        if (navigator.clipboard && modalCopyPayload){
-            navigator.clipboard.writeText(modalCopyPayload);
-        }
-        modalCopy.textContent = "copied";
-        setTimeout(function(){ modalCopy.textContent = "copy"; }, 1200);
-    });
     document.addEventListener("keydown", function(e){
         if (e.key === "Escape" && modal.classList.contains("open")) closeModal();
     });
@@ -805,8 +794,9 @@ def render_table_html(
         '<div id="modal-header">'
         '<span id="modal-title"></span>'
         '<div id="modal-actions">'
-        '<button id="modal-copy" type="button">copy</button>'
-        '<button id="modal-close" type="button">close</button>'
+        '<button id="modal-close" type="button" aria-label="Close">'
+        '<svg viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></svg>'
+        "</button>"
         "</div></div>"
         '<div id="modal-body"></div>'
         "</div></div>"
