@@ -162,7 +162,11 @@ May 13
   - [x] Open in browser
 
 May 14
-- [ ] Support images, ... in browser
+- [x] "Open in browser" for table
+- [x] Support multimedia data
+
+May 15
+- [ ]
 
 - [ ] Fix tool response truncation for subagents
 

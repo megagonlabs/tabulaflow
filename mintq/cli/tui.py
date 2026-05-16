@@ -659,6 +659,13 @@ LIMIT 4000"""
         pdf = [pdf_bytes(name) for (_, name) in colors]
         wav = [wav_bytes(f) for f in notes]
 
+        # MP4 is annoying to encode at runtime (needs ffmpeg). One short clip
+        # is vendored as a static asset; every row reuses it.
+        from importlib.resources import files as _resource_files
+
+        mp4_bytes = _resource_files("mintq.cli.assets.debug").joinpath("sample.mp4").read_bytes()
+        mp4 = [mp4_bytes for _ in colors]
+
         png_b64 = [b64encode(b).decode("ascii") for b in png]
         png_data_uri = [f"data:image/png;base64,{s}" for s in png_b64]
 
@@ -677,13 +684,14 @@ LIMIT 4000"""
                 "svg": svg,
                 "pdf": pdf,
                 "wav": wav,
+                "mp4": mp4,
                 "png_b64": png_b64,
                 "png_data_uri": png_data_uri,
                 "mixed": mixed,
             }
         )
 
-        query = "-- synthetic media payloads (PNG/JPEG/GIF/WebP/BMP/SVG/PDF/WAV)"
+        query = "-- synthetic media payloads (PNG/JPEG/GIF/WebP/BMP/SVG/PDF/WAV/MP4)"
         result = ChatResult(
             text="Debug startup media table",
             records=[

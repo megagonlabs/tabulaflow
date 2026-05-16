@@ -67,7 +67,7 @@ mintq = "mintq.cli.app:main"
 include = ["mintq*"]
 
 [tool.setuptools.package-data]
-mintq = ["cli/assets/tabulator/*"]
+mintq = ["cli/assets/tabulator/*", "cli/assets/debug/*"]
 
 [tool.ruff]
 line-length = 120
