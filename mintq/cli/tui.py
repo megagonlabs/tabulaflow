@@ -667,14 +667,17 @@ LIMIT 4000"""
         webp = [img_bytes(c, "WEBP", name) for (c, name) in colors]
         bmp = [img_bytes(c, "BMP", name) for (c, name) in colors]
         svg = [svg_bytes(f"rgb{c}", name) for (c, name) in colors]
-        pdf = [pdf_bytes(name) for (_, name) in colors]
+        # Five real public-domain PDFs vendored under assets/debug —
+        # exercises the PDF anchor renderer and click-to-open in new tab.
+        pdf = [
+            _debug_files("mintq.cli.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes()
+            for i in range(len(colors))
+        ]
         wav = [wav_bytes(f) for f in notes]
 
         # MP4 is annoying to encode at runtime (needs ffmpeg). One short clip
         # is vendored as a static asset; every row reuses it.
-        from importlib.resources import files as _resource_files
-
-        mp4_bytes = _resource_files("mintq.cli.assets.debug").joinpath("sample.mp4").read_bytes()
+        mp4_bytes = _debug_files("mintq.cli.assets.debug").joinpath("sample.mp4").read_bytes()
         mp4 = [mp4_bytes for _ in colors]
 
         png_b64 = [b64encode(b).decode("ascii") for b in png]
