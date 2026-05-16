@@ -450,11 +450,6 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
 #modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
-/* Reset the in-cell fixed video dimensions so the modal video can scale
-   up to the viewport. ``width: auto`` lets aspect ratio drive sizing
-   from the loaded source; max-* caps it. */
-#modal-body video { width: auto; height: auto; max-width: 76vw; max-height: 70vh;
-    object-fit: contain; background: #000; display: block; margin: 0 auto; }
 """
 
 
@@ -512,10 +507,10 @@ _INIT_JS_TEMPLATE = """
                     // Pull the ``src`` from the rendered HTML and pop the
                     // appropriate big-media element. PDFs/anchors keep the
                     // default link behavior (new tab) — no modal.
+                    // Video cells skip the modal — the player's built-in
+                    // fullscreen button is a better "view bigger" affordance.
                     var imgMatch = html.match(/<img[^>]*src="([^"]+)"/);
                     if (imgMatch){ openModalImage(title, imgMatch[1]); return; }
-                    var vidMatch = html.match(/<video[^>]*src="([^"]+)"/);
-                    if (vidMatch){ openModalVideo(title, vidMatch[1]); return; }
                 };
             }
         }
@@ -590,19 +585,8 @@ _INIT_JS_TEMPLATE = """
         modalBody.appendChild(img);
         modal.classList.add("open");
     }
-    function openModalVideo(title, src){
-        modalTitle.textContent = title || "";
-        modalBody.innerHTML = "";
-        var v = document.createElement("video");
-        v.src = src;
-        v.controls = true;
-        v.preload = "metadata";
-        modalBody.appendChild(v);
-        modal.classList.add("open");
-    }
     function closeModal(){
         modal.classList.remove("open");
-        // Clearing innerHTML pauses any playing video and frees resources.
         modalBody.innerHTML = "";
     }
     modal.addEventListener("click", function(e){ if (e.target === modal) closeModal(); });
