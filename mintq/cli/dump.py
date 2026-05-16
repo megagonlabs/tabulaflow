@@ -530,10 +530,22 @@ _INIT_JS_TEMPLATE = """
     var modalTitle = document.getElementById("modal-title");
     var modalClose = document.getElementById("modal-close");
 
+    function maybeFormatJson(text){
+        if (typeof text !== "string") return text;
+        var trimmed = text.trim();
+        if (trimmed.length < 2) return text;
+        var first = trimmed[0];
+        var last = trimmed[trimmed.length - 1];
+        if ((first === "{" && last === "}") || (first === "[" && last === "]")){
+            try { return JSON.stringify(JSON.parse(trimmed), null, 2); }
+            catch (e) { /* not valid JSON, fall through */ }
+        }
+        return text;
+    }
     function openModal(title, text){
         modalTitle.textContent = title || "";
         var pre = document.createElement("pre");
-        pre.textContent = text;
+        pre.textContent = maybeFormatJson(text);
         modalBody.innerHTML = "";
         modalBody.appendChild(pre);
         modal.classList.add("open");
