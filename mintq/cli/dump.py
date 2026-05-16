@@ -366,6 +366,8 @@ audio, video { max-width: 240px; display: block; }
 .tabulator .tabulator-header .tabulator-col .tabulator-col-title {
     color: #3eb489;
     font-weight: 600;
+    font-size: 15px;
+    letter-spacing: 0.02em;
 }
 .tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 12px; }
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
