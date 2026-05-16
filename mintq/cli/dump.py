@@ -339,7 +339,7 @@ body {
 .multiline::after { content: " ↵"; color: #3eb489; }
 .null { color: #6a737d; font-style: italic; }
 img { max-height: 96px; max-width: 200px; display: block; }
-audio, video { max-width: 240px; display: block; }
+audio { max-width: 240px; display: block; }
 /* Native audio controls are cream-colored across all browsers; flip via
    filter for the dark theme. ``hue-rotate(180)`` restores any colored
    accents (rare in audio UIs) — the net effect inverts the monochrome
@@ -347,6 +347,14 @@ audio, video { max-width: 240px; display: block; }
    content. Skip for video since video frames carry real color we don't
    want flipped. */
 audio { filter: invert(0.92) hue-rotate(180deg); }
+/* Fixed display size so the player doesn't change dimensions between
+   placeholder (preload="none") and play (intrinsic source dims known).
+   Without this, the cell measured against the ~240×150 placeholder
+   collapses to the source's actual size when play starts and the video
+   shrinks to the cell's top-left. ``object-fit: contain`` letterboxes
+   sources whose aspect ratio doesn't match the box. */
+video { width: 240px; height: 160px; object-fit: contain; background: #000;
+    display: block; }
 
 /* Tabulator overrides on top of midnight theme. Modern dark-app look:
    one dark base for the whole surface, subtle stripe on alternate cells,
@@ -442,7 +450,11 @@ audio { filter: invert(0.92) hue-rotate(180deg); }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
 #modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
-#modal-body video { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
+/* Reset the in-cell fixed video dimensions so the modal video can scale
+   up to the viewport. ``width: auto`` lets aspect ratio drive sizing
+   from the loaded source; max-* caps it. */
+#modal-body video { width: auto; height: auto; max-width: 76vw; max-height: 70vh;
+    object-fit: contain; background: #000; display: block; margin: 0 auto; }
 """
 
 
