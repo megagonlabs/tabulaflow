@@ -369,7 +369,7 @@ audio, video { max-width: 240px; display: block; }
     font-size: 15px;
     letter-spacing: 0.02em;
 }
-.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 10px 12px; }
+.tabulator .tabulator-header .tabulator-col .tabulator-col-content { padding: 12px 12px; }
 .tabulator .tabulator-header .tabulator-col.tabulator-sortable:hover {
     background-color: rgba(62, 180, 137, 0.06) !important;
 }
