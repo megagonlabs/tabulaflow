@@ -335,6 +335,8 @@ body {
 /* Cell helpers shared across formatters. */
 .trunc { cursor: pointer; }
 .trunc::after { content: " …"; color: #3eb489; }
+.multiline { cursor: pointer; }
+.multiline::after { content: " ↵"; color: #3eb489; }
 .null { color: #6a737d; font-style: italic; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio, video { max-width: 240px; display: block; }
@@ -450,9 +452,17 @@ _INIT_JS_TEMPLATE = """
             var v = cell.getValue();
             if (v == null) return '<span class="null">—</span>';
             var s = String(v);
-            if (s.length <= DISPLAY_CAP) return escapeHtml(s);
+            var hasNewline = s.indexOf("\\n") >= 0;
+            if (s.length <= DISPLAY_CAP && !hasNewline) return escapeHtml(s);
+            // Show head text only; mark expandable with the .trunc class
+            // (green …) for over-cap, or with the ↵ glyph for short but
+            // multi-line cells. Newlines collapse in HTML, so without the
+            // cue the user wouldn't know the cell has structure to expand.
             var head = s.substring(0, DISPLAY_CAP).replace(/\\n/g, " ");
-            return '<div class="trunc">' + escapeHtml(head) + '</div>';
+            if (s.length > DISPLAY_CAP){
+                return '<div class="trunc">' + escapeHtml(head) + '</div>';
+            }
+            return '<span class="multiline">' + escapeHtml(head) + '</span>';
         },
         media: function(cell){
             var key = cell.getField() + "_display";
@@ -468,7 +478,8 @@ _INIT_JS_TEMPLATE = """
             if (name === "text"){
                 col.cellClick = function(e, cell){
                     var v = cell.getValue();
-                    if (typeof v === "string" && v.length > DISPLAY_CAP){
+                    if (typeof v !== "string") return;
+                    if (v.length > DISPLAY_CAP || v.indexOf("\\n") >= 0){
                         openModal(cell.getColumn().getDefinition().title, v);
                     }
                 };
