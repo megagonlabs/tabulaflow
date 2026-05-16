@@ -253,7 +253,7 @@ _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
 # Cap on the full text stored per non-media cell (sent to Tabulator's data
 # array). Truncated text above this is replaced with a head excerpt + note;
 # users can press `b` on the source row/cell for full content.
-_CELL_TEXT_HARD_CAP = 64 * 1024
+_CELL_TEXT_HARD_CAP = 1024 * 1024
 # Display truncation in the cell view (full value still in row data; modal
 # shows full).
 _CELL_DISPLAY_CAP = 120
