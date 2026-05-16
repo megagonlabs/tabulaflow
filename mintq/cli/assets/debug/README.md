@@ -12,3 +12,11 @@ Licensed under Creative Commons Attribution 3.0 (CC-BY 3.0).
 <https://test-videos.co.uk/bigbuckbunny/>.
 
 Attribution: © 2008 Blender Foundation | <https://www.bigbuckbunny.org/>
+
+## jpeg_0.jpg … jpeg_4.jpg
+
+Real-photo samples at varied aspect ratios (landscape, portrait, square,
+widescreen, tall) sourced from <https://picsum.photos/> with deterministic
+seeds. Backed by Unsplash, photographer-attributed at picsum.photos.
+Used by the `jpeg` column in the debug-media fixture to exercise the
+table's handling of non-uniform image aspects.

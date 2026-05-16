@@ -651,7 +651,15 @@ LIMIT 4000"""
 
         names = [name for _, name in colors]
         png = [img_bytes(c, "PNG", name) for (c, name) in colors]
-        jpeg = [img_bytes(c, "JPEG", name) for (c, name) in colors]
+        # Real photos (5 vendored JPEGs from picsum.photos at varied aspect
+        # ratios) — exercises non-square sources and verifies that the cell
+        # box hugs each image's natural dimensions.
+        from importlib.resources import files as _debug_files
+
+        jpeg = [
+            _debug_files("mintq.cli.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
+            for i in range(len(colors))
+        ]
         gif = [img_bytes(c, "GIF", name) for (c, name) in colors]
         webp = [img_bytes(c, "WEBP", name) for (c, name) in colors]
         bmp = [img_bytes(c, "BMP", name) for (c, name) in colors]
