@@ -260,7 +260,13 @@ def _render_blob(src: str, mime: str, size: int) -> str:
     re-measures columns after images have decoded.
     """
     if mime.startswith("image/"):
-        return f'<img src="{src}" loading="lazy">'
+        # Eager load (no ``loading="lazy"``). Lazy images don't block the
+        # ``window.load`` event (per HTML spec), so the post-load
+        # ``table.redraw(true)`` would race them and measure columns
+        # against undecoded 0×0 cells. Tabulator's virtual scroll already
+        # only renders visible rows, so off-screen optimization isn't
+        # needed and the race isn't worth the marginal benefit.
+        return f'<img src="{src}">'
     if mime.startswith("audio/"):
         return f'<audio controls preload="none" src="{src}"></audio>'
     if mime.startswith("video/"):
