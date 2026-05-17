@@ -619,8 +619,15 @@ _INIT_JS_TEMPLATE = """
     // after all media has loaded so column widths reflect actual content.
     // Gated on the presence of media columns: skipping the redraw on
     // text-only tables avoids a wasted re-measure pass.
+    // Use ``readyState === "complete"`` as a guard against the (rare)
+    // case where ``load`` already fired before we got here — late-
+    // registered listeners on a one-shot event would otherwise never run.
     if (__HAS_MEDIA__){
-        window.addEventListener("load", function(){ table.redraw(true); });
+        if (document.readyState === "complete"){
+            table.redraw(true);
+        } else {
+            window.addEventListener("load", function(){ table.redraw(true); });
+        }
     }
 
     var modal = document.getElementById("modal");
