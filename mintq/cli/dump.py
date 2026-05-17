@@ -581,19 +581,25 @@ _INIT_JS_TEMPLATE = """
         }
     });
 
-    // Small tables: let the wrapper size to content so the page feels
-    // app-like. Large tables: cap height so Tabulator's virtual scroll
-    // engages (without a parseable pixel ``height`` it would render every
-    // row's DOM upfront and freeze the tab).
+    // Sizing strategy:
+    //  - ``maxHeight`` always set so the *table* scrolls internally when
+    //    content exceeds the viewport (otherwise the page scrolls and
+    //    the sticky header / horizontal-scroll sync break). Short content
+    //    still flows naturally because the table is below the cap.
+    //  - ``height`` set only for large tables to activate Tabulator's
+    //    virtual scroll. Without ``height``, virtual scroll doesn't
+    //    engage and 1000s of rows freeze the tab.
+    var viewportCap = Math.max(240, window.innerHeight - 100);
     var tableOpts = {
         data: data,
         columns: cols,
         layout: "fitDataFill",
         renderVerticalBuffer: 600,
         movableColumns: false,
+        maxHeight: viewportCap,
     };
     if (data.length > 100){
-        tableOpts.height = Math.max(240, window.innerHeight - 100);
+        tableOpts.height = viewportCap;
     }
     var table = new Tabulator("#table", Object.assign(tableOpts, {
         selectableRange: 1,
