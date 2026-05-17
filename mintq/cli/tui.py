@@ -605,14 +605,6 @@ LIMIT 4000"""
 
         from mintq.cli.agent import ChatResult, ChatResultRecord
 
-        def img_bytes(color: tuple[int, int, int], fmt: str, label: str) -> bytes:
-            img = Image.new("RGB", (96, 64), color=color)
-            draw = ImageDraw.Draw(img)
-            draw.text((6, 24), label, fill=(255, 255, 255))
-            buf = io.BytesIO()
-            img.save(buf, format=fmt)
-            return buf.getvalue()
-
         def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
             # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
             n = int(seconds * rate)
@@ -626,14 +618,6 @@ LIMIT 4000"""
             header += b"fmt " + struct.pack("<IHHIIHH", 16, 1, 1, rate, rate * 2, 2, 16)
             header += b"data" + struct.pack("<I", data_size)
             return bytes(header + samples)
-
-        def svg_bytes(color: str, label: str) -> bytes:
-            return (
-                f'<svg xmlns="http://www.w3.org/2000/svg" width="96" height="64">'
-                f'<rect width="96" height="64" fill="{color}"/>'
-                f'<text x="6" y="38" fill="white" font-family="sans-serif" font-size="16">{label}</text>'
-                f"</svg>"
-            ).encode("utf-8")
 
         def pdf_bytes(label: str) -> bytes:
             img = Image.new("RGB", (240, 120), color=(245, 245, 245))
@@ -653,12 +637,11 @@ LIMIT 4000"""
         notes = [262.0, 294.0, 330.0, 349.0, 392.0]  # C D E F G
 
         names = [name for _, name in colors]
-        png = [img_bytes(c, "PNG", name) for (c, name) in colors]
+        from importlib.resources import files as _debug_files
+
         # Real photos (5 vendored JPEGs from picsum.photos at varied aspect
         # ratios) — exercises non-square sources and verifies that the cell
         # box hugs each image's natural dimensions.
-        from importlib.resources import files as _debug_files
-
         jpeg = [
             _debug_files("mintq.cli.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
             for i in range(len(colors))
@@ -669,9 +652,6 @@ LIMIT 4000"""
             _debug_files("mintq.cli.assets.debug").joinpath(f"gif_{i}.gif").read_bytes()
             for i in range(len(colors))
         ]
-        webp = [img_bytes(c, "WEBP", name) for (c, name) in colors]
-        bmp = [img_bytes(c, "BMP", name) for (c, name) in colors]
-        svg = [svg_bytes(f"rgb{c}", name) for (c, name) in colors]
         # Five real public-domain PDFs vendored under assets/debug —
         # exercises the PDF anchor renderer and click-to-open in new tab.
         pdf = [
@@ -685,32 +665,30 @@ LIMIT 4000"""
         mp4_bytes = _debug_files("mintq.cli.assets.debug").joinpath("sample.mp4").read_bytes()
         mp4 = [mp4_bytes for _ in colors]
 
-        png_b64 = [b64encode(b).decode("ascii") for b in png]
-        png_data_uri = [f"data:image/png;base64,{s}" for s in png_b64]
+        # Base64-encoded JPEG variants exercise the base64-string path
+        # (column whose values are strings that decode to a known media MIME).
+        jpeg_b64 = [b64encode(b).decode("ascii") for b in jpeg]
+        jpeg_data_uri = [f"data:image/jpeg;base64,{s}" for s in jpeg_b64]
 
-        # Mixed column: one PNG, rest text — should NOT be detected as media
+        # Mixed column: one JPEG, rest text — should NOT be detected as media
         # (under the 60% sniff threshold).
-        mixed = [png[0], "plain text", 42, None, "another"]
+        mixed = [jpeg[0], "plain text", 42, None, "another"]
 
         df = pd.DataFrame(
             {
                 "name": names,
-                "png": png,
                 "jpeg": jpeg,
                 "gif": gif,
-                "webp": webp,
-                "bmp": bmp,
-                "svg": svg,
                 "pdf": pdf,
                 "wav": wav,
                 "mp4": mp4,
-                "png_b64": png_b64,
-                "png_data_uri": png_data_uri,
+                "jpeg_b64": jpeg_b64,
+                "jpeg_data_uri": jpeg_data_uri,
                 "mixed": mixed,
             }
         )
 
-        query = "-- synthetic media payloads (PNG/JPEG/GIF/WebP/BMP/SVG/PDF/WAV/MP4)"
+        query = "-- synthetic media payloads (JPEG/GIF/PDF/WAV/MP4)"
         result = ChatResult(
             text="Debug startup media table",
             records=[
