@@ -223,6 +223,33 @@ def _sniff_column(series: "pd.Series", *, sample_n: int = 5, threshold: float = 
     return None
 
 
+_FILE_ICON_SVG = (
+    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"'
+    ' stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">'
+    '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>'
+    '<polyline points="14 2 14 8 20 8"/></svg>'
+)
+
+
+def _fmt_size(n: int) -> str:
+    """Human-readable byte size (B / KB / MB)."""
+    if n < 1024:
+        return f"{n} B"
+    if n < 1024 * 1024:
+        return f"{n / 1024:.1f} KB"
+    return f"{n / (1024 * 1024):.1f} MB"
+
+
+def _file_link(src: str, label: str, size: int, *, new_tab: bool) -> str:
+    """Render a file anchor with icon + label + dim size annotation."""
+    target = ' target="_blank" rel="noopener"' if new_tab else ""
+    return (
+        f'<a class="file-link" href="{src}"{target}>'
+        f"{_FILE_ICON_SVG}<span>{label}</span>"
+        f'<span class="file-size">{_fmt_size(size)}</span></a>'
+    )
+
+
 def _render_blob(src: str, mime: str, size: int) -> str:
     """Render a blob reference as inline media markup.
 
@@ -239,8 +266,8 @@ def _render_blob(src: str, mime: str, size: int) -> str:
     if mime.startswith("video/"):
         return f'<video controls preload="none" src="{src}"></video>'
     if mime == "application/pdf":
-        return f'<a href="{src}" target="_blank">PDF ({size:,} bytes)</a>'
-    return f'<a href="{src}">binary ({size:,} bytes)</a>'
+        return _file_link(src, "PDF", size, new_tab=True)
+    return _file_link(src, "binary", size, new_tab=False)
 
 
 def _safe_col_name(name: str) -> str:
@@ -341,6 +368,12 @@ body {
    terminal data browser's bool rendering. */
 .bool-yes { color: #3eb489; font-size: 15px; }
 .bool-no { color: #6a737d; font-size: 15px; }
+/* File/PDF links: mint accent, no underline, small file icon + dim size. */
+.file-link { display: inline-flex; align-items: center; gap: 6px;
+    color: #3eb489; text-decoration: none; }
+.file-link:hover { text-decoration: underline; }
+.file-link svg { width: 14px; height: 14px; flex: none; }
+.file-link .file-size { color: #6a737d; font-size: 12px; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio { max-width: 240px; display: block; }
 /* Native audio controls are cream-colored across all browsers; flip via
@@ -793,7 +826,12 @@ def render_table_html(
                     row_data[field] = None
                     row_data[f"{field}_display"] = ""
                     continue
-                if len(blob) <= inline_cap:
+                # PDFs always spill: Chrome blocks top-level navigation to
+                # ``data:application/pdf`` URLs (security policy), so an
+                # inlined PDF anchor opens a blank tab that only renders
+                # after a manual refresh. A real ``file://`` URL works
+                # cleanly. For non-PDF media the data URI is fine.
+                if mime != "application/pdf" and len(blob) <= inline_cap:
                     b64 = base64.b64encode(blob).decode("ascii")
                     src = f"data:{mime};base64,{b64}"
                     row_data[field] = f"({mime})"
