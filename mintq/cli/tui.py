@@ -663,7 +663,12 @@ LIMIT 4000"""
             _debug_files("mintq.cli.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
             for i in range(len(colors))
         ]
-        gif = [img_bytes(c, "GIF", name) for (c, name) in colors]
+        # Five real animated GIFs at varied sizes — exercises both inline
+        # (small ones) and sibling-file spill (large ones >256 KB).
+        gif = [
+            _debug_files("mintq.cli.assets.debug").joinpath(f"gif_{i}.gif").read_bytes()
+            for i in range(len(colors))
+        ]
         webp = [img_bytes(c, "WEBP", name) for (c, name) in colors]
         bmp = [img_bytes(c, "BMP", name) for (c, name) in colors]
         svg = [svg_bytes(f"rgb{c}", name) for (c, name) in colors]

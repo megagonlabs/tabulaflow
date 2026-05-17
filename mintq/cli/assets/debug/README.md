@@ -21,6 +21,14 @@ seeds. Backed by Unsplash, photographer-attributed at picsum.photos.
 Used by the `jpeg` column in the debug-media fixture to exercise the
 table's handling of non-uniform image aspects.
 
+## gif_0.gif … gif_4.gif
+
+Five real animated GIFs of varied sizes (8 KB – 1.8 MB) and dimensions
+(195×229 – 480×480) used by the `gif` column. Mix of GIPHY content
+(`gif_0/2/3/4`) and Wikimedia (`gif_1`, "Newton's cradle"). Exercises
+both the inline data-URI path (small) and the sibling-file spill path
+(large) for the same media column.
+
 ## pdf_0.pdf … pdf_4.pdf
 
 Five small public-domain PDFs used by the `pdf` column in the debug-media
