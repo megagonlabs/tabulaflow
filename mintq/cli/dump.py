@@ -402,6 +402,11 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
     background-color: #131720 !important;
     border: none !important;
 }
+/* Kill the macOS rubber-band overscroll on the body's scroll container.
+   Tabulator syncs the header position from the body's scrollLeft; when
+   the body bounces past its boundary the header doesn't (it's not the
+   scroll target), causing a visible desync at the edges. */
+.tabulator .tabulator-tableholder { overscroll-behavior: none; }
 
 /* Header */
 .tabulator .tabulator-header {
