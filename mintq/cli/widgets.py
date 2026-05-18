@@ -778,7 +778,7 @@ class DataBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("enter", "open_cell", "View cell", priority=True),
+        Binding("enter", "open_cell", "Inspect cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
         Binding("b", "open_table_in_browser", "Open table in browser", show=True, priority=True),
@@ -964,7 +964,7 @@ class DataBrowserScreen(Screen[None]):
             ("Esc", KEY_HINT),
             (" Back    ", hint_fg),
             ("Enter", KEY_HINT),
-            (" View Cell    ", hint_fg),
+            (" Inspect cell    ", hint_fg),
             ("[", KEY_HINT),
             ("/", hint_fg),
             ("]", KEY_HINT),
