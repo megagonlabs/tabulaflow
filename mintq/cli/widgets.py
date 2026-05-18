@@ -781,8 +781,7 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "View cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
-        Binding("b", "open_cell_in_browser", "Cell in browser", show=True, priority=True),
-        Binding("B", "open_table_in_browser", "Table in browser", show=True, priority=True),
+        Binding("b", "open_table_in_browser", "Open in browser", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
@@ -881,22 +880,6 @@ class DataBrowserScreen(Screen[None]):
             self._page_index = self._max_page_index
         self._render_page()
 
-    def action_open_cell_in_browser(self) -> None:
-        """Open the highlighted cell directly in the system browser."""
-        row_idx = self._table.cursor_coordinate.row
-        col_idx = self._table.cursor_coordinate.column
-        if col_idx <= 0:
-            return
-        df_col = col_idx - 1
-        if df_col >= len(self._df.columns):
-            return
-        start = self._page_index * self._page_size
-        df_row = start + row_idx
-        if df_row >= len(self._df):
-            return
-        raw_value = self._df.iloc[df_row, df_col]
-        open_cell_in_browser(raw_value, self.app, status=self._set_status_message)
-
     def action_open_table_in_browser(self) -> None:
         """Open the current DataFrame as HTML in the system browser."""
         open_table_in_browser(self._df, self._title, self.app, status=self._set_status_message)
@@ -975,9 +958,7 @@ class DataBrowserScreen(Screen[None]):
             ("]", KEY_HINT),
             (" Prev/Next Page    ", hint_fg),
             ("b", KEY_HINT),
-            (" Cell in Browser    ", hint_fg),
-            ("B", KEY_HINT),
-            (" Table in Browser", hint_fg),
+            (" Open in browser", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
@@ -1127,7 +1108,7 @@ class CellBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "open_in_browser", "Open in Browser", show=True, priority=True),
+        Binding("b", "open_in_browser", "Open in browser", show=True, priority=True),
     ]
 
     # Skip syntax highlighting above this many rendered chars — Pygments'
@@ -1296,7 +1277,7 @@ class CellBrowserScreen(Screen[None]):
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         hint.append("b", style=KEY_HINT)
-        hint.append(" Open in Browser    ", style="dim")
+        hint.append(" Open in browser    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
     def _refresh_status(self, extra: Text | None = None) -> None:
