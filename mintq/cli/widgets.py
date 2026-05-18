@@ -880,8 +880,20 @@ class DataBrowserScreen(Screen[None]):
             self._page_index = self._max_page_index
         self._render_page()
 
-    def action_open_table_in_browser(self) -> None:
-        """Open the current DataFrame as HTML in the system browser."""
+    async def action_open_table_in_browser(self) -> None:
+        """Open the current DataFrame as HTML in the system browser.
+
+        Shows ``Opening...`` while the (blocking) render runs, paints
+        before the block, then the helper overwrites the status with the
+        final result (``opened in browser: <path>`` or ``no browser, saved
+        to: <path>``).
+        """
+        import asyncio
+
+        self._set_status_message(Text("Opening...", style="dim"))
+        painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+        await painted
         open_table_in_browser(self._df, self._title, self.app, status=self._set_status_message)
 
     def _set_status_message(self, message: "Text") -> None:
@@ -1294,7 +1306,7 @@ class CellBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
-    def action_open_in_browser(self) -> None:
+    async def action_open_in_browser(self) -> None:
         """Save the raw value with its native extension and open it in a browser.
 
         Uses ``webbrowser_open`` (which queries the system's default browser
@@ -1302,8 +1314,19 @@ class CellBrowserScreen(Screen[None]):
         ``.json`` reaches Chrome's native tree viewer regardless of how
         ``.json`` is otherwise associated. Falls back to reporting the
         saved path if no browser is available (headless / SSH).
+
+        Shows ``Opening...`` while the serialize/write runs so the user
+        sees an immediate response on click. Only paints the wait status
+        when a dump is actually being produced — if the cached path
+        already exists, the reuse-path is fast and skips the flicker.
         """
         if self._dumped_path is None or not self._dumped_path.exists():
+            import asyncio
+
+            self._refresh_status(Text("Opening...", style="dim"))
+            painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+            self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+            await painted
             path = open_cell_in_browser(self._raw_value, self.app, status=self._refresh_status)
             if path is None:
                 return
