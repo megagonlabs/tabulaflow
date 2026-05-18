@@ -781,7 +781,7 @@ class DataBrowserScreen(Screen[None]):
         Binding("enter", "open_cell", "View cell", priority=True),
         Binding("[", "prev_page", "Prev page", show=True),
         Binding("]", "next_page", "Next page", show=True),
-        Binding("b", "open_table_in_browser", "Open in browser", show=True, priority=True),
+        Binding("b", "open_table_in_browser", "Open table in browser", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", page_size: int = 50) -> None:
@@ -970,7 +970,7 @@ class DataBrowserScreen(Screen[None]):
             ("]", KEY_HINT),
             (" Prev/Next Page    ", hint_fg),
             ("b", KEY_HINT),
-            (" Open in browser", hint_fg),
+            (" Open table in browser", hint_fg),
         ]
         hint = Text()
         for text, style in hint_segments:
@@ -1120,7 +1120,7 @@ class CellBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
-        Binding("b", "open_in_browser", "Open in browser", show=True, priority=True),
+        Binding("b", "open_in_browser", "Open cell in browser", show=True, priority=True),
     ]
 
     # Skip syntax highlighting above this many rendered chars — Pygments'
@@ -1289,7 +1289,7 @@ class CellBrowserScreen(Screen[None]):
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         hint.append("b", style=KEY_HINT)
-        hint.append(" Open in browser    ", style="dim")
+        hint.append(" Open cell in browser    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
     def _refresh_status(self, extra: Text | None = None) -> None:
