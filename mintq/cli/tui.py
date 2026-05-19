@@ -57,6 +57,7 @@ class MintqApp(App[None]):
         ("ctrl+c", "interrupt_or_quit", "Interrupt / Quit"),
         ("ctrl+d", "quit_only", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
+        ("ctrl+o", "open_data_explorer", "Open data explorer"),
     ]
 
     _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
@@ -87,7 +88,7 @@ class MintqApp(App[None]):
                 id="input-bar",
             )
             explorer_label = Text()
-            explorer_label.append("Shift+↵", style=KEY_HINT)
+            explorer_label.append("Ctrl+O", style=KEY_HINT)
             explorer_label.append("  Open data explorer", style="dim")
             yield Button(explorer_label, id="open-explorer-btn")
 
@@ -110,7 +111,7 @@ class MintqApp(App[None]):
     def action_open_data_explorer(self) -> None:
         """Push the SchemaBrowserScreen — the canonical data explorer.
 
-        Triggered by ``Shift+Enter`` from the input or by clicking the
+        Triggered by ``Ctrl+O`` from the input or by clicking the
         ``Open data explorer`` button next to the input. Falls back to a
         system message when no databases are connected.
         """

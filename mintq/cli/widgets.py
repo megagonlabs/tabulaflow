@@ -199,7 +199,7 @@ class HistoryInput(Input):
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
         Binding("shift+up", "focus_latest_result", "Inspect previous record"),
         Binding("shift+down", "focus_latest_result_down", "Inspect newer record", show=False),
-        Binding("shift+enter", "open_data_explorer", "Open data explorer"),
+        Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
     ]
 
     def action_open_data_explorer(self) -> None:
