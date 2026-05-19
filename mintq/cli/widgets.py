@@ -68,7 +68,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _SLASH_COMMANDS = sorted(
-    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/browse", "/model"]
+    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/model"]
 )
 
 _CONNECTABLE_EXTENSIONS = frozenset(
@@ -199,7 +199,12 @@ class HistoryInput(Input):
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
         Binding("shift+up", "focus_latest_result", "Inspect previous record"),
         Binding("shift+down", "focus_latest_result_down", "Inspect newer record", show=False),
+        Binding("shift+enter", "open_data_explorer", "Open data explorer"),
     ]
+
+    def action_open_data_explorer(self) -> None:
+        """Push the schema browser. Delegates to the app's action."""
+        self.app.action_open_data_explorer()  # type: ignore[attr-defined]
 
     def action_focus_latest_result(self) -> None:
         """Move focus from the input to the latest AgentResultWidget.

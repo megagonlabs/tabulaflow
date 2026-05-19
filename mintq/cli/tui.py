@@ -9,11 +9,12 @@ from typing import TYPE_CHECKING, Any
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
-from textual.containers import VerticalScroll
-from textual.widgets import Input
+from textual.containers import Horizontal, VerticalScroll
+from textual.widgets import Button, Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
 from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
+from mintq.cli.theme import KEY_HINT
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -79,11 +80,16 @@ class MintqApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
-        yield HistoryInput(
-            history_path=self._runtime_paths.history_path,
-            placeholder="Ask a question or type /help",
-            id="input-bar",
-        )
+        with Horizontal(id="input-row"):
+            yield HistoryInput(
+                history_path=self._runtime_paths.history_path,
+                placeholder="Ask a question or type /help",
+                id="input-bar",
+            )
+            explorer_label = Text()
+            explorer_label.append("Shift+↵", style=KEY_HINT)
+            explorer_label.append("  Open data explorer", style="dim")
+            yield Button(explorer_label, id="open-explorer-btn")
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -100,6 +106,30 @@ class MintqApp(App[None]):
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self.run_worker(self._ensure_session())
+
+    def action_open_data_explorer(self) -> None:
+        """Push the SchemaBrowserScreen — the canonical data explorer.
+
+        Triggered by ``Shift+Enter`` from the input or by clicking the
+        ``Open data explorer`` button next to the input. Falls back to a
+        system message when no databases are connected.
+        """
+        from mintq.cli.widgets import SchemaBrowserScreen, SystemMessage
+
+        if self._session is None or not self._session.registry.list_aliases():
+            chat_log = self.query_one("#chat-log", VerticalScroll)
+            chat_log.mount(
+                SystemMessage(Text("No databases connected. Use /connect first.", style="red"))
+            )
+            chat_log.scroll_end(animate=False)
+            return
+        self.push_screen(SchemaBrowserScreen(registry=self._session.registry, alias=None))
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        """Route the right-side button click to the data-explorer action."""
+        if event.button.id == "open-explorer-btn":
+            self.action_open_data_explorer()
+            event.stop()
 
     def on_key(self, event: events.Key) -> None:
         """Typeahead-returns-focus: typing a printable character while
@@ -1482,13 +1512,6 @@ LIMIT 4000"""
         if result.should_clear:
             chat_log.remove_children()
             chat_log.mount(BannerWidget(model=session.model))
-            return
-
-        if result.browse is not None:
-            from mintq.cli.widgets import SchemaBrowserScreen
-
-            alias = result.browse if isinstance(result.browse, str) else None
-            self.push_screen(SchemaBrowserScreen(registry=session.registry, alias=alias))
             return
 
         if result.output is not None:
