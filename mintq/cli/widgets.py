@@ -1292,6 +1292,21 @@ class CellBrowserScreen(Screen[None]):
             preview = raw[:32].hex(" ")
             return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
 
+        # HuggingFace Image/Audio struct: surface the blob preview rather
+        # than the JSON tree of ``{"bytes": ..., "path": ...}``. Matches the
+        # serialize_cell path so the in-TUI cell view and the file written
+        # by ``b`` are consistent (both treat the cell as media, not JSON).
+        if isinstance(value, dict):
+            inner = value.get("bytes")
+            if isinstance(inner, (bytes, bytearray, memoryview)):
+                from mintq.cli.dump import sniff_binary
+
+                raw = bytes(inner)
+                sniffed = sniff_binary(raw)
+                label = sniffed[1] if sniffed else "binary"
+                preview = raw[:32].hex(" ")
+                return f"<{label}: {len(raw):,} bytes>\n{preview} ...", None
+
         json_str = CellBrowserScreen._try_as_json(value)
         if json_str is not None:
             return CellBrowserScreen._cap_display(json_str), "json"

@@ -127,6 +127,18 @@ def serialize_cell(value: object) -> tuple[str | bytes, str]:
         sniffed = sniff_binary(raw)
         return raw, sniffed[0] if sniffed else ".bin"
 
+    # HuggingFace ``Image``/``Audio`` struct: ``{"bytes": <blob>, "path": ...}``
+    # — DuckDB returns ``STRUCT(bytes BLOB, path VARCHAR)`` columns from
+    # cached HF parquet as dicts. Surface the blob with its native
+    # extension so ``b`` (open in browser) renders the image / plays the
+    # audio rather than dumping a JSON tree.
+    if isinstance(value, dict):
+        inner = value.get("bytes")
+        if isinstance(inner, (bytes, bytearray, memoryview)):
+            raw = bytes(inner)
+            sniffed = sniff_binary(raw)
+            return raw, sniffed[0] if sniffed else ".bin"
+
     if isinstance(value, (dict, list)):
         return json.dumps(value, indent=2, ensure_ascii=False, default=str), ".json"
 
