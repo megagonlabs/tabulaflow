@@ -1115,6 +1115,10 @@ class DataBrowserScreen(Screen[None]):
         # expanding the row), tabs, and runs of spaces. Full multi-line
         # content stays available via Enter to inspect.
         s = " ".join(s.split())
+        # Match the dim-italic styling of the ``NULL`` and ``<binary: N
+        # bytes>`` placeholders — ``<binary: skipped>`` plays the same
+        # role (a placeholder for stripped BLOB data, produced by the HF
+        # loader's ``blob_strip=True``).
         if s == "<binary: skipped>":
             return Text(s, style="dim italic")
         if truncated:
