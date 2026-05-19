@@ -166,7 +166,22 @@ May 14
 - [x] Support multimedia data
 
 May 15
-- [ ]
+- [x] "Open in browser" for table
+
+May 17 
+- "Open in browser" for table
+  - [x] Support pdf
+  - [x] "Opening..."
+
+May 18
+- UI improvements
+  - [x] shift+up/down for past results
+  - [x] auto-focus last result
+  - [x] typeahead
+  - [x] Hint colors
+  - [x] Speed up table rendering in preview and data browser (binary and long cell)
+  - [x] Fix image/audio support for huggingface
+  - [x] "Open data explorer" button
 
 - [ ] Fix tool response truncation for subagents
 
