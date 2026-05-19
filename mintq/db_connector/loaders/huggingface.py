@@ -655,7 +655,6 @@ def _run_datasets_lib(payload: dict[str, Any]) -> None:
                         "name": base_name,
                         "kind": "table",
                         "urls": [parquet_path],
-                        "blob_strip": True,
                     },
                 )
         finally:
