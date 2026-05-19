@@ -280,13 +280,17 @@ async def _build_hf_splits(
             splits.append({"name": base_name, "kind": "view", "urls": urls})
             table_names.append(base_name)
             sample_name = f"{base_name}_sample"
+            # 100 rows with BLOBs preserved — a small representative
+            # preview (including media) rather than a BLOB-free
+            # metadata scan. Bounds size for high-res datasets while
+            # still letting users preview real images / audio / video
+            # from the sample table.
             splits.append(
                 {
                     "name": sample_name,
                     "kind": "table",
                     "urls": [urls[0]],
-                    "blob_strip": True,
-                    "limit": 1000,
+                    "limit": 100,
                     "optional": True,
                 }
             )
