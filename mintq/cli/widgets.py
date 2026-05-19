@@ -998,7 +998,7 @@ class DataBrowserScreen(Screen[None]):
         hint_segments: list[tuple[str, str]] = [
             ("Esc", KEY_HINT),
             (" Back    ", hint_fg),
-            ("Enter", KEY_HINT),
+            ("↵", KEY_HINT),
             (" Inspect cell    ", hint_fg),
             ("[", KEY_HINT),
             ("/", hint_fg),
@@ -1937,7 +1937,7 @@ class AgentResultWidget(Widget):
         # when this widget is focused, so it follows focus-state dimming.
         hint.append("Shift+↑↓", style=KEY_HINT)
         hint.append(" Prev/Next result    ", style="dim")
-        hint.append("Enter", style=self._focus_key_hint)
+        hint.append("↵", style=self._focus_key_hint)
         hint.append(" Inspect", style="dim")
 
         caption = self._data_preview_caption(view)
@@ -2589,6 +2589,6 @@ class SchemaBrowserScreen(Screen[None]):
         hint.append(" Back", style=hint_fg)
         if self._cursor_has_preview():
             hint.append("    ", style=hint_fg)
-            hint.append("Enter", style=KEY_HINT)
+            hint.append("↵", style=KEY_HINT)
             hint.append(" Preview table", style=hint_fg)
         self._hint.update(hint)
