@@ -40,9 +40,11 @@ MintqApp {
     width: auto;
     height: 3;
     margin: 0 1 0 1;
-    border: solid #3eb489;
+    padding: 0 3;
+    border: none;
     background: $surface;
     color: $text;
+    text-style: none;
     min-width: 0;
 }
 
