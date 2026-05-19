@@ -1103,10 +1103,17 @@ class DataBrowserScreen(Screen[None]):
                 s = str(value)
         else:
             s = str(value)
+        # Truncate before the replace chain so the per-cell cost stays
+        # O(_MAX_CELL_LEN) instead of O(full-string-length). For huge text
+        # cells (megabytes of content) the replace passes and downstream
+        # Rich rendering were dominating page-render time.
+        truncated = len(s) > DataBrowserScreen._MAX_CELL_LEN
+        if truncated:
+            s = s[: DataBrowserScreen._MAX_CELL_LEN]
         s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
         if s == "<binary: skipped>":
             return Text(s, style="dim italic")
-        if len(s) > DataBrowserScreen._MAX_CELL_LEN:
+        if truncated:
             t = Text(s[: DataBrowserScreen._MAX_CELL_LEN - 3])
             t.append("...", style="dim")
             return t

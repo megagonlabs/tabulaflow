@@ -193,6 +193,9 @@ def build_table(
     return Group(table, footer), n_show
 
 
+_PREVIEW_CELL_TRUNCATE = 500
+
+
 def _format_table_cell(value: object) -> str:
     """Normalize cell text to a single line; column-level max_width handles truncation.
 
@@ -205,6 +208,12 @@ def _format_table_cell(value: object) -> str:
     hex string; Rich's column-measure pass then walks that whole string per
     cell, stalling view-switch by seconds on tables with image/audio/video
     columns. The visible cell is ellipsized anyway — no information loss.
+
+    Truncates very long text cells before the replace/escape passes for the
+    same reason: a 5 MB string would have ``.replace()`` walked over it 3
+    times and ``_rich_escape`` once, plus Rich's table-render measure pass
+    per cell. The visible cell is only ~30 chars wide, so anything past
+    ``_PREVIEW_CELL_TRUNCATE`` is invisible.
     """
     if isinstance(value, (bytes, bytearray, memoryview)):
         return f"<binary: {len(value):,} bytes>"
@@ -213,7 +222,10 @@ def _format_table_cell(value: object) -> str:
         inner = value.get("bytes")
         if isinstance(inner, (bytes, bytearray, memoryview)):
             return f"<binary: {len(inner):,} bytes>"
-    s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+    s = str(value)
+    if len(s) > _PREVIEW_CELL_TRUNCATE:
+        s = s[:_PREVIEW_CELL_TRUNCATE] + "…"
+    s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
     return _rich_escape(s)
 
 
