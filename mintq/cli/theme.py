@@ -21,9 +21,11 @@ ACCENT_DIM = "#67857b"
 # Kept separate from ACCENT so the two can evolve independently.
 KEY_HINT_COLOR = "#9EC8B2"
 KEY_HINT = f"bold {KEY_HINT_COLOR}"
-# Dim version is just the bold-prefixed ACCENT_DIM — one mint dim color
-# serves both the accent role (e.g. record pill bg) and the key-hint role.
-KEY_HINT_DIM = f"bold {ACCENT_DIM}"
+# Inactive hint keys use the same ``"dim"`` foreground as their labels so
+# the colors match exactly (e.g. "Enter" and "Inspect" share a color), but
+# keep ``bold`` so the key glyph is still distinguishable from the label
+# text by weight.
+KEY_HINT_DIM = "bold dim"
 
 
 def _make_transparent_dracula() -> TextAreaTheme:
