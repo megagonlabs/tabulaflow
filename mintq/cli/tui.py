@@ -129,6 +129,10 @@ class MintqApp(App[None]):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Route the right-side button click to the data-explorer action."""
         if event.button.id == "open-explorer-btn":
+            # Move focus to the input before pushing the explorer screen so
+            # that popping back lands on the input, not the button (which
+            # would otherwise keep its pressed/focus highlight).
+            self.query_one("#input-bar", Input).focus()
             self.action_open_data_explorer()
             event.stop()
 

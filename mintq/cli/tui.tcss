@@ -49,7 +49,8 @@ MintqApp {
 }
 
 #open-explorer-btn:hover {
-    background: #1f242c;
+    background: $surface;
+    background-tint: $foreground 5%;
 }
 
 #open-explorer-btn:focus {
@@ -58,6 +59,7 @@ MintqApp {
 }
 
 #open-explorer-btn.-active {
-    background: #1f242c;
+    background: $surface;
+    background-tint: $foreground 10%;
     text-style: none;
 }
