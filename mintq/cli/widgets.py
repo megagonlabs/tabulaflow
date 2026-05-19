@@ -998,7 +998,7 @@ class DataBrowserScreen(Screen[None]):
             ("[", KEY_HINT),
             ("/", hint_fg),
             ("]", KEY_HINT),
-            (" Prev/Next Page    ", hint_fg),
+            (" Prev/Next page    ", hint_fg),
             ("b", KEY_HINT),
             (" Open table in browser", hint_fg),
         ]
@@ -1695,7 +1695,7 @@ class AgentResultWidget(Widget):
         """Render record pills left-anchored, wrapping across multiple lines.
 
         All pills are shown; when the row fills, subsequent pills wrap to a
-        new line. When more than one record exists, a ``·  ←/→ Switch Record``
+        new line. When more than one record exists, a ``·  ←/→ Switch record``
         hint is appended inline after the final pill if it fits on the last
         line, otherwise on a new line below.
 
@@ -1714,7 +1714,7 @@ class AgentResultWidget(Widget):
 
         HINT_SEP = " · "
         HINT_KEY = "←/→"
-        HINT_TEXT = " Switch Record"
+        HINT_TEXT = " Switch record"
         hint_width = len(HINT_SEP) + len(HINT_KEY) + len(HINT_TEXT) if record_interactive else 0
 
         SEP = 1  # space between pills on the same row
@@ -1789,7 +1789,7 @@ class AgentResultWidget(Widget):
         line = Text(no_wrap=True)
         col = 0
 
-        # Always reserve the Switch View hint width so the stepper's total
+        # Always reserve the Switch view hint width so the stepper's total
         # width stays constant across records. If we rendered this block only
         # when the record has multiple views, clicking a single-view record
         # would shrink the stepper and — since it shares a row with the
@@ -1799,12 +1799,12 @@ class AgentResultWidget(Widget):
             line.append_text(Text("/", style="dim"))
             line.append_text(Text("]", style=KEY_HINT))
             col += 3
-            line.append_text(Text(" Switch View", style="dim"))
-            col += len(" Switch View")
+            line.append_text(Text(" Switch view", style="dim"))
+            col += len(" Switch view")
             line.append_text(Text(" · ", style=dim_sep_style))
             col += 3
         else:
-            reserved = 3 + len(" Switch View") + 3
+            reserved = 3 + len(" Switch view") + 3
             line.append_text(Text(" " * reserved))
             col += reserved
 
