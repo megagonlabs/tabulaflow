@@ -1883,7 +1883,11 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
-        hint.append("Shift+↑↓", style=self._focus_key_hint)
+        # Shift+↑↓ works from anywhere (input or any result), so it stays
+        # bright even when this widget isn't focused — it's the "way in"
+        # to this widget's history navigation. Enter Inspect only works
+        # when this widget is focused, so it follows focus-state dimming.
+        hint.append("Shift+↑↓", style=KEY_HINT)
         hint.append(" Prev/Next result    ", style="dim")
         hint.append("Enter", style=self._focus_key_hint)
         hint.append(" Inspect", style="dim")
