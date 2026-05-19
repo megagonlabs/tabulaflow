@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
-_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES = (4 * 1024 * 1024 * 1024) - 1
+_DUCKDB_JSON_MAX_OBJECT_SIZE_BYTES = 1024 * 1024 * 1024
 
 
 def _table_name_from_path(file_path: str, *, include_ext: bool = False) -> str:
