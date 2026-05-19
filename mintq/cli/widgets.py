@@ -1840,10 +1840,12 @@ class AgentResultWidget(Widget):
         self._view_stepper_widget.update(line)
 
     def _update_bottom_hint(self) -> None:
-        """Render the 'Enter Inspect' affordance below the preview.
+        """Render hint affordances below the preview.
 
-        The hint is right-aligned. For data views, the truncation caption
-        ('showing N of M rows/cols') is left-aligned on the same line.
+        The hint cluster is right-aligned. For data views, the truncation
+        caption ('showing N of M rows/cols') is left-aligned on the same
+        line. Hints read left-to-right as the user's natural progression:
+        navigate to a record (Shift+↑↓), then inspect it (Enter).
         """
         if self._bottom_hint_widget is None:
             return
@@ -1853,6 +1855,8 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
+        hint.append("Shift+↑↓", style=KEY_HINT)
+        hint.append(" Prev/Next result    ", style="dim")
         hint.append("Enter", style=KEY_HINT)
         hint.append(" Inspect", style="dim")
 
