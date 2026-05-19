@@ -1236,6 +1236,10 @@ LIMIT 4000"""
         if inp.value:
             inp.value = ""
             self._last_idle_interrupt_ts = 0.0
+            # Land focus in the now-empty input so the user can compose
+            # immediately. Matters when Ctrl+C is pressed while a result
+            # widget is focused.
+            inp.focus()
             return
 
         self._confirm_idle_quit("Ctrl+C", inp)
@@ -1252,6 +1256,7 @@ LIMIT 4000"""
         if inp.value:
             inp.value = ""
             self._last_idle_interrupt_ts = 0.0
+            inp.focus()
             return
 
         self._confirm_idle_quit("Ctrl+D", inp)
