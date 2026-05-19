@@ -7,6 +7,7 @@ import os
 from typing import TYPE_CHECKING, Any
 
 from rich.text import Text
+from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import VerticalScroll
 from textual.widgets import Input
@@ -28,6 +29,22 @@ if TYPE_CHECKING:
     from mintq.toolhub.query_history import QueryHistory
 
 logger = logging.getLogger(__name__)
+
+
+def _focused_has_binding_for(widget: object, key: str) -> bool:
+    """True if ``widget`` (or any base class) declares a ``BINDINGS`` entry
+    matching ``key``.
+
+    Used by the app's typeahead handler to defer to the focused widget's
+    own bindings for single-character keys like ``[`` / ``]`` / ``j`` /
+    ``k`` instead of routing them to the input.
+    """
+    for cls in type(widget).__mro__:
+        for binding_def in getattr(cls, "BINDINGS", ()):
+            binding_key = binding_def[0] if isinstance(binding_def, tuple) else binding_def.key
+            if binding_key == key:
+                return True
+    return False
 
 
 class MintqApp(App[None]):
@@ -83,6 +100,48 @@ class MintqApp(App[None]):
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
         self.run_worker(self._ensure_session())
+
+    def on_key(self, event: events.Key) -> None:
+        """Typeahead-returns-focus: typing a printable character while
+        focus is on any non-input widget (chat log, AgentResultWidget,
+        etc.) snaps focus to the input bar and inserts the character.
+
+        Pairs with the auto-focus-on-completion behavior: after the
+        agent finishes, focus is on the latest result so Enter inspects.
+        Starting to type a follow-up prompt returns the user to the
+        input box without an explicit click or Tab.
+        """
+        focused = self.focused
+        if focused is None or isinstance(focused, Input):
+            return
+        # Skip when a modal screen (CellBrowserScreen, DataBrowserScreen,
+        # etc.) is open — those own their own keystrokes.
+        if len(self.screen_stack) > 1:
+            return
+        # Modifier combos go to widget bindings, not the input.
+        if "+" in event.key:
+            return
+        # Only printable single characters — filters Enter/Tab/Esc/etc.
+        ch = event.character
+        if ch is None or len(ch) != 1 or not ch.isprintable():
+            return
+        # Let the focused widget's own BINDINGS win — e.g. ``[`` and ``]``
+        # for view nav on AgentResultWidget, or ``j``/``k`` for record
+        # nav. Without this check, typeahead would steal those keys for
+        # the input instead of triggering the widget's binding.
+        if _focused_has_binding_for(focused, event.key):
+            return
+        inp = self.query_one("#input-bar", Input)
+        # Textual's ``Input`` auto-selects all existing text on focus, so
+        # ``insert_text_at_cursor`` would *replace* the user's in-progress
+        # composition. Append directly to ``value`` and move the cursor
+        # to the end — keeps any existing text and tacks on the typed
+        # character.
+        new_value = inp.value + ch
+        inp.value = new_value
+        inp.cursor_position = len(new_value)
+        inp.focus()
+        event.stop()
 
     @staticmethod
     def _debug_history_for(result: "ChatResult") -> "QueryHistory":
@@ -1479,6 +1538,15 @@ LIMIT 4000"""
                 query_history=session.chat_agent._query_history,
             )
             await chat_log.mount(result_widget)
+            # Focus the just-mounted result so the user can press Enter to
+            # inspect it without first clicking. The typeahead handler in
+            # ``on_key`` routes any printable keystroke back to the input,
+            # so this doesn't block fast follow-up prompts. Skip the steal
+            # when the user is already composing in the input — yanking
+            # focus mid-typing would be hostile.
+            inp = self.query_one("#input-bar", Input)
+            if not inp.value:
+                result_widget.focus()
 
         # Defer scroll until after layout reflow so the final content height is known.
         self.call_after_refresh(chat_log.scroll_end, animate=False)

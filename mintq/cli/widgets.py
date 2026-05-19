@@ -187,12 +187,43 @@ class HistoryInput(Input):
     agent or slash-command handler.
     """
 
+    # Don't auto-select all text when the input regains focus. The app's
+    # typeahead handler relies on this — when focus returns from a result
+    # widget after the user types a character, the existing composition
+    # should stay (with the new char appended), not be replaced.
+    select_on_focus = False
+
     BINDINGS = [
-        Binding("up", "history_prev", "Previous command", priority=True),
-        Binding("down", "history_next", "Next command", priority=True),
+        # ``priority=False`` so these only fire when the input is actually
+        # focused. With ``priority=True`` the bindings would claim ``up`` /
+        # ``down`` globally, blocking the AgentResultWidget's own arrow-
+        # key navigation between records.
+        Binding("up", "history_prev", "Previous command"),
+        Binding("down", "history_next", "Next command"),
         Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
+        Binding("shift+up", "focus_latest_result", "Inspect previous record"),
+        Binding("shift+down", "focus_latest_result_down", "Inspect newer record", show=False),
     ]
+
+    def action_focus_latest_result(self) -> None:
+        """Move focus from the input to the latest AgentResultWidget.
+
+        Once focused there, the widget's own ``up/down`` bindings let the
+        user walk further back through history.
+        """
+        results = list(self.app.query(AgentResultWidget))
+        if results:
+            results[-1].focus()
+            results[-1].scroll_visible()
+
+    def action_focus_latest_result_down(self) -> None:
+        """``Shift+↓`` from the input: no-op (user is already past newest).
+
+        Bound for symmetry / discoverability — pressing it after returning
+        to the input shouldn't do anything surprising.
+        """
+        return
 
     def __init__(self, history_path: Path, **kwargs: object) -> None:
         super().__init__(suggester=MintqSuggester(), **kwargs)  # type: ignore[arg-type]
@@ -1970,12 +2001,16 @@ class AgentResultWidget(Widget):
         ("right", "next_record", "Next record"),
         ("left", "prev_record", "Previous record"),
         ("enter", "open_full_screen", "Full screen"),
-        ("up", "focus_prev_result", "Previous result"),
-        ("down", "focus_next_result", "Next result"),
-        ("k", "focus_prev_result", "Previous result"),
-        ("j", "focus_next_result", "Next result"),
+        # ``priority=True`` so these beat ``VerticalScroll``'s own priority
+        # up/down bindings (which would otherwise scroll the chat log
+        # instead of moving between focused result widgets). Shift+Arrow
+        # aliases match the input's "shift+up jumps to results" binding
+        # for consistent navigation across focus contexts.
+        Binding("up", "focus_prev_result", "Previous result", priority=True),
+        Binding("down", "focus_next_result", "Next result", priority=True),
+        Binding("shift+up", "focus_prev_result", "Previous result", show=False, priority=True),
+        Binding("shift+down", "focus_next_result", "Next result", show=False, priority=True),
         ("escape", "focus_input", "Back to input"),
-        ("i", "focus_input", "Back to input"),
     ]
 
     def action_focus_prev_result(self) -> None:
@@ -1990,7 +2025,13 @@ class AgentResultWidget(Widget):
             results[idx - 1].scroll_visible()
 
     def action_focus_next_result(self) -> None:
-        """Focus the next AgentResultWidget."""
+        """Focus the next AgentResultWidget, or return to the input.
+
+        When the user is on the newest result and presses ``down`` / ``j``
+        / ``shift+down``, focus jumps back to the input bar — completing
+        the "step back through history, step forward back to input"
+        chain.
+        """
         results = list(self.app.query(AgentResultWidget))
         try:
             idx = results.index(self)
@@ -1999,6 +2040,8 @@ class AgentResultWidget(Widget):
         if idx < len(results) - 1:
             results[idx + 1].focus()
             results[idx + 1].scroll_visible()
+        else:
+            self.app.query_one("#input-bar").focus()
 
     def action_focus_input(self) -> None:
         """Return focus to the input bar."""
