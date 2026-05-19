@@ -199,7 +199,20 @@ def _format_table_cell(value: object) -> str:
     Escapes Rich markup metacharacters so binary blobs (e.g. ``str(bytes)``
     repr containing ``[/...]`` patterns) don't blow up the markup parser
     with ``MarkupError: closing tag ... doesn't match any open tag``.
+
+    Short-circuits binary cells to a compact ``<binary: N bytes>`` placeholder.
+    ``str(<bytes>)`` of even a single ~1 MB BLOB produces a multi-MB escaped
+    hex string; Rich's column-measure pass then walks that whole string per
+    cell, stalling view-switch by seconds on tables with image/audio/video
+    columns. The visible cell is ellipsized anyway — no information loss.
     """
+    if isinstance(value, (bytes, bytearray, memoryview)):
+        return f"<binary: {len(value):,} bytes>"
+    # HuggingFace Image/Audio struct: ``{"bytes": <blob>, "path": ...}``
+    if isinstance(value, dict):
+        inner = value.get("bytes")
+        if isinstance(inner, (bytes, bytearray, memoryview)):
+            return f"<binary: {len(inner):,} bytes>"
     s = str(value).replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
     return _rich_escape(s)
 
