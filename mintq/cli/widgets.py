@@ -187,11 +187,6 @@ class HistoryInput(Input):
     agent or slash-command handler.
     """
 
-    # Don't auto-select all text when the input regains focus. The app's
-    # typeahead handler relies on this — when focus returns from a result
-    # widget after the user types a character, the existing composition
-    # should stay (with the new char appended), not be replaced.
-    select_on_focus = False
 
     BINDINGS = [
         # ``priority=False`` so these only fire when the input is actually
@@ -226,7 +221,11 @@ class HistoryInput(Input):
         return
 
     def __init__(self, history_path: Path, **kwargs: object) -> None:
-        super().__init__(suggester=MintqSuggester(), **kwargs)  # type: ignore[arg-type]
+        # ``select_on_focus=False`` so regaining focus (e.g. via the app's
+        # typeahead handler after the user types a letter while a result
+        # is focused) doesn't replace the in-progress composition with the
+        # next keystroke.
+        super().__init__(suggester=MintqSuggester(), select_on_focus=False, **kwargs)  # type: ignore[arg-type]
         self._history_path = history_path
         self._history: list[str] = []
         self._history_index: int = -1
