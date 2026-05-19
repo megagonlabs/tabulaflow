@@ -1083,6 +1083,19 @@ class DataBrowserScreen(Screen[None]):
         if isinstance(value, numbers.Real):
             return Text(f"{value:,}", justify="right")
 
+        # Short-circuit binary cells before ``str(value)`` allocates the
+        # full escaped-hex repr. For a single 1 MB BLOB ``str()`` produces
+        # ~5 MB of escaped chars, which then gets truncated to 80 chars —
+        # the work is wasted and stalls page renders on tables with
+        # image / audio / video columns.
+        if isinstance(value, (bytes, bytearray, memoryview)):
+            return Text(f"<binary: {len(value):,} bytes>", style="dim italic")
+        # HuggingFace Image/Audio struct: ``{"bytes": <blob>, "path": ...}``
+        if isinstance(value, dict):
+            inner = value.get("bytes")
+            if isinstance(inner, (bytes, bytearray, memoryview)):
+                return Text(f"<binary: {len(inner):,} bytes>", style="dim italic")
+
         if isinstance(value, (np.ndarray, list, dict)):
             try:
                 s = json.dumps(_normalize_json_like(value), ensure_ascii=False, default=str)
