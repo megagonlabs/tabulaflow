@@ -225,7 +225,11 @@ def _format_table_cell(value: object) -> str:
     s = str(value)
     if len(s) > _PREVIEW_CELL_TRUNCATE:
         s = s[:_PREVIEW_CELL_TRUNCATE] + "…"
-    s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+    # Normalize whitespace to single spaces — collapses newlines (which
+    # Rich otherwise renders as hard line breaks, expanding the row),
+    # tabs, and runs of spaces. ``" ".join(s.split())`` is the idiomatic
+    # one-pass form; full multi-line content stays available via Enter.
+    s = " ".join(s.split())
     return _rich_escape(s)
 
 

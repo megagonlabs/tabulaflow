@@ -1110,7 +1110,11 @@ class DataBrowserScreen(Screen[None]):
         truncated = len(s) > DataBrowserScreen._MAX_CELL_LEN
         if truncated:
             s = s[: DataBrowserScreen._MAX_CELL_LEN]
-        s = s.replace("\r\n", "\n").replace("\r", "\n").replace("\n", "⏎")
+        # Normalize whitespace to single spaces — collapses newlines
+        # (which DataTable otherwise renders as hard line breaks,
+        # expanding the row), tabs, and runs of spaces. Full multi-line
+        # content stays available via Enter to inspect.
+        s = " ".join(s.split())
         if s == "<binary: skipped>":
             return Text(s, style="dim italic")
         if truncated:
