@@ -22,7 +22,7 @@ from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static, TextArea
 
 from mintq.cli.display import DATA_PREVIEW_MAX_ROWS
-from mintq.cli.theme import ACCENT, DRACULA_TRANSPARENT, KEY_HINT
+from mintq.cli.theme import ACCENT, ACCENT_DIM, DRACULA_TRANSPARENT, KEY_HINT, KEY_HINT_DIM
 
 
 def _normalize_json_like(value: object) -> object:
@@ -1657,6 +1657,32 @@ class AgentResultWidget(Widget):
             return
         self._refresh_all()
 
+    def watch_has_focus(self, _has_focus: bool) -> None:
+        """Re-render styled elements when focus changes.
+
+        The record pill, view stepper chevrons / kind label, and the
+        ``KEY_HINT`` glyphs use mint accents when this widget is focused
+        and a muted gray when it isn't — the focus indication emerges
+        from element saturation rather than added chrome (no border,
+        stripe, or glyph). Modern app pattern (Linear, VS Code panels).
+        """
+        if not self._mounted:
+            return
+        if self._record_bar_widget is not None:
+            self._update_record_bar()
+        if self._view_stepper_widget is not None:
+            self._update_view_stepper()
+        if self._bottom_hint_widget is not None:
+            self._update_bottom_hint()
+
+    @property
+    def _focus_accent(self) -> str:
+        return ACCENT if self.has_focus else ACCENT_DIM
+
+    @property
+    def _focus_key_hint(self) -> str:
+        return KEY_HINT if self.has_focus else KEY_HINT_DIM
+
     def _refresh_all(self) -> None:
         self._update_content()
         if self._record_bar_widget is not None:
@@ -1739,7 +1765,9 @@ class AgentResultWidget(Widget):
                 col += 1
             col_start = col
             pill_style = (
-                Style(bold=True, color="black", bgcolor=ACCENT) if rec_idx == self.current_record else Style(dim=True)
+                Style(bold=True, color="black", bgcolor=self._focus_accent)
+                if rec_idx == self.current_record
+                else Style(dim=True)
             )
             line.append_text(Text(pill, style=pill_style))
             col += pill_width
@@ -1749,9 +1777,9 @@ class AgentResultWidget(Widget):
             if col + hint_width > available_width:
                 line.append("\n")
             line.append_text(Text(HINT_SEP, style=dim_style))
-            line.append_text(Text("←", style=KEY_HINT))
+            line.append_text(Text("←", style=self._focus_key_hint))
             line.append_text(Text("/", style="dim"))
-            line.append_text(Text("→", style=KEY_HINT))
+            line.append_text(Text("→", style=self._focus_key_hint))
             line.append_text(Text(HINT_TEXT, style="dim"))
 
         self._record_bar_widget.update(line)
@@ -1778,8 +1806,8 @@ class AgentResultWidget(Widget):
             return
         assert rec is not None
 
-        chevron_style = Style(bold=True, color=ACCENT)
-        label_style = Style(bold=True, color=ACCENT)
+        chevron_style = Style(bold=True, color=self._focus_accent)
+        label_style = Style(bold=True, color=self._focus_accent)
         dim_sep_style = Style(dim=True)
 
         cur_kind = rec.views[min(self.current_view, len(rec.views) - 1)].kind
@@ -1795,9 +1823,9 @@ class AgentResultWidget(Widget):
         # would shrink the stepper and — since it shares a row with the
         # ``width: 1fr`` record bar — cause the record pills to re-wrap.
         if view_interactive:
-            line.append_text(Text("[", style=KEY_HINT))
+            line.append_text(Text("[", style=self._focus_key_hint))
             line.append_text(Text("/", style="dim"))
-            line.append_text(Text("]", style=KEY_HINT))
+            line.append_text(Text("]", style=self._focus_key_hint))
             col += 3
             line.append_text(Text(" Switch view", style="dim"))
             col += len(" Switch view")
@@ -1855,9 +1883,9 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
-        hint.append("Shift+↑↓", style=KEY_HINT)
+        hint.append("Shift+↑↓", style=self._focus_key_hint)
         hint.append(" Prev/Next result    ", style="dim")
-        hint.append("Enter", style=KEY_HINT)
+        hint.append("Enter", style=self._focus_key_hint)
         hint.append(" Inspect", style="dim")
 
         caption = self._data_preview_caption(view)

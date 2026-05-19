@@ -8,12 +8,22 @@ from textual.widgets.text_area import TextAreaTheme
 ACCENT = "#3EB489"
 ACCENT_BOLD = f"bold {ACCENT}"
 ACCENT_RGB = (62, 180, 137)
-ACCENT_DIM_RGB = (100, 160, 130)
+
+# Dim mint — used for inactive/unfocused states of widgets that normally
+# display mint accents (e.g. focused-vs-unfocused AgentResultWidget). Same
+# hue as ACCENT, lower saturation/lightness — modern app pattern (Linear,
+# VS Code) for "this is the same family, but inactive." Chosen to work in
+# both roles: as a fill color (black text on this bg ≈ 5:1 contrast) and
+# as a text color (this on dark bg ≈ 5:1 contrast).
+ACCENT_DIM = "#67857b"
 
 # Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
 # Kept separate from ACCENT so the two can evolve independently.
 KEY_HINT_COLOR = "#9EC8B2"
 KEY_HINT = f"bold {KEY_HINT_COLOR}"
+# Dim version is just the bold-prefixed ACCENT_DIM — one mint dim color
+# serves both the accent role (e.g. record pill bg) and the key-hint role.
+KEY_HINT_DIM = f"bold {ACCENT_DIM}"
 
 
 def _make_transparent_dracula() -> TextAreaTheme:
