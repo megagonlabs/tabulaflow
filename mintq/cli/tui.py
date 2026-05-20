@@ -94,19 +94,28 @@ class MintqApp(App[None]):
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
         with Horizontal(id="input-row"):
+            # Mint heavy vertical bar — UserMessage-style prompt indicator.
+            # Rendered as a single-glyph Static (rather than a CSS border
+            # on the input) so the bar height equals one row even though
+            # the input bar occupies the full 3-row dock height.
+            yield Static("┃", id="input-prompt")
             yield HistoryInput(
                 history_path=self._runtime_paths.history_path,
                 placeholder="Ask a question or type /help",
                 id="input-bar",
             )
-            explorer_label = Text()
-            explorer_label.append("Ctrl+O", style=KEY_HINT)
-            explorer_label.append("  Open data explorer", style="dim")
-            yield Button(explorer_label, id="open-explorer-btn")
+            # Dim thin separators between dock sections. Same single-glyph
+            # trick: 1-row visual in a 3-row container.
+            yield Static("│", classes="input-sep")
             # Content set by ``_refresh_esc_hint`` once mounted — initial
             # state will be "Esc dim · Go to results" because no result
             # widgets exist yet.
             yield Static(id="input-esc-hint")
+            yield Static("│", classes="input-sep")
+            explorer_label = Text()
+            explorer_label.append("Ctrl+O", style=KEY_HINT)
+            explorer_label.append("  Open data explorer", style="dim")
+            yield Button(explorer_label, id="open-explorer-btn")
 
     def on_mount(self) -> None:
         self._setup_logging()
