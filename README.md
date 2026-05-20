@@ -193,11 +193,12 @@ May 20
 - UI improvements
   - [x] PgUp/down when input is focused
   - [x] "(first 50 rows)" in data explorer
+  - [x] Persistent schema browser state (expand/collapse state, cursor location)
+  - [x] Do not allow disconnecting workspace
 - Web browsing
 
-- [ ] Fix tool response truncation for subagents
-- [ ] Video playing in full screen not working
-- [ ] Data explorer auto focus on first table
+  - [ ] Fix tool response truncation for subagents
+
 
 - General
   - [ ] Improve transfer_record?
@@ -215,6 +216,8 @@ May 20
   - [ ] "connect to data" instead of "paste data"
   - [ ] Consider huggingface compatibility when designing export format
   - [ ] Pagination for direct data browsing
+  - [ ] Video playing in full screen not working
+  - [ ] Multiple red colors for error messages
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
