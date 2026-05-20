@@ -551,12 +551,17 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
     if not args:
         if len(user_aliases) == 1:
             alias = user_aliases[0]
-        elif len(aliases) == 1:
-            alias = aliases[0]
         else:
             return CommandResult(output=Text.from_markup("[red]Usage:[/red] /disconnect <alias>"))
     else:
         alias = args[0]
+
+    if alias == WORKSPACE_ALIAS:
+        return CommandResult(
+            output=Text.from_markup(
+                f"[red]Cannot disconnect[/red] [bold]{WORKSPACE_ALIAS}[/bold] — the workspace is built-in."
+            )
+        )
 
     if await session.registry.unregister_async(alias):
         session.unregister_alias_sources(alias)
