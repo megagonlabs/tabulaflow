@@ -43,7 +43,7 @@ MintqApp {
     height: 3;
     padding: 1 0;
     background: transparent;
-    color: #21262d;
+    color: #666666;
 }
 
 #input-bar {
