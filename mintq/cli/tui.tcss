@@ -38,6 +38,17 @@ MintqApp {
     background: $focus-surface;
 }
 
+#input-esc-hint {
+    /* Fixed width sized for the longer label ("Esc  Go to results" = 18
+       chars) + horizontal padding (2 + 2). Prevents the hint from
+       resizing when the label toggles between "Go to results" and
+       "Go to input", which would otherwise shift "Esc" horizontally. */
+    width: 22;
+    height: 3;
+    padding: 1 2 0 2;
+    background: transparent;
+}
+
 #open-explorer-btn {
     width: auto;
     height: 3;

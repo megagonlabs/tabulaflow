@@ -197,33 +197,12 @@ class HistoryInput(Input):
         Binding("down", "history_next", "Next command"),
         Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
-        Binding("shift+up", "focus_latest_result", "Inspect previous record"),
-        Binding("shift+down", "focus_latest_result_down", "Inspect newer record", show=False),
         Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
     ]
 
     def action_open_data_explorer(self) -> None:
         """Push the schema browser. Delegates to the app's action."""
         self.app.action_open_data_explorer()  # type: ignore[attr-defined]
-
-    def action_focus_latest_result(self) -> None:
-        """Move focus from the input to the latest AgentResultWidget.
-
-        Once focused there, the widget's own ``up/down`` bindings let the
-        user walk further back through history.
-        """
-        results = list(self.app.query(AgentResultWidget))
-        if results:
-            results[-1].focus()
-            results[-1].scroll_visible()
-
-    def action_focus_latest_result_down(self) -> None:
-        """``Shift+↓`` from the input: no-op (user is already past newest).
-
-        Bound for symmetry / discoverability — pressing it after returning
-        to the input shouldn't do anything surprising.
-        """
-        return
 
     def __init__(self, history_path: Path, **kwargs: object) -> None:
         # ``select_on_focus=False`` so regaining focus (e.g. via the app's
@@ -1926,7 +1905,7 @@ class AgentResultWidget(Widget):
         The hint cluster is right-aligned. For data views, the truncation
         caption ('showing N of M rows/cols') is left-aligned on the same
         line. Hints read left-to-right as the user's natural progression:
-        navigate to a record (Shift+↑↓), then inspect it (Enter).
+        navigate to a record (↑↓), then inspect it (Enter).
         """
         if self._bottom_hint_widget is None:
             return
@@ -1936,11 +1915,11 @@ class AgentResultWidget(Widget):
             return
 
         hint = Text(no_wrap=True)
-        # Shift+↑↓ works from anywhere (input or any result), so it stays
-        # bright even when this widget isn't focused — it's the "way in"
-        # to this widget's history navigation. Enter Inspect only works
-        # when this widget is focused, so it follows focus-state dimming.
-        hint.append("Shift+↑↓", style=KEY_HINT)
+        # ↑↓ and Enter only do anything when this widget is focused, so
+        # both follow focus-state dimming (bright when focused, dim when
+        # not) — the "way in" comes from the docked bottom-bar hint, not
+        # from the widget itself.
+        hint.append("↑↓", style=self._focus_key_hint)
         hint.append(" Prev/Next result    ", style="dim")
         hint.append("↵", style=self._focus_key_hint)
         hint.append(" Inspect", style="dim")
@@ -2091,13 +2070,9 @@ class AgentResultWidget(Widget):
         ("enter", "open_full_screen", "Full screen"),
         # ``priority=True`` so these beat ``VerticalScroll``'s own priority
         # up/down bindings (which would otherwise scroll the chat log
-        # instead of moving between focused result widgets). Shift+Arrow
-        # aliases match the input's "shift+up jumps to results" binding
-        # for consistent navigation across focus contexts.
+        # instead of moving between focused result widgets).
         Binding("up", "focus_prev_result", "Previous result", priority=True),
         Binding("down", "focus_next_result", "Next result", priority=True),
-        Binding("shift+up", "focus_prev_result", "Previous result", show=False, priority=True),
-        Binding("shift+down", "focus_next_result", "Next result", show=False, priority=True),
         ("escape", "focus_input", "Back to input"),
     ]
 
@@ -2115,10 +2090,9 @@ class AgentResultWidget(Widget):
     def action_focus_next_result(self) -> None:
         """Focus the next AgentResultWidget, or return to the input.
 
-        When the user is on the newest result and presses ``down`` / ``j``
-        / ``shift+down``, focus jumps back to the input bar — completing
-        the "step back through history, step forward back to input"
-        chain.
+        When the user is on the newest result and presses ``down``, focus
+        jumps back to the input bar — completing the "step back through
+        history, step forward back to input" chain.
         """
         results = list(self.app.query(AgentResultWidget))
         try:

@@ -10,11 +10,11 @@ from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.containers import Horizontal, VerticalScroll
-from textual.widgets import Button, Input
+from textual.widgets import Button, Input, Static
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
 from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
-from mintq.cli.theme import FOCUS_SURFACE, KEY_HINT
+from mintq.cli.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -103,6 +103,10 @@ class MintqApp(App[None]):
             explorer_label.append("Ctrl+O", style=KEY_HINT)
             explorer_label.append("  Open data explorer", style="dim")
             yield Button(explorer_label, id="open-explorer-btn")
+            # Content set by ``_refresh_esc_hint`` once mounted — initial
+            # state will be "Esc dim · Go to results" because no result
+            # widgets exist yet.
+            yield Static(id="input-esc-hint")
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -118,7 +122,31 @@ class MintqApp(App[None]):
             chat_log.mount(self._build_debug_result_widget())
         self.query_one("#input-bar", Input).focus()
         chat_log.scroll_end(animate=False)
+        self._refresh_esc_hint()
         self.run_worker(self._ensure_session())
+
+    def _refresh_esc_hint(self) -> None:
+        """Update the docked ``Esc`` hint label to match current state.
+
+        The label flips between ``Go to results`` (when focus is on the
+        input) and ``Go to input`` (when focus is on a result widget),
+        and the ``Esc`` glyph dims when no result widgets exist yet —
+        signalling that the key is currently a no-op.
+        """
+        try:
+            hint = self.query_one("#input-esc-hint", Static)
+        except Exception:
+            return
+        has_results = bool(self.query(AgentResultWidget))
+        in_result = isinstance(self.focused, AgentResultWidget)
+        label = Text()
+        label.append("Esc", style=KEY_HINT if has_results else KEY_HINT_DIM)
+        label.append("  Go to input" if in_result else "  Go to results", style="dim")
+        hint.update(label)
+
+    def on_descendant_focus(self, event: events.DescendantFocus) -> None:
+        """Re-render the Esc hint when focus moves between input/results."""
+        self._refresh_esc_hint()
 
     def action_open_data_explorer(self) -> None:
         """Push the SchemaBrowserScreen — the canonical data explorer.
@@ -1583,6 +1611,7 @@ LIMIT 4000"""
                 query_history=session.chat_agent._query_history,
             )
             await chat_log.mount(result_widget)
+            self._refresh_esc_hint()
             # Focus the just-mounted result so the user can press Enter to
             # inspect it without first clicking. The typeahead handler in
             # ``on_key`` routes any printable keystroke back to the input,
