@@ -184,12 +184,16 @@ May 18
   - [x] "Open data explorer" button
 
 May 19
-- [ ] Result active color
-- [ ] Shift+up/down not working on native terminal - add "Esc" button?
+- UI improvements
+  - [x] Highlight result when focused
+  - [x] New UI - "Esc" instead of "Shift+up/down"
+  - [x] Input row style
+
+
 - [ ] Pagination for direct data browsing
-
-
 - [ ] Fix tool response truncation for subagents
+- [ ] Video playing in full screen not working
+- [ ] Data explorer auto focus on first table
 
 - General
   - [ ] Improve transfer_record?
