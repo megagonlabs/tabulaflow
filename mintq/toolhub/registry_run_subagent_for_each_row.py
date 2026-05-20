@@ -78,6 +78,7 @@ class RegistryRunSubagentForEachRowTool:
         output_columns: list[str] | None = None,
         mode: Literal["agentic", "direct"] = "direct",
         enable_browser_tools: bool = False,
+        enable_nested_subagents: bool = False,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -144,6 +145,11 @@ class RegistryRunSubagentForEachRowTool:
                 receives web-browsing tools (navigate, click, type, scroll,
                 etc.). Applies in both ``direct`` and ``agentic`` modes. Use
                 for tasks that require fetching information from the web.
+            enable_nested_subagents: If True, each per-row subagent additionally
+                receives this ``run_subagent_for_each_row`` tool, allowing it
+                to fan out further row-wise tasks of its own. Applies in both
+                ``direct`` and ``agentic`` modes. The flag does not propagate
+                automatically — each nested level must opt in explicitly.
         """
         try:
             tool = self._get_tool(db_alias)
@@ -160,6 +166,7 @@ class RegistryRunSubagentForEachRowTool:
             output_columns=output_columns,
             mode=mode,
             enable_browser_tools=enable_browser_tools,
+            enable_nested_subagents=enable_nested_subagents,
         )
 
     def as_pydantic_ai_tool(self) -> Tool:
