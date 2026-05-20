@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
+from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Input, Static
 
@@ -70,6 +71,8 @@ class MintqApp(App[None]):
         ("ctrl+d", "quit_only", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
         ("ctrl+o", "open_data_explorer", "Open data explorer"),
+        Binding("pageup", "scroll_log('pageup')", "Scroll up", show=False, priority=True),
+        Binding("pagedown", "scroll_log('pagedown')", "Scroll down", show=False, priority=True),
     ]
 
     _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
@@ -156,6 +159,23 @@ class MintqApp(App[None]):
     def on_descendant_focus(self, event: events.DescendantFocus) -> None:
         """Re-render the Esc hint when focus moves between input/results."""
         self._refresh_esc_hint()
+
+    def action_scroll_log(self, direction: str) -> None:
+        """Page-scroll the chat log even when the input bar has focus.
+
+        Textual's ``Input`` ignores PageUp/PageDown, so without this
+        action those keys are a no-op while the user is typing.
+        """
+        if len(self.screen_stack) > 1:
+            return
+        try:
+            chat_log = self.query_one("#chat-log", VerticalScroll)
+        except Exception:
+            return
+        if direction == "pageup":
+            chat_log.scroll_page_up()
+        else:
+            chat_log.scroll_page_down()
 
     def action_open_data_explorer(self) -> None:
         """Push the SchemaBrowserScreen — the canonical data explorer.
