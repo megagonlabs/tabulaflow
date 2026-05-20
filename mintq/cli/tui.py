@@ -93,6 +93,13 @@ class MintqApp(App[None]):
         self._last_idle_interrupt_ts: float = 0.0
         self._saved_input_placeholder: str | None = None
         self._last_quit_hint_key: str = "Ctrl+C"
+        # Session-scoped expansion + cursor state for the schema browser.
+        # The same instance is passed to every SchemaBrowserScreen, which
+        # mutates it on close so reopening lands the user where they left
+        # off.
+        from mintq.cli.widgets import _ExplorerState
+
+        self._explorer_state = _ExplorerState()
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
@@ -193,7 +200,13 @@ class MintqApp(App[None]):
             )
             chat_log.scroll_end(animate=False)
             return
-        self.push_screen(SchemaBrowserScreen(registry=self._session.registry, alias=None))
+        self.push_screen(
+            SchemaBrowserScreen(
+                registry=self._session.registry,
+                alias=None,
+                state=self._explorer_state,
+            )
+        )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         """Route the right-side button click to the data-explorer action."""
