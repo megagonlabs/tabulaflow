@@ -95,6 +95,7 @@ def render_plotext(
 
     plt.axes_color("default")
     plt.ticks_color("default")
+    plt.canvas_color("default")
 
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()

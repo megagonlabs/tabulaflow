@@ -1604,6 +1604,10 @@ class AgentResultWidget(Widget):
         background: $surface;
     }
 
+    AgentResultWidget.-focused {
+        background: #2D2D2D;
+    }
+
     AgentResultWidget .top-bar-row {
         layout: horizontal;
         height: auto;
@@ -1705,7 +1709,7 @@ class AgentResultWidget(Widget):
             return
         self._refresh_all()
 
-    def watch_has_focus(self, _has_focus: bool) -> None:
+    def watch_has_focus(self, has_focus: bool) -> None:
         """Re-render styled elements when focus changes.
 
         The record pill, view stepper chevrons / kind label, and the
@@ -1714,6 +1718,7 @@ class AgentResultWidget(Widget):
         from element saturation rather than added chrome (no border,
         stripe, or glyph). Modern app pattern (Linear, VS Code panels).
         """
+        self.set_class(has_focus, "-focused")
         if not self._mounted:
             return
         if self._record_bar_widget is not None:
