@@ -17,6 +17,13 @@ ACCENT_RGB = (62, 180, 137)
 # as a text color (this on dark bg ≈ 5:1 contrast).
 ACCENT_DIM = "#67857b"
 
+# Background shade for focused/active interactive surfaces (focused
+# AgentResultWidget, focused input bar, focused/hovered explorer button).
+# Slightly lighter than ``$surface`` so the focused element pops out
+# without needing a border. Exposed to CSS as ``$focus-surface`` via
+# ``MintqApp.get_css_variables``.
+FOCUS_SURFACE = "#2D2D2D"
+
 # Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
 # Kept separate from ACCENT so the two can evolve independently.
 KEY_HINT_COLOR ="#3EB489"  # "#9EC8B2"

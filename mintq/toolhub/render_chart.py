@@ -95,6 +95,9 @@ def render_plotext(
 
     plt.axes_color("default")
     plt.ticks_color("default")
+    # Emit ANSI 49 ("default bg") for canvas cells so the chart composites
+    # against the parent widget's bg at render time, instead of baking in
+    # plt.theme("dark")'s concrete canvas color.
     plt.canvas_color("default")
 
     x_data = df[x_field].tolist()

@@ -1605,7 +1605,7 @@ class AgentResultWidget(Widget):
     }
 
     AgentResultWidget.-focused {
-        background: #2D2D2D;
+        background: $focus-surface;
     }
 
     AgentResultWidget .top-bar-row {

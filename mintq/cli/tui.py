@@ -14,7 +14,7 @@ from textual.widgets import Button, Input
 
 from mintq.cli.commands import COMMAND_PREFIX, SessionState, handle_command
 from mintq.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
-from mintq.cli.theme import KEY_HINT
+from mintq.cli.theme import FOCUS_SURFACE, KEY_HINT
 from mintq.cli.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -52,6 +52,18 @@ class MintqApp(App[None]):
     """Interactive database chat TUI."""
 
     CSS_PATH = "tui.tcss"
+
+    def get_css_variables(self) -> dict[str, str]:
+        """Register app-wide custom CSS variables.
+
+        Defining variables here (rather than via ``$name: value;`` in
+        tui.tcss) makes them visible from every stylesheet — including
+        each widget's ``DEFAULT_CSS`` block, which is parsed separately
+        and otherwise can't see top-level declarations from tui.tcss.
+        """
+        variables = super().get_css_variables()
+        variables["focus-surface"] = FOCUS_SURFACE
+        return variables
 
     BINDINGS = [
         ("ctrl+c", "interrupt_or_quit", "Interrupt / Quit"),
