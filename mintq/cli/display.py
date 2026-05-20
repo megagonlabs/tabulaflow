@@ -96,7 +96,10 @@ def build_query(
         line_numbers=line_numbers,
         background_color="default",
     )
-    return syntax
+    # Trailing blank row so the bottom-hint ("↑↓ Prev/Next result · ↵ Inspect")
+    # has visual breathing room from the syntax block. The other views
+    # already get this gap from their own footer (data) or chart axes.
+    return Group(syntax, Text(""))
 
 
 # Per-column overhead in a box.SQUARE table with default padding (0, 1):
