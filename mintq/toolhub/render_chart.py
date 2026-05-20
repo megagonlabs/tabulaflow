@@ -81,13 +81,16 @@ def render_plotext(
 
     from mintq.cli.theme import ACCENT_RGB
 
-    effective_height = console_height or 25
-    # In preview mode (no explicit height), cap width to keep chart roughly square.
-    # In full-screen mode (explicit height), use the full available width.
+    effective_height = console_height or 18
+    # In preview mode (no explicit height), cap width by an aspect ratio of
+    # ~3:1 so the chart reads as a landscape preview — shorter and wider than
+    # the chat-log content above it, giving room for axis labels without
+    # crowding vertical space. In full-screen mode (explicit height), use the
+    # full available width.
     if console_height is not None:
         effective_width = max(20, (console_width or 62) - 2)
     else:
-        effective_width = min(max(20, (console_width or 62) - 2), effective_height * 2)
+        effective_width = min(max(20, (console_width or 62) - 2), effective_height * 3)
 
     plt.clear_figure()
     plt.theme("dark")
