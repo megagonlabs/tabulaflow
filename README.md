@@ -183,10 +183,15 @@ May 18
   - [x] Fix image/audio support for huggingface
   - [x] "Open data explorer" button
 
+May 19
+- [ ] Result active color
+- [ ] Shift+up/down not working on native terminal - add "Esc" button?
+- [ ] Pagination for direct data browsing
+
+
 - [ ] Fix tool response truncation for subagents
 
 - General
-  - [ ] Stringify for JSON field (study arcs-bench)
   - [ ] Improve transfer_record?
   - [ ] /reconnect
   - [ ] Session resume
