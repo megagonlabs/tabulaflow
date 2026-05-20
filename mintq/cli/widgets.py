@@ -2188,15 +2188,23 @@ class _ExplorerState:
     """Session-scoped UI state for ``SchemaBrowserScreen``.
 
     Held on ``MintqApp`` and passed by reference into each freshly-created
-    schema browser. The screen reads it on mount (to restore expansion /
-    cursor) and writes it on close. Mutating the same instance avoids any
-    write-back wiring between screen and app.
+    schema browser. The screen reads ``expansion`` while building nodes
+    and updates state continuously via tree event handlers — no
+    snapshot-on-close step needed.
+
+    ``expansion`` is a *dict*, not a set: presence of a path means "the
+    user has seen this node," and the value is its expansion state.
+    Unknown paths fall through to the build-time default. This is what
+    distinguishes "user explicitly collapsed" (path → False) from "user
+    never saw this node" (path absent → use default), so newly-connected
+    DBs honor their auto-expand default instead of being collapsed by
+    a missing entry.
     """
 
-    __slots__ = ("expanded", "cursor")
+    __slots__ = ("expansion", "cursor")
 
     def __init__(self) -> None:
-        self.expanded: set[_NodePath] = set()
+        self.expansion: dict[_NodePath, bool] = {}
         self.cursor: _NodePath | None = None
 
 
@@ -2319,21 +2327,27 @@ class SchemaBrowserScreen(Screen[None]):
         yield self._hint
 
     def on_mount(self) -> None:
+        # Snapshot the saved cursor before any side effects can clobber it.
+        # ``on_tree_node_highlighted`` rewrites ``_state.cursor`` whenever
+        # the cursor moves, including the implicit move that Textual does
+        # to the first line on initial render — without this local, that
+        # would overwrite the path we're about to restore to.
+        saved_cursor = self._state.cursor
         self._build_tree()
         self._update_status()
         self._update_hint()
         tree = self.query_one("#browse-tree")
         tree.focus()
-        # Cursor restore happens after the next refresh: ``node.expand()``
-        # only marks the tree dirty, so ``_tree_lines`` (which ``move_cursor``
-        # needs) isn't rebuilt until Textual renders. Running the cursor
-        # move synchronously here makes restores into freshly-expanded
-        # subtrees (e.g. the collapsed-by-default workspace alias) silently
-        # no-op.
-        if self._state.expanded or self._state.cursor is not None:
-            self._apply_expansion()
-            self.call_after_refresh(self._restore_cursor)
-        else:
+        # Cursor restore is deferred to after the next refresh: ancestor
+        # expansion (built into the tree but applied lazily by Textual)
+        # only populates ``_tree_lines`` on render. Running ``move_cursor``
+        # before that leaves it as a silent no-op for collapsed-by-default
+        # subtrees (the workspace alias case).
+        if saved_cursor is not None:
+            self.call_after_refresh(self._restore_cursor, saved_cursor)
+        elif not self._state.expansion:
+            # Genuine first open — nothing to restore, focus the first
+            # table so Enter previews immediately.
             self.call_after_refresh(self._focus_first_table)
 
     @staticmethod
@@ -2341,6 +2355,12 @@ class SchemaBrowserScreen(Screen[None]):
         if data is None:
             return None
         return (data.alias, data.schema_name, data.table_name, data.column_name)
+
+    def _expand_for(self, path: _NodePath, default: bool) -> bool:
+        """Resolve expansion state for a node: the user's last-recorded
+        value if known, otherwise the construction-time default.
+        """
+        return self._state.expansion.get(path, default)
 
     def _walk_nodes(self) -> "Iterator[Any]":
         """Pre-order traversal of every tree node below the (hidden) root."""
@@ -2366,35 +2386,19 @@ class SchemaBrowserScreen(Screen[None]):
                 return node
         return None
 
-    def _apply_expansion(self) -> None:
-        """Replay expansion state onto the freshly-built tree. Synchronous —
-        ``_walk_nodes`` yields pre-order so parents are toggled before
-        children. Paths that no longer match anything are silently skipped.
-        """
-        for node in self._walk_nodes():
-            if not node.allow_expand:
-                continue
-            path = self._node_path(node.data)
-            if path is None:
-                continue
-            if path in self._state.expanded:
-                node.expand()
-            else:
-                node.collapse()
-
-    def _restore_cursor(self) -> None:
+    def _restore_cursor(self, saved: _NodePath | None) -> None:
         """Move the cursor to the saved node, if its path still resolves.
 
-        Deliberately does *not* fall back to "first table" or force
-        ancestor expansion: ``_apply_expansion`` has already put the tree
-        in the user's saved collapse state, and overriding that to make a
-        fallback cursor visible would silently undo an explicit collapse
-        (e.g., after a disconnect lost the saved cursor's DB). When the
-        path doesn't resolve, leave the cursor at its default.
+        Deliberately does not fall back to the first table or force
+        ancestor expansion when the path is missing — the build phase
+        already put the tree in the user's saved collapse state, and
+        overriding that to make a fallback cursor visible would silently
+        undo an explicit collapse (e.g., after a disconnect dropped the
+        saved cursor's DB).
         """
-        if self._state.cursor is None:
+        if saved is None:
             return
-        target = self._find_node_by_path(self._state.cursor)
+        target = self._find_node_by_path(saved)
         if target is None:
             return
         from textual.widgets import Tree
@@ -2405,8 +2409,8 @@ class SchemaBrowserScreen(Screen[None]):
 
     def _focus_first_table(self) -> None:
         """First-open default: land the cursor on the first table so Enter
-        previews immediately. Force-expands ancestors because on a first
-        open there is no user-intended collapse state to respect.
+        previews immediately. Force-expands ancestors because on a true
+        first open there is no user-intended collapse state to respect.
         """
         target = self._first_table_node()
         if target is None:
@@ -2421,24 +2425,17 @@ class SchemaBrowserScreen(Screen[None]):
         tree.move_cursor(target)
         tree.scroll_to_node(target)
 
-    def _save_state(self) -> None:
-        """Snapshot current expansion + cursor into ``self._state`` (which
-        the app holds a reference to). Called on close.
-        """
-        from textual.widgets import Tree
+    # -- event handlers: keep ``_state`` current as the user navigates ----
 
-        expanded: set[_NodePath] = set()
-        for node in self._walk_nodes():
-            if not node.allow_expand or not node.is_expanded:
-                continue
-            path = self._node_path(node.data)
-            if path is not None:
-                expanded.add(path)
-        self._state.expanded = expanded
+    def on_tree_node_expanded(self, event: "Any") -> None:
+        path = self._node_path(event.node.data)
+        if path is not None:
+            self._state.expansion[path] = True
 
-        tree = self.query_one("#browse-tree", Tree)
-        cursor_node = tree.cursor_node
-        self._state.cursor = self._node_path(cursor_node.data) if cursor_node is not None else None
+    def on_tree_node_collapsed(self, event: "Any") -> None:
+        path = self._node_path(event.node.data)
+        if path is not None:
+            self._state.expansion[path] = False
 
     # -- tree construction ---------------------------------------------------
 
@@ -2470,7 +2467,7 @@ class SchemaBrowserScreen(Screen[None]):
             db_node = tree.root.add(
                 db_label,
                 data=_NodeData(kind=_NODE_KIND_DB, alias=alias),
-                expand=auto_expand,
+                expand=self._expand_for((alias, None, None, None), auto_expand),
             )
 
             tables: list[SQLTableSchema] = list(schema.tables)
@@ -2487,7 +2484,7 @@ class SchemaBrowserScreen(Screen[None]):
                     schema_node = db_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
-                        expand=auto_expand,
+                        expand=self._expand_for((alias, sn, None, None), auto_expand),
                     )
                     for t in sorted(groups[sn], key=lambda t: t.name):
                         self._add_table_node(schema_node, alias, t)
@@ -2495,8 +2492,7 @@ class SchemaBrowserScreen(Screen[None]):
                 for t in sorted(tables, key=lambda t: t.name):
                     self._add_table_node(db_node, alias, t)
 
-    @staticmethod
-    def _add_table_node(parent: object, alias: str, table: object) -> None:
+    def _add_table_node(self, parent: object, alias: str, table: object) -> None:
         from mintq.schema import SQLTableSchema
 
         assert isinstance(table, SQLTableSchema)
@@ -2515,6 +2511,7 @@ class SchemaBrowserScreen(Screen[None]):
                 schema_name=table.schema_name,
                 table_name=table.name,
             ),
+            expand=self._expand_for((alias, table.schema_name, table.name, None), False),
         )
 
         for col in table.columns:
@@ -2602,7 +2599,6 @@ class SchemaBrowserScreen(Screen[None]):
     # -- actions & hints -----------------------------------------------------
 
     def action_close_browser(self) -> None:
-        self._save_state()
         self.dismiss()
 
     def action_collapse_node(self) -> None:
@@ -2627,8 +2623,9 @@ class SchemaBrowserScreen(Screen[None]):
             return
         node.expand()
 
-    def on_tree_node_highlighted(self, event: object) -> None:
-        """Update hint and status bars when cursor moves."""
+    def on_tree_node_highlighted(self, event: "Any") -> None:
+        """Update hint/status bars and record cursor position in state."""
+        self._state.cursor = self._node_path(event.node.data)
         self._update_status()
         self._update_hint()
 
