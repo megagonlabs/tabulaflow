@@ -189,8 +189,12 @@ May 19
   - [x] New UI - "Esc" instead of "Shift+up/down"
   - [x] Input row style
 
-- [ ] PgUp/down not working when not focused (but scroll works)
-- [ ] Pagination for direct data browsing
+May 20
+- UI improvements
+  - [x] PgUp/down when input is focused
+  - [x] "(first 50 rows)" in data explorer
+- Web browsing
+
 - [ ] Fix tool response truncation for subagents
 - [ ] Video playing in full screen not working
 - [ ] Data explorer auto focus on first table
@@ -210,6 +214,7 @@ May 19
   - [ ] NL tool progress
   - [ ] "connect to data" instead of "paste data"
   - [ ] Consider huggingface compatibility when designing export format
+  - [ ] Pagination for direct data browsing
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
