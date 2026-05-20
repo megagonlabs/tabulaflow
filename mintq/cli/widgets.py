@@ -983,7 +983,7 @@ class DataBrowserScreen(Screen[None]):
             ("/", hint_fg),
             ("]", KEY_HINT),
             (" Prev/Next page    ", hint_fg),
-            ("b", KEY_HINT),
+            ("B", KEY_HINT),
             (" Open table in browser", hint_fg),
         ]
         hint = Text()
@@ -1345,7 +1345,7 @@ class CellBrowserScreen(Screen[None]):
         hint = Text()
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
-        hint.append("b", style=KEY_HINT)
+        hint.append("B", style=KEY_HINT)
         hint.append(" Open cell in browser    ", style="dim")
         self.query_one(".cell-browser-hint", Static).update(hint)
 
