@@ -18,6 +18,7 @@ from mintq.cli.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
     MessageStoreCapability,
+    ScopedMessageStore,
     make_snippet,
 )
 
@@ -268,6 +269,7 @@ class ChatAgent:
     _pydantic_ai_agent: Agent[None, str] | None = None
     _query_history: QueryHistory = field(init=False)
     _message_store: MessageStore = field(init=False)
+    _main_scope: ScopedMessageStore = field(init=False)
     _tools: Toolset = field(init=False)
     last_usage: Usage | None = None
 
@@ -287,6 +289,7 @@ class ChatAgent:
 
         self._query_history = QueryHistory()
         self._message_store = MessageStore()
+        self._main_scope = self._message_store.scoped("main")
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
@@ -376,7 +379,7 @@ class ChatAgent:
             capabilities=[
                 self._tools.web_browser.lifecycle_capability(),
                 MessageStoreCapability(
-                    store=self._message_store,
+                    store=self._main_scope,
                     tool_allowlist=frozenset(
                         {
                             "browser_navigate",
@@ -415,7 +418,7 @@ class ChatAgent:
 
         assert self._pydantic_ai_agent is not None
 
-        message_id = await self._message_store.add(kind="user_prompt", content=question)
+        message_id = await self._main_scope.add(kind="user_prompt", content=question)
         if len(question) > MESSAGE_THRESHOLD_CHARS:
             question = make_snippet(message_id, question)
 

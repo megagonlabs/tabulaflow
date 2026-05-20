@@ -83,8 +83,14 @@ class MessageStore:
         content: str,
         tool_name: str | None = None,
         tool_call_id: str | None = None,
+        agent_id: str | None = None,
     ) -> str:
-        """Persist one message and return its assigned id (e.g. ``"M7"``)."""
+        """Persist one message and return its assigned id (e.g. ``"M7"``).
+
+        ``agent_id`` is a provenance tag (e.g. ``"main"``, ``"subagent:<call>:<row>"``)
+        — not an access scope. Use :meth:`scoped` to bind it once and avoid threading
+        the value through every call site.
+        """
         async with self._lock:
             message_id = f"M{self._next_id}"
             self._next_id += 1
@@ -94,6 +100,7 @@ class MessageStore:
             await self._ensure_table()
             await self._insert_row(
                 message_id=message_id,
+                agent_id=agent_id,
                 kind=kind,
                 tool_name=tool_name,
                 tool_call_id=tool_call_id,
@@ -105,6 +112,10 @@ class MessageStore:
             logger.warning("Failed to persist message %s to workspace", message_id, exc_info=True)
         return message_id
 
+    def scoped(self, agent_id: str) -> ScopedMessageStore:
+        """Return a thin handle that pins ``agent_id`` on every ``add`` call."""
+        return ScopedMessageStore(_store=self, agent_id=agent_id)
+
     async def _ensure_table(self) -> None:
         if self._table_created or self._spill_connector is None:
             return
@@ -113,6 +124,7 @@ class MessageStore:
             f"""
             CREATE TABLE IF NOT EXISTS {_QUALIFIED} (
                 message_id   TEXT PRIMARY KEY,
+                agent_id     TEXT,
                 kind         TEXT NOT NULL,
                 tool_name    TEXT,
                 tool_call_id TEXT,
@@ -128,6 +140,7 @@ class MessageStore:
         self,
         *,
         message_id: str,
+        agent_id: str | None,
         kind: MessageKind,
         tool_name: str | None,
         tool_call_id: str | None,
@@ -142,6 +155,7 @@ class MessageStore:
             [
                 {
                     "message_id": message_id,
+                    "agent_id": agent_id,
                     "kind": kind,
                     "tool_name": tool_name,
                     "tool_call_id": tool_call_id,
@@ -155,6 +169,34 @@ class MessageStore:
 
 
 @dataclass
+class ScopedMessageStore:
+    """A thin handle over :class:`MessageStore` that pins ``agent_id`` on writes.
+
+    Provenance tagging only — does not restrict reads in any way. Construct via
+    :meth:`MessageStore.scoped` rather than instantiating directly.
+    """
+
+    _store: MessageStore
+    agent_id: str
+
+    async def add(
+        self,
+        *,
+        kind: MessageKind,
+        content: str,
+        tool_name: str | None = None,
+        tool_call_id: str | None = None,
+    ) -> str:
+        return await self._store.add(
+            kind=kind,
+            content=content,
+            tool_name=tool_name,
+            tool_call_id=tool_call_id,
+            agent_id=self.agent_id,
+        )
+
+
+@dataclass
 class MessageStoreCapability(AbstractCapability[Any]):
     """Mirror tool responses into the message store; truncate overflow before the LLM sees it.
 
@@ -164,7 +206,7 @@ class MessageStoreCapability(AbstractCapability[Any]):
     crucial to avoid re-truncation cycles when the agent fetches a stored message.
     """
 
-    store: MessageStore
+    store: ScopedMessageStore
     tool_allowlist: frozenset[str]
     threshold_chars: int = MESSAGE_THRESHOLD_CHARS
 
