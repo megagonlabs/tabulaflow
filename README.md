@@ -189,7 +189,7 @@ May 19
   - [x] New UI - "Esc" instead of "Shift+up/down"
   - [x] Input row style
 
-
+- [ ] PgUp/down not working when not focused (but scroll works)
 - [ ] Pagination for direct data browsing
 - [ ] Fix tool response truncation for subagents
 - [ ] Video playing in full screen not working
