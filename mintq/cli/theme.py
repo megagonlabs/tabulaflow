@@ -9,13 +9,15 @@ ACCENT = "#3EB489"
 ACCENT_BOLD = f"bold {ACCENT}"
 ACCENT_RGB = (62, 180, 137)
 
-# Dim mint — used for inactive/unfocused states of widgets that normally
-# display mint accents (e.g. focused-vs-unfocused AgentResultWidget). Same
-# hue as ACCENT, lower saturation/lightness — modern app pattern (Linear,
-# VS Code) for "this is the same family, but inactive." Chosen to work in
-# both roles: as a fill color (black text on this bg ≈ 5:1 contrast) and
-# as a text color (this on dark bg ≈ 5:1 contrast).
-ACCENT_DIM = "#67857b"
+# Grey shade for inactive/unfocused states of widgets that normally
+# display mint accents (record pill bg, view stepper chevrons / label in
+# an unfocused AgentResultWidget). Matches the exact color Textual
+# resolves Rich's ``dim`` attribute to (``#999999``), so the unfocused
+# pill / view stepper sit in the same visual register as the dim hint
+# labels. Conveniently, ~6.4:1 contrast against black — well above the
+# terminal min-contrast threshold that would otherwise cause black pill
+# text to auto-flip to a brighter shade.
+ACCENT_DIM = "#999999"
 
 # Background shade for focused/active interactive surfaces (focused
 # AgentResultWidget, focused input bar, focused/hovered explorer button).
