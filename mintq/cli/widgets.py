@@ -2260,6 +2260,8 @@ class SchemaBrowserScreen(Screen[None]):
         Binding("enter", "open_preview", "Preview table", show=False, priority=True),
     ]
 
+    _PREVIEW_ROW_CAP = 50
+
     def __init__(self, *, registry: object, alias: str | None = None) -> None:
         super().__init__()
         from mintq.db_connector.db_registry import DBRegistry
@@ -2432,7 +2434,7 @@ class SchemaBrowserScreen(Screen[None]):
             node_data.table_name,
             schema=node_data.schema_name,
         )
-        stmt = sqlalchemy.select("*").select_from(tbl).limit(50)
+        stmt = sqlalchemy.select("*").select_from(tbl).limit(self._PREVIEW_ROW_CAP)
         self._status.update(Text("Loading preview...", style="dim"))
         result = await connector.run_query_async(stmt, timeout=30)
         if result.error is not None:
@@ -2442,10 +2444,11 @@ class SchemaBrowserScreen(Screen[None]):
         self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()
 
+        suffix = f"(first {self._PREVIEW_ROW_CAP} rows)"
         title = (
-            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} (preview)"
+            f"{node_data.alias}: {node_data.schema_name}.{node_data.table_name} {suffix}"
             if node_data.schema_name
-            else f"{node_data.alias}: {node_data.table_name} (preview)"
+            else f"{node_data.alias}: {node_data.table_name} {suffix}"
         )
         self.app.push_screen(DataBrowserScreen(title=title, df=df))
 
