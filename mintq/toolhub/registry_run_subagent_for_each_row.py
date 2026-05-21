@@ -158,7 +158,8 @@ class RegistryRunSubagentForEachRowTool:
                   value with ``run_query`` and writes ``output_columns[0]``
                   itself via an ``UPDATE``. Useful when the value is large.
                   When the subagent needs to use ``UPDATE`` to write back to
-                  the row, the ``task_instruction`` must include the key
+                  the row, the ``task_instruction`` must mention the
+                  ``db_alias`` and ``table_name``, and include the key
                   columns for the WHERE clause.
                 - **Reads or writes beyond the row.** The subagent reads
                   auxiliary tables for context, or writes outside the row's
