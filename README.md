@@ -196,8 +196,14 @@ May 20
   - [x] Persistent schema browser state (expand/collapse state, cursor location)
   - [x] Do not allow disconnecting workspace
 - Web browsing
+  - [x] ScopedMessageStore with agent_id
+  - [x] Remove agentic mode
+  - [x] enable_nested_subagents
+  - [x] enable_run_query_tool
 
-  - [ ] Fix tool response truncation for subagents
+
+
+- [ ] Truncation mechanism for subagents
 
 
 - General
