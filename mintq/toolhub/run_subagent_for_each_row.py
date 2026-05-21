@@ -186,12 +186,18 @@ class RunSubagentForEachRowTool:
             enable_run_query_tool: If True, the per-row subagent additionally
                 receives a registry-backed ``run_query`` tool that can query
                 and modify any registered database (the subagent specifies
-                ``db_alias`` per call). The subagent still produces text
-                output that this tool writes to ``output_columns[0]``;
-                ``run_query`` is for additional reads or writes the subagent
-                needs to perform along the way (e.g., resolving a foreign key
-                against a candidate column in another table, or updating an
-                auxiliary table).
+                ``db_alias`` per call). Enable it for tasks where row-local
+                context isn't enough:
+
+                - **Computing the output via SQL.** The subagent builds the
+                  value with ``run_query`` and writes ``output_columns[0]``
+                  itself via an ``UPDATE``. Useful when the value is large.
+                  When the subagent needs to use ``UPDATE`` to write back to
+                  the row, the ``task_instruction`` must include the key
+                  columns for the WHERE clause.
+                - **Reads or writes beyond the row.** The subagent reads
+                  auxiliary tables for context, or writes outside the row's
+                  output column (other tables, INSERTs, DDL).
         """
         if not output_columns or len(output_columns) != 1:
             return "(error: output_columns must be exactly one column)"
