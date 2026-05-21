@@ -12,7 +12,9 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.base import BaseSQLDBConnector
+from mintq.db_connector.db_registry import DBRegistry
 from mintq.schema import SQLDialect, Trajectory
+from mintq.toolhub.registry_run_query import RegistryRunQueryTool
 from mintq.toolhub.web_browser import WebBrowserTool
 
 
@@ -62,6 +64,7 @@ class RunSubagentForEachRowTool:
         self,
         db_connector: BaseSQLDBConnector,
         *,
+        registry: DBRegistry | None = None,
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
@@ -70,7 +73,12 @@ class RunSubagentForEachRowTool:
         """Initialize the tool.
 
         Args:
-            db_connector: SQL database connector.
+            db_connector: SQL connector for the table being updated (used for
+                per-row write-back).
+            registry: Optional database registry. Required only when callers
+                pass ``enable_run_query_tool=True`` so the per-row subagent
+                can query any registered database. If omitted, that flag is
+                unavailable.
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
@@ -84,6 +92,7 @@ class RunSubagentForEachRowTool:
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
         self.db_connector = db_connector
+        self.registry = registry
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
@@ -100,6 +109,7 @@ class RunSubagentForEachRowTool:
         output_columns: list[str],
         enable_browser_tools: bool = False,
         enable_nested_subagents: bool = False,
+        enable_run_query_tool: bool = False,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -115,14 +125,23 @@ class RunSubagentForEachRowTool:
         - **Semantic join**: Match rows across tables where there is no shared key
           and no syntactic overlap between join columns (e.g., abbreviations to
           full names, or matching product names across different naming conventions).
-          Add a standardized column to both tables and have the subagent normalize
-          each side to a canonical form independently. After the tool completes,
-          a standard SQL JOIN on the new column produces the final result.
+          Two approaches:
+          (a) (preferred when the lookup space is large) Add a foreign-key column
+              to one table and have the subagent resolve the match against the
+              other table at runtime via ``run_query`` — set
+              ``enable_run_query_tool=True``. Avoid embedding a large vocabulary
+              in the task instruction.
+          (b) Add a standardized column to both tables and have the subagent
+              normalize each side to a canonical form (e.g., IATA airport code)
+              independently. No ``run_query`` access needed.
+          After the tool completes, a standard SQL JOIN on the new column(s)
+          produces the final result.
 
         The per-row subagent receives no database tools by default and produces a
         single text value; this tool writes that value to ``output_columns[0]``.
-        Set ``enable_browser_tools=True`` to grant web-browsing tools (useful when
-        the task requires fetching information from the web).
+        Set ``enable_browser_tools=True`` to grant web-browsing tools, or
+        ``enable_run_query_tool=True`` to grant a read-only ``run_query`` tool
+        that can target any registered database.
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
@@ -164,6 +183,13 @@ class RunSubagentForEachRowTool:
                 to fan out further row-wise tasks of its own. The flag does not
                 propagate automatically — each nested level must opt in
                 explicitly.
+            enable_run_query_tool: If True, the per-row subagent additionally
+                receives a registry-backed ``run_query`` tool that can target
+                any registered database (the subagent specifies ``db_alias``
+                per call). Use for runtime lookups across tables — including
+                in databases other than the one being updated. The subagent
+                still produces text output and does not write its own
+                updates — write-back remains this tool's responsibility.
         """
         if not output_columns or len(output_columns) != 1:
             return "(error: output_columns must be exactly one column)"
@@ -222,12 +248,19 @@ class RunSubagentForEachRowTool:
         if enable_nested_subagents:
             nested_tool = RunSubagentForEachRowTool(
                 self.db_connector,
+                registry=self.registry,
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
                 store_metadata=self.store_metadata,
             )
             nested_pa_tool = nested_tool.as_pydantic_ai_tool()
+
+        run_query_pa_tool: Tool | None = None
+        if enable_run_query_tool:
+            if self.registry is None:
+                return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
+            run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
         completed = 0
 
@@ -278,6 +311,8 @@ class RunSubagentForEachRowTool:
                 tools.extend(browser_tool.as_pydantic_ai_tools())
             if nested_pa_tool is not None:
                 tools.append(nested_pa_tool)
+            if run_query_pa_tool is not None:
+                tools.append(run_query_pa_tool)
             subagent = Agent(
                 model=self.subagent_llm,
                 tools=tools,

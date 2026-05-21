@@ -60,6 +60,7 @@ class RegistryRunSubagentForEachRowTool:
                 )
             tool = RunSubagentForEachRowTool(
                 connector,
+                registry=self.registry,
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 store_metadata=self.store_metadata,
@@ -79,6 +80,7 @@ class RegistryRunSubagentForEachRowTool:
         output_columns: list[str],
         enable_browser_tools: bool = False,
         enable_nested_subagents: bool = False,
+        enable_run_query_tool: bool = False,
     ) -> str:
         """Run an LLM subagent on each row to perform operations beyond standard SQL.
 
@@ -94,14 +96,23 @@ class RegistryRunSubagentForEachRowTool:
         - **Semantic join**: Match rows across tables where there is no shared key
           and no syntactic overlap between join columns (e.g., abbreviations to
           full names, or matching product names across different naming conventions).
-          Add a standardized column to both tables and have the subagent normalize
-          each side to a canonical form independently. After the tool completes,
-          a standard SQL JOIN on the new column produces the final result.
+          Two approaches:
+          (a) (preferred when the lookup space is large) Add a foreign-key column
+              to one table and have the subagent resolve the match against the
+              other table at runtime via ``run_query`` — set
+              ``enable_run_query_tool=True``. Avoid embedding a large vocabulary
+              in the task instruction.
+          (b) Add a standardized column to both tables and have the subagent
+              normalize each side to a canonical form (e.g., IATA airport code)
+              independently. No ``run_query`` access needed.
+          After the tool completes, a standard SQL JOIN on the new column(s)
+          produces the final result.
 
         The per-row subagent receives no database tools by default and produces a
         single text value; this tool writes that value to ``output_columns[0]``.
-        Set ``enable_browser_tools=True`` to grant web-browsing tools (useful when
-        the task requires fetching information from the web).
+        Set ``enable_browser_tools=True`` to grant web-browsing tools, or
+        ``enable_run_query_tool=True`` to grant a read-only ``run_query`` tool
+        that can target any registered database.
 
         Args:
             db_alias: Alias of the target database to update.
@@ -137,6 +148,13 @@ class RegistryRunSubagentForEachRowTool:
                 to fan out further row-wise tasks of its own. The flag does not
                 propagate automatically — each nested level must opt in
                 explicitly.
+            enable_run_query_tool: If True, the per-row subagent additionally
+                receives a registry-backed ``run_query`` tool that can target
+                any registered database (the subagent specifies ``db_alias``
+                per call). Use for runtime lookups across tables — including
+                in databases other than the one being updated. The subagent
+                still produces text output and does not write its own
+                updates — write-back remains this tool's responsibility.
         """
         try:
             tool = self._get_tool(db_alias)
@@ -153,6 +171,7 @@ class RegistryRunSubagentForEachRowTool:
             output_columns=output_columns,
             enable_browser_tools=enable_browser_tools,
             enable_nested_subagents=enable_nested_subagents,
+            enable_run_query_tool=enable_run_query_tool,
         )
 
     def as_pydantic_ai_tool(self) -> Tool:
