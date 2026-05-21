@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from typing import ClassVar, Literal
+from typing import ClassVar
 
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
@@ -37,9 +37,10 @@ class RegistryRunSubagentForEachRowTool:
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
-            store_metadata: If True, write ``_subagent_success``,
-                ``_subagent_message``, and ``_subagent_trajectory`` columns
-                back to the target table after each row.
+            store_metadata: If True, write ``_subagent_exception`` and
+                ``_subagent_trajectory`` columns back to the target table
+                after each row. ``_subagent_exception`` is NULL on success
+                and a ``"<ExceptionType>: <message>"`` string on failure.
         """
         self.registry = registry
         self.subagent_llm = subagent_llm
@@ -75,8 +76,7 @@ class RegistryRunSubagentForEachRowTool:
         task_query: str,
         task_instruction: str,
         key_columns: list[str],
-        output_columns: list[str] | None = None,
-        mode: Literal["agentic", "direct"] = "direct",
+        output_columns: list[str],
         enable_browser_tools: bool = False,
         enable_nested_subagents: bool = False,
     ) -> str:
@@ -94,21 +94,14 @@ class RegistryRunSubagentForEachRowTool:
         - **Semantic join**: Match rows across tables where there is no shared key
           and no syntactic overlap between join columns (e.g., abbreviations to
           full names, or matching product names across different naming conventions).
-          Two approaches: (a) (preferred) add a foreign-key column to one table and instruct
-          the subagent to look up the other table (via ``run_query``) to resolve the
-          match, or (b) add a standardized column to both tables and have the
-          subagent normalize each side to a canonical form independently. After
-          the tool completes, a standard SQL JOIN on the new column(s) produces
-          the final result.
+          Add a standardized column to both tables and have the subagent normalize
+          each side to a canonical form independently. After the tool completes,
+          a standard SQL JOIN on the new column produces the final result.
 
-        In ``direct`` mode (default), the subagent receives no database tools
-        and only produces text output; this tool writes the output to the
-        ``output_columns`` automatically. Use ``direct`` mode when you need
-        to strictly control the subagent's context (e.g. when running inference
-        or labeling data). In ``agentic`` mode, each subagent has ``run_query``
-        access and writes updates itself. Set ``enable_browser_tools=True``
-        to additionally grant the subagent web-browsing tools in either mode
-        — useful when the task requires looking up information on the web.
+        The per-row subagent receives no database tools by default and produces a
+        single text value; this tool writes that value to ``output_columns[0]``.
+        Set ``enable_browser_tools=True`` to grant web-browsing tools (useful when
+        the task requires fetching information from the web).
 
         Args:
             db_alias: Alias of the target database to update.
@@ -132,24 +125,18 @@ class RegistryRunSubagentForEachRowTool:
             key_columns: Columns used in the WHERE clause to locate each row in
                 ``table_name`` for write-back. Must appear in the ``task_query``
                 result.
-            output_columns: Columns to update on ``table_name``. In ``direct``
-                mode, must be exactly one column. All must already exist on the
-                target table (they do not need to appear in the ``task_query``
-                projection).
-            mode: Execution mode controlling database access. ``direct``
-                (default) gives no database tools — the subagent produces
-                text output and this tool writes it to ``output_columns``.
-                ``agentic`` gives the subagent tools to query and update the
-                database. Orthogonal to ``enable_browser_tools``.
+            output_columns: Columns to update on ``table_name``. Must be exactly
+                one column; it must already exist on the target table (does not
+                need to appear in the ``task_query`` projection).
             enable_browser_tools: If True, the per-row subagent additionally
                 receives web-browsing tools (navigate, click, type, scroll,
-                etc.). Applies in both ``direct`` and ``agentic`` modes. Use
-                for tasks that require fetching information from the web.
+                etc.). Use for tasks that require fetching information from the
+                web.
             enable_nested_subagents: If True, each per-row subagent additionally
                 receives this ``run_subagent_for_each_row`` tool, allowing it
-                to fan out further row-wise tasks of its own. Applies in both
-                ``direct`` and ``agentic`` modes. The flag does not propagate
-                automatically — each nested level must opt in explicitly.
+                to fan out further row-wise tasks of its own. The flag does not
+                propagate automatically — each nested level must opt in
+                explicitly.
         """
         try:
             tool = self._get_tool(db_alias)
@@ -164,7 +151,6 @@ class RegistryRunSubagentForEachRowTool:
             task_instruction=task_instruction,
             key_columns=key_columns,
             output_columns=output_columns,
-            mode=mode,
             enable_browser_tools=enable_browser_tools,
             enable_nested_subagents=enable_nested_subagents,
         )

@@ -176,11 +176,9 @@ There is no shared key between office_code and facility_name. The mapping requir
 
 Steps:
 1. Transfer both tables into `workspace`.
-2. Add a resolved/normalized column to one (or both) tables.
-3. Use `run_subagent_for_each_row` to populate the new column by matching values across tables.
-   - (preferred) approach (a): When resolving values against a column in the other table, instruct the subagent to query it at runtime — do not embed a large vocabulary in the task instruction.
-   - approach (b): When normalizing both sides, specify the canonical form (e.g., "normalize to IATA airport code").
-4. Join on the resolved column with a standard SQL query.
+2. Add a normalized column to both tables.
+3. Use `run_subagent_for_each_row` to populate each normalized column with a canonical form (e.g., "normalize to IATA airport code").
+4. Join on the normalized column with a standard SQL query.
 </examples>
 """.strip()
 
