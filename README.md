@@ -201,9 +201,12 @@ May 20
   - [x] enable_nested_subagents
   - [x] enable_run_query_tool
 
-
-
-- [ ] Truncation mechanism for subagents
+May 21
+- Web browsing
+  - [ ] Offloading mechanism
+  - [ ] extraction tool
+  - [ ] One-time subagent tool
+  - [ ] web_fetch tool for static html
 
 
 - General
