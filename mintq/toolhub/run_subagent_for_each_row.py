@@ -140,8 +140,8 @@ class RunSubagentForEachRowTool:
         The per-row subagent receives no database tools by default and produces a
         single text value; this tool writes that value to ``output_columns[0]``.
         Set ``enable_browser_tools=True`` to grant web-browsing tools, or
-        ``enable_run_query_tool=True`` to grant a read-only ``run_query`` tool
-        that can target any registered database.
+        ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can
+        query and modify any registered database.
 
         Args:
             table_name: Target table name. Can be qualified (e.g. schema.table).
@@ -184,12 +184,14 @@ class RunSubagentForEachRowTool:
                 propagate automatically — each nested level must opt in
                 explicitly.
             enable_run_query_tool: If True, the per-row subagent additionally
-                receives a registry-backed ``run_query`` tool that can target
-                any registered database (the subagent specifies ``db_alias``
-                per call). Use for runtime lookups across tables — including
-                in databases other than the one being updated. The subagent
-                still produces text output and does not write its own
-                updates — write-back remains this tool's responsibility.
+                receives a registry-backed ``run_query`` tool that can query
+                and modify any registered database (the subagent specifies
+                ``db_alias`` per call). The subagent still produces text
+                output that this tool writes to ``output_columns[0]``;
+                ``run_query`` is for additional reads or writes the subagent
+                needs to perform along the way (e.g., resolving a foreign key
+                against a candidate column in another table, or updating an
+                auxiliary table).
         """
         if not output_columns or len(output_columns) != 1:
             return "(error: output_columns must be exactly one column)"
