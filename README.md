@@ -204,8 +204,9 @@ May 20
 May 21
 - Web browsing
   - [ ] Offloading mechanism
-  - [ ] extraction tool
   - [ ] One-time subagent tool
+  - [ ] Tune prompt for run_agent_for_each_row tool to
+  - [ ] extraction tool
   - [ ] web_fetch tool for static html
 
 
