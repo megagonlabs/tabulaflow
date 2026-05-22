@@ -149,6 +149,7 @@ If the user says "plan first" or "discuss first", present a plan and wait for ap
 Very long user prompts and long tool responses are truncated to a head+tail snippet before they reach you. The full content is mirrored into the `_internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)` table of the `workspace` database.
 - Snippets contain a marker line `[message_id=M<n>]`; read the full content with `run_query(db_alias="workspace", "SELECT content FROM _internal.messages WHERE message_id='M<n>'")`.
 - To delegate processing of a long message to a subagent without pulling its full content into your own context, JOIN `_internal.messages` from a workspace-targeted `task_query` — e.g. `SELECT m.message_id, m.content AS chunk FROM _internal.messages m WHERE m.message_id = 'M7'`.
+- The same truncation applies one level down, but only to subagents that can spawn nested subagents (`enable_nested_subagents=True`): they see their own long prompts and tool responses as snippets, keeping deep multi-level decompositions from overflowing context at any level. Leaf subagents (no nesting) are not truncated.
 </long_message_storage_internal>
 
 <tool_calling>
