@@ -89,13 +89,27 @@ class RegistryRunSubagentForEachRowTool:
         enable_nested_subagents: bool = False,
         enable_run_query_tool: bool = False,
     ) -> str:
-        """Run an LLM subagent on each row to perform operations beyond standard SQL.
+        """Run an LLM subagent on each row, concurrently.
 
-        This is the execution primitive for semantic operators — tasks where the
-        predicate, join condition, or transformation requires natural-language
-        understanding rather than exact SQL expressions. Prefer this tool over
-        fuzzy regex matching or LIKE-based SQL for these tasks. Common patterns:
+        Use this tool to process many similar, independent sub-tasks in parallel:
+        lay the sub-tasks out as rows of a table and each row gets its own subagent.
+        ``task_query`` selects the rows to process; ``task_instruction`` is a per-row
+        template that, rendered with the row's columns, becomes the subagent's prompt.
 
+        By default the subagent has no tools: it reads its prompt, returns one text
+        value, and this tool writes that value to ``output_columns[0]``. Set
+        ``enable_browser_tools=True`` to grant web-browsing tools, or
+        ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can query
+        and modify any registered database. Set ``enable_nested_subagents=True`` to
+        give the subagent this same tool so it can fan out its own row-wise sub-tasks;
+        this does not propagate — each deeper level must set the flag again to nest
+        further.
+
+        This is also the execution primitive for semantic operators beyond standard
+        SQL — tasks where the predicate, join condition, or transformation requires
+        natural-language understanding rather than exact SQL expressions. Prefer this
+        tool over fuzzy regex matching or LIKE-based SQL for these tasks. Common
+        patterns:
         - **Semantic filter**: Classify a free-text column against a natural-language
           predicate (e.g., "is this review positive or negative?").
         - **Semantic extraction**: Extract structured values from unstructured text
@@ -114,12 +128,6 @@ class RegistryRunSubagentForEachRowTool:
               independently. No ``run_query`` access needed.
           After the tool completes, a standard SQL JOIN on the new column(s)
           produces the final result.
-
-        The per-row subagent receives no database tools by default and produces a
-        single text value; this tool writes that value to ``output_columns[0]``.
-        Set ``enable_browser_tools=True`` to grant web-browsing tools, or
-        ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can
-        query and modify any registered database.
 
         Args:
             db_alias: Alias of the target database to update.
