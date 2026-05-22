@@ -237,10 +237,8 @@ class PageSnapshot:
     refs: set[str] = field(default_factory=set)
 
 
-# A parsed aria node: (header_string, body) where body is the child list, a
-# scalar value, or None. Playwright's ``aria_snapshot(mode="ai")`` is valid
-# YAML, so PyYAML owns the hierarchy/nesting/escaping and we only parse the
-# per-node header string below.
+# aria_snapshot(mode="ai") is valid YAML, so PyYAML owns hierarchy/nesting/
+# escaping; we only parse each node's header string.
 def _split_node(node: Any) -> tuple[str | None, Any]:
     """Return ``(header, body)`` for a YAML aria node (str leaf or 1-key dict)."""
     if isinstance(node, str):
@@ -266,12 +264,11 @@ def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...]] |
 
 
 def _native_select_options(children: list[Any]) -> list[str]:
-    """Ref-less ``option`` descendants of a combobox ⇒ native <select> labels.
+    """Labels of ref-less ``option`` descendants — the tell for a native <select>.
 
-    A native <select> nests its <option>s in the aria tree even when collapsed,
-    and they carry no ref (you pick one via browser_select, not by clicking).
-    A collapsed ARIA combobox has no children; an expanded one's options live
-    in a sibling listbox with refs. So ref-less option descendants are the tell.
+    A native <select> nests its <option>s (without refs) even when collapsed;
+    a collapsed ARIA combobox has no children and an expanded one's options sit
+    in a sibling listbox with refs.
     """
     out: list[str] = []
 
@@ -285,7 +282,7 @@ def _native_select_options(children: list[Any]) -> list[str]:
                 role, name, ref, _ = parsed
                 if role == "option" and ref is None:
                     out.append(name)
-            if isinstance(body, list):  # descend into <optgroup> etc.
+            if isinstance(body, list):  # descend into <optgroup>
                 visit(body)
 
     visit(children)
@@ -293,16 +290,10 @@ def _native_select_options(children: list[Any]) -> list[str]:
 
 
 def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
-    """Extract interactive elements from an aria-snapshot YAML string.
-
-    Parses the snapshot as YAML (its native format) and walks the resulting
-    tree. For each interactive element also captures: its current value and
-    state flags, a link's href, native-<select> options, and the nearest
-    context-bearing ancestor/preceding-sibling (heading, region, listitem, …)
-    used to disambiguate identical-looking controls.
-
-    Falls back to a minimal ref/role/name extraction if the YAML can't be
-    parsed, so the agent never loses all interactivity on a malformed snapshot.
+    """Walk the aria-snapshot YAML, capturing each interactive element's value,
+    state flags, link href, native-<select> options, and nearest context-bearing
+    ancestor/preceding-sibling. Falls back to a minimal ref/role/name scan if the
+    YAML can't be parsed.
     """
     try:
         tree = yaml.load(aria_yaml, Loader=_YamlLoader)
@@ -313,9 +304,7 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
         return []
 
     elements: list[InteractiveElement] = []
-    # (depth, role, name) of context-bearing nodes still in scope — same
-    # "nearest preceding context at depth <= mine" rule as before, but depth
-    # comes from the tree instead of counting indentation.
+    # Context-bearing nodes in scope: nearest one at depth <= mine wins.
     context_stack: list[tuple[int, str, str]] = []
 
     def walk(node: Any, depth: int) -> None:
