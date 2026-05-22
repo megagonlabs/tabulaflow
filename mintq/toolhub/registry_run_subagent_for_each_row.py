@@ -93,8 +93,11 @@ class RegistryRunSubagentForEachRowTool:
 
         Use this tool to process many similar, independent sub-tasks in parallel:
         lay the sub-tasks out as rows of a table and each row gets its own subagent.
-        ``task_query`` selects the rows to process; ``task_instruction`` is a per-row
-        template that, rendered with the row's columns, becomes the subagent's prompt.
+        ``task_query`` and ``task_instruction`` serve two roles. Row selection:
+        ``task_query`` is a free-form SELECT whose result rows become the tasks (one
+        subagent per row). Prompt construction: each subagent's prompt is
+        ``task_instruction`` rendered with that row's ``task_query`` columns — which
+        may include joined or computed columns, not just the table's own.
 
         By default the subagent has no tools: it reads its prompt, returns one text
         value, and this tool writes that value to ``output_columns[0]``. Set
