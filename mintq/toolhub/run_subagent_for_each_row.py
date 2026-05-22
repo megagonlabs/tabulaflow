@@ -175,7 +175,7 @@ class RunSubagentForEachRowTool:
                            r.product_name,
                            m.content AS review_text
                     FROM reviews r
-                    JOIN workspace._internal.messages m ON r.msg_ref = m.message_id
+                    JOIN _internal.messages m ON r.msg_ref = m.message_id
                     WHERE r.sentiment IS NULL
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate values from the
