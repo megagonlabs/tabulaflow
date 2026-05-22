@@ -223,10 +223,11 @@ class RunSubagentForEachRowTool:
             output_columns: Columns to update on ``table_name``. Must be exactly
                 one column; it must already exist on the target table (does not
                 need to appear in the ``task_query`` projection).
-            enable_browser_tools: If True, the per-row subagent additionally
-                receives web-browsing tools (navigate, click, type, scroll,
-                etc.). Use for tasks that require fetching information from the
-                web.
+            enable_browser_tools: If True, the per-row subagent gets web-browsing
+                tools (navigate, click, type, etc.). Each row browses in its own
+                isolated tabs (cookies/logins shared). A process-wide tab cap
+                throttles this automatically, so fan out freely — no need to
+                limit parallelism for browser load.
             enable_nested_subagents: If True, each per-row subagent additionally
                 receives this ``run_subagent_for_each_row`` tool, allowing it
                 to fan out further row-wise tasks of its own. The flag does not
