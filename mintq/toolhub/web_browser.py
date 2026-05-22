@@ -38,11 +38,17 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
+import yaml
 from pydantic import BaseModel
 from pydantic_ai import Tool
+
+try:  # fast C loader when available; falls back to the pure-Python loader
+    from yaml import CSafeLoader as _YamlLoader
+except ImportError:  # pragma: no cover
+    from yaml import SafeLoader as _YamlLoader  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from playwright.async_api import (
@@ -91,24 +97,24 @@ _USER_AGENT = (
 
 _REF_PATTERN = re.compile(r"\[ref=(e\d+)\]")
 
-# Aria snapshot line: optional indent, "- role", optional `"name"`, `[ref=eN]`,
-# optional trailing attrs and colon. Captures: role, name, ref.
-_ARIA_LINE_PATTERN = re.compile(
-    r'^(?P<indent>\s*)-\s+(?P<role>[\w-]+)(?:\s+"(?P<name>[^"]*)")?'
-    r".*?\[ref=(?P<ref>e\d+)\].*?$"
+# A node header within the aria-snapshot YAML, e.g. `combobox "menu" [expanded]
+# [ref=e7]`. Captures the role, optional quoted name, and the trailing bracketed
+# attributes (`[ref=…]`, `[checked]`, `[cursor=pointer]`, …) as one blob, which
+# we mine for the ref and state flags below.
+_HEADER_PATTERN = re.compile(
+    r'^(?P<role>[\w-]+)(?:\s+"(?P<name>.*?)")?(?P<attrs>(?:\s*\[[^\]]*\])*)\s*$'
 )
-_ARIA_URL_PATTERN = re.compile(r"^\s*-\s+/url:\s*(?P<url>.+?)\s*$")
-# State flags Playwright emits as `[flag]` (or `[flag=value]`) before the ref —
-# the element's interactable state. We surface these; `[ref=…]`/`[active]`/
-# `[level=…]` are deliberately excluded (handled elsewhere / low value).
+# State flags Playwright emits as `[flag]` (or `[flag=value]`) — the element's
+# interactable state. We surface these; `[ref=…]`/`[active]`/`[level=…]`/
+# `[cursor=…]` are deliberately excluded (handled elsewhere / low value).
 _STATE_FLAG_PATTERN = re.compile(
     r"\[(?P<flag>checked|disabled|selected|expanded|pressed|readonly)(?:=(?P<val>[\w-]+))?\]"
 )
-# Current value of a control: text trailing the ref after a colon, e.g.
-# ``textbox "Where from" [ref=e2]: San Francisco``.
-_REF_VALUE_PATTERN = re.compile(r"\[ref=e\d+\]\s*:\s*(?P<value>.+?)\s*$")
-# Ref-less `- option "name"` line nested under a native <select>.
-_OPTION_NAME_PATTERN = re.compile(r'-\s+option\s+"(?P<name>[^"]*)"')
+# Per-line role/name/ref extractor, used only by the fallback path when the
+# whole snapshot fails to parse as YAML.
+_FALLBACK_LINE_PATTERN = re.compile(
+    r'-\s+(?P<role>[\w-]+)(?:\s+"(?P<name>[^"]*)")?[^\n]*?\[ref=(?P<ref>e\d+)\]'
+)
 # Cap on how many native-<select> option labels to surface in the snapshot,
 # so a long dropdown (countries, timezones) can't bloat the token budget.
 _MAX_NATIVE_OPTIONS = 15
@@ -231,105 +237,146 @@ class PageSnapshot:
     refs: set[str] = field(default_factory=set)
 
 
+# A parsed aria node: (header_string, body) where body is the child list, a
+# scalar value, or None. Playwright's ``aria_snapshot(mode="ai")`` is valid
+# YAML, so PyYAML owns the hierarchy/nesting/escaping and we only parse the
+# per-node header string below.
+def _split_node(node: Any) -> tuple[str | None, Any]:
+    """Return ``(header, body)`` for a YAML aria node (str leaf or 1-key dict)."""
+    if isinstance(node, str):
+        return node, None
+    if isinstance(node, dict) and len(node) == 1:
+        (header, body), = node.items()
+        return header, body
+    return None, None
+
+
+def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...]] | None:
+    """Parse ``role "name" [attr]…`` into (role, name, ref, state-flags)."""
+    m = _HEADER_PATTERN.match(header.strip())
+    if m is None:
+        return None
+    attrs = m.group("attrs") or ""
+    ref_m = _REF_PATTERN.search(attrs)
+    state = tuple(
+        f.group("flag") + (f"={f.group('val')}" if f.group("val") else "")
+        for f in _STATE_FLAG_PATTERN.finditer(attrs)
+    )
+    return m.group("role"), m.group("name") or "", (ref_m.group(1) if ref_m else None), state
+
+
+def _native_select_options(children: list[Any]) -> list[str]:
+    """Ref-less ``option`` descendants of a combobox ⇒ native <select> labels.
+
+    A native <select> nests its <option>s in the aria tree even when collapsed,
+    and they carry no ref (you pick one via browser_select, not by clicking).
+    A collapsed ARIA combobox has no children; an expanded one's options live
+    in a sibling listbox with refs. So ref-less option descendants are the tell.
+    """
+    out: list[str] = []
+
+    def visit(nodes: list[Any]) -> None:
+        for node in nodes:
+            header, body = _split_node(node)
+            if header is None:
+                continue
+            parsed = _parse_header(header)
+            if parsed is not None:
+                role, name, ref, _ = parsed
+                if role == "option" and ref is None:
+                    out.append(name)
+            if isinstance(body, list):  # descend into <optgroup> etc.
+                visit(body)
+
+    visit(children)
+    return out
+
+
 def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
     """Extract interactive elements from an aria-snapshot YAML string.
 
-    For each interactive element, also captures the nearest preceding
-    context-bearing element (heading, region, listitem, etc.) at less-or-
-    equal indentation — used to disambiguate identical-looking buttons
-    (e.g., multiple "View more" buttons in different cards) when listed
-    in the "Other interactive elements" section.
+    Parses the snapshot as YAML (its native format) and walks the resulting
+    tree. For each interactive element also captures: its current value and
+    state flags, a link's href, native-<select> options, and the nearest
+    context-bearing ancestor/preceding-sibling (heading, region, listitem, …)
+    used to disambiguate identical-looking controls.
+
+    Falls back to a minimal ref/role/name extraction if the YAML can't be
+    parsed, so the agent never loses all interactivity on a malformed snapshot.
     """
-    lines = aria_yaml.split("\n")
+    try:
+        tree = yaml.load(aria_yaml, Loader=_YamlLoader)
+    except yaml.YAMLError as e:
+        logger.debug("aria YAML parse failed, using fallback: %s", e)
+        return _parse_interactive_elements_fallback(aria_yaml)
+    if not isinstance(tree, list):
+        return []
+
     elements: list[InteractiveElement] = []
-    # Stack of (indent, role, name) — context-bearing elements still in scope.
+    # (depth, role, name) of context-bearing nodes still in scope — same
+    # "nearest preceding context at depth <= mine" rule as before, but depth
+    # comes from the tree instead of counting indentation.
     context_stack: list[tuple[int, str, str]] = []
 
-    for i, line in enumerate(lines):
-        m = _ARIA_LINE_PATTERN.match(line)
-        if m is None:
-            continue
-        indent = len(m.group("indent"))
-        role = m.group("role")
-        name = m.group("name") or ""
-        ref = m.group("ref")
+    def walk(node: Any, depth: int) -> None:
+        header, body = _split_node(node)
+        if header is None:
+            return
+        parsed = _parse_header(header)
+        if parsed is None:
+            return
+        role, name, ref, state = parsed
+        children = body if isinstance(body, list) else []
+        value = str(body) if isinstance(body, str | int | float) else None
 
-        # Pop ancestors at strictly greater indent (siblings stay).
-        while context_stack and context_stack[-1][0] > indent:
+        while context_stack and context_stack[-1][0] > depth:
             context_stack.pop()
-
-        # Push this element if it can serve as context for later siblings/children.
         if role in _CONTEXT_ROLES and name:
-            context_stack.append((indent, role, name))
+            context_stack.append((depth, role, name))
 
-        if role not in _INTERACTIVE_ROLES:
-            continue
+        if role in _INTERACTIVE_ROLES and ref is not None:
+            href: str | None = None
+            if role == "link":
+                for child in children:
+                    c_header, c_body = _split_node(child)
+                    if c_header is not None and c_header.strip().startswith("/url"):
+                        href = str(c_body).strip() if c_body is not None else None
+                        break
 
-        href: str | None = None
-        if role == "link":
-            # Look ahead within the link's indented block for `- /url:`
-            for next_line in lines[i + 1 : i + 6]:
-                if not next_line.strip():
-                    continue
-                next_indent = len(next_line) - len(next_line.lstrip())
-                if next_indent <= indent:
-                    break
-                um = _ARIA_URL_PATTERN.match(next_line)
-                if um is not None:
-                    href = um.group("url")
-                    break
+            opts = _native_select_options(children) if role == "combobox" else []
+            ctx = (context_stack[-1][1], context_stack[-1][2]) if context_stack else None
 
-        native_select = False
-        native_options: list[str] = []
-        if role == "combobox":
-            # A native <select> exposes its <option> children in the aria tree
-            # even when collapsed, and those options carry no ref (you pick one
-            # via browser_select, not by clicking). A collapsed ARIA combobox
-            # shows no children; an expanded one's options DO carry refs. So a
-            # ref-less option descendant ⇒ native <select>. Free: no extra
-            # browser round-trip, read straight from the snapshot we already
-            # have. Collect the option labels (capped) so the agent knows what
-            # values browser_select accepts — a native select can't be opened
-            # to discover them otherwise.
-            for next_line in lines[i + 1 :]:
-                if not next_line.strip():
-                    continue
-                next_indent = len(next_line) - len(next_line.lstrip())
-                if next_indent <= indent:
-                    break
-                if next_line.lstrip().startswith("- option") and "[ref=" not in next_line:
-                    native_select = True
-                    if len(native_options) < _MAX_NATIVE_OPTIONS:
-                        om = _OPTION_NAME_PATTERN.search(next_line)
-                        if om is not None:
-                            native_options.append(om.group("name"))
-
-        # Interactable state flags and current value, read straight from the
-        # line (e.g. `checkbox "X" [checked] [ref=e3]`, `textbox [ref=e2]: hi`).
-        state = tuple(
-            m2.group("flag") + (f"={m2.group('val')}" if m2.group("val") else "")
-            for m2 in _STATE_FLAG_PATTERN.finditer(line)
-        )
-        vm = _REF_VALUE_PATTERN.search(line)
-        value = vm.group("value").strip().strip('"') if vm else None
-
-        ctx: tuple[str, str] | None = None
-        if context_stack:
-            _, c_role, c_name = context_stack[-1]
-            ctx = (c_role, c_name)
-
-        elements.append(
-            InteractiveElement(
-                ref=ref,
-                role=role,
-                name=name,
-                href=href,
-                parent_context=ctx,
-                native_select=native_select,
-                native_options=tuple(native_options),
-                state=state,
-                value=value,
+            elements.append(
+                InteractiveElement(
+                    ref=ref,
+                    role=role,
+                    name=name,
+                    href=href,
+                    parent_context=ctx,
+                    native_select=bool(opts),
+                    native_options=tuple(opts[:_MAX_NATIVE_OPTIONS]),
+                    state=state,
+                    value=value,
+                )
             )
+
+        for child in children:
+            walk(child, depth + 1)
+
+    for node in tree:
+        walk(node, 0)
+    return elements
+
+
+def _parse_interactive_elements_fallback(aria_yaml: str) -> list[InteractiveElement]:
+    """Degraded ref/role/name extraction if the YAML can't be parsed."""
+    elements: list[InteractiveElement] = []
+    for line in aria_yaml.split("\n"):
+        m = _FALLBACK_LINE_PATTERN.match(line)
+        if m is None or m.group("role") not in _INTERACTIVE_ROLES:
+            continue
+        elements.append(
+            InteractiveElement(ref=m.group("ref"), role=m.group("role"), name=m.group("name") or "")
         )
     return elements
 

@@ -2905,6 +2905,7 @@ dependencies = [
     { name = "pydantic-ai-slim", extra = ["anthropic"] },
     { name = "pydantic-settings" },
     { name = "pymysql" },
+    { name = "pyyaml" },
     { name = "rich" },
     { name = "snowflake-connector-python" },
     { name = "snowflake-sqlalchemy" },
@@ -2932,6 +2933,7 @@ dev = [
     { name = "pytest-asyncio" },
     { name = "ruff" },
     { name = "types-aiofiles" },
+    { name = "types-pyyaml" },
     { name = "types-tabulate" },
 ]
 streamlit = [
@@ -2974,6 +2976,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic"], specifier = ">=1.61.0" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
     { name = "pymysql", specifier = ">=1.1.1" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "snowflake-connector-python", specifier = ">=3.14.1" },
     { name = "snowflake-sqlalchemy", specifier = ">=1.7.3" },
@@ -2997,6 +3000,7 @@ dev = [
     { name = "pytest-asyncio", specifier = ">=1.0.0" },
     { name = "ruff", specifier = ">=0.11.10" },
     { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
     { name = "types-tabulate", specifier = ">=0.9.0" },
 ]
 streamlit = [{ name = "streamlit", specifier = ">=1.50.0" }]
@@ -5843,6 +5847,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/69/5a/bd06c2dbb77ebd4ea764473c9c4c014c7ba94432192cb965a274f8544b9d/types_protobuf-6.32.1.20250918.tar.gz", hash = "sha256:44ce0ae98475909ca72379946ab61a4435eec2a41090821e713c17e8faf5b88f", size = 63780, upload_time = "2025-09-18T02:50:39.391Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/37/5a/8d93d4f4af5dc3dd62aa4f020deae746b34b1d94fb5bee1f776c6b7e9d6c/types_protobuf-6.32.1.20250918-py3-none-any.whl", hash = "sha256:22ba6133d142d11cc34d3788ad6dead2732368ebb0406eaa7790ea6ae46c8d0b", size = 77885, upload_time = "2025-09-18T02:50:38.028Z" },
+]
+
+[[package]]
+name = "types-pyyaml"
+version = "6.0.12.20260518"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/b8/83/4a1afc3fbfcf5b8d46fc390cd95ed6b0dc9010a265f4e9f46314efffa37a/types_pyyaml-6.0.12.20260518.tar.gz", hash = "sha256:d917f83fb38462550338c1297faedd860b3ec83912b96b1e3d73255f7473e466", size = 17850, upload_time = "2026-05-18T06:01:58.675Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/06/a2/c01db32be2ae7d6a1689972f3c492b149ee4e164b12fdfd9f64b50888215/types_pyyaml-6.0.12.20260518-py3-none-any.whl", hash = "sha256:d2150f75a231c9fe9c7463bd29487d93e60bac90400287351384bc2284eba7cd", size = 20312, upload_time = "2026-05-18T06:01:57.368Z" },
 ]
 
 [[package]]
