@@ -115,22 +115,10 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 
 <concurrent_task_handling>
 (internal implementation details, never mention to the user)
-When a task decomposes into many similar, independent sub-tasks (one per row, entity, date, URL, etc.), do NOT loop through them in your own context. Lay the sub-tasks out as rows of a `workspace` table and process them concurrently with `run_subagent_for_each_row`: each row gets its own subagent, they run in parallel, and their intermediate work never enters your context — only a summary returns.
-
-Setup:
-- One row per sub-task in a `workspace` table, and ADD the output column first — `output_columns[0]` must already exist on the table.
-- `task_query` selects the rows to process; `task_instruction` is a Jinja2 template rendered per row from that row's columns (interpolate with `{{ column }}`). Include any specific requirements the user mentioned.
-- By default the subagent has NO tools: it reads its prompt, returns one text value, and this tool writes that value to `output_columns[0]`. Use this for pure-LLM row work (classify, extract, normalize, summarize).
-
-Grant extra capabilities only when the row work needs them:
-- `enable_browser_tools=True` — the subagent can browse the web. Use to look something up online per row (e.g., a price, an official name, a status).
-- `enable_run_query_tool=True` — the subagent gets a `run_query` tool over any registered database. Use when the output must be computed with SQL, resolved against another table, or when the row work writes beyond `output_columns[0]`. If the subagent updates the row itself via `UPDATE`, the `task_instruction` must mention the `db_alias` and `table_name` and include the key columns for the WHERE clause.
-- `enable_nested_subagents=True` — the subagent gets this same tool and can fan out its own row-wise sub-tasks. This does not propagate: each deeper level must set the flag again to nest further.
-
-Cost and method:
+When a task decomposes into many similar, independent sub-tasks (one per row, entity, date, URL, etc.), do NOT loop through them in your own context. Lay the sub-tasks out as rows of a `workspace` table and process them concurrently with `run_subagent_for_each_row` — each row gets its own subagent running in parallel, and their intermediate work never enters your context (only a summary returns; per-row failures land in `_subagent_exception` / `_subagent_trajectory`). See the tool description for task setup and the optional capability flags.
+- The subagent sees only its rendered `task_instruction`, not this conversation — encode any requirements the user mentioned into it.
 - Treat it as expensive. For large tables (>= 100 rows), run on a sampled subset, verify, then apply to the full table.
 - Decide per task whether plain SQL rules suffice or a subagent is needed; combine both when different parts of a table need different methods.
-- When the `task_instruction` template iterates a DuckDB JSON column with a Jinja `{% for %}` loop, cast the column to a native list in `task_query` with `from_json(col, '["TYPE"]')` (or use `LIST<T>` / `STRUCT(...)` types from the start) — raw `JSON` materializes as a string in pandas, which the loop cannot iterate.
 </concurrent_task_handling>
 
 <plan_mode>
