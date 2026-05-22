@@ -209,7 +209,13 @@ May 21
   - [x] Concurrency control for web browsing
 
 May 22
-  - [ ] Debug agent interaction on google flight
+  - Improve web_browser.py
+    - [x] Fix no snapshot included when submit=False
+    - [x] Type slowly
+    - [x] wait for text/text_gone
+    - [x] native <select>
+    - [x] Include options, state, current value
+    - [x] Include leaf clickable generic
   - [ ] extraction tool
   - [ ] One-time subagent tool
   - [ ] web_fetch tool for static html
