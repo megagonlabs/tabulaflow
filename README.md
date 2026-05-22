@@ -216,6 +216,7 @@ May 22
     - [x] native <select>
     - [x] Include options, state, current value
     - [x] Include leaf clickable generic
+    - [ ] aria snapshot parsing - inline both links and buttons
   - [ ] extraction tool
   - [ ] One-time subagent tool
   - [ ] web_fetch tool for static html
