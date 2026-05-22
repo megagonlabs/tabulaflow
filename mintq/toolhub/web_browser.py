@@ -77,6 +77,11 @@ _NETWORKIDLE_WAIT_MS = 10_000
 # need the full SPA-rendering budget. Borrowed from browser-use's heuristic.
 _NETWORKIDLE_WAIT_MS_SAME_DOMAIN = 3_000
 
+# How long a no-submit ``browser_type`` waits for an autocomplete dropdown to
+# appear before snapshotting. Short on purpose: when typing surfaces options we
+# return quickly; when it doesn't (a plain text field) we only pay this once.
+_AUTOCOMPLETE_WAIT_MS = 1_500
+
 
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -873,8 +878,26 @@ class WebBrowserTool:
                 return self._format_error(f"type failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
             if not submit:
-                # No submit → page state didn't change in any way the agent
-                # doesn't already know. Skip the full re-snapshot to save tokens.
+                # Typing into a combobox/searchbox often surfaces an async
+                # autocomplete dropdown — options the agent does NOT already
+                # know and must click to commit a value. Briefly wait for any
+                # such options, then re-snapshot so (a) the agent sees them and
+                # (b) their refs become resolvable via last_snapshot. When no
+                # dropdown appears we fall back to the cheap ack.
+                try:
+                    await state.page.wait_for_selector(
+                        "[role=option]", timeout=_AUTOCOMPLETE_WAIT_MS
+                    )
+                except Exception:
+                    pass
+                snapshot = await take_snapshot(state.page)
+                state.last_snapshot = snapshot
+                options = [e for e in snapshot.interactive_elements if e.role == "option"]
+                if options:
+                    return (
+                        f"[tab={tab}] typed into ref={ref}\n\n"
+                        f"# Suggestions\n{render_interactive_elements(options)}"
+                    )
                 return f"[tab={tab}] typed into ref={ref}"
             return await format_tab_response(state)
 
