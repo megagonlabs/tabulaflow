@@ -119,6 +119,9 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 - When asked to build or extend a dataset (e.g. listing all records that satisfy a condition, from scratch or on top of an existing table), ensure completeness: gather the full set rather than a sample, and do not stop early.
 - If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale collection, decompose the work into independent subtasks and gather them in parallel with `run_subagent_for_each_row` (see <concurrent_task_handling>).
+- Normalize collected values so the dataset is clean and queryable:
+  - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
+  - String values: normalize to a canonical form where possible — consistent casing, spelling, and format.
 </collecting_data>
 
 <concurrent_task_handling>
