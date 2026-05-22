@@ -98,6 +98,11 @@ _ARIA_LINE_PATTERN = re.compile(
     r".*?\[ref=(?P<ref>e\d+)\].*?$"
 )
 _ARIA_URL_PATTERN = re.compile(r"^\s*-\s+/url:\s*(?P<url>.+?)\s*$")
+# Ref-less `- option "name"` line nested under a native <select>.
+_OPTION_NAME_PATTERN = re.compile(r'-\s+option\s+"(?P<name>[^"]*)"')
+# Cap on how many native-<select> option labels to surface in the snapshot,
+# so a long dropdown (countries, timezones) can't bloat the token budget.
+_MAX_NATIVE_OPTIONS = 15
 
 _INTERACTIVE_ROLES: frozenset[str] = frozenset(
     {
@@ -203,6 +208,7 @@ class InteractiveElement:
     href: str | None = None
     parent_context: tuple[str, str] | None = None  # (role, name) of nearest named ancestor
     native_select: bool = False  # combobox backed by a native <select> (use browser_select)
+    native_options: tuple[str, ...] = ()  # option labels of a native <select> (capped)
 
 
 @dataclass
@@ -263,23 +269,29 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                     break
 
         native_select = False
+        native_options: list[str] = []
         if role == "combobox":
             # A native <select> exposes its <option> children in the aria tree
             # even when collapsed, and those options carry no ref (you pick one
             # via browser_select, not by clicking). A collapsed ARIA combobox
             # shows no children; an expanded one's options DO carry refs. So a
             # ref-less option descendant ⇒ native <select>. Free: no extra
-            # browser round-trip, read straight from the snapshot we already have.
+            # browser round-trip, read straight from the snapshot we already
+            # have. Collect the option labels (capped) so the agent knows what
+            # values browser_select accepts — a native select can't be opened
+            # to discover them otherwise.
             for next_line in lines[i + 1 :]:
                 if not next_line.strip():
                     continue
                 next_indent = len(next_line) - len(next_line.lstrip())
                 if next_indent <= indent:
                     break
-                stripped = next_line.lstrip()
-                if stripped.startswith("- option") and "[ref=" not in next_line:
+                if next_line.lstrip().startswith("- option") and "[ref=" not in next_line:
                     native_select = True
-                    break
+                    if len(native_options) < _MAX_NATIVE_OPTIONS:
+                        om = _OPTION_NAME_PATTERN.search(next_line)
+                        if om is not None:
+                            native_options.append(om.group("name"))
 
         ctx: tuple[str, str] | None = None
         if context_stack:
@@ -294,6 +306,7 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                 href=href,
                 parent_context=ctx,
                 native_select=native_select,
+                native_options=tuple(native_options),
             )
         )
     return elements
@@ -311,7 +324,12 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
     for e in elements:
         line = f"- [ref={e.ref}] {e.role}"
         if e.native_select:
-            line += " (native <select>: use browser_select)"
+            line += " (native <select>: use browser_select"
+            if e.native_options:
+                opts = ", ".join(f'"{o}"' for o in e.native_options)
+                more = " …" if len(e.native_options) >= _MAX_NATIVE_OPTIONS else ""
+                line += f" — options: {opts}{more}"
+            line += ")"
         if e.name:
             line += f' "{e.name}"'
         if e.href:
