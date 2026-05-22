@@ -850,7 +850,9 @@ class WebBrowserTool:
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
-    async def browser_type(self, tab: str, ref: str, text: str, submit: bool = False) -> str:
+    async def browser_type(
+        self, tab: str, ref: str, text: str, submit: bool = False, slowly: bool = False
+    ) -> str:
         """Type text into an editable element on a specific tab.
 
         Args:
@@ -860,6 +862,11 @@ class WebBrowserTool:
             submit: If True, press Enter after typing. Without submit the
                 response is a short ack since the page state hasn't changed
                 beyond the input field's value (which the agent already knows).
+            slowly: If True, type one character at a time (simulating real
+                keystrokes) instead of setting the value in one shot. Slower,
+                but fires the per-key handlers some autocomplete/combobox
+                widgets need to populate their suggestion dropdown. Try this
+                when a normal type leaves the field's options unpopulated.
         """
         self._metrics.num_types += 1
         state = self._tabs.get(tab)
@@ -868,7 +875,13 @@ class WebBrowserTool:
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
-                await locator.fill(text, timeout=_SETTLE_TIMEOUT_MS)
+                if slowly:
+                    # Clear via the fast path, then emit real keystrokes so
+                    # key-driven suggestion handlers fire.
+                    await locator.fill("", timeout=_SETTLE_TIMEOUT_MS)
+                    await locator.press_sequentially(text, timeout=_SETTLE_TIMEOUT_MS)
+                else:
+                    await locator.fill(text, timeout=_SETTLE_TIMEOUT_MS)
                 if submit:
                     await locator.press("Enter")
                     await self._settle(state)
@@ -1007,16 +1020,28 @@ class WebBrowserTool:
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
-    async def browser_wait(self, tab: str, seconds: float = 3.0) -> str:
-        """Sleep for ``seconds`` seconds, then re-snapshot the tab.
+    async def browser_wait(
+        self,
+        tab: str,
+        seconds: float = 3.0,
+        text: str | None = None,
+        text_gone: str | None = None,
+    ) -> str:
+        """Wait for a condition (or a fixed time), then re-snapshot the tab.
 
-        Useful when a previous action triggered slow content loading and
-        the auto-settle wait wasn't long enough (e.g., heavy dashboards
-        that render a few seconds after the network goes idle).
+        Prefer ``text`` / ``text_gone`` over a fixed sleep: they return as
+        soon as the condition holds, so they're both faster and more reliable
+        than guessing how many ``seconds`` a render will take. Use ``seconds``
+        alone only when there's no text to key off (e.g., a heavy dashboard
+        that renders a few seconds after the network goes idle).
 
         Args:
             tab: The id of the tab to re-snapshot afterward, e.g. ``"t1"``.
-            seconds: How long to wait, capped at 30s.
+            seconds: Fixed sleep, capped at 30s. Used when neither ``text`` nor
+                ``text_gone`` is given; otherwise serves as the timeout for the
+                text condition.
+            text: If given, wait until this text appears on the page.
+            text_gone: If given, wait until this text disappears from the page.
         """
         self._metrics.num_waits += 1
         state = self._tabs.get(tab)
@@ -1024,7 +1049,21 @@ class WebBrowserTool:
             return self._format_error(self._unknown_tab(tab))
         seconds = max(0.0, min(seconds, 30.0))
         async with state.op_lock:
-            await asyncio.sleep(seconds)
+            try:
+                if text is not None:
+                    await state.page.get_by_text(text).first.wait_for(
+                        state="visible", timeout=seconds * 1000
+                    )
+                elif text_gone is not None:
+                    await state.page.get_by_text(text_gone).first.wait_for(
+                        state="hidden", timeout=seconds * 1000
+                    )
+                else:
+                    await asyncio.sleep(seconds)
+            except Exception:
+                # Timed out waiting for the condition — fall through and
+                # snapshot anyway so the agent sees the current state.
+                pass
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
