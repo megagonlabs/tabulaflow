@@ -202,6 +202,7 @@ class InteractiveElement:
     name: str
     href: str | None = None
     parent_context: tuple[str, str] | None = None  # (role, name) of nearest named ancestor
+    native_select: bool = False  # combobox backed by a native <select> (use browser_select)
 
 
 @dataclass
@@ -261,12 +262,40 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                     href = um.group("url")
                     break
 
+        native_select = False
+        if role == "combobox":
+            # A native <select> exposes its <option> children in the aria tree
+            # even when collapsed, and those options carry no ref (you pick one
+            # via browser_select, not by clicking). A collapsed ARIA combobox
+            # shows no children; an expanded one's options DO carry refs. So a
+            # ref-less option descendant ⇒ native <select>. Free: no extra
+            # browser round-trip, read straight from the snapshot we already have.
+            for next_line in lines[i + 1 :]:
+                if not next_line.strip():
+                    continue
+                next_indent = len(next_line) - len(next_line.lstrip())
+                if next_indent <= indent:
+                    break
+                stripped = next_line.lstrip()
+                if stripped.startswith("- option") and "[ref=" not in next_line:
+                    native_select = True
+                    break
+
         ctx: tuple[str, str] | None = None
         if context_stack:
             _, c_role, c_name = context_stack[-1]
             ctx = (c_role, c_name)
 
-        elements.append(InteractiveElement(ref=ref, role=role, name=name, href=href, parent_context=ctx))
+        elements.append(
+            InteractiveElement(
+                ref=ref,
+                role=role,
+                name=name,
+                href=href,
+                parent_context=ctx,
+                native_select=native_select,
+            )
+        )
     return elements
 
 
@@ -281,6 +310,8 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
     out: list[str] = []
     for e in elements:
         line = f"- [ref={e.ref}] {e.role}"
+        if e.native_select:
+            line += " (native <select>: use browser_select)"
         if e.name:
             line += f' "{e.name}"'
         if e.href:
