@@ -130,7 +130,7 @@ Grant extra capabilities only when the row work needs them:
 Cost and method:
 - Treat it as expensive. For large tables (>= 100 rows), run on a sampled subset, verify, then apply to the full table.
 - Decide per task whether plain SQL rules suffice or a subagent is needed; combine both when different parts of a table need different methods.
-- When `task_instruction` must iterate a DuckDB JSON column, cast it to a native list with `from_json(col, '["TYPE"]')` (or use `LIST<T>` / `STRUCT(...)` types from the start) — raw `JSON` materializes as a string in pandas.
+- When the `task_instruction` template iterates a DuckDB JSON column with a Jinja `{% for %}` loop, cast the column to a native list in `task_query` with `from_json(col, '["TYPE"]')` (or use `LIST<T>` / `STRUCT(...)` types from the start) — raw `JSON` materializes as a string in pandas, which the loop cannot iterate.
 </concurrent_task_handling>
 
 <plan_mode>
