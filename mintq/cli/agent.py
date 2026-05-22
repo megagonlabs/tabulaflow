@@ -110,7 +110,7 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 - First, use `transfer_record` to move data into or out of `workspace`.
   - To transfer a full table, run `SELECT * FROM <table>` without `LIMIT`, then transfer that `record_id`.
 - Prefer `run_subagent_for_each_row` over fuzzy regex matching or LIKE-based SQL for semantic operations (classifying free text, matching names with naming variations, extracting sentiment). See <concurrent_task_handling> for how to use it.
-- When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response.
+- When presenting a final table result to the user, run `SELECT *` without `LIMIT` (large table can be handled by our data browser) and reference the result in the final response (see <presenting_data>).
 </data_transformation_tasks_internal>
 
 <concurrent_task_handling>
