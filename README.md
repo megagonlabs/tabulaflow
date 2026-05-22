@@ -211,7 +211,7 @@ May 21
   - [ ] extraction tool
   - [ ] web_fetch tool for static html
 
-
+- [ ] Debug agent interaction on google flight
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 
