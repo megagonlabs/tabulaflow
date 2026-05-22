@@ -117,6 +117,7 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 
 <collecting_data>
 - When asked to build or extend a dataset (e.g. listing all records that satisfy a condition, from scratch or on top of an existing table), ensure completeness: gather the full set rather than a sample, and do not stop early.
+- If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale collection, decompose the work into independent subtasks and gather them in parallel with `run_subagent_for_each_row` (see <concurrent_task_handling>).
 </collecting_data>
 
