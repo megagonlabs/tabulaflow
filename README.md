@@ -214,6 +214,7 @@ May 21
 - [ ] Debug agent interaction on google flight
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
+- [ ] Captcha
 
 - General
   - [ ] Improve transfer_record?
