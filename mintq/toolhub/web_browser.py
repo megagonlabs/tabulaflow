@@ -249,8 +249,12 @@ def _split_node(node: Any) -> tuple[str | None, Any]:
     return None, None
 
 
-def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...]] | None:
-    """Parse ``role "name" [attr]…`` into (role, name, ref, state-flags)."""
+def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...], bool] | None:
+    """Parse ``role "name" [attr]…`` into (role, name, ref, state-flags, clickable).
+
+    ``clickable`` reflects Playwright's ``[cursor=pointer]`` hint — used to
+    recover non-semantic but clickable ``generic`` elements.
+    """
     m = _HEADER_PATTERN.match(header.strip())
     if m is None:
         return None
@@ -260,7 +264,8 @@ def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...]] |
         f.group("flag") + (f"={f.group('val')}" if f.group("val") else "")
         for f in _STATE_FLAG_PATTERN.finditer(attrs)
     )
-    return m.group("role"), m.group("name") or "", (ref_m.group(1) if ref_m else None), state
+    clickable = "[cursor=pointer]" in attrs
+    return m.group("role"), m.group("name") or "", (ref_m.group(1) if ref_m else None), state, clickable
 
 
 def _native_select_options(children: list[Any]) -> list[str]:
@@ -279,7 +284,7 @@ def _native_select_options(children: list[Any]) -> list[str]:
                 continue
             parsed = _parse_header(header)
             if parsed is not None:
-                role, name, ref, _ = parsed
+                role, name, ref, _, _ = parsed
                 if role == "option" and ref is None:
                     out.append(name)
             if isinstance(body, list):  # descend into <optgroup>
@@ -287,6 +292,27 @@ def _native_select_options(children: list[Any]) -> list[str]:
 
     visit(children)
     return out
+
+
+def _has_click_target(nodes: list[Any]) -> bool:
+    """True if the subtree holds an interactable element or clickable generic.
+
+    Used to skip clickable wrapper ``generic``s (which merely contain a real
+    button/link) and promote only the innermost clickable target.
+    """
+    for node in nodes:
+        header, body = _split_node(node)
+        if header is not None:
+            parsed = _parse_header(header)
+            if parsed is not None:
+                role, _, ref, _, clickable = parsed
+                if (role in _INTERACTIVE_ROLES and ref is not None) or (
+                    role == "generic" and clickable
+                ):
+                    return True
+        if isinstance(body, list) and _has_click_target(body):
+            return True
+    return False
 
 
 def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
@@ -314,7 +340,7 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
         parsed = _parse_header(header)
         if parsed is None:
             return
-        role, name, ref, state = parsed
+        role, name, ref, state, clickable = parsed
         children = body if isinstance(body, list) else []
         value = str(body) if isinstance(body, str | int | float) else None
 
@@ -323,7 +349,16 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
         if role in _CONTEXT_ROLES and name:
             context_stack.append((depth, role, name))
 
-        if role in _INTERACTIVE_ROLES and ref is not None:
+        # Promote a non-semantic `generic` only when it's clickable and is the
+        # innermost target (no interactive/clickable descendant) — skips the
+        # wrapper divs that merely contain a real button/link.
+        promote_generic = (
+            role == "generic"
+            and clickable
+            and ref is not None
+            and not _has_click_target(children)
+        )
+        if (role in _INTERACTIVE_ROLES or promote_generic) and ref is not None:
             href: str | None = None
             if role == "link":
                 for child in children:
@@ -344,7 +379,7 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                     parent_context=ctx,
                     native_select=bool(opts),
                     native_options=tuple(opts[:_MAX_NATIVE_OPTIONS]),
-                    state=state,
+                    state=(*state, "clickable") if promote_generic else state,
                     value=value,
                 )
             )

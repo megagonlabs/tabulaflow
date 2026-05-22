@@ -123,6 +123,33 @@ class TestContext:
         assert by["e3"].parent_context == ("region", "R")  # listitem popped, region kept
 
 
+class TestClickableGeneric:
+    def test_leaf_clickable_generic_promoted(self) -> None:
+        (el,) = parse_interactive_elements("- generic [ref=e1] [cursor=pointer]: May 23")
+        assert el.role == "generic"
+        assert el.value == "May 23"
+        assert "clickable" in el.state
+
+    def test_non_clickable_generic_dropped(self) -> None:
+        assert parse_interactive_elements("- generic [ref=e1]: hello") == []
+
+    def test_wrapper_generic_skipped_inner_kept(self) -> None:
+        # Clickable generic wrapping a real link → wrapper skipped, link kept.
+        yaml = "- generic [ref=e1] [cursor=pointer]:\n    - link \"Deal\" [ref=e2]:\n        - /url: /x"
+        by = _by_ref(parse_interactive_elements(yaml))
+        assert "e1" not in by
+        assert by["e2"].href == "/x"
+
+    def test_nested_clickable_generics_innermost_only(self) -> None:
+        yaml = (
+            "- generic [ref=e1] [cursor=pointer]:\n"
+            "    - generic [ref=e2] [cursor=pointer]:\n"
+            '        - generic "Inner" [ref=e3] [cursor=pointer]'
+        )
+        refs = [e.ref for e in parse_interactive_elements(yaml)]
+        assert refs == ["e3"]
+
+
 class TestFallback:
     def test_malformed_yaml_recovers_refs(self) -> None:
         # Unbalanced quote breaks YAML; fallback still extracts the ref line.
