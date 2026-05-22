@@ -98,6 +98,15 @@ _ARIA_LINE_PATTERN = re.compile(
     r".*?\[ref=(?P<ref>e\d+)\].*?$"
 )
 _ARIA_URL_PATTERN = re.compile(r"^\s*-\s+/url:\s*(?P<url>.+?)\s*$")
+# State flags Playwright emits as `[flag]` (or `[flag=value]`) before the ref —
+# the element's interactable state. We surface these; `[ref=…]`/`[active]`/
+# `[level=…]` are deliberately excluded (handled elsewhere / low value).
+_STATE_FLAG_PATTERN = re.compile(
+    r"\[(?P<flag>checked|disabled|selected|expanded|pressed|readonly)(?:=(?P<val>[\w-]+))?\]"
+)
+# Current value of a control: text trailing the ref after a colon, e.g.
+# ``textbox "Where from" [ref=e2]: San Francisco``.
+_REF_VALUE_PATTERN = re.compile(r"\[ref=e\d+\]\s*:\s*(?P<value>.+?)\s*$")
 # Ref-less `- option "name"` line nested under a native <select>.
 _OPTION_NAME_PATTERN = re.compile(r'-\s+option\s+"(?P<name>[^"]*)"')
 # Cap on how many native-<select> option labels to surface in the snapshot,
@@ -209,6 +218,8 @@ class InteractiveElement:
     parent_context: tuple[str, str] | None = None  # (role, name) of nearest named ancestor
     native_select: bool = False  # combobox backed by a native <select> (use browser_select)
     native_options: tuple[str, ...] = ()  # option labels of a native <select> (capped)
+    state: tuple[str, ...] = ()  # interactable state flags, e.g. ("checked", "disabled")
+    value: str | None = None  # current value of a textbox/combobox/slider
 
 
 @dataclass
@@ -293,6 +304,15 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                         if om is not None:
                             native_options.append(om.group("name"))
 
+        # Interactable state flags and current value, read straight from the
+        # line (e.g. `checkbox "X" [checked] [ref=e3]`, `textbox [ref=e2]: hi`).
+        state = tuple(
+            m2.group("flag") + (f"={m2.group('val')}" if m2.group("val") else "")
+            for m2 in _STATE_FLAG_PATTERN.finditer(line)
+        )
+        vm = _REF_VALUE_PATTERN.search(line)
+        value = vm.group("value").strip().strip('"') if vm else None
+
         ctx: tuple[str, str] | None = None
         if context_stack:
             _, c_role, c_name = context_stack[-1]
@@ -307,6 +327,8 @@ def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
                 parent_context=ctx,
                 native_select=native_select,
                 native_options=tuple(native_options),
+                state=state,
+                value=value,
             )
         )
     return elements
@@ -332,6 +354,10 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
             line += ")"
         if e.name:
             line += f' "{e.name}"'
+        if e.value is not None:
+            line += f' = "{e.value}"'
+        for flag in e.state:
+            line += f" [{flag}]"
         if e.href:
             line += f" → {e.href}"
         if e.parent_context:
