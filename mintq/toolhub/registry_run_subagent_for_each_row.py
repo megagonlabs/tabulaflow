@@ -9,6 +9,7 @@ from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.db_registry import DBRegistry
+from mintq.toolhub.message_store import MessageStore
 from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
@@ -26,6 +27,7 @@ class RegistryRunSubagentForEachRowTool:
         self,
         registry: DBRegistry,
         *,
+        message_store: MessageStore | None = None,
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         store_metadata: bool = False,
@@ -34,6 +36,9 @@ class RegistryRunSubagentForEachRowTool:
 
         Args:
             registry: Registry containing available connectors.
+            message_store: Optional workspace-backed message store, forwarded
+                to per-alias tools to enable offload-truncation for non-leaf
+                subagents.
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
@@ -43,6 +48,7 @@ class RegistryRunSubagentForEachRowTool:
                 and a ``"<ExceptionType>: <message>"`` string on failure.
         """
         self.registry = registry
+        self.message_store = message_store
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.store_metadata = store_metadata
@@ -61,6 +67,7 @@ class RegistryRunSubagentForEachRowTool:
             tool = RunSubagentForEachRowTool(
                 connector,
                 registry=self.registry,
+                message_store=self.message_store,
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 store_metadata=self.store_metadata,

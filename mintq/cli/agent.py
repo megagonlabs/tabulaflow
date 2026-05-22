@@ -14,13 +14,14 @@ from typing import TYPE_CHECKING, Protocol, runtime_checkable
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
-from mintq.cli.message_store import (
+from mintq.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
     MessageStoreCapability,
     ScopedMessageStore,
     make_snippet,
 )
+from mintq.toolhub.web_browser import BROWSER_TOOL_NAMES
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -300,6 +301,7 @@ class ChatAgent:
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
             run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
                 self.registry,
+                message_store=self._message_store,
                 model_settings=OpenAIChatModelSettings(openai_service_tier="priority"),
                 store_metadata=True,
             ),
@@ -380,18 +382,7 @@ class ChatAgent:
                 self._tools.web_browser.lifecycle_capability(),
                 MessageStoreCapability(
                     store=self._main_scope,
-                    tool_allowlist=frozenset(
-                        {
-                            "browser_navigate",
-                            "browser_click",
-                            "browser_type",
-                            "browser_scroll",
-                            "browser_back",
-                            "browser_press",
-                            "browser_select",
-                            "browser_wait",
-                        }
-                    ),
+                    tool_allowlist=BROWSER_TOOL_NAMES,
                 ),
             ],
             instructions=self._system_prompt,

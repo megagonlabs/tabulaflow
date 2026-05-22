@@ -42,14 +42,17 @@ def _utcnow() -> datetime:
 
 
 def make_snippet(message_id: str, content: str) -> str:
-    """Return the head+tail snippet shown to the LLM for an overflowed message."""
+    """Return the head+tail snippet shown to the LLM for an overflowed message.
+
+    The marker is self-describing: it names the ``run_query`` call (with the
+    ``workspace`` alias and a schema-qualified table) that fetches the full
+    content, so a reader needs no out-of-band instructions to dereference it.
+    """
     total = len(content)
     head = content[:MESSAGE_HEAD_CHARS]
     tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
-    marker = (
-        f"... [truncated, {total} chars total — full content in workspace.{_SCHEMA}.{_TABLE} "
-        f"where message_id='{message_id}']"
-    )
+    deref = f"run_query(db_alias=\"workspace\", \"SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id='{message_id}'\")"
+    marker = f"... [truncated, {total} chars total — read full content with {deref}]"
     parts = [f"[message_id={message_id}]", head, marker]
     if tail:
         parts.append(tail)

@@ -140,6 +140,23 @@ _CONTEXT_ROLES: frozenset[str] = frozenset(
 )
 
 
+# Names of the LLM-facing browser action tools (see ``as_pydantic_ai_tools``).
+# Single source of truth for message-store allowlists that need to know which
+# tool returns are browser snapshots (and thus truncation candidates).
+BROWSER_TOOL_NAMES: frozenset[str] = frozenset(
+    {
+        "browser_navigate",
+        "browser_click",
+        "browser_type",
+        "browser_scroll",
+        "browser_back",
+        "browser_press",
+        "browser_select",
+        "browser_wait",
+    }
+)
+
+
 # ---------------------------------------------------------------------------
 # Metrics
 # ---------------------------------------------------------------------------

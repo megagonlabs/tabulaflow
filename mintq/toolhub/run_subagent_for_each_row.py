@@ -3,19 +3,27 @@
 from __future__ import annotations
 
 import asyncio
+import uuid
 from collections.abc import Callable
-from typing import ClassVar
+from typing import Any, ClassVar
 
 import jinja2
 import sqlalchemy
 from pydantic_ai import Agent, Tool
+from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.schema import SQLDialect, Trajectory
+from mintq.toolhub.message_store import (
+    MESSAGE_THRESHOLD_CHARS,
+    MessageStore,
+    MessageStoreCapability,
+    make_snippet,
+)
 from mintq.toolhub.registry_run_query import RegistryRunQueryTool
-from mintq.toolhub.web_browser import WebBrowserTool
+from mintq.toolhub.web_browser import BROWSER_TOOL_NAMES, WebBrowserTool
 
 
 _COL_EXCEPTION = "_subagent_exception"
@@ -65,6 +73,7 @@ class RunSubagentForEachRowTool:
         db_connector: BaseSQLDBConnector,
         *,
         registry: DBRegistry | None = None,
+        message_store: MessageStore | None = None,
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
@@ -79,6 +88,14 @@ class RunSubagentForEachRowTool:
                 pass ``enable_run_query_tool=True`` so the per-row subagent
                 can query any registered database. If omitted, that flag is
                 unavailable.
+            message_store: Optional workspace-backed message store. When
+                provided (together with ``registry``), non-leaf subagents
+                (``enable_nested_subagents=True``) get offload-truncation: long
+                prompts and tool returns are mirrored here and replaced with
+                snippets, and the subagent gets a registry-backed ``run_query``
+                tool to read the full content back from
+                ``workspace._internal.messages``. Without both, non-leaf
+                subagents run untruncated.
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
@@ -93,6 +110,7 @@ class RunSubagentForEachRowTool:
             raise ValueError("max_concurrency must be greater than 0")
         self.db_connector = db_connector
         self.registry = registry
+        self.message_store = message_store
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
@@ -258,6 +276,7 @@ class RunSubagentForEachRowTool:
             nested_tool = RunSubagentForEachRowTool(
                 self.db_connector,
                 registry=self.registry,
+                message_store=self.message_store,
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
@@ -265,10 +284,22 @@ class RunSubagentForEachRowTool:
             )
             nested_pa_tool = nested_tool.as_pydantic_ai_tool()
 
+        if enable_run_query_tool and self.registry is None:
+            return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
+
+        # Offload-truncation applies only to non-leaf subagents (those that can
+        # spawn nested subagents), and only when a workspace message store and a
+        # registry are wired. Long prompts and tool returns (browser snapshots,
+        # nested-subagent summaries) are mirrored to the store and shown as
+        # snippets; the subagent dereferences them by reading
+        # ``workspace._internal.messages`` with ``run_query`` — so offload
+        # implies the run_query tool.
+        offload_enabled = enable_nested_subagents and self.message_store is not None and self.registry is not None
+        call_id = uuid.uuid4().hex[:8]
+
         run_query_pa_tool: Tool | None = None
-        if enable_run_query_tool:
-            if self.registry is None:
-                return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
+        if enable_run_query_tool or offload_enabled:
+            assert self.registry is not None
             run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
         completed = 0
@@ -322,10 +353,22 @@ class RunSubagentForEachRowTool:
                 tools.append(nested_pa_tool)
             if run_query_pa_tool is not None:
                 tools.append(run_query_pa_tool)
+
+            capabilities: list[AbstractCapability[Any]] = []
+            if browser_tool is not None:
+                capabilities.append(browser_tool.lifecycle_capability())
+            subagent_scope = None
+            if offload_enabled:
+                assert self.message_store is not None
+                subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
+                capabilities.append(
+                    MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES)
+                )
+
             subagent = Agent(
                 model=self.subagent_llm,
                 tools=tools,
-                capabilities=[browser_tool.lifecycle_capability()] if browser_tool is not None else None,
+                capabilities=capabilities or None,
                 output_type=str,
                 model_settings=self.model_settings,
             )
@@ -334,6 +377,10 @@ class RunSubagentForEachRowTool:
             metadata: tuple[str | None, str | None] | None = None
             try:
                 prompt = task_template.render(row)
+                if subagent_scope is not None:
+                    message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
+                    if len(prompt) > MESSAGE_THRESHOLD_CHARS:
+                        prompt = make_snippet(message_id, prompt)
                 result = await subagent.run(prompt)
                 await _write_row_output(key_payload, result.output)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
