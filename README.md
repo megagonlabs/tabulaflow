@@ -210,6 +210,9 @@ May 21
   - [ ] web_fetch tool for static html
 
 
+- [ ] Bash tool
+
+
 - General
   - [ ] Improve transfer_record?
   - [ ] /reconnect
