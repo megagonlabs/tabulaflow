@@ -207,11 +207,14 @@ May 21
   - [x] Tune tool description for run_subagent_for_each_row tool
   - [x] Tune agent prompt
   - [x] Concurrency control for web browsing
-  - [ ] One-time subagent tool
+
+May 22
+  - [ ] Debug agent interaction on google flight
   - [ ] extraction tool
+  - [ ] One-time subagent tool
   - [ ] web_fetch tool for static html
 
-- [ ] Debug agent interaction on google flight
+
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
