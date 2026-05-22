@@ -203,15 +203,17 @@ May 20
 
 May 21
 - Web browsing
-  - [x] Offloading mechanism
-  - [ ] Tune prompt for run_agent_for_each_row tool
+  - [x] Offloading mechanism for subagents
+  - [x] Tune tool description for run_subagent_for_each_row tool
+  - [x] Tune agent prompt
+  - [x] Concurrency control for web browsing
   - [ ] One-time subagent tool
   - [ ] extraction tool
   - [ ] web_fetch tool for static html
 
 
 - [ ] Bash tool
-
+- [ ] Partial trajectory when exeption during agent turn
 
 - General
   - [ ] Improve transfer_record?
