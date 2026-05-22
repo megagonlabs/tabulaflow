@@ -77,6 +77,7 @@ _NETWORKIDLE_WAIT_MS = 10_000
 # need the full SPA-rendering budget. Borrowed from browser-use's heuristic.
 _NETWORKIDLE_WAIT_MS_SAME_DOMAIN = 3_000
 
+
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -455,6 +456,51 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
 # ---------------------------------------------------------------------------
 
 
+class _PageBudget:
+    """Process-wide cap on simultaneously-open browser pages.
+
+    A permit is taken before a tab opens and returned when it closes, bounding
+    total live Chromium pages across every ``WebBrowserTool`` — the dominant
+    memory cost under wide/deep subagent fan-out.
+
+    Acquire policy (chosen by the caller):
+    - ``block=True`` waits (indefinitely, event-driven) for a free slot. Use it
+      only when the caller holds no permit yet (a tool's first tab): waiting
+      while holding nothing is deadlock-safe (the waiter is in no cycle) and
+      never fails a one-tab task.
+    - ``block=False`` returns immediately. Use it once the caller already holds
+      a permit (a tool's 2nd+ tab) so a holder never blocks-while-holding, which
+      would risk deadlock when permit-holders await permit-seekers.
+    """
+
+    def __init__(self, limit: int | None) -> None:
+        self._limit = limit
+        self._in_use = 0
+        self._cond = asyncio.Condition()
+
+    async def acquire(self, *, block: bool) -> bool:
+        limit = self._limit
+        if limit is None:
+            return True
+        async with self._cond:
+            if self._in_use < limit:
+                self._in_use += 1
+                return True
+            if not block:
+                return False
+            await self._cond.wait_for(lambda: self._in_use < limit)
+            self._in_use += 1
+            return True
+
+    async def release(self) -> None:
+        if self._limit is None:
+            return
+        async with self._cond:
+            if self._in_use > 0:
+                self._in_use -= 1
+                self._cond.notify(1)
+
+
 class WebBrowserManager:
     """Owns a Chromium browser process and a shared ``BrowserContext``.
 
@@ -465,17 +511,29 @@ class WebBrowserManager:
       own cookies, own storage, fully isolated from siblings
     - ``Page`` ≈ one tab inside a context
 
+    Also owns a process-wide :class:`_PageBudget` capping simultaneously-open
+    pages across all tools that share this manager.
+
     Get the process-wide default via the module-level ``default_manager()``
     accessor; construct directly only for tests or non-default lifecycle
     needs.
     """
 
-    def __init__(self, headless: bool = True) -> None:
+    def __init__(self, headless: bool = True, max_pages: int | None = None) -> None:
         self._headless = headless
         self._playwright: Playwright | None = None
         self._browser: Browser | None = None
         self._shared_context: BrowserContext | None = None
         self._lock = asyncio.Lock()
+        self._page_budget = _PageBudget(max_pages)
+
+    async def acquire_page(self, *, block: bool) -> bool:
+        """Take a page permit. See :class:`_PageBudget` for the ``block`` policy."""
+        return await self._page_budget.acquire(block=block)
+
+    async def release_page(self) -> None:
+        """Return a page permit taken by :meth:`acquire_page`."""
+        await self._page_budget.release()
 
     async def shared_context(self) -> "BrowserContext":
         """Return the shared BrowserContext, launching the browser if needed."""
@@ -559,7 +617,9 @@ async def default_manager(headless: bool = True) -> WebBrowserManager:
         return _default_manager
     async with _default_manager_lock:
         if _default_manager is None:
-            _default_manager = WebBrowserManager(headless=headless)
+            from mintq.config import mintq_config
+
+            _default_manager = WebBrowserManager(headless=headless, max_pages=mintq_config.max_browser_pages)
         return _default_manager
 
 
@@ -721,10 +781,20 @@ class WebBrowserTool:
         tab_id = f"t{self._next_tab_seq}"
         self._next_tab_seq += 1
 
+        # Take a page permit from the process-wide budget before opening a tab.
+        # First tab (we hold none) may block briefly for a slot; later tabs
+        # fast-fail so a permit-holder never blocks while holding.
+        manager = await self._ensure_manager()
+        if not await manager.acquire_page(block=len(self._tabs) == 0):
+            return self._format_error(
+                "browser at capacity — close a tab or reduce parallelism, then retry"
+            )
+
         try:
             ctx = await self._ensure_context()
             page = await ctx.new_page()
         except Exception as e:
+            await manager.release_page()
             return self._format_error(f"failed to open tab: {self._error_message(e)}")
 
         page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
@@ -745,6 +815,7 @@ class WebBrowserTool:
                 await page.close()
             except Exception:
                 pass
+            await manager.release_page()
             return self._format_error(f"navigation failed: {self._error_message(e)}")
 
         state = _TabState(tab_id=tab_id, page=page, last_touched_turn=self._turn_counter)
@@ -965,6 +1036,8 @@ class WebBrowserTool:
                 await state.page.close()
             except Exception:
                 pass
+            if self._manager is not None:
+                await self._manager.release_page()
             self._metrics.num_tabs_auto_closed += 1
 
     async def close(self) -> None:
@@ -976,6 +1049,8 @@ class WebBrowserTool:
                 await state.page.close()
             except Exception:
                 pass
+            if self._manager is not None:
+                await self._manager.release_page()
         if self._owned_context is not None:
             try:
                 await self._owned_context.close()

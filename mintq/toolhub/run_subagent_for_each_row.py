@@ -5,6 +5,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 from collections.abc import Callable
+from dataclasses import dataclass
 from typing import Any, ClassVar
 
 import jinja2
@@ -55,6 +56,25 @@ def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) ->
         col: sqlalchemy.ColumnClause[object] = sqlalchemy.column(col_name)
         conditions.append(col.is_(None) if val is None else col == val)
     return sqlalchemy.and_(*conditions)
+
+
+@dataclass
+class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
+    """Close the row subagent's browser tabs right before it fans out.
+
+    A subagent that can both browse and nest could hold browser page permits
+    while awaiting a nested ``run_subagent_for_each_row`` whose rows need those
+    same permits — a deadlock on the shared page budget. Dropping its tabs at
+    the moment it invokes the nested tool keeps it holding zero permits across
+    the await, so non-leaf browsing stays safe.
+    """
+
+    browser_tool: WebBrowserTool
+
+    async def before_tool_execute(self, ctx: Any, *, call: Any, tool_def: Any, args: Any) -> Any:
+        if tool_def.name == RunSubagentForEachRowTool.name:
+            await self.browser_tool.close()
+        return args
 
 
 class RunSubagentForEachRowTool:
@@ -368,6 +388,11 @@ class RunSubagentForEachRowTool:
             capabilities: list[AbstractCapability[Any]] = []
             if browser_tool is not None:
                 capabilities.append(browser_tool.lifecycle_capability())
+                # If this subagent can both browse and fan out, drop its tabs
+                # before any nested fan-out so it holds no page permits while
+                # awaiting nested rows that need them (deadlock avoidance).
+                if nested_pa_tool is not None:
+                    capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
             subagent_scope = None
             if offload_enabled:
                 assert self.message_store is not None

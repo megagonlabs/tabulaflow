@@ -128,6 +128,7 @@ When a task decomposes into many similar, independent sub-tasks (one per row, en
 - Ambitious tasks can be decomposed across multiple levels: a subagent's task can itself fan out further sub-tasks with `run_subagent_for_each_row` (set `enable_nested_subagents=True`). Reach for this when one level of rows is too coarse — break the task into a tree of sub-tasks rather than one flat sweep.
 - Treat it as expensive. For large tables (>= 100 rows), run on a sampled subset first, verify, then apply to the full table. For a small number of tasks, skip the sampling step and run directly — the extra pass only hurts latency and user experience.
 - Decide per task whether plain SQL rules suffice or a subagent is needed; combine both when different parts of a table need different methods.
+- Do NOT call browser tools (`browser_*`) and `run_subagent_for_each_row` in the same turn. Browse to gather what you need first, then fan out in a later turn — interleaving them in one turn can stall the shared browser pool.
 </concurrent_task_handling>
 
 <plan_mode>
@@ -379,6 +380,8 @@ class ChatAgent:
         import mintq.patches  # noqa: F401
         from pydantic_ai import Agent
 
+        from mintq.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
+
         self._pydantic_ai_agent = Agent(
             model=self.model,  # type: ignore[call-overload]
             tools=[
@@ -393,6 +396,10 @@ class ChatAgent:
             ],
             capabilities=[
                 self._tools.web_browser.lifecycle_capability(),
+                # Drop the root agent's browser tabs before it fans out, so it
+                # holds no page permits while awaiting subagent rows that need
+                # them (same deadlock-avoidance as for non-leaf subagents).
+                ReleaseBrowserBeforeFanout(browser_tool=self._tools.web_browser),
                 MessageStoreCapability(
                     store=self._main_scope,
                     tool_allowlist=BROWSER_TOOL_NAMES,
