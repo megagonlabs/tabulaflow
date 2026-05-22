@@ -14,7 +14,7 @@ _POSITIVE_INT_OR_NONE_FIELDS = (
     "max_embedding_concurrency",
     "max_embedding_requests_per_minute",
     "query_timeout",
-    "max_browser_pages",
+    "max_browser_tabs",
 )
 
 
@@ -44,7 +44,7 @@ class _MintqSettings(BaseSettings):
     # Process-wide cap on simultaneously-open browser tabs (Chromium pages),
     # shared across all WebBrowserTool instances. Bounds memory under wide/deep
     # subagent fan-out. None disables the cap.
-    max_browser_pages: int | None = 48
+    max_browser_tabs: int | None = 20
     dataset: str = "bird-sql"
     split: str = "dev"
     query_timeout: int | None = 300

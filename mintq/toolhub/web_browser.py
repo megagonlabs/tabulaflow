@@ -619,7 +619,7 @@ async def default_manager(headless: bool = True) -> WebBrowserManager:
         if _default_manager is None:
             from mintq.config import mintq_config
 
-            _default_manager = WebBrowserManager(headless=headless, max_pages=mintq_config.max_browser_pages)
+            _default_manager = WebBrowserManager(headless=headless, max_pages=mintq_config.max_browser_tabs)
         return _default_manager
 
 
