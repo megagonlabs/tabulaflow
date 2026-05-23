@@ -209,22 +209,24 @@ May 21
   - [x] Concurrency control for web browsing
 
 May 22
-  - Improve web_browser.py
-    - [x] Fix no snapshot included when submit=False
-    - [x] Type slowly
-    - [x] wait for text/text_gone
-    - [x] native <select>
-    - [x] Include options, state, current value
-    - [x] Include leaf clickable generic
-    - [ ] Rewrite snapshot by direct aria-to-markdown conversion - inline all elements
-  - [ ] extraction tool
-  - [ ] One-time subagent tool
-  - [ ] web_fetch tool for static html
+- web_browser.py
+  - [x] Fix no snapshot included when submit=False
+  - [x] Type slowly
+  - [x] wait for text/text_gone
+  - [x] native <select>
+  - [x] Include options, state, current value
+  - [x] Include leaf clickable generic
+  - [x] Rewrite snapshot by direct aria-to-markdown conversion - inline all elements
 
 
+- [ ] extraction tool
+- [ ] One-time subagent tool
+- [ ] web_fetch tool for static html
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
+- [ ] Multi-column output for subagents
+- [ ] Allow subagent to fail with special tool
 
 - General
   - [ ] Improve transfer_record?
