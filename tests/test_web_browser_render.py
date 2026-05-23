@@ -32,11 +32,14 @@ class TestLinksAndButtons:
         assert md('- link "X" [ref=e1]') == "[X] [ref=e1]"
 
     def test_button_inlines_ref(self) -> None:
-        assert md('- button "Submit" [ref=e1]') == "[Submit [ref=e1]]"
+        assert md('- button "Submit" [ref=e1]') == 'button "Submit" [ref=e1]'
 
     def test_button_disabled_state_not_in_markdown(self) -> None:
         # State flags surface via the interactive-elements list, not in the md.
-        assert md('- button "Go" [disabled] [ref=e1]') == "[Go [ref=e1]]"
+        assert md('- button "Go" [disabled] [ref=e1]') == 'button "Go" [ref=e1]'
+
+    def test_button_without_name(self) -> None:
+        assert md("- button [ref=e1]") == "button [ref=e1]"
 
 
 class TestLists:
@@ -91,24 +94,24 @@ class TestTables:
 class TestFormControls:
     def test_textbox_inlines_value(self) -> None:
         assert md('- textbox "Where from" [ref=e1]: SFO') == (
-            '{textbox "Where from" = "SFO" [ref=e1]}'
+            'textbox "Where from" = "SFO" [ref=e1]'
         )
 
     def test_combobox_with_state(self) -> None:
         assert md('- combobox "menu" [expanded] [ref=e1]: One way') == (
-            '{combobox "menu" = "One way" [expanded] [ref=e1]}'
+            'combobox "menu" = "One way" [expanded] [ref=e1]'
         )
 
     def test_checkbox_state(self) -> None:
         out = md('- checkbox "Nonstop" [checked] [ref=e1]')
-        assert out == '{checkbox "Nonstop" [checked] [ref=e1]}'
+        assert out == 'checkbox "Nonstop" [checked] [ref=e1]'
 
 
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:
         # Pill-style div: cursor=pointer, no interactive descendants.
         out = md('- generic [ref=e1] [cursor=pointer]: May 23')
-        assert out == "[May 23 [ref=e1]]"
+        assert out == 'clickable "May 23" [ref=e1]'
 
     def test_wrapper_clickable_generic_does_not_inline_itself(self) -> None:
         # Wrapper around a link → render the inner link only.

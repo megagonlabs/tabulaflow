@@ -474,7 +474,7 @@ def _render_md_node(node: Any) -> str:
         return f"[{body_md}]({href}){ref_tag}" if href else f"[{body_md}]{ref_tag}"
     if role == "button":
         body_md = name or _kids_md(children).strip()
-        return f"[{body_md}{ref_tag}]"
+        return f'button "{body_md}"{ref_tag}' if body_md else f"button{ref_tag}"
     if role in (
         "textbox", "searchbox", "combobox", "checkbox", "radio", "switch",
         "slider", "spinbutton", "tab",
@@ -506,11 +506,16 @@ def _render_md_node(node: Any) -> str:
         return f"`{body_md}`"
     if role == "img":
         # alt text is the accessible name; src isn't exposed reliably in aria.
+        # Drop nameless images entirely — ``![]()`` carries no information and
+        # is the main source of icon-noise on JS-heavy UIs (Google Flights, etc.).
+        if not name:
+            return ""
         return f"![{name}](){ref_tag}"
     if role == "separator":
         return "\n\n---\n\n"
     # Innermost clickable ``generic`` (same rule as parse_interactive_elements):
-    # promote with a button-like inline marker so the agent has a click target.
+    # promote so the agent has a click target. Labelled ``clickable`` rather
+    # than ``button`` because it's a heuristic (cursor=pointer), not a real role.
     if (
         role == "generic"
         and clickable
@@ -518,7 +523,10 @@ def _render_md_node(node: Any) -> str:
         and not _has_click_target(children)
     ):
         inner = ((value + " ") if value else "") + _kids_md(children).strip()
-        return f"[{inner.strip() or '(clickable)'}{ref_tag}]"
+        inner_text = inner.strip()
+        if inner_text:
+            return f'clickable "{inner_text}"{ref_tag}'
+        return f"clickable{ref_tag}"
     # transparent / unknown containers: render children, prepending any scalar.
     leading = (value + " ") if value else ""
     return leading + _kids_md(children)
@@ -546,9 +554,7 @@ def _render_md_form_control(
     role: str, name: str, value: str | None, state: tuple[str, ...],
     ref_tag: str, children: list[Any],
 ) -> str:
-    """Render a form control inline with its value and state, e.g.
-    ``{textbox "Where from" = "San Francisco" [ref=e2]}``.
-    """
+    """Render a form control inline as ``role "name" = "value" [flag] [ref=eN]``."""
     parts: list[str] = [role]
     if name:
         parts.append(f'"{name}"')
@@ -562,7 +568,7 @@ def _render_md_form_control(
         parts.append(f"[{flag}]")
     if ref_tag:
         parts.append(ref_tag.strip())
-    return "{" + " ".join(parts) + "}"
+    return " ".join(parts)
 
 
 def _render_md_table(children: list[Any]) -> str:
