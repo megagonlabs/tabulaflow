@@ -227,6 +227,7 @@ May 22
 - [ ] Captcha
 - [ ] Multi-column output for subagents
 - [ ] Allow subagent to fail with special tool
+- [ ] subagent prompt - ensure output consistency but don't limit the approach
 
 - General
   - [ ] Improve transfer_record?
