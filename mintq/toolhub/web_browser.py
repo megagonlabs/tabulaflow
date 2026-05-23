@@ -410,7 +410,7 @@ async def format_tab_response(state: _TabState) -> str:
     if snapshot.title:
         parts.append(f"Title: {snapshot.title}")
     parts.append("")
-    parts.append("# Page")
+    parts.append("---")
     parts.append(snapshot.markdown_content or "(no content extracted)")
     return "\n".join(parts)
 
