@@ -63,15 +63,35 @@ _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
     }
 )
 
-# Roles rendered transparently — they have no markdown form of their own, we
-# just emit their children. Most accessibility-tree noise lives here.
+# Truly transparent roles — anonymous DOM wrappers with no semantic meaning,
+# emit children inline with no boundary.
 _TRANSPARENT_ROLES: frozenset[str] = frozenset(
+    {"generic", "group", "tooltip", "status", "alert", "progressbar"}
+)
+
+# Landmark roles — semantic page regions. Their content is still inline,
+# but the region itself produces a paragraph boundary so distinct landmarks
+# (page header, navigation, main, sidebar, footer, …) don't crash together
+# into one inline run.
+#
+# "Strong" landmarks (HTML5 landmark elements + interactive containers) are
+# treated as paragraph-bound unconditionally — they're virtually always real
+# page sections.
+#
+# "Named" landmarks (``region``/``section``/``article``) only qualify when
+# they carry an accessible name. Unnamed instances are often accidental —
+# enterprise UIs sprinkle ``<section>`` liberally — so we leave them
+# transparent to avoid over-separating small widgets.
+_STRONG_LANDMARK_ROLES: frozenset[str] = frozenset(
     {
-        "generic", "region", "main", "navigation", "banner", "contentinfo",
-        "article", "section", "group", "complementary", "dialog",
-        "alertdialog", "tabpanel", "tooltip", "status", "alert", "progressbar",
+        "banner", "navigation", "main", "complementary", "contentinfo",
+        "dialog", "alertdialog", "tabpanel",
     }
 )
+_NAMED_LANDMARK_ROLES: frozenset[str] = frozenset(
+    {"region", "section", "article"}
+)
+_LANDMARK_ROLES: frozenset[str] = _STRONG_LANDMARK_ROLES | _NAMED_LANDMARK_ROLES
 
 # Grouping roles — logical groups of controls/items (a search form, a tab
 # strip, a menu). We always fan their meaningful children out as paragraphs
@@ -480,17 +500,18 @@ def _render_grouping(ctx: _Ctx) -> str:
 
     Flatten transparent descendants into a flat list of leaves, then emit each
     as its own paragraph. Avoids indent inversion from arbitrary DOM-wrapper
-    depth (Google Flights' nested form generics). Consecutive plain-text
-    leaves combine into one paragraph; atoms keep their own.
+    depth (Google Flights' nested form generics, Wikipedia's search wrapper).
+    Consecutive plain-text leaves combine into one paragraph; atoms keep
+    their own. Counts leaves *after* flattening so a single-child wrapper
+    can't mask a real multi-control region.
     """
-    meaningful = _meaningful_children(ctx.children)
-    if len(meaningful) <= 1:
-        leading = (ctx.value + " ") if ctx.value else ""
-        return leading + _kids_md(ctx.children, ctx.depth, flow=ctx.flow)
     raw: list[tuple[str, bool]] = []
     _flatten_to_leaves(ctx.children, ctx.depth, raw)
     if not raw:
         return ""
+    if len(raw) == 1:
+        leading = (ctx.value + " ") if ctx.value else ""
+        return leading + raw[0][0]
     leaves: list[str] = []
     buf: list[str] = []
     for text, is_plain in raw:
@@ -504,6 +525,15 @@ def _render_grouping(ctx: _Ctx) -> str:
     if buf:
         leaves.append(" ".join(buf))
     return "\n\n" + "\n\n".join(leaves) + "\n\n"
+
+
+def _render_landmark(ctx: _Ctx) -> str:
+    """Landmark roles (``banner``/``navigation``/``main``/…): emit children
+    inline like a transparent container, but wrap with paragraph boundaries
+    so adjacent landmarks render as distinct blocks rather than one big run.
+    """
+    inner = _kids_md(ctx.children, ctx.depth, flow=True).strip()
+    return f"\n\n{inner}\n\n" if inner else ""
 
 
 def _render_transparent(ctx: _Ctx) -> str:
@@ -520,8 +550,36 @@ def _render_transparent(ctx: _Ctx) -> str:
 # ── Composite helpers ───────────────────────────────────────────────────
 
 
+# Punctuation/closers that should hug the preceding token (no inserted space).
+_NO_SPACE_BEFORE = frozenset(".,;:!?)]}>")
+
+
 def _kids_md(children: list[Any], depth: int, flow: bool = False) -> str:
-    return "".join(_render_md_node(c, depth, flow=flow) for c in children)
+    """Concat children's rendered fragments, inserting a space at boundaries
+    where both sides are non-whitespace and the next side isn't punctuation.
+
+    Prose pages have text nodes carrying their own whitespace ("is a ", " for
+    managing data"); navigation menus and grouping containers don't (the
+    visual spacing is CSS-only). Without this glue, adjacent buttons/links/
+    boxes in a nav strip collide into one run like ``[X][Y]button "Z"``.
+    Punctuation (``.``, ``,``, ``)`` …) must still hug the previous token, so
+    we skip the space when the next fragment starts with a closer.
+    """
+    parts: list[str] = []
+    for c in children:
+        rendered = _render_md_node(c, depth, flow=flow)
+        if not rendered:
+            continue
+        if (
+            parts
+            and parts[-1]
+            and parts[-1][-1] not in " \t\n"
+            and rendered[0] not in " \t\n"
+            and rendered[0] not in _NO_SPACE_BEFORE
+        ):
+            parts.append(" ")
+        parts.append(rendered)
+    return "".join(parts)
 
 
 def _bullet_block(
@@ -779,6 +837,11 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         return _render_clickable_generic(ctx)
     if role in _GROUPING_ROLES:
         return _render_grouping(ctx)
+    # Strong landmarks always qualify; "named" ones only when they carry an
+    # accessible name (avoids over-separation on sites that sprinkle
+    # ``<section>`` / ``role="region"`` liberally).
+    if role in _STRONG_LANDMARK_ROLES or (role in _NAMED_LANDMARK_ROLES and name):
+        return _render_landmark(ctx)
     if role in _TRANSPARENT_ROLES:
         return _render_transparent(ctx)
     # Truly unknown role: inline-transparent.
