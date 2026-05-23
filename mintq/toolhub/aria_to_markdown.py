@@ -545,14 +545,20 @@ def _bullet_block(
     for c in meaningful:
         # Render at depth+1 in bullet mode so the child can produce its own
         # nested structure. If it already returns bullet lines (starts with
-        # ``- ``), use as-is at depth+1 — don't double-wrap. Inline content
-        # gets wrapped as a single bullet at ``depth``.
+        # ``- ``), use as-is at depth+1 — don't double-wrap. If it's a block
+        # form (pipe table, heading, fenced code), emit it as a standalone
+        # block with blank-line boundaries so GFM parses it. Otherwise wrap
+        # the inline content as a single bullet at ``depth``.
         cm = _render_md_node(c, depth + 1, flow=False).strip("\n")
         if not cm.strip():
             continue
-        first_nonblank = cm.lstrip().split("\n", 1)[0]
+        first_nonblank = cm.lstrip().split("\n", 1)[0].lstrip()
         if first_nonblank.startswith("- "):
             lines.append(cm)
+        elif first_nonblank.startswith(("|", "#", "```")):
+            # Standalone block (table / heading / fenced code) — keep it out
+            # of the bullet wrapping so markdown parses it correctly.
+            lines.append("\n" + cm + "\n")
         else:
             first, _, rest = cm.partition("\n")
             lines.append(f"{indent}- {first}" + (f"\n{rest}" if rest else ""))
