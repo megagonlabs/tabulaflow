@@ -172,10 +172,17 @@ _CONTEXT_ROLES: frozenset[str] = frozenset(
 _TRANSPARENT_ROLES: frozenset[str] = frozenset(
     {
         "generic", "region", "main", "navigation", "banner", "contentinfo",
-        "article", "section", "form", "group", "search", "complementary",
-        "dialog", "alertdialog", "tabpanel", "tablist", "menu", "menubar",
+        "article", "section", "group", "complementary",
+        "dialog", "alertdialog", "tabpanel",
         "tooltip", "status", "alert", "progressbar",
     }
+)
+
+# Grouping roles — represent a logical group of controls/items. We always
+# bullet their meaningful children (the flight-search form, search boxes,
+# tab strips, menus) so the controls don't collapse onto one inline run.
+_GROUPING_ROLES: frozenset[str] = frozenset(
+    {"form", "search", "tablist", "menubar", "menu"}
 )
 
 # Heading depth: aria emits ``[level=N]`` for ``<h1>``…``<h6>``.
@@ -437,15 +444,32 @@ def render_aria_markdown(aria_yaml: str) -> str:
         return ""
     if not isinstance(tree, list):
         return ""
-    text = "".join(_render_md_node(n) for n in tree)
-    # tidy whitespace: drop trailing spaces, collapse runs of blank lines.
+    # Top-level defaults to flow=True (prose-friendly): paragraphs and headings
+    # emit their own markdown, and the page-wrapping generics inline normally.
+    # Lower contexts (notably listitem children) switch to flow=False so a
+    # multi-child generic fans out as nested bullets instead of producing a wall.
+    text = "".join(_render_md_node(n, depth=0, flow=True) for n in tree)
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip() + "\n"
 
 
-def _render_md_node(node: Any) -> str:
-    """Render one aria YAML node as a markdown fragment."""
+# Form-control roles render inline as ``role "name" = "value" [flag] [ref=eN]``.
+_FORM_CONTROL_ROLES: frozenset[str] = frozenset({
+    "textbox", "searchbox", "combobox", "checkbox", "radio",
+    "switch", "slider", "spinbutton", "tab",
+})
+
+
+def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
+    """Render one aria YAML node as a markdown fragment.
+
+    ``flow=True`` means we're inside a prose flow (paragraph, heading, link,
+    listitem text, cell). Inline atoms concatenate. ``flow=False`` (top level
+    or inside a structural container) means a transparent container with
+    multiple children fans out as nested bullets — this is what tames the
+    SPA-divs-deep wall on pages like Google Flights.
+    """
     header, body = _split_node(node)
     if header is None or header.startswith("/url"):
         return ""
@@ -457,79 +481,205 @@ def _render_md_node(node: Any) -> str:
     value = str(body) if isinstance(body, str | int | float) else None
     ref_tag = f" [ref={ref}]" if ref else ""
 
+    # ---- Block-level markdown forms (always emit their own form). ----
     if role == "heading":
         m = _LEVEL_PATTERN.search(header)
         level = max(1, min(int(m.group(1)) if m else 2, 6))
-        # Prefer rendered children — preserves any inner link/button refs that
-        # accessible-name flattening would otherwise drop.
-        content = _kids_md(children).strip() or name
+        content = _kids_md(children, depth, flow=True).strip() or name
         return f"\n\n{'#' * level} {content}\n\n"
     if role == "paragraph":
-        return f"\n\n{_kids_md(children)}\n\n"
+        return f"\n\n{_kids_md(children, depth, flow=True).strip()}\n\n"
+    if role == "code":
+        body_md = name or value or _kids_md(children, depth, flow=True).strip()
+        if "\n" in body_md or len(body_md) > 80:
+            return f"\n\n```\n{body_md}\n```\n\n"
+        return f"`{body_md}`"
+    if role == "separator":
+        return "\n\n---\n\n"
+    if role in ("table", "grid"):
+        if _is_data_table(children):
+            return f"\n\n{_render_md_table(children)}\n\n"
+        return _bullet_block(value, children, depth, ref_tag)
+    if role == "list":
+        return f"\n\n{_kids_md(children, depth, flow=False).strip()}\n\n"
+    if role == "listitem":
+        return _render_listitem(value, children, depth, ref_tag)
+
+    # ---- Inline atoms (return inline text). ----
     if role == "text":
         return value or ""
     if role == "link":
         href = _find_url_child(children)
-        body_md = name or _kids_md([c for c in children if not _is_url_node(c)]).strip()
+        body_md = name or _kids_md(
+            [c for c in children if not _is_url_node(c)], depth, flow=True
+        ).strip()
         return f"[{body_md}]({href}){ref_tag}" if href else f"[{body_md}]{ref_tag}"
     if role == "button":
-        body_md = name or _kids_md(children).strip()
+        body_md = name or _kids_md(children, depth, flow=True).strip()
         return f'button "{body_md}"{ref_tag}' if body_md else f"button{ref_tag}"
-    if role in (
-        "textbox", "searchbox", "combobox", "checkbox", "radio", "switch",
-        "slider", "spinbutton", "tab",
-    ):
+    if role in _FORM_CONTROL_ROLES:
         return _render_md_form_control(role, name, value, state, ref_tag, children)
-    if role == "list":
-        return f"\n\n{_kids_md(children)}\n\n"
-    if role == "listitem":
-        return f"\n- {_kids_md(children).strip()}"
-    if role in ("table", "grid"):
-        # Distinguish a data table from a layout table. A layout table either
-        # has rows with ≤1 cell or contains a nested table (the HN front page
-        # is the canonical case). Render layout tables transparently.
-        if _is_data_table(children):
-            return f"\n\n{_render_md_table(children)}\n\n"
-        return _kids_md(children)
-    if role in ("row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"):
-        # Standalone (outside a data table — e.g. a layout table on HN). Render
-        # transparently and break rows with a blank line so the structure
-        # doesn't collapse to one line.
-        leading = (value + " ") if value else ""
-        body_md = leading + _kids_md(children)
-        return f"\n\n{body_md}\n\n" if role in ("row", "rowgroup") else body_md
-    if role == "code":
-        body_md = name or value or _kids_md(children).strip()
-        # Multi-line content (aria sometimes condenses with " ... ") → fence.
-        if "\n" in body_md or len(body_md) > 80:
-            return f"\n\n```\n{body_md}\n```\n\n"
-        return f"`{body_md}`"
     if role == "img":
-        # alt text is the accessible name; src isn't exposed reliably in aria.
-        # Drop nameless images entirely — ``![]()`` carries no information and
-        # is the main source of icon-noise on JS-heavy UIs (Google Flights, etc.).
-        if not name:
-            return ""
-        return f"![{name}](){ref_tag}"
-    if role == "separator":
-        return "\n\n---\n\n"
-    # Innermost clickable ``generic`` (same rule as parse_interactive_elements):
-    # promote so the agent has a click target. Labelled ``clickable`` rather
-    # than ``button`` because it's a heuristic (cursor=pointer), not a real role.
+        return f"![{name}](){ref_tag}" if name else ""
+
+    # ---- Layout-table parts standalone. ----
+    if role in ("row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"):
+        if flow:
+            leading = (value + " ") if value else ""
+            return leading + _kids_md(children, depth, flow=True)
+        return _bullet_block(value, children, depth, ref_tag)
+
+    # ---- Clickable generic promotion (inline marker). ----
     if (
         role == "generic"
         and clickable
         and ref is not None
         and not _has_click_target(children)
     ):
-        inner = ((value + " ") if value else "") + _kids_md(children).strip()
+        inner = ((value + " ") if value else "") + _kids_md(children, depth, flow=True).strip()
         inner_text = inner.strip()
-        if inner_text:
-            return f'clickable "{inner_text}"{ref_tag}'
-        return f"clickable{ref_tag}"
-    # transparent / unknown containers: render children, prepending any scalar.
+        return f'clickable "{inner_text}"{ref_tag}' if inner_text else f"clickable{ref_tag}"
+
+    # ---- Grouping roles (form/search/tablist/menu): flatten + paragraph. ----
+    if role in _GROUPING_ROLES:
+        meaningful = _meaningful_children(children)
+        if len(meaningful) <= 1:
+            leading = (value + " ") if value else ""
+            return leading + _kids_md(children, depth, flow=flow)
+        # Flatten transparent descendants into a flat list of leaves, then
+        # emit each as its own paragraph. Avoids indent inversion from
+        # arbitrary DOM-wrapper depth (Google Flights' nested form generics).
+        leaves: list[str] = []
+        _flatten_to_leaves(children, depth, leaves)
+        if not leaves:
+            return ""
+        return "\n\n" + "\n\n".join(leaves) + "\n\n"
+
+    # ---- Transparent containers. ----
+    if role in _TRANSPARENT_ROLES:
+        if flow:
+            leading = (value + " ") if value else ""
+            return leading + _kids_md(children, depth, flow=True)
+        return _bullet_block(value, children, depth, ref_tag)
+
+    # Unknown role fallback: inline-transparent.
     leading = (value + " ") if value else ""
-    return leading + _kids_md(children)
+    return leading + _kids_md(children, depth, flow=flow)
+
+
+def _kids_md(children: list[Any], depth: int, flow: bool = False) -> str:
+    return "".join(_render_md_node(c, depth, flow=flow) for c in children)
+
+
+def _meaningful_children(children: list[Any]) -> list[Any]:
+    """Drop empty/skippable nodes (``/url`` annotations) before bulleting."""
+    out: list[Any] = []
+    for c in children:
+        h, _ = _split_node(c)
+        if h is None or h.strip().startswith("/url"):
+            continue
+        out.append(c)
+    return out
+
+
+def _bullet_block(
+    value: str | None, children: list[Any], depth: int, ref_tag: str
+) -> str:
+    """Render a transparent/structural container as nested bullets.
+
+    Collapses single-child wrappers so deep ``generic > generic > generic``
+    chains don't pile up indentation. Each meaningful child becomes a bullet
+    at ``depth``; descendants recurse at ``depth + 1`` in flow mode (their own
+    multi-child generics will fan out further on demand).
+    """
+    meaningful = _meaningful_children(children)
+    if not value and len(meaningful) == 0:
+        return ref_tag.strip() if ref_tag else ""
+    if not value and len(meaningful) == 1:
+        return _render_md_node(meaningful[0], depth, flow=False)
+    indent = "  " * depth
+    lines: list[str] = []
+    if value:
+        lines.append(f"{indent}- {value}{ref_tag if not meaningful else ''}")
+    for c in meaningful:
+        # Render at depth+1 in bullet mode so the child can produce its own
+        # nested structure. If it already returns bullet lines (starts with
+        # ``- ``), use them as-is at depth+1 — don't double-wrap. If it
+        # returns inline content, wrap it as a single bullet at ``depth``.
+        cm = _render_md_node(c, depth + 1, flow=False).strip("\n")
+        if not cm.strip():
+            continue
+        first_nonblank = cm.lstrip().split("\n", 1)[0]
+        if first_nonblank.startswith("- "):
+            lines.append(cm)
+        else:
+            first, _, rest = cm.partition("\n")
+            lines.append(f"{indent}- {first}" + (f"\n{rest}" if rest else ""))
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def _render_listitem(
+    value: str | None, children: list[Any], depth: int, ref_tag: str
+) -> str:
+    """Render a listitem at ``depth``, with leaves at ``depth+1`` as bullets.
+
+    Transparent-generic descendants of the listitem are flattened into a single
+    level of bullets — keeps SPA UIs (flight rows, search results) readable
+    without producing arbitrarily deep nesting. Nested ``list``/``table``
+    children stop the flattening so real sub-lists and tables keep structure.
+    """
+    indent = "  " * depth
+    sub_indent = "  " * (depth + 1)
+    leaves: list[str] = []
+    if value:
+        leaves.append(value)
+    _flatten_to_leaves(children, depth + 1, leaves)
+    if not leaves:
+        return f"\n{indent}-{ref_tag}" if ref_tag.strip() else ""
+    # First leaf on the bullet line; remainder as nested bullets at depth+1.
+    head_first, _, head_rest = leaves[0].partition("\n")
+    out = f"\n{indent}- {head_first}" + (ref_tag if len(leaves) == 1 else "")
+    if head_rest:
+        out += "\n" + head_rest
+    for leaf in leaves[1:]:
+        first, _, rest = leaf.partition("\n")
+        out += f"\n{sub_indent}- {first}"
+        if rest:
+            out += "\n" + rest
+    return out
+
+
+def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[str]) -> None:
+    """Walk transparent containers, collecting renderable leaves into ``out``.
+
+    A "leaf" is anything the listitem should show as one bullet:
+      * a transparent container's scalar value (with its ref),
+      * any non-transparent node (link, button, form control, list, table,
+        heading, paragraph, code, image, etc.), rendered via the normal walk.
+    Lists/tables stop the flattening — they recurse via ``_render_md_node``
+    so their structure is preserved as nested markdown.
+    """
+    for c in nodes:
+        h, b = _split_node(c)
+        if h is None or h.strip().startswith("/url"):
+            continue
+        parsed = _parse_header(h)
+        if parsed is None:
+            continue
+        role, _, ref, _, _ = parsed
+        kids = b if isinstance(b, list) else []
+        value = b if isinstance(b, str) else None
+        if role in _TRANSPARENT_ROLES:
+            if value:
+                tag = f" [ref={ref}]" if ref else ""
+                out.append(value + tag)
+            if kids:
+                _flatten_to_leaves(kids, depth, out)
+            continue
+        # Non-transparent: render normally (could be link/button/list/etc.)
+        cm = _render_md_node(c, depth, flow=True).strip()
+        if cm:
+            out.append(cm)
 
 
 def _is_data_table(children: list[Any]) -> bool:
@@ -561,7 +711,7 @@ def _render_md_form_control(
     if value is not None:
         parts.append(f'= "{value}"')
     elif children:
-        kids = _kids_md(children).strip()
+        kids = _kids_md(children, depth=0, flow=True).strip()
         if kids:
             parts.append(f'= "{kids}"')
     for flag in state:
@@ -624,7 +774,7 @@ def _row_cells(row_node: Any) -> list[str]:
             # Prefer rendered children so nested link/button refs survive into
             # the table; fall back to the cell's accessible name / scalar.
             kids = cb if isinstance(cb, list) else []
-            kids_text = _kids_md(kids).strip()
+            kids_text = _kids_md(kids, depth=0, flow=True).strip()
             text = kids_text or p[1] or (str(cb) if isinstance(cb, str) else "")
             ref = p[2]
             if ref and f"[ref={ref}]" not in text:
@@ -651,14 +801,6 @@ def _row_has_role(row_node: Any, role: str) -> bool:
 def _pipe_join(cells: list[str], width: int) -> str:
     padded = cells + [""] * (width - len(cells))
     return "| " + " | ".join(c or " " for c in padded) + " |"
-
-
-def _render_md_row(children: list[Any], sep: str = " | ") -> str:
-    return sep.join(_row_cells({"row": children}))
-
-
-def _kids_md(children: list[Any]) -> str:
-    return "".join(_render_md_node(c) for c in children)
 
 
 def _find_url_child(children: list[Any]) -> str | None:

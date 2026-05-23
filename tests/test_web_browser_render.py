@@ -127,7 +127,7 @@ class TestClickableGeneric:
 class TestRobustness:
     def test_yaml_special_scalar_does_not_break(self) -> None:
         # ``=`` and ``~`` would error under SafeLoader; BaseLoader keeps them strings.
-        assert md('- generic [ref=e1]: =') in {"=", "= "}
+        assert "=" in md('- generic [ref=e1]: =')
         assert "~" in md('- generic [ref=e2]: ~')
 
     def test_empty_input(self) -> None:
