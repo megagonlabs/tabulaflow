@@ -42,6 +42,24 @@ class TestLinksAndButtons:
         assert md("- button [ref=e1]") == "button [ref=e1]"
 
 
+class TestBlockAtomsInListitems:
+    def test_heading_in_listitem_does_not_combine_with_text(self) -> None:
+        # A heading should not get joined into a plain-text run with siblings,
+        # even when both lack refs.
+        y = (
+            "- list [ref=e0]:\n"
+            "    - listitem [ref=e1]:\n"
+            '        - text: "before"\n'
+            '        - heading "Section" [level=3] [ref=e2]\n'
+            '        - text: "after"'
+        )
+        out = md(y)
+        # The heading marker must remain on its own line, not get spliced into
+        # ``before ### Section after``.
+        assert "### Section" in out
+        assert "before ### Section after" not in out
+
+
 class TestLists:
     def test_unordered(self) -> None:
         y = (

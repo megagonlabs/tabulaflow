@@ -188,6 +188,14 @@ _GROUPING_ROLES: frozenset[str] = frozenset(
 # Heading depth: aria emits ``[level=N]`` for ``<h1>``…``<h6>``.
 _LEVEL_PATTERN = re.compile(r"\[level=(\d+)\]")
 
+# Roles whose markdown rendering is inherently block-level — they must never
+# get combined into a run with surrounding inline text, even when the rendered
+# string happens to be a single line and carries no ``[ref=…]``.
+_BLOCK_ATOM_ROLES: frozenset[str] = frozenset(
+    {"heading", "paragraph", "list", "listitem", "table", "grid", "code",
+     "separator", "blockquote", "figure"}
+)
+
 
 # Names of the LLM-facing browser action tools (see ``as_pydantic_ai_tools``).
 # Single source of truth for message-store allowlists that need to know which
@@ -725,10 +733,12 @@ def _flatten_to_leaves(
         # Non-transparent: render normally (could be link/button/list/etc.).
         # Anything without a ``[ref=...]`` is pure inline text (e.g., a ``text``
         # leaf, an image with alt) — treat as plain so it combines with
-        # surrounding labels. Refs survive as atoms.
+        # surrounding labels. Refs survive as atoms; block-formatted roles are
+        # always atoms regardless of ref so they don't merge into a text run.
         cm = _render_md_node(c, depth, flow=True).strip()
         if cm:
-            out.append((cm, "[ref=" not in cm))
+            is_atom = role in _BLOCK_ATOM_ROLES or "[ref=" in cm
+            out.append((cm, not is_atom))
 
 
 def _is_data_table(children: list[Any]) -> bool:
