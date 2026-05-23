@@ -228,6 +228,7 @@ May 22
 - [ ] Multi-column output for subagents
 - [ ] Allow subagent to fail with special tool
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
+- [ ] Auto-close old tab on re-navigate
 
 - General
   - [ ] Improve transfer_record?
