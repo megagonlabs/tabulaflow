@@ -112,11 +112,6 @@ _HEADER_PATTERN = re.compile(
 _STATE_FLAG_PATTERN = re.compile(
     r"\[(?P<flag>checked|disabled|selected|expanded|pressed|readonly)(?:=(?P<val>[\w-]+))?\]"
 )
-# Per-line role/name/ref extractor, used only by the fallback path when the
-# whole snapshot fails to parse as YAML.
-_FALLBACK_LINE_PATTERN = re.compile(
-    r'-\s+(?P<role>[\w-]+)(?:\s+"(?P<name>[^"]*)")?[^\n]*?\[ref=(?P<ref>e\d+)\]'
-)
 # Cap on how many native-<select> option labels to surface in the snapshot,
 # so a long dropdown (countries, timezones) can't bloat the token budget.
 _MAX_NATIVE_OPTIONS = 15
@@ -138,32 +133,6 @@ _INTERACTIVE_ROLES: frozenset[str] = frozenset(
         "spinbutton",
         "searchbox",
         "option",
-    }
-)
-
-# Roles considered "context-bearing" — used to disambiguate identical-looking
-# interactive elements in the "Other interactive elements" listing (e.g.,
-# multiple "View more" buttons distinguished by their nearest heading).
-_CONTEXT_ROLES: frozenset[str] = frozenset(
-    {
-        "heading",
-        "region",
-        "main",
-        "article",
-        "form",
-        "search",
-        "dialog",
-        "listitem",
-        "row",
-        "rowgroup",
-        "tab",
-        "tabpanel",
-        "figure",
-        "group",
-        "navigation",
-        "complementary",
-        "contentinfo",
-        "banner",
     }
 )
 
@@ -234,38 +203,26 @@ class WebBrowserToolMetrics(BaseModel):
 
 
 # ---------------------------------------------------------------------------
-# Snapshot: interactive elements + clean markdown
+# Snapshot: clean markdown derived from a single aria-tree walk.
 #
-# Two complementary views of the page:
-#   1. Filtered list of interactive elements (with refs for click/type)
-#   2. Clean markdown content of the page (for reading)
-#
-# Both views derive from a single ``aria_snapshot(mode="ai")`` walk: refs
-# resolve via the ``aria-ref=eN`` locator, and the markdown is rendered from
-# the same YAML tree so refs land inline by construction (no HTML pass).
+# Refs resolve via Playwright's ``aria-ref=eN`` locator. The markdown is
+# rendered from the same YAML tree so refs land inline by construction —
+# no second-pass interactive-elements list, no "Other" cross-check, no HTML.
 # ---------------------------------------------------------------------------
-
-
-@dataclass(frozen=True)
-class InteractiveElement:
-    ref: str
-    role: str
-    name: str
-    href: str | None = None
-    parent_context: tuple[str, str] | None = None  # (role, name) of nearest named ancestor
-    native_select: bool = False  # combobox backed by a native <select> (use browser_select)
-    native_options: tuple[str, ...] = ()  # option labels of a native <select> (capped)
-    state: tuple[str, ...] = ()  # interactable state flags, e.g. ("checked", "disabled")
-    value: str | None = None  # current value of a textbox/combobox/slider
 
 
 @dataclass
 class PageSnapshot:
     url: str
     title: str
-    interactive_elements: list[InteractiveElement] = field(default_factory=list)
     markdown_content: str = ""
     refs: set[str] = field(default_factory=set)
+    aria_yaml: str = ""  # raw aria YAML, kept for targeted scans (e.g. options)
+
+
+# A single ``- option "name" [ref=eN]`` line in the raw aria YAML — used by
+# ``browser_type`` to surface autocomplete suggestions without re-walking.
+_OPTION_NODE_PATTERN = re.compile(r'-\s+option\s+"(?P<name>[^"]*)"\s+\[ref=(?P<ref>e\d+)\]')
 
 
 # aria_snapshot(mode="ai") is valid YAML, so PyYAML owns hierarchy/nesting/
@@ -346,102 +303,11 @@ def _has_click_target(nodes: list[Any]) -> bool:
     return False
 
 
-def parse_interactive_elements(aria_yaml: str) -> list[InteractiveElement]:
-    """Walk the aria-snapshot YAML, capturing each interactive element's value,
-    state flags, link href, native-<select> options, and nearest context-bearing
-    ancestor/preceding-sibling. Falls back to a minimal ref/role/name scan if the
-    YAML can't be parsed.
-    """
-    try:
-        tree = yaml.load(aria_yaml, Loader=_YamlLoader)
-    except yaml.YAMLError as e:
-        logger.debug("aria YAML parse failed, using fallback: %s", e)
-        return _parse_interactive_elements_fallback(aria_yaml)
-    if not isinstance(tree, list):
-        return []
-
-    elements: list[InteractiveElement] = []
-    # Context-bearing nodes in scope: nearest one at depth <= mine wins.
-    context_stack: list[tuple[int, str, str]] = []
-
-    def walk(node: Any, depth: int) -> None:
-        header, body = _split_node(node)
-        if header is None:
-            return
-        parsed = _parse_header(header)
-        if parsed is None:
-            return
-        role, name, ref, state, clickable = parsed
-        children = body if isinstance(body, list) else []
-        value = str(body) if isinstance(body, str | int | float) else None
-
-        while context_stack and context_stack[-1][0] > depth:
-            context_stack.pop()
-        if role in _CONTEXT_ROLES and name:
-            context_stack.append((depth, role, name))
-
-        # Promote a non-semantic `generic` only when it's clickable and is the
-        # innermost target (no interactive/clickable descendant) — skips the
-        # wrapper divs that merely contain a real button/link.
-        promote_generic = (
-            role == "generic"
-            and clickable
-            and ref is not None
-            and not _has_click_target(children)
-        )
-        if (role in _INTERACTIVE_ROLES or promote_generic) and ref is not None:
-            href: str | None = None
-            if role == "link":
-                for child in children:
-                    c_header, c_body = _split_node(child)
-                    if c_header is not None and c_header.strip().startswith("/url"):
-                        href = str(c_body).strip() if c_body is not None else None
-                        break
-
-            opts = _native_select_options(children) if role == "combobox" else []
-            ctx = (context_stack[-1][1], context_stack[-1][2]) if context_stack else None
-
-            elements.append(
-                InteractiveElement(
-                    ref=ref,
-                    role=role,
-                    name=name,
-                    href=href,
-                    parent_context=ctx,
-                    native_select=bool(opts),
-                    native_options=tuple(opts[:_MAX_NATIVE_OPTIONS]),
-                    state=(*state, "clickable") if promote_generic else state,
-                    value=value,
-                )
-            )
-
-        for child in children:
-            walk(child, depth + 1)
-
-    for node in tree:
-        walk(node, 0)
-    return elements
-
-
-def _parse_interactive_elements_fallback(aria_yaml: str) -> list[InteractiveElement]:
-    """Degraded ref/role/name extraction if the YAML can't be parsed."""
-    elements: list[InteractiveElement] = []
-    for line in aria_yaml.split("\n"):
-        m = _FALLBACK_LINE_PATTERN.match(line)
-        if m is None or m.group("role") not in _INTERACTIVE_ROLES:
-            continue
-        elements.append(
-            InteractiveElement(ref=m.group("ref"), role=m.group("role"), name=m.group("name") or "")
-        )
-    return elements
-
-
-# -- aria → markdown renderer (Phase 1: core prose roles) ------------------
-# Single walk over the same YAML tree we already parse for interactive
-# elements. Refs inline by construction — no text-matching kludge. Phase 1
-# covers headings, paragraphs, links, buttons, lists, and transparent
-# containers; later phases add tables, code blocks, images, and inline form
-# controls.
+# -- aria → markdown renderer ----------------------------------------------
+# Single walk over the aria-snapshot YAML. Refs land inline by construction;
+# any interactive descendant a parent's name-rendering would skip is anchored
+# back to the parent via ``_swept_refs``. No separate interactive-elements
+# list, no cross-check.
 
 
 def render_aria_markdown(aria_yaml: str) -> str:
@@ -516,6 +382,13 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
     # ---- Inline atoms (return inline text). ----
     if role == "text":
         return value or ""
+    if role == "option":
+        # A ref'd ``option`` (live listbox/autocomplete suggestion) — surface
+        # so the agent can click it. Ref-less options inside native ``<select>``
+        # are handled separately via ``_native_select_options``.
+        if ref is None:
+            return ""
+        return f'option "{name}"{ref_tag}' if name else f"option{ref_tag}"
     if role == "link":
         href = _find_url_child(children)
         # Drop aria-only ``<a>`` elements: no href and no ref means the link
@@ -523,13 +396,20 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         # target or interactable handle. Be visible-content-centric.
         if not href and not ref:
             return ""
-        body_md = name or _kids_md(
-            [c for c in children if not _is_url_node(c)], depth, flow=True
-        ).strip()
-        return f"[{body_md}]({href}){ref_tag}" if href else f"[{body_md}]{ref_tag}"
+        kids = [c for c in children if not _is_url_node(c)]
+        body_md = name or _kids_md(kids, depth, flow=True).strip()
+        # When we used ``name`` (and so skipped recursing into kids), sweep up
+        # any interactive descendant refs so they aren't orphaned.
+        extra = _swept_refs(kids) if name else ""
+        if href:
+            return f"[{body_md}]({href}){ref_tag}{extra}"
+        return f"[{body_md}]{ref_tag}{extra}"
     if role == "button":
         body_md = name or _kids_md(children, depth, flow=True).strip()
-        return f'button "{body_md}"{ref_tag}' if body_md else f"button{ref_tag}"
+        extra = _swept_refs(children) if name else ""
+        if body_md:
+            return f'button "{body_md}"{ref_tag}{extra}'
+        return f"button{ref_tag}{extra}"
     if role in _FORM_CONTROL_ROLES:
         return _render_md_form_control(role, name, value, state, ref_tag, children)
     if role == "img":
@@ -600,6 +480,34 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
 
 def _kids_md(children: list[Any], depth: int, flow: bool = False) -> str:
     return "".join(_render_md_node(c, depth, flow=flow) for c in children)
+
+
+def _collect_interactive_refs(children: list[Any]) -> list[str]:
+    """Interactive descendant refs in document order, used to anchor orphans.
+
+    When a parent (button/link/form-control) is rendered by its name and
+    skips recursing into its children, any *interactive* descendant refs
+    those children carried would otherwise vanish. We append them next to
+    the parent's ref so the agent can still target them.
+    """
+    out: list[str] = []
+    for c in children:
+        h, b = _split_node(c)
+        if h is None or h.strip().startswith("/url"):
+            continue
+        parsed = _parse_header(h)
+        if parsed is not None:
+            role, _, ref, _, _ = parsed
+            if ref and role in _INTERACTIVE_ROLES:
+                out.append(ref)
+        if isinstance(b, list):
+            out.extend(_collect_interactive_refs(b))
+    return out
+
+
+def _swept_refs(children: list[Any]) -> str:
+    """Tag string for descendant interactive refs (empty if none)."""
+    return "".join(f" [ref={r}]" for r in _collect_interactive_refs(children))
 
 
 def _meaningful_children(children: list[Any]) -> list[Any]:
@@ -763,7 +671,12 @@ def _render_md_form_control(
     role: str, name: str, value: str | None, state: tuple[str, ...],
     ref_tag: str, children: list[Any],
 ) -> str:
-    """Render a form control inline as ``role "name" = "value" [flag] [ref=eN]``."""
+    """Render a form control inline as ``role "name" = "value" [flag] [ref=eN]``.
+
+    For native ``<select>`` comboboxes, also folds the option labels inline
+    (capped at ``_MAX_NATIVE_OPTIONS``) so the agent knows what values
+    ``browser_select`` accepts.
+    """
     parts: list[str] = [role]
     if name:
         parts.append(f'"{name}"')
@@ -775,9 +688,21 @@ def _render_md_form_control(
             parts.append(f'= "{kids}"')
     for flag in state:
         parts.append(f"[{flag}]")
+    # Native <select>: append option labels inline so the agent can pick one.
+    if role == "combobox":
+        options = _native_select_options(children)
+        if options:
+            opts = ", ".join(f'"{o}"' for o in options[:_MAX_NATIVE_OPTIONS])
+            more = " …" if len(options) > _MAX_NATIVE_OPTIONS else ""
+            parts.append(f"— options: {opts}{more}")
     if ref_tag:
         parts.append(ref_tag.strip())
-    return " ".join(parts)
+    rendered = " ".join(parts)
+    # Sweep any interactive descendant refs (rare; e.g., a button inside a
+    # combobox's label area).
+    if name:
+        rendered += _swept_refs(children)
+    return rendered
 
 
 def _render_md_table(children: list[Any]) -> str:
@@ -875,53 +800,18 @@ def _is_url_node(node: Any) -> bool:
     return h is not None and h.strip().startswith("/url")
 
 
-def render_interactive_elements(elements: list[InteractiveElement]) -> str:
-    """Render a flat list of interactive elements for the LLM.
-
-    Each line: ``- [ref=eN] role "name" → href (under: heading "X")``.
-    Parent-context suffix lets the agent disambiguate same-named buttons.
-    """
-    if not elements:
-        return "(no interactive elements)"
-    out: list[str] = []
-    for e in elements:
-        line = f"- [ref={e.ref}] {e.role}"
-        if e.native_select:
-            line += " (native <select>: use browser_select"
-            if e.native_options:
-                opts = ", ".join(f'"{o}"' for o in e.native_options)
-                more = " …" if len(e.native_options) >= _MAX_NATIVE_OPTIONS else ""
-                line += f" — options: {opts}{more}"
-            line += ")"
-        if e.name:
-            line += f' "{e.name}"'
-        if e.value is not None:
-            line += f' = "{e.value}"'
-        for flag in e.state:
-            line += f" [{flag}]"
-        if e.href:
-            line += f" → {e.href}"
-        if e.parent_context:
-            ctx_role, ctx_name = e.parent_context
-            line += f' (under: {ctx_role} "{ctx_name}")'
-        out.append(line)
-    return "\n".join(out)
-
-
 async def take_snapshot(page: "Page") -> PageSnapshot:
-    """Capture the current page as markdown + a flat interactive-elements list.
+    """Capture the current page as markdown rendered from a single aria walk.
 
-    Both views derive from a single aria-snapshot walk — refs are inline in
-    the markdown by construction, no separate HTML pass.
+    Refs are inline in the markdown by construction. ``refs`` powers ref
+    validation in ``_resolve_ref``; ``aria_yaml`` is kept for targeted scans
+    (e.g., extracting autocomplete options on ``browser_type``).
     """
     try:
         aria_yaml = await page.aria_snapshot(mode="ai", timeout=_SETTLE_TIMEOUT_MS)
     except Exception as e:
         aria_yaml = ""
         logger.debug("aria_snapshot failed: %s", e)
-    interactive = parse_interactive_elements(aria_yaml)
-    refs = set(_REF_PATTERN.findall(aria_yaml))
-    markdown = render_aria_markdown(aria_yaml)
     title = ""
     try:
         title = await page.title()
@@ -930,9 +820,9 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
     return PageSnapshot(
         url=page.url,
         title=title,
-        interactive_elements=interactive,
-        markdown_content=markdown,
-        refs=refs,
+        markdown_content=render_aria_markdown(aria_yaml),
+        refs=set(_REF_PATTERN.findall(aria_yaml)),
+        aria_yaml=aria_yaml,
     )
 
 
@@ -1154,16 +1044,13 @@ class _TabState:
 async def format_tab_response(state: _TabState) -> str:
     """Build the LLM-facing response for a tab state.
 
-    Takes a fresh snapshot — refs are already inline in the markdown via the
-    aria-driven renderer, so we only list the interactive elements whose refs
-    did not naturally surface in the page text (e.g., native-<select> options).
+    Takes a fresh snapshot and emits the markdown. Refs land inline by
+    construction via the aria-driven renderer — orphans get anchored to their
+    parent automatically — so no cross-check or auxiliary list is needed.
     Mutates ``state.last_snapshot`` and consumes any pending popup notice.
     """
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
-
-    inlined_refs = set(_REF_PATTERN.findall(snapshot.markdown_content))
-    remaining = [e for e in snapshot.interactive_elements if e.ref not in inlined_refs]
 
     parts: list[str] = []
     if state.popup_notice is not None:
@@ -1177,10 +1064,6 @@ async def format_tab_response(state: _TabState) -> str:
     parts.append("")
     parts.append("# Page")
     parts.append(snapshot.markdown_content or "(no content extracted)")
-    if remaining:
-        parts.append("")
-        parts.append("# Other interactive elements")
-        parts.append(render_interactive_elements(remaining))
     return "\n".join(parts)
 
 
@@ -1387,11 +1270,13 @@ class WebBrowserTool:
                     pass
                 snapshot = await take_snapshot(state.page)
                 state.last_snapshot = snapshot
-                options = [e for e in snapshot.interactive_elements if e.role == "option"]
+                options = _OPTION_NODE_PATTERN.findall(snapshot.aria_yaml)
                 if options:
+                    listing = "\n".join(
+                        f'- option "{name}" [ref={r}]' for name, r in options
+                    )
                     return (
-                        f"[tab={tab}] typed into ref={ref}\n\n"
-                        f"# Suggestions\n{render_interactive_elements(options)}"
+                        f"[tab={tab}] typed into ref={ref}\n\n# Suggestions\n{listing}"
                     )
                 return f"[tab={tab}] typed into ref={ref}"
             return await format_tab_response(state)
