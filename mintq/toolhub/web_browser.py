@@ -510,6 +510,11 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         return value or ""
     if role == "link":
         href = _find_url_child(children)
+        # Drop aria-only ``<a>`` elements: no href and no ref means the link
+        # exists solely as a screen-reader description, with no navigation
+        # target or interactable handle. Be visible-content-centric.
+        if not href and not ref:
+            return ""
         body_md = name or _kids_md(
             [c for c in children if not _is_url_node(c)], depth, flow=True
         ).strip()
@@ -557,10 +562,14 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
 
     # ---- Transparent containers. ----
     if role in _TRANSPARENT_ROLES:
+        # A bare value-bearing transparent generic is almost always an aria-
+        # labelled informational ``<div>`` — drop its ref unless it's actually
+        # clickable (cursor=pointer wrappers can still carry a real handler).
+        effective_ref = ref_tag if (clickable or role != "generic") else ""
         if flow:
             leading = (value + " ") if value else ""
             return leading + _kids_md(children, depth, flow=True)
-        return _bullet_block(value, children, depth, ref_tag)
+        return _bullet_block(value, children, depth, effective_ref)
 
     # Unknown role fallback: inline-transparent.
     leading = (value + " ") if value else ""
@@ -653,7 +662,9 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[str]) -> None:
     """Walk transparent containers, collecting renderable leaves into ``out``.
 
     A "leaf" is anything the listitem should show as one bullet:
-      * a transparent container's scalar value (with its ref),
+      * a transparent container's scalar value — ref kept only when the node
+        is clickable (cursor=pointer); aria-labelled informational divs lose
+        their refs since they're not actionable,
       * any non-transparent node (link, button, form control, list, table,
         heading, paragraph, code, image, etc.), rendered via the normal walk.
     Lists/tables stop the flattening — they recurse via ``_render_md_node``
@@ -666,12 +677,12 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[str]) -> None:
         parsed = _parse_header(h)
         if parsed is None:
             continue
-        role, _, ref, _, _ = parsed
+        role, _, ref, _, clickable = parsed
         kids = b if isinstance(b, list) else []
         value = b if isinstance(b, str) else None
         if role in _TRANSPARENT_ROLES:
             if value:
-                tag = f" [ref={ref}]" if ref else ""
+                tag = f" [ref={ref}]" if ref and clickable else ""
                 out.append(value + tag)
             if kids:
                 _flatten_to_leaves(kids, depth, out)
