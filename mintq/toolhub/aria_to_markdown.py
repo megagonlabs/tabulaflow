@@ -6,6 +6,22 @@ interactive-elements list. Interactive descendants whose parent renders by
 name (and would otherwise drop them) are anchored back to the parent via a
 "swept-refs" suffix.
 
+Locating an element
+-------------------
+Every interactive element renders as a self-contained, single-line atom:
+
+    [text](url) [ref=eN]            link
+    button "name" [ref=eN]          button (also: clickable "text" [ref=eN])
+    role "name" = "value" [ref=eN]  form controls (textbox/combobox/checkbox/…)
+    ![alt]() [ref=eN]               img
+    option "name" [ref=eN]          live listbox option
+
+Atoms may appear mid-line, so prefer the shape over line-anchored greps::
+
+    grep -oE '\\bbutton "[^"]*" \\[ref=e[0-9]+\\]' snapshot.md
+
+Refs are unique within a snapshot — find by name once, then act via ref.
+
 Public surface (small on purpose):
 
     render_aria_markdown(aria_yaml) -> str
