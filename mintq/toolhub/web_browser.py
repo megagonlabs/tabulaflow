@@ -45,10 +45,13 @@ import yaml
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
+# BaseLoader (not Safe/FullLoader): aria scalars like ``=`` and ``~`` would
+# trigger YAML 1.1 special-tag resolution under SafeLoader (``ConstructorError``).
+# BaseLoader keeps every scalar as a string — which is exactly what we want.
 try:  # fast C loader when available; falls back to the pure-Python loader
-    from yaml import CSafeLoader as _YamlLoader
+    from yaml import CBaseLoader as _YamlLoader
 except ImportError:  # pragma: no cover
-    from yaml import SafeLoader as _YamlLoader  # type: ignore[assignment]
+    from yaml import BaseLoader as _YamlLoader  # type: ignore[assignment]
 
 if TYPE_CHECKING:
     from playwright.async_api import (
@@ -69,7 +72,6 @@ logger = logging.getLogger(__name__)
 
 _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
-_MAX_MARKDOWN_CHARS = 30_000
 
 # After ``load`` fires we wait for ``networkidle`` to give SPAs time to
 # render their JS-injected content. Capped because some sites (Google Flights,
@@ -165,6 +167,20 @@ _CONTEXT_ROLES: frozenset[str] = frozenset(
     }
 )
 
+# Roles rendered transparently — they have no markdown representation of their
+# own, we just emit their children. Most accessibility-tree noise lives here.
+_TRANSPARENT_ROLES: frozenset[str] = frozenset(
+    {
+        "generic", "region", "main", "navigation", "banner", "contentinfo",
+        "article", "section", "form", "group", "search", "complementary",
+        "dialog", "alertdialog", "tabpanel", "tablist", "menu", "menubar",
+        "tooltip", "status", "alert", "progressbar",
+    }
+)
+
+# Heading depth: aria emits ``[level=N]`` for ``<h1>``…``<h6>``.
+_LEVEL_PATTERN = re.compile(r"\[level=(\d+)\]")
+
 
 # Names of the LLM-facing browser action tools (see ``as_pydantic_ai_tools``).
 # Single source of truth for message-store allowlists that need to know which
@@ -209,9 +225,9 @@ class WebBrowserToolMetrics(BaseModel):
 #   1. Filtered list of interactive elements (with refs for click/type)
 #   2. Clean markdown content of the page (for reading)
 #
-# Refs come from Playwright's ``aria_snapshot(mode="ai")`` and resolve via the
-# ``aria-ref=eN`` locator. Markdown comes from lxml-cleaned ``page.content()``
-# run through markdownify (matches browser-use / OpenHands' approach).
+# Both views derive from a single ``aria_snapshot(mode="ai")`` walk: refs
+# resolve via the ``aria-ref=eN`` locator, and the markdown is rendered from
+# the same YAML tree so refs land inline by construction (no HTML pass).
 # ---------------------------------------------------------------------------
 
 
@@ -405,6 +421,253 @@ def _parse_interactive_elements_fallback(aria_yaml: str) -> list[InteractiveElem
     return elements
 
 
+# -- aria → markdown renderer (Phase 1: core prose roles) ------------------
+# Single walk over the same YAML tree we already parse for interactive
+# elements. Refs inline by construction — no text-matching kludge. Phase 1
+# covers headings, paragraphs, links, buttons, lists, and transparent
+# containers; later phases add tables, code blocks, images, and inline form
+# controls.
+
+
+def render_aria_markdown(aria_yaml: str) -> str:
+    """Render an aria-snapshot YAML string as markdown with refs inlined."""
+    try:
+        tree = yaml.load(aria_yaml, Loader=_YamlLoader)
+    except yaml.YAMLError:
+        return ""
+    if not isinstance(tree, list):
+        return ""
+    text = "".join(_render_md_node(n) for n in tree)
+    # tidy whitespace: drop trailing spaces, collapse runs of blank lines.
+    text = re.sub(r"[ \t]+\n", "\n", text)
+    text = re.sub(r"\n{3,}", "\n\n", text)
+    return text.strip() + "\n"
+
+
+def _render_md_node(node: Any) -> str:
+    """Render one aria YAML node as a markdown fragment."""
+    header, body = _split_node(node)
+    if header is None or header.startswith("/url"):
+        return ""
+    parsed = _parse_header(header)
+    if parsed is None:
+        return ""
+    role, name, ref, state, clickable = parsed
+    children = body if isinstance(body, list) else []
+    value = str(body) if isinstance(body, str | int | float) else None
+    ref_tag = f" [ref={ref}]" if ref else ""
+
+    if role == "heading":
+        m = _LEVEL_PATTERN.search(header)
+        level = max(1, min(int(m.group(1)) if m else 2, 6))
+        # Prefer rendered children — preserves any inner link/button refs that
+        # accessible-name flattening would otherwise drop.
+        content = _kids_md(children).strip() or name
+        return f"\n\n{'#' * level} {content}\n\n"
+    if role == "paragraph":
+        return f"\n\n{_kids_md(children)}\n\n"
+    if role == "text":
+        return value or ""
+    if role == "link":
+        href = _find_url_child(children)
+        body_md = name or _kids_md([c for c in children if not _is_url_node(c)]).strip()
+        return f"[{body_md}]({href}){ref_tag}" if href else f"[{body_md}]{ref_tag}"
+    if role == "button":
+        body_md = name or _kids_md(children).strip()
+        return f"[{body_md}{ref_tag}]"
+    if role in (
+        "textbox", "searchbox", "combobox", "checkbox", "radio", "switch",
+        "slider", "spinbutton", "tab",
+    ):
+        return _render_md_form_control(role, name, value, state, ref_tag, children)
+    if role == "list":
+        return f"\n\n{_kids_md(children)}\n\n"
+    if role == "listitem":
+        return f"\n- {_kids_md(children).strip()}"
+    if role in ("table", "grid"):
+        # Distinguish a data table from a layout table. A layout table either
+        # has rows with ≤1 cell or contains a nested table (the HN front page
+        # is the canonical case). Render layout tables transparently.
+        if _is_data_table(children):
+            return f"\n\n{_render_md_table(children)}\n\n"
+        return _kids_md(children)
+    if role in ("row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"):
+        # Standalone (outside a data table — e.g. a layout table on HN). Render
+        # transparently and break rows with a blank line so the structure
+        # doesn't collapse to one line.
+        leading = (value + " ") if value else ""
+        body_md = leading + _kids_md(children)
+        return f"\n\n{body_md}\n\n" if role in ("row", "rowgroup") else body_md
+    if role == "code":
+        body_md = name or value or _kids_md(children).strip()
+        # Multi-line content (aria sometimes condenses with " ... ") → fence.
+        if "\n" in body_md or len(body_md) > 80:
+            return f"\n\n```\n{body_md}\n```\n\n"
+        return f"`{body_md}`"
+    if role == "img":
+        # alt text is the accessible name; src isn't exposed reliably in aria.
+        return f"![{name}](){ref_tag}"
+    if role == "separator":
+        return "\n\n---\n\n"
+    # Innermost clickable ``generic`` (same rule as parse_interactive_elements):
+    # promote with a button-like inline marker so the agent has a click target.
+    if (
+        role == "generic"
+        and clickable
+        and ref is not None
+        and not _has_click_target(children)
+    ):
+        inner = ((value + " ") if value else "") + _kids_md(children).strip()
+        return f"[{inner.strip() or '(clickable)'}{ref_tag}]"
+    # transparent / unknown containers: render children, prepending any scalar.
+    leading = (value + " ") if value else ""
+    return leading + _kids_md(children)
+
+
+def _is_data_table(children: list[Any]) -> bool:
+    rows = _flatten_rows(children)
+    if not rows or any(_subtree_contains_role(r, ("table", "grid")) for r in rows):
+        return False
+    return any(len(_row_cells(r)) >= 2 for r in rows)
+
+
+def _subtree_contains_role(node: Any, roles: tuple[str, ...]) -> bool:
+    header, body = _split_node(node)
+    if header is not None:
+        parsed = _parse_header(header)
+        if parsed is not None and parsed[0] in roles:
+            return True
+    if isinstance(body, list):
+        return any(_subtree_contains_role(c, roles) for c in body)
+    return False
+
+
+def _render_md_form_control(
+    role: str, name: str, value: str | None, state: tuple[str, ...],
+    ref_tag: str, children: list[Any],
+) -> str:
+    """Render a form control inline with its value and state, e.g.
+    ``{textbox "Where from" = "San Francisco" [ref=e2]}``.
+    """
+    parts: list[str] = [role]
+    if name:
+        parts.append(f'"{name}"')
+    if value is not None:
+        parts.append(f'= "{value}"')
+    elif children:
+        kids = _kids_md(children).strip()
+        if kids:
+            parts.append(f'= "{kids}"')
+    for flag in state:
+        parts.append(f"[{flag}]")
+    if ref_tag:
+        parts.append(ref_tag.strip())
+    return "{" + " ".join(parts) + "}"
+
+
+def _render_md_table(children: list[Any]) -> str:
+    """Render a table's row children as a GFM pipe table."""
+    rows = _flatten_rows(children)
+    if not rows:
+        return ""
+    # Find a header row: prefer the first row containing ``columnheader``s.
+    header_idx = next(
+        (i for i, r in enumerate(rows) if _row_has_role(r, "columnheader")),
+        0,
+    )
+    header_cells = _row_cells(rows[header_idx])
+    body_rows = rows[:header_idx] + rows[header_idx + 1:]
+    width = max((len(header_cells), *[len(_row_cells(r)) for r in body_rows]))
+    header = _pipe_join(header_cells, width)
+    sep = "| " + " | ".join(["---"] * width) + " |"
+    body = "\n".join(_pipe_join(_row_cells(r), width) for r in body_rows)
+    return f"{header}\n{sep}\n{body}" if body else f"{header}\n{sep}"
+
+
+def _flatten_rows(nodes: list[Any]) -> list[Any]:
+    """Collect ``row`` nodes from a possibly-nested ``rowgroup`` structure."""
+    out: list[Any] = []
+    for n in nodes:
+        h, b = _split_node(n)
+        if h is None:
+            continue
+        parsed = _parse_header(h)
+        if parsed is None:
+            continue
+        role = parsed[0]
+        if role == "row":
+            out.append(n)
+        elif role in ("rowgroup", "table", "grid") and isinstance(b, list):
+            out.extend(_flatten_rows(b))
+    return out
+
+
+def _row_cells(row_node: Any) -> list[str]:
+    _h, b = _split_node(row_node)
+    if not isinstance(b, list):
+        return []
+    cells: list[str] = []
+    for c in b:
+        ch, cb = _split_node(c)
+        if ch is None:
+            continue
+        p = _parse_header(ch)
+        if p is None:
+            continue
+        if p[0] in ("cell", "gridcell", "columnheader", "rowheader"):
+            # Prefer rendered children so nested link/button refs survive into
+            # the table; fall back to the cell's accessible name / scalar.
+            kids = cb if isinstance(cb, list) else []
+            kids_text = _kids_md(kids).strip()
+            text = kids_text or p[1] or (str(cb) if isinstance(cb, str) else "")
+            ref = p[2]
+            if ref and f"[ref={ref}]" not in text:
+                text = f"{text} [ref={ref}]" if text else f"[ref={ref}]"
+            # Sanitize pipe characters that would break the GFM table.
+            cells.append(text.replace("|", "\\|").replace("\n", " "))
+    return cells
+
+
+def _row_has_role(row_node: Any, role: str) -> bool:
+    _h, b = _split_node(row_node)
+    if not isinstance(b, list):
+        return False
+    for c in b:
+        ch, _ = _split_node(c)
+        if ch is None:
+            continue
+        p = _parse_header(ch)
+        if p is not None and p[0] == role:
+            return True
+    return False
+
+
+def _pipe_join(cells: list[str], width: int) -> str:
+    padded = cells + [""] * (width - len(cells))
+    return "| " + " | ".join(c or " " for c in padded) + " |"
+
+
+def _render_md_row(children: list[Any], sep: str = " | ") -> str:
+    return sep.join(_row_cells({"row": children}))
+
+
+def _kids_md(children: list[Any]) -> str:
+    return "".join(_render_md_node(c) for c in children)
+
+
+def _find_url_child(children: list[Any]) -> str | None:
+    for c in children:
+        h, b = _split_node(c)
+        if h is not None and h.strip().startswith("/url") and b is not None:
+            return str(b).strip()
+    return None
+
+
+def _is_url_node(node: Any) -> bool:
+    h, _ = _split_node(node)
+    return h is not None and h.strip().startswith("/url")
+
+
 def render_interactive_elements(elements: list[InteractiveElement]) -> str:
     """Render a flat list of interactive elements for the LLM.
 
@@ -438,148 +701,12 @@ def render_interactive_elements(elements: list[InteractiveElement]) -> str:
     return "\n".join(out)
 
 
-def inline_link_refs(markdown: str, elements: list[InteractiveElement]) -> tuple[str, list[InteractiveElement]]:
-    """Inject ``[ref=eN]`` after matching ``[name](href)`` links in markdown.
-
-    Returns ``(modified_markdown, elements_not_inlined)``. Non-link elements,
-    links without href or name, and links whose markdown form doesn't match
-    all fall through to the remaining list.
-    """
-    out = markdown
-    consumed: set[str] = set()
-    for e in elements:
-        if e.role != "link" or not e.href or not e.name:
-            continue
-        pattern = re.compile(
-            r"(\[" + re.escape(e.name) + r"\]\(" + re.escape(e.href) + r'(?:\s+"[^"]*")?\))(?!\s*\[ref=)'
-        )
-        new_out, n = pattern.subn(r"\1 [ref=" + e.ref + r"]", out, count=1)
-        if n > 0:
-            out = new_out
-            consumed.add(e.ref)
-    remaining = [e for e in elements if e.ref not in consumed]
-    return out, remaining
-
-
-# JS-side visibility filter. Returns the page's HTML with hidden subtrees
-# removed (display:none, visibility:hidden, aria-hidden=true, opacity:0,
-# zero-size, closed <dialog>/<details>, <template>, <noscript>).
-# Catches duplicate content rendered for tab toggles, mobile/desktop
-# variants, SEO duplicates that aren't visible to a sighted user.
-_VISIBLE_HTML_JS = """
-() => {
-    const isVisible = (el) => {
-        if (!el || el.hidden) return false;
-        if (el.matches && el.matches('[aria-hidden="true"]')) return false;
-        const tag = el.tagName ? el.tagName.toLowerCase() : '';
-        if (tag === 'template' || tag === 'noscript') return false;
-        if (tag === 'dialog' && !el.open) return false;
-        if (tag === 'details' && !el.open) {
-            // keep <summary> children only — handled below by walk skipping siblings
-        }
-        const style = window.getComputedStyle(el);
-        if (style.display === 'none') return false;
-        if (style.visibility === 'hidden') return false;
-        if (style.opacity === '0') return false;
-        const rect = el.getBoundingClientRect();
-        if (rect.width === 0 && rect.height === 0) return false;
-        return true;
-    };
-    const walk = (el) => {
-        if (!isVisible(el)) return null;
-        const clone = el.cloneNode(false);
-        for (const child of el.childNodes) {
-            if (child.nodeType === Node.ELEMENT_NODE) {
-                const c = walk(child);
-                if (c) clone.appendChild(c);
-            } else {
-                clone.appendChild(child.cloneNode(true));
-            }
-        }
-        return clone;
-    };
-    const root = walk(document.documentElement);
-    return root ? root.outerHTML : document.documentElement.outerHTML;
-}
-"""
-
-
-async def extract_markdown(page: "Page") -> str:
-    """Extract clean markdown from the live rendered page.
-
-    Pipeline: JS-side visibility filter (drops hidden duplicates) →
-    lxml.Cleaner (strips scripts/styles/nav/footer/etc.) → markdownify.
-    """
-    try:
-        html = await page.evaluate(_VISIBLE_HTML_JS)
-    except Exception:
-        try:
-            html = await page.content()
-        except Exception as e:
-            return f"(error fetching HTML: {e})"
-
-    try:
-        import lxml.html
-        from lxml.html.clean import Cleaner
-
-        doc = lxml.html.fromstring(html)
-        cleaner = Cleaner(
-            scripts=True,
-            style=True,
-            page_structure=False,
-            embedded=True,
-            forms=False,
-            frames=True,
-            javascript=True,
-            meta=True,
-            links=False,
-            processing_instructions=True,
-            kill_tags=[
-                "nav",
-                "footer",
-                "header",
-                "svg",
-                "iframe",
-                "noscript",
-                "aside",
-            ],
-        )
-        doc = cleaner.clean_html(doc)
-        main_candidates = doc.xpath("//main") or doc.xpath("//article") or [doc.body if doc.body is not None else doc]
-        cleaned_html = lxml.html.tostring(main_candidates[0], encoding="unicode")
-    except Exception as e:
-        logger.debug("lxml cleanup failed: %s; falling back to raw HTML", e)
-        cleaned_html = html
-
-    try:
-        from markdownify import markdownify
-    except ImportError:
-        return "(error: markdownify is not installed)"
-
-    md = markdownify(
-        cleaned_html,
-        heading_style="ATX",
-        strip=["script", "style", "img"],
-        bullets="-",
-        escape_asterisks=False,
-        escape_underscores=False,
-        escape_misc=False,
-        autolinks=False,
-        default_title=False,
-    )
-    md = re.sub(r"\n{3,}", "\n\n", md).strip()
-
-    if len(md) > _MAX_MARKDOWN_CHARS:
-        truncate_at = _MAX_MARKDOWN_CHARS
-        para_break = md.rfind("\n\n", _MAX_MARKDOWN_CHARS - 500, _MAX_MARKDOWN_CHARS)
-        if para_break > 0:
-            truncate_at = para_break
-        md = md[:truncate_at] + f"\n\n[content truncated at {truncate_at} of {len(md)} chars]"
-    return md
-
-
 async def take_snapshot(page: "Page") -> PageSnapshot:
-    """Capture the current page as a filtered interactive view + markdown."""
+    """Capture the current page as markdown + a flat interactive-elements list.
+
+    Both views derive from a single aria-snapshot walk — refs are inline in
+    the markdown by construction, no separate HTML pass.
+    """
     try:
         aria_yaml = await page.aria_snapshot(mode="ai", timeout=_SETTLE_TIMEOUT_MS)
     except Exception as e:
@@ -587,7 +714,7 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
         logger.debug("aria_snapshot failed: %s", e)
     interactive = parse_interactive_elements(aria_yaml)
     refs = set(_REF_PATTERN.findall(aria_yaml))
-    markdown = await extract_markdown(page)
+    markdown = render_aria_markdown(aria_yaml)
     title = ""
     try:
         title = await page.title()
@@ -820,14 +947,16 @@ class _TabState:
 async def format_tab_response(state: _TabState) -> str:
     """Build the LLM-facing response for a tab state.
 
-    Takes a fresh snapshot, inlines refs into body markdown, and renders the
-    page + other-elements view. Mutates ``state.last_snapshot`` (sets the new
-    snapshot) and ``state.popup_notice`` (consumes any pending popup notice).
+    Takes a fresh snapshot — refs are already inline in the markdown via the
+    aria-driven renderer, so we only list the interactive elements whose refs
+    did not naturally surface in the page text (e.g., native-<select> options).
+    Mutates ``state.last_snapshot`` and consumes any pending popup notice.
     """
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
 
-    annotated_md, remaining = inline_link_refs(snapshot.markdown_content, snapshot.interactive_elements)
+    inlined_refs = set(_REF_PATTERN.findall(snapshot.markdown_content))
+    remaining = [e for e in snapshot.interactive_elements if e.ref not in inlined_refs]
 
     parts: list[str] = []
     if state.popup_notice is not None:
@@ -840,7 +969,7 @@ async def format_tab_response(state: _TabState) -> str:
         parts.append(f"Title: {snapshot.title}")
     parts.append("")
     parts.append("# Page")
-    parts.append(annotated_md or "(no content extracted)")
+    parts.append(snapshot.markdown_content or "(no content extracted)")
     if remaining:
         parts.append("")
         parts.append("# Other interactive elements")
