@@ -807,5 +807,12 @@ def extract_refs(text: str) -> set[str]:
 
 
 def extract_option_nodes(aria_yaml: str) -> list[tuple[str, str]]:
-    """Return ``(name, ref)`` for every ``- option "name" [ref=eN]`` YAML line."""
-    return _OPTION_NODE_PATTERN.findall(aria_yaml)
+    """Return ``(name, ref)`` for every ``- option "name" [ref=eN]`` YAML line.
+
+    Uses ``finditer`` + named-group access so the result order is fixed at the
+    construction site — regex group reordering won't silently swap fields.
+    """
+    return [
+        (m.group("name"), m.group("ref"))
+        for m in _OPTION_NODE_PATTERN.finditer(aria_yaml)
+    ]
