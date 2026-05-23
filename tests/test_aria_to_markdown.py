@@ -1,6 +1,6 @@
 """Tests for the aria-YAML → markdown renderer."""
 
-from mintq.toolhub.web_browser import render_aria_markdown
+from mintq.toolhub.aria_to_markdown import render_aria_markdown
 
 
 def md(yaml: str) -> str:
