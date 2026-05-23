@@ -1,41 +1,70 @@
 """Render a Playwright aria-snapshot YAML to LLM-friendly markdown.
 
-Single-pass walk over the YAML tree, dispatching per ARIA role. Refs land
-inline by construction so the agent can target them without a second-pass
-interactive-elements list. Interactive descendants whose parent renders by
-name (and would otherwise drop them) are anchored back to the parent via a
-"swept-refs" suffix.
+Single walk over the YAML tree, dispatching per ARIA role.  Refs land
+inline by construction; orphan descendants are anchored to their parent
+via a swept-refs suffix.
+
+Why markdown vs raw aria YAML
+=============================
+
+**Smaller and more readable than the raw tree.**  The same flight row
+in raw aria (what playwright-mcp returns)::
+
+    - listitem [ref=e354]:
+      - generic [ref=e355]:
+        - link "From 192 USD. 1 stop flight with Frontier..." [ref=e371]
+        - generic [ref=e357] [cursor=pointer]:
+          - generic "Departure: 11:59 PM" [ref=e366]: 11:59 PM
+          - text: "-"
+          - generic "Arrival: 12:32 PM" [ref=e369]: 12:32 PM
+          - ... 10 more nested generics ...
+        - button "Carbon emissions estimate..." [ref=e394]
+        - button "Flight details..." [ref=e415]
+
+rendered as markdown::
+
+    - 11:59 PM - 12:32 PM +1 Frontier 9 hr 33 min SFO - EWR
+      - button "Carbon emissions estimate..." [ref=e394]
+      - button "Flight details..." [ref=e415]
+
+About 2.7x to 4.8x smaller than raw aria across four real pages
+(flights, wikipedia, Hacker News, tabulator).  Uses real markdown (GitHub Markdown tables,
+nested bullets, prose flow) and drops aria-only narrations and
+non-clickable informational refs so the snapshot matches what a sighted
+user sees.
 
 Locating an element
--------------------
-Every interactive element renders as a self-contained, single-line atom:
+===================
+
+Every interactive element renders as a self-contained, single-line
+atom::
 
     [text](url) [ref=eN]            link
     button "name" [ref=eN]          button (also: clickable "text" [ref=eN])
-    role "name" = "value" [ref=eN]  form controls (textbox/combobox/checkbox/…)
+    role "name" = "value" [ref=eN]  form controls (textbox/combobox/...)
     ![alt]() [ref=eN]               img
     option "name" [ref=eN]          live listbox option
 
-Atoms may appear mid-line, so prefer the shape over line-anchored greps::
+Atoms may appear mid-line, so prefer the shape over line-anchored
+greps::
 
     grep -oE '\\bbutton "[^"]*" \\[ref=e[0-9]+\\]' snapshot.md
 
-Refs are unique within a snapshot — find by name once, then act via ref.
+Refs are unique within a snapshot; find by name once, then act via ref.
 
-Public surface (small on purpose):
+Public API
+==========
 
-    render_aria_markdown(aria_yaml) -> str
-        The main entry point: aria YAML string in, markdown string out.
+:func:`render_aria_markdown` is the main entry point: aria YAML string
+in, markdown string out.
 
-    extract_refs(text) -> set[str]
-        Pull every ``[ref=eN]`` id out of an arbitrary string (markdown or
-        raw YAML). Used to validate refs against the latest snapshot and to
-        check which refs reached the agent.
+:func:`extract_refs` pulls every ``[ref=eN]`` id out of an arbitrary
+string (markdown or raw YAML).
 
-    extract_option_nodes(aria_yaml) -> list[tuple[str, str]]
-        Pull ``(name, ref)`` for every ``- option "name" [ref=eN]`` line in
-        the raw aria YAML. Used by ``browser_type`` to surface autocomplete
-        suggestions without re-walking the tree.
+:func:`extract_option_nodes` pulls ``(name, ref)`` for
+``- option "name" [ref=eN]`` lines in the raw aria YAML.  Used by
+``browser_type`` to surface autocomplete suggestions without re-walking
+the tree.
 """
 
 from __future__ import annotations
@@ -117,7 +146,7 @@ _GROUPING_ROLES: frozenset[str] = frozenset(
 )
 
 # Layout-table parts handled as a family when they appear standalone (outside
-# an actual data table that already structured them as a GFM pipe table).
+# an actual data table that already structured them as a GitHub-Flavored Markdown pipe table).
 _LAYOUT_PART_ROLES: frozenset[str] = frozenset(
     {"row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"}
 )
@@ -452,15 +481,15 @@ def _render_listitem(ctx: _Ctx) -> str:
 
 
 def _render_table_node(ctx: _Ctx) -> str:
-    """A ``table``/``grid``. Real data tables become GFM pipe tables; layout
-    tables (HN's outer chrome) fall back to bullet rendering."""
+    """A ``table``/``grid``. Real data tables become GitHub-Flavored Markdown pipe tables; layout
+    tables (Hacker News's outer chrome) fall back to bullet rendering."""
     if _is_data_table(ctx.children):
         return f"\n\n{_render_md_table(ctx.children)}\n\n"
     return _bullet_block(ctx.value, ctx.children, ctx.depth, ctx.ref_tag)
 
 
 def _render_layout_part(ctx: _Ctx) -> str:
-    """A standalone row/cell/rowgroup outside a data table (e.g., HN layout)."""
+    """A standalone row/cell/rowgroup outside a data table (e.g., Hacker News layout)."""
     if ctx.flow:
         leading = (ctx.value + " ") if ctx.value else ""
         return leading + _kids_md(ctx.children, ctx.depth, flow=True)
@@ -621,7 +650,7 @@ def _bullet_block(
         # nested structure. If it already returns bullet lines (starts with
         # ``- ``), use as-is at depth+1 — don't double-wrap. If it's a block
         # form (pipe table, heading, fenced code), emit it as a standalone
-        # block with blank-line boundaries so GFM parses it. Otherwise wrap
+        # block with blank-line boundaries so GitHub-Flavored Markdown parses it. Otherwise wrap
         # the inline content as a single bullet at ``depth``.
         cm = _render_md_node(c, depth + 1, flow=False).strip("\n")
         if not cm.strip():
@@ -708,7 +737,7 @@ def _subtree_contains_role(node: Any, roles: tuple[str, ...]) -> bool:
 
 
 def _render_md_table(children: list[Any]) -> str:
-    """Render a table's row children as a GFM pipe table."""
+    """Render a table's row children as a GitHub-Flavored Markdown pipe table."""
     rows = _flatten_rows(children)
     if not rows:
         return ""
@@ -765,7 +794,7 @@ def _row_cells(row_node: Any) -> list[str]:
             ref = p[2]
             if ref and f"[ref={ref}]" not in text:
                 text = f"{text} [ref={ref}]" if text else f"[ref={ref}]"
-            # Sanitize pipe characters that would break the GFM table.
+            # Sanitize pipe characters that would break the GitHub-Flavored Markdown table.
             cells.append(text.replace("|", "\\|").replace("\n", " "))
     return cells
 
