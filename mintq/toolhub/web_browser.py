@@ -554,10 +554,24 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         # Flatten transparent descendants into a flat list of leaves, then
         # emit each as its own paragraph. Avoids indent inversion from
         # arbitrary DOM-wrapper depth (Google Flights' nested form generics).
-        leaves: list[str] = []
-        _flatten_to_leaves(children, depth, leaves)
-        if not leaves:
+        # Combine consecutive plain-text leaves (e.g., adjacent labels) into
+        # one paragraph; atoms (buttons, controls) keep their own.
+        raw: list[tuple[str, bool]] = []
+        _flatten_to_leaves(children, depth, raw)
+        if not raw:
             return ""
+        leaves: list[str] = []
+        buf: list[str] = []
+        for text, is_plain in raw:
+            if is_plain:
+                buf.append(text)
+            else:
+                if buf:
+                    leaves.append(" ".join(buf))
+                    buf = []
+                leaves.append(text)
+        if buf:
+            leaves.append(" ".join(buf))
         return "\n\n" + "\n\n".join(leaves) + "\n\n"
 
     # ---- Transparent containers. ----
@@ -639,13 +653,27 @@ def _render_listitem(
     """
     indent = "  " * depth
     sub_indent = "  " * (depth + 1)
-    leaves: list[str] = []
+    raw_leaves: list[tuple[str, bool]] = []
     if value:
-        leaves.append(value)
-    _flatten_to_leaves(children, depth + 1, leaves)
+        raw_leaves.append((value, True))
+    _flatten_to_leaves(children, depth + 1, raw_leaves)
+    # Group consecutive plain-text leaves into single bullets; actionable
+    # atoms (buttons, links, form controls, clickable generics) stay separate.
+    leaves: list[str] = []
+    buf: list[str] = []
+    for text, is_plain in raw_leaves:
+        if is_plain:
+            buf.append(text)
+        else:
+            if buf:
+                leaves.append(" ".join(buf))
+                buf = []
+            leaves.append(text)
+    if buf:
+        leaves.append(" ".join(buf))
     if not leaves:
         return f"\n{indent}-{ref_tag}" if ref_tag.strip() else ""
-    # First leaf on the bullet line; remainder as nested bullets at depth+1.
+    # First group on the bullet line; remainder as nested bullets at depth+1.
     head_first, _, head_rest = leaves[0].partition("\n")
     out = f"\n{indent}- {head_first}" + (ref_tag if len(leaves) == 1 else "")
     if head_rest:
@@ -658,15 +686,20 @@ def _render_listitem(
     return out
 
 
-def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[str]) -> None:
+def _flatten_to_leaves(
+    nodes: list[Any], depth: int, out: list[tuple[str, bool]]
+) -> None:
     """Walk transparent containers, collecting renderable leaves into ``out``.
 
-    A "leaf" is anything the listitem should show as one bullet:
-      * a transparent container's scalar value — ref kept only when the node
-        is clickable (cursor=pointer); aria-labelled informational divs lose
-        their refs since they're not actionable,
-      * any non-transparent node (link, button, form control, list, table,
-        heading, paragraph, code, image, etc.), rendered via the normal walk.
+    Each leaf is ``(text, is_plain)``:
+      * ``is_plain=True``: a transparent container's scalar value — visible
+        text with no actionable identity. Consecutive plain leaves are
+        combined into one bullet line by the caller (matches how a sighted
+        user reads a row of UI text). A clickable transparent generic
+        (cursor=pointer with a ref) is treated as an atom instead.
+      * ``is_plain=False``: an actionable atom (link, button, form control,
+        list, table, heading, …) rendered via the normal walk. Atoms always
+        get their own bullet so the agent can target them.
     Lists/tables stop the flattening — they recurse via ``_render_md_node``
     so their structure is preserved as nested markdown.
     """
@@ -682,15 +715,20 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[str]) -> None:
         value = b if isinstance(b, str) else None
         if role in _TRANSPARENT_ROLES:
             if value:
-                tag = f" [ref={ref}]" if ref and clickable else ""
-                out.append(value + tag)
+                if ref and clickable:
+                    out.append((f"{value} [ref={ref}]", False))  # atom
+                else:
+                    out.append((value, True))  # plain text
             if kids:
                 _flatten_to_leaves(kids, depth, out)
             continue
-        # Non-transparent: render normally (could be link/button/list/etc.)
+        # Non-transparent: render normally (could be link/button/list/etc.).
+        # Anything without a ``[ref=...]`` is pure inline text (e.g., a ``text``
+        # leaf, an image with alt) — treat as plain so it combines with
+        # surrounding labels. Refs survive as atoms.
         cm = _render_md_node(c, depth, flow=True).strip()
         if cm:
-            out.append(cm)
+            out.append((cm, "[ref=" not in cm))
 
 
 def _is_data_table(children: list[Any]) -> bool:
