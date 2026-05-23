@@ -31,7 +31,11 @@ interest by interaction.
 
 **Markdown with click affordances inline.**  Each tool response is one
 document: page text rendered as markdown with ``[ref=eN]`` markers
-placed right after each link, button, or input.
+placed right after each link, button, or input.  Every interactive
+element is a self-contained single-line atom (``[text](url) [ref=eN]``
+for links; ``role "name" [ref=eN]`` for buttons / form controls / etc.)
+so the agent can locate one with a single grep / SQL regex.  See
+:mod:`mintq.toolhub.aria_to_markdown` for the full atom-shape reference.
 """
 
 import asyncio
@@ -471,6 +475,20 @@ class WebBrowserTool:
 
     async def browser_navigate(self, url: str) -> str:
         """Open a NEW tab at ``url`` and return its post-load snapshot.
+
+        The snapshot is markdown rendered from the page's accessibility
+        tree.  Every interactive element appears as a self-contained
+        single-line atom followed by ``[ref=eN]``::
+
+            [text](url) [ref=eN]            link
+            button "name" [ref=eN]          button (also: clickable "text" [ref=eN])
+            role "name" = "value" [ref=eN]  form controls (textbox/combobox/...)
+            ![alt]() [ref=eN]               img
+            option "name" [ref=eN]          live listbox option
+
+        Pass that ``ref`` id to ``browser_click`` / ``browser_type`` /
+        ``browser_select`` to act on the element.  Atoms may appear
+        mid-line.
 
         Each call opens a fresh tab — previously-opened tabs remain open.
         Use the ``tab`` id from the response (e.g., ``"t3"``) in subsequent
