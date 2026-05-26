@@ -10,7 +10,8 @@ from typing import Any, ClassVar
 
 import jinja2
 import sqlalchemy
-from pydantic_ai import Agent, Tool
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
@@ -46,6 +47,20 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
 _DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+
+_ABORT_TOOL_DESCRIPTION = (
+    "Abort the task with a human-readable reason. Call this when the task "
+    "cannot be completed (e.g., required information is missing, the "
+    "instruction is contradictory, or no valid output can be produced). "
+    "Calling this tool ends the run."
+)
+
+
+class AbortTask(BaseModel):
+    """Terminal output indicating the task could not be completed."""
+
+    message: str = Field(description="Reason the task cannot be completed.")
 
 
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
@@ -406,7 +421,14 @@ class RunSubagentForEachRowTool:
                 model=self.subagent_llm,
                 tools=tools,
                 capabilities=capabilities or None,
-                output_type=str,
+                output_type=[
+                    str,
+                    ToolOutput(
+                        AbortTask,
+                        name="abort_task",
+                        description=_ABORT_TOOL_DESCRIPTION,
+                    ),
+                ],
                 model_settings=self.model_settings,
             )
             key_payload = {col: row.get(col) for col in key_columns}
@@ -419,9 +441,14 @@ class RunSubagentForEachRowTool:
                     if len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)
                 result = await subagent.run(prompt)
-                await _write_row_output(key_payload, result.output)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
-                metadata = (None, traj.model_dump_json())
+                if isinstance(result.output, AbortTask):
+                    exception_msg = f"AbortTask: {result.output.message}"
+                    error_msg = f"row {row_idx}: {exception_msg}"
+                    metadata = (exception_msg, traj.model_dump_json())
+                else:
+                    await _write_row_output(key_payload, result.output)
+                    metadata = (None, traj.model_dump_json())
             except Exception as e:
                 exception_msg = f"{type(e).__name__}: {e}"
                 error_msg = f"row {row_idx}: {exception_msg}"
