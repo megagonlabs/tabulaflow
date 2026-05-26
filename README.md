@@ -219,8 +219,11 @@ May 22
   - [x] Rewrite snapshot by direct aria-to-markdown conversion - inline all elements
 
 May 26
-- [ ] Debug gpt-5-mini browser use
-  - Reason: agent reuses old refs
+- web_browser.py
+  - [x] Debug gpt-5-mini browser use -> Reason: agent reuses old refs
+  - [x] Fix refs re-use (prompt + always full snapshot)
+  - [x] Add tab param to browser_navigate
+  - [x] Allow subagent to abort task with abort_task tool
 - [ ] extraction tool
 - [ ] Multi-column output for subagents
 - [ ] Allow subagent to fail with special tool
@@ -233,6 +236,7 @@ May 26
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
+- [ ] Multi-line input
 
 - General
   - [ ] Improve transfer_record?
