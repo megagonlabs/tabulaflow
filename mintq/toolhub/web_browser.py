@@ -732,6 +732,17 @@ class WebBrowserTool:
     async def browser_back(self, tab: str) -> str:
         """Navigate back in a specific tab's history.
 
+        Use this whenever a previous action replaced the tab's page and you
+        still need the prior content. Triggers include:
+
+        - ``browser_navigate`` with ``tab=<id>`` (explicit in-place navigation).
+        - ``browser_click`` on a link, form submit, or JS-driven nav element.
+        - ``browser_type`` with ``submit=True`` causing a form post or search redirect.
+
+        A page replacement discards the prior page's DOM, JS state, and text
+        content entirely; ``browser_back`` is the only way to recover it without
+        re-navigating to the URL by hand.
+
         Args:
             tab: The id of the tab to navigate back on, e.g. ``"t1"``.
         """
