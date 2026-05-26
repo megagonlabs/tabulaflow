@@ -490,6 +490,11 @@ class WebBrowserTool:
         ``browser_select`` to act on the element.  Atoms may appear
         mid-line.
 
+        Refs are per-snapshot, NOT stable element ids. Every tool response
+        for a tab renumbers them from scratch — even on a visually unchanged
+        page, DOM mutations or AJAX can shift the assignment. Only refs from
+        the tab's MOST RECENT response are valid; never reuse an earlier ref.
+
         Each call opens a fresh tab — previously-opened tabs remain open.
         Use the ``tab`` id from the response (e.g., ``"t3"``) in subsequent
         action calls (``browser_click``, etc.) to interact with this tab.
@@ -563,7 +568,8 @@ class WebBrowserTool:
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"`` (from a previous response).
-            ref: The ref string from that tab's latest snapshot, e.g. ``"e15"``.
+            ref: The ref string of the target element, e.g. ``"e15"``. Must come
+                from the tab's MOST RECENT response — refs are per-snapshot.
         """
         self._metrics.num_clicks += 1
         state = self._tabs.get(tab)
@@ -588,7 +594,8 @@ class WebBrowserTool:
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"``.
-            ref: The ref string of the input element, e.g. ``"e15"``.
+            ref: The ref string of the target element, e.g. ``"e15"``. Must come
+                from the tab's MOST RECENT response — refs are per-snapshot.
             text: The text to type. Replaces existing content.
             submit: If True, press Enter after typing. Without submit the
                 response is a short ack since the page state hasn't changed
@@ -733,7 +740,8 @@ class WebBrowserTool:
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"``.
-            ref: The ref of the ``<select>`` element, e.g. ``"e15"``.
+            ref: The ref string of the target element, e.g. ``"e15"``. Must come
+                from the tab's MOST RECENT response — refs are per-snapshot.
             option: The option to choose, matched by visible label or by
                 value attribute (Playwright tries both).
         """
