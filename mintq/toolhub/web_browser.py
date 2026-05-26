@@ -473,8 +473,13 @@ class WebBrowserTool:
 
     # === LLM-facing tool methods ============================================
 
-    async def browser_navigate(self, url: str) -> str:
-        """Open a NEW tab at ``url`` and return its post-load snapshot.
+    async def browser_navigate(self, url: str, tab: str | None = None) -> str:
+        """Navigate to ``url`` and return the post-load snapshot.
+
+        By default (``tab=None``) opens a NEW tab. Pass an existing ``tab``
+        id (e.g. ``"t3"``) to navigate that tab in place instead — useful
+        when the tab cap is reached, or when you want the tab's id and
+        back-history to stay stable across the URL change.
 
         The snapshot is markdown rendered from the page's accessibility
         tree.  Every interactive element appears as a self-contained
@@ -495,16 +500,19 @@ class WebBrowserTool:
         page, DOM mutations or AJAX can shift the assignment. Only refs from
         the tab's MOST RECENT response are valid; never reuse an earlier ref.
 
-        Each call opens a fresh tab — previously-opened tabs remain open.
-        Use the ``tab`` id from the response (e.g., ``"t3"``) in subsequent
-        action calls (``browser_click``, etc.) to interact with this tab.
-        Tabs auto-close if not interacted with on the next agent turn.
+        Each new-tab call opens a fresh tab — previously-opened tabs remain
+        open. Use the ``tab`` id from the response (e.g., ``"t3"``) in
+        subsequent action calls (``browser_click``, etc.) to interact with
+        this tab. Tabs auto-close if not interacted with on the next agent
+        turn.
 
         Issue multiple navigates in parallel within one turn to scan
         several URLs concurrently.
 
         Args:
             url: An ``http://`` or ``https://`` URL.
+            tab: If set, navigate this existing tab in place instead of
+                opening a new one.
         """
         self._metrics.num_navigates += 1
         parsed = urlparse(url)
@@ -512,11 +520,28 @@ class WebBrowserTool:
             return self._format_error(f"unsupported URL scheme {parsed.scheme!r}; only http/https allowed")
         if not parsed.netloc:
             return self._format_error("invalid URL — missing host")
+
+        if tab is not None:
+            state = self._tabs.get(tab)
+            if state is None:
+                return self._format_error(self._unknown_tab(tab))
+            async with state.op_lock:
+                try:
+                    await state.page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
+                    try:
+                        await state.page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
+                    except Exception:
+                        pass  # SPA never settled; proceed with current state
+                except Exception as e:
+                    return self._format_error(f"navigation failed: {self._error_message(e)}")
+                state.last_touched_turn = self._turn_counter
+                return await format_tab_response(state)
+
         if len(self._tabs) >= self._max_tabs:
             return self._format_error(
                 f"max_tabs ({self._max_tabs}) reached. "
                 f"Open tabs: {sorted(self._tabs.keys())}. "
-                f"Idle tabs auto-close at the next turn boundary."
+                f"Pass tab=<id> to reuse one, or idle them so they auto-close at the next turn boundary."
             )
 
         tab_id = f"t{self._next_tab_seq}"
@@ -528,7 +553,8 @@ class WebBrowserTool:
         manager = await self._ensure_manager()
         if not await manager.acquire_page(block=len(self._tabs) == 0):
             return self._format_error(
-                "browser at capacity — close a tab or reduce parallelism, then retry"
+                "browser at capacity — pass tab=<id> to reuse an existing tab, "
+                "or reduce parallelism and retry"
             )
 
         try:
