@@ -525,34 +525,57 @@ class WebBrowserTool:
             state = self._tabs.get(tab)
             if state is None:
                 return self._format_error(self._unknown_tab(tab))
-            async with state.op_lock:
-                try:
-                    await state.page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
-                    try:
-                        await state.page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
-                    except Exception:
-                        pass  # SPA never settled; proceed with current state
-                except Exception as e:
-                    return self._format_error(f"navigation failed: {self._error_message(e)}")
-                state.last_touched_turn = self._turn_counter
-                return await format_tab_response(state)
+            is_new = False
+        else:
+            state, err = await self._open_new_tab()
+            if state is None:
+                return err or self._format_error("failed to open tab")
+            is_new = True
 
+        async with state.op_lock:
+            try:
+                await self._goto(state.page, url)
+            except Exception as e:
+                if is_new:
+                    await self._discard_tab(state)
+                return self._format_error(f"navigation failed: {self._error_message(e)}")
+            state.last_touched_turn = self._turn_counter
+            return await format_tab_response(state)
+
+    async def _goto(self, page: "Page", url: str) -> None:
+        """Two-phase wait: ``load`` for the navigation guarantee, then a bounded
+        ``networkidle`` to give SPAs time to render their JS content. Pure
+        ``networkidle`` goto can hang for 30s+ on streaming sites (Google
+        Flights); pure ``load`` returns before SPA content appears. The bounded
+        follow-up balances both.
+        """
+        await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
+        try:
+            await page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
+        except Exception:
+            pass  # SPA never settled; proceed with current state
+
+    async def _open_new_tab(self) -> tuple["_TabState | None", str | None]:
+        """Reserve a tab slot, take a permit, and open a fresh page.
+
+        Returns ``(state, None)`` on success, or ``(None, error_response)`` if
+        the tab cap is reached, the page budget is exhausted, or the underlying
+        ``new_page`` call fails. On failure no state is registered and any
+        permit taken has been released.
+        """
         if len(self._tabs) >= self._max_tabs:
-            return self._format_error(
+            return None, self._format_error(
                 f"max_tabs ({self._max_tabs}) reached. "
                 f"Open tabs: {sorted(self._tabs.keys())}. "
                 f"Pass tab=<id> to reuse one, or idle them so they auto-close at the next turn boundary."
             )
-
-        tab_id = f"t{self._next_tab_seq}"
-        self._next_tab_seq += 1
 
         # Take a page permit from the process-wide budget before opening a tab.
         # First tab (we hold none) may block briefly for a slot; later tabs
         # fast-fail so a permit-holder never blocks while holding.
         manager = await self._ensure_manager()
         if not await manager.acquire_page(block=len(self._tabs) == 0):
-            return self._format_error(
+            return None, self._format_error(
                 "browser at capacity — pass tab=<id> to reuse an existing tab, "
                 "or reduce parallelism and retry"
             )
@@ -562,32 +585,25 @@ class WebBrowserTool:
             page = await ctx.new_page()
         except Exception as e:
             await manager.release_page()
-            return self._format_error(f"failed to open tab: {self._error_message(e)}")
+            return None, self._format_error(f"failed to open tab: {self._error_message(e)}")
 
+        tab_id = f"t{self._next_tab_seq}"
+        self._next_tab_seq += 1
         page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
-
-        try:
-            # Two-phase wait: ``load`` for the navigation guarantee, then a
-            # bounded ``networkidle`` to give SPAs time to render their JS
-            # content. Pure ``networkidle`` goto can hang for 30s+ on
-            # streaming sites (Google Flights); pure ``load`` returns before
-            # SPA content appears. The bounded follow-up balances both.
-            await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
-            try:
-                await page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
-            except Exception:
-                pass  # SPA never settled; proceed with current state
-        except Exception as e:
-            try:
-                await page.close()
-            except Exception:
-                pass
-            await manager.release_page()
-            return self._format_error(f"navigation failed: {self._error_message(e)}")
 
         state = _TabState(tab_id=tab_id, page=page, last_touched_turn=self._turn_counter)
         self._tabs[tab_id] = state
-        return await format_tab_response(state)
+        return state, None
+
+    async def _discard_tab(self, state: "_TabState") -> None:
+        """Roll back a tab created by ``_open_new_tab`` after a load failure."""
+        self._tabs.pop(state.tab_id, None)
+        try:
+            await state.page.close()
+        except Exception:
+            pass
+        if self._manager is not None:
+            await self._manager.release_page()
 
     async def browser_click(self, tab: str, ref: str) -> str:
         """Click an interactive element on a specific tab.
