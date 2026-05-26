@@ -319,7 +319,10 @@ class ChatAgent:
             run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
                 self.registry,
                 message_store=self._message_store,
-                model_settings=OpenAIChatModelSettings(openai_service_tier="priority"),
+                model_settings=OpenAIChatModelSettings(
+                    openai_service_tier="priority",
+                    openai_reasoning_effort="medium",
+                ),
                 store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
