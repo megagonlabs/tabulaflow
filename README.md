@@ -220,12 +220,14 @@ May 22
 
 May 26
 - [ ] Debug gpt-5-mini browser use
+  - Reason: agent reuses old refs
 - [ ] extraction tool
 - [ ] Multi-column output for subagents
 - [ ] Allow subagent to fail with special tool
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
 - [ ] Auto-close old tab on re-navigate
 
+- [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
 - [ ] web_fetch tool for static html
 - [ ] Bash tool
