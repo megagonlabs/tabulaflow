@@ -183,6 +183,12 @@ class RunSubagentForEachRowTool:
         this does not propagate — each deeper level must set the flag again to nest
         further.
 
+        Every subagent has a built-in ``abort_task(message: str)`` tool for
+        rows it can't complete; aborted rows are recorded in
+        ``_subagent_exception`` and ``output_columns[0]`` is left unwritten.
+        Do not instruct it to emit sentinel strings like ``"NOT_COMPLETED"`` —
+        describe the successful output only and let it abort otherwise.
+
         This is also the execution primitive for semantic operators beyond standard
         SQL — tasks where the predicate, join condition, or transformation requires
         natural-language understanding rather than exact SQL expressions. Prefer this
