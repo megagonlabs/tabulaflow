@@ -73,11 +73,6 @@ in, markdown string out.
 
 :func:`extract_refs` pulls every ``[ref=eN]`` id out of an arbitrary
 string (markdown or raw YAML).
-
-:func:`extract_option_nodes` pulls ``(name, ref)`` for
-``- option "name" [ref=eN]`` lines in the raw aria YAML.  Used by
-``browser_type`` to surface autocomplete suggestions without re-walking
-the tree.
 """
 
 from __future__ import annotations
@@ -195,11 +190,6 @@ _LEVEL_PATTERN = re.compile(r"\[level=(\d+)\]")
 
 # Any ``[ref=eN]`` token, in either markdown body or raw YAML.
 _REF_PATTERN = re.compile(r"\[ref=(e\d+)\]")
-
-# A ``- option "name" [ref=eN]`` line in the raw aria YAML.
-_OPTION_NODE_PATTERN = re.compile(
-    r'-\s+option\s+"(?P<name>[^"]*)"\s+\[ref=(?P<ref>e\d+)\]'
-)
 
 
 # ── Tree primitives ─────────────────────────────────────────────────────
@@ -937,13 +927,3 @@ def extract_refs(text: str) -> list[str]:
     return list(dict.fromkeys(_REF_PATTERN.findall(text)))
 
 
-def extract_option_nodes(aria_yaml: str) -> list[tuple[str, str]]:
-    """Return ``(name, ref)`` for every ``- option "name" [ref=eN]`` YAML line.
-
-    Uses ``finditer`` + named-group access so the result order is fixed at the
-    construction site — regex group reordering won't silently swap fields.
-    """
-    return [
-        (m.group("name"), m.group("ref"))
-        for m in _OPTION_NODE_PATTERN.finditer(aria_yaml)
-    ]
