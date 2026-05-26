@@ -928,9 +928,13 @@ def render_aria_markdown(aria_yaml: str) -> str:
     return text.strip() + "\n"
 
 
-def extract_refs(text: str) -> set[str]:
-    """Return every ``[ref=eN]`` id present in ``text`` (markdown or YAML)."""
-    return set(_REF_PATTERN.findall(text))
+def extract_refs(text: str) -> list[str]:
+    """Return every ``[ref=eN]`` id present in ``text`` (markdown or YAML),
+    deduplicated and in the order they first appear (i.e. document/traversal
+    order), so callers can show refs to the agent in the order they are seen
+    on the page.
+    """
+    return list(dict.fromkeys(_REF_PATTERN.findall(text)))
 
 
 def extract_option_nodes(aria_yaml: str) -> list[tuple[str, str]]:

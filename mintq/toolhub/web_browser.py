@@ -40,6 +40,7 @@ so the agent can locate one with a single grep / SQL regex.  See
 
 import asyncio
 import logging
+import re
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, ClassVar, Literal
 from urllib.parse import urlparse
@@ -148,7 +149,7 @@ class PageSnapshot:
     url: str
     title: str
     markdown_content: str = ""
-    refs: set[str] = field(default_factory=set)
+    refs: list[str] = field(default_factory=list)  # in document order
     aria_yaml: str = ""  # raw aria YAML, kept for targeted scans (e.g. options)
 
 
@@ -369,6 +370,9 @@ async def reset_default_manager() -> None:
 
 class _RefError(Exception):
     """Raised when a snapshot ref cannot be resolved."""
+
+
+_REF_PATTERN = re.compile(r"^e\d+$")
 
 
 # ---------------------------------------------------------------------------
@@ -1017,8 +1021,22 @@ class WebBrowserTool:
         if state.last_snapshot is None:
             raise _RefError(f"page {state.tab_id}: no snapshot available; call any action first")
         if ref not in state.last_snapshot.refs:
-            available = sorted(state.last_snapshot.refs)
-            raise _RefError(f"page {state.tab_id}: unknown ref {ref!r}. Available refs: {available[:30]}")
+            available = state.last_snapshot.refs
+            shown = available[:30]
+            suffix = f" (+ {len(available) - 30} more)" if len(available) > 30 else ""
+            hints: list[str] = []
+            if not _REF_PATTERN.match(ref):
+                hints.append(f"{ref!r} is not in the expected ``eN`` form (e.g. ``e15``)")
+            hints.append(
+                "refs are per-snapshot — only those from this tab's MOST RECENT response are "
+                "valid. If you're reusing one from an earlier response, re-read the latest "
+                "snapshot and pick a ref from there"
+            )
+            raise _RefError(
+                f"page {state.tab_id}: unknown ref {ref!r}. "
+                + ". ".join(hints)
+                + f". Available refs: {shown}{suffix}"
+            )
         return state.page.locator(f"aria-ref={ref}")
 
     def _format_error(self, msg: str) -> str:
