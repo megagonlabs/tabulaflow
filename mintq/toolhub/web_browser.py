@@ -49,7 +49,6 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 
 from .aria_to_markdown import (
-    extract_option_nodes,
     extract_refs,
     render_aria_markdown,
 )
@@ -675,29 +674,22 @@ class WebBrowserTool:
                 return self._format_error(f"type failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
             if not submit:
-                # Typing into a combobox/searchbox often surfaces an async
-                # autocomplete dropdown — options the agent does NOT already
-                # know and must click to commit a value. Briefly wait for any
-                # such options, then re-snapshot so (a) the agent sees them and
-                # (b) their refs become resolvable via last_snapshot. When no
-                # dropdown appears we fall back to the cheap ack.
+                # Two outcomes from the wait:
+                # - Options surfaced (autocomplete dropdown appeared): the DOM
+                #   shape changed, so prior refs are invalid anyway. Return a
+                #   fresh full snapshot so the agent has a coherent ref space
+                #   for the suggestions plus the rest of the page.
+                # - No options: typing into a plain input doesn't reshape the
+                #   ARIA tree, so the pre-type snapshot stays authoritative.
+                #   Skip the re-snapshot and return a cheap ack; the agent's
+                #   existing refs keep resolving.
                 try:
                     await state.page.wait_for_selector(
                         "[role=option]", timeout=_AUTOCOMPLETE_WAIT_MS
                     )
                 except Exception:
-                    pass
-                snapshot = await take_snapshot(state.page)
-                state.last_snapshot = snapshot
-                options = extract_option_nodes(snapshot.aria_yaml)
-                if options:
-                    listing = "\n".join(
-                        f'- option "{name}" [ref={r}]' for name, r in options
-                    )
-                    return (
-                        f"[tab={tab}] typed into ref={ref}\n\n# Suggestions\n{listing}"
-                    )
-                return f"[tab={tab}] typed into ref={ref}"
+                    return f"[tab={tab}] typed into ref={ref}"
+                return await format_tab_response(state)
             return await format_tab_response(state)
 
     async def browser_scroll(self, tab: str, direction: Literal["up", "down", "top", "bottom"]) -> str:
