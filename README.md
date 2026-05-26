@@ -218,17 +218,19 @@ May 22
   - [x] Include leaf clickable generic
   - [x] Rewrite snapshot by direct aria-to-markdown conversion - inline all elements
 
-
+May 26
+- [ ] Debug gpt-5-mini browser use
 - [ ] extraction tool
+- [ ] Multi-column output for subagents
+- [ ] Allow subagent to fail with special tool
+- [ ] subagent prompt - ensure output consistency but don't limit the approach
+- [ ] Auto-close old tab on re-navigate
+
 - [ ] One-time subagent tool
 - [ ] web_fetch tool for static html
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
-- [ ] Multi-column output for subagents
-- [ ] Allow subagent to fail with special tool
-- [ ] subagent prompt - ensure output consistency but don't limit the approach
-- [ ] Auto-close old tab on re-navigate
 
 - General
   - [ ] Improve transfer_record?
