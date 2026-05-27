@@ -473,6 +473,7 @@ class RunSubagentForEachRowTool:
             key_payload = {col: row.get(col) for col in key_columns}
             error_msg: str | None = None
             metadata: tuple[str | None, str | None] | None = None
+            cancelled = False
             try:
                 prompt = task_template.render(row)
                 if subagent_scope is not None:
@@ -489,6 +490,9 @@ class RunSubagentForEachRowTool:
                 else:
                     await _write_row_output(key_payload, result.output)
                     metadata = (None, traj.model_dump_json())
+            except asyncio.CancelledError:
+                cancelled = True
+                raise
             except Exception as e:
                 exception_msg = f"{type(e).__name__}: {e}"
                 error_msg = f"row {row_idx}: {exception_msg}"
@@ -496,12 +500,13 @@ class RunSubagentForEachRowTool:
             finally:
                 if browser_tool is not None:
                     await browser_tool.close()
-                if self.store_metadata and metadata is not None:
-                    await _save_row_metadata(key_payload, *metadata)
-                completed += 1
-                if self.on_row_complete is not None:
-                    self.on_row_complete(completed, total)
-                    await asyncio.sleep(0)
+                if not cancelled:
+                    if self.store_metadata and metadata is not None:
+                        await _save_row_metadata(key_payload, *metadata)
+                    completed += 1
+                    if self.on_row_complete is not None:
+                        self.on_row_complete(completed, total)
+                        await asyncio.sleep(0)
             return error_msg
 
         rows = df.to_dict(orient="records")
