@@ -469,7 +469,9 @@ class AgentProgressWidget(Widget):
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
-        self._tool_spinner = Spinner("dots", style="dim")
+        # Per-tool-call spinners so parallel running steps don't share a single
+        # mutable spinner object (which would make every row display the same label).
+        self._tool_spinners: dict[str, Spinner] = {}
         self._tool_progress: tuple[int, int] | None = None
         self._frozen = False
         self._timer: Timer | None = None
@@ -483,7 +485,7 @@ class AgentProgressWidget(Widget):
         parts: list[RenderableType] = []
 
         has_running = False
-        for status, _tool_call_id, _name, label in self._steps:
+        for status, tool_call_id, _name, label in self._steps:
             if status == "running":
                 has_running = True
                 if self._frozen:
@@ -492,8 +494,12 @@ class AgentProgressWidget(Widget):
                     line.append(label, style="dim")
                     parts.append(line)
                 else:
-                    self._tool_spinner.text = Text(label, style="dim")
-                    parts.append(self._tool_spinner)
+                    spinner = self._tool_spinners.get(tool_call_id)
+                    if spinner is None:
+                        spinner = Spinner("dots", style="dim")
+                        self._tool_spinners[tool_call_id] = spinner
+                    spinner.text = Text(label, style="dim")
+                    parts.append(spinner)
             else:
                 line = Text()
                 line.append("→ ", style="dim")
@@ -563,6 +569,7 @@ class AgentProgressWidget(Widget):
                 else:
                     self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
                 break
+        self._tool_spinners.pop(tool_call_id, None)
         self._tool_progress = None
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
