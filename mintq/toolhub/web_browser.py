@@ -680,6 +680,14 @@ class WebBrowserTool:
         Downloads are disabled — clicking a download link succeeds but
         produces no page change; don't retry the same ref.
 
+        Clicks on comboboxes, menu buttons, date pickers, and similar
+        controls open popups that stay visible in subsequent snapshots
+        (shown as ``[expanded]`` on the trigger). Either act inside the
+        popup (select an option, type into the search box that appeared)
+        or dismiss it with ``browser_press(key="Escape")`` before targeting
+        other controls — some sites trap focus while the popup is open,
+        which can shadow sibling form fields from the next snapshot.
+
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"`` (from a previous response).
             ref: The ref string of the target element, e.g. ``"e15"``. Must come
