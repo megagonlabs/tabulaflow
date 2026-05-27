@@ -74,11 +74,13 @@ _NAV_TIMEOUT_MS = 30_000
 _SETTLE_TIMEOUT_MS = 10_000
 
 # After ``load`` fires we wait for ``networkidle`` to give SPAs time to
-# render their JS-injected content. Capped because some sites (Google Flights,
-# dashboards with continuous polling) never reach networkidle within reason.
-# 10s comfortably covers most modern SPAs (React apps with API calls, news
-# sites, social feeds) while bounding worst-case latency on streaming pages.
-_NETWORKIDLE_WAIT_MS = 10_000
+# render their JS-injected content. Capped because chatty SPAs (Google Flights,
+# dashboards, anything with continuous polling/analytics) never reach
+# networkidle. 5s catches the median cross-domain initial render while
+# bounding the wasted budget on never-settling pages. Lower would be
+# tempting but starts to clip legitimate first-load fetches; the agent has
+# ``browser_wait`` for the rare slower case.
+_NETWORKIDLE_WAIT_MS = 5_000
 
 # Tighter budget for in-site navigations (click/type that stays on same host).
 # Same-domain navs typically reuse cached CSS/JS and settle faster — we don't
