@@ -124,6 +124,37 @@ class TestFormControls:
         out = md('- checkbox "Nonstop" [checked] [ref=e1]')
         assert out == 'checkbox "Nonstop" [checked] [ref=e1]'
 
+    def test_bare_textual_input_is_dropped(self) -> None:
+        # No name + no value + no interactive descendants → drop. The agent
+        # can't safely target it; screen readers also skip these (WCAG 3.3.2).
+        assert md("- textbox [ref=e1]") == ""
+        assert md("- combobox [ref=e2]") == ""
+        assert md("- searchbox [ref=e3]") == ""
+        assert md("- spinbutton [ref=e4]") == ""
+
+    def test_value_bearing_textual_input_is_kept(self) -> None:
+        # Value gives semantic info even when name is missing; keep.
+        assert md("- combobox [ref=e1]: Economy") == 'combobox = "Economy" [ref=e1]'
+
+    def test_named_bare_textual_input_is_kept(self) -> None:
+        # Name without value is still useful; keep.
+        assert md('- textbox "Search" [ref=e1]') == 'textbox "Search" [ref=e1]'
+
+    def test_bare_checkbox_is_kept(self) -> None:
+        # State (checked/unchecked) is meaningful even without a name.
+        assert md("- checkbox [ref=e1]") == "checkbox [ref=e1]"
+
+    def test_expanded_bare_combobox_with_options_is_kept(self) -> None:
+        # Interactive descendants mean it's an active popup — keep + bullet.
+        y = (
+            "- combobox [ref=e1]:\n"
+            '    - option "A" [ref=e2]\n'
+            '    - option "B" [ref=e3]'
+        )
+        out = md(y)
+        assert "combobox [ref=e1]" in out
+        assert '- option "A" [ref=e2]' in out
+
     def test_expanded_combobox_with_nested_options(self) -> None:
         # Google-Flights pattern: options nested inside the combobox rather
         # than in a sibling listbox. Must render as a header + sub-list, not

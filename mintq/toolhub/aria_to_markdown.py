@@ -116,6 +116,21 @@ _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
     }
 )
 
+# Textual input form controls. When one of these is fully bare (no accessible
+# name, no value, no interactive descendants), its rendered atom carries zero
+# semantic info — the agent can't tell what the field is for, what's in it,
+# or whether typing into it is destructive. Real screen readers also can't
+# use these (WCAG 3.3.2 violation; NVDA/JAWS/VoiceOver announce role-only and
+# users skip them). Bare textual inputs are dropped from the snapshot to
+# avoid the agent targeting them speculatively from spatial proximity —
+# notably the focus-trap demotion that Google Flights' "Where to?" combobox
+# triggers, which made the agent type "New York" into the departure date.
+# Checkboxes/radios/switches/tabs/sliders are NOT in this set: their state
+# (checked/selected/value) carries meaning even without a name.
+_TEXTUAL_INPUT_ROLES: frozenset[str] = frozenset(
+    {"textbox", "searchbox", "combobox", "spinbutton"}
+)
+
 # Truly transparent roles — anonymous DOM wrappers with no semantic meaning,
 # emit children inline with no boundary.
 #
@@ -520,19 +535,35 @@ def _render_form_control(ctx: _Ctx) -> str:
     combobox with nested options, an autocomplete textbox with a child listbox,
     a custom widget exposing inner buttons) renders as a header line followed
     by those children as a sub-list.
+
+    Bare textual inputs (textbox/searchbox/combobox/spinbutton with no name,
+    no value, and no interactive descendants) are dropped — see
+    ``_TEXTUAL_INPUT_ROLES`` for the rationale.
     """
     has_interactive_kids = _has_click_target(ctx.children)
+    derived_value: str | None = None
+    if ctx.value is None and ctx.children and not has_interactive_kids:
+        # Children are accessible-name composition (icon + text), not options.
+        kids = _kids_md(ctx.children, depth=0, flow=True).strip()
+        if kids:
+            derived_value = kids
+
+    if (
+        ctx.role in _TEXTUAL_INPUT_ROLES
+        and not ctx.name
+        and ctx.value is None
+        and derived_value is None
+        and not has_interactive_kids
+    ):
+        return ""
 
     parts: list[str] = [ctx.role]
     if ctx.name:
         parts.append(f'"{ctx.name}"')
     if ctx.value is not None:
         parts.append(f'= "{ctx.value}"')
-    elif ctx.children and not has_interactive_kids:
-        # Children are accessible-name composition (icon + text), not options.
-        kids = _kids_md(ctx.children, depth=0, flow=True).strip()
-        if kids:
-            parts.append(f'= "{kids}"')
+    elif derived_value is not None:
+        parts.append(f'= "{derived_value}"')
     for flag in ctx.state:
         parts.append(f"[{flag}]")
     if ctx.role == "combobox" and not has_interactive_kids:
