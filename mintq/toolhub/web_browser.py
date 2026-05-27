@@ -490,7 +490,7 @@ class WebBrowserTool:
         manager: WebBrowserManager | None = None,
         isolated: bool = False,
         max_tabs: int = 10,
-        headless: bool = True,
+        headless: bool | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -504,10 +504,15 @@ class WebBrowserTool:
             max_tabs: Cap on simultaneously-open tabs for this tool.
                 Returns an error if exceeded; idle tabs auto-close at
                 the next turn boundary.
-            headless: Run Chromium headless. Set False for visible-window
-                debugging. Honored only on first manager construction;
+            headless: Run Chromium headless. None (default) reads from
+                ``mintq_config.browser_headless`` so every tool in the
+                process — including subagent-spawned ones — shares the
+                same setting. Honored only on first manager construction;
                 subsequent tools share the existing browser regardless.
         """
+        if headless is None:
+            from mintq.config import mintq_config
+            headless = mintq_config.browser_headless
         self._manager = manager
         self._isolated = isolated
         self._max_tabs = max_tabs

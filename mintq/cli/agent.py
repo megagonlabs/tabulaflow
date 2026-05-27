@@ -284,7 +284,6 @@ class ChatAgent:
     last_usage: Usage | None = None
 
     def __post_init__(self) -> None:
-        from mintq.config import mintq_config
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub import (
             QueryHistory,
@@ -319,7 +318,7 @@ class ChatAgent:
                 store_metadata=True,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
-            web_browser=WebBrowserTool(headless=mintq_config.browser_headless),
+            web_browser=WebBrowserTool(),
         )
         self._build_agent()
 
