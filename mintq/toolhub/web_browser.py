@@ -132,6 +132,7 @@ class WebBrowserToolMetrics(BaseModel):
     num_errors: int = 0
     num_popups_adopted: int = 0
     num_tabs_auto_closed: int = 0
+    num_clicks_dispatched_through_overlay: int = 0
 
 
 # ---------------------------------------------------------------------------
@@ -623,7 +624,7 @@ class WebBrowserTool:
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
-                await locator.click(timeout=_SETTLE_TIMEOUT_MS)
+                await self._click_with_overlay_fallback(locator)
                 await self._settle(state)
             except _RefError as e:
                 return self._format_error(str(e))
@@ -631,6 +632,42 @@ class WebBrowserTool:
                 return self._format_error(f"click failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
+
+    async def _click_with_overlay_fallback(self, locator: "Locator") -> None:
+        """Click ``locator``, routing around aria-hidden overlays (Material
+        ripple, MUI/Radix composite wrappers) that hit-test on top of the
+        target. Pre-check via ``elementFromPoint``: if the topmost element
+        is the target, an ancestor, or a descendant, do a normal Playwright
+        click; otherwise deliver the click via ``el.click()`` in-page to
+        bypass hit-testing without paying the ~10s retry-then-timeout.
+        Reactive fallback covers the rare check-vs-click race.
+        """
+        try:
+            occluded = await locator.evaluate(
+                """el => {
+                    const r = el.getBoundingClientRect();
+                    if (!r.width || !r.height) return false;
+                    const x = r.left + r.width / 2;
+                    const y = r.top + r.height / 2;
+                    const top = document.elementFromPoint(x, y);
+                    if (!top || top === el || el.contains(top) || top.contains(el)) return false;
+                    return true;
+                }"""
+            )
+        except Exception:
+            occluded = False
+        if occluded:
+            await locator.evaluate("el => el.click()")
+            self._metrics.num_clicks_dispatched_through_overlay += 1
+            return
+        try:
+            await locator.click(timeout=_SETTLE_TIMEOUT_MS)
+        except Exception as e:
+            if "intercepts pointer events" not in str(e):
+                raise
+            # Race: overlay appeared between pre-check and click.
+            await locator.evaluate("el => el.click()")
+            self._metrics.num_clicks_dispatched_through_overlay += 1
 
     async def browser_type(
         self, tab: str, ref: str, text: str, submit: bool = False, slowly: bool = False
