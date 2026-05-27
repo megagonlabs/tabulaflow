@@ -90,6 +90,15 @@ _NETWORKIDLE_WAIT_MS_SAME_DOMAIN = 3_000
 # return quickly; when it doesn't (a plain text field) we only pay this once.
 _AUTOCOMPLETE_WAIT_MS = 1_500
 
+# Fixed sleep after the networkidle attempt and before snapshotting, to give
+# Chromium time to finish computing accessible names for lazily-hydrated nodes.
+# Without it, sites that never reach networkidle (Google Flights, dashboards
+# with continuous polling) snapshot mid-hydration: buttons appear with no
+# names, icons render as bare ``[]``. 300ms matches browser-use's default
+# ``minimum_wait_page_load_time``; it's a baseline tax everyone pays, but it's
+# the simplest reliable fix for the partial-snapshot class of bug.
+_POST_LOAD_SETTLE_MS = 300
+
 
 _USER_AGENT = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) "
@@ -599,13 +608,15 @@ class WebBrowserTool:
         ``networkidle`` to give SPAs time to render their JS content. Pure
         ``networkidle`` goto can hang for 30s+ on streaming sites (Google
         Flights); pure ``load`` returns before SPA content appears. The bounded
-        follow-up balances both.
+        follow-up balances both. A short fixed sleep afterward lets Chromium
+        finish computing accessible names on sites that never reach networkidle.
         """
         await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
         try:
             await page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
         except Exception:
             pass  # SPA never settled; proceed with current state
+        await asyncio.sleep(_POST_LOAD_SETTLE_MS / 1000)
 
     async def _open_new_tab(self) -> tuple["_TabState | None", str | None]:
         """Reserve a tab slot, take a permit, and open a fresh page.
@@ -838,6 +849,7 @@ class WebBrowserTool:
                     await state.page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
                 except Exception:
                     pass
+                await asyncio.sleep(_POST_LOAD_SETTLE_MS / 1000)
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
@@ -1141,6 +1153,7 @@ class WebBrowserTool:
             await state.page.wait_for_load_state("networkidle", timeout=timeout)
         except Exception:
             pass
+        await asyncio.sleep(_POST_LOAD_SETTLE_MS / 1000)
 
     def _resolve_ref(self, state: _TabState, ref: str) -> "Locator":
         if state.last_snapshot is None:
