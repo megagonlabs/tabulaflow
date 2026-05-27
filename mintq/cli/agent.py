@@ -313,6 +313,7 @@ class ChatAgent:
                 model_settings=OpenAIChatModelSettings(
                     openai_service_tier="priority",
                     openai_reasoning_effort="medium",
+                    openai_reasoning_summary="detailed",
                 ),
                 store_metadata=True,
                 trajectory_log_dir=self.trajectory_log_dir / "subagents",
