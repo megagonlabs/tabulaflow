@@ -97,12 +97,8 @@ _AUTOCOMPLETE_WAIT_MS = 1_500
 # Without it, sites that never reach networkidle (Google Flights, dashboards
 # with continuous polling) snapshot mid-hydration: buttons appear with no
 # names, form controls show as bare ``textbox [ref=eN]``, icons render as
-# bare ``[]``. 1s wasn't enough for Google Flights' re-render cascade on
-# combobox expansion — sibling form-field a11y names lag 1.5–2s after the
-# click. 2s covers it reliably. If a future case needs more, the next step
-# is an active stability check (sample-sleep-sample on the aria YAML) rather
-# than bumping this further — fixed delays have diminishing returns past 2s.
-_POST_LOAD_SETTLE_MS = 2_000
+# bare ``[]``.
+_POST_LOAD_SETTLE_MS = 1_000
 
 
 _USER_AGENT = (
