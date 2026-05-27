@@ -920,19 +920,22 @@ class WebBrowserTool:
     ) -> str:
         """Wait for a condition (or a fixed time), then re-snapshot the tab.
 
-        Prefer ``text`` / ``text_gone`` over a fixed sleep: they return as
-        soon as the condition holds, so they're both faster and more reliable
-        than guessing how many ``seconds`` a render will take. Use ``seconds``
-        alone only when there's no text to key off (e.g., a heavy dashboard
-        that renders a few seconds after the network goes idle).
+        Prefer ``text`` / ``text_gone`` over a fixed sleep — they return as
+        soon as the condition holds. Reach for ``seconds`` when no stable
+        text exists to key off.
+
+        Reach for this when the last snapshot looks under-hydrated: many
+        ``button [ref=eXXX]`` without names, bare ``[]`` icons, bare ``#`` /
+        ``##`` headings, or stripped combobox labels. 1-3s is usually enough.
+        Don't call after every action — nav/mutation tools already apply a
+        small post-load settle.
 
         Args:
             tab: The id of the tab to re-snapshot afterward, e.g. ``"t1"``.
-            seconds: Fixed sleep, capped at 30s. Used when neither ``text`` nor
-                ``text_gone`` is given; otherwise serves as the timeout for the
-                text condition.
-            text: If given, wait until this text appears on the page.
-            text_gone: If given, wait until this text disappears from the page.
+            seconds: Fixed sleep (capped at 30s) when neither ``text`` nor
+                ``text_gone`` is given; otherwise the timeout.
+            text: Wait until this text appears.
+            text_gone: Wait until this text disappears.
         """
         self._metrics.num_waits += 1
         state = self._tabs.get(tab)
