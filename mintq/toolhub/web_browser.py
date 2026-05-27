@@ -96,10 +96,14 @@ _AUTOCOMPLETE_WAIT_MS = 1_500
 # Chromium time to finish computing accessible names for lazily-hydrated nodes.
 # Without it, sites that never reach networkidle (Google Flights, dashboards
 # with continuous polling) snapshot mid-hydration: buttons appear with no
-# names, icons render as bare ``[]``. 300ms matches browser-use's default
-# ``minimum_wait_page_load_time``; it's a baseline tax everyone pays, but it's
-# the simplest reliable fix for the partial-snapshot class of bug.
-_POST_LOAD_SETTLE_MS = 300
+# names, form controls show as bare ``textbox [ref=eN]``, icons render as
+# bare ``[]``. 300ms (browser-use's default) wasn't enough for Google Flights
+# in practice — accessible names on the date/origin/destination fields lagged
+# past that window after combobox expansion. 1s is a heavier baseline tax but
+# eliminates the partial-hydration class of bug for the chatty SPAs that
+# motivated this. If/when it shows up as a latency complaint, switch to an
+# active stability check (sample-sleep-sample on the aria YAML) instead.
+_POST_LOAD_SETTLE_MS = 1_000
 
 
 _USER_AGENT = (
