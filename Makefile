@@ -476,4 +476,5 @@ sqlite:
 
 .PHONY: last-trajectory
 last-trajectory:
-	@ls -t ~/.mintq/sessions/*/trajectories/* 2>/dev/null | head -n 1
+	@dir=$$(ls -td ~/.mintq/sessions/*/trajectories 2>/dev/null | head -n 1); \
+	[ -n "$$dir" ] && find "$$dir" -type f -exec stat -f '%m %N' {} + | sort -rn | cut -d' ' -f2-
