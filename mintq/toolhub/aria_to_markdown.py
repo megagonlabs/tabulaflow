@@ -117,9 +117,13 @@ _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
 )
 
 # Truly transparent roles — anonymous DOM wrappers with no semantic meaning,
-# emit children inline with no boundary.
+# emit children inline with no boundary. ``listbox`` is here because the role
+# is a container for ``option`` items with no UI of its own; agents target the
+# options, not the listbox itself. Without this, an expanded combobox whose
+# options sit inside a listbox child crams every option onto one bullet via
+# the unknown-role inline-flow fallback.
 _TRANSPARENT_ROLES: frozenset[str] = frozenset(
-    {"generic", "group", "tooltip", "status", "alert", "progressbar"}
+    {"generic", "group", "tooltip", "status", "alert", "progressbar", "listbox"}
 )
 
 # Landmark roles — semantic page regions. Their content is still inline,

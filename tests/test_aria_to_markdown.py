@@ -171,6 +171,25 @@ class TestFormControls:
         assert '- option "Europe" [ref=e4]' in out
         assert '- option "Paris" [ref=e5]' in out
 
+    def test_expanded_combobox_with_listbox_wrapper(self) -> None:
+        # Google-Flights shape: combobox > listbox > options + interleaved
+        # buttons + text labels. The ``listbox`` wrapper is in
+        # _TRANSPARENT_ROLES so _flatten_to_leaves drills through it; each
+        # interactive atom (option/button) gets its own bullet.
+        y = (
+            '- combobox "Where to?" [expanded] [ref=e1]:\n'
+            '    - listbox [ref=e2]:\n'
+            '        - option "Anywhere" [ref=e3]\n'
+            '        - option "Paris" [ref=e4]\n'
+            '        - button "Toggle nearby" [ref=e5]\n'
+            '        - option "London" [ref=e6]'
+        )
+        out = md(y)
+        assert '- option "Anywhere" [ref=e3]' in out
+        assert '- option "Paris" [ref=e4]' in out
+        assert '- button "Toggle nearby" [ref=e5]' in out
+        assert '- option "London" [ref=e6]' in out
+
 
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:
