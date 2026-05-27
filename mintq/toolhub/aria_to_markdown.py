@@ -506,31 +506,27 @@ def _render_form_control(ctx: _Ctx) -> str:
     at ``_MAX_NATIVE_OPTIONS``) so the agent knows what values ``browser_select``
     accepts.
 
-    An expanded ARIA combobox with nested interactive children (some sites
-    inline their options instead of placing them in a sibling listbox)
-    renders as a header line followed by the options as a sub-list — not
-    crammed into the ``= "value"`` slot, where nested quotes plus a sweep
-    of every descendant ref produced an unreadable blob.
+    A form control whose children include interactive descendants (an expanded
+    combobox with nested options, an autocomplete textbox with a child listbox,
+    a custom widget exposing inner buttons) renders as a header line followed
+    by those children as a sub-list.
     """
-    expanded_with_options = (
-        ctx.role == "combobox"
-        and "expanded" in ctx.state
-        and ctx.value is None
-        and _has_click_target(ctx.children)
-    )
+    has_interactive_kids = _has_click_target(ctx.children)
 
     parts: list[str] = [ctx.role]
     if ctx.name:
         parts.append(f'"{ctx.name}"')
     if ctx.value is not None:
         parts.append(f'= "{ctx.value}"')
-    elif ctx.children and not expanded_with_options:
+    elif ctx.children and not has_interactive_kids:
+        # Children are accessible-name composition (icon + text), not options.
         kids = _kids_md(ctx.children, depth=0, flow=True).strip()
         if kids:
             parts.append(f'= "{kids}"')
     for flag in ctx.state:
         parts.append(f"[{flag}]")
-    if ctx.role == "combobox" and not expanded_with_options:
+    if ctx.role == "combobox" and not has_interactive_kids:
+        # Native <select>: ref-less options live as direct children.
         options = _native_select_options(ctx.children)
         if options:
             opts = ", ".join(f'"{o}"' for o in options[:_MAX_NATIVE_OPTIONS])
@@ -539,21 +535,22 @@ def _render_form_control(ctx: _Ctx) -> str:
     if ctx.ref_tag:
         parts.append(ctx.ref_tag.strip())
     rendered = " ".join(parts)
-    if expanded_with_options:
+
+    if has_interactive_kids:
         indent = "  " * (ctx.depth + 1)
         bullets: list[str] = []
         for child in _meaningful_children(ctx.children):
             cm = _render_md_node(child, ctx.depth + 1, flow=False).strip("\n")
             if not cm.strip():
                 continue
-            first_nonblank = cm.lstrip()
-            if first_nonblank.startswith("- "):
+            if cm.lstrip().startswith("- "):
                 bullets.append(cm)
             else:
                 bullets.append(f"{indent}- {cm.strip()}")
         if bullets:
             rendered += "\n" + "\n".join(bullets)
         return rendered
+
     # Sweep interactive descendant refs (rare: e.g. a button inside a label).
     if ctx.name:
         rendered += _swept_refs(ctx.children)

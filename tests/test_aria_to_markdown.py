@@ -141,6 +141,20 @@ class TestFormControls:
         assert '- option "Europe" [ref=e3]' in out
         assert '- button "Toggle" [ref=e4]' in out
 
+    def test_textbox_with_interactive_children_promotes_to_sublist(self) -> None:
+        # Autocomplete textbox carrying a child suggestion listbox — same
+        # cramming bug class as expanded combobox; same fix.
+        y = (
+            '- textbox "Search" [ref=e1]:\n'
+            '    - option "First" [ref=e2]\n'
+            '    - option "Second" [ref=e3]'
+        )
+        out = md(y)
+        assert '= "' not in out
+        assert 'textbox "Search" [ref=e1]' in out
+        assert '- option "First" [ref=e2]' in out
+        assert '- option "Second" [ref=e3]' in out
+
 
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:
