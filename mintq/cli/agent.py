@@ -46,7 +46,6 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 _QUERY_REF_RE = re.compile(r"\[\[record:(Q\d+)(?::([^\]]+))?\]\]")
-_TRAJECTORY_KEEP_LAST = 20
 
 
 SYSTEM_PROMPT = """\
@@ -485,7 +484,7 @@ class ChatAgent:
         return result
 
     def _save_trajectory_for_debug(self) -> None:
-        """Persist the latest conversation trajectory and keep recent history bounded."""
+        """Persist the latest conversation trajectory for debugging."""
         if not self._message_history:
             return
         try:
@@ -493,35 +492,10 @@ class ChatAgent:
 
             trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
             self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
-            self._rotate_trajectory_files()
             path = self.trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
         except Exception:
             logger.exception("Failed to persist CLI trajectory debug file")
-
-    def _rotate_trajectory_files(self) -> None:
-        """Rotate trajectory.md into trajectory.N.md backups."""
-        max_backups = max(_TRAJECTORY_KEEP_LAST - 1, 0)
-        if max_backups == 0:
-            return
-
-        oldest = self.trajectory_log_dir / f"trajectory.{max_backups}.md"
-        if oldest.exists():
-            try:
-                oldest.unlink()
-            except OSError:
-                logger.warning("Failed to remove old trajectory file: %s", oldest)
-
-        for i in range(max_backups - 1, 0, -1):
-            src = self.trajectory_log_dir / f"trajectory.{i}.md"
-            dst = self.trajectory_log_dir / f"trajectory.{i + 1}.md"
-            if src.exists():
-                src.replace(dst)
-
-        current = self.trajectory_log_dir / "trajectory.md"
-        first_backup = self.trajectory_log_dir / "trajectory.1.md"
-        if current.exists():
-            current.replace(first_backup)
 
 
 async def _build_chat_result(
