@@ -171,6 +171,24 @@ class TestFormControls:
         assert '- option "Europe" [ref=e4]' in out
         assert '- option "Paris" [ref=e5]' in out
 
+    def test_presentation_wrapper_is_transparent(self) -> None:
+        # ARIA ``presentation``/``none`` mean "treat as if absent." A trailing
+        # presentation wrapper inside a form control (Google Flights pattern)
+        # must let its children surface as their own bullets, not crammed
+        # together via the unknown-role inline-flow fallback.
+        y = (
+            '- combobox "Where to?" [expanded] [ref=e1]:\n'
+            '    - option "Anywhere" [ref=e2]\n'
+            '    - presentation [ref=e3]:\n'
+            '        - text: "Label"\n'
+            '        - button "Action" [ref=e4]'
+        )
+        out = md(y)
+        assert '- option "Anywhere" [ref=e2]' in out
+        assert '- button "Action" [ref=e4]' in out
+        for line in out.splitlines():
+            assert line.count("[ref=") <= 1, f"crammed: {line!r}"
+
     def test_expanded_combobox_with_listbox_wrapper(self) -> None:
         # Google-Flights shape: combobox > listbox > options + interleaved
         # buttons + text labels. The ``listbox`` wrapper is in

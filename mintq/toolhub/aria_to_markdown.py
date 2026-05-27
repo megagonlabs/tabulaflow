@@ -117,13 +117,19 @@ _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
 )
 
 # Truly transparent roles — anonymous DOM wrappers with no semantic meaning,
-# emit children inline with no boundary. ``listbox`` is here because the role
-# is a container for ``option`` items with no UI of its own; agents target the
-# options, not the listbox itself. Without this, an expanded combobox whose
-# options sit inside a listbox child crams every option onto one bullet via
-# the unknown-role inline-flow fallback.
+# emit children inline with no boundary.
+#
+# - ``listbox``: container for ``option`` items, no UI of its own; agents
+#   target the options, not the listbox.
+# - ``presentation``/``none``: WAI-ARIA roles meaning "treat as if absent."
+#   Without these, sites that wrap atoms in such a role (Google Flights wraps
+#   the trailing label + Destination button this way) inline-flow them into
+#   one crammed atom via the unknown-role fallback.
 _TRANSPARENT_ROLES: frozenset[str] = frozenset(
-    {"generic", "group", "tooltip", "status", "alert", "progressbar", "listbox"}
+    {
+        "generic", "group", "tooltip", "status", "alert", "progressbar",
+        "listbox", "presentation", "none",
+    }
 )
 
 # Landmark roles — semantic page regions. Their content is still inline,
@@ -865,11 +871,24 @@ def _pipe_join(cells: list[str], width: int) -> str:
     return "| " + " | ".join(c or " " for c in padded) + " |"
 
 
+def _render_unknown(ctx: _Ctx) -> str:
+    """Fallback for roles with no registered handler — inline-transparent.
+
+    Children flow with surrounding text in flow context, fan out as bullets
+    otherwise (same semantics as ``_render_transparent``). The single point
+    to change if unknown roles should be handled differently.
+    """
+    leading = (ctx.value + " ") if ctx.value else ""
+    return leading + _kids_md(ctx.children, ctx.depth, flow=ctx.flow)
+
+
 # ── Dispatch table ──────────────────────────────────────────────────────
-# Built after all handlers are defined. Role families (form controls, layout
-# table parts) point to a shared handler. Fallback roles (transparent,
-# clickable generic, grouping, unknown) are handled in ``_render_md_node``
-# because they require role+state predicates rather than a simple key lookup.
+# Single source of truth: role → handler. Role families that share a handler
+# (form controls, layout parts, grouping, transparent, strong landmarks) are
+# expanded inline. Two cases stay as predicates in ``_render_md_node`` because
+# they need state beyond the role:
+#   - clickable-generic (``role=generic`` + clickable + leaf): promote to atom.
+#   - named landmark (``region``/``section``/``article``): only when named.
 
 
 _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
@@ -888,10 +907,12 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     "button":       _render_button,
     "img":          _render_img,
     "option":       _render_option,
-    # Form controls (shared handler).
+    # Role families.
     **{r: _render_form_control for r in _FORM_CONTROL_ROLES},
-    # Layout-table parts standalone (shared handler).
     **{r: _render_layout_part for r in _LAYOUT_PART_ROLES},
+    **{r: _render_grouping for r in _GROUPING_ROLES},
+    **{r: _render_landmark for r in _STRONG_LANDMARK_ROLES},
+    **{r: _render_transparent for r in _TRANSPARENT_ROLES},
 }
 
 
@@ -915,11 +936,7 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         header=header, depth=depth, flow=flow,
     )
 
-    handler = _ROLE_HANDLERS.get(role)
-    if handler is not None:
-        return handler(ctx)
-
-    # Fallbacks needing role+state predicates rather than a simple key lookup.
+    # Predicates win over the dispatch table — they need state beyond role.
     if (
         role == "generic"
         and clickable
@@ -927,18 +944,11 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         and not _has_click_target(children)
     ):
         return _render_clickable_generic(ctx)
-    if role in _GROUPING_ROLES:
-        return _render_grouping(ctx)
-    # Strong landmarks always qualify; "named" ones only when they carry an
-    # accessible name (avoids over-separation on sites that sprinkle
-    # ``<section>`` / ``role="region"`` liberally).
-    if role in _STRONG_LANDMARK_ROLES or (role in _NAMED_LANDMARK_ROLES and name):
+    if role in _NAMED_LANDMARK_ROLES and name:
         return _render_landmark(ctx)
-    if role in _TRANSPARENT_ROLES:
-        return _render_transparent(ctx)
-    # Truly unknown role: inline-transparent.
-    leading = (value + " ") if value else ""
-    return leading + _kids_md(children, depth, flow=flow)
+
+    handler = _ROLE_HANDLERS.get(role, _render_unknown)
+    return handler(ctx)
 
 
 # ── Public API ──────────────────────────────────────────────────────────
