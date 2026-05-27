@@ -739,9 +739,15 @@ class WebBrowserTool:
             self._metrics.num_clicks_dispatched_through_overlay += 1
 
     async def browser_type(
-        self, tab: str, ref: str, text: str, submit: bool = False, slowly: bool = False
+        self, tab: str, ref: str, text: str, submit: bool = False
     ) -> str:
         """Type text into an editable element on a specific tab.
+
+        Always types one character at a time so per-keystroke handlers fire —
+        the reliable shape for autocompletes, comboboxes, and live-search
+        widgets that listen for input events. ``press_sequentially`` uses
+        zero inter-key delay so the overhead is small (~5–10ms/char) for the
+        typical short inputs agents send (search terms, names, URLs).
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"``.
@@ -751,11 +757,6 @@ class WebBrowserTool:
             submit: If True, press Enter after typing. Without submit the
                 response is a short ack since the page state hasn't changed
                 beyond the input field's value (which the agent already knows).
-            slowly: If True, type one character at a time (simulating real
-                keystrokes) instead of setting the value in one shot. Slower,
-                but fires the per-key handlers some autocomplete/combobox
-                widgets need to populate their suggestion dropdown. Try this
-                when a normal type leaves the field's options unpopulated.
         """
         self._metrics.num_types += 1
         state = self._tabs.get(tab)
@@ -764,13 +765,8 @@ class WebBrowserTool:
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
-                if slowly:
-                    # Clear via the fast path, then emit real keystrokes so
-                    # key-driven suggestion handlers fire.
-                    await locator.fill("", timeout=_SETTLE_TIMEOUT_MS)
-                    await locator.press_sequentially(text, timeout=_SETTLE_TIMEOUT_MS)
-                else:
-                    await locator.fill(text, timeout=_SETTLE_TIMEOUT_MS)
+                await locator.fill("", timeout=_SETTLE_TIMEOUT_MS)
+                await locator.press_sequentially(text, timeout=_SETTLE_TIMEOUT_MS)
                 if submit:
                     await locator.press("Enter")
                     await self._settle(state)
