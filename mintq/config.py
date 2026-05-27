@@ -45,6 +45,9 @@ class _MintqSettings(BaseSettings):
     # shared across all WebBrowserTool instances. Bounds memory under wide/deep
     # subagent fan-out. None disables the cap.
     max_browser_tabs: int | None = 20
+    # Run Chromium in headless mode. Set ``MINTQ_BROWSER_HEADLESS=0`` to launch
+    # a visible window for live debugging of browser_* tool calls.
+    browser_headless: bool = True
     dataset: str = "bird-sql"
     split: str = "dev"
     query_timeout: int | None = 300
