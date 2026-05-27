@@ -3,9 +3,11 @@
 from __future__ import annotations
 
 import asyncio
+import logging
 import uuid
 from collections.abc import Callable
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
@@ -47,6 +49,9 @@ _JSON_TYPE_FOR_DIALECT: dict[SQLDialect, str] = {
 _DIALECTS_WITH_PARSE_JSON: set[SQLDialect] = {"snowflake"}
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+
+logger = logging.getLogger(__name__)
 
 
 _ABORT_TOOL_DESCRIPTION = (
@@ -113,6 +118,7 @@ class RunSubagentForEachRowTool:
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
         store_metadata: bool = False,
+        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -140,6 +146,13 @@ class RunSubagentForEachRowTool:
                 ``_subagent_trajectory`` columns back to the target table
                 after each row. ``_subagent_exception`` is NULL on success
                 and a ``"<ExceptionType>: <message>"`` string on failure.
+            trajectory_log_dir: If set, each per-row subagent trajectory is
+                written as ``<dir>/<call_id>/row-<N>.md`` after the row
+                finishes. Nested subagent instances inherit the same directory
+                so their own ``call_id``s appear alongside the parent's.
+                Independent of ``store_metadata``: this is a filesystem sink
+                for local debugging; ``store_metadata`` writes to the target
+                table.
         """
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
@@ -150,6 +163,7 @@ class RunSubagentForEachRowTool:
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
         self.store_metadata = store_metadata
+        self.trajectory_log_dir = trajectory_log_dir
         self.on_row_complete: Callable[[int, int], None] | None = None
 
     async def __call__(
@@ -334,6 +348,7 @@ class RunSubagentForEachRowTool:
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
                 store_metadata=self.store_metadata,
+                trajectory_log_dir=self.trajectory_log_dir,
             )
             nested_pa_tool = nested_tool.as_pydantic_ai_tool()
 
@@ -395,6 +410,24 @@ class RunSubagentForEachRowTool:
             )
             await self.db_connector.run_query_async(stmt)
 
+        traj_dir: Path | None = None
+        if self.trajectory_log_dir is not None:
+            traj_dir = self.trajectory_log_dir / call_id
+            try:
+                traj_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                logger.exception("Failed to create subagent trajectory dir: %s", traj_dir)
+                traj_dir = None
+
+        def _write_trajectory_file(row_idx: int, trajectory: Trajectory | None) -> None:
+            if traj_dir is None or trajectory is None:
+                return
+            path = traj_dir / f"row-{row_idx}.md"
+            try:
+                path.write_text(trajectory.to_markdown(), encoding="utf-8")
+            except Exception:
+                logger.exception("Failed to write subagent trajectory file: %s", path)
+
         async def _process_one_row(row_idx: int, row: dict[str, object]) -> str | None:
             nonlocal completed
             tools: list[Tool] = []
@@ -448,6 +481,7 @@ class RunSubagentForEachRowTool:
                         prompt = make_snippet(message_id, prompt)
                 result = await subagent.run(prompt)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
+                _write_trajectory_file(row_idx, traj)
                 if isinstance(result.output, AbortTask):
                     exception_msg = f"AbortTask: {result.output.message}"
                     error_msg = f"row {row_idx}: {exception_msg}"

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from pathlib import Path
 from typing import ClassVar
 
 from pydantic_ai import Tool
@@ -31,6 +32,7 @@ class RegistryRunSubagentForEachRowTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         store_metadata: bool = False,
+        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -46,12 +48,16 @@ class RegistryRunSubagentForEachRowTool:
                 ``_subagent_trajectory`` columns back to the target table
                 after each row. ``_subagent_exception`` is NULL on success
                 and a ``"<ExceptionType>: <message>"`` string on failure.
+            trajectory_log_dir: If set, forwarded to each per-alias
+                ``RunSubagentForEachRowTool`` so per-row trajectories are
+                persisted as ``<dir>/<call_id>/row-<N>.md`` for debugging.
         """
         self.registry = registry
         self.message_store = message_store
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.store_metadata = store_metadata
+        self.trajectory_log_dir = trajectory_log_dir
         self.on_row_complete: Callable[[int, int], None] | None = None
         self._tools: dict[str, RunSubagentForEachRowTool] = {}
 
@@ -71,6 +77,7 @@ class RegistryRunSubagentForEachRowTool:
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 store_metadata=self.store_metadata,
+                trajectory_log_dir=self.trajectory_log_dir,
             )
             self._tools[db_alias] = tool
         tool.on_row_complete = self.on_row_complete
