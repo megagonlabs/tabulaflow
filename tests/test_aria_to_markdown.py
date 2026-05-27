@@ -124,6 +124,23 @@ class TestFormControls:
         out = md('- checkbox "Nonstop" [checked] [ref=e1]')
         assert out == 'checkbox "Nonstop" [checked] [ref=e1]'
 
+    def test_expanded_combobox_with_nested_options(self) -> None:
+        # Google-Flights pattern: options nested inside the combobox rather
+        # than in a sibling listbox. Must render as a header + sub-list, not
+        # crammed into the ``= "value"`` slot with nested quotes.
+        y = (
+            '- combobox "Where to?" [expanded] [ref=e1]:\n'
+            '    - option "Anywhere" [ref=e2]\n'
+            '    - option "Europe" [ref=e3]\n'
+            '    - button "Toggle" [ref=e4]'
+        )
+        out = md(y)
+        assert '= "' not in out  # no value-slot mash
+        assert 'combobox "Where to?" [expanded] [ref=e1]' in out
+        assert '- option "Anywhere" [ref=e2]' in out
+        assert '- option "Europe" [ref=e3]' in out
+        assert '- button "Toggle" [ref=e4]' in out
+
 
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:
