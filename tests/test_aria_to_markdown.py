@@ -155,6 +155,22 @@ class TestFormControls:
         assert '- option "First" [ref=e2]' in out
         assert '- option "Second" [ref=e3]' in out
 
+    def test_expanded_combobox_unwraps_transparent_listbox(self) -> None:
+        # Real shape: combobox > generic/listbox wrapper > options. The wrapper
+        # must be flattened so each option bullets individually instead of
+        # collapsing into one inline run.
+        y = (
+            '- combobox "Where to?" [expanded] [ref=e1]:\n'
+            '    - generic [ref=e2]:\n'
+            '        - option "Anywhere" [ref=e3]\n'
+            '        - option "Europe" [ref=e4]\n'
+            '        - option "Paris" [ref=e5]'
+        )
+        out = md(y)
+        assert '- option "Anywhere" [ref=e3]' in out
+        assert '- option "Europe" [ref=e4]' in out
+        assert '- option "Paris" [ref=e5]' in out
+
 
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:

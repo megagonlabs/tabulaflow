@@ -537,16 +537,31 @@ def _render_form_control(ctx: _Ctx) -> str:
     rendered = " ".join(parts)
 
     if has_interactive_kids:
+        # Flatten transparent wrappers (a listbox/generic around the options)
+        # so each interactive atom becomes its own bullet. Plain-text labels
+        # interleaved with atoms group into single text-only bullets — same
+        # rule ``_render_listitem`` applies to listitem children.
         indent = "  " * (ctx.depth + 1)
-        bullets: list[str] = []
-        for child in _meaningful_children(ctx.children):
-            cm = _render_md_node(child, ctx.depth + 1, flow=False).strip("\n")
-            if not cm.strip():
-                continue
-            if cm.lstrip().startswith("- "):
-                bullets.append(cm)
+        raw: list[tuple[str, bool]] = []
+        _flatten_to_leaves(ctx.children, ctx.depth + 1, raw)
+        leaves: list[str] = []
+        buf: list[str] = []
+        for text, is_plain in raw:
+            if is_plain:
+                buf.append(text)
             else:
-                bullets.append(f"{indent}- {cm.strip()}")
+                if buf:
+                    leaves.append(" ".join(buf))
+                    buf = []
+                leaves.append(text)
+        if buf:
+            leaves.append(" ".join(buf))
+        bullets: list[str] = []
+        for leaf in leaves:
+            first, _, rest = leaf.partition("\n")
+            bullets.append(f"{indent}- {first}")
+            if rest:
+                bullets.append(rest)
         if bullets:
             rendered += "\n" + "\n".join(bullets)
         return rendered
