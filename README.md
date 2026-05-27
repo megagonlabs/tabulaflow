@@ -224,6 +224,18 @@ May 26
   - [x] Fix refs re-use (prompt + always full snapshot)
   - [x] Add tab param to browser_navigate
   - [x] Allow subagent to abort task with abort_task tool
+  - [x] Fallback to el.click() when normal click fail
+  - [x] Auto-dismiss JS dialog
+  - [x] "Downloads are disabled"
+  - [x] Save subagent trajectories
+  - [x] Fix CancelledError handling
+  - [x] _POST_LOAD_SETTLE_MS=1s
+  - [x] Fix combobox options rendering
+  - [x] Always type slowly
+  - [x] Skip unamed textual inputs
+  - [x] Hints on popup shadowing siblings
+  - [x] "typing directly into combobox"
+
 - [ ] extraction tool
 - [ ] Multi-column output for subagents
 - [ ] Allow subagent to fail with special tool
