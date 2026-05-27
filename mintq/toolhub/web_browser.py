@@ -934,8 +934,8 @@ class WebBrowserTool:
 
         Args:
             tab: The id of the tab to re-snapshot afterward, e.g. ``"t1"``.
-            seconds: Fixed sleep (capped at 30s) when neither ``text`` nor
-                ``text_gone`` is given; otherwise the timeout.
+            seconds: Fixed sleep when neither ``text`` nor ``text_gone`` is
+                given; otherwise the timeout.
             text: Wait until this text appears.
             text_gone: Wait until this text disappears.
         """
@@ -943,7 +943,7 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
-        seconds = max(0.0, min(seconds, 30.0))
+        seconds = max(0.0, seconds)
         async with state.op_lock:
             try:
                 if text is not None:
