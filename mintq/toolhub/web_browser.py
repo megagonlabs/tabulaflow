@@ -795,6 +795,12 @@ class WebBrowserTool:
                     )
                 except Exception:
                     return f"[tab={tab}] typed into ref={ref}"
+                # ``wait_for_selector`` returns on the first option attaching to
+                # the DOM — the rest of the dropdown is still rendering and
+                # accessible names haven't been computed. Apply the same
+                # networkidle + post-load settle as navigation/click so the
+                # snapshot isn't taken mid-hydration.
+                await self._settle(state)
                 return await format_tab_response(state)
             return await format_tab_response(state)
 
