@@ -749,8 +749,11 @@ class WebBrowserTool:
         Always types one character at a time so per-keystroke handlers fire —
         the reliable shape for autocompletes, comboboxes, and live-search
         widgets that listen for input events. ``press_sequentially`` uses
-        zero inter-key delay so the overhead is small (~5–10ms/char) for the
+        zero inter-key delay so the overhead is small (~5-10ms/char) for the
         typical short inputs agents send (search terms, names, URLs).
+
+        Works on combobox refs directly — typing auto-focuses the control,
+        so no preceding ``browser_click`` is needed to enter the field.
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"``.
