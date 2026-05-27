@@ -42,7 +42,7 @@ import asyncio
 import logging
 import re
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, ClassVar, Literal
+from typing import TYPE_CHECKING, Any, ClassVar, Literal
 from urllib.parse import urlparse
 
 from pydantic import BaseModel
@@ -375,6 +375,49 @@ class _RefError(Exception):
 _REF_PATTERN = re.compile(r"^e\d+$")
 
 
+# Common natural-language aliases for keys, mapped to canonical Playwright names.
+# LLMs frequently use these spellings ("ctrl+a", "esc", "cmd+v"); without
+# normalization the press silently fails.
+_KEY_ALIASES: dict[str, str] = {
+    "ctrl": "Control",
+    "control": "Control",
+    "alt": "Alt",
+    "option": "Alt",
+    "meta": "Meta",
+    "cmd": "Meta",
+    "command": "Meta",
+    "shift": "Shift",
+    "enter": "Enter",
+    "return": "Enter",
+    "tab": "Tab",
+    "delete": "Delete",
+    "del": "Delete",
+    "backspace": "Backspace",
+    "escape": "Escape",
+    "esc": "Escape",
+    "space": " ",
+    "spacebar": " ",
+    "up": "ArrowUp",
+    "down": "ArrowDown",
+    "left": "ArrowLeft",
+    "right": "ArrowRight",
+    "pageup": "PageUp",
+    "pagedown": "PageDown",
+    "home": "Home",
+    "end": "End",
+}
+
+
+def _normalize_key(key: str) -> str:
+    """Map natural aliases (``ctrl``, ``cmd``, ``esc``, ``space``, ``up`` …) to
+    canonical Playwright names. Preserves chords (``"ctrl+a"`` → ``"Control+a"``)
+    and leaves unrecognized parts unchanged.
+    """
+    if "+" in key:
+        return "+".join(_KEY_ALIASES.get(p.strip().lower(), p) for p in key.split("+"))
+    return _KEY_ALIASES.get(key.strip().lower(), key)
+
+
 # ---------------------------------------------------------------------------
 # Per-tab state
 # ---------------------------------------------------------------------------
@@ -594,6 +637,7 @@ class WebBrowserTool:
         tab_id = f"t{self._next_tab_seq}"
         self._next_tab_seq += 1
         page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
+        page.on("dialog", lambda d, tid=tab_id: self._on_dialog_sync(tid, d))  # type: ignore[call-overload]
 
         state = _TabState(tab_id=tab_id, page=page, last_touched_turn=self._turn_counter)
         self._tabs[tab_id] = state
@@ -810,7 +854,7 @@ class WebBrowserTool:
             return self._format_error(self._unknown_tab(tab))
         async with state.op_lock:
             try:
-                await state.page.keyboard.press(key)
+                await state.page.keyboard.press(_normalize_key(key))
                 await self._settle(state)
             except Exception as e:
                 return self._format_error(f"press failed: {self._error_message(e)}")
@@ -1041,6 +1085,39 @@ class WebBrowserTool:
             except Exception:
                 pass
         popup.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
+        popup.on("dialog", lambda d, tid=tab_id: self._on_dialog_sync(tid, d))  # type: ignore[call-overload]
+
+    def _on_dialog_sync(self, tab_id: str, dialog: Any) -> None:
+        """Sync wrapper that schedules the async dialog handler."""
+        asyncio.create_task(self._on_dialog(tab_id, dialog))
+
+    async def _on_dialog(self, tab_id: str, dialog: Any) -> None:
+        """Auto-dismiss a JS dialog so it doesn't block the tab.
+
+        Modal ``alert()`` / ``confirm()`` / ``prompt()`` / ``beforeunload``
+        block all interactions until handled. Playwright does NOT auto-dismiss
+        by default. Policy: accept alert/confirm/beforeunload (safer for
+        automation — proceed past the dialog) and dismiss prompt (we can't
+        supply an answer). The dialog's type and message are recorded as a
+        notice on the tab so the agent sees that something fired.
+        """
+        dialog_type = getattr(dialog, "type", "alert")
+        message = getattr(dialog, "message", "")
+        try:
+            if dialog_type == "prompt":
+                await dialog.dismiss()
+                action = "dismissed (Cancel)"
+            else:
+                await dialog.accept()
+                action = "accepted (OK)"
+        except Exception:
+            return
+        state = self._tabs.get(tab_id)
+        if state is not None:
+            state.popup_notice = (
+                f"[note: {dialog_type} dialog on tab {tab_id} auto-{action}; "
+                f"message: {message!r}]"
+            )
 
     async def _settle(self, state: _TabState) -> None:
         timeout = _NETWORKIDLE_WAIT_MS
