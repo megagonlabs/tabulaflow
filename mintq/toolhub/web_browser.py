@@ -272,7 +272,7 @@ class WebBrowserManager:
                 browser = await self._ensure_browser_locked()
                 self._shared_context = await browser.new_context(
                     user_agent=_USER_AGENT,
-                    accept_downloads=True,
+                    accept_downloads=False,
                 )
             return self._shared_context
 
@@ -282,7 +282,7 @@ class WebBrowserManager:
             browser = await self._ensure_browser_locked()
         return await browser.new_context(
             user_agent=_USER_AGENT,
-            accept_downloads=True,
+            accept_downloads=False,
         )
 
     async def close(self) -> None:
@@ -638,7 +638,6 @@ class WebBrowserTool:
         self._next_tab_seq += 1
         page.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
         page.on("dialog", lambda d, tid=tab_id: self._on_dialog_sync(tid, d))  # type: ignore[call-overload]
-        page.on("download", lambda d, tid=tab_id: self._on_download_sync(tid, d))  # type: ignore[call-overload]
 
         state = _TabState(tab_id=tab_id, page=page, last_touched_turn=self._turn_counter)
         self._tabs[tab_id] = state
@@ -656,6 +655,9 @@ class WebBrowserTool:
 
     async def browser_click(self, tab: str, ref: str) -> str:
         """Click an interactive element on a specific tab.
+
+        Downloads are disabled — clicking a download link succeeds but
+        produces no page change; don't retry the same ref.
 
         Args:
             tab: The id of the tab to act on, e.g. ``"t1"`` (from a previous response).
@@ -1087,7 +1089,6 @@ class WebBrowserTool:
                 pass
         popup.on("popup", lambda p, tid=tab_id: self._on_popup_sync(tid, p))  # type: ignore[call-overload]
         popup.on("dialog", lambda d, tid=tab_id: self._on_dialog_sync(tid, d))  # type: ignore[call-overload]
-        popup.on("download", lambda d, tid=tab_id: self._on_download_sync(tid, d))  # type: ignore[call-overload]
 
     def _on_dialog_sync(self, tab_id: str, dialog: Any) -> None:
         """Sync wrapper that schedules the async dialog handler."""
@@ -1119,32 +1120,6 @@ class WebBrowserTool:
             state.popup_notice = (
                 f"[note: {dialog_type} dialog on tab {tab_id} auto-{action}; "
                 f"message: {message!r}]"
-            )
-
-    def _on_download_sync(self, tab_id: str, download: Any) -> None:
-        """Sync wrapper that schedules the async download cancellation."""
-        asyncio.create_task(self._on_download(tab_id, download))
-
-    async def _on_download(self, tab_id: str, download: Any) -> None:
-        """Cancel a triggered download and tell the agent it was blocked.
-
-        Downloads are disabled by policy; without surfacing this, a click on
-        a ``Content-Disposition: attachment`` link looks indistinguishable
-        from "the click did nothing", and the agent typically wastes turns
-        retrying. The notice converts that silent black hole into a clear
-        signal so the agent can stop, report to the user, or pivot.
-        """
-        suggested = getattr(download, "suggested_filename", "") or "download"
-        url = getattr(download, "url", "")
-        try:
-            await download.cancel()
-        except Exception:
-            pass
-        state = self._tabs.get(tab_id)
-        if state is not None:
-            state.popup_notice = (
-                f"[note: download attempt blocked on tab {tab_id}: "
-                f"{suggested!r} from {url}]"
             )
 
     async def _settle(self, state: _TabState) -> None:
