@@ -238,7 +238,6 @@ May 26
 
 - [ ] extraction tool
 - [ ] Multi-column output for subagents
-- [ ] Allow subagent to fail with special tool
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
 - [ ] Auto-close old tab on re-navigate
 
