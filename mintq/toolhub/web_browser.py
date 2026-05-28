@@ -662,17 +662,13 @@ class WebBrowserTool:
                 return self._format_error(f"navigation failed: {self._error_message(e)}")
             # Inline-rendered PDF: the navigation succeeded but the document is a
             # PDF (headful Chromium renders these in its viewer; some servers
-            # serve application/pdf without a download disposition). The aria
-            # tree would be empty, so extract text from the response bytes.
+            # serve application/pdf without a download disposition). The aria tree
+            # would be empty. We can't read response.body() — Chromium's PDF
+            # viewer consumes the stream and returns its HTML shell instead — so
+            # re-fetch the raw bytes out of band, the same path downloads take.
             ctype = (response.headers.get("content-type") or "").lower() if response else ""
-            if response is not None and "application/pdf" in ctype:
-                try:
-                    body = await response.body()
-                except Exception as e:
-                    if is_new:
-                        await self._discard_tab(state)
-                    return self._format_error(f"failed to read PDF: {self._error_message(e)}")
-                err = await self._render_pdf_bytes(state, url, body, ctype)
+            if "application/pdf" in ctype:
+                err = await self._load_download(state, url)
                 if err is not None:
                     if is_new:
                         await self._discard_tab(state)
