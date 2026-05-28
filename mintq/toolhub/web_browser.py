@@ -457,6 +457,37 @@ class _TabState:
     pdf_text: str | None = None
 
 
+def _compose_tab_response(
+    state: _TabState,
+    *,
+    url: str,
+    title: str,
+    body: str,
+    annotation: str | None = None,
+) -> str:
+    """Assemble a tab response: any pending popup notice, the ``[tab=]``/URL/
+    Title header, an optional annotation line, a divider, then ``body``.
+
+    Consumes ``state.popup_notice``. Shared by the aria-snapshot and PDF paths
+    so the header shape stays in one place.
+    """
+    parts: list[str] = []
+    if state.popup_notice is not None:
+        parts.append(state.popup_notice)
+        parts.append("")
+        state.popup_notice = None
+    parts.append(f"[tab={state.tab_id}]")
+    parts.append(f"URL: {url}")
+    if title:
+        parts.append(f"Title: {title}")
+    if annotation:
+        parts.append(annotation)
+    parts.append("")
+    parts.append("---")
+    parts.append(body)
+    return "\n".join(parts)
+
+
 async def format_tab_response(state: _TabState) -> str:
     """Build the LLM-facing response for a tab state.
 
@@ -466,45 +497,28 @@ async def format_tab_response(state: _TabState) -> str:
     Mutates ``state.last_snapshot`` and consumes any pending popup notice.
 
     PDF tabs short-circuit: ``state.last_snapshot`` was populated by
-    ``_load_download`` with the extracted text and empty refs, so we render that
-    directly rather than walking a (nonexistent) aria tree.
+    ``_render_pdf_bytes`` with the extracted text and empty refs, so we render
+    that directly rather than walking a (nonexistent) aria tree.
     """
     if state.pdf_text is not None:
         snapshot = state.last_snapshot
-        parts: list[str] = []
-        if state.popup_notice is not None:
-            parts.append(state.popup_notice)
-            parts.append("")
-            state.popup_notice = None
-        parts.append(f"[tab={state.tab_id}]")
-        parts.append(f"URL: {snapshot.url if snapshot else ''}")
-        if snapshot and snapshot.title:
-            parts.append(f"Title: {snapshot.title}")
-        parts.append("[PDF document — extracted text, no interactive elements]")
-        parts.append("")
-        parts.append("---")
-        parts.append(
-            state.pdf_text
-            or "(PDF has no extractable text layer — likely scanned/image-only)"
+        return _compose_tab_response(
+            state,
+            url=snapshot.url if snapshot else "",
+            title=snapshot.title if snapshot else "",
+            annotation="[PDF document — extracted text, no interactive elements]",
+            body=state.pdf_text
+            or "(PDF has no extractable text layer — likely scanned/image-only)",
         )
-        return "\n".join(parts)
 
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
-
-    parts = []
-    if state.popup_notice is not None:
-        parts.append(state.popup_notice)
-        parts.append("")
-        state.popup_notice = None
-    parts.append(f"[tab={state.tab_id}]")
-    parts.append(f"URL: {snapshot.url}")
-    if snapshot.title:
-        parts.append(f"Title: {snapshot.title}")
-    parts.append("")
-    parts.append("---")
-    parts.append(snapshot.markdown_content or "(no content extracted)")
-    return "\n".join(parts)
+    return _compose_tab_response(
+        state,
+        url=snapshot.url,
+        title=snapshot.title,
+        body=snapshot.markdown_content or "(no content extracted)",
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -651,9 +665,9 @@ class WebBrowserTool:
             # serve application/pdf without a download disposition). The aria
             # tree would be empty, so extract text from the response bytes.
             ctype = (response.headers.get("content-type") or "").lower() if response else ""
-            if "application/pdf" in ctype:
+            if response is not None and "application/pdf" in ctype:
                 try:
-                    body = await response.body()  # type: ignore[union-attr]
+                    body = await response.body()
                 except Exception as e:
                     if is_new:
                         await self._discard_tab(state)
