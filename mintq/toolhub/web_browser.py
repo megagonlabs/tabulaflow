@@ -60,6 +60,7 @@ if TYPE_CHECKING:
         Locator,
         Page,
         Playwright,
+        Response,
     )
     from pydantic_ai.capabilities import Hooks
 
@@ -198,6 +199,9 @@ def _extract_pdf_text(data: bytes) -> tuple[str, str]:
     plain-text dump this returns. pypdf's per-page warnings (rotated text, etc.)
     are suppressed — they're advisory and would otherwise spam the logs under
     fan-out. Synchronous and CPU-bound; call via ``asyncio.to_thread``.
+
+    Pages are prefixed with ``--- Page N ---`` markers so the agent can cite and
+    navigate by page; empty pages are dropped.
     """
     import io
     import warnings
@@ -212,7 +216,11 @@ def _extract_pdf_text(data: bytes) -> tuple[str, str]:
             title = (reader.metadata.title if reader.metadata else "") or ""
         except Exception:
             pass
-        parts = [page.extract_text() or "" for page in reader.pages]
+        parts = []
+        for i, page in enumerate(reader.pages, 1):
+            text = (page.extract_text() or "").strip()
+            if text:
+                parts.append(f"--- Page {i} ---\n{text}")
     return title.strip(), "\n\n".join(parts).strip()
 
 
@@ -653,7 +661,7 @@ class WebBrowserTool:
         async with state.op_lock:
             state.pdf_text = None  # clear any prior PDF content on in-place nav
             try:
-                await self._goto(state.page, url)
+                response = await self._goto(state.page, url)
             except Exception as e:
                 # A URL that serves a downloadable file (PDF, zip, …) aborts the
                 # navigation instead of returning a Response, because the shared
@@ -671,6 +679,23 @@ class WebBrowserTool:
                 if is_new:
                     await self._discard_tab(state)
                 return self._format_error(f"navigation failed: {self._error_message(e)}")
+            # Inline-rendered PDF: the navigation succeeded but the document is a
+            # PDF (headful Chromium renders these in its viewer; some servers
+            # serve application/pdf without a download disposition). The aria
+            # tree would be empty, so extract text from the response bytes.
+            ctype = (response.headers.get("content-type") or "").lower() if response else ""
+            if "application/pdf" in ctype:
+                try:
+                    body = await response.body()  # type: ignore[union-attr]
+                except Exception as e:
+                    if is_new:
+                        await self._discard_tab(state)
+                    return self._format_error(f"failed to read PDF: {self._error_message(e)}")
+                err = await self._render_pdf_bytes(state, url, body, ctype)
+                if err is not None:
+                    if is_new:
+                        await self._discard_tab(state)
+                    return err
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
@@ -680,14 +705,10 @@ class WebBrowserTool:
         return "Download is starting" in msg or "ERR_ABORTED" in msg
 
     async def _load_download(self, state: "_TabState", url: str) -> str | None:
-        """Fetch an aborted-navigation URL out of band and, if it's a PDF,
-        extract its text onto ``state``.
+        """Fetch an aborted-navigation URL out of band and render it via
+        :meth:`_render_pdf_bytes`.
 
-        Returns ``None`` on success (``state.pdf_text`` and ``state.last_snapshot``
-        are populated, ready for ``format_tab_response``), or an error/notice
-        string to return directly to the LLM when the resource isn't a PDF we
-        can render. The raw bytes are dropped as soon as extraction finishes so
-        they don't linger in memory under parallel fan-out.
+        Returns ``None`` on success or an error/notice string for the LLM.
         """
         try:
             ctx = await self._ensure_context()
@@ -696,7 +717,19 @@ class WebBrowserTool:
             body = await resp.body()
         except Exception as e:
             return self._format_error(f"navigation failed: {self._error_message(e)}")
+        return await self._render_pdf_bytes(state, url, body, content_type)
 
+    async def _render_pdf_bytes(
+        self, state: "_TabState", url: str, body: bytes, content_type: str
+    ) -> str | None:
+        """Detect and extract a PDF from raw bytes onto ``state``.
+
+        Returns ``None`` on success (``state.pdf_text`` and ``state.last_snapshot``
+        are populated, ready for ``format_tab_response``), or an error/notice
+        string when the bytes aren't a PDF we can render. The bytes are dropped
+        as soon as extraction finishes so they don't linger in memory under
+        parallel fan-out.
+        """
         is_pdf = "application/pdf" in content_type or body[:5] == b"%PDF-"
         if not is_pdf:
             kind = content_type.split(";")[0] or "unknown type"
@@ -713,20 +746,25 @@ class WebBrowserTool:
         state.last_snapshot = PageSnapshot(url=url, title=title, markdown_content=text, refs=[])
         return None
 
-    async def _goto(self, page: "Page", url: str) -> None:
+    async def _goto(self, page: "Page", url: str) -> "Response | None":
         """Two-phase wait: ``load`` for the navigation guarantee, then a bounded
         ``networkidle`` to give SPAs time to render their JS content. Pure
         ``networkidle`` goto can hang for 30s+ on streaming sites (Google
         Flights); pure ``load`` returns before SPA content appears. The bounded
         follow-up balances both. A short fixed sleep afterward lets Chromium
         finish computing accessible names on sites that never reach networkidle.
+
+        Returns the main navigation ``Response`` (``None`` for same-document
+        navigations) so the caller can inspect the content-type — an inline PDF
+        loads successfully but needs text extraction, not an aria snapshot.
         """
-        await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
+        response = await page.goto(url, wait_until="load", timeout=_NAV_TIMEOUT_MS)
         try:
             await page.wait_for_load_state("networkidle", timeout=_NETWORKIDLE_WAIT_MS)
         except Exception:
             pass  # SPA never settled; proceed with current state
         await asyncio.sleep(_POST_LOAD_SETTLE_MS / 1000)
+        return response
 
     async def _open_new_tab(self) -> tuple["_TabState | None", str | None]:
         """Reserve a tab slot, take a permit, and open a fresh page.
