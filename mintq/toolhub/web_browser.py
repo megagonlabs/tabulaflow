@@ -614,7 +614,9 @@ class WebBrowserTool:
         turn.
 
         Issue multiple navigates in parallel within one turn to scan
-        several URLs concurrently.
+        several URLs concurrently. If ``url`` is a PDF, the response is its
+        extracted text rather than a page snapshot — so navigate to a PDF
+        link's URL instead of clicking it.
 
         Args:
             url: An ``http://`` or ``https://`` URL.
