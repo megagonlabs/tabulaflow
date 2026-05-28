@@ -53,6 +53,7 @@ dependencies = [
     "playwright>=1.59.0",
     "webbrowser-open>=0.3.0",
     "pyyaml>=6.0.3",
+    "pypdf>=6.12.2",
 ]
 
 [project.optional-dependencies]

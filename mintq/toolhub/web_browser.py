@@ -189,6 +189,33 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
     )
 
 
+def _extract_pdf_text(data: bytes) -> tuple[str, str]:
+    """Extract ``(title, body_text)`` from PDF bytes with pypdf.
+
+    Uses pypdf's default extraction mode (not ``layout``): on prose-heavy PDFs
+    the layout mode collapses inter-word spaces, whereas the default preserves
+    them. The multi-column reconstruction layout mode buys is irrelevant for the
+    plain-text dump this returns. pypdf's per-page warnings (rotated text, etc.)
+    are suppressed — they're advisory and would otherwise spam the logs under
+    fan-out. Synchronous and CPU-bound; call via ``asyncio.to_thread``.
+    """
+    import io
+    import warnings
+
+    from pypdf import PdfReader
+
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore")
+        reader = PdfReader(io.BytesIO(data))
+        title = ""
+        try:
+            title = (reader.metadata.title if reader.metadata else "") or ""
+        except Exception:
+            pass
+        parts = [page.extract_text() or "" for page in reader.pages]
+    return title.strip(), "\n\n".join(parts).strip()
+
+
 # ---------------------------------------------------------------------------
 # Browser process manager
 # ---------------------------------------------------------------------------
@@ -448,6 +475,11 @@ class _TabState:
     last_snapshot: PageSnapshot | None = None
     popup_notice: str | None = None
     op_lock: asyncio.Lock = field(default_factory=asyncio.Lock)
+    # Set when a navigation resolved to a PDF: the extracted text becomes the
+    # tab's content and ``last_snapshot`` carries empty refs (no interactive
+    # elements). While set, ``format_tab_response`` renders this instead of an
+    # aria snapshot, so every action on the tab returns the static document.
+    pdf_text: str | None = None
 
 
 async def format_tab_response(state: _TabState) -> str:
@@ -457,11 +489,35 @@ async def format_tab_response(state: _TabState) -> str:
     construction via the aria-driven renderer — orphans get anchored to their
     parent automatically — so no cross-check or auxiliary list is needed.
     Mutates ``state.last_snapshot`` and consumes any pending popup notice.
+
+    PDF tabs short-circuit: ``state.last_snapshot`` was populated by
+    ``_load_download`` with the extracted text and empty refs, so we render that
+    directly rather than walking a (nonexistent) aria tree.
     """
+    if state.pdf_text is not None:
+        snapshot = state.last_snapshot
+        parts: list[str] = []
+        if state.popup_notice is not None:
+            parts.append(state.popup_notice)
+            parts.append("")
+            state.popup_notice = None
+        parts.append(f"[tab={state.tab_id}]")
+        parts.append(f"URL: {snapshot.url if snapshot else ''}")
+        if snapshot and snapshot.title:
+            parts.append(f"Title: {snapshot.title}")
+        parts.append("[PDF document — extracted text, no interactive elements]")
+        parts.append("")
+        parts.append("---")
+        parts.append(
+            state.pdf_text
+            or "(PDF has no extractable text layer — likely scanned/image-only)"
+        )
+        return "\n".join(parts)
+
     snapshot = await take_snapshot(state.page)
     state.last_snapshot = snapshot
 
-    parts: list[str] = []
+    parts = []
     if state.popup_notice is not None:
         parts.append(state.popup_notice)
         parts.append("")
@@ -595,14 +651,67 @@ class WebBrowserTool:
             is_new = True
 
         async with state.op_lock:
+            state.pdf_text = None  # clear any prior PDF content on in-place nav
             try:
                 await self._goto(state.page, url)
             except Exception as e:
+                # A URL that serves a downloadable file (PDF, zip, …) aborts the
+                # navigation instead of returning a Response, because the shared
+                # context sets accept_downloads=False. Fetch the bytes out of
+                # band to see if it's a PDF we can extract; anything else is a
+                # non-browsable download.
+                if self._is_download_error(e):
+                    err = await self._load_download(state, url)
+                    if err is not None:
+                        if is_new:
+                            await self._discard_tab(state)
+                        return err
+                    state.last_touched_turn = self._turn_counter
+                    return await format_tab_response(state)
                 if is_new:
                     await self._discard_tab(state)
                 return self._format_error(f"navigation failed: {self._error_message(e)}")
             state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
+
+    @staticmethod
+    def _is_download_error(e: Exception) -> bool:
+        msg = str(e)
+        return "Download is starting" in msg or "ERR_ABORTED" in msg
+
+    async def _load_download(self, state: "_TabState", url: str) -> str | None:
+        """Fetch an aborted-navigation URL out of band and, if it's a PDF,
+        extract its text onto ``state``.
+
+        Returns ``None`` on success (``state.pdf_text`` and ``state.last_snapshot``
+        are populated, ready for ``format_tab_response``), or an error/notice
+        string to return directly to the LLM when the resource isn't a PDF we
+        can render. The raw bytes are dropped as soon as extraction finishes so
+        they don't linger in memory under parallel fan-out.
+        """
+        try:
+            ctx = await self._ensure_context()
+            resp = await ctx.request.get(url, timeout=_NAV_TIMEOUT_MS)
+            content_type = (resp.headers.get("content-type") or "").lower()
+            body = await resp.body()
+        except Exception as e:
+            return self._format_error(f"navigation failed: {self._error_message(e)}")
+
+        is_pdf = "application/pdf" in content_type or body[:5] == b"%PDF-"
+        if not is_pdf:
+            kind = content_type.split(";")[0] or "unknown type"
+            return self._format_error(
+                f"navigation triggered a download ({kind}); only PDFs can be read as text"
+            )
+
+        try:
+            title, text = await asyncio.to_thread(_extract_pdf_text, body)
+        except Exception as e:
+            return self._format_error(f"failed to read PDF: {self._error_message(e)}")
+
+        state.pdf_text = text
+        state.last_snapshot = PageSnapshot(url=url, title=title, markdown_content=text, refs=[])
+        return None
 
     async def _goto(self, page: "Page", url: str) -> None:
         """Two-phase wait: ``load`` for the navigation guarantee, then a bounded

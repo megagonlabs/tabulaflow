@@ -2762,6 +2762,7 @@ dependencies = [
     { name = "pydantic-ai-slim", extra = ["anthropic"] },
     { name = "pydantic-settings" },
     { name = "pymysql" },
+    { name = "pypdf" },
     { name = "pyyaml" },
     { name = "rich" },
     { name = "snowflake-connector-python" },
@@ -2830,6 +2831,7 @@ requires-dist = [
     { name = "pydantic-ai-slim", extras = ["anthropic"], specifier = ">=1.61.0" },
     { name = "pydantic-settings", specifier = ">=2.11.0" },
     { name = "pymysql", specifier = ">=1.1.1" },
+    { name = "pypdf", specifier = ">=6.12.2" },
     { name = "pyyaml", specifier = ">=6.0.3" },
     { name = "rich", specifier = ">=14.0.0" },
     { name = "snowflake-connector-python", specifier = ">=3.14.1" },
@@ -4379,6 +4381,15 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/f2/a5/181488fc2b9d093e3972d2a472855aae8a03f000592dbfce716a512b3359/pyparsing-3.2.5.tar.gz", hash = "sha256:2df8d5b7b2802ef88e8d016a2eb9c7aeaa923529cd251ed0fe4608275d4105b6", size = 1099274, upload_time = "2025-09-21T04:11:06.277Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/10/5e/1aa9a93198c6b64513c9d7752de7422c06402de6600a8767da1524f9570b/pyparsing-3.2.5-py3-none-any.whl", hash = "sha256:e38a4f02064cf41fe6593d328d0512495ad1f3d8a91c4f73fc401b3079a59a5e", size = 113890, upload_time = "2025-09-21T04:11:04.117Z" },
+]
+
+[[package]]
+name = "pypdf"
+version = "6.12.2"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/0a/6d/20879428577c1e57ecd41b69dc86beabf43db9287ad2e702207f8b48c751/pypdf-6.12.2.tar.gz", hash = "sha256:111669eb6680c04495ae0c113a1476e3bf93a95761d23c7406b591c80a6490b1", size = 6468184, upload_time = "2026-05-26T13:31:26.911Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9e/44/fee070a16639d9869bb6a7e0f3a1b3946da1d66f32b9260b4d19cb90d7b2/pypdf-6.12.2-py3-none-any.whl", hash = "sha256:67b2699357a1f3f4c945940ea80826349ee507c9e2577724a14b4941982c104d", size = 343865, upload_time = "2026-05-26T13:31:25.068Z" },
 ]
 
 [[package]]
