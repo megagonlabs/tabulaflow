@@ -185,7 +185,7 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
     return PageSnapshot(
         url=page.url,
         title=title,
-        markdown_content=render_aria_markdown(aria_yaml),
+        markdown_content=render_aria_markdown(aria_yaml, base_url=page.url),
         refs=extract_refs(aria_yaml),
         aria_yaml=aria_yaml,
     )
