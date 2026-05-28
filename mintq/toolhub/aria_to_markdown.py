@@ -78,10 +78,8 @@ string (markdown or raw YAML).
 from __future__ import annotations
 
 import re
-from contextvars import ContextVar
 from dataclasses import dataclass
 from typing import Any, Callable
-from urllib.parse import urljoin
 
 import yaml
 
@@ -434,7 +432,7 @@ def _render_link(ctx: _Ctx) -> str:
     # interactive descendant refs so they aren't orphaned.
     extra = _swept_refs(kids) if ctx.name else ""
     if href:
-        return f"[{body}]({_absolutize(href)}){ctx.ref_tag}{extra}"
+        return f"[{body}]({href}){ctx.ref_tag}{extra}"
     return f"[{body}]{ctx.ref_tag}{extra}"
 
 
@@ -986,38 +984,9 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
 
 # ── Public API ──────────────────────────────────────────────────────────
 
-# Base URL for the page being rendered, used to absolutize relative link hrefs
-# so the agent can pass them straight to ``browser_navigate`` (which rejects
-# schemeless URLs). Set per render; a ContextVar keeps concurrent renders from
-# bleeding into each other without threading the value through every handler.
-_base_url: ContextVar[str] = ContextVar("aria_base_url", default="")
 
-
-def _absolutize(href: str) -> str:
-    base = _base_url.get()
-    if not base:
-        return href
-    try:
-        return urljoin(base, href)
-    except ValueError:
-        return href
-
-
-def render_aria_markdown(aria_yaml: str, base_url: str = "") -> str:
-    """Render an aria-snapshot YAML string as markdown with refs inlined.
-
-    ``base_url`` (the URL of the page the snapshot came from) is used to resolve
-    relative link hrefs to absolute URLs; pass it so link atoms are directly
-    navigable. Defaults to leaving hrefs untouched.
-    """
-    token = _base_url.set(base_url)
-    try:
-        return _render_aria_markdown(aria_yaml)
-    finally:
-        _base_url.reset(token)
-
-
-def _render_aria_markdown(aria_yaml: str) -> str:
+def render_aria_markdown(aria_yaml: str) -> str:
+    """Render an aria-snapshot YAML string as markdown with refs inlined."""
     try:
         tree = yaml.load(aria_yaml, Loader=_YamlLoader)
     except yaml.YAMLError:
