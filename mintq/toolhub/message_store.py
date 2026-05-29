@@ -1,9 +1,11 @@
 """Persistent store for user messages and tool responses, with overflow truncation.
 
 Every user prompt and tool response is mirrored into ``workspace._internal.messages``
-as a single row. When content exceeds ``MESSAGE_THRESHOLD_CHARS``, the model-visible
-form is replaced with a head + tail snippet that points back at the stored row;
-the agent retrieves the full text via SQL on the workspace database.
+as a single row. Every model-visible response carries a leading ``[message_id=M<n>]``
+marker so the agent can dereference it programmatically. When content exceeds
+``MESSAGE_THRESHOLD_CHARS``, the body is additionally replaced with a head + tail
+snippet that points back at the stored row; the agent retrieves the full text via SQL
+on the workspace database.
 """
 
 from __future__ import annotations
@@ -41,6 +43,20 @@ def _utcnow() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def id_marker(message_id: str) -> str:
+    """Return the leading ``[message_id=M<n>]`` line that tags every stored response.
+
+    Present on both truncated snippets and full passthrough responses so the agent
+    can always parse the id from the first line and dereference it programmatically.
+    """
+    return f"[message_id={message_id}]"
+
+
+def make_marked(message_id: str, content: str) -> str:
+    """Return full ``content`` prefixed with its id marker (no truncation)."""
+    return f"{id_marker(message_id)}\n{content}"
+
+
 def make_snippet(message_id: str, content: str) -> str:
     """Return the head+tail snippet shown to the LLM for an overflowed message.
 
@@ -53,7 +69,7 @@ def make_snippet(message_id: str, content: str) -> str:
     tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
     deref = f"run_query(db_alias=\"workspace\", \"SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id='{message_id}'\")"
     marker = f"... [truncated, {total} chars total — read full content with {deref}]"
-    parts = [f"[message_id={message_id}]", head, marker]
+    parts = [id_marker(message_id), head, marker]
     if tail:
         parts.append(tail)
     return "\n".join(parts)
@@ -201,12 +217,15 @@ class ScopedMessageStore:
 
 @dataclass
 class MessageStoreCapability(AbstractCapability[Any]):
-    """Mirror tool responses into the message store; truncate overflow before the LLM sees it.
+    """Mirror tool responses into the message store; tag every one and truncate overflow.
 
-    Only tools whose names appear in ``tool_allowlist`` are subject to the
-    persist-and-maybe-truncate flow. Tools outside the allowlist (e.g. ``run_query``,
-    which the agent uses to read back stored messages) pass through untouched —
-    crucial to avoid re-truncation cycles when the agent fetches a stored message.
+    Only tools whose names appear in ``tool_allowlist`` are subject to the flow. Each
+    allowlisted string response is persisted and returned with a ``[message_id=M<n>]``
+    marker (plus ``message_id``/``char_len`` metadata); responses over
+    ``threshold_chars`` also have their body replaced with a head + tail snippet. Tools
+    outside the allowlist (e.g. ``run_query``, which the agent uses to read back stored
+    messages) pass through untouched — crucial to avoid re-truncation cycles when the
+    agent fetches a stored message.
     """
 
     store: ScopedMessageStore
@@ -233,8 +252,10 @@ class MessageStoreCapability(AbstractCapability[Any]):
             tool_call_id=call.tool_call_id,
         )
         if len(result) <= self.threshold_chars:
-            return result
+            return_value = make_marked(message_id, result)
+        else:
+            return_value = make_snippet(message_id, result)
         return ToolReturn(
-            return_value=make_snippet(message_id, result),
+            return_value=return_value,
             metadata={"message_id": message_id, "char_len": len(result)},
         )

@@ -141,8 +141,8 @@ If the user says "plan first" or "discuss first", present a plan and wait for ap
 
 <long_message_offloading>
 (internal implementation details, never mention to the user)
-To keep your context lean, very long user prompts and tool responses are offloaded before they reach you: the full content is moved into the `_internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)` table of the `workspace` database, and you see only a head+tail snippet in its place.
-- A snippet carries a marker line `[message_id=M<n>]`; fetch the offloaded content back with `run_query(db_alias="workspace", "SELECT content FROM _internal.messages WHERE message_id='M<n>'")`.
+To keep your context lean, every browser response is mirrored into the `_internal.messages(message_id, kind, tool_name, tool_call_id, created_at, char_len, content)` table of the `workspace` database, and very long user prompts and tool responses are offloaded before they reach you: their full content stays in that table and you can process it progammtically or hand it to a subagent.
+- For responses that carry a leading marker line `[message_id=M<n>]`, you can fetch the full content back with `run_query(db_alias="workspace", "SELECT content FROM _internal.messages WHERE message_id='M<n>'")`.
 - To hand a long message to a subagent without pulling its full content into your own context, leave it offloaded and JOIN `_internal.messages` in a workspace-targeted `task_query` so the content arrives as a column — e.g. `SELECT m.message_id, m.content AS chunk FROM _internal.messages m WHERE m.message_id = 'M7'`; the per-row `task_instruction` then references it as `{{ chunk }}`.
 - Offloading also applies one level down, but only to subagents that can spawn nested subagents (`enable_nested_subagents=True`): their own long prompts and tool responses are offloaded the same way and fetched back via `run_query`, so deep multi-level decompositions never overflow context at any level. Leaf subagents (no nesting) are not offloaded.
 </long_message_offloading>
