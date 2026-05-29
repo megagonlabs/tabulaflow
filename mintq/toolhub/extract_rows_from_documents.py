@@ -11,43 +11,15 @@ import jinja2
 import jinja2.meta
 import pandas as pd
 from pandas.api import types as pdt
-from pydantic import create_model
-from pydantic_ai import Agent, Tool
+from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
+from mintq.toolhub.entity_extractor import DEFAULT_CHUNK_CHARS, DEFAULT_CHUNK_OVERLAP_CHARS, EntityExtractor
 
 logger = logging.getLogger(__name__)
 
-# Chunk geometry is internal config, not an LLM-facing knob: the agent should
-# not reason about chunk sizes. Defaults keep one chunk well within a small
-# model's context while overlapping enough that an entity straddling a boundary
-# is seen whole by at least one chunk.
-_DEFAULT_CHUNK_CHARS = 12_000
-_DEFAULT_CHUNK_OVERLAP_CHARS = 1_000
-
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
-
-_EXTRACTION_SYSTEM_PROMPT = (
-    "You extract structured records from a document excerpt. Extract every record "
-    "that matches the user's instruction and is supported by the excerpt, using only "
-    "information present in it — do not infer or invent values. The excerpt may be a "
-    "fragment of a larger document; extract whatever is present. Return an empty list "
-    "if the excerpt contains no matching records."
-)
-
-
-def _chunk_text(text: str, *, size: int, overlap: int) -> list[str]:
-    """Split ``text`` into overlapping windows of at most ``size`` chars."""
-    if len(text) <= size:
-        return [text]
-    step = size - overlap
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        chunks.append(text[start : start + size])
-        start += step
-    return chunks
 
 
 class ExtractRowsFromDocumentsTool:
@@ -61,6 +33,9 @@ class ExtractRowsFromDocumentsTool:
     template. Each document is chunked and a leaf subagent extracts entities from each
     chunk; the union is appended to ``table_name``. Deduplication is intentionally out
     of scope (handle it downstream with full semantic context).
+
+    The DB-free extraction engine lives in :class:`EntityExtractor`; this class is the
+    database adapter around it (read documents with SQL, write extracted rows back).
     """
 
     name: ClassVar[str] = "extract_rows_from_documents"
@@ -72,8 +47,8 @@ class ExtractRowsFromDocumentsTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
-        chunk_chars: int = _DEFAULT_CHUNK_CHARS,
-        chunk_overlap_chars: int = _DEFAULT_CHUNK_OVERLAP_CHARS,
+        chunk_chars: int = DEFAULT_CHUNK_CHARS,
+        chunk_overlap_chars: int = DEFAULT_CHUNK_OVERLAP_CHARS,
     ) -> None:
         """Initialize the tool.
 
@@ -89,12 +64,6 @@ class ExtractRowsFromDocumentsTool:
             chunk_overlap_chars: Overlap between adjacent chunks, so an entity
                 spanning a boundary is seen whole by at least one chunk.
         """
-        if max_concurrency <= 0:
-            raise ValueError("max_concurrency must be greater than 0")
-        if chunk_chars <= 0:
-            raise ValueError("chunk_chars must be greater than 0")
-        if not 0 <= chunk_overlap_chars < chunk_chars:
-            raise ValueError("chunk_overlap_chars must satisfy 0 <= overlap < chunk_chars")
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
@@ -176,7 +145,7 @@ class ExtractRowsFromDocumentsTool:
             return f"(error: the 'content' column must hold document text, but has dtype {df[content_col].dtype})"
 
         # Compile the template. Reject {{ content }} upfront (it is the source the
-        # records are extracted from, not a template variable); other undefined
+        # entities are extracted from, not a template variable); other undefined
         # references surface at render time via StrictUndefined.
         try:
             parsed = _JINJA_ENV.parse(task_instruction)
@@ -185,7 +154,7 @@ class ExtractRowsFromDocumentsTool:
         if content_col in jinja2.meta.find_undeclared_variables(parsed):
             return (
                 f"(error: task_instruction may not reference {content_col!r}; "
-                f"it is the document text records are extracted from, not interpolated into the instruction)"
+                f"it is the document text entities are extracted from, not interpolated into the instruction)"
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
@@ -203,34 +172,21 @@ class ExtractRowsFromDocumentsTool:
         if missing:
             return f"(error: output_columns not found in table {table_name!r}: {missing})"
 
-        # Dynamic structured-output model: one all-string field per output column,
-        # wrapped in a list-bearing container for reliable structured extraction.
-        record_model = create_model(
-            "ExtractedRecord",
-            **{col: (str | None, None) for col in output_columns},  # type: ignore[call-overload]
-        )
-        result_model = create_model(
-            "ExtractionResult",
-            records=(list[record_model], ...),  # type: ignore[valid-type]
-        )
-
-        extractor = Agent(
-            model=self.subagent_llm,
-            output_type=result_model,
-            model_settings=self.model_settings,
-            instructions=_EXTRACTION_SYSTEM_PROMPT,
-        )
+        try:
+            extractor = EntityExtractor(
+                output_columns,
+                llm=self.subagent_llm,
+                model_settings=self.model_settings,
+                max_concurrency=self.max_concurrency,
+                chunk_chars=self.chunk_chars,
+                chunk_overlap_chars=self.chunk_overlap_chars,
+            )
+        except ValueError as e:
+            return f"(error: {e})"
 
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
-        semaphore = asyncio.Semaphore(self.max_concurrency)
         completed_docs = 0
-
-        async def _extract_chunk(prompt: str) -> list[dict[str, Any]]:
-            async with semaphore:
-                result = await extractor.run(prompt)
-            output: Any = result.output  # dynamic create_model; fields not statically known
-            return [r.model_dump() for r in output.records]
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
             nonlocal completed_docs
@@ -239,14 +195,10 @@ class ExtractRowsFromDocumentsTool:
             entities: list[dict[str, Any]] = []
             cancelled = False
             try:
-                if not isinstance(content, str) or not content.strip():
+                if not isinstance(content, str):
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
-                chunks = _chunk_text(content, size=self.chunk_chars, overlap=self.chunk_overlap_chars)
-                prompts = [f"{instruction}\n\n<document_excerpt>\n{chunk}\n</document_excerpt>" for chunk in chunks]
-                chunk_results = await asyncio.gather(*(_extract_chunk(p) for p in prompts))
-                for cr in chunk_results:
-                    entities.extend(cr)
+                entities = await extractor.extract(content, instruction=instruction)
             except asyncio.CancelledError:
                 cancelled = True
                 raise
