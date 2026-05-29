@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import asyncio
 import logging
-import uuid
 from collections.abc import Callable
 from typing import Any, ClassVar
 
@@ -28,6 +27,14 @@ _DEFAULT_CHUNK_CHARS = 12_000
 _DEFAULT_CHUNK_OVERLAP_CHARS = 1_000
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+_EXTRACTION_SYSTEM_PROMPT = (
+    "You extract structured records from a document excerpt. Extract every record "
+    "that matches the user's instruction and is supported by the excerpt, using only "
+    "information present in it — do not infer or invent values. The excerpt may be a "
+    "fragment of a larger document; extract whatever is present. Return an empty list "
+    "if the excerpt contains no matching records."
+)
 
 
 def _chunk_text(text: str, *, size: int, overlap: int) -> list[str]:
@@ -166,10 +173,7 @@ class ExtractRowsFromDocumentsTool:
             )
         var_cols = [c for c in source_columns if c != content_col]
         if not (pdt.is_object_dtype(df[content_col]) or pdt.is_string_dtype(df[content_col])):
-            return (
-                f"(error: the 'content' column must hold document text, "
-                f"but has dtype {df[content_col].dtype})"
-            )
+            return f"(error: the 'content' column must hold document text, but has dtype {df[content_col].dtype})"
 
         # Validate the template references only the non-content columns. Fail fast
         # here rather than per-row, and reject {{ content }} explicitly.
@@ -204,31 +208,32 @@ class ExtractRowsFromDocumentsTool:
 
         # Dynamic structured-output model: one all-string field per output column,
         # wrapped in a list-bearing container for reliable structured extraction.
-        entity_model = create_model(
-            "ExtractedEntity",
+        record_model = create_model(
+            "ExtractedRecord",
             **{col: (str | None, None) for col in output_columns},  # type: ignore[call-overload]
         )
         result_model = create_model(
             "ExtractionResult",
-            entities=(list[entity_model], ...),  # type: ignore[valid-type]
+            records=(list[record_model], ...),  # type: ignore[valid-type]
         )
 
-        call_id = uuid.uuid4().hex[:8]
+        extractor = Agent(
+            model=self.subagent_llm,
+            output_type=result_model,
+            model_settings=self.model_settings,
+            instructions=_EXTRACTION_SYSTEM_PROMPT,
+        )
+
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
         semaphore = asyncio.Semaphore(self.max_concurrency)
         completed_docs = 0
 
         async def _extract_chunk(prompt: str) -> list[dict[str, Any]]:
-            subagent = Agent(
-                model=self.subagent_llm,
-                output_type=result_model,
-                model_settings=self.model_settings,
-            )
             async with semaphore:
-                result = await subagent.run(prompt)
+                result = await extractor.run(prompt)
             output: Any = result.output  # dynamic create_model; fields not statically known
-            return [e.model_dump() for e in output.entities]
+            return [r.model_dump() for r in output.records]
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
             nonlocal completed_docs
@@ -240,14 +245,7 @@ class ExtractRowsFromDocumentsTool:
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
                 chunks = _chunk_text(content, size=self.chunk_chars, overlap=self.chunk_overlap_chars)
-                prompts = [
-                    f"{instruction}\n\n"
-                    f"Extract every matching entity from the document excerpt below "
-                    f"(part {i} of {len(chunks)}). Use only information present in the "
-                    f"excerpt; return an empty list if it contains none.\n\n"
-                    f"<document_excerpt>\n{chunk}\n</document_excerpt>"
-                    for i, chunk in enumerate(chunks, start=1)
-                ]
+                prompts = [f"{instruction}\n\n<document_excerpt>\n{chunk}\n</document_excerpt>" for chunk in chunks]
                 chunk_results = await asyncio.gather(*(_extract_chunk(p) for p in prompts))
                 for cr in chunk_results:
                     entities.extend(cr)
@@ -289,9 +287,7 @@ class ExtractRowsFromDocumentsTool:
             except ValueError as e:
                 return f"(error: failed to append extracted rows to {table_name!r}: {e})"
 
-        summary = (
-            f"Extracted {written} entities from {total_docs} documents (call {call_id}); appended to {table_name}."
-        )
+        summary = f"Extracted {written} entities from {total_docs} documents; appended to {table_name}."
         if errors:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in errors[:5])
         return summary
