@@ -240,6 +240,7 @@ class ExtractRowsFromDocumentsTool:
             content = row.get(content_col)
             error: str | None = None
             entities: list[dict[str, Any]] = []
+            cancelled = False
             try:
                 if not isinstance(content, str) or not content.strip():
                     return [], None
@@ -250,14 +251,16 @@ class ExtractRowsFromDocumentsTool:
                 for cr in chunk_results:
                     entities.extend(cr)
             except asyncio.CancelledError:
+                cancelled = True
                 raise
             except Exception as e:
                 error = f"document {doc_idx}: {type(e).__name__}: {e}"
             finally:
-                completed_docs += 1
-                if self.on_row_complete is not None:
-                    self.on_row_complete(completed_docs, total_docs)
-                    await asyncio.sleep(0)
+                if not cancelled:
+                    completed_docs += 1
+                    if self.on_row_complete is not None:
+                        self.on_row_complete(completed_docs, total_docs)
+                        await asyncio.sleep(0)
             return entities, error
 
         results = await asyncio.gather(*(_process_document(i, row) for i, row in enumerate(rows, start=1)))
