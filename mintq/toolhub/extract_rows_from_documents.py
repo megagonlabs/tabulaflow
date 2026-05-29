@@ -175,21 +175,18 @@ class ExtractRowsFromDocumentsTool:
         if not (pdt.is_object_dtype(df[content_col]) or pdt.is_string_dtype(df[content_col])):
             return f"(error: the 'content' column must hold document text, but has dtype {df[content_col].dtype})"
 
-        # Validate the template references only the non-content columns. Fail fast
-        # here rather than per-row, and reject {{ content }} explicitly.
+        # Compile the template. Reject {{ content }} upfront (it is the source the
+        # records are extracted from, not a template variable); other undefined
+        # references surface at render time via StrictUndefined.
         try:
             parsed = _JINJA_ENV.parse(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
-        undeclared = jinja2.meta.find_undeclared_variables(parsed)
-        unknown = undeclared - set(var_cols)
-        if unknown:
-            if content_col in unknown:
-                return (
-                    f"(error: task_instruction may not reference the document-text column {content_col!r}; "
-                    f"the text is extracted from, not interpolated into, the instruction)"
-                )
-            return f"(error: task_instruction references unknown columns {sorted(unknown)}; available: {var_cols})"
+        if content_col in jinja2.meta.find_undeclared_variables(parsed):
+            return (
+                f"(error: task_instruction may not reference {content_col!r}; "
+                f"it is the document text records are extracted from, not interpolated into the instruction)"
+            )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
         # output_columns must already exist on the target table.
