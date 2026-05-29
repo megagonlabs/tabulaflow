@@ -7,12 +7,14 @@ from mintq.toolhub.get_column_description import GetColumnDescriptionTool
 from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from mintq.toolhub.get_schema import GetSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
+from mintq.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from mintq.toolhub.render_chart import RenderPlotextChartTool
 from mintq.toolhub.run_dbt import RunDbtTool
 from mintq.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
 from mintq.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
 from mintq.toolhub.registry_get_schema import RegistryGetSchemaTool
 from mintq.toolhub.registry_get_table_schema import RegistryGetTableSchemaTool
+from mintq.toolhub.registry_extract_rows_from_documents import RegistryExtractRowsFromDocumentsTool
 from mintq.toolhub.query_history import QueryHistory, QueryRecord
 from mintq.toolhub.registry_run_query import RegistryRunQueryTool
 from mintq.toolhub.registry_run_subagent_for_each_row import RegistryRunSubagentForEachRowTool
@@ -37,6 +39,8 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "GetSchemaTool",
     "GetTableSchemaTool",
+    "ExtractRowsFromDocumentsTool",
+    "RegistryExtractRowsFromDocumentsTool",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",

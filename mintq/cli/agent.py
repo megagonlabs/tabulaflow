@@ -36,6 +36,7 @@ if TYPE_CHECKING:
         RegistryGetColumnJsonSchemaTool,
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
+        RegistryExtractRowsFromDocumentsTool,
         RegistryRunQueryTool,
         RegistryRunSubagentForEachRowTool,
         RegistryTransferRecordTool,
@@ -261,6 +262,7 @@ class Toolset:
     get_table_schema: RegistryGetTableSchemaTool
     transfer_record: RegistryTransferRecordTool
     run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
+    extract_rows_from_documents: RegistryExtractRowsFromDocumentsTool
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
 
@@ -286,6 +288,7 @@ class ChatAgent:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub import (
             QueryHistory,
+            RegistryExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
@@ -317,6 +320,13 @@ class ChatAgent:
                 ),
                 store_metadata=True,
                 trajectory_log_dir=self.trajectory_log_dir / "subagents",
+            ),
+            extract_rows_from_documents=RegistryExtractRowsFromDocumentsTool(
+                self.registry,
+                model_settings=OpenAIChatModelSettings(
+                    openai_service_tier="priority",
+                    openai_reasoning_effort="medium",
+                ),
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
@@ -390,6 +400,7 @@ class ChatAgent:
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.transfer_record.as_pydantic_ai_tool(),
                 self._tools.run_subagent_for_each_row.as_pydantic_ai_tool(),
+                self._tools.extract_rows_from_documents.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
@@ -425,6 +436,7 @@ class ChatAgent:
 
         progress.start()
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
+        self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: progress.tool_progress(c, t)
 
         assert self._pydantic_ai_agent is not None
 
