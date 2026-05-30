@@ -15,6 +15,7 @@ from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
+from mintq.toolhub.utils import qualified_table as _qualified
 from mintq.toolhub.entity_extractor import DEFAULT_CHUNK_CHARS, DEFAULT_CHUNK_OVERLAP_CHARS, EntityExtractor
 
 logger = logging.getLogger(__name__)
@@ -74,6 +75,7 @@ class ExtractRowsFromDocumentsTool:
 
     async def __call__(
         self,
+        schema_name: str | None,
         table_name: str,
         *,
         task_query: str,
@@ -104,9 +106,10 @@ class ExtractRowsFromDocumentsTool:
         run a dedicated dedup step afterward if you need it.
 
         Args:
-            table_name: Existing target table to append rows into. May be
-                schema-qualified (e.g. ``schema.table``). All ``output_columns``
-                must already exist on it; other columns are left NULL/default.
+            schema_name: Schema containing ``table_name`` (``None`` if unqualified).
+            table_name: Existing target table to append rows into. All
+                ``output_columns`` must already exist on it; other columns are
+                left NULL/default.
             task_query: SELECT producing one row per source document. Must project
                 the document text as a column named ``content`` (alias it if needed,
                 e.g. ``SELECT body AS content, url FROM ...``); any other columns are
@@ -159,18 +162,19 @@ class ExtractRowsFromDocumentsTool:
         task_template = _JINJA_ENV.from_string(task_instruction)
 
         # output_columns must already exist on the target table.
-        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {table_name} LIMIT 0")
+        qualified_target = _qualified(schema_name, table_name)
+        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
                 table_columns_result.error.message
                 if table_columns_result.error is not None
                 else "no dataframe returned"
             )
-            return f"(error: failed to inspect target table {table_name!r}: {detail})"
+            return f"(error: failed to inspect target table {qualified_target}: {detail})"
         table_columns = [str(c) for c in table_columns_result.df.columns]
         missing = [c for c in output_columns if c not in table_columns]
         if missing:
-            return f"(error: output_columns not found in table {table_name!r}: {missing})"
+            return f"(error: output_columns not found in table {qualified_target}: {missing})"
 
         try:
             extractor = EntityExtractor(
@@ -224,22 +228,17 @@ class ExtractRowsFromDocumentsTool:
         written = 0
         if all_entities:
             out_df = pd.DataFrame(all_entities, columns=output_columns)
-            schema_name: str | None
-            if "." in table_name:
-                schema_name, _, target_table = table_name.rpartition(".")
-            else:
-                schema_name, target_table = None, table_name
             try:
                 written = await self.db_connector.write_dataframe_async(
                     df=out_df,
-                    table_name=target_table,
+                    table_name=table_name,
                     schema_name=schema_name,
                     mode="append",
                 )
             except ValueError as e:
-                return f"(error: failed to append extracted rows to {table_name!r}: {e})"
+                return f"(error: failed to append extracted rows to {qualified_target}: {e})"
 
-        summary = f"Extracted {written} entities from {total_docs} documents; appended to {table_name}."
+        summary = f"Extracted {written} entities from {total_docs} documents; appended to {qualified_target}."
         if errors:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in errors[:5])
         return summary

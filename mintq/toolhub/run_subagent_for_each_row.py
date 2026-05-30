@@ -20,6 +20,7 @@ from pydantic_ai.settings import ModelSettings
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.schema import SQLDialect, Trajectory
+from mintq.toolhub.utils import qualified_table as _qualified, sa_table as _sa_table
 from mintq.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
@@ -168,6 +169,7 @@ class RunSubagentForEachRowTool:
 
     async def __call__(
         self,
+        schema_name: str | None,
         table_name: str,
         *,
         task_query: str,
@@ -228,9 +230,9 @@ class RunSubagentForEachRowTool:
           produces the final result.
 
         Args:
-            table_name: Target table name. Can be qualified (e.g. schema.table).
-                Used as the write-back target; per-row updates locate rows here
-                via ``key_columns``.
+            schema_name: Schema containing ``table_name`` (``None`` if unqualified).
+            table_name: Target table name. Used as the write-back target; per-row
+                updates locate rows here via ``key_columns``.
             task_query: SELECT query producing one row per subagent task. Free-form:
                 may join tables, compute new columns, etc. The result columns
                 become the variables available to ``task_instruction``. Must
@@ -306,18 +308,19 @@ class RunSubagentForEachRowTool:
         # Look up the target table's actual columns to validate output_columns and
         # decide whether to ALTER for _subagent_* columns. task_query may project
         # arbitrary computed/joined columns that don't correspond to table_name.
-        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {table_name} LIMIT 0")
+        qualified_target = _qualified(schema_name, table_name)
+        table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
                 table_columns_result.error.message
                 if table_columns_result.error is not None
                 else "no dataframe returned"
             )
-            return f"(error: failed to inspect target table {table_name!r}: {detail})"
+            return f"(error: failed to inspect target table {qualified_target}: {detail})"
         table_columns = [str(c) for c in table_columns_result.df.columns]
 
         if output_col not in table_columns:
-            return f"(error: output_columns not found in table {table_name!r}: [{output_col!r}])"
+            return f"(error: output_columns not found in table {qualified_target}: [{output_col!r}])"
 
         # Compile the task instruction as a Jinja2 template.
         try:
@@ -332,7 +335,7 @@ class RunSubagentForEachRowTool:
             for col in _INTERNAL_COLUMNS:
                 if col not in table_columns:
                     dtype = trajectory_dtype if col == _COL_TRAJECTORY else "TEXT"
-                    await self.db_connector.run_query_async(f"ALTER TABLE {table_name} ADD COLUMN {col} {dtype}")
+                    await self.db_connector.run_query_async(f"ALTER TABLE {qualified_target} ADD COLUMN {col} {dtype}")
 
         # If nesting is enabled, construct one fresh tool instance to share across
         # all rows. Fresh (not ``self``) so its ``on_row_complete`` stays None and
@@ -376,7 +379,7 @@ class RunSubagentForEachRowTool:
         sa_col_names: set[str] = set(key_columns) | {output_col}
         if self.store_metadata:
             sa_col_names.update(_INTERNAL_COLUMNS)
-        sa_table = sqlalchemy.table(table_name, *[sqlalchemy.column(c) for c in sa_col_names])
+        sa_table = _sa_table(schema_name, table_name, *sa_col_names)
 
         async def _save_row_metadata(
             key_payload: dict[str, object],
@@ -452,9 +455,7 @@ class RunSubagentForEachRowTool:
             if offload_enabled:
                 assert self.message_store is not None
                 subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
-                capabilities.append(
-                    MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES)
-                )
+                capabilities.append(MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES))
 
             subagent = Agent(
                 model=self.subagent_llm,
@@ -524,13 +525,13 @@ class RunSubagentForEachRowTool:
         failed = len(error_messages)
         updated = total - failed
         summary = (
-            f"Processed {total} rows from {table_name}; "
+            f"Processed {total} rows from {qualified_target}; "
             f"subagent updates succeeded for {updated} rows, failed for {failed} rows."
         )
         if error_messages:
             summary += "\nSample errors:\n" + "\n".join(f"- {e}" for e in error_messages[:5])
         if self.store_metadata:
-            summary += f"\nMetadata stored in columns {_COL_EXCEPTION}, {_COL_TRAJECTORY} of {table_name}."
+            summary += f"\nMetadata stored in columns {_COL_EXCEPTION}, {_COL_TRAJECTORY} of {qualified_target}."
         return summary
 
     def as_pydantic_ai_tool(self) -> Tool:

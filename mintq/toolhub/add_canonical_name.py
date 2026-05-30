@@ -15,6 +15,7 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
+from mintq.toolhub.utils import qualified_table as _qualified, sa_table as _sa_table
 from mintq.toolhub.run_query import RunQueryTool
 
 logger = logging.getLogger(__name__)
@@ -125,19 +126,6 @@ def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[
     return components
 
 
-def _sa_table(name: str, *columns: str) -> sqlalchemy.TableClause:
-    """Build a SQLAlchemy table clause from a possibly schema-qualified name.
-
-    Splitting on a single ``.`` lets SQLAlchemy emit dialect-correct quoting via
-    its ``schema`` argument, rather than us hand-building ``"schema"."table"``.
-    """
-    sa_cols: list[sqlalchemy.ColumnClause[Any]] = [sqlalchemy.column(c) for c in columns]
-    if "." in name:
-        schema, _, tbl = name.rpartition(".")
-        return sqlalchemy.table(tbl, *sa_cols, schema=schema)
-    return sqlalchemy.table(name, *sa_cols)
-
-
 class AddCanonicalNameTool:
     """Add a canonical name column to a table — three modes via ``reference_table``.
 
@@ -188,11 +176,13 @@ class AddCanonicalNameTool:
 
     async def __call__(
         self,
+        schema_name: str | None,
         table_name: str,
         *,
         canonical_column: str,
         instruction: str,
         input_column: str,
+        reference_schema: str | None = None,
         reference_table: str | None = None,
         reference_column: str | None = None,
         merge_duplicates: bool = False,
@@ -212,22 +202,28 @@ class AddCanonicalNameTool:
 
         - **normalize_only** (``reference_table`` is ``None``) → independent per-value
           normalization.
-        - **dedup_and_normalize** (``reference_table = table_name``) → cluster variants
-          AND apply one consistent canonical per cluster.
-        - **resolve** (``reference_table`` = another table) → match each value against
+        - **dedup_and_normalize** (``(reference_schema, reference_table)`` equals
+          ``(schema_name, table_name)``) → cluster variants AND apply one consistent
+          canonical per cluster.
+        - **resolve** (``reference_table`` points elsewhere) → match each value against
           the reference; on a SAME match, the matched row's ``reference_column`` value
           is written. Unmatched values keep their own value.
 
         Args:
+            schema_name: Schema containing ``table_name``. Pass ``None`` for
+                unqualified tables.
             table_name: Table containing both ``input_column`` and ``canonical_column``.
             canonical_column: Existing column to populate. Set equal to ``input_column``
                 to canonicalize in place.
             instruction: How to canonicalize / what makes two values refer to the same
                 entity. Style guidance belongs here.
             input_column: The column being canonicalized.
+            reference_schema: Schema of ``reference_table`` (``None`` if unqualified).
+                Ignored when ``reference_table`` is ``None``.
             reference_table: See modes above.
-            reference_column: Column on ``reference_table`` whose value is written as
-                canonical on a SAME match. Required in resolve mode.
+            reference_column: Column on the reference table whose value is written as
+                canonical on a SAME match. Required when ``reference_table`` is set
+                and points to a different table.
             merge_duplicates: After populating, collapse rows sharing a canonical into
                 one via per-column coalesce (most-frequent non-null). **In place** —
                 originals are lost; copy first if needed. Only set when ``input_column``
@@ -239,7 +235,7 @@ class AddCanonicalNameTool:
         # Determine mode.
         if reference_table is None:
             mode: Mode = "normalize_only"
-        elif reference_table == table_name:
+        elif reference_schema == schema_name and reference_table == table_name:
             mode = "dedup_and_normalize"
         else:
             mode = "resolve"
@@ -247,12 +243,12 @@ class AddCanonicalNameTool:
                 return "(error: reference_column is required when reference_table points to another table)"
 
         # Shared setup: distinct source values + ensure canonical_column exists.
-        distinct_values, error = await self._fetch_distinct_values(table_name, input_column)
+        distinct_values, error = await self._fetch_distinct_values(schema_name, table_name, input_column)
         if error is not None:
             return error
         if not distinct_values:
-            return f"(no values to canonicalize in {table_name}.{input_column})"
-        error = await self._check_canonical_column(table_name, input_column, canonical_column)
+            return f"(no values to canonicalize in {_qualified(schema_name, table_name)}.{input_column})"
+        error = await self._check_canonical_column(schema_name, table_name, input_column, canonical_column)
         if error is not None:
             return error
 
@@ -262,34 +258,48 @@ class AddCanonicalNameTool:
             mapping, n_errors = await self._mode_normalize_only(distinct_values, instruction)
         elif mode == "dedup_and_normalize":
             mapping, n_errors, n_clusters = await self._mode_dedup_and_normalize(
-                distinct_values, instruction, table_name, input_column
+                distinct_values, instruction, schema_name, table_name, input_column
             )
         else:
             assert reference_table is not None and reference_column is not None  # validated above
             mapping, n_errors = await self._mode_resolve(
-                distinct_values, instruction, table_name, input_column, reference_table, reference_column
+                distinct_values,
+                instruction,
+                schema_name,
+                table_name,
+                input_column,
+                reference_schema,
+                reference_table,
+                reference_column,
             )
 
         # Apply value → canonical mapping in one UPDATE.
         update_error = await self._apply_mapping(
+            schema_name=schema_name,
             table_name=table_name,
             input_column=input_column,
             canonical_column=canonical_column,
             mapping=mapping,
         )
         if update_error is not None:
-            return f"(error: failed to write canonical_column {canonical_column} to {table_name}: {update_error})"
+            return (
+                f"(error: failed to write canonical_column {canonical_column} to "
+                f"{_qualified(schema_name, table_name)}: {update_error})"
+            )
 
         # Optional post-step: collapse rows sharing a canonical into one (in place).
         merged_row_counts: tuple[int, int] | None = None
         if merge_duplicates:
-            merged_row_counts, merge_error = await self._merge_duplicates_inplace(table_name, canonical_column)
+            merged_row_counts, merge_error = await self._merge_duplicates_inplace(
+                schema_name, table_name, canonical_column
+            )
             if merge_error is not None:
                 return merge_error
 
         # Summary.
+        qualified_target = _qualified(schema_name, table_name)
         summary = (
-            f"Canonicalized {len(distinct_values)} distinct values in {table_name}.{input_column} "
+            f"Canonicalized {len(distinct_values)} distinct values in {qualified_target}.{input_column} "
             f"→ {canonical_column} (mode={mode})"
         )
         if n_clusters is not None:
@@ -305,10 +315,13 @@ class AddCanonicalNameTool:
     # Shared infrastructure used by the per-mode methods below.
     # ------------------------------------------------------------------
 
-    async def _fetch_distinct_values(self, table_name: str, input_column: str) -> tuple[list[str], str | None]:
+    async def _fetch_distinct_values(
+        self, schema_name: str | None, table_name: str, input_column: str
+    ) -> tuple[list[str], str | None]:
         """Return distinct non-null values of ``input_column`` (and an optional error message)."""
         assert self._db_connector is not None
-        sa_input_table = _sa_table(table_name, input_column)
+        sa_input_table = _sa_table(schema_name, table_name, input_column)
+        qualified = _qualified(schema_name, table_name)
         distinct_res = await self._db_connector.run_query_async(
             sqlalchemy.select(sa_input_table.c[input_column])
             .distinct()
@@ -316,23 +329,26 @@ class AddCanonicalNameTool:
         )
         if distinct_res.error is not None or distinct_res.df is None:
             detail = distinct_res.error.message if distinct_res.error else "no dataframe"
-            return [], f"(error: failed to read distinct values from {table_name}.{input_column}: {detail})"
+            return [], f"(error: failed to read distinct values from {qualified}.{input_column}: {detail})"
         # Positional access; the result column name may be case-folded by some dialects.
         return [str(v) for v in distinct_res.df.iloc[:, 0].dropna().tolist()], None
 
-    async def _check_canonical_column(self, table_name: str, input_column: str, canonical_column: str) -> str | None:
-        """Verify ``canonical_column`` exists on ``table_name``; the tool does not create it."""
+    async def _check_canonical_column(
+        self, schema_name: str | None, table_name: str, input_column: str, canonical_column: str
+    ) -> str | None:
+        """Verify ``canonical_column`` exists on the target; the tool does not create it."""
         assert self._db_connector is not None
+        qualified = _qualified(schema_name, table_name)
         cols_res = await self._db_connector.run_query_async(
-            sqlalchemy.select(_sa_table(table_name, input_column)).limit(0)
+            sqlalchemy.select(_sa_table(schema_name, table_name, input_column)).limit(0)
         )
         if cols_res.error is not None or cols_res.df is None:
             detail = cols_res.error.message if cols_res.error else "no dataframe"
-            return f"(error: failed to inspect {table_name}: {detail})"
+            return f"(error: failed to inspect {qualified}: {detail})"
         if canonical_column not in [str(c) for c in cols_res.df.columns]:
             return (
-                f"(error: canonical_column {canonical_column!r} does not exist on {table_name}; "
-                f"create it first — e.g. ALTER TABLE {table_name} ADD COLUMN {canonical_column} TEXT)"
+                f"(error: canonical_column {canonical_column!r} does not exist on {qualified}; "
+                f"create it first — e.g. ALTER TABLE {qualified} ADD COLUMN {canonical_column} TEXT)"
             )
         return None
 
@@ -399,17 +415,19 @@ class AddCanonicalNameTool:
         self,
         distinct_values: list[str],
         instruction: str,
+        schema_name: str | None,
         table_name: str,
         input_column: str,
     ) -> tuple[dict[str, str], int, int]:
         """Per-value SAME-peer judgment → cluster on SAME edges → picker per cluster."""
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
+        qualified_target = _qualified(schema_name, table_name)
 
         async def task(value: str) -> _SelfPeersOutput:
             prompt = _SELF_PROMPT.render(
                 instruction=instruction,
-                table_name=table_name,
+                table_name=qualified_target,
                 input_column=input_column,
                 value=value,
             )
@@ -452,21 +470,25 @@ class AddCanonicalNameTool:
         self,
         distinct_values: list[str],
         instruction: str,
+        schema_name: str | None,
         table_name: str,
         input_column: str,
+        reference_schema: str | None,
         reference_table: str,
         reference_column: str,
     ) -> tuple[dict[str, str], int]:
-        """Resolve each value against ``reference_table``; write matched value or raw fallback."""
+        """Resolve each value against the reference table; write matched value or raw fallback."""
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
+        qualified_target = _qualified(schema_name, table_name)
+        qualified_reference = _qualified(reference_schema, reference_table)
 
         async def task(value: str) -> _OtherMatchOutput:
             prompt = _OTHER_PROMPT.render(
                 instruction=instruction,
-                table_name=table_name,
+                table_name=qualified_target,
                 input_column=input_column,
-                reference_table=reference_table,
+                reference_table=qualified_reference,
                 reference_column=reference_column,
                 value=value,
             )
@@ -510,6 +532,7 @@ class AddCanonicalNameTool:
     async def _apply_mapping(
         self,
         *,
+        schema_name: str | None,
         table_name: str,
         input_column: str,
         canonical_column: str,
@@ -536,8 +559,8 @@ class AddCanonicalNameTool:
             mapping_df = pd.DataFrame(list(mapping.items()), columns=["input_val", "canonical_val"])
             await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name, mode="replace")
 
-            target = _sa_table(table_name, input_column, canonical_column)
-            map_t = _sa_table(mapping_table_name, "input_val", "canonical_val")
+            target = _sa_table(schema_name, table_name, input_column, canonical_column)
+            map_t = _sa_table(None, mapping_table_name, "input_val", "canonical_val")
             stmt = (
                 sqlalchemy.update(target)
                 .values({target.c[canonical_column]: map_t.c.canonical_val})
@@ -548,7 +571,7 @@ class AddCanonicalNameTool:
                 logger.warning(
                     "UPDATE for canonical_column %s on %s failed: %s",
                     canonical_column,
-                    table_name,
+                    _qualified(schema_name, table_name),
                     result.error.message,
                 )
                 return result.error.message
@@ -563,7 +586,7 @@ class AddCanonicalNameTool:
                 logger.exception("Failed to drop mapping table %s", mapping_table_name)
 
     async def _merge_duplicates_inplace(
-        self, table_name: str, canonical_column: str
+        self, schema_name: str | None, table_name: str, canonical_column: str
     ) -> tuple[tuple[int, int] | None, str | None]:
         """Collapse rows sharing a canonical into one via per-column coalesce.
 
@@ -575,19 +598,20 @@ class AddCanonicalNameTool:
         import pandas as pd
 
         assert self._db_connector is not None
+        qualified = _qualified(schema_name, table_name)
 
         # Read the whole table.
-        target_sa = _sa_table(table_name)
+        target_sa = _sa_table(schema_name, table_name)
         select_stmt = sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa)
         res = await self._db_connector.run_query_async(select_stmt)
         if res.error is not None or res.df is None:
             detail = res.error.message if res.error else "no dataframe"
-            return None, f"(error: failed to read {table_name} for merge_duplicates: {detail})"
+            return None, f"(error: failed to read {qualified} for merge_duplicates: {detail})"
         df = res.df
         if df.empty:
             return (0, 0), None
         if canonical_column not in df.columns:
-            return None, f"(error: canonical_column {canonical_column!r} not found in {table_name})"
+            return None, f"(error: canonical_column {canonical_column!r} not found in {qualified})"
 
         rows_before = len(df)
         other_cols = [c for c in df.columns if c != canonical_column]
@@ -604,17 +628,13 @@ class AddCanonicalNameTool:
             merged = df.groupby(canonical_column, as_index=False, dropna=False).agg({c: _coalesce for c in other_cols})
         rows_after = len(merged)
 
-        # Write back in place — split schema-qualified name for write_dataframe_async.
-        if "." in table_name:
-            schema, _, tbl = table_name.rpartition(".")
-        else:
-            schema, tbl = None, table_name
+        # Write back in place — schema and table go to write_dataframe_async separately.
         try:
             await self._db_connector.write_dataframe_async(
-                df=merged, table_name=tbl, schema_name=schema, mode="replace"
+                df=merged, table_name=table_name, schema_name=schema_name, mode="replace"
             )
         except ValueError as e:
-            return None, f"(error: failed to write merged {table_name}: {e})"
+            return None, f"(error: failed to write merged {qualified}: {e})"
         return (rows_before, rows_after), None
 
     def as_pydantic_ai_tool(self) -> Tool:

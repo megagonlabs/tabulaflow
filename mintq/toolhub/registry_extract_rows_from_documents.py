@@ -66,6 +66,7 @@ class RegistryExtractRowsFromDocumentsTool:
     async def __call__(
         self,
         db_alias: str,
+        schema_name: str | None,
         table_name: str,
         *,
         task_query: str,
@@ -98,9 +99,10 @@ class RegistryExtractRowsFromDocumentsTool:
         Args:
             db_alias: Alias of the database holding ``task_query``'s sources and
                 receiving the appended rows.
-            table_name: Existing target table to append rows into. May be
-                schema-qualified (e.g. ``schema.table``). All ``output_columns``
-                must already exist on it; other columns are left NULL/default.
+            schema_name: Schema containing ``table_name`` (``None`` if unqualified).
+            table_name: Existing target table to append rows into. All
+                ``output_columns`` must already exist on it; other columns are
+                left NULL/default.
             task_query: SELECT producing one row per source document. Must project
                 the document text as a column named ``content`` (alias it if needed,
                 e.g. ``SELECT body AS content, url FROM ...``); any other columns are
@@ -123,6 +125,7 @@ class RegistryExtractRowsFromDocumentsTool:
         except TypeError as e:
             return f"(error: {e})"
         return await tool(
+            schema_name,
             table_name,
             task_query=task_query,
             task_instruction=task_instruction,

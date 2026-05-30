@@ -86,6 +86,7 @@ class RegistryRunSubagentForEachRowTool:
     async def __call__(
         self,
         db_alias: str,
+        schema_name: str | None,
         table_name: str,
         *,
         task_query: str,
@@ -147,9 +148,9 @@ class RegistryRunSubagentForEachRowTool:
 
         Args:
             db_alias: Alias of the target database to update.
-            table_name: Target table name. Can be qualified (e.g. schema.table).
-                Used as the write-back target; per-row updates locate rows here
-                via ``key_columns``.
+            schema_name: Schema containing ``table_name`` (``None`` if unqualified).
+            table_name: Target table name. Used as the write-back target; per-row
+                updates locate rows here via ``key_columns``.
             task_query: SELECT query producing one row per subagent task. Free-form:
                 may join tables, compute new columns, etc. The result columns
                 become the variables available to ``task_instruction``. Must
@@ -212,6 +213,7 @@ class RegistryRunSubagentForEachRowTool:
         except TypeError as e:
             return f"(error: {e})"
         return await tool(
+            schema_name,
             table_name,
             task_query=task_query,
             task_instruction=task_instruction,
