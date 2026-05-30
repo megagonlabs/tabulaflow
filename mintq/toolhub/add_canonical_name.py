@@ -6,6 +6,7 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
@@ -15,6 +16,7 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
+from mintq.schema import Trajectory
 from mintq.toolhub.utils import qualified_table, sa_table
 from mintq.toolhub.run_query import RunQueryTool
 
@@ -38,7 +40,7 @@ class _DisambiguationOutput(BaseModel):
     )
 
 
-class _SelfPeersOutput(BaseModel):
+class _ResolvePeersOutput(BaseModel):
     """LLM output per value: other values judged SAME entity."""
 
     same_as: list[str] = Field(
@@ -82,7 +84,7 @@ Values:
 
 # The three-valued rule is what keeps the algorithm from silently merging under
 # insufficient evidence — only SAME commits; UNDECIDED and DIFFERENT do not.
-_SELF_PROMPT = _JINJA_ENV.from_string("""\
+_RESOLVE_PROMPT = _JINJA_ENV.from_string("""\
 Find values from {{ table_name }}.{{ input_column }} that refer to the SAME real-world entity
 as {{ value }}.
 
@@ -155,6 +157,7 @@ class AddCanonicalNameTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
+        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -163,12 +166,17 @@ class AddCanonicalNameTool:
             model_settings: Optional pydantic-ai settings passed to subagent runs.
             max_concurrency: Maximum number of per-value subagents running
                 concurrently across one call.
+            trajectory_log_dir: If set, each subagent trajectory is persisted as
+                ``<dir>/<call_id>/<role>-<idx>.md`` where ``role`` is one of
+                ``resolve``, ``picker``, or ``disambiguate``. Useful for
+                debugging clustering and disambiguation decisions.
         """
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
+        self.trajectory_log_dir = trajectory_log_dir
         self._db_connector: SQLConnector | None = None
         self.on_progress: Callable[[int, int], None] | None = None
 
@@ -232,8 +240,19 @@ class AddCanonicalNameTool:
         if error is not None:
             return error
 
+        # Per-call trajectory directory. Best-effort: log failures and disable.
+        call_id = uuid.uuid4().hex[:12]
+        traj_dir: Path | None = None
+        if self.trajectory_log_dir is not None:
+            traj_dir = self.trajectory_log_dir / call_id
+            try:
+                traj_dir.mkdir(parents=True, exist_ok=True)
+            except OSError:
+                logger.exception("Failed to create trajectory dir: %s", traj_dir)
+                traj_dir = None
+
         mapping, n_errors, n_clusters = await self._cluster_and_canonicalize(
-            distinct_values, instruction, schema_name, table_name, input_column
+            distinct_values, instruction, schema_name, table_name, input_column, traj_dir
         )
 
         # Apply value → canonical mapping in one UPDATE.
@@ -270,6 +289,8 @@ class AddCanonicalNameTool:
             summary += f"; merged {before} rows → {after} in place"
         if n_errors:
             summary += f"; {n_errors} subagent failures (treated as singletons)"
+        if traj_dir is not None:
+            summary += f"; trajectories at {traj_dir}"
         return summary + "."
 
     # ------------------------------------------------------------------
@@ -355,6 +376,16 @@ class AddCanonicalNameTool:
         results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
         return results, n_errors
 
+    def _write_trajectory(self, traj_dir: Path | None, name: str, result: Any) -> None:
+        """Persist one subagent's pydantic-ai trajectory as ``<traj_dir>/<name>.md``."""
+        if traj_dir is None:
+            return
+        try:
+            traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
+            (traj_dir / f"{name}.md").write_text(traj.to_markdown(), encoding="utf-8")
+        except Exception:
+            logger.exception("Failed to write trajectory %s/%s.md", traj_dir, name)
+
     async def _cluster_and_canonicalize(
         self,
         distinct_values: list[str],
@@ -362,14 +393,16 @@ class AddCanonicalNameTool:
         schema_name: str | None,
         table_name: str,
         input_column: str,
+        traj_dir: Path | None,
     ) -> tuple[dict[str, str], int, int]:
-        """Per-value SAME-peer judgment → cluster on SAME edges → picker per cluster."""
+        """Per-value resolve-peers judgment → cluster on SAME edges → picker per cluster."""
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
         qualified_target = qualified_table(schema_name, table_name)
+        value_to_idx = {v: i for i, v in enumerate(distinct_values)}
 
-        async def task(value: str) -> _SelfPeersOutput:
-            prompt = _SELF_PROMPT.render(
+        async def task(value: str) -> _ResolvePeersOutput:
+            prompt = _RESOLVE_PROMPT.render(
                 instruction=instruction,
                 table_name=qualified_target,
                 input_column=input_column,
@@ -378,16 +411,17 @@ class AddCanonicalNameTool:
             subagent = Agent(
                 model=self.subagent_llm,
                 tools=[run_query_pa_tool],
-                output_type=_SelfPeersOutput,
+                output_type=_ResolvePeersOutput,
                 model_settings=self.model_settings,
             )
             result = await subagent.run(prompt)
+            self._write_trajectory(traj_dir, f"resolve-{value_to_idx[value]:04d}", result)
             return result.output
 
         results, n_errors = await self._run_per_value(
             distinct_values,
             task,
-            on_failure=lambda v: _SelfPeersOutput(same_as=[]),
+            on_failure=lambda v: _ResolvePeersOutput(same_as=[]),
         )
 
         # Build symmetric SAME-edge graph; find connected components.
@@ -403,11 +437,19 @@ class AddCanonicalNameTool:
         clusters = _connected_components(distinct_values, edges)
 
         # One picker call per cluster — shared canonical across all members.
-        cluster_canonicals = await asyncio.gather(*(self._pick_canonical(cluster, instruction) for cluster in clusters))
+        cluster_canonicals = await asyncio.gather(
+            *(self._pick_canonical(cluster, instruction, traj_dir, i) for i, cluster in enumerate(clusters))
+        )
 
         # Resolve cross-cluster collisions so each cluster gets a unique canonical.
         cluster_canonicals = await self._resolve_collisions(
-            clusters, cluster_canonicals, instruction, qualified_target, input_column, run_query_pa_tool
+            clusters,
+            cluster_canonicals,
+            instruction,
+            qualified_target,
+            input_column,
+            run_query_pa_tool,
+            traj_dir,
         )
 
         mapping: dict[str, str] = {}
@@ -424,6 +466,7 @@ class AddCanonicalNameTool:
         qualified_table_name: str,
         input_column: str,
         run_query_pa_tool: Tool,
+        traj_dir: Path | None,
     ) -> list[str]:
         """Ensure each cluster gets a globally unique canonical name.
 
@@ -447,7 +490,7 @@ class AddCanonicalNameTool:
             collisions.append((canonical, idxs))
 
         # Phase 2: fire all qualifying LLM disambiguations in parallel.
-        async def _maybe_disambiguate(canonical: str, idxs: list[int]) -> list[str] | None:
+        async def _maybe_disambiguate(idx: int, canonical: str, idxs: list[int]) -> list[str] | None:
             if len(idxs) >= _DISAMBIGUATE_MAX_CLUSTERS:
                 return None
             return await self._disambiguate_via_llm(
@@ -457,9 +500,11 @@ class AddCanonicalNameTool:
                 qualified_table_name=qualified_table_name,
                 input_column=input_column,
                 run_query_pa_tool=run_query_pa_tool,
+                traj_dir=traj_dir,
+                collision_idx=idx,
             )
 
-        llm_results = await asyncio.gather(*(_maybe_disambiguate(c, idxs) for c, idxs in collisions))
+        llm_results = await asyncio.gather(*(_maybe_disambiguate(i, c, idxs) for i, (c, idxs) in enumerate(collisions)))
 
         # Phase 3: apply sequentially. Largest collision groups go first so the
         # bloc with the strongest joint claim wins contested LLM-disambiguated names.
@@ -501,6 +546,8 @@ class AddCanonicalNameTool:
         qualified_table_name: str,
         input_column: str,
         run_query_pa_tool: Tool,
+        traj_dir: Path | None,
+        collision_idx: int,
     ) -> list[str] | None:
         """One LLM call to produce a distinct canonical per colliding group.
 
@@ -530,6 +577,7 @@ class AddCanonicalNameTool:
         except Exception:
             logger.exception("disambiguation failed for collided canonical %r", collided)
             return None
+        self._write_trajectory(traj_dir, f"disambiguate-{collision_idx:04d}", result)
         names = result.output.names
         if len(names) != len(member_groups):
             logger.warning(
@@ -540,7 +588,13 @@ class AddCanonicalNameTool:
             return None
         return names
 
-    async def _pick_canonical(self, cluster: set[str], instruction: str) -> str:
+    async def _pick_canonical(
+        self,
+        cluster: set[str],
+        instruction: str,
+        traj_dir: Path | None = None,
+        cluster_idx: int = 0,
+    ) -> str:
         """One LLM call per SAME-cluster to pick or generate the canonical name."""
         # Sort by length desc so a cap-truncation keeps the richest surface forms,
         # and the fallback (``members[0]``) is the longest member.
@@ -555,6 +609,7 @@ class AddCanonicalNameTool:
         )
         try:
             result = await subagent.run(prompt)
+            self._write_trajectory(traj_dir, f"picker-{cluster_idx:04d}", result)
             return result.output.canonical
         except Exception:
             logger.exception("picker failed for cluster %r", members)
