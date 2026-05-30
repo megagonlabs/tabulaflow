@@ -370,8 +370,9 @@ class AddCanonicalNameTool:
         """Verify ``canonical_column`` exists on the target; the tool does not create it."""
         assert self._db_connector is not None
         qualified = qualified_table(schema_name, table_name)
+        target_sa = sa_table(schema_name, table_name)
         cols_res = await self._db_connector.run_query_async(
-            sqlalchemy.select(sa_table(schema_name, table_name, input_column)).limit(0)
+            sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa).limit(0)
         )
         if cols_res.error is not None or cols_res.df is None:
             detail = cols_res.error.message if cols_res.error else "no dataframe"
