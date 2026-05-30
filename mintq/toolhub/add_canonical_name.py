@@ -232,7 +232,8 @@ class AddCanonicalNameTool:
             table_name: Table to add the canonical column to. The column is
                 appended if it does not already exist.
             canonical_column: Name of the new column to populate. Created with type
-                TEXT if missing.
+                TEXT if missing. Set equal to ``input_column`` to canonicalize in
+                place.
             instruction: Natural-language description of how to canonicalize and
                 what makes two values refer to the same entity. Style guidance
                 (e.g. "always use the official institution name; expand
