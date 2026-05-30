@@ -69,6 +69,16 @@ _PICKER_MAX_MEMBERS = 100
 # non-instruction-following names — caller must enrich input_column or instruction.
 _MAX_DISAMBIGUATE_RETRIES = 3
 
+# Cap on how many clusters one disambiguation call handles. Larger collision groups
+# are split into sequential batches; each batch's outputs are added to ``seen``
+# before the next, so cross-batch collisions are caught by the validator.
+_DISAMBIGUATE_BATCH_SIZE = 20
+
+# Cap on how many already-claimed canonicals are rendered into the prompt. The
+# validator still enforces the full ``seen`` set; this only bounds prompt size
+# when ``seen`` grows large (many singleton non-colliding clusters).
+_DISAMBIGUATE_SEEN_SHOWN = 200
+
 # The canonical picker — one or many cluster members, one canonical name out.
 _CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
 Produce the canonical name for the value(s) below per the instruction.
@@ -113,6 +123,22 @@ Instruction: {{ instruction }}
 Use `run_query` to consult {{ table_name }} for distinguishing attributes (other columns of
 {{ table_name }}, joined as needed) if the member strings alone do not uniquely characterize each
 group. The members above are values from {{ table_name }}.{{ input_column }}.""")
+
+
+def _relevant_seen(collided: str, seen: set[str], n: int) -> list[str]:
+    """Return up to ``n`` names from ``seen``, ranked by token overlap with ``collided``.
+
+    Score = number of lowercase whitespace-tokens shared with ``collided``; ties broken
+    alphabetically. Used to bound the disambiguator prompt size when ``seen`` is
+    large — the validator still enforces the full ``seen`` set, so this is a
+    prompt-size heuristic, not a correctness constraint.
+    """
+    if len(seen) <= n:
+        return sorted(seen)
+    tokens = set(collided.lower().split())
+    scored = [(-len(tokens & set(s.lower().split())), s) for s in seen]
+    scored.sort()
+    return [s for _, s in scored[:n]]
 
 
 def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[set[str]]:
@@ -486,8 +512,10 @@ class AddCanonicalNameTool:
         Each colliding group is sent to ``_disambiguate_via_llm``, which configures
         the agent with ``retries=_MAX_DISAMBIGUATE_RETRIES`` and an output validator
         that raises :class:`ModelRetry` on length/duplicate/seen violations. Groups
-        are processed sequentially in size-descending order so each call sees the
-        latest ``seen``.
+        with more than ``_DISAMBIGUATE_BATCH_SIZE`` clusters are split into
+        sequential batches (each batch's results join ``seen`` before the next runs).
+        Groups are processed in size-descending order so each call sees the latest
+        ``seen``.
 
         Returns ``(resolved_canonicals, error_message)``. On non-None
         ``error_message`` the caller MUST NOT apply the mapping.
@@ -509,30 +537,36 @@ class AddCanonicalNameTool:
         resolved = list(cluster_canonicals)
         seen: set[str] = {c for c, idxs in groups.items() if len(idxs) == 1}
 
-        # Phase 2: sequentially disambiguate each collision group.
+        # Phase 2: sequentially disambiguate each collision group, batching when large.
         for collision_idx, (canonical, idxs) in enumerate(collisions):
-            member_groups = [sorted(clusters[i], key=len, reverse=True) for i in idxs]
-            new_names = await self._disambiguate_via_llm(
-                collided=canonical,
-                member_groups=member_groups,
-                instruction=instruction,
-                qualified_table_name=qualified_table_name,
-                input_column=input_column,
-                run_query_pa_tool=run_query_pa_tool,
-                seen=seen,
-                traj_dir=traj_dir,
-                collision_idx=collision_idx,
-            )
-            if new_names is None:
-                return resolved, (
-                    f"(error: could not produce distinct canonical names for cluster group "
-                    f"{canonical!r} after {_MAX_DISAMBIGUATE_RETRIES} retries. Consider "
-                    f"providing a more discriminating input_column or richer instruction "
-                    f"context so the LLM can distinguish the {len(idxs)} colliding clusters.)"
+            n_batches = (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE
+            for batch_idx in range(n_batches):
+                start = batch_idx * _DISAMBIGUATE_BATCH_SIZE
+                batch_idxs = idxs[start : start + _DISAMBIGUATE_BATCH_SIZE]
+                member_groups = [sorted(clusters[i], key=len, reverse=True) for i in batch_idxs]
+                new_names = await self._disambiguate_via_llm(
+                    collided=canonical,
+                    member_groups=member_groups,
+                    instruction=instruction,
+                    qualified_table_name=qualified_table_name,
+                    input_column=input_column,
+                    run_query_pa_tool=run_query_pa_tool,
+                    seen=seen,
+                    traj_dir=traj_dir,
+                    collision_idx=collision_idx,
+                    batch_idx=batch_idx if n_batches > 1 else None,
                 )
-            for cluster_idx, name in zip(idxs, new_names):
-                resolved[cluster_idx] = name
-                seen.add(name)
+                if new_names is None:
+                    return resolved, (
+                        f"(error: could not produce distinct canonical names for cluster group "
+                        f"{canonical!r} (batch {batch_idx + 1}/{n_batches}) after "
+                        f"{_MAX_DISAMBIGUATE_RETRIES} retries. Consider providing a more "
+                        f"discriminating input_column or richer instruction context so the LLM "
+                        f"can distinguish the {len(idxs)} colliding clusters.)"
+                    )
+                for cluster_idx, name in zip(batch_idxs, new_names):
+                    resolved[cluster_idx] = name
+                    seen.add(name)
 
         return resolved, None
 
@@ -548,6 +582,7 @@ class AddCanonicalNameTool:
         seen: set[str],
         traj_dir: Path | None,
         collision_idx: int,
+        batch_idx: int | None = None,
     ) -> list[str] | None:
         """Produce a distinct canonical per colliding group, with native retry-on-validation.
 
@@ -568,7 +603,7 @@ class AddCanonicalNameTool:
             groups=member_groups,
             table_name=qualified_table_name,
             input_column=input_column,
-            seen_list=sorted(seen),
+            seen_list=_relevant_seen(collided, seen, _DISAMBIGUATE_SEEN_SHOWN),
         )
         subagent: Agent[None, _DisambiguationOutput] = Agent(
             model=self.subagent_llm,
@@ -616,7 +651,12 @@ class AddCanonicalNameTool:
         except Exception:
             logger.exception("disambiguation failed for collided canonical %r", collided)
             return None
-        self._write_trajectory(traj_dir, f"disambiguate-{collision_idx:04d}", result)
+        traj_name = (
+            f"disambiguate-{collision_idx:04d}"
+            if batch_idx is None
+            else f"disambiguate-{collision_idx:04d}-batch-{batch_idx:02d}"
+        )
+        self._write_trajectory(traj_dir, traj_name, result)
         return result.output.names
 
     async def _pick_canonical(
