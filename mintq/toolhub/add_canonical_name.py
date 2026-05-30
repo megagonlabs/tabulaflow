@@ -197,69 +197,41 @@ class AddCanonicalNameTool:
         reference_column: str | None = None,
         merge_duplicates: bool = False,
     ) -> str:
-        """Add ``canonical_column`` to ``table_name`` with consistent canonical values.
+        """Populate ``canonical_column`` with consistent canonical values per ``instruction``.
 
-        Use this tool to standardize a column whose values are noisy variants of the
-        same underlying entities — product names, school names, brand names, person
-        names. ``input_column`` can identify the row's own entity (a ``products`` table's
-        ``name``) or a foreign attribute referencing an external entity (a ``students``
-        table's ``school``); in the latter case the row entity (the student) is
-        unaffected and only the column being pointed at gets canonicalized.
+        Operates on ``SELECT DISTINCT input_column`` — rows sharing an ``input_column``
+        value always receive the same canonical. If two distinct entities can share
+        that value (e.g. two ``"John Smith"`` rows), pre-derive a discriminating column
+        and pass *that* as ``input_column``.
 
-        Behavior is selected by ``reference_table``:
+        ``input_column`` can be the row's own identifier or a foreign attribute (e.g.
+        ``"school"`` on a ``students`` table); in the latter case only the named column
+        gets canonicalized, the row entity is untouched.
 
-        - **normalize_only** (``reference_table`` is ``None``) → normalize each
-          distinct value per ``instruction`` (lowercasing, expanding abbreviations,
-          stripping packaging/unit suffixes). Use when the noise is purely formatting.
-        - **dedup_and_normalize** (``reference_table = table_name``) → cluster
-          variants within the table AND apply one consistent canonical name per
-          cluster. Use when the column has multiple surface forms of the same
-          entities.
-        - **resolve** (``reference_table`` = another table) → resolve each value
-          into the reference table's vocabulary. The reference table is treated as
-          a clean catalog; on a confident match, the matched row's
-          ``reference_column`` value is written. Use for semantic joins (n:1) and
-          for canonicalizing against an authoritative source.
+        Mode is selected by ``reference_table``:
 
-        **Implicit grouping by ``input_column``.** The tool operates on
-        ``SELECT DISTINCT input_column``, so rows that share an exact ``input_column``
-        value are automatically treated as the same entity and always receive the same
-        canonical, regardless of differences in other columns. If two genuinely distinct
-        entities can share an ``input_column`` value (e.g. two people both named
-        ``"John Smith"``), pre-derive a discriminating column and pass *that* as
-        ``input_column`` instead.
+        - **normalize_only** (``reference_table`` is ``None``) → independent per-value
+          normalization.
+        - **dedup_and_normalize** (``reference_table = table_name``) → cluster variants
+          AND apply one consistent canonical per cluster.
+        - **resolve** (``reference_table`` = another table) → match each value against
+          the reference; on a SAME match, the matched row's ``reference_column`` value
+          is written. Unmatched values keep their own value.
 
         Args:
-            table_name: Table containing both ``input_column`` and the
-                ``canonical_column`` to populate.
-            canonical_column: Existing column on ``table_name`` to populate. Must
-                already exist (e.g. ``ALTER TABLE t ADD COLUMN canon TEXT``
-                beforehand). Set equal to ``input_column`` to canonicalize in
-                place.
-            instruction: Natural-language description of how to canonicalize and
-                what makes two values refer to the same entity. Style guidance
-                (e.g. "always use the official institution name; expand
-                abbreviations") goes here.
-            input_column: The column whose values are being canonicalized. May be the
-                row's primary identifier or a foreign attribute (e.g. ``"school"`` on a
-                ``students`` table).
-            reference_table: ``None`` for normalize_only, the same table for
-                dedup_and_normalize, or another table for resolve. Default ``None``.
-            reference_column: The reference table column whose value gets written
-                as canonical when a match is found. **Required** in resolve mode
-                (e.g. ``reference_column="school_id"`` to write a key, or
-                ``reference_column="school"`` when matching on the same column
-                name). Ignored in normalize_only / dedup_and_normalize modes.
-            merge_duplicates: When ``True``, after the canonical column is written,
-                collapse rows sharing a canonical value into one row via per-column
-                coalesce (most-frequent non-null, tie → first). The merge is
-                **in place** — original rows are not preserved; copy ``table_name``
-                first if you need them. **Only set this when ``input_column``
-                identifies the row's own entity** (e.g. a products table's
-                ``name``); leaving it ``False`` is the safe choice when
-                ``input_column`` is a foreign attribute (e.g. a students table's
-                ``school``), because in that case rows sharing a canonical aren't
-                actually duplicates and merging would lose data. Default ``False``.
+            table_name: Table containing both ``input_column`` and ``canonical_column``.
+            canonical_column: Existing column to populate. Set equal to ``input_column``
+                to canonicalize in place.
+            instruction: How to canonicalize / what makes two values refer to the same
+                entity. Style guidance belongs here.
+            input_column: The column being canonicalized.
+            reference_table: See modes above.
+            reference_column: Column on ``reference_table`` whose value is written as
+                canonical on a SAME match. Required in resolve mode.
+            merge_duplicates: After populating, collapse rows sharing a canonical into
+                one via per-column coalesce (most-frequent non-null). **In place** —
+                originals are lost; copy first if needed. Only set when ``input_column``
+                identifies the row's own entity; never on a foreign attribute.
         """
         if self._db_connector is None:
             return "(error: no workspace database connected)"
