@@ -398,6 +398,11 @@ class AddCanonicalNameTool:
         total = len(distinct_values)
         completed = 0
         n_errors = 0
+        # Emit a 0/total tick up front so the UI flips to this stage immediately,
+        # rather than sitting on the previous stage's last tick until the first
+        # task finishes (often a multi-second LLM call).
+        if self.on_progress is not None and total > 0:
+            self.on_progress(stage, 0, total)
 
         async def _wrap(value: str) -> Any:
             nonlocal completed, n_errors
@@ -492,6 +497,8 @@ class AddCanonicalNameTool:
         # One picker call per cluster — shared canonical across all members.
         n_clusters = len(clusters)
         picker_completed = 0
+        if self.on_progress is not None and n_clusters > 0:
+            self.on_progress("canonicalize", 0, n_clusters)
 
         async def _pick_with_progress(cluster: set[str], cluster_idx: int) -> str:
             nonlocal picker_completed
@@ -571,6 +578,8 @@ class AddCanonicalNameTool:
             (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE for _, idxs in collisions
         )
         batches_done = 0
+        if self.on_progress is not None and total_batches > 0:
+            self.on_progress("disambiguate", 0, total_batches)
         for collision_idx, (canonical, idxs) in enumerate(collisions):
             n_batches = (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE
             for batch_idx in range(n_batches):
