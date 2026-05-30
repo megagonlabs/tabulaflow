@@ -209,7 +209,10 @@ class AddCanonicalNameTool:
         self.max_concurrency = max_concurrency
         self.trajectory_log_dir = trajectory_log_dir
         self._db_connector: SQLConnector | None = None
-        self.on_progress: Callable[[int, int], None] | None = None
+        # Called as ``on_progress(stage, completed, total)`` where ``stage`` is one
+        # of ``"resolve"``, ``"picker"``, ``"disambiguate"``. Disambiguate ticks per
+        # batch and is only emitted when collisions exist.
+        self.on_progress: Callable[[str, int, int], None] | None = None
 
     def attach_connector(self, connector: SQLConnector) -> None:
         """Bind the workspace connector after construction (mirrors QueryHistory)."""
@@ -370,6 +373,7 @@ class AddCanonicalNameTool:
 
     async def _run_per_value(
         self,
+        stage: str,
         distinct_values: list[str],
         task: Callable[[str], Any],
         on_failure: Callable[[str], Any],
@@ -403,7 +407,7 @@ class AddCanonicalNameTool:
                 if not cancelled:
                     completed += 1
                     if self.on_progress is not None:
-                        self.on_progress(completed, total)
+                        self.on_progress(stage, completed, total)
                         await asyncio.sleep(0)
 
         results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
@@ -456,6 +460,7 @@ class AddCanonicalNameTool:
             return result.output
 
         results, n_errors = await self._run_per_value(
+            "resolve",
             distinct_values,
             task,
             on_failure=lambda v: _ResolvePeersOutput(same_as=[]),
@@ -474,8 +479,21 @@ class AddCanonicalNameTool:
         clusters = _connected_components(distinct_values, edges)
 
         # One picker call per cluster — shared canonical across all members.
+        n_clusters = len(clusters)
+        picker_completed = 0
+
+        async def _pick_with_progress(cluster: set[str], cluster_idx: int) -> str:
+            nonlocal picker_completed
+            try:
+                return await self._pick_canonical(cluster, instruction, traj_dir, cluster_idx)
+            finally:
+                picker_completed += 1
+                if self.on_progress is not None:
+                    self.on_progress("picker", picker_completed, n_clusters)
+                    await asyncio.sleep(0)
+
         cluster_canonicals = await asyncio.gather(
-            *(self._pick_canonical(cluster, instruction, traj_dir, i) for i, cluster in enumerate(clusters))
+            *(_pick_with_progress(cluster, i) for i, cluster in enumerate(clusters))
         )
 
         # Resolve cross-cluster collisions so each cluster gets a unique canonical.
@@ -538,6 +556,10 @@ class AddCanonicalNameTool:
         seen: set[str] = {c for c, idxs in groups.items() if len(idxs) == 1}
 
         # Phase 2: sequentially disambiguate each collision group, batching when large.
+        total_batches = sum(
+            (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE for _, idxs in collisions
+        )
+        batches_done = 0
         for collision_idx, (canonical, idxs) in enumerate(collisions):
             n_batches = (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE
             for batch_idx in range(n_batches):
@@ -567,6 +589,10 @@ class AddCanonicalNameTool:
                 for cluster_idx, name in zip(batch_idxs, new_names):
                     resolved[cluster_idx] = name
                     seen.add(name)
+                batches_done += 1
+                if self.on_progress is not None:
+                    self.on_progress("disambiguate", batches_done, total_batches)
+                    await asyncio.sleep(0)
 
         return resolved, None
 

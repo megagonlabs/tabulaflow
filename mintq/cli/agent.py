@@ -448,7 +448,7 @@ class ChatAgent:
         progress.start()
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
         self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: progress.tool_progress(c, t)
-        self._tools.add_canonical_name.on_progress = lambda c, t: progress.tool_progress(c, t)
+        self._tools.add_canonical_name.on_progress = lambda stage, c, t: progress.tool_progress(c, t)
 
         assert self._pydantic_ai_agent is not None
 
