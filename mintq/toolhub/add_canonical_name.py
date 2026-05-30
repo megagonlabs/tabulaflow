@@ -1,4 +1,4 @@
-"""Add a canonical name column to a table — normalize_only, dedup_and_normalize, or resolve."""
+"""Add a canonical name column to a table by clustering same-entity variants."""
 
 from __future__ import annotations
 
@@ -6,7 +6,7 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
-from typing import Any, ClassVar, Literal
+from typing import Any, ClassVar
 
 import jinja2
 import sqlalchemy
@@ -20,11 +20,9 @@ from mintq.toolhub.run_query import RunQueryTool
 
 logger = logging.getLogger(__name__)
 
-Mode = Literal["normalize_only", "dedup_and_normalize", "resolve"]
-
 
 class _CanonicalOutput(BaseModel):
-    """LLM output for normalize_only mode and the per-cluster canonical picker."""
+    """LLM output for the per-cluster canonical picker."""
 
     canonical: str = Field(description="The canonical name for the value(s) provided.")
 
@@ -41,24 +39,13 @@ class _DisambiguationOutput(BaseModel):
 
 
 class _SelfPeersOutput(BaseModel):
-    """LLM output for dedup_and_normalize mode: other values judged SAME entity."""
+    """LLM output per value: other values judged SAME entity."""
 
     same_as: list[str] = Field(
         description=(
             "Other values from the same column that refer to the SAME real-world entity. "
             "Only include values you are confident are SAME (not DIFFERENT, not just UNDECIDED). "
             "Exclude the input value itself."
-        )
-    )
-
-
-class _OtherMatchOutput(BaseModel):
-    """LLM output for resolve mode: the matched reference value or null."""
-
-    match: str | None = Field(
-        description=(
-            "The matched reference row's value to write as canonical, or null if no confident match. "
-            "Only commit to a match when the evidence supports SAME."
         )
     )
 
@@ -80,7 +67,7 @@ _PICKER_MAX_MEMBERS = 100
 # disambiguate with deterministic numeric suffixes instead.
 _DISAMBIGUATE_MAX_CLUSTERS = 50
 
-# Used for normalize_only mode (one value) and the canonical picker (one or many cluster members).
+# The canonical picker — one or many cluster members, one canonical name out.
 _CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
 Produce the canonical name for the value(s) below per the instruction.
 Multiple values mean they all refer to the same real-world entity; pick or generate one
@@ -107,21 +94,6 @@ UNDECIDED both as not included.
 
 Use `run_query` to search {{ table_name }}.{{ input_column }} for candidate matches; you may
 consult any other columns of {{ table_name }} to disambiguate. Do not include {{ value }} itself.""")
-
-_OTHER_PROMPT = _JINJA_ENV.from_string("""\
-Resolve {{ value }} from {{ table_name }}.{{ input_column }} against {{ reference_table }} —
-find the row in {{ reference_table }} that refers to the SAME real-world entity.
-
-Identity rule: {{ instruction }}
-
-Use a three-valued judgment: SAME (commit to the match), DIFFERENT (rule out), or UNDECIDED
-(insufficient evidence). Only return a matched value on a SAME judgment; otherwise return null.
-
-Use `run_query` to search {{ reference_table }} (consult any of its columns).
-On a SAME match, return the matched row's EXACT {{ reference_column }} value — copy the literal
-string from the {{ reference_column }} column (e.g. the full id, code, or URL as stored), not
-from any other column. If {{ reference_column }} looks opaque or unwieldy (a long URL, a hash,
-a numeric id), that is expected; return it verbatim anyway.""")
 
 _DISAMBIGUATE_PROMPT = _JINJA_ENV.from_string("""\
 The {{ groups | length }} groups below were each judged to refer to a DISTINCT real-world entity,
@@ -161,22 +133,18 @@ def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[
 
 
 class AddCanonicalNameTool:
-    """Add a canonical name column to a table — three modes via ``reference_table``.
+    """Cluster same-entity variants in ``input_column`` and write one canonical name per cluster.
 
-    - **normalize_only** (``reference_table`` is ``None``): per-value normalization with
-      no cross-row evidence. The LLM rewrites each distinct value per ``instruction``
-      (lowercasing, expanding abbreviations, stripping suffixes).
-    - **dedup_and_normalize** (``reference_table == table_name``): clusters variants
-      that refer to the same real-world entity AND applies one consistent canonical
-      name per cluster. Uses per-value SAME-judgment to build the cluster graph and
-      one picker call per cluster.
-    - **resolve** (``reference_table`` is another table): each distinct value is
-      matched against ``reference_table``; on a SAME match, the matched row's
-      ``reference_column`` value is written as the canonical. Unmatched values keep
-      their own value.
+    Per-value SAME-judgment (with cross-row evidence via ``run_query``) builds a SAME-edge
+    graph over the distinct values; connected components are the clusters; one picker call
+    per cluster produces the canonical name; cross-cluster name collisions are resolved by
+    an LLM-disambiguation pass (with deterministic suffix fallback). The value→canonical
+    mapping is then applied to all rows in one SQL UPDATE.
 
-    The algorithm operates on ``SELECT DISTINCT input_column`` and applies the
-    resulting value→canonical mapping back to all rows in one SQL UPDATE.
+    For *row-independent* transformations — per-value normalization with no cross-row
+    evidence, or resolving values against a separate reference table — use
+    ``run_subagent_for_each_row`` with ``task_query="SELECT DISTINCT col FROM tbl"`` and
+    ``key_columns=[col]`` instead. This tool owns only the cross-row clustering case.
     """
 
     name: ClassVar[str] = "add_canonical_name"
@@ -216,12 +184,9 @@ class AddCanonicalNameTool:
         canonical_column: str,
         instruction: str,
         input_column: str,
-        reference_schema: str | None = None,
-        reference_table: str | None = None,
-        reference_column: str | None = None,
         merge_duplicates: bool = False,
     ) -> str:
-        """Populate ``canonical_column`` with consistent canonical values per ``instruction``.
+        """Cluster variants in ``input_column`` and populate ``canonical_column`` per cluster.
 
         Operates on ``SELECT DISTINCT input_column`` — rows sharing an ``input_column``
         value always receive the same canonical. If two distinct entities can share
@@ -232,16 +197,13 @@ class AddCanonicalNameTool:
         ``"school"`` on a ``students`` table); in the latter case only the named column
         gets canonicalized, the row entity is untouched.
 
-        Mode is selected by ``reference_table``:
-
-        - **normalize_only** (``reference_table`` is ``None``) → independent per-value
-          normalization.
-        - **dedup_and_normalize** (``(reference_schema, reference_table)`` equals
-          ``(schema_name, table_name)``) → cluster variants AND apply one consistent
-          canonical per cluster.
-        - **resolve** (``reference_table`` points elsewhere) → match each value against
-          the reference; on a SAME match, the matched row's ``reference_column`` value
-          is written. Unmatched values keep their own value.
+        Use this tool when variants of the same entity exist *within the same column* and
+        need to be unified (e.g. ``"Microsoft"``, ``"MSFT"``, ``"Microsoft Corp"`` →
+        ``"Microsoft Corporation"``). For per-value normalization with no cross-row
+        evidence, or for matching values against a separate reference table, use
+        ``run_subagent_for_each_row`` instead — pass ``task_query="SELECT DISTINCT col
+        FROM tbl"`` and ``key_columns=[col]`` to keep the one-LLM-call-per-distinct-value
+        property.
 
         Args:
             schema_name: Schema containing ``table_name``. Pass ``None`` for
@@ -249,15 +211,9 @@ class AddCanonicalNameTool:
             table_name: Table containing both ``input_column`` and ``canonical_column``.
             canonical_column: Existing column to populate. Set equal to ``input_column``
                 to canonicalize in place.
-            instruction: How to canonicalize / what makes two values refer to the same
-                entity. Style guidance belongs here.
+            instruction: What makes two values refer to the same real-world entity, plus
+                any style guidance for the canonical form.
             input_column: The column being canonicalized.
-            reference_schema: Schema of ``reference_table`` (``None`` if unqualified).
-                Ignored when ``reference_table`` is ``None``.
-            reference_table: See modes above.
-            reference_column: Column on the reference table whose value is written as
-                canonical on a SAME match. Required when ``reference_table`` is set
-                and points to a different table.
             merge_duplicates: After populating, collapse rows sharing a canonical into
                 one via per-column coalesce (most-frequent non-null). **In place** —
                 originals are lost; copy first if needed. Only set when ``input_column``
@@ -265,16 +221,6 @@ class AddCanonicalNameTool:
         """
         if self._db_connector is None:
             return "(error: no workspace database connected)"
-
-        # Determine mode.
-        if reference_table is None:
-            mode: Mode = "normalize_only"
-        elif reference_schema == schema_name and reference_table == table_name:
-            mode = "dedup_and_normalize"
-        else:
-            mode = "resolve"
-            if reference_column is None:
-                return "(error: reference_column is required when reference_table points to another table)"
 
         # Shared setup: distinct source values + ensure canonical_column exists.
         distinct_values, error = await self._fetch_distinct_values(schema_name, table_name, input_column)
@@ -286,26 +232,9 @@ class AddCanonicalNameTool:
         if error is not None:
             return error
 
-        # Dispatch to mode-specific algorithm.
-        n_clusters: int | None = None
-        if mode == "normalize_only":
-            mapping, n_errors = await self._mode_normalize_only(distinct_values, instruction)
-        elif mode == "dedup_and_normalize":
-            mapping, n_errors, n_clusters = await self._mode_dedup_and_normalize(
-                distinct_values, instruction, schema_name, table_name, input_column
-            )
-        else:
-            assert reference_table is not None and reference_column is not None  # validated above
-            mapping, n_errors = await self._mode_resolve(
-                distinct_values,
-                instruction,
-                schema_name,
-                table_name,
-                input_column,
-                reference_schema,
-                reference_table,
-                reference_column,
-            )
+        mapping, n_errors, n_clusters = await self._cluster_and_canonicalize(
+            distinct_values, instruction, schema_name, table_name, input_column
+        )
 
         # Apply value → canonical mapping in one UPDATE.
         update_error = await self._apply_mapping(
@@ -334,10 +263,8 @@ class AddCanonicalNameTool:
         qualified_target = qualified_table(schema_name, table_name)
         summary = (
             f"Canonicalized {len(distinct_values)} distinct values in {qualified_target}.{input_column} "
-            f"→ {canonical_column} (mode={mode})"
+            f"→ {canonical_column}; {n_clusters} entity clusters formed"
         )
-        if n_clusters is not None:
-            summary += f"; {n_clusters} entity clusters formed"
         if merged_row_counts is not None:
             before, after = merged_row_counts
             summary += f"; merged {before} rows → {after} in place"
@@ -428,25 +355,7 @@ class AddCanonicalNameTool:
         results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
         return results, n_errors
 
-    # ------------------------------------------------------------------
-    # Per-mode algorithms. Each owns its prompt, output type, failure
-    # default, and mapping construction.
-    # ------------------------------------------------------------------
-
-    async def _mode_normalize_only(self, distinct_values: list[str], instruction: str) -> tuple[dict[str, str], int]:
-        """Normalize each distinct value via the picker (each value as a singleton cluster).
-
-        ``_pick_canonical`` has its own longest-member fallback on failure, so ``n_errors``
-        from ``_run_per_value`` is effectively always 0 here; failures are still logged.
-        """
-
-        async def task(value: str) -> str:
-            return await self._pick_canonical({value}, instruction)
-
-        results, n_errors = await self._run_per_value(distinct_values, task, on_failure=lambda v: v)
-        return dict(zip(distinct_values, results)), n_errors
-
-    async def _mode_dedup_and_normalize(
+    async def _cluster_and_canonicalize(
         self,
         distinct_values: list[str],
         instruction: str,
@@ -630,49 +539,6 @@ class AddCanonicalNameTool:
             )
             return None
         return names
-
-    async def _mode_resolve(
-        self,
-        distinct_values: list[str],
-        instruction: str,
-        schema_name: str | None,
-        table_name: str,
-        input_column: str,
-        reference_schema: str | None,
-        reference_table: str,
-        reference_column: str,
-    ) -> tuple[dict[str, str], int]:
-        """Resolve each value against the reference table; write matched value or raw fallback."""
-        assert self._db_connector is not None
-        run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
-        qualified_target = qualified_table(schema_name, table_name)
-        qualified_reference = qualified_table(reference_schema, reference_table)
-
-        async def task(value: str) -> _OtherMatchOutput:
-            prompt = _OTHER_PROMPT.render(
-                instruction=instruction,
-                table_name=qualified_target,
-                input_column=input_column,
-                reference_table=qualified_reference,
-                reference_column=reference_column,
-                value=value,
-            )
-            subagent = Agent(
-                model=self.subagent_llm,
-                tools=[run_query_pa_tool],
-                output_type=_OtherMatchOutput,
-                model_settings=self.model_settings,
-            )
-            result = await subagent.run(prompt)
-            return result.output
-
-        results, n_errors = await self._run_per_value(
-            distinct_values,
-            task,
-            on_failure=lambda v: _OtherMatchOutput(match=None),
-        )
-        mapping = {v: (r.match if r.match is not None else v) for v, r in zip(distinct_values, results)}
-        return mapping, n_errors
 
     async def _pick_canonical(self, cluster: set[str], instruction: str) -> str:
         """One LLM call per SAME-cluster to pick or generate the canonical name."""
