@@ -118,7 +118,10 @@ Use a three-valued judgment: SAME (commit to the match), DIFFERENT (rule out), o
 (insufficient evidence). Only return a matched value on a SAME judgment; otherwise return null.
 
 Use `run_query` to search {{ reference_table }} (consult any of its columns).
-On a SAME match, return the matched row's {{ reference_column }} value.""")
+On a SAME match, return the matched row's EXACT {{ reference_column }} value — copy the literal
+string from the {{ reference_column }} column (e.g. the full id, code, or URL as stored), not
+from any other column. If {{ reference_column }} looks opaque or unwieldy (a long URL, a hash,
+a numeric id), that is expected; return it verbatim anyway.""")
 
 _DISAMBIGUATE_PROMPT = _JINJA_ENV.from_string("""\
 The {{ groups | length }} groups below were each judged to refer to a DISTINCT real-world entity,
