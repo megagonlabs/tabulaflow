@@ -90,15 +90,20 @@ canonical name has the same style. Return only the canonical string.
 {{ instruction }}
 </instruction>
 
-Values:
-{% for v in values %}- {{ v }}
+{% for v in values %}<value>
+{{ v }}
+</value>
 {% endfor %}""")
 
 # The three-valued rule is what keeps the algorithm from silently merging under
 # insufficient evidence — only SAME commits; UNDECIDED and DIFFERENT do not.
 _RESOLVE_PROMPT = _JINJA_ENV.from_string("""\
 Find values from {{ table_name }}.{{ input_column }} that refer to the SAME real-world entity
-as {{ value }}.
+as the value below.
+
+<value>
+{{ value }}
+</value>
 
 <instruction>
 {{ instruction }}
@@ -109,7 +114,7 @@ UNDECIDED (insufficient evidence). Only report SAME candidates — treat DIFFERE
 UNDECIDED both as not included.
 
 Use `run_query` to search {{ table_name }}.{{ input_column }} for candidate matches; you may
-consult any other columns of {{ table_name }} to disambiguate. Do not include {{ value }} itself.""")
+consult any other columns of {{ table_name }} to disambiguate. Do not include the value above itself.""")
 
 _DISAMBIGUATE_PROMPT = _JINJA_ENV.from_string("""\
 The {{ groups | length }} groups below were each judged to refer to a DISTINCT real-world entity,
