@@ -29,6 +29,17 @@ class _CanonicalOutput(BaseModel):
     canonical: str = Field(description="The canonical name for the value(s) provided.")
 
 
+class _DisambiguationOutput(BaseModel):
+    """LLM output when multiple clusters collided on the same canonical name."""
+
+    names: list[str] = Field(
+        description=(
+            "One distinct canonical name per colliding group, in the same order the groups "
+            "were listed. Length must equal the number of groups."
+        )
+    )
+
+
 class _SelfPeersOutput(BaseModel):
     """LLM output for dedup_and_normalize mode: other values judged SAME entity."""
 
@@ -62,6 +73,12 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 # clusters are typically small (2–20). A runaway cluster (over-confident SAME chains)
 # would otherwise inflate prompt size unbounded — sample the richest members instead.
 _PICKER_MAX_MEMBERS = 100
+
+# When multiple dedup clusters collide on the same picker canonical, ask the LLM to
+# produce distinct names for them — but only up to this many at once. Beyond this,
+# the collision is treated as pathological (likely an over-generic canonical) and we
+# disambiguate with deterministic numeric suffixes instead.
+_DISAMBIGUATE_MAX_CLUSTERS = 50
 
 # Used for normalize_only mode (one value) and the canonical picker (one or many cluster members).
 _CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
@@ -102,6 +119,17 @@ Use a three-valued judgment: SAME (commit to the match), DIFFERENT (rule out), o
 
 Use `run_query` to search {{ reference_table }} (consult any of its columns).
 On a SAME match, return the matched row's {{ reference_column }} value.""")
+
+_DISAMBIGUATE_PROMPT = _JINJA_ENV.from_string("""\
+The {{ groups | length }} groups below were each judged to refer to a DISTINCT real-world entity,
+but the canonical-naming step produced the same name {{ collided }} for all of them.
+Produce {{ groups | length }} distinct canonical names — one per group, in the same order —
+preserving the instruction's style. Each name must be unique across the groups.
+
+Instruction: {{ instruction }}
+
+{% for members in groups %}Group {{ loop.index }}: {{ members | join(", ") }}
+{% endfor %}""")
 
 
 def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[set[str]]:
@@ -460,11 +488,122 @@ class AddCanonicalNameTool:
 
         # One picker call per cluster — shared canonical across all members.
         cluster_canonicals = await asyncio.gather(*(self._pick_canonical(cluster, instruction) for cluster in clusters))
+
+        # Resolve cross-cluster collisions so each cluster gets a unique canonical.
+        cluster_canonicals = await self._resolve_collisions(clusters, cluster_canonicals, instruction)
+
         mapping: dict[str, str] = {}
         for cluster, canonical in zip(clusters, cluster_canonicals):
             for v in cluster:
                 mapping[v] = canonical
         return mapping, n_errors, len(clusters)
+
+    async def _resolve_collisions(
+        self,
+        clusters: list[set[str]],
+        cluster_canonicals: list[str],
+        instruction: str,
+    ) -> list[str]:
+        """Ensure each cluster gets a globally unique canonical name.
+
+        For each picker-canonical claimed by >1 cluster: ask the LLM to produce
+        ``k`` distinct names (one per colliding cluster). Beyond
+        ``_DISAMBIGUATE_MAX_CLUSTERS`` clusters, fall back to numeric suffixes.
+        LLM calls across collision groups run concurrently; results are then
+        applied sequentially so a global ``seen`` set can break any residual
+        cross-group duplicates with suffix-numbering.
+        """
+        # Phase 1: collect collision groups (skip singletons). Sort each group so
+        # the largest cluster keeps the unsuffixed/LLM-preferred name.
+        groups: dict[str, list[int]] = {}
+        for i, canonical in enumerate(cluster_canonicals):
+            groups.setdefault(canonical, []).append(i)
+        collisions: list[tuple[str, list[int]]] = []
+        for canonical, idxs in groups.items():
+            if len(idxs) <= 1:
+                continue
+            idxs.sort(key=lambda i: len(clusters[i]), reverse=True)
+            collisions.append((canonical, idxs))
+
+        # Phase 2: fire all qualifying LLM disambiguations in parallel.
+        async def _maybe_disambiguate(canonical: str, idxs: list[int]) -> list[str] | None:
+            if len(idxs) >= _DISAMBIGUATE_MAX_CLUSTERS:
+                return None
+            return await self._disambiguate_via_llm(
+                collided=canonical,
+                member_groups=[sorted(clusters[i], key=len, reverse=True) for i in idxs],
+                instruction=instruction,
+            )
+
+        llm_results = await asyncio.gather(*(_maybe_disambiguate(c, idxs) for c, idxs in collisions))
+
+        # Phase 3: apply sequentially. Largest collision groups go first so the
+        # bloc with the strongest joint claim wins contested LLM-disambiguated names.
+        resolved = list(cluster_canonicals)
+        seen: set[str] = {c for c, idxs in groups.items() if len(idxs) == 1}
+        order = sorted(
+            range(len(collisions)),
+            key=lambda i: -sum(len(clusters[j]) for j in collisions[i][1]),
+        )
+        for i in order:
+            canonical, idxs = collisions[i]
+            new_names = llm_results[i]
+            for rank, cluster_idx in enumerate(idxs):
+                if new_names is not None and new_names[rank] not in seen:
+                    resolved[cluster_idx] = new_names[rank]
+                    seen.add(new_names[rank])
+                    continue
+                # Fallback: suffix the original canonical. Rank 0 keeps the bare name
+                # if still free; rank 1.. get " (2)", " (3)", … with collision-skipping.
+                base = canonical
+                if rank == 0 and base not in seen:
+                    resolved[cluster_idx] = base
+                    seen.add(base)
+                    continue
+                suffix = rank + 1 if rank > 0 else 2
+                while f"{base} ({suffix})" in seen:
+                    suffix += 1
+                resolved[cluster_idx] = f"{base} ({suffix})"
+                seen.add(resolved[cluster_idx])
+
+        return resolved
+
+    async def _disambiguate_via_llm(
+        self,
+        *,
+        collided: str,
+        member_groups: list[list[str]],
+        instruction: str,
+    ) -> list[str] | None:
+        """One LLM call to produce a distinct canonical per colliding group.
+
+        Returns the list of names (length == ``len(member_groups)``), or ``None`` on
+        failure or length mismatch so the caller can fall back to suffix-numbering.
+        """
+        prompt = _DISAMBIGUATE_PROMPT.render(
+            collided=repr(collided),
+            instruction=instruction,
+            groups=member_groups,
+        )
+        subagent = Agent(
+            model=self.subagent_llm,
+            output_type=_DisambiguationOutput,
+            model_settings=self.model_settings,
+        )
+        try:
+            result = await subagent.run(prompt)
+        except Exception:
+            logger.exception("disambiguation failed for collided canonical %r", collided)
+            return None
+        names = result.output.names
+        if len(names) != len(member_groups):
+            logger.warning(
+                "disambiguation returned %d names for %d colliding groups; falling back",
+                len(names),
+                len(member_groups),
+            )
+            return None
+        return names
 
     async def _mode_resolve(
         self,
