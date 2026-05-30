@@ -31,6 +31,7 @@ if TYPE_CHECKING:
     from mintq.db_connector.db_registry import DBRegistry
     from mintq.schema import Usage
     from mintq.toolhub import (
+        AddCanonicalNameTool,
         QueryHistory,
         QueryRecord,
         RegistryGetColumnJsonSchemaTool,
@@ -263,6 +264,7 @@ class Toolset:
     transfer_record: RegistryTransferRecordTool
     run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
     extract_rows_from_documents: RegistryExtractRowsFromDocumentsTool
+    add_canonical_name: AddCanonicalNameTool
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
 
@@ -287,6 +289,7 @@ class ChatAgent:
     def __post_init__(self) -> None:
         from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
         from mintq.toolhub import (
+            AddCanonicalNameTool,
             QueryHistory,
             RegistryExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
@@ -328,6 +331,12 @@ class ChatAgent:
                     openai_reasoning_effort="medium",
                 ),
             ),
+            add_canonical_name=AddCanonicalNameTool(
+                model_settings=OpenAIChatModelSettings(
+                    openai_service_tier="priority",
+                    openai_reasoning_effort="medium",
+                ),
+            ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
         )
@@ -352,6 +361,7 @@ class ChatAgent:
         self._tools.transfer_record._history = self._query_history
         self._tools.render_chart._history = self._query_history
         self._message_store.attach_connector(connector)
+        self._tools.add_canonical_name.attach_connector(connector)
 
     @staticmethod
     def database_info(connector: NL2QDBConnector) -> str:
@@ -401,6 +411,7 @@ class ChatAgent:
                 self._tools.transfer_record.as_pydantic_ai_tool(),
                 self._tools.run_subagent_for_each_row.as_pydantic_ai_tool(),
                 self._tools.extract_rows_from_documents.as_pydantic_ai_tool(),
+                self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
             ],
@@ -437,6 +448,7 @@ class ChatAgent:
         progress.start()
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
         self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: progress.tool_progress(c, t)
+        self._tools.add_canonical_name.on_progress = lambda c, t: progress.tool_progress(c, t)
 
         assert self._pydantic_ai_agent is not None
 

@@ -7,6 +7,7 @@ from mintq.toolhub.get_column_description import GetColumnDescriptionTool
 from mintq.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from mintq.toolhub.get_schema import GetSchemaTool
 from mintq.toolhub.get_table_schema import GetTableSchemaTool
+from mintq.toolhub.add_canonical_name import AddCanonicalNameTool
 from mintq.toolhub.entity_extractor import EntityExtractor
 from mintq.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from mintq.toolhub.render_chart import RenderPlotextChartTool
@@ -40,6 +41,7 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "GetSchemaTool",
     "GetTableSchemaTool",
+    "AddCanonicalNameTool",
     "EntityExtractor",
     "ExtractRowsFromDocumentsTool",
     "RegistryExtractRowsFromDocumentsTool",

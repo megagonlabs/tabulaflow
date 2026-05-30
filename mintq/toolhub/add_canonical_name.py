@@ -1,0 +1,560 @@
+"""Add a canonical name column to a table — normalize, dedup, or resolve into a reference."""
+
+from __future__ import annotations
+
+import asyncio
+import logging
+from collections.abc import Callable
+from typing import Any, ClassVar, Literal
+
+import jinja2
+import sqlalchemy
+from pydantic import BaseModel, Field
+from pydantic_ai import Agent, Tool
+from pydantic_ai.settings import ModelSettings
+
+from mintq.db_connector.sql_conn import SQLConnector
+from mintq.toolhub.run_query import RunQueryTool
+
+logger = logging.getLogger(__name__)
+
+Mode = Literal["normalize", "self", "other"]
+
+
+class _CanonicalOutput(BaseModel):
+    """LLM output for normalize mode and the per-cluster canonical picker."""
+
+    canonical: str = Field(description="The canonical name for the value(s) provided.")
+
+
+class _SelfPeersOutput(BaseModel):
+    """LLM output for self mode: the list of other values that are SAME entity."""
+
+    same_as: list[str] = Field(
+        description=(
+            "Other values from the same column that refer to the SAME real-world entity. "
+            "Only include values you are confident are SAME (not DIFFERENT, not just UNDECIDED). "
+            "Exclude the input value itself."
+        )
+    )
+
+
+class _OtherMatchOutput(BaseModel):
+    """LLM output for other mode: the matched reference value or null."""
+
+    match: str | None = Field(
+        description=(
+            "The matched reference row's value to write as canonical, or null if no confident match. "
+            "Only commit to a match when the evidence supports SAME."
+        )
+    )
+
+
+# ---------------------------------------------------------------------------
+# Prompts
+# ---------------------------------------------------------------------------
+
+_JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+# Cap on how many cluster members the picker LLM sees in one call. Real same-entity
+# clusters are typically small (2–20). A runaway cluster (over-confident SAME chains)
+# would otherwise inflate prompt size unbounded — sample the richest members instead.
+_PICKER_MAX_MEMBERS = 100
+
+# Used for normalize mode (one value) and the canonical picker (one or many cluster members).
+_CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
+Produce the canonical name for the value(s) below per the instruction.
+Multiple values mean they all refer to the same real-world entity; pick or generate one
+canonical form for them. Follow the instruction's style consistently across calls so every
+canonical name has the same style. Return only the canonical string.
+
+Instruction: {{ instruction }}
+
+Values:
+{% for v in values %}- {{ v }}
+{% endfor %}""")
+
+# The three-valued rule is what keeps the algorithm from silently merging under
+# insufficient evidence — only SAME commits; UNDECIDED and DIFFERENT do not.
+_SELF_PROMPT = _JINJA_ENV.from_string("""\
+Find values from {{ table_name }}.{{ input_column }} that refer to the SAME real-world entity
+as {{ value }}.
+
+Identity rule: {{ instruction }}
+
+For each candidate use a three-valued judgment: SAME (commit), DIFFERENT (rule out), or
+UNDECIDED (insufficient evidence). Only report SAME candidates — treat DIFFERENT and
+UNDECIDED both as not included.
+
+Use `run_query` to search {{ table_name }}.{{ input_column }} for candidate matches; you may
+consult any other columns of {{ table_name }} to disambiguate. Do not include {{ value }} itself.""")
+
+_OTHER_PROMPT = _JINJA_ENV.from_string("""\
+Resolve {{ value }} from {{ table_name }}.{{ input_column }} against {{ reference_table }} —
+find the row in {{ reference_table }} that refers to the SAME real-world entity.
+
+Identity rule: {{ instruction }}
+
+Use a three-valued judgment: SAME (commit to the match), DIFFERENT (rule out), or UNDECIDED
+(insufficient evidence). Only return a matched value on a SAME judgment; otherwise return null.
+
+Use `run_query` to search {{ reference_table }} (consult any of its columns).
+On a SAME match, return the matched row's {{ reference_column }} value.""")
+
+
+def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[set[str]]:
+    """Find connected components from a symmetric adjacency map."""
+    visited: set[str] = set()
+    components: list[set[str]] = []
+    for start in nodes:
+        if start in visited:
+            continue
+        component: set[str] = set()
+        stack = [start]
+        while stack:
+            n = stack.pop()
+            if n in visited:
+                continue
+            visited.add(n)
+            component.add(n)
+            for neighbor in edges.get(n, ()):
+                if neighbor not in visited:
+                    stack.append(neighbor)
+        components.append(component)
+    return components
+
+
+def _sa_table(name: str, *columns: str) -> sqlalchemy.TableClause:
+    """Build a SQLAlchemy table clause from a possibly schema-qualified name.
+
+    Splitting on a single ``.`` lets SQLAlchemy emit dialect-correct quoting via
+    its ``schema`` argument, rather than us hand-building ``"schema"."table"``.
+    """
+    sa_cols: list[sqlalchemy.ColumnClause[Any]] = [sqlalchemy.column(c) for c in columns]
+    if "." in name:
+        schema, _, tbl = name.rpartition(".")
+        return sqlalchemy.table(tbl, *sa_cols, schema=schema)
+    return sqlalchemy.table(name, *sa_cols)
+
+
+def _add_text_column_ddl(table_name: str, column_name: str) -> sqlalchemy.TextClause:
+    """Build an ``ALTER TABLE … ADD COLUMN <name> TEXT`` statement.
+
+    SQLAlchemy core has no high-level ``ALTER … ADD COLUMN`` builder (alembic owns
+    that), so we render text with double-quote escaping. Correct for the dialects
+    in use here (DuckDB / Postgres / SQLite / Snowflake) — MySQL would need
+    backticks.
+    """
+
+    def q(name: str) -> str:
+        return '"' + name.replace('"', '""') + '"'
+
+    quoted_table = ".".join(q(p) for p in table_name.split("."))
+    return sqlalchemy.text(f"ALTER TABLE {quoted_table} ADD COLUMN {q(column_name)} TEXT")
+
+
+class AddCanonicalNameTool:
+    """Add a canonical name column to a table — three modes via ``reference_table``.
+
+    - **None**: pure normalization. The LLM rewrites each distinct value per
+      ``instruction`` (lowercasing, expanding abbreviations, stripping suffixes).
+    - **self** (``reference_table == table_name``): intra-table variant resolution.
+      Values that refer to the same real-world entity get a shared canonical name
+      via per-value LLM judgment, SAME-edge clustering, and one picker call per
+      cluster.
+    - **other table**: each distinct value is matched against ``reference_table``;
+      on a confident match, the matched row's ``reference_column`` value is
+      written as the canonical. Unmatched values keep their own value.
+
+    The algorithm operates on ``SELECT DISTINCT input_column`` and applies the
+    resulting value→canonical mapping back to all rows in one SQL UPDATE.
+    """
+
+    name: ClassVar[str] = "add_canonical_name"
+
+    def __init__(
+        self,
+        *,
+        subagent_llm: str = "openai-responses:gpt-5-mini",
+        model_settings: ModelSettings | None = None,
+        max_concurrency: int = 200,
+    ) -> None:
+        """Initialize the tool.
+
+        Args:
+            subagent_llm: LLM identifier used by per-value and per-cluster subagents.
+            model_settings: Optional pydantic-ai settings passed to subagent runs.
+            max_concurrency: Maximum number of per-value subagents running
+                concurrently across one call.
+        """
+        if max_concurrency <= 0:
+            raise ValueError("max_concurrency must be greater than 0")
+        self.subagent_llm = subagent_llm
+        self.model_settings = model_settings
+        self.max_concurrency = max_concurrency
+        self._db_connector: SQLConnector | None = None
+        self.on_progress: Callable[[int, int], None] | None = None
+
+    def attach_connector(self, connector: SQLConnector) -> None:
+        """Bind the workspace connector after construction (mirrors QueryHistory)."""
+        self._db_connector = connector
+
+    async def __call__(
+        self,
+        table_name: str,
+        *,
+        canonical_column: str,
+        instruction: str,
+        input_column: str,
+        reference_table: str | None = None,
+        reference_column: str | None = None,
+    ) -> str:
+        """Add ``canonical_column`` to ``table_name`` with consistent canonical values.
+
+        Use this tool to standardize a column whose values are noisy variants of the
+        same underlying entities — product names, school names, brand names, person
+        names. Behavior is selected by ``reference_table``:
+
+        - **No ``reference_table``** → normalize each distinct value per ``instruction``
+          (lowercasing, expanding abbreviations, stripping packaging/unit suffixes).
+          Use when the noise is purely formatting.
+        - **``reference_table = table_name`` (self)** → dedup variants within the
+          table. Values that refer to the same entity get one shared canonical name.
+          Use when the column has multiple surface forms of the same entities.
+        - **``reference_table`` = another table** → resolve each value into the
+          reference table's vocabulary. The reference table is treated as a clean
+          catalog; on a confident match, the matched row's ``reference_column``
+          value is written. Use for semantic joins (n:1) and for canonicalizing
+          against an authoritative source.
+
+        Args:
+            table_name: Table to add the canonical column to. The column is
+                appended if it does not already exist.
+            canonical_column: Name of the new column to populate. Created with type
+                TEXT if missing.
+            instruction: Natural-language description of how to canonicalize and
+                what makes two values refer to the same entity. Style guidance
+                (e.g. "always use the official institution name; expand
+                abbreviations") goes here.
+            input_column: The column whose values are being canonicalized.
+            reference_table: ``None`` for normalize, the same table for self, or
+                another table for cross-table resolution. Default ``None``.
+            reference_column: The reference table column whose value gets written
+                as canonical when a match is found. **Required** when
+                ``reference_table`` is set to another table (e.g.
+                ``reference_column="school_id"`` to write a key, or
+                ``reference_column="school"`` when matching on the same column
+                name). Ignored in normalize/self modes.
+        """
+        if self._db_connector is None:
+            return "(error: no workspace database connected)"
+
+        # Determine mode.
+        if reference_table is None:
+            mode: Mode = "normalize"
+        elif reference_table == table_name:
+            mode = "self"
+        else:
+            mode = "other"
+            if reference_column is None:
+                return "(error: reference_column is required when reference_table points to another table)"
+
+        # Shared setup: distinct source values + ensure canonical_column exists.
+        distinct_values, error = await self._fetch_distinct_values(table_name, input_column)
+        if error is not None:
+            return error
+        if not distinct_values:
+            return f"(no values to canonicalize in {table_name}.{input_column})"
+        error = await self._ensure_canonical_column(table_name, input_column, canonical_column)
+        if error is not None:
+            return error
+
+        # Dispatch to mode-specific algorithm.
+        n_clusters: int | None = None
+        if mode == "normalize":
+            mapping, n_errors = await self._mode_normalize(distinct_values, instruction)
+        elif mode == "self":
+            mapping, n_errors, n_clusters = await self._mode_dedup(
+                distinct_values, instruction, table_name, input_column
+            )
+        else:
+            assert reference_table is not None and reference_column is not None  # validated above
+            mapping, n_errors = await self._mode_resolve(
+                distinct_values, instruction, table_name, input_column, reference_table, reference_column
+            )
+
+        # Apply value → canonical mapping in one UPDATE.
+        update_error = await self._apply_mapping(
+            table_name=table_name,
+            input_column=input_column,
+            canonical_column=canonical_column,
+            mapping=mapping,
+        )
+        if update_error is not None:
+            return f"(error: failed to write canonical_column {canonical_column} to {table_name}: {update_error})"
+
+        # Summary.
+        summary = (
+            f"Canonicalized {len(distinct_values)} distinct values in {table_name}.{input_column} "
+            f"→ {canonical_column} (mode={mode})"
+        )
+        if n_clusters is not None:
+            summary += f"; {n_clusters} entity clusters formed"
+        if n_errors:
+            summary += f"; {n_errors} subagent failures (treated as singletons)"
+        return summary + "."
+
+    # ------------------------------------------------------------------
+    # Shared infrastructure used by the per-mode methods below.
+    # ------------------------------------------------------------------
+
+    async def _fetch_distinct_values(self, table_name: str, input_column: str) -> tuple[list[str], str | None]:
+        """Return distinct non-null values of ``input_column`` (and an optional error message)."""
+        assert self._db_connector is not None
+        sa_input_table = _sa_table(table_name, input_column)
+        distinct_res = await self._db_connector.run_query_async(
+            sqlalchemy.select(sa_input_table.c[input_column])
+            .distinct()
+            .where(sa_input_table.c[input_column].is_not(None))
+        )
+        if distinct_res.error is not None or distinct_res.df is None:
+            detail = distinct_res.error.message if distinct_res.error else "no dataframe"
+            return [], f"(error: failed to read distinct values from {table_name}.{input_column}: {detail})"
+        # Positional access; the result column name may be case-folded by some dialects.
+        return [str(v) for v in distinct_res.df.iloc[:, 0].dropna().tolist()], None
+
+    async def _ensure_canonical_column(self, table_name: str, input_column: str, canonical_column: str) -> str | None:
+        """Ensure ``canonical_column`` exists on ``table_name``; ALTER TABLE if missing."""
+        assert self._db_connector is not None
+        cols_res = await self._db_connector.run_query_async(
+            sqlalchemy.select(_sa_table(table_name, input_column)).limit(0)
+        )
+        if cols_res.error is not None or cols_res.df is None:
+            detail = cols_res.error.message if cols_res.error else "no dataframe"
+            return f"(error: failed to inspect {table_name}: {detail})"
+        if canonical_column in [str(c) for c in cols_res.df.columns]:
+            return None
+        alter_res = await self._db_connector.run_query_async(_add_text_column_ddl(table_name, canonical_column))
+        if alter_res.error is not None:
+            return f"(error: failed to add column {canonical_column} to {table_name}: {alter_res.error.message})"
+        return None
+
+    async def _run_per_value(
+        self,
+        distinct_values: list[str],
+        task: Callable[[str], Any],
+        on_failure: Callable[[str], Any],
+    ) -> tuple[list[Any], int]:
+        """Run ``task`` per distinct value concurrently with progress + cancellation handling.
+
+        ``on_failure(value)`` provides the fallback result when ``task(value)`` raises a
+        non-cancellation Exception. Returns ``(results, n_errors)``.
+        """
+        semaphore = asyncio.Semaphore(self.max_concurrency)
+        total = len(distinct_values)
+        completed = 0
+        n_errors = 0
+
+        async def _wrap(value: str) -> Any:
+            nonlocal completed, n_errors
+            cancelled = False
+            try:
+                async with semaphore:
+                    return await task(value)
+            except asyncio.CancelledError:
+                cancelled = True
+                raise
+            except Exception:
+                logger.exception("subagent failed for value %r", value)
+                n_errors += 1
+                return on_failure(value)
+            finally:
+                # Skip on cancellation — counting cancelled tasks misleads progress,
+                # and awaiting in a finally during cancel can re-raise out of teardown.
+                if not cancelled:
+                    completed += 1
+                    if self.on_progress is not None:
+                        self.on_progress(completed, total)
+                        await asyncio.sleep(0)
+
+        results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
+        return results, n_errors
+
+    # ------------------------------------------------------------------
+    # Per-mode algorithms. Each owns its prompt, output type, failure
+    # default, and mapping construction.
+    # ------------------------------------------------------------------
+
+    async def _mode_normalize(self, distinct_values: list[str], instruction: str) -> tuple[dict[str, str], int]:
+        """Normalize each distinct value independently per ``instruction``."""
+
+        async def task(value: str) -> _CanonicalOutput:
+            prompt = _CANONICALIZE_PROMPT.render(instruction=instruction, values=[value])
+            subagent = Agent(
+                model=self.subagent_llm,
+                output_type=_CanonicalOutput,
+                model_settings=self.model_settings,
+            )
+            result = await subagent.run(prompt)
+            return result.output
+
+        results, n_errors = await self._run_per_value(
+            distinct_values,
+            task,
+            on_failure=lambda v: _CanonicalOutput(canonical=v),
+        )
+        mapping = {v: r.canonical for v, r in zip(distinct_values, results)}
+        return mapping, n_errors
+
+    async def _mode_dedup(
+        self,
+        distinct_values: list[str],
+        instruction: str,
+        table_name: str,
+        input_column: str,
+    ) -> tuple[dict[str, str], int, int]:
+        """Per-value SAME-peer judgment → cluster on SAME edges → picker per cluster."""
+        assert self._db_connector is not None
+        run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
+
+        async def task(value: str) -> _SelfPeersOutput:
+            prompt = _SELF_PROMPT.render(
+                instruction=instruction,
+                table_name=table_name,
+                input_column=input_column,
+                value=value,
+            )
+            subagent = Agent(
+                model=self.subagent_llm,
+                tools=[run_query_pa_tool],
+                output_type=_SelfPeersOutput,
+                model_settings=self.model_settings,
+            )
+            result = await subagent.run(prompt)
+            return result.output
+
+        results, n_errors = await self._run_per_value(
+            distinct_values,
+            task,
+            on_failure=lambda v: _SelfPeersOutput(same_as=[]),
+        )
+
+        # Build symmetric SAME-edge graph; find connected components.
+        value_set = set(distinct_values)
+        edges: dict[str, set[str]] = {v: set() for v in distinct_values}
+        for v, r in zip(distinct_values, results):
+            for peer in r.same_as:
+                p = str(peer)
+                if p == v or p not in value_set:
+                    continue
+                edges[v].add(p)
+                edges[p].add(v)
+        clusters = _connected_components(distinct_values, edges)
+
+        # One picker call per cluster — shared canonical across all members.
+        cluster_canonicals = await asyncio.gather(*(self._pick_canonical(cluster, instruction) for cluster in clusters))
+        mapping: dict[str, str] = {}
+        for cluster, canonical in zip(clusters, cluster_canonicals):
+            for v in cluster:
+                mapping[v] = canonical
+        return mapping, n_errors, len(clusters)
+
+    async def _mode_resolve(
+        self,
+        distinct_values: list[str],
+        instruction: str,
+        table_name: str,
+        input_column: str,
+        reference_table: str,
+        reference_column: str,
+    ) -> tuple[dict[str, str], int]:
+        """Resolve each value against ``reference_table``; write matched value or raw fallback."""
+        assert self._db_connector is not None
+        run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
+
+        async def task(value: str) -> _OtherMatchOutput:
+            prompt = _OTHER_PROMPT.render(
+                instruction=instruction,
+                table_name=table_name,
+                input_column=input_column,
+                reference_table=reference_table,
+                reference_column=reference_column,
+                value=value,
+            )
+            subagent = Agent(
+                model=self.subagent_llm,
+                tools=[run_query_pa_tool],
+                output_type=_OtherMatchOutput,
+                model_settings=self.model_settings,
+            )
+            result = await subagent.run(prompt)
+            return result.output
+
+        results, n_errors = await self._run_per_value(
+            distinct_values,
+            task,
+            on_failure=lambda v: _OtherMatchOutput(match=None),
+        )
+        mapping = {v: (r.match if r.match is not None else v) for v, r in zip(distinct_values, results)}
+        return mapping, n_errors
+
+    async def _pick_canonical(self, cluster: set[str], instruction: str) -> str:
+        """One LLM call per SAME-cluster to pick or generate the canonical name."""
+        # Sort by length desc so a cap-truncation keeps the richest surface forms,
+        # and the fallback (``members[0]``) is the longest member.
+        members = sorted(cluster, key=len, reverse=True)
+        if len(members) > _PICKER_MAX_MEMBERS:
+            logger.info("Picker cluster has %d members; sampling %d longest", len(members), _PICKER_MAX_MEMBERS)
+        prompt = _CANONICALIZE_PROMPT.render(instruction=instruction, values=members[:_PICKER_MAX_MEMBERS])
+        subagent = Agent(
+            model=self.subagent_llm,
+            output_type=_CanonicalOutput,
+            model_settings=self.model_settings,
+        )
+        try:
+            result = await subagent.run(prompt)
+            return result.output.canonical
+        except Exception:
+            logger.exception("picker failed for cluster %r", members)
+            return members[0]  # fallback: use the first member
+
+    async def _apply_mapping(
+        self,
+        *,
+        table_name: str,
+        input_column: str,
+        canonical_column: str,
+        mapping: dict[str, str],
+    ) -> str | None:
+        """Apply value → canonical mapping via one parameterized UPDATE.
+
+        Returns ``None`` on success, or the error message if the UPDATE failed.
+        """
+        assert self._db_connector is not None
+        if not mapping:
+            return None
+        sa_table = _sa_table(table_name, input_column, canonical_column)
+        # No else_: WHERE input_column IN (mapping.keys()) guarantees one CASE branch
+        # matches every updated row, so the default-else is unreachable.
+        case_expr = sqlalchemy.case(
+            *[(sa_table.c[input_column] == k, v) for k, v in mapping.items()],
+        )
+        stmt = (
+            sqlalchemy.update(sa_table)
+            .where(sa_table.c[input_column].in_(list(mapping.keys())))
+            .values({sa_table.c[canonical_column]: case_expr})
+        )
+        result = await self._db_connector.run_query_async(stmt)
+        if result.error is not None:
+            logger.warning(
+                "UPDATE for canonical_column %s on %s failed: %s",
+                canonical_column,
+                table_name,
+                result.error.message,
+            )
+            return result.error.message
+        return None
+
+    def as_pydantic_ai_tool(self) -> Tool:
+        """Return pydantic-ai Tool wrapper."""
+        return Tool(self.__call__, name=self.name)
