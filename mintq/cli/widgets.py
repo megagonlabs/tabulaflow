@@ -471,7 +471,7 @@ class AgentProgressWidget(Widget):
         # Per-tool-call spinners so parallel running steps don't share a single
         # mutable spinner object (which would make every row display the same label).
         self._tool_spinners: dict[str, Spinner] = {}
-        self._tool_progress: tuple[int, int] | None = None
+        self._tool_progress: tuple[int, int, str | None] | None = None
         self._frozen = False
         self._timer: Timer | None = None
         self._usage: Usage | None = None
@@ -547,7 +547,7 @@ class AgentProgressWidget(Widget):
         When ``stage`` is provided, it's prepended to the counter so the user can
         tell which sub-phase is ticking (e.g. ``resolve: 12/88``).
         """
-        self._tool_progress = (completed, total)
+        self._tool_progress = (completed, total, stage)
         suffix = f"{stage}: {completed}/{total}" if stage else f"{completed}/{total}"
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
@@ -569,7 +569,9 @@ class AgentProgressWidget(Widget):
                 if self._tool_progress is not None:
                     base_label = label.split(" → ")[0]
                     total = self._tool_progress[1]
-                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → {total}/{total}")
+                    last_stage = self._tool_progress[2]
+                    suffix = f"{last_stage}: {total}/{total}" if last_stage else f"{total}/{total}"
+                    self._steps[i] = ("done", step[1], step[2], f"{base_label} → {suffix}")
                 else:
                     self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
                 break
