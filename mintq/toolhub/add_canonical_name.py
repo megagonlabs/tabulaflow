@@ -86,7 +86,9 @@ Multiple values mean they all refer to the same real-world entity; pick or gener
 canonical form for them. Follow the instruction's style consistently across calls so every
 canonical name has the same style. Return only the canonical string.
 
-Instruction: {{ instruction }}
+<instruction>
+{{ instruction }}
+</instruction>
 
 Values:
 {% for v in values %}- {{ v }}
@@ -98,7 +100,9 @@ _RESOLVE_PROMPT = _JINJA_ENV.from_string("""\
 Find values from {{ table_name }}.{{ input_column }} that refer to the SAME real-world entity
 as {{ value }}.
 
-Identity rule: {{ instruction }}
+<instruction>
+{{ instruction }}
+</instruction>
 
 For each candidate use a three-valued judgment: SAME (commit), DIFFERENT (rule out), or
 UNDECIDED (insufficient evidence). Only report SAME candidates — treat DIFFERENT and
@@ -116,7 +120,9 @@ preserving the instruction's style. Each name must be:
 - NOT equal to any name in this list of already-claimed canonicals from other clusters:
   {{ seen_list }}
 
-Instruction: {{ instruction }}
+<instruction>
+{{ instruction }}
+</instruction>
 
 {% for members in groups %}Group {{ loop.index }}: {{ members | join(", ") }}
 {% endfor %}
