@@ -336,6 +336,7 @@ class ChatAgent:
                     openai_service_tier="priority",
                     openai_reasoning_effort="medium",
                 ),
+                trajectory_log_dir=self.trajectory_log_dir / "subagents",
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
