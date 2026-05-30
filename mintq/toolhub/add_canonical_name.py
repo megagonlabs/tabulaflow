@@ -231,6 +231,14 @@ class AddCanonicalNameTool:
           ``reference_column`` value is written. Use for semantic joins (n:1) and
           for canonicalizing against an authoritative source.
 
+        **Implicit grouping by ``input_column``.** The tool operates on
+        ``SELECT DISTINCT input_column``, so rows that share an exact ``input_column``
+        value are automatically treated as the same entity and always receive the same
+        canonical, regardless of differences in other columns. If two genuinely distinct
+        entities can share an ``input_column`` value (e.g. two people both named
+        ``"John Smith"``), pre-derive a discriminating column and pass *that* as
+        ``input_column`` instead.
+
         Args:
             table_name: Table to add the canonical column to. The column is
                 appended if it does not already exist.
