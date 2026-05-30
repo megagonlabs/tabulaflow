@@ -138,22 +138,6 @@ def _sa_table(name: str, *columns: str) -> sqlalchemy.TableClause:
     return sqlalchemy.table(name, *sa_cols)
 
 
-def _add_text_column_ddl(table_name: str, column_name: str) -> sqlalchemy.TextClause:
-    """Build an ``ALTER TABLE … ADD COLUMN <name> TEXT`` statement.
-
-    SQLAlchemy core has no high-level ``ALTER … ADD COLUMN`` builder (alembic owns
-    that), so we render text with double-quote escaping. Correct for the dialects
-    in use here (DuckDB / Postgres / SQLite / Snowflake) — MySQL would need
-    backticks.
-    """
-
-    def q(name: str) -> str:
-        return '"' + name.replace('"', '""') + '"'
-
-    quoted_table = ".".join(q(p) for p in table_name.split("."))
-    return sqlalchemy.text(f"ALTER TABLE {quoted_table} ADD COLUMN {q(column_name)} TEXT")
-
-
 class AddCanonicalNameTool:
     """Add a canonical name column to a table — three modes via ``reference_table``.
 
@@ -246,10 +230,11 @@ class AddCanonicalNameTool:
         ``input_column`` instead.
 
         Args:
-            table_name: Table to add the canonical column to. The column is
-                appended if it does not already exist.
-            canonical_column: Name of the new column to populate. Created with type
-                TEXT if missing. Set equal to ``input_column`` to canonicalize in
+            table_name: Table containing both ``input_column`` and the
+                ``canonical_column`` to populate.
+            canonical_column: Existing column on ``table_name`` to populate. Must
+                already exist (e.g. ``ALTER TABLE t ADD COLUMN canon TEXT``
+                beforehand). Set equal to ``input_column`` to canonicalize in
                 place.
             instruction: Natural-language description of how to canonicalize and
                 what makes two values refer to the same entity. Style guidance
@@ -295,7 +280,7 @@ class AddCanonicalNameTool:
             return error
         if not distinct_values:
             return f"(no values to canonicalize in {table_name}.{input_column})"
-        error = await self._ensure_canonical_column(table_name, input_column, canonical_column)
+        error = await self._check_canonical_column(table_name, input_column, canonical_column)
         if error is not None:
             return error
 
@@ -363,8 +348,8 @@ class AddCanonicalNameTool:
         # Positional access; the result column name may be case-folded by some dialects.
         return [str(v) for v in distinct_res.df.iloc[:, 0].dropna().tolist()], None
 
-    async def _ensure_canonical_column(self, table_name: str, input_column: str, canonical_column: str) -> str | None:
-        """Ensure ``canonical_column`` exists on ``table_name``; ALTER TABLE if missing."""
+    async def _check_canonical_column(self, table_name: str, input_column: str, canonical_column: str) -> str | None:
+        """Verify ``canonical_column`` exists on ``table_name``; the tool does not create it."""
         assert self._db_connector is not None
         cols_res = await self._db_connector.run_query_async(
             sqlalchemy.select(_sa_table(table_name, input_column)).limit(0)
@@ -372,11 +357,11 @@ class AddCanonicalNameTool:
         if cols_res.error is not None or cols_res.df is None:
             detail = cols_res.error.message if cols_res.error else "no dataframe"
             return f"(error: failed to inspect {table_name}: {detail})"
-        if canonical_column in [str(c) for c in cols_res.df.columns]:
-            return None
-        alter_res = await self._db_connector.run_query_async(_add_text_column_ddl(table_name, canonical_column))
-        if alter_res.error is not None:
-            return f"(error: failed to add column {canonical_column} to {table_name}: {alter_res.error.message})"
+        if canonical_column not in [str(c) for c in cols_res.df.columns]:
+            return (
+                f"(error: canonical_column {canonical_column!r} does not exist on {table_name}; "
+                f"create it first — e.g. ALTER TABLE {table_name} ADD COLUMN {canonical_column} TEXT)"
+            )
         return None
 
     async def _run_per_value(
