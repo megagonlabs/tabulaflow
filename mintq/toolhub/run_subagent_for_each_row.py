@@ -513,6 +513,10 @@ class RunSubagentForEachRowTool:
         rows = df.to_dict(orient="records")
         total = len(rows)
         semaphore = asyncio.Semaphore(self.max_concurrency)
+        # Emit a 0/total tick up front so the UI shows the counter immediately
+        # rather than sitting empty until the first row finishes (often seconds).
+        if self.on_row_complete is not None and total > 0:
+            self.on_row_complete(0, total)
 
         async def _throttled(row_idx: int, row: dict[str, object]) -> str | None:
             async with semaphore:

@@ -191,6 +191,10 @@ class ExtractRowsFromDocumentsTool:
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
         completed_docs = 0
+        # Emit a 0/total tick up front so the UI shows the counter immediately
+        # rather than sitting empty until the first document finishes.
+        if self.on_row_complete is not None and total_docs > 0:
+            self.on_row_complete(0, total_docs)
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
             nonlocal completed_docs
