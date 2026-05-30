@@ -211,6 +211,7 @@ class AddCanonicalNameTool:
         input_column: str,
         reference_table: str | None = None,
         reference_column: str | None = None,
+        merge_duplicates: bool = False,
     ) -> str:
         """Add ``canonical_column`` to ``table_name`` with consistent canonical values.
 
@@ -264,6 +265,16 @@ class AddCanonicalNameTool:
                 (e.g. ``reference_column="school_id"`` to write a key, or
                 ``reference_column="school"`` when matching on the same column
                 name). Ignored in normalize_only / dedup_and_normalize modes.
+            merge_duplicates: When ``True``, after the canonical column is written,
+                collapse rows sharing a canonical value into one row via per-column
+                coalesce (most-frequent non-null, tie → first). The merge is
+                **in place** — original rows are not preserved; copy ``table_name``
+                first if you need them. **Only set this when ``input_column``
+                identifies the row's own entity** (e.g. a products table's
+                ``name``); leaving it ``False`` is the safe choice when
+                ``input_column`` is a foreign attribute (e.g. a students table's
+                ``school``), because in that case rows sharing a canonical aren't
+                actually duplicates and merging would lose data. Default ``False``.
         """
         if self._db_connector is None:
             return "(error: no workspace database connected)"
@@ -312,6 +323,13 @@ class AddCanonicalNameTool:
         if update_error is not None:
             return f"(error: failed to write canonical_column {canonical_column} to {table_name}: {update_error})"
 
+        # Optional post-step: collapse rows sharing a canonical into one (in place).
+        merged_row_counts: tuple[int, int] | None = None
+        if merge_duplicates:
+            merged_row_counts, merge_error = await self._merge_duplicates_inplace(table_name, canonical_column)
+            if merge_error is not None:
+                return merge_error
+
         # Summary.
         summary = (
             f"Canonicalized {len(distinct_values)} distinct values in {table_name}.{input_column} "
@@ -319,6 +337,9 @@ class AddCanonicalNameTool:
         )
         if n_clusters is not None:
             summary += f"; {n_clusters} entity clusters formed"
+        if merged_row_counts is not None:
+            before, after = merged_row_counts
+            summary += f"; merged {before} rows → {after} in place"
         if n_errors:
             summary += f"; {n_errors} subagent failures (treated as singletons)"
         return summary + "."
@@ -583,6 +604,61 @@ class AddCanonicalNameTool:
                 )
             except Exception:
                 logger.exception("Failed to drop mapping table %s", mapping_table_name)
+
+    async def _merge_duplicates_inplace(
+        self, table_name: str, canonical_column: str
+    ) -> tuple[tuple[int, int] | None, str | None]:
+        """Collapse rows sharing a canonical into one via per-column coalesce.
+
+        For each non-canonical column the merged row keeps the most-frequent non-null
+        value (tie → first). The table is replaced in place.
+
+        Returns ``((rows_before, rows_after), None)`` on success, or ``(None, error_msg)``.
+        """
+        import pandas as pd
+
+        assert self._db_connector is not None
+
+        # Read the whole table.
+        target_sa = _sa_table(table_name)
+        select_stmt = sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa)
+        res = await self._db_connector.run_query_async(select_stmt)
+        if res.error is not None or res.df is None:
+            detail = res.error.message if res.error else "no dataframe"
+            return None, f"(error: failed to read {table_name} for merge_duplicates: {detail})"
+        df = res.df
+        if df.empty:
+            return (0, 0), None
+        if canonical_column not in df.columns:
+            return None, f"(error: canonical_column {canonical_column!r} not found in {table_name})"
+
+        rows_before = len(df)
+        other_cols = [c for c in df.columns if c != canonical_column]
+        if not other_cols:
+            merged = df.drop_duplicates(subset=[canonical_column]).reset_index(drop=True)
+        else:
+
+            def _coalesce(series: pd.Series) -> Any:
+                non_null = series.dropna()
+                if non_null.empty:
+                    return None
+                return non_null.value_counts().index[0]
+
+            merged = df.groupby(canonical_column, as_index=False, dropna=False).agg({c: _coalesce for c in other_cols})
+        rows_after = len(merged)
+
+        # Write back in place — split schema-qualified name for write_dataframe_async.
+        if "." in table_name:
+            schema, _, tbl = table_name.rpartition(".")
+        else:
+            schema, tbl = None, table_name
+        try:
+            await self._db_connector.write_dataframe_async(
+                df=merged, table_name=tbl, schema_name=schema, mode="replace"
+            )
+        except ValueError as e:
+            return None, f"(error: failed to write merged {table_name}: {e})"
+        return (rows_before, rows_after), None
 
     def as_pydantic_ai_tool(self) -> Tool:
         """Return pydantic-ai Tool wrapper."""
