@@ -210,7 +210,7 @@ class AddCanonicalNameTool:
         self.trajectory_log_dir = trajectory_log_dir
         self._db_connector: SQLConnector | None = None
         # Called as ``on_progress(stage, completed, total)`` where ``stage`` is one
-        # of ``"resolve"``, ``"picker"``, ``"disambiguate"``. Disambiguate ticks per
+        # of ``"resolve"``, ``"canonicalize"``, ``"disambiguate"``. Disambiguate ticks per
         # batch and is only emitted when collisions exist.
         self.on_progress: Callable[[str, int, int], None] | None = None
 
@@ -489,7 +489,7 @@ class AddCanonicalNameTool:
             finally:
                 picker_completed += 1
                 if self.on_progress is not None:
-                    self.on_progress("picker", picker_completed, n_clusters)
+                    self.on_progress("canonicalize", picker_completed, n_clusters)
                     await asyncio.sleep(0)
 
         cluster_canonicals = await asyncio.gather(
