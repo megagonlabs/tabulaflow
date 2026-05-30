@@ -236,7 +236,20 @@ May 26
   - [x] Hints on popup shadowing siblings
   - [x] "typing directly into combobox"
 
-- [ ] extraction tool
+May 27
+
+May 28
+- [x] Support pdf for browser tool
+- [x] extract_rows_from_documents tool
+
+May 29
+- [x] add_canonical_name tool
+
+- [ ] Debug https://megagon.ai/our-team/yanlin-feng/
+- [ ] clickable url in browser table
+- [ ] Inlucde table schema for add_canonical_name tool
+- [ ] extraction tool display
+- [ ] Remove registry variant of extraction and run_subagent_for_each_row tools
 - [ ] Multi-column output for subagents
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
 - [ ] Auto-close old tab on re-navigate
