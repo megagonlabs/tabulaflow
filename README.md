@@ -236,8 +236,6 @@ May 26
   - [x] Hints on popup shadowing siblings
   - [x] "typing directly into combobox"
 
-May 27
-
 May 28
 - [x] Support pdf for browser tool
 - [x] extract_rows_from_documents tool
