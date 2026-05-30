@@ -129,7 +129,10 @@ preserving the instruction's style. Each name must be unique across the groups.
 Instruction: {{ instruction }}
 
 {% for members in groups %}Group {{ loop.index }}: {{ members | join(", ") }}
-{% endfor %}""")
+{% endfor %}
+Use `run_query` to consult {{ table_name }} for distinguishing attributes (other columns of
+{{ table_name }}, joined as needed) if the member strings alone do not uniquely characterize each
+group. The members above are values from {{ table_name }}.{{ input_column }}.""")
 
 
 def _connected_components(nodes: list[str], edges: dict[str, set[str]]) -> list[set[str]]:
@@ -490,7 +493,9 @@ class AddCanonicalNameTool:
         cluster_canonicals = await asyncio.gather(*(self._pick_canonical(cluster, instruction) for cluster in clusters))
 
         # Resolve cross-cluster collisions so each cluster gets a unique canonical.
-        cluster_canonicals = await self._resolve_collisions(clusters, cluster_canonicals, instruction)
+        cluster_canonicals = await self._resolve_collisions(
+            clusters, cluster_canonicals, instruction, qualified_target, input_column, run_query_pa_tool
+        )
 
         mapping: dict[str, str] = {}
         for cluster, canonical in zip(clusters, cluster_canonicals):
@@ -503,6 +508,9 @@ class AddCanonicalNameTool:
         clusters: list[set[str]],
         cluster_canonicals: list[str],
         instruction: str,
+        qualified_table_name: str,
+        input_column: str,
+        run_query_pa_tool: Tool,
     ) -> list[str]:
         """Ensure each cluster gets a globally unique canonical name.
 
@@ -533,6 +541,9 @@ class AddCanonicalNameTool:
                 collided=canonical,
                 member_groups=[sorted(clusters[i], key=len, reverse=True) for i in idxs],
                 instruction=instruction,
+                qualified_table_name=qualified_table_name,
+                input_column=input_column,
+                run_query_pa_tool=run_query_pa_tool,
             )
 
         llm_results = await asyncio.gather(*(_maybe_disambiguate(c, idxs) for c, idxs in collisions))
@@ -574,8 +585,16 @@ class AddCanonicalNameTool:
         collided: str,
         member_groups: list[list[str]],
         instruction: str,
+        qualified_table_name: str,
+        input_column: str,
+        run_query_pa_tool: Tool,
     ) -> list[str] | None:
         """One LLM call to produce a distinct canonical per colliding group.
+
+        The subagent is given ``run_query`` so it can consult other columns of the
+        source table for distinguishing attributes when the member strings alone
+        do not characterize each group (e.g. two ``"Bob"`` clusters in different
+        cities).
 
         Returns the list of names (length == ``len(member_groups)``), or ``None`` on
         failure or length mismatch so the caller can fall back to suffix-numbering.
@@ -584,9 +603,12 @@ class AddCanonicalNameTool:
             collided=repr(collided),
             instruction=instruction,
             groups=member_groups,
+            table_name=qualified_table_name,
+            input_column=input_column,
         )
         subagent = Agent(
             model=self.subagent_llm,
+            tools=[run_query_pa_tool],
             output_type=_DisambiguationOutput,
             model_settings=self.model_settings,
         )
