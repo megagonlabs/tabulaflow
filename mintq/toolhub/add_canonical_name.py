@@ -12,7 +12,8 @@ from typing import Any, ClassVar
 import jinja2
 import sqlalchemy
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, Tool
+from pydantic_ai import Agent, ModelRetry, Tool
+from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
@@ -63,11 +64,10 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 # would otherwise inflate prompt size unbounded — sample the richest members instead.
 _PICKER_MAX_MEMBERS = 100
 
-# When multiple dedup clusters collide on the same picker canonical, ask the LLM to
-# produce distinct names for them — but only up to this many at once. Beyond this,
-# the collision is treated as pathological (likely an over-generic canonical) and we
-# disambiguate with deterministic numeric suffixes instead.
-_DISAMBIGUATE_MAX_CLUSTERS = 50
+# How many times to re-prompt the disambiguator with feedback before giving up.
+# After max retries the tool surfaces a hard error rather than silently emit
+# non-instruction-following names — caller must enrich input_column or instruction.
+_MAX_DISAMBIGUATE_RETRIES = 3
 
 # The canonical picker — one or many cluster members, one canonical name out.
 _CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
@@ -101,7 +101,10 @@ _DISAMBIGUATE_PROMPT = _JINJA_ENV.from_string("""\
 The {{ groups | length }} groups below were each judged to refer to a DISTINCT real-world entity,
 but the canonical-naming step produced the same name {{ collided }} for all of them.
 Produce {{ groups | length }} distinct canonical names — one per group, in the same order —
-preserving the instruction's style. Each name must be unique across the groups.
+preserving the instruction's style. Each name must be:
+- Distinct from the other names in your response (no duplicates among the {{ groups | length }} returned).
+- NOT equal to any name in this list of already-claimed canonicals from other clusters:
+  {{ seen_list }}
 
 Instruction: {{ instruction }}
 
@@ -140,8 +143,10 @@ class AddCanonicalNameTool:
     Per-value SAME-judgment (with cross-row evidence via ``run_query``) builds a SAME-edge
     graph over the distinct values; connected components are the clusters; one picker call
     per cluster produces the canonical name; cross-cluster name collisions are resolved by
-    an LLM-disambiguation pass (with deterministic suffix fallback). The value→canonical
-    mapping is then applied to all rows in one SQL UPDATE.
+    an LLM-disambiguation pass that knows the already-claimed canonicals and is re-prompted
+    with feedback on validation failure (no synthetic suffix fallback — if disambiguation
+    fails after retries, the call returns a hard error). The value→canonical mapping is
+    applied to all rows in one SQL UPDATE.
 
     For *row-independent* transformations — per-value normalization with no cross-row
     evidence, or resolving values against a separate reference table — use
@@ -251,9 +256,11 @@ class AddCanonicalNameTool:
                 logger.exception("Failed to create trajectory dir: %s", traj_dir)
                 traj_dir = None
 
-        mapping, n_errors, n_clusters = await self._cluster_and_canonicalize(
+        mapping, n_errors, n_clusters, cluster_error = await self._cluster_and_canonicalize(
             distinct_values, instruction, schema_name, table_name, input_column, traj_dir
         )
+        if cluster_error is not None:
+            return cluster_error
 
         # Apply value → canonical mapping in one UPDATE.
         update_error = await self._apply_mapping(
@@ -394,8 +401,12 @@ class AddCanonicalNameTool:
         table_name: str,
         input_column: str,
         traj_dir: Path | None,
-    ) -> tuple[dict[str, str], int, int]:
-        """Per-value resolve-peers judgment → cluster on SAME edges → picker per cluster."""
+    ) -> tuple[dict[str, str], int, int, str | None]:
+        """Per-value resolve-peers judgment → cluster on SAME edges → picker per cluster.
+
+        Returns ``(mapping, n_errors, n_clusters, error_message)``. On non-None
+        ``error_message`` the caller must skip the SQL UPDATE — the mapping is empty.
+        """
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
         qualified_target = qualified_table(schema_name, table_name)
@@ -442,7 +453,7 @@ class AddCanonicalNameTool:
         )
 
         # Resolve cross-cluster collisions so each cluster gets a unique canonical.
-        cluster_canonicals = await self._resolve_collisions(
+        cluster_canonicals, resolve_error = await self._resolve_collisions(
             clusters,
             cluster_canonicals,
             instruction,
@@ -451,12 +462,14 @@ class AddCanonicalNameTool:
             run_query_pa_tool,
             traj_dir,
         )
+        if resolve_error is not None:
+            return {}, n_errors, len(clusters), resolve_error
 
         mapping: dict[str, str] = {}
         for cluster, canonical in zip(clusters, cluster_canonicals):
             for v in cluster:
                 mapping[v] = canonical
-        return mapping, n_errors, len(clusters)
+        return mapping, n_errors, len(clusters), None
 
     async def _resolve_collisions(
         self,
@@ -467,18 +480,20 @@ class AddCanonicalNameTool:
         input_column: str,
         run_query_pa_tool: Tool,
         traj_dir: Path | None,
-    ) -> list[str]:
+    ) -> tuple[list[str], str | None]:
         """Ensure each cluster gets a globally unique canonical name.
 
-        For each picker-canonical claimed by >1 cluster: ask the LLM to produce
-        ``k`` distinct names (one per colliding cluster). Beyond
-        ``_DISAMBIGUATE_MAX_CLUSTERS`` clusters, fall back to numeric suffixes.
-        LLM calls across collision groups run concurrently; results are then
-        applied sequentially so a global ``seen`` set can break any residual
-        cross-group duplicates with suffix-numbering.
+        Each colliding group is sent to ``_disambiguate_via_llm``, which configures
+        the agent with ``retries=_MAX_DISAMBIGUATE_RETRIES`` and an output validator
+        that raises :class:`ModelRetry` on length/duplicate/seen violations. Groups
+        are processed sequentially in size-descending order so each call sees the
+        latest ``seen``.
+
+        Returns ``(resolved_canonicals, error_message)``. On non-None
+        ``error_message`` the caller MUST NOT apply the mapping.
         """
-        # Phase 1: collect collision groups (skip singletons). Sort each group so
-        # the largest cluster keeps the unsuffixed/LLM-preferred name.
+        # Phase 1: collect collision groups. Within a group, sort cluster indices by
+        # cluster size desc so the LLM sees the strongest claimant first.
         groups: dict[str, list[int]] = {}
         for i, canonical in enumerate(cluster_canonicals):
             groups.setdefault(canonical, []).append(i)
@@ -488,54 +503,38 @@ class AddCanonicalNameTool:
                 continue
             idxs.sort(key=lambda i: len(clusters[i]), reverse=True)
             collisions.append((canonical, idxs))
+        # Process groups with the most total members first.
+        collisions.sort(key=lambda c: -sum(len(clusters[i]) for i in c[1]))
 
-        # Phase 2: fire all qualifying LLM disambiguations in parallel.
-        async def _maybe_disambiguate(idx: int, canonical: str, idxs: list[int]) -> list[str] | None:
-            if len(idxs) >= _DISAMBIGUATE_MAX_CLUSTERS:
-                return None
-            return await self._disambiguate_via_llm(
+        resolved = list(cluster_canonicals)
+        seen: set[str] = {c for c, idxs in groups.items() if len(idxs) == 1}
+
+        # Phase 2: sequentially disambiguate each collision group.
+        for collision_idx, (canonical, idxs) in enumerate(collisions):
+            member_groups = [sorted(clusters[i], key=len, reverse=True) for i in idxs]
+            new_names = await self._disambiguate_via_llm(
                 collided=canonical,
-                member_groups=[sorted(clusters[i], key=len, reverse=True) for i in idxs],
+                member_groups=member_groups,
                 instruction=instruction,
                 qualified_table_name=qualified_table_name,
                 input_column=input_column,
                 run_query_pa_tool=run_query_pa_tool,
+                seen=seen,
                 traj_dir=traj_dir,
-                collision_idx=idx,
+                collision_idx=collision_idx,
             )
+            if new_names is None:
+                return resolved, (
+                    f"(error: could not produce distinct canonical names for cluster group "
+                    f"{canonical!r} after {_MAX_DISAMBIGUATE_RETRIES} retries. Consider "
+                    f"providing a more discriminating input_column or richer instruction "
+                    f"context so the LLM can distinguish the {len(idxs)} colliding clusters.)"
+                )
+            for cluster_idx, name in zip(idxs, new_names):
+                resolved[cluster_idx] = name
+                seen.add(name)
 
-        llm_results = await asyncio.gather(*(_maybe_disambiguate(i, c, idxs) for i, (c, idxs) in enumerate(collisions)))
-
-        # Phase 3: apply sequentially. Largest collision groups go first so the
-        # bloc with the strongest joint claim wins contested LLM-disambiguated names.
-        resolved = list(cluster_canonicals)
-        seen: set[str] = {c for c, idxs in groups.items() if len(idxs) == 1}
-        order = sorted(
-            range(len(collisions)),
-            key=lambda i: -sum(len(clusters[j]) for j in collisions[i][1]),
-        )
-        for i in order:
-            canonical, idxs = collisions[i]
-            new_names = llm_results[i]
-            for rank, cluster_idx in enumerate(idxs):
-                if new_names is not None and new_names[rank] not in seen:
-                    resolved[cluster_idx] = new_names[rank]
-                    seen.add(new_names[rank])
-                    continue
-                # Fallback: suffix the original canonical. Rank 0 keeps the bare name
-                # if still free; rank 1.. get " (2)", " (3)", … with collision-skipping.
-                base = canonical
-                if rank == 0 and base not in seen:
-                    resolved[cluster_idx] = base
-                    seen.add(base)
-                    continue
-                suffix = rank + 1 if rank > 0 else 2
-                while f"{base} ({suffix})" in seen:
-                    suffix += 1
-                resolved[cluster_idx] = f"{base} ({suffix})"
-                seen.add(resolved[cluster_idx])
-
-        return resolved
+        return resolved, None
 
     async def _disambiguate_via_llm(
         self,
@@ -546,47 +545,79 @@ class AddCanonicalNameTool:
         qualified_table_name: str,
         input_column: str,
         run_query_pa_tool: Tool,
+        seen: set[str],
         traj_dir: Path | None,
         collision_idx: int,
     ) -> list[str] | None:
-        """One LLM call to produce a distinct canonical per colliding group.
+        """Produce a distinct canonical per colliding group, with native retry-on-validation.
 
-        The subagent is given ``run_query`` so it can consult other columns of the
-        source table for distinguishing attributes when the member strings alone
-        do not characterize each group (e.g. two ``"Bob"`` clusters in different
-        cities).
+        The agent is configured with ``retries=_MAX_DISAMBIGUATE_RETRIES`` and an
+        ``output_validator`` that checks length, internal distinctness, and
+        non-membership in ``seen``. Validation failures raise :class:`ModelRetry`,
+        which pydantic-ai turns into a real conversational turn re-prompting the
+        model — strictly more signal than a paraphrased "this is a retry" prefix.
+        ``seen`` is also rendered into the initial prompt as a static hard constraint.
 
-        Returns the list of names (length == ``len(member_groups)``), or ``None`` on
-        failure or length mismatch so the caller can fall back to suffix-numbering.
+        Returns the validated names list, or ``None`` if retries were exhausted
+        (:class:`UnexpectedModelBehavior`) or the LLM call hit an unrecoverable error.
         """
+        expected_n = len(member_groups)
         prompt = _DISAMBIGUATE_PROMPT.render(
             collided=repr(collided),
             instruction=instruction,
             groups=member_groups,
             table_name=qualified_table_name,
             input_column=input_column,
+            seen_list=sorted(seen),
         )
-        subagent = Agent(
+        subagent: Agent[None, _DisambiguationOutput] = Agent(
             model=self.subagent_llm,
             tools=[run_query_pa_tool],
             output_type=_DisambiguationOutput,
             model_settings=self.model_settings,
+            retries=_MAX_DISAMBIGUATE_RETRIES,
         )
+
+        @subagent.output_validator
+        def _validate(output: _DisambiguationOutput) -> _DisambiguationOutput:
+            names = output.names
+            if len(names) != expected_n:
+                raise ModelRetry(
+                    f"You returned {len(names)} names but exactly {expected_n} were required "
+                    f"(one per group, in the same order). Try again."
+                )
+            counts: dict[str, int] = {}
+            for n in names:
+                counts[n] = counts.get(n, 0) + 1
+            duplicates = sorted({n for n, c in counts.items() if c > 1})
+            taken = sorted({n for n in names if n in seen})
+            if duplicates or taken:
+                problems: list[str] = []
+                if duplicates:
+                    problems.append(
+                        f"You returned these names more than once in your response — each must be unique: {duplicates}."
+                    )
+                if taken:
+                    problems.append(
+                        f"You returned these names that are already claimed by other clusters and may not be reused: {taken}."
+                    )
+                raise ModelRetry(" ".join(problems))
+            return output
+
         try:
             result = await subagent.run(prompt)
+        except UnexpectedModelBehavior:
+            logger.exception(
+                "disambiguation exhausted %d retries for collided canonical %r",
+                _MAX_DISAMBIGUATE_RETRIES,
+                collided,
+            )
+            return None
         except Exception:
             logger.exception("disambiguation failed for collided canonical %r", collided)
             return None
         self._write_trajectory(traj_dir, f"disambiguate-{collision_idx:04d}", result)
-        names = result.output.names
-        if len(names) != len(member_groups):
-            logger.warning(
-                "disambiguation returned %d names for %d colliding groups; falling back",
-                len(names),
-                len(member_groups),
-            )
-            return None
-        return names
+        return result.output.names
 
     async def _pick_canonical(
         self,
