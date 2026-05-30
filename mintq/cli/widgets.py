@@ -188,7 +188,6 @@ class HistoryInput(Input):
     agent or slash-command handler.
     """
 
-
     BINDINGS = [
         # ``priority=False`` so these only fire when the input is actually
         # focused. With ``priority=True`` the bindings would claim ``up`` /
@@ -542,9 +541,14 @@ class AgentProgressWidget(Widget):
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
-    def tool_progress(self, completed: int, total: int) -> None:
-        """Update the running tool step with a (completed/total) counter."""
+    def tool_progress(self, completed: int, total: int, stage: str | None = None) -> None:
+        """Update the running tool step with a (completed/total) counter.
+
+        When ``stage`` is provided, it's prepended to the counter so the user can
+        tell which sub-phase is ticking (e.g. ``resolve: 12/88``).
+        """
         self._tool_progress = (completed, total)
+        suffix = f"{stage}: {completed}/{total}" if stage else f"{completed}/{total}"
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
                 base_label = self._steps[i][3].split(" → ")[0]
@@ -552,7 +556,7 @@ class AgentProgressWidget(Widget):
                     "running",
                     self._steps[i][1],
                     self._steps[i][2],
-                    f"{base_label} → {completed}/{total}",
+                    f"{base_label} → {suffix}",
                 )
                 break
         self._refresh(layout=True, scroll=True)
