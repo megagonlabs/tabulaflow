@@ -386,25 +386,17 @@ class AddCanonicalNameTool:
     # ------------------------------------------------------------------
 
     async def _mode_normalize(self, distinct_values: list[str], instruction: str) -> tuple[dict[str, str], int]:
-        """Normalize each distinct value independently per ``instruction``."""
+        """Normalize each distinct value via the picker (each value as a singleton cluster).
 
-        async def task(value: str) -> _CanonicalOutput:
-            prompt = _CANONICALIZE_PROMPT.render(instruction=instruction, values=[value])
-            subagent = Agent(
-                model=self.subagent_llm,
-                output_type=_CanonicalOutput,
-                model_settings=self.model_settings,
-            )
-            result = await subagent.run(prompt)
-            return result.output
+        ``_pick_canonical`` has its own longest-member fallback on failure, so ``n_errors``
+        from ``_run_per_value`` is effectively always 0 here; failures are still logged.
+        """
 
-        results, n_errors = await self._run_per_value(
-            distinct_values,
-            task,
-            on_failure=lambda v: _CanonicalOutput(canonical=v),
-        )
-        mapping = {v: r.canonical for v, r in zip(distinct_values, results)}
-        return mapping, n_errors
+        async def task(value: str) -> str:
+            return await self._pick_canonical({value}, instruction)
+
+        results, n_errors = await self._run_per_value(distinct_values, task, on_failure=lambda v: v)
+        return dict(zip(distinct_values, results)), n_errors
 
     async def _mode_dedup(
         self,
