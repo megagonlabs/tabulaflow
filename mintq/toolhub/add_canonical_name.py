@@ -1,4 +1,4 @@
-"""Add a canonical name column to a table — normalize, dedup, or resolve into a reference."""
+"""Add a canonical name column to a table — normalize_only, dedup_and_normalize, or resolve."""
 
 from __future__ import annotations
 
@@ -19,17 +19,17 @@ from mintq.toolhub.run_query import RunQueryTool
 
 logger = logging.getLogger(__name__)
 
-Mode = Literal["normalize", "self", "other"]
+Mode = Literal["normalize_only", "dedup_and_normalize", "resolve"]
 
 
 class _CanonicalOutput(BaseModel):
-    """LLM output for normalize mode and the per-cluster canonical picker."""
+    """LLM output for normalize_only mode and the per-cluster canonical picker."""
 
     canonical: str = Field(description="The canonical name for the value(s) provided.")
 
 
 class _SelfPeersOutput(BaseModel):
-    """LLM output for self mode: the list of other values that are SAME entity."""
+    """LLM output for dedup_and_normalize mode: other values judged SAME entity."""
 
     same_as: list[str] = Field(
         description=(
@@ -41,7 +41,7 @@ class _SelfPeersOutput(BaseModel):
 
 
 class _OtherMatchOutput(BaseModel):
-    """LLM output for other mode: the matched reference value or null."""
+    """LLM output for resolve mode: the matched reference value or null."""
 
     match: str | None = Field(
         description=(
@@ -62,7 +62,7 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 # would otherwise inflate prompt size unbounded — sample the richest members instead.
 _PICKER_MAX_MEMBERS = 100
 
-# Used for normalize mode (one value) and the canonical picker (one or many cluster members).
+# Used for normalize_only mode (one value) and the canonical picker (one or many cluster members).
 _CANONICALIZE_PROMPT = _JINJA_ENV.from_string("""\
 Produce the canonical name for the value(s) below per the instruction.
 Multiple values mean they all refer to the same real-world entity; pick or generate one
@@ -157,15 +157,17 @@ def _add_text_column_ddl(table_name: str, column_name: str) -> sqlalchemy.TextCl
 class AddCanonicalNameTool:
     """Add a canonical name column to a table — three modes via ``reference_table``.
 
-    - **None**: pure normalization. The LLM rewrites each distinct value per
-      ``instruction`` (lowercasing, expanding abbreviations, stripping suffixes).
-    - **self** (``reference_table == table_name``): intra-table variant resolution.
-      Values that refer to the same real-world entity get a shared canonical name
-      via per-value LLM judgment, SAME-edge clustering, and one picker call per
-      cluster.
-    - **other table**: each distinct value is matched against ``reference_table``;
-      on a confident match, the matched row's ``reference_column`` value is
-      written as the canonical. Unmatched values keep their own value.
+    - **normalize_only** (``reference_table`` is ``None``): per-value normalization with
+      no cross-row evidence. The LLM rewrites each distinct value per ``instruction``
+      (lowercasing, expanding abbreviations, stripping suffixes).
+    - **dedup_and_normalize** (``reference_table == table_name``): clusters variants
+      that refer to the same real-world entity AND applies one consistent canonical
+      name per cluster. Uses per-value SAME-judgment to build the cluster graph and
+      one picker call per cluster.
+    - **resolve** (``reference_table`` is another table): each distinct value is
+      matched against ``reference_table``; on a SAME match, the matched row's
+      ``reference_column`` value is written as the canonical. Unmatched values keep
+      their own value.
 
     The algorithm operates on ``SELECT DISTINCT input_column`` and applies the
     resulting value→canonical mapping back to all rows in one SQL UPDATE.
@@ -216,17 +218,18 @@ class AddCanonicalNameTool:
         same underlying entities — product names, school names, brand names, person
         names. Behavior is selected by ``reference_table``:
 
-        - **No ``reference_table``** → normalize each distinct value per ``instruction``
-          (lowercasing, expanding abbreviations, stripping packaging/unit suffixes).
-          Use when the noise is purely formatting.
-        - **``reference_table = table_name`` (self)** → dedup variants within the
-          table. Values that refer to the same entity get one shared canonical name.
-          Use when the column has multiple surface forms of the same entities.
-        - **``reference_table`` = another table** → resolve each value into the
-          reference table's vocabulary. The reference table is treated as a clean
-          catalog; on a confident match, the matched row's ``reference_column``
-          value is written. Use for semantic joins (n:1) and for canonicalizing
-          against an authoritative source.
+        - **normalize_only** (``reference_table`` is ``None``) → normalize each
+          distinct value per ``instruction`` (lowercasing, expanding abbreviations,
+          stripping packaging/unit suffixes). Use when the noise is purely formatting.
+        - **dedup_and_normalize** (``reference_table = table_name``) → cluster
+          variants within the table AND apply one consistent canonical name per
+          cluster. Use when the column has multiple surface forms of the same
+          entities.
+        - **resolve** (``reference_table`` = another table) → resolve each value
+          into the reference table's vocabulary. The reference table is treated as
+          a clean catalog; on a confident match, the matched row's
+          ``reference_column`` value is written. Use for semantic joins (n:1) and
+          for canonicalizing against an authoritative source.
 
         Args:
             table_name: Table to add the canonical column to. The column is
@@ -239,25 +242,24 @@ class AddCanonicalNameTool:
                 (e.g. "always use the official institution name; expand
                 abbreviations") goes here.
             input_column: The column whose values are being canonicalized.
-            reference_table: ``None`` for normalize, the same table for self, or
-                another table for cross-table resolution. Default ``None``.
+            reference_table: ``None`` for normalize_only, the same table for
+                dedup_and_normalize, or another table for resolve. Default ``None``.
             reference_column: The reference table column whose value gets written
-                as canonical when a match is found. **Required** when
-                ``reference_table`` is set to another table (e.g.
-                ``reference_column="school_id"`` to write a key, or
+                as canonical when a match is found. **Required** in resolve mode
+                (e.g. ``reference_column="school_id"`` to write a key, or
                 ``reference_column="school"`` when matching on the same column
-                name). Ignored in normalize/self modes.
+                name). Ignored in normalize_only / dedup_and_normalize modes.
         """
         if self._db_connector is None:
             return "(error: no workspace database connected)"
 
         # Determine mode.
         if reference_table is None:
-            mode: Mode = "normalize"
+            mode: Mode = "normalize_only"
         elif reference_table == table_name:
-            mode = "self"
+            mode = "dedup_and_normalize"
         else:
-            mode = "other"
+            mode = "resolve"
             if reference_column is None:
                 return "(error: reference_column is required when reference_table points to another table)"
 
@@ -273,10 +275,10 @@ class AddCanonicalNameTool:
 
         # Dispatch to mode-specific algorithm.
         n_clusters: int | None = None
-        if mode == "normalize":
-            mapping, n_errors = await self._mode_normalize(distinct_values, instruction)
-        elif mode == "self":
-            mapping, n_errors, n_clusters = await self._mode_dedup(
+        if mode == "normalize_only":
+            mapping, n_errors = await self._mode_normalize_only(distinct_values, instruction)
+        elif mode == "dedup_and_normalize":
+            mapping, n_errors, n_clusters = await self._mode_dedup_and_normalize(
                 distinct_values, instruction, table_name, input_column
             )
         else:
@@ -387,7 +389,7 @@ class AddCanonicalNameTool:
     # default, and mapping construction.
     # ------------------------------------------------------------------
 
-    async def _mode_normalize(self, distinct_values: list[str], instruction: str) -> tuple[dict[str, str], int]:
+    async def _mode_normalize_only(self, distinct_values: list[str], instruction: str) -> tuple[dict[str, str], int]:
         """Normalize each distinct value via the picker (each value as a singleton cluster).
 
         ``_pick_canonical`` has its own longest-member fallback on failure, so ``n_errors``
@@ -400,7 +402,7 @@ class AddCanonicalNameTool:
         results, n_errors = await self._run_per_value(distinct_values, task, on_failure=lambda v: v)
         return dict(zip(distinct_values, results)), n_errors
 
-    async def _mode_dedup(
+    async def _mode_dedup_and_normalize(
         self,
         distinct_values: list[str],
         instruction: str,
