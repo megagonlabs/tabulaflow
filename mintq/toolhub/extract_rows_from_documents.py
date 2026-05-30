@@ -98,12 +98,11 @@ class ExtractRowsFromDocumentsTool:
 
             SELECT content FROM _internal.messages WHERE message_id = 'M7'
 
-        Each document is split into overlapping chunks and a subagent extracts a list
-        of entities from each chunk; all entities across all chunks and documents are
-        unioned and appended to ``table_name`` (one row per entity, populating
-        ``output_columns``). This tool does not deduplicate — overlapping chunks may
-        yield the same entity twice, and entity resolution needs semantic context, so
-        run a dedicated dedup step afterward if you need it.
+        Entities extracted from each document are appended to ``table_name`` (one row
+        per entity, populating ``output_columns``). **This tool does not deduplicate.**
+        The same entity may appear in multiple rows, and different documents commonly
+        emit variants of the same real-world entity (e.g. ``"Microsoft"``, ``"MSFT"``,
+        ``"Microsoft Corp"``). Plan to follow up with a canonicalization step.
 
         Args:
             schema_name: Schema containing ``table_name`` (``None`` if unqualified).
