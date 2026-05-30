@@ -216,7 +216,12 @@ class AddCanonicalNameTool:
 
         Use this tool to standardize a column whose values are noisy variants of the
         same underlying entities — product names, school names, brand names, person
-        names. Behavior is selected by ``reference_table``:
+        names. ``input_column`` can identify the row's own entity (a ``products`` table's
+        ``name``) or a foreign attribute referencing an external entity (a ``students``
+        table's ``school``); in the latter case the row entity (the student) is
+        unaffected and only the column being pointed at gets canonicalized.
+
+        Behavior is selected by ``reference_table``:
 
         - **normalize_only** (``reference_table`` is ``None``) → normalize each
           distinct value per ``instruction`` (lowercasing, expanding abbreviations,
@@ -249,7 +254,9 @@ class AddCanonicalNameTool:
                 what makes two values refer to the same entity. Style guidance
                 (e.g. "always use the official institution name; expand
                 abbreviations") goes here.
-            input_column: The column whose values are being canonicalized.
+            input_column: The column whose values are being canonicalized. May be the
+                row's primary identifier or a foreign attribute (e.g. ``"school"`` on a
+                ``students`` table).
             reference_table: ``None`` for normalize_only, the same table for
                 dedup_and_normalize, or another table for resolve. Default ``None``.
             reference_column: The reference table column whose value gets written
