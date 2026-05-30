@@ -243,6 +243,7 @@ May 28
 May 29
 - [x] add_canonical_name tool
 
+- [ ] Save extraction subagents trajectories
 - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 - [ ] clickable url in browser table
 - [ ] Inlucde table schema for add_canonical_name tool
