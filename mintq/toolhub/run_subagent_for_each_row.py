@@ -20,7 +20,7 @@ from pydantic_ai.settings import ModelSettings
 from mintq.db_connector.base import BaseSQLDBConnector
 from mintq.db_connector.db_registry import DBRegistry
 from mintq.schema import SQLDialect, Trajectory
-from mintq.toolhub.utils import qualified_table as _qualified, sa_table as _sa_table
+from mintq.toolhub.utils import qualified_table, sa_table
 from mintq.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
     MessageStore,
@@ -308,7 +308,7 @@ class RunSubagentForEachRowTool:
         # Look up the target table's actual columns to validate output_columns and
         # decide whether to ALTER for _subagent_* columns. task_query may project
         # arbitrary computed/joined columns that don't correspond to table_name.
-        qualified_target = _qualified(schema_name, table_name)
+        qualified_target = qualified_table(schema_name, table_name)
         table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
@@ -379,7 +379,7 @@ class RunSubagentForEachRowTool:
         sa_col_names: set[str] = set(key_columns) | {output_col}
         if self.store_metadata:
             sa_col_names.update(_INTERNAL_COLUMNS)
-        sa_table = _sa_table(schema_name, table_name, *sa_col_names)
+        sa_target = sa_table(schema_name, table_name, *sa_col_names)
 
         async def _save_row_metadata(
             key_payload: dict[str, object],
@@ -393,12 +393,12 @@ class RunSubagentForEachRowTool:
                     sqlalchemy.func.parse_json(trajectory) if dialect in _DIALECTS_WITH_PARSE_JSON else trajectory
                 )
             stmt = (
-                sqlalchemy.update(sa_table)
+                sqlalchemy.update(sa_target)
                 .where(_key_where_clause(key_columns, key_payload))
                 .values(
                     {
-                        sa_table.c[_COL_EXCEPTION]: exception,
-                        sa_table.c[_COL_TRAJECTORY]: traj_val,
+                        sa_target.c[_COL_EXCEPTION]: exception,
+                        sa_target.c[_COL_TRAJECTORY]: traj_val,
                     }
                 )
             )
@@ -407,9 +407,9 @@ class RunSubagentForEachRowTool:
         async def _write_row_output(key_payload: dict[str, object], value: object) -> None:
             """Write the subagent's text output to the target row."""
             stmt = (
-                sqlalchemy.update(sa_table)
+                sqlalchemy.update(sa_target)
                 .where(_key_where_clause(key_columns, key_payload))
-                .values({sa_table.c[output_col]: value})
+                .values({sa_target.c[output_col]: value})
             )
             await self.db_connector.run_query_async(stmt)
 

@@ -15,7 +15,7 @@ from pydantic_ai import Agent, Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
-from mintq.toolhub.utils import qualified_table as _qualified, sa_table as _sa_table
+from mintq.toolhub.utils import qualified_table, sa_table
 from mintq.toolhub.run_query import RunQueryTool
 
 logger = logging.getLogger(__name__)
@@ -247,7 +247,7 @@ class AddCanonicalNameTool:
         if error is not None:
             return error
         if not distinct_values:
-            return f"(no values to canonicalize in {_qualified(schema_name, table_name)}.{input_column})"
+            return f"(no values to canonicalize in {qualified_table(schema_name, table_name)}.{input_column})"
         error = await self._check_canonical_column(schema_name, table_name, input_column, canonical_column)
         if error is not None:
             return error
@@ -284,7 +284,7 @@ class AddCanonicalNameTool:
         if update_error is not None:
             return (
                 f"(error: failed to write canonical_column {canonical_column} to "
-                f"{_qualified(schema_name, table_name)}: {update_error})"
+                f"{qualified_table(schema_name, table_name)}: {update_error})"
             )
 
         # Optional post-step: collapse rows sharing a canonical into one (in place).
@@ -297,7 +297,7 @@ class AddCanonicalNameTool:
                 return merge_error
 
         # Summary.
-        qualified_target = _qualified(schema_name, table_name)
+        qualified_target = qualified_table(schema_name, table_name)
         summary = (
             f"Canonicalized {len(distinct_values)} distinct values in {qualified_target}.{input_column} "
             f"→ {canonical_column} (mode={mode})"
@@ -320,8 +320,8 @@ class AddCanonicalNameTool:
     ) -> tuple[list[str], str | None]:
         """Return distinct non-null values of ``input_column`` (and an optional error message)."""
         assert self._db_connector is not None
-        sa_input_table = _sa_table(schema_name, table_name, input_column)
-        qualified = _qualified(schema_name, table_name)
+        sa_input_table = sa_table(schema_name, table_name, input_column)
+        qualified = qualified_table(schema_name, table_name)
         distinct_res = await self._db_connector.run_query_async(
             sqlalchemy.select(sa_input_table.c[input_column])
             .distinct()
@@ -338,9 +338,9 @@ class AddCanonicalNameTool:
     ) -> str | None:
         """Verify ``canonical_column`` exists on the target; the tool does not create it."""
         assert self._db_connector is not None
-        qualified = _qualified(schema_name, table_name)
+        qualified = qualified_table(schema_name, table_name)
         cols_res = await self._db_connector.run_query_async(
-            sqlalchemy.select(_sa_table(schema_name, table_name, input_column)).limit(0)
+            sqlalchemy.select(sa_table(schema_name, table_name, input_column)).limit(0)
         )
         if cols_res.error is not None or cols_res.df is None:
             detail = cols_res.error.message if cols_res.error else "no dataframe"
@@ -422,7 +422,7 @@ class AddCanonicalNameTool:
         """Per-value SAME-peer judgment → cluster on SAME edges → picker per cluster."""
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
-        qualified_target = _qualified(schema_name, table_name)
+        qualified_target = qualified_table(schema_name, table_name)
 
         async def task(value: str) -> _SelfPeersOutput:
             prompt = _SELF_PROMPT.render(
@@ -480,8 +480,8 @@ class AddCanonicalNameTool:
         """Resolve each value against the reference table; write matched value or raw fallback."""
         assert self._db_connector is not None
         run_query_pa_tool = RunQueryTool(self._db_connector).as_pydantic_ai_tool()
-        qualified_target = _qualified(schema_name, table_name)
-        qualified_reference = _qualified(reference_schema, reference_table)
+        qualified_target = qualified_table(schema_name, table_name)
+        qualified_reference = qualified_table(reference_schema, reference_table)
 
         async def task(value: str) -> _OtherMatchOutput:
             prompt = _OTHER_PROMPT.render(
@@ -559,8 +559,8 @@ class AddCanonicalNameTool:
             mapping_df = pd.DataFrame(list(mapping.items()), columns=["input_val", "canonical_val"])
             await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name, mode="replace")
 
-            target = _sa_table(schema_name, table_name, input_column, canonical_column)
-            map_t = _sa_table(None, mapping_table_name, "input_val", "canonical_val")
+            target = sa_table(schema_name, table_name, input_column, canonical_column)
+            map_t = sa_table(None, mapping_table_name, "input_val", "canonical_val")
             stmt = (
                 sqlalchemy.update(target)
                 .values({target.c[canonical_column]: map_t.c.canonical_val})
@@ -571,7 +571,7 @@ class AddCanonicalNameTool:
                 logger.warning(
                     "UPDATE for canonical_column %s on %s failed: %s",
                     canonical_column,
-                    _qualified(schema_name, table_name),
+                    qualified_table(schema_name, table_name),
                     result.error.message,
                 )
                 return result.error.message
@@ -598,10 +598,10 @@ class AddCanonicalNameTool:
         import pandas as pd
 
         assert self._db_connector is not None
-        qualified = _qualified(schema_name, table_name)
+        qualified = qualified_table(schema_name, table_name)
 
         # Read the whole table.
-        target_sa = _sa_table(schema_name, table_name)
+        target_sa = sa_table(schema_name, table_name)
         select_stmt = sqlalchemy.select(sqlalchemy.text("*")).select_from(target_sa)
         res = await self._db_connector.run_query_async(select_stmt)
         if res.error is not None or res.df is None:

@@ -15,7 +15,7 @@ from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
 from mintq.db_connector.sql_conn import SQLConnector
-from mintq.toolhub.utils import qualified_table as _qualified
+from mintq.toolhub.utils import qualified_table
 from mintq.toolhub.entity_extractor import DEFAULT_CHUNK_CHARS, DEFAULT_CHUNK_OVERLAP_CHARS, EntityExtractor
 
 logger = logging.getLogger(__name__)
@@ -162,7 +162,7 @@ class ExtractRowsFromDocumentsTool:
         task_template = _JINJA_ENV.from_string(task_instruction)
 
         # output_columns must already exist on the target table.
-        qualified_target = _qualified(schema_name, table_name)
+        qualified_target = qualified_table(schema_name, table_name)
         table_columns_result = await self.db_connector.run_query_async(f"SELECT * FROM {qualified_target} LIMIT 0")
         if table_columns_result.error is not None or table_columns_result.df is None:
             detail = (
