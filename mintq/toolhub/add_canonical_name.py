@@ -174,6 +174,12 @@ class AddCanonicalNameTool:
     fails after retries, the call returns a hard error). The value→canonical mapping is
     applied to all rows in one SQL UPDATE.
 
+    **Guarantee:** every cluster gets a globally unique canonical name within one call.
+    The validator on the disambiguation step enforces this; if the LLM cannot produce
+    distinct names after retries, the call hard-fails rather than silently emitting
+    duplicates. Downstream joins on ``canonical_column`` and the ``merge_duplicates``
+    post-step both rely on this invariant.
+
     For *row-independent* transformations — per-value normalization with no cross-row
     evidence, or resolving values against a separate reference table — use
     ``run_subagent_for_each_row`` with ``task_query="SELECT DISTINCT col FROM tbl"`` and
@@ -254,12 +260,17 @@ class AddCanonicalNameTool:
             canonical_column: Existing column to populate. Set equal to ``input_column``
                 to canonicalize in place.
             instruction: What makes two values refer to the same real-world entity, plus
-                any style guidance for the canonical form.
+                any style guidance for the canonical form. If collisions are likely
+                (common surface names like ``"Bob Smith"`` or ``"Acme Corp"``), include
+                a rule for how the canonical should extend on collision — e.g.
+                *"append a parenthetical city, like 'Bob Smith (Chicago)'"*.
             input_column: The column being canonicalized.
             merge_duplicates: After populating, collapse rows sharing a canonical into
-                one via per-column coalesce (most-frequent non-null). **In place** —
-                originals are lost; copy first if needed. Only set when ``input_column``
-                identifies the row's own entity; never on a foreign attribute.
+                one via per-column coalesce (most-frequent non-null). Safe because
+                every cluster gets a globally unique canonical, so the groupby
+                collapses one entity at a time. **In place** — originals are lost;
+                copy first if needed. Only set when ``input_column`` identifies the
+                row's own entity; never on a foreign attribute.
         """
         if self._db_connector is None:
             return "(error: no workspace database connected)"
