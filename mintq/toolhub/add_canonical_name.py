@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Callable
 from typing import Any, ClassVar, Literal
 
@@ -518,34 +519,52 @@ class AddCanonicalNameTool:
         canonical_column: str,
         mapping: dict[str, str],
     ) -> str | None:
-        """Apply value → canonical mapping via one parameterized UPDATE.
+        """Apply value → canonical mapping via a temp mapping table + JOIN UPDATE.
+
+        Scales as O(M + N) — M target rows, N mapping entries — independent of
+        statement size, so mappings into the tens of thousands stay tractable.
+        SQLAlchemy emits dialect-correct JOIN-UPDATE (``UPDATE … FROM …`` on
+        DuckDB / Postgres, ``UPDATE … JOIN …`` on MySQL).
 
         Returns ``None`` on success, or the error message if the UPDATE failed.
         """
+        import pandas as pd
+
         assert self._db_connector is not None
         if not mapping:
             return None
-        sa_table = _sa_table(table_name, input_column, canonical_column)
-        # No else_: WHERE input_column IN (mapping.keys()) guarantees one CASE branch
-        # matches every updated row, so the default-else is unreachable.
-        case_expr = sqlalchemy.case(
-            *[(sa_table.c[input_column] == k, v) for k, v in mapping.items()],
-        )
-        stmt = (
-            sqlalchemy.update(sa_table)
-            .where(sa_table.c[input_column].in_(list(mapping.keys())))
-            .values({sa_table.c[canonical_column]: case_expr})
-        )
-        result = await self._db_connector.run_query_async(stmt)
-        if result.error is not None:
-            logger.warning(
-                "UPDATE for canonical_column %s on %s failed: %s",
-                canonical_column,
-                table_name,
-                result.error.message,
+
+        # Throwaway mapping table; unique name avoids collisions with concurrent calls.
+        mapping_table_name = f"_canonical_mapping_{uuid.uuid4().hex[:12]}"
+        try:
+            mapping_df = pd.DataFrame(list(mapping.items()), columns=["input_val", "canonical_val"])
+            await self._db_connector.write_dataframe_async(df=mapping_df, table_name=mapping_table_name, mode="replace")
+
+            target = _sa_table(table_name, input_column, canonical_column)
+            map_t = _sa_table(mapping_table_name, "input_val", "canonical_val")
+            stmt = (
+                sqlalchemy.update(target)
+                .values({target.c[canonical_column]: map_t.c.canonical_val})
+                .where(target.c[input_column] == map_t.c.input_val)
             )
-            return result.error.message
-        return None
+            result = await self._db_connector.run_query_async(stmt)
+            if result.error is not None:
+                logger.warning(
+                    "UPDATE for canonical_column %s on %s failed: %s",
+                    canonical_column,
+                    table_name,
+                    result.error.message,
+                )
+                return result.error.message
+            return None
+        finally:
+            # Best-effort cleanup of the mapping table.
+            try:
+                await self._db_connector.run_query_async(
+                    sqlalchemy.text(f'DROP TABLE IF EXISTS "{mapping_table_name}"')
+                )
+            except Exception:
+                logger.exception("Failed to drop mapping table %s", mapping_table_name)
 
     def as_pydantic_ai_tool(self) -> Tool:
         """Return pydantic-ai Tool wrapper."""
