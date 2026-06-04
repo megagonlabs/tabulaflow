@@ -16,14 +16,8 @@ from tabulaflow.research.types import (
     PredAmbiguityPoint,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.toolhub import (
-    BaseTool,
-    RunQueryTool,
-    SearchKeywordsTool,
-    FinishTool,
-    GetSchemaTool,
-    GetColumnDescriptionTool,
-)
+from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.agenthub.base import (
     agent_registry,
     BaseUserSimulator,

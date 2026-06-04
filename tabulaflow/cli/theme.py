@@ -5,9 +5,9 @@ from __future__ import annotations
 from rich.style import Style
 from textual.widgets.text_area import TextAreaTheme
 
-ACCENT = "#3EB489"
+from tabulaflow.core.theme import ACCENT
+
 ACCENT_BOLD = f"bold {ACCENT}"
-ACCENT_RGB = (62, 180, 137)
 
 # Grey shade for inactive/unfocused states of widgets that normally
 # display mint accents (record pill bg, view stepper chevrons / label in

@@ -15,12 +15,8 @@ from tabulaflow.core.types import SQLSchema, SQLTableSchema, PredQuery, Usage, T
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.core.preprocessors import ERDiagramSynthesizer, SchemaPreprocessor
 from tabulaflow.research.question_embedder import QuestionEmbedder
-from tabulaflow.toolhub import (
-    BaseTool,
-    RunQueryTool,
-    SearchKeywordsTool,
-    FinishTool,
-)
+from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.research.tools import SearchKeywordsTool, FinishTool
 from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import (

@@ -6,9 +6,8 @@ from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.core.types import PredQuery, Usage, Trajectory
 from tabulaflow.research.types import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput
-from tabulaflow.toolhub import (
-    BaseTool,
-    RunQueryTool,
+from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.research.tools import (
     SearchKeywordsTool,
     FinishTool,
     AskUserTool,

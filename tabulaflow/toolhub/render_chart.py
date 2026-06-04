@@ -79,7 +79,7 @@ def render_plotext(
     """
     import plotext as plt
 
-    from tabulaflow.cli.theme import ACCENT_RGB
+    from tabulaflow.core.theme import ACCENT_RGB
 
     effective_height = console_height or 18
     # In preview mode (no explicit height), cap width by an aspect ratio of

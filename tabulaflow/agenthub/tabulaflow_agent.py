@@ -7,13 +7,8 @@ from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import PredQuery, Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.core.preprocessors import DBSummarizer
-from tabulaflow.toolhub import (
-    BaseTool,
-    GetColumnJsonSchemaTool,
-    GetTableSchemaTool,
-    RunQueryTool,
-    FinishTool,
-)
+from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.research.tools import FinishTool
 from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import (

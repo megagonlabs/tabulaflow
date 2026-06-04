@@ -16,12 +16,7 @@ from tabulaflow.pipelines.populate_exec_results import populate_task_async
 from tabulaflow.core.preprocessors import DBSummarizer
 from tabulaflow.core.types import Trajectory, Usage
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.toolhub import (
-    BaseTool,
-    GetColumnJsonSchemaTool,
-    GetTableSchemaTool,
-    RunQueryTool,
-)
+from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
 
 
 logger = logging.getLogger(__name__)

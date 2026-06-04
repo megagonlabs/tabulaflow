@@ -9,14 +9,8 @@ from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.core.types import PredQuery, Usage, Trajectory
 from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
-from tabulaflow.toolhub import (
-    BaseTool,
-    RunQueryTool,
-    SearchKeywordsTool,
-    FinishTool,
-    GetSchemaTool,
-    GetColumnDescriptionTool,
-)
+from tabulaflow.toolhub import BaseTool, RunQueryTool
+from tabulaflow.research.tools import SearchKeywordsTool, FinishTool, GetSchemaTool, GetColumnDescriptionTool
 from tabulaflow.agenthub.base import (
     agent_registry,
     BaseAgentConfig,

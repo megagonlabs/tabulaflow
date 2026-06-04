@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from tabulaflow.toolhub.execute_bash import ExecuteBashTool
+from tabulaflow.research.tools.execute_bash import ExecuteBashTool
 
 
 @pytest.fixture

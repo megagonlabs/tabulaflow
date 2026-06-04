@@ -4,7 +4,8 @@ from typing import ClassVar
 import asyncio
 import os
 import json
-from tabulaflow.toolhub import RunQueryTool, SearchKeywordsTool
+from tabulaflow.toolhub import RunQueryTool
+from tabulaflow.research.tools import SearchKeywordsTool
 from tabulaflow.core.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.metadata_synthesizer import HSchemaSynthesizer
