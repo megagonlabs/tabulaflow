@@ -18,7 +18,7 @@ _POSITIVE_INT_OR_NONE_FIELDS = (
 )
 
 
-class _TabulaflowSettings(BaseSettings):
+class Settings(BaseSettings):
     """Reads ``TABULAFLOW_*`` environment variables with typed defaults."""
 
     model_config = SettingsConfigDict(env_prefix="TABULAFLOW_")
@@ -48,8 +48,6 @@ class _TabulaflowSettings(BaseSettings):
     # Run Chromium in headless mode. Set ``TABULAFLOW_BROWSER_HEADLESS=0`` to launch
     # a visible window for live debugging of browser_* tool calls.
     browser_headless: bool = True
-    dataset: str = "bird-sql"
-    split: str = "dev"
     query_timeout: int | None = 300
     log_level: str = "WARNING"
     column_stats_mode: ColumnStatsMode = "skip_for_large_tables"
@@ -93,7 +91,7 @@ class TabulaflowConfig:
 
     def __init__(self) -> None:
         self._overrides: dict[str, Any] = {}
-        self._settings = _TabulaflowSettings()
+        self._settings = Settings()
 
     def configure(self, **kwargs: Any) -> None:
         """Set configuration overrides.
@@ -106,7 +104,7 @@ class TabulaflowConfig:
             self._overrides.clear()
         else:
             self._overrides.update(kwargs)
-        self._settings = _TabulaflowSettings(**self._overrides)
+        self._settings = Settings(**self._overrides)
 
     def __getattr__(self, name: str) -> Any:
         return getattr(self._settings, name)

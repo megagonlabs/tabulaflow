@@ -8,8 +8,8 @@ from tabulaflow.config import tabulaflow_config
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
-    parser.add_argument("--split", default=tabulaflow_config.split)
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()

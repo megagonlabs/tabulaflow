@@ -10,8 +10,8 @@ from tabulaflow.pipelines.populate_exec_results import populate_task_async
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
-    parser.add_argument("--split", default=tabulaflow_config.split)
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     print(args)

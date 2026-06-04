@@ -14,9 +14,9 @@ async def main() -> None:
 
     # Source: either --file or --dataset + --database
     parser.add_argument(
-        "--dataset", default=tabulaflow_config.dataset, help="Dataset name (e.g. bird-sql, spider2-snow, beaver)"
+        "--dataset", default="bird-sql", help="Dataset name (e.g. bird-sql, spider2-snow, beaver)"
     )
-    parser.add_argument("--split", default=tabulaflow_config.split, help="Dataset split (auto-detected if omitted)")
+    parser.add_argument("--split", default="dev", help="Dataset split (auto-detected if omitted)")
     source = parser.add_mutually_exclusive_group()
     source.add_argument(
         "--file", help="Path to a cached schema JSON file (e.g. cache/schemas/spider2-snow+NOAA_DATA.json)"
@@ -31,7 +31,7 @@ async def main() -> None:
     if not args.file and not args.database:
         parser.error("--file or --database is required")
     if args.database and not args.dataset:
-        parser.error("--dataset is required when using --database (set TABULAFLOW_DATASET env var or pass explicitly)")
+        parser.error("--dataset is required when using --database")
 
     print(args)
     print()
@@ -48,7 +48,7 @@ async def main() -> None:
         split = args.split
         if split is None:
             default_splits = {"bird-sql": "dev", "spider2-snow": "test", "beaver": "test"}
-            split = default_splits.get(args.dataset, tabulaflow_config.split)
+            split = default_splits.get(args.dataset, "dev")
 
         dataset_loader = dataset_registry.get_class(args.dataset)()
         dataset = await dataset_loader.get_split_async(split, databases=[args.database])

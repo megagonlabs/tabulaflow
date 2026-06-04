@@ -222,8 +222,8 @@ async def print_preprocessed_schema_stats(dataset: NL2QDataset, tablefmt: str = 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
-    parser.add_argument("--split", default=tabulaflow_config.split)
+    parser.add_argument("--dataset", default="bird-sql")
+    parser.add_argument("--split", default="dev")
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
     parser.add_argument("--print_preprocessed_schema_stats", action="store_true")
