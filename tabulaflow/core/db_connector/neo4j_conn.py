@@ -8,7 +8,7 @@ from typing import Any, ClassVar, Literal, Mapping
 import neo4j
 import pandas as pd
 
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.schema import (
     ErrorInfo,
     ExecResult,

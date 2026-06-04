@@ -16,7 +16,7 @@ import pandas as pd
 import logging
 import math
 import itertools
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 
 logger = logging.getLogger(__name__)
 
@@ -929,7 +929,7 @@ class ExecResult(BaseModel):
     def to_markdown(self) -> str:
         if self.df is None:
             return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
-        from tabulaflow.utils import format_df
+        from tabulaflow.core.utils import format_df
 
         result = format_df(self.df)
         n = len(self.df)

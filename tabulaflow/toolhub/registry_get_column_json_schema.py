@@ -4,7 +4,7 @@ from typing import ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
 from tabulaflow.toolhub.utils import sum_tool_metrics
 

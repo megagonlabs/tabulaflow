@@ -3,7 +3,7 @@ import time
 import asyncio
 from tabulaflow.datahub import dataset_registry
 import tabulaflow
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 
 
 async def main() -> None:

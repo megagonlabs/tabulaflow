@@ -14,7 +14,7 @@ import random
 from typing import Any, ClassVar, Mapping
 
 from tabulaflow.datahub.base import dataset_registry
-from tabulaflow.db_connector import Neo4jConnector
+from tabulaflow.core.db_connector import Neo4jConnector
 from tabulaflow.schema import GoldQuery, NL2QDataset, SimpleNL2QTask
 
 # Host Bolt port per graph (container listens on 7687). Matches official compose.

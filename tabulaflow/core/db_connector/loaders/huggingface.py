@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     import httpx
 
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
 
@@ -350,7 +350,7 @@ async def _load_hf_via_datasets_lib(
         ``ds.load_dataset`` produced, which we don't know up front;
         downstream consumers ignore it).
     """
-    from tabulaflow.db_connector.loaders.runner import run_loader_subprocess
+    from tabulaflow.core.db_connector.loaders.runner import run_loader_subprocess
 
     logger.info(
         "Falling back to datasets library for '%s' (not available via datasets-server)",
@@ -362,7 +362,7 @@ async def _load_hf_via_datasets_lib(
 
     try:
         await run_loader_subprocess(
-            "tabulaflow.db_connector.loaders.huggingface",
+            "tabulaflow.core.db_connector.loaders.huggingface",
             {
                 "mode": "datasets_lib",
                 "db_path": db_file,
@@ -403,8 +403,8 @@ async def _load_hf_into_duckdb(
     Returns:
         A tuple of (db_path, table_names).
     """
-    from tabulaflow.config import tabulaflow_config
-    from tabulaflow.db_connector.loaders.runner import run_loader_subprocess
+    from tabulaflow.core.config import tabulaflow_config
+    from tabulaflow.core.db_connector.loaders.runner import run_loader_subprocess
 
     cache_dir = os.path.join(tabulaflow_config.cache_dir, "hf")
     os.makedirs(cache_dir, exist_ok=True)
@@ -447,7 +447,7 @@ async def _load_hf_into_duckdb(
     payload_splits, table_names = await _build_hf_splits(dataset_id, config, loaded_sizes)
     try:
         await run_loader_subprocess(
-            "tabulaflow.db_connector.loaders.huggingface",
+            "tabulaflow.core.db_connector.loaders.huggingface",
             {"mode": "parquet_urls", "db_path": db_path, "splits": payload_splits},
         )
     except BaseException:
@@ -487,7 +487,7 @@ async def load_hf_dataset(
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
     dataset_id, subset, split = parse_hf_dataset_url(dataset_url)
 
@@ -501,7 +501,7 @@ async def load_hf_dataset(
     global_id = f"hf+{os.path.splitext(os.path.basename(db_path))[0]}"
 
     # Fetch dataset description only on schema cache miss.
-    from tabulaflow.config import tabulaflow_config
+    from tabulaflow.core.config import tabulaflow_config
 
     schema_cache_path = os.path.join(tabulaflow_config.cache_dir, "schemas", f"{global_id}.json")
     description: str | None = None

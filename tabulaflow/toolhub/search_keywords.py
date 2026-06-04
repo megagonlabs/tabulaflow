@@ -4,7 +4,7 @@ from sqlalchemy.sql import quoted_name
 from sqlalchemy import select
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from tabulaflow.db_connector import BaseSQLDBConnector
+from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.toolhub.utils import equals_ci
 
 

@@ -6,7 +6,7 @@ from tabulaflow.schema import (
     StructuredAmbigNL2QTaskOutput,
     NumericOrNull,
 )
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.utils import get_final_pred_query
 from tabulaflow.metrics.simple_ex import SimpleEx

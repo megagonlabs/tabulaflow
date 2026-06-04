@@ -107,8 +107,8 @@ from tabulaflow.schema import (
     TableRef,
 )
 
-from tabulaflow.config import tabulaflow_config, ColumnStatsMode
-from tabulaflow.db_connector.utils import infer_json_schema, looks_like_json
+from tabulaflow.core.config import tabulaflow_config, ColumnStatsMode
+from tabulaflow.core.db_connector.utils import infer_json_schema, looks_like_json
 
 logger = logging.getLogger(__name__)
 

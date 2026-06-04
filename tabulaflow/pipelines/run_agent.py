@@ -12,11 +12,11 @@ import traceback
 from tabulaflow import agent_registry, dataset_registry
 import tabulaflow
 from tabulaflow.metrics import BaseMetricAggregator, SimpleInferenceMetricsAggregator
-from tabulaflow.utils import pprint_dict, tqdm_gather_with_exceptions
+from tabulaflow.core.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.pipelines.utils import bool_flag
 from tabulaflow.agenthub import NL2QAgent, BaseAgentConfig
 from tabulaflow.agenthub.user_simulator import UserSimulator
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.datahub.spider2_dbt import prepare_working_env_async
 from tabulaflow.schema import (
     NL2QDataset,

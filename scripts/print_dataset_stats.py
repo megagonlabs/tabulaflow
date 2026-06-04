@@ -4,12 +4,12 @@ import time
 import asyncio
 from tabulate import tabulate
 import tabulaflow
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.datahub import dataset_registry
 from tabulaflow.preprocessors.components import SchemaCompressor
 from tabulaflow.preprocessors.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.schema import NL2QDataset
-from tabulaflow.utils import dict_to_df
+from tabulaflow.core.utils import dict_to_df
 
 
 MAX_DBS_TO_PRINT = 12

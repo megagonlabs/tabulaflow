@@ -10,7 +10,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from tabulaflow.db_connector.sql_conn import SQLConnector, _canonicalize_dtype
+from tabulaflow.core.db_connector.sql_conn import SQLConnector, _canonicalize_dtype
 
 
 def test_canonicalize_dtype_scalars() -> None:

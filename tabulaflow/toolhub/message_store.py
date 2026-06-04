@@ -24,7 +24,7 @@ if TYPE_CHECKING:
     from pydantic_ai.messages import ToolCallPart
     from pydantic_ai.tools import ToolDefinition
 
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
 

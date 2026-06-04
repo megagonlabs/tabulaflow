@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from tabulaflow.agenthub.base import agent_registry as agent_registry
     from tabulaflow.datahub.base import dataset_registry as dataset_registry
-    from tabulaflow.formatters.base import formatter_registry as formatter_registry
+    from tabulaflow.core.formatters.base import formatter_registry as formatter_registry
     from tabulaflow.metrics.base import metric_registry as metric_registry
     from tabulaflow.preprocessors.base import preprocessor_registry as preprocessor_registry
 
@@ -17,7 +17,7 @@ def __getattr__(name: str) -> object:
         "agent_registry": ("tabulaflow.agenthub.base", "agent_registry"),
         "dataset_registry": ("tabulaflow.datahub.base", "dataset_registry"),
         "metric_registry": ("tabulaflow.metrics.base", "metric_registry"),
-        "formatter_registry": ("tabulaflow.formatters.base", "formatter_registry"),
+        "formatter_registry": ("tabulaflow.core.formatters.base", "formatter_registry"),
         "preprocessor_registry": ("tabulaflow.preprocessors.base", "preprocessor_registry"),
     }
     if name in _lazy:
@@ -51,8 +51,8 @@ def configure(**kwargs: object) -> None:
             instrument_enabled=False,
         )
     """
-    import tabulaflow.patches
-    from tabulaflow.config import tabulaflow_config
+    import tabulaflow.core.patches
+    from tabulaflow.core.config import tabulaflow_config
 
     tabulaflow_config.configure(**kwargs)
 
@@ -62,7 +62,7 @@ def configure(**kwargs: object) -> None:
     logger.debug("TABULAFLOW Configuration: %s", tabulaflow_config)
 
     if tabulaflow_config.instrument_enabled:
-        tabulaflow.patches.setup()
+        tabulaflow.core.patches.setup()
 
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
             from phoenix.otel import register

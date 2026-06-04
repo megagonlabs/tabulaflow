@@ -2,9 +2,9 @@ import asyncio
 import argparse
 import time
 import tabulaflow
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.datahub import dataset_registry
-from tabulaflow.formatters import formatter_registry
+from tabulaflow.core.formatters import formatter_registry
 from tabulaflow.schema import SQLSchema
 from tabulaflow.preprocessors.components import SchemaCompressor
 

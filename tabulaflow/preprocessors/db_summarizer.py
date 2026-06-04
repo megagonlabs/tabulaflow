@@ -4,9 +4,9 @@ from pydantic_ai import Agent
 
 from typing import Any, ClassVar, Literal
 
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.formatters.cypher import CypherSchemaFormatter
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.preprocessors.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
 from tabulaflow.schema import Usage

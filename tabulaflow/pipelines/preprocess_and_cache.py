@@ -8,7 +8,7 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow import dataset_registry
 import tabulaflow
 from tabulaflow.preprocessors.base import NL2QPreprocessor, preprocessor_registry
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.schema import NL2QDataset
 
 logger = logging.getLogger(__name__)

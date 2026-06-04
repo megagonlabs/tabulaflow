@@ -8,8 +8,8 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.db_connector.db_registry import DBRegistry
-from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 
 

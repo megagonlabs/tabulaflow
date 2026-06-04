@@ -2,7 +2,7 @@ import math
 import pandas as pd
 from typing import Any, ClassVar
 from tabulaflow.schema import NL2QTaskOutput
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.utils import get_final_pred_query, get_final_gold_query
 

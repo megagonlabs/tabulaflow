@@ -14,7 +14,7 @@ from urllib.parse import quote_plus
 from typing import Optional, ClassVar
 import pandas as pd
 from tabulaflow.schema import SimpleNL2QTask, NL2QDataset, GoldQuery, ExecResult
-from tabulaflow.db_connector import SQLConnector, BaseSQLDBConnector
+from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
 from tabulaflow.datahub.base import dataset_registry
 
 logger = logging.getLogger(__name__)

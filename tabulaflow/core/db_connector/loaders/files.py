@@ -14,7 +14,7 @@ import tempfile
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 
 DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
@@ -143,7 +143,7 @@ async def load_files(
     Returns:
         A :class:`SQLConnector` backed by a DuckDB database.
     """
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
     seen: set[str] = set()
     resolved: list[str] = []

@@ -308,7 +308,7 @@ def extract_all_source_columns(query: str, language: str = "sqlite") -> list[tup
 
 
 # ---------------------------------------------------------------------------
-# Display utilities (moved from tabulaflow.formatters.utils)
+# Display utilities (moved from tabulaflow.core.formatters.utils)
 # ---------------------------------------------------------------------------
 
 

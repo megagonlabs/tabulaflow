@@ -10,8 +10,8 @@ import logging
 import re
 from typing import ClassVar
 
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.db_connector.neo4j_conn import Neo4jConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector.neo4j_conn import Neo4jConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.utils import get_final_gold_query, get_final_pred_query
 from tabulaflow.schema import NL2QTaskOutput, NumericOrNull

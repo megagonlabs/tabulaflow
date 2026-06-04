@@ -9,7 +9,7 @@ from tabulaflow.schema import (
     RelationshipSchema,
     GraphPropertySchema,
 )
-from tabulaflow.registry import Registry
+from tabulaflow.core.registry import Registry
 
 
 class BaseSQLSchemaFormatter(Protocol):

@@ -6,7 +6,7 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow import metric_registry, dataset_registry
 import tabulaflow
 from tabulaflow.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics import NL2QMetric, BaseMetricAggregator
 from tabulaflow.metrics.aggregators import (
     ByAmbrosiaTaxonomyTypeAggregator,
@@ -16,7 +16,7 @@ from tabulaflow.metrics.aggregators import (
     ByAmbigPointNumAggregator,
     ByBirdSQLDifficultyAggregator,
 )
-from tabulaflow.utils import pprint_dict
+from tabulaflow.core.utils import pprint_dict
 
 
 async def compute_metrics_async(

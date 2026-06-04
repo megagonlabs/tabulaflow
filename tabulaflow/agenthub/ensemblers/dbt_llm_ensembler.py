@@ -13,8 +13,8 @@ from pydantic_ai import Agent, ToolOutput
 
 from tabulaflow.agenthub.base import BaseAgentConfig
 from tabulaflow.agenthub.utils import instrument
-from tabulaflow.db_connector import BaseSQLDBConnector
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.db_connector import BaseSQLDBConnector
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.preprocessors import DBSummarizer
 from tabulaflow.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
 

@@ -6,7 +6,7 @@ import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
 from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter
-from tabulaflow.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
+from tabulaflow.core.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
 INIT_SQL = [

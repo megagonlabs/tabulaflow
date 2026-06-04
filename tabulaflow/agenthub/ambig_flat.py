@@ -5,8 +5,8 @@ import time
 from typing import ClassVar, Literal, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
-from tabulaflow.db_connector import BaseSQLDBConnector
-from tabulaflow.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.core.db_connector import BaseSQLDBConnector
+from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.schema import (
     AmbigNL2QTask,
     FlatAmbigNL2QTaskOutput,
@@ -32,7 +32,7 @@ from tabulaflow.agenthub.base import (
 )
 from tabulaflow.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from tabulaflow.preprocessors import SchemaCompressor
-from tabulaflow.utils import int_to_letter
+from tabulaflow.core.utils import int_to_letter
 
 
 DISAMBIGUATION_PROMPT = """

@@ -4,7 +4,7 @@ import random
 import asyncio
 from typing import Any, ClassVar
 from tabulaflow.schema import SimpleNL2QTask, NL2QDataset, GoldQuery
-from tabulaflow.db_connector import SQLConnector
+from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.datahub.base import dataset_registry
 
 

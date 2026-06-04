@@ -3,7 +3,7 @@
 
 import asyncio
 from tabulaflow.datahub.spider2_lite import Spider2LiteDatasetLoader
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 
 async def main():

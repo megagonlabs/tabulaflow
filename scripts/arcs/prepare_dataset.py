@@ -13,8 +13,8 @@ from tabulate import tabulate
 import tabulaflow
 from tabulaflow.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
 from tabulaflow.datahub import dataset_registry
-from tabulaflow.db_connector import SQLConnector
-from tabulaflow.utils import sort_ambiguity_points
+from tabulaflow.core.db_connector import SQLConnector
+from tabulaflow.core.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 

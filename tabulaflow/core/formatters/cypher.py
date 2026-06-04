@@ -1,7 +1,7 @@
 from typing import ClassVar
 from dataclasses import dataclass
 
-from tabulaflow.formatters.base import formatter_registry
+from tabulaflow.core.formatters.base import formatter_registry
 from tabulaflow.schema import (
     GraphPropertySchema,
     NodeSchema,

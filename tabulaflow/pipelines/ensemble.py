@@ -22,7 +22,7 @@ from tabulaflow.schema import (
     NL2QTaskOutput,
 )
 from tabulaflow.pipelines.utils import bool_flag
-from tabulaflow.utils import tqdm_gather_with_exceptions
+from tabulaflow.core.utils import tqdm_gather_with_exceptions
 
 Ensembler = MajorityEnsembler | LLMEnsembler | AgentEnsembler | DbtLLMEnsembler
 

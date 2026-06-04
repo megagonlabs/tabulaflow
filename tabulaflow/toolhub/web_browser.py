@@ -357,7 +357,7 @@ async def default_manager(headless: bool = True) -> WebBrowserManager:
         return _default_manager
     async with _default_manager_lock:
         if _default_manager is None:
-            from tabulaflow.config import tabulaflow_config
+            from tabulaflow.core.config import tabulaflow_config
 
             _default_manager = WebBrowserManager(headless=headless, max_pages=tabulaflow_config.max_browser_tabs)
         return _default_manager
@@ -566,7 +566,7 @@ class WebBrowserTool:
                 subsequent tools share the existing browser regardless.
         """
         if headless is None:
-            from tabulaflow.config import tabulaflow_config
+            from tabulaflow.core.config import tabulaflow_config
             headless = tabulaflow_config.browser_headless
         self._manager = manager
         self._isolated = isolated

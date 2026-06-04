@@ -5,8 +5,8 @@ import asyncio
 import os
 import json
 from tabulaflow.toolhub import RunQueryTool, SearchKeywordsTool
-from tabulaflow.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
-from tabulaflow.db_connector import SQLConnector
+from tabulaflow.core.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
+from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.metadata_synthesizer import HSchemaSynthesizer
 from tabulaflow.schema import SQLSchema, HSQLSchema
 from mcp.server.fastmcp import FastMCP

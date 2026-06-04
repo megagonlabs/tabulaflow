@@ -2,8 +2,8 @@ import jinja2
 import time
 from typing import ClassVar, Literal
 from pydantic_ai import Agent
-from tabulaflow.db_connector import BaseSQLDBConnector
-from tabulaflow.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.core.db_connector import BaseSQLDBConnector
+from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.schema import AmbigNL2QTask, SimpleAmbigNL2QTaskOutput, PredQuery, Usage, Trajectory
 from tabulaflow.toolhub import (
     BaseTool,

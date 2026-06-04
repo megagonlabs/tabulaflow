@@ -12,7 +12,7 @@ from tabulaflow.schema import PredQuery
 if TYPE_CHECKING:
     import pandas as pd
 
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 logger = logging.getLogger(__name__)
 

@@ -6,8 +6,8 @@ from typing import Any, ClassVar
 
 from pydantic_ai import Tool
 
-from tabulaflow.config import tabulaflow_config
-from tabulaflow.db_connector.db_registry import DBRegistry
+from tabulaflow.core.config import tabulaflow_config
+from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
 from tabulaflow.toolhub.utils import sum_tool_metrics

@@ -2,7 +2,7 @@ import asyncio
 import os
 import tabulaflow
 from tabulaflow.schema import NL2QRunResult
-from tabulaflow.db_connector import SQLConnector
+from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.datahub import BirdSQLDatasetLoader
 
 

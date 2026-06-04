@@ -6,8 +6,8 @@ from tqdm.asyncio import tqdm_asyncio
 from tabulaflow import dataset_registry
 import tabulaflow
 from tabulaflow.schema import NL2QTask, NL2QTaskOutput, NL2QRunResult, NL2QDataset
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.config import tabulaflow_config
 
 
 async def populate_task_async(

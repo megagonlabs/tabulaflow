@@ -2316,7 +2316,7 @@ class SchemaBrowserScreen(Screen[None]):
         state: _ExplorerState | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.db_connector.db_registry import DBRegistry
+        from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         assert isinstance(registry, DBRegistry)
         self._registry: DBRegistry = registry

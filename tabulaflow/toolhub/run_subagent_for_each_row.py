@@ -17,8 +17,8 @@ from pydantic_ai import Agent, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.db_connector.base import BaseSQLDBConnector
-from tabulaflow.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.base import BaseSQLDBConnector
+from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.schema import SQLDialect, Trajectory
 from tabulaflow.toolhub.utils import qualified_table, sa_table
 from tabulaflow.toolhub.message_store import (

@@ -20,7 +20,7 @@ from aiolimiter import AsyncLimiter
 import pydantic_ai.models
 from pydantic_ai.usage import UsageLimits
 
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.config import tabulaflow_config
 
 if TYPE_CHECKING:
     from pydantic_ai.messages import ModelMessage, ModelResponse

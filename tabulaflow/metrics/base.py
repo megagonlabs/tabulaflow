@@ -4,8 +4,8 @@ from tabulaflow.schema import (
     NL2QTaskOutput,
     NumericOrNull,
 )
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.registry import Registry
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.registry import Registry
 
 
 class BaseNL2QMetric(Protocol):

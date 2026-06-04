@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.utils import format_json_schema
+from tabulaflow.core.utils import format_json_schema
 from tabulaflow.schema import SQLSchema
 from tabulaflow.toolhub.utils import equals_ci
 

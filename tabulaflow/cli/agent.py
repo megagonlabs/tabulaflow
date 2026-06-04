@@ -27,8 +27,8 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
-    from tabulaflow.db_connector.base import NL2QDBConnector
-    from tabulaflow.db_connector.db_registry import DBRegistry
+    from tabulaflow.core.db_connector.base import NL2QDBConnector
+    from tabulaflow.core.db_connector.db_registry import DBRegistry
     from tabulaflow.schema import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
@@ -287,7 +287,7 @@ class ChatAgent:
     last_usage: Usage | None = None
 
     def __post_init__(self) -> None:
-        from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
             QueryHistory,
@@ -352,7 +352,7 @@ class ChatAgent:
 
     def set_workspace(self, connector: NL2QDBConnector) -> None:
         """Attach a workspace connector for persisting query-history DataFrames."""
-        from tabulaflow.db_connector.sql_conn import SQLConnector
+        from tabulaflow.core.db_connector.sql_conn import SQLConnector
         from tabulaflow.toolhub.query_history import QueryHistory
 
         if not isinstance(connector, SQLConnector):
@@ -367,7 +367,7 @@ class ChatAgent:
     @staticmethod
     def database_info(connector: NL2QDBConnector) -> str:
         """Build a concise database summary string."""
-        from tabulaflow.db_connector import Neo4jConnector
+        from tabulaflow.core.db_connector import Neo4jConnector
 
         if isinstance(connector, Neo4jConnector):
             n_labels = len(connector.schema.nodes)
@@ -397,7 +397,7 @@ class ChatAgent:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
-        import tabulaflow.patches  # noqa: F401
+        import tabulaflow.core.patches  # noqa: F401
         from pydantic_ai import Agent
 
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout

@@ -9,7 +9,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.message_store import MessageStore
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 

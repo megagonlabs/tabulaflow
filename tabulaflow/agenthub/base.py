@@ -19,8 +19,8 @@ from tabulaflow.schema import (
     UserQuestion,
     UserAnswer,
 )
-from tabulaflow.db_connector import BaseSQLDBConnector, NL2QDBConnector
-from tabulaflow.registry import Registry
+from tabulaflow.core.db_connector import BaseSQLDBConnector, NL2QDBConnector
+from tabulaflow.core.registry import Registry
 
 __all__ = [
     "BaseAgentConfig",

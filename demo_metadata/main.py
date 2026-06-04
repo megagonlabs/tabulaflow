@@ -7,9 +7,9 @@ import json
 import os
 import logging
 from tabulaflow.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
-from tabulaflow.db_connector import SQLConnector
-from tabulaflow.formatters import SQLBasicSchemaFormatter
-from tabulaflow.utils import extract_code
+from tabulaflow.core.db_connector import SQLConnector
+from tabulaflow.core.formatters import SQLBasicSchemaFormatter
+from tabulaflow.core.utils import extract_code
 
 # os.environ["TABULAFLOW_SCHEMA_CACHE_ENABLED"] = "0"
 

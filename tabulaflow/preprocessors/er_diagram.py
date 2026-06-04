@@ -2,12 +2,12 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
-from tabulaflow.formatters.base import BaseSQLSchemaFormatter
+from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
 from tabulaflow.schema import SQLSchema, TableRef, Usage
-from tabulaflow.db_connector import BaseSQLDBConnector
+from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.toolhub.run_query import RunQueryTool
 
 ER_DIAGRAM_SYNTHESIS_PROMPT = """

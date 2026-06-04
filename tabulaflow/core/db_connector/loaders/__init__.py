@@ -1,7 +1,7 @@
 """Data source loaders that produce SQLConnector instances."""
 
-from tabulaflow.db_connector.loaders.files import DATA_FILE_EXTENSIONS, load_files
-from tabulaflow.db_connector.loaders.huggingface import (
+from tabulaflow.core.db_connector.loaders.files import DATA_FILE_EXTENSIONS, load_files
+from tabulaflow.core.db_connector.loaders.huggingface import (
     is_hf_dataset_url,
     load_hf_dataset,
     parse_hf_dataset_url,

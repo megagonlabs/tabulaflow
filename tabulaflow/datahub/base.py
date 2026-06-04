@@ -1,7 +1,7 @@
 from typing import Protocol, ClassVar, Sequence, Mapping, TypeAlias
 from tabulaflow.schema import NL2QDataset, NL2QTask
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.registry import Registry
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.registry import Registry
 
 
 class BaseNL2QDatasetLoader(Protocol):

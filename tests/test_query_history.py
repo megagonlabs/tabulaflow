@@ -6,7 +6,7 @@ from typing import AsyncGenerator
 import pandas as pd
 import pytest
 
-from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.schema import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 

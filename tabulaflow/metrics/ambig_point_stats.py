@@ -11,10 +11,10 @@ from tabulaflow.schema import (
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.schema import PredAmbiguityPoint, GoldAmbiguityPoint
-from tabulaflow.utils import int_to_letter
+from tabulaflow.core.utils import int_to_letter
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 

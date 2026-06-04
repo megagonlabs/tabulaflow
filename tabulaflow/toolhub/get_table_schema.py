@@ -2,8 +2,8 @@ import re
 from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
-from tabulaflow.db_connector.base import BaseSQLDBConnector
-from tabulaflow.formatters import BaseSQLSchemaFormatter
+from tabulaflow.core.db_connector.base import BaseSQLDBConnector
+from tabulaflow.core.formatters import BaseSQLSchemaFormatter
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
 from tabulaflow.schema import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
 from tabulaflow.toolhub.utils import equals_ci

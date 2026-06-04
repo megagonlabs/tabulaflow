@@ -4,9 +4,9 @@ from typing import ClassVar
 from pydantic_ai import Agent
 import logging
 
-import tabulaflow.formatters  # noqa: F401 — register sql_*, cypher, … formatters
+import tabulaflow.core.formatters  # noqa: F401 — register sql_*, cypher, … formatters
 
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, PredQuery, Usage, Trajectory
 from tabulaflow.preprocessors import SchemaCompressor
 from tabulaflow.toolhub import (
@@ -14,7 +14,7 @@ from tabulaflow.toolhub import (
     RunQueryTool,
     FinishTool,
 )
-from tabulaflow.formatters.base import formatter_registry
+from tabulaflow.core.formatters.base import formatter_registry
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import (
     get_max_steps_processor,

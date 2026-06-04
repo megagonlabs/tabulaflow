@@ -10,7 +10,7 @@ import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import logging
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.schema import (
     ExtraPredInfo,
     NL2QDataset,
@@ -30,7 +30,7 @@ from tabulaflow.toolhub import (
     SearchKeywordsTool,
     FinishTool,
 )
-from tabulaflow.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import (
     get_max_steps_processor,
@@ -38,9 +38,9 @@ from tabulaflow.agenthub.utils import (
     BasicAgentConfig,
     TaskRunContext,
 )
-from tabulaflow.utils import extract_code, extract_all_source_columns
+from tabulaflow.core.utils import extract_code, extract_all_source_columns
 from tabulaflow.preprocessors.er_diagram import ERDiagram
-from tabulaflow.formatters.er_diagram import ERDiagramMermaidFormatter
+from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
 
 
 logger = logging.getLogger(__name__)

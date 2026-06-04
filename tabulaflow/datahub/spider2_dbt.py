@@ -19,7 +19,7 @@ from typing import Any, ClassVar
 import duckdb
 
 from tabulaflow.datahub.base import dataset_registry
-from tabulaflow.db_connector import SQLConnector, BaseSQLDBConnector
+from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
 from tabulaflow.schema import DbtTask, DbtGoldTable, NL2QDataset
 
 logger = logging.getLogger(__name__)

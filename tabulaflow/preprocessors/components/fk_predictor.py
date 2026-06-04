@@ -5,9 +5,9 @@ import jinja2
 from pydantic import BaseModel
 from pydantic_ai import Agent
 from tabulaflow.schema import SQLSchema, Usage, ForeignKeySchema, TableRef
-from tabulaflow.db_connector import BaseSQLDBConnector
+from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.toolhub.run_query import RunQueryTool
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 FK_PREDICTOR_SYSTEM_PROMPT = """
 <goal>

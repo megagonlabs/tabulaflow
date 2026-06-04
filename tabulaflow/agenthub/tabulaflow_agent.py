@@ -3,7 +3,7 @@ import time
 from typing import ClassVar
 from pydantic_ai import Agent
 import logging
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.schema import (
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,
@@ -19,7 +19,7 @@ from tabulaflow.toolhub import (
     RunQueryTool,
     FinishTool,
 )
-from tabulaflow.formatters.base import formatter_registry, NL2QFormatter
+from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import (
     get_max_steps_processor,

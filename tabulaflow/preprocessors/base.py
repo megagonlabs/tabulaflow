@@ -4,11 +4,11 @@ import numpy.typing as npt
 import asyncio
 import collections
 import os
-from tabulaflow.db_connector import NL2QDBConnector
-from tabulaflow.config import tabulaflow_config
+from tabulaflow.core.db_connector import NL2QDBConnector
+from tabulaflow.core.config import tabulaflow_config
 from pydantic import BaseModel
 from tabulaflow.schema import Usage, NL2QDataset
-from tabulaflow.registry import Registry
+from tabulaflow.core.registry import Registry
 
 
 CacheableResult: TypeAlias = BaseModel | npt.NDArray[Any] | tuple[BaseModel | npt.NDArray[Any], ...]

@@ -15,7 +15,7 @@ from typing import Any, ClassVar
 import duckdb
 import pandas as pd
 
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.schema import DbtTaskOutput, NL2QTaskOutput, NumericOrNull
 

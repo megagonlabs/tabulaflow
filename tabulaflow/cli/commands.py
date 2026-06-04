@@ -71,7 +71,7 @@ class SessionState:
         workspace_db_path: Path,
     ) -> None:
         from tabulaflow.cli.agent import ChatAgent
-        from tabulaflow.db_connector.db_registry import DBRegistry
+        from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
         self.session_id = session_id
@@ -105,7 +105,7 @@ class SessionState:
 
     async def connect_workspace_db(self) -> None:
         """Create and register the per-session workspace DuckDB."""
-        from tabulaflow.db_connector.sql_conn import SQLConnector
+        from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
         self.workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
         workspace_abspath = os.path.abspath(self.workspace_db_path)
@@ -357,7 +357,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 alias = f"{base_alias}_{suffix}"
                 suffix += 1
 
-        from tabulaflow.db_connector.loaders.files import load_files
+        from tabulaflow.core.db_connector.loaders.files import load_files
 
         global_id = f"cli+{alias}"
         file_label = ", ".join(os.path.basename(f) for f in file_args)
@@ -381,7 +381,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
     # --- HuggingFace dataset connections ---
-    from tabulaflow.db_connector.loaders import is_hf_dataset_url
+    from tabulaflow.core.db_connector.loaders import is_hf_dataset_url
 
     if is_hf_dataset_url(args[0]):
         return await _connect_hf_dataset(args, session)
@@ -426,7 +426,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
 async def _connect_hf_dataset(args: list[str], session: SessionState) -> CommandResult:
     """Handle /connect for HuggingFace dataset URLs."""
-    from tabulaflow.db_connector.loaders import load_hf_dataset, parse_hf_dataset_url
+    from tabulaflow.core.db_connector.loaders import load_hf_dataset, parse_hf_dataset_url
 
     url = args[0]
     try:
@@ -496,7 +496,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     global_id = _global_id_from_url(url)
 
     if _is_neo4j_bolt_url(url):
-        from tabulaflow.db_connector.neo4j_conn import Neo4jConnector
+        from tabulaflow.core.db_connector.neo4j_conn import Neo4jConnector
 
         driver_url, neo4j_database = _neo4j_driver_url_and_database(url)
         try:
@@ -523,7 +523,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     except ValueError as e:
         return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
 
-    from tabulaflow.db_connector.sql_conn import SQLConnector
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
     try:
         connector = await SQLConnector.from_url_async(
@@ -575,7 +575,7 @@ async def _cmd_databases(args: list[str], session: SessionState) -> CommandResul
     if not aliases:
         return CommandResult(output=Text("No databases connected. Use /connect <url> to add one.", style="dim"))
 
-    from tabulaflow.db_connector import Neo4jConnector
+    from tabulaflow.core.db_connector import Neo4jConnector
 
     table = Table(show_header=True, header_style=ACCENT_BOLD)
     table.add_column("Alias", style="bold")
@@ -611,7 +611,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
         resolve_graph_rel_patterns,
         resolve_table,
     )
-    from tabulaflow.db_connector import Neo4jConnector
+    from tabulaflow.core.db_connector import Neo4jConnector
 
     aliases = session.registry.list_aliases()
     if not aliases:

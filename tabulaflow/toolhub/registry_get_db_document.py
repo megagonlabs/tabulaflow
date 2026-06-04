@@ -5,9 +5,9 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-from tabulaflow.db_connector.db_registry import DBRegistry
-from tabulaflow.formatters.cypher import CypherSchemaFormatter
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
 from tabulaflow.preprocessors.db_summarizer import DBSummarizer
 

@@ -1,9 +1,9 @@
 from typing import ClassVar
 from dataclasses import dataclass, field
 from tabulaflow.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
-from tabulaflow.formatters.base import formatter_registry
-from tabulaflow.utils import flatten_multiline, format_ratio_as_percent, render_column_dtype
-from tabulaflow.formatters.sql_ddl import _DIALECT_QUOTING, _DEFAULT_QUOTING
+from tabulaflow.core.formatters.base import formatter_registry
+from tabulaflow.core.utils import flatten_multiline, format_ratio_as_percent, render_column_dtype
+from tabulaflow.core.formatters.sql_ddl import _DIALECT_QUOTING, _DEFAULT_QUOTING
 
 
 @formatter_registry.register

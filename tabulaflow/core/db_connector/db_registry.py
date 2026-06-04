@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from tabulaflow.db_connector.base import NL2QDBConnector
+from tabulaflow.core.db_connector.base import NL2QDBConnector
 
 
 @dataclass

@@ -1,9 +1,9 @@
 """Tests for native_dtype rendering in schema formatters."""
 
 from tabulaflow.schema import SQLColumnSchema
-from tabulaflow.utils import render_column_dtype
-from tabulaflow.formatters.sql_basic import SQLBasicSchemaFormatter
-from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.utils import render_column_dtype
+from tabulaflow.core.formatters.sql_basic import SQLBasicSchemaFormatter
+from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 
 def _col(name: str, dtype: str, native_dtype: str | None) -> SQLColumnSchema:

@@ -28,7 +28,7 @@ async def run_loader_subprocess(
 
     Args:
         worker_module: Dotted module path, e.g.
-            ``"tabulaflow.db_connector.loaders.files"``.  The module's
+            ``"tabulaflow.core.db_connector.loaders.files"``.  The module's
             ``__main__`` reads the payload from stdin.
         payload: JSON-serialisable payload.
         terminate_grace_seconds: Wait after ``terminate()`` before escalating

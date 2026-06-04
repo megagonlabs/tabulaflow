@@ -571,7 +571,7 @@ def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
 
 def build_property_graph_overview(schema: PropertyGraphSchema, alias: str) -> RenderableType:
     """Build full property-graph schema renderable."""
-    from tabulaflow.formatters.cypher import CypherSchemaFormatter
+    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 
     body = CypherSchemaFormatter().format(schema)
     return Panel(body, title=f"[bold]{alias}[/bold] · cypher", border_style=ACCENT)
@@ -589,7 +589,7 @@ def resolve_graph_rel_patterns(schema: PropertyGraphSchema, name: str) -> list[R
 
 
 def build_graph_node_detail(node: NodeSchema) -> RenderableType:
-    from tabulaflow.formatters.cypher import CypherSchemaFormatter
+    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 
     fmt = CypherSchemaFormatter()
     return Panel(fmt.format_node(node), title=f"[bold]:{node.label}[/bold]", border_style=ACCENT)

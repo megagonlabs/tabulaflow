@@ -4,7 +4,7 @@ import asyncio
 from typing import Any
 import tabulaflow
 from tabulaflow.datahub import dataset_registry
-from tabulaflow.db_connector import BaseSQLDBConnector
+from tabulaflow.core.db_connector import BaseSQLDBConnector
 
 query = """
 SELECT n.n_name AS nation, SUM(l.l_extendedprice) AS total_revenue

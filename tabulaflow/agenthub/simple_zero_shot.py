@@ -5,10 +5,10 @@ import jinja2
 import logging
 import asyncio
 from typing import Any, ClassVar
-from tabulaflow.utils import extract_code
+from tabulaflow.core.utils import extract_code
 from tabulaflow.preprocessors import SchemaCompressor
-from tabulaflow.formatters import formatter_registry
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.formatters import formatter_registry
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.schema import (
     SimpleNL2QTask,
     SimpleNL2QTaskOutput,

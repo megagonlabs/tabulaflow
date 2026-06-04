@@ -6,7 +6,7 @@ from tabulaflow.schema import (
     StructuredAmbigNL2QTaskOutput,
     NumericOrNull,
 )
-from tabulaflow.db_connector import NL2QDBConnector
+from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput

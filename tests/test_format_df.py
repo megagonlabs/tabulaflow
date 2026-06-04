@@ -1,6 +1,6 @@
 import pandas as pd
 import numpy as np
-from tabulaflow.utils import format_df
+from tabulaflow.core.utils import format_df
 
 
 class TestFormatDf:

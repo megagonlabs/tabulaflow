@@ -6,8 +6,8 @@ from typing import ClassVar, Literal
 
 from pydantic_ai import Tool
 
-from tabulaflow.db_connector.db_registry import DBRegistry
-from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 from tabulaflow.toolhub.query_history import QueryHistory
 

@@ -1,5 +1,5 @@
 import pytest
-from tabulaflow.utils import extract_code
+from tabulaflow.core.utils import extract_code
 
 
 @pytest.mark.asyncio

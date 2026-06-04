@@ -14,7 +14,7 @@ from pandas.api import types as pdt
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
-from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.utils import qualified_table
 from tabulaflow.toolhub.entity_extractor import DEFAULT_CHUNK_CHARS, DEFAULT_CHUNK_OVERLAP_CHARS, EntityExtractor
 
