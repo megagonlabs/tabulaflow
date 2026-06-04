@@ -13,10 +13,10 @@ from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.cli.commands import COMMAND_PREFIX, SessionState, handle_command
-from tabulaflow.cli.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
-from tabulaflow.cli.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
-from tabulaflow.cli.widgets import (
+from tabulaflow.app.commands import COMMAND_PREFIX, SessionState, handle_command
+from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
+from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
     BannerWidget,
@@ -27,7 +27,7 @@ from tabulaflow.cli.widgets import (
 )
 
 if TYPE_CHECKING:
-    from tabulaflow.cli.agent import ChatResult
+    from tabulaflow.chat.agent import ChatResult
     from tabulaflow.toolhub.query_history import QueryHistory
 
 logger = logging.getLogger(__name__)
@@ -97,7 +97,7 @@ class TabulaflowApp(App[None]):
         # The same instance is passed to every SchemaBrowserScreen, which
         # mutates it on close so reopening lands the user where they left
         # off.
-        from tabulaflow.cli.widgets import _ExplorerState
+        from tabulaflow.app.widgets import _ExplorerState
 
         self._explorer_state = _ExplorerState()
 
@@ -191,7 +191,7 @@ class TabulaflowApp(App[None]):
         ``Open data explorer`` button next to the input. Falls back to a
         system message when no databases are connected.
         """
-        from tabulaflow.cli.widgets import SchemaBrowserScreen, SystemMessage
+        from tabulaflow.app.widgets import SchemaBrowserScreen, SystemMessage
 
         if self._session is None or not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
@@ -298,7 +298,7 @@ class TabulaflowApp(App[None]):
     def _build_debug_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         import datetime
         import json
@@ -674,7 +674,7 @@ LIMIT 4000"""
         """
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
             # Pretty-printed lines per item are ~8; with note_chars > 0 each
@@ -777,7 +777,7 @@ LIMIT 4000"""
         import pandas as pd
         from PIL import Image, ImageDraw
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
             # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
@@ -817,26 +817,26 @@ LIMIT 4000"""
         # ratios) — exercises non-square sources and verifies that the cell
         # box hugs each image's natural dimensions.
         jpeg = [
-            _debug_files("tabulaflow.cli.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
+            _debug_files("tabulaflow.app.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
             for i in range(len(colors))
         ]
         # Five real animated GIFs at varied sizes — exercises both inline
         # (small ones) and sibling-file spill (large ones >256 KB).
         gif = [
-            _debug_files("tabulaflow.cli.assets.debug").joinpath(f"gif_{i}.gif").read_bytes()
+            _debug_files("tabulaflow.app.assets.debug").joinpath(f"gif_{i}.gif").read_bytes()
             for i in range(len(colors))
         ]
         # Five real public-domain PDFs vendored under assets/debug —
         # exercises the PDF anchor renderer and click-to-open in new tab.
         pdf = [
-            _debug_files("tabulaflow.cli.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes()
+            _debug_files("tabulaflow.app.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes()
             for i in range(len(colors))
         ]
         wav = [wav_bytes(f) for f in notes]
 
         # MP4 is annoying to encode at runtime (needs ffmpeg). One short clip
         # is vendored as a static asset; every row reuses it.
-        mp4_bytes = _debug_files("tabulaflow.cli.assets.debug").joinpath("sample.mp4").read_bytes()
+        mp4_bytes = _debug_files("tabulaflow.app.assets.debug").joinpath("sample.mp4").read_bytes()
         mp4 = [mp4_bytes for _ in colors]
 
         # Base64-encoded JPEG variants exercise the base64-string path
@@ -886,7 +886,7 @@ LIMIT 4000"""
     def _build_debug_small_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         df = pd.DataFrame(
             [
@@ -929,7 +929,7 @@ LIMIT 4000"""
         """Compact 4-record fixture exercising every view-kind combination."""
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         # Record 1: Chart + Data + Query
         regions_df = pd.DataFrame(
@@ -1052,7 +1052,7 @@ LIMIT 4000"""
 
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         rng = random.Random(20260423)
 
@@ -1263,7 +1263,7 @@ LIMIT 4000"""
     def _build_debug_chart_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.cli.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
 
         df = pd.DataFrame(
             {
@@ -1577,7 +1577,7 @@ LIMIT 4000"""
         session: SessionState,
         chat_log: VerticalScroll,
     ) -> None:
-        from tabulaflow.cli.commands import CommandResult
+        from tabulaflow.app.commands import CommandResult
 
         assert isinstance(result, CommandResult)
 

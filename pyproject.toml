@@ -60,13 +60,13 @@ dependencies = [
 plot = ["matplotlib"]
 
 [project.scripts]
-tabulaflow = "tabulaflow.cli.app:main"
+tabulaflow = "tabulaflow.app.main:main"
 
 [tool.setuptools.packages.find]
 include = ["tabulaflow*"]
 
 [tool.setuptools.package-data]
-tabulaflow = ["cli/assets/tabulator/*", "cli/assets/debug/*"]
+tabulaflow = ["app/assets/tabulator/*", "app/assets/debug/*"]
 
 [tool.ruff]
 line-length = 120

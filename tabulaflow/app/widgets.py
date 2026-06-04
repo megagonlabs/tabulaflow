@@ -21,8 +21,8 @@ from textual.screen import Screen
 from textual.widget import Widget
 from textual.widgets import DataTable, Input, Static, TextArea
 
-from tabulaflow.cli.display import DATA_PREVIEW_MAX_ROWS
-from tabulaflow.cli.theme import ACCENT, ACCENT_DIM, DRACULA_TRANSPARENT, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
+from tabulaflow.app.theme import ACCENT, ACCENT_DIM, DRACULA_TRANSPARENT, KEY_HINT, KEY_HINT_DIM
 
 
 def _normalize_json_like(value: object) -> object:
@@ -59,8 +59,8 @@ if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
 
-    from tabulaflow.cli.agent import ChatResult
-    from tabulaflow.cli.display import RecordGroup, ViewItem
+    from tabulaflow.chat.agent import ChatResult
+    from tabulaflow.app.display import RecordGroup, ViewItem
     from tabulaflow.core.types import Usage
 
 
@@ -388,7 +388,7 @@ class BannerWidget(Static):
     """
 
     def __init__(self, *, model: str) -> None:
-        from tabulaflow.cli.display import build_banner
+        from tabulaflow.app.display import build_banner
 
         super().__init__(build_banner(model=model))
 
@@ -655,7 +655,7 @@ def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text]
     Returns the written path on success, or ``None`` if no dumps dir is
     configured or the write failed.
     """
-    from tabulaflow.cli.dump import write_cell_dump
+    from tabulaflow.app.dump import write_cell_dump
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -687,7 +687,7 @@ def open_table_in_browser(
     """
     import secrets
 
-    from tabulaflow.cli.dump import render_table_html
+    from tabulaflow.app.dump import render_table_html
 
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
@@ -1282,7 +1282,7 @@ class CellBrowserScreen(Screen[None]):
             pass
 
         if isinstance(value, (bytes, bytearray, memoryview)):
-            from tabulaflow.cli.dump import sniff_binary
+            from tabulaflow.app.dump import sniff_binary
 
             raw = bytes(value)
             sniffed = sniff_binary(raw)
@@ -1297,7 +1297,7 @@ class CellBrowserScreen(Screen[None]):
         if isinstance(value, dict):
             inner = value.get("bytes")
             if isinstance(inner, (bytes, bytearray, memoryview)):
-                from tabulaflow.cli.dump import sniff_binary
+                from tabulaflow.app.dump import sniff_binary
 
                 raw = bytes(inner)
                 sniffed = sniff_binary(raw)
@@ -1564,7 +1564,7 @@ class ChartBrowserScreen(Screen[None]):
         self.dismiss()
 
     def _render_chart(self) -> None:
-        from tabulaflow.cli.display import build_chart
+        from tabulaflow.app.display import build_chart
 
         content_width = max(20, self._content.size.width - 4)
         content_height = max(10, self._content.size.height)
@@ -1635,7 +1635,7 @@ class AgentResultWidget(Widget):
         query_history: object | None = None,
     ) -> None:
         super().__init__()
-        from tabulaflow.cli.display import build_result_views
+        from tabulaflow.app.display import build_result_views
         from tabulaflow.toolhub.query_history import QueryHistory
 
         self._records = build_result_views(result, width)
@@ -1837,7 +1837,7 @@ class AgentResultWidget(Widget):
         """
         from rich.style import Style
 
-        from tabulaflow.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
+        from tabulaflow.app.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
         if self._view_stepper_widget is None:
             return
@@ -1952,7 +1952,7 @@ class AgentResultWidget(Widget):
 
     def _data_preview_caption(self, view: "ViewItem") -> str:
         """Return the truncation caption for a data view, or empty string."""
-        from tabulaflow.cli.display import VIEW_KIND_DATA
+        from tabulaflow.app.display import VIEW_KIND_DATA
 
         if view.kind != VIEW_KIND_DATA or view.data_shape is None:
             return ""
@@ -2002,7 +2002,7 @@ class AgentResultWidget(Widget):
             view = self._current_view_or_none()
             if view is None:
                 return
-            from tabulaflow.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
+            from tabulaflow.app.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
             if view.kind == VIEW_KIND_CHART and self._is_chart_region_click(view, event.x, event.y):
                 self.run_worker(self.action_open_full_screen(), exclusive=True)
@@ -2125,7 +2125,7 @@ class AgentResultWidget(Widget):
 
     async def action_open_full_screen(self) -> None:
         """Open full-screen viewer for the active Chart, Data, or Query tab."""
-        from tabulaflow.cli.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
+        from tabulaflow.app.display import VIEW_KIND_CHART, VIEW_KIND_DATA, VIEW_KIND_QUERY
 
         rec = self._current_record_or_none()
         view = self._current_view_or_none()

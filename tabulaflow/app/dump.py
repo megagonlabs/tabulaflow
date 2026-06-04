@@ -308,13 +308,13 @@ def _load_tabulator_assets() -> tuple[str, str]:
     """Load Tabulator JS + CSS from package resources.
 
     Returns ``(js_source, css_source)``. The files are vendored under
-    ``tabulaflow/cli/assets/tabulator/`` and read once per call (callers
+    ``tabulaflow/app/assets/tabulator/`` and read once per call (callers
     typically invoke this once per ``render_table_html``, which is fine
     given the file sizes).
     """
     from importlib.resources import files
 
-    base = files("tabulaflow.cli.assets.tabulator")
+    base = files("tabulaflow.app.assets.tabulator")
     js = base.joinpath("tabulator.min.js").read_text(encoding="utf-8")
     css = base.joinpath("tabulator.min.css").read_text(encoding="utf-8")
     return js, css

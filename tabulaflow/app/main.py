@@ -37,7 +37,7 @@ def chat(
         log_level="WARNING",
     )
 
-    from tabulaflow.cli.tui import run_tui
+    from tabulaflow.app.tui import run_tui
 
     asyncio.run(run_tui(model=model, agent=agent))
 

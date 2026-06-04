@@ -13,7 +13,7 @@ from rich.console import RenderableType
 from rich.table import Table
 from rich.text import Text
 
-from tabulaflow.cli.theme import ACCENT, ACCENT_BOLD
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
     from tabulaflow.core.types import SQLSchema
@@ -70,7 +70,7 @@ class SessionState:
         data_dir: Path,
         workspace_db_path: Path,
     ) -> None:
-        from tabulaflow.cli.agent import ChatAgent
+        from tabulaflow.chat.agent import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
@@ -597,7 +597,7 @@ async def _cmd_databases(args: list[str], session: SessionState) -> CommandResul
 
 
 async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
-    from tabulaflow.cli.display import (
+    from tabulaflow.app.display import (
         _display_name,
         _is_multi_schema,
         build_column_detail,

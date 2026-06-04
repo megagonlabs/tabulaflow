@@ -18,7 +18,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.cli.theme import ACCENT, ACCENT_BOLD, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, KEY_HINT
 
 TABULAFLOW_THEME = Theme(
     {
@@ -289,7 +289,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
     ordered Chart -> Data -> Query and absent kinds are omitted. Records with
     no views at all are dropped.
     """
-    from tabulaflow.cli.agent import ChatResult
+    from tabulaflow.chat.agent import ChatResult
 
     assert isinstance(result, ChatResult)
 
