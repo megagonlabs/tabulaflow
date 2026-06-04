@@ -1,0 +1,49 @@
+"""Foundation layer: shared data structures, DB connectors, formatters, config.
+
+Public types are re-exported here so callers can use ``from tabulaflow.core
+import SQLSchema, ExecResult, Usage`` instead of reaching into submodules.
+"""
+
+from tabulaflow.core.types import (
+    AssistantMessage,
+    ColumnRef,
+    ErrorInfo,
+    ExecResult,
+    ForeignKeySchema,
+    GoldQuery,
+    NumericOrNull,
+    PredQuery,
+    PropertyGraphSchema,
+    SQLColumnSchema,
+    SQLSchema,
+    SQLTableSchema,
+    SystemMessage,
+    TableRef,
+    ToolCall,
+    ToolResponse,
+    Trajectory,
+    Usage,
+    UserMessage,
+)
+
+__all__ = [
+    "AssistantMessage",
+    "ColumnRef",
+    "ErrorInfo",
+    "ExecResult",
+    "ForeignKeySchema",
+    "GoldQuery",
+    "NumericOrNull",
+    "PredQuery",
+    "PropertyGraphSchema",
+    "SQLColumnSchema",
+    "SQLSchema",
+    "SQLTableSchema",
+    "SystemMessage",
+    "TableRef",
+    "ToolCall",
+    "ToolResponse",
+    "Trajectory",
+    "Usage",
+    "UserMessage",
+]

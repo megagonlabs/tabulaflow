@@ -5,7 +5,7 @@ from __future__ import annotations
 from rich.style import Style
 from textual.widgets.text_area import TextAreaTheme
 
-from tabulaflow.core.theme import ACCENT
+from tabulaflow.core.theme import ACCENT as ACCENT  # re-exported for app-layer callers
 
 ACCENT_BOLD = f"bold {ACCENT}"
 

@@ -30,32 +30,43 @@ make test-simple               # bird-sql, spider2-snow, beaver with simple_zero
 
 Pipeline scripts (used directly):
 ```bash
-uv run tabulaflow/pipelines/run_agent.py --agent <agent> --dataset <dataset> --debug
-uv run tabulaflow/pipelines/populate_exec_results.py --debug
-uv run tabulaflow/pipelines/evaluate.py --debug
-uv run tabulaflow/pipelines/analyze_errors.py --debug
+uv run tabulaflow/research/pipelines/run_agent.py --agent <agent> --dataset <dataset> --debug
+uv run tabulaflow/research/pipelines/populate_exec_results.py --debug
+uv run tabulaflow/research/pipelines/evaluate.py --debug
+uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ```
 
 ## Project Structure
 
+The package is organized into dependency layers, enforced by `import-linter`
+(`make lint-arch`): **`core < toolhub < {chat | research} < app`**. `chat` and
+`research` are siblings and must not import each other.
+
 ```
 tabulaflow/
-├── agenthub/        # text-to-query agents (sql_agent, ambig_*_sql_agent, etc.)
-├── toolhub/         # agent tools (run_query, get_schema, search_keywords, etc.)
-├── datahub/         # dataset loaders (bird_sql, spider2, beaver, arcs, ambrosia)
-├── db_connector/    # database connectors (sql_conn, etc.)
-├── metrics/         # evaluation metrics (bird_sql_ex, simple_ex, etc.)
-├── pipelines/       # run_agent.py, populate_exec_results.py, evaluate.py
-├── preprocessors/   # schema preprocessing and caching
-├── formatters/      # schema formatters (sql_basic, sql_ddl)
-├── schema.py        # core data structures
-├── config.py        # configuration
-└── registry.py      # agent/dataset/metric registry
+├── core/            # foundation — depends on nothing else in tabulaflow
+│   ├── types.py     #   core data structures (schema, queries, ExecResult, Usage, Trajectory)
+│   ├── dataframe.py #   Arrow/DataFrame (de)serialization
+│   ├── config.py registry.py utils.py theme.py
+│   ├── db_connector/  formatters/  preprocessors/   # connector/schema-level preprocessing
+│   └── tools/       #   BaseTool protocol + the atomic RunQueryTool primitive
+├── toolhub/         # agent tools (registry_* wrap the plain tools, web_browser,
+│                    #   render_chart, run_subagent, message_store, ...) — depends on core
+├── chat/            # the interactive tabulaflow agent (ChatAgent, ProgressSink, ChatResult)
+├── research/        # NL2SQL research — sibling of chat, never imports it
+│   ├── agenthub/  datahub/  metrics/  pipelines/
+│   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
+│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset, dataset-level preprocessing
+└── app/             # end-user TUI — tui, dump (HTML export), widgets, main, assets
 tests/               # pytest tests
 scripts/             # utility scripts
 output/              # experiment results
 cache/               # schema and preprocessing cache
 ```
+
+Public types are re-exported from each layer's `__init__` (e.g.
+`from tabulaflow.core import SQLSchema, ExecResult, Usage`); prefer those over
+deep module paths.
 
 ## Environment Variables
 
@@ -103,7 +114,7 @@ If (and only if) resuming an interrupted experiment, append to the log file:
 bash exp/123_xxx.sh &>> log/123.out &
 ```
 
-## Design Language (HTML table dumps in `tabulaflow/cli/dump.py`)
+## Design Language (HTML table dumps in `tabulaflow/app/dump.py`)
 
 Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 
