@@ -13,7 +13,7 @@ from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.base import NL2QFormatter, formatter_registry
 from tabulaflow.core.utils import format_df
 from tabulaflow.pipelines.populate_exec_results import populate_task_async
-from tabulaflow.preprocessors import DBSummarizer
+from tabulaflow.core.preprocessors import DBSummarizer
 from tabulaflow.core.types import Trajectory, Usage
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.toolhub import (

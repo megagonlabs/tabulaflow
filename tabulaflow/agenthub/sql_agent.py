@@ -13,7 +13,8 @@ import logging
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import SQLSchema, SQLTableSchema, PredQuery, Usage, Trajectory, ColumnRef
 from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.preprocessors import ERDiagramSynthesizer, QuestionEmbedder, SchemaPreprocessor
+from tabulaflow.core.preprocessors import ERDiagramSynthesizer, SchemaPreprocessor
+from tabulaflow.research.question_embedder import QuestionEmbedder
 from tabulaflow.toolhub import (
     BaseTool,
     RunQueryTool,
@@ -29,7 +30,7 @@ from tabulaflow.agenthub.utils import (
     TaskRunContext,
 )
 from tabulaflow.core.utils import extract_code, extract_all_source_columns
-from tabulaflow.preprocessors.er_diagram import ERDiagram
+from tabulaflow.core.preprocessors.er_diagram import ERDiagram
 from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
 
 

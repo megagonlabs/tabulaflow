@@ -2,10 +2,10 @@ import argparse
 import os
 import tabulaflow
 from tabulaflow.core.config import tabulaflow_config
-from tabulaflow.preprocessors.db_summarizer import DBSummary
+from tabulaflow.core.preprocessors.db_summarizer import DBSummary
 from tabulaflow.core.types import SQLSchema
-from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
-from tabulaflow.preprocessors.er_diagram import ERDiagram
+from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.core.preprocessors.er_diagram import ERDiagram
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
 

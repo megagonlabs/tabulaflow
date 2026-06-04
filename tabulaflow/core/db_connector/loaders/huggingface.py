@@ -509,7 +509,7 @@ async def load_hf_dataset(
         hf_description = await _fetch_hf_description(dataset_id)
         if hf_description:
             if len(hf_description) > 5000:
-                from tabulaflow.preprocessors.components.text_summarizer import TextSummarizer
+                from tabulaflow.core.preprocessors.components.text_summarizer import TextSummarizer
 
                 summarizer = TextSummarizer()
                 hf_description = await summarizer.summarize(hf_description)

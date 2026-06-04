@@ -8,7 +8,6 @@ from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.config import tabulaflow_config
 from pydantic import BaseModel
 from tabulaflow.core.types import Usage
-from tabulaflow.research.types import NL2QDataset
 from tabulaflow.core.registry import Registry
 
 
@@ -32,7 +31,7 @@ class BaseDatasetPreprocessor(Protocol):
 
     def usage(self) -> Usage | None: ...
 
-    async def preprocess_async(self, dataset: NL2QDataset) -> CacheableResult: ...
+    async def preprocess_async(self, dataset: Any) -> CacheableResult: ...
 
 
 OutputT = TypeVar("OutputT", bound=CacheableResult)
@@ -63,15 +62,14 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         """
         return ""
 
-    def _get_cache_id(self, input_data: NL2QDBConnector | NL2QDataset) -> str:
-        """Get a unique cache identifier for the input data."""
-        if isinstance(input_data, NL2QDataset):
-            cache_id = f"{input_data.name}_{input_data.split}"
-            if input_data.databases is not None:
-                cache_id += "".join(f"_{db}" for db in input_data.databases)
-            return cache_id + self._get_cache_id_suffix()
-        else:
-            return input_data.global_id + self._get_cache_id_suffix()
+    def _get_cache_id(self, input_data: Any) -> str:
+        """Get a unique cache identifier for the input data.
+
+        The default keys the cache off a db-connector's ``global_id``. Dataset-
+        level preprocessors (whose input has no ``global_id``) override this to
+        derive the id from the dataset identity instead.
+        """
+        return input_data.global_id + self._get_cache_id_suffix()
 
     def _is_ndarray_type(self, t: type) -> bool:
         """Check if a type is a numpy ndarray type."""
@@ -150,7 +148,7 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         """Check if all cache files exist."""
         return all(os.path.exists(path) for path in cache_paths)
 
-    async def preprocess_async(self, input_data: NL2QDBConnector | NL2QDataset) -> OutputT:
+    async def preprocess_async(self, input_data: Any) -> OutputT:
         cache_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", self.name)
         os.makedirs(cache_dir, exist_ok=True)
 

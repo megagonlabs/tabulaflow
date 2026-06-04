@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent, Embedder
-from tabulaflow.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+from tabulaflow.core.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 
@@ -80,6 +80,13 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
 
     def _get_cache_id_suffix(self) -> str:
         return "_" + self.embedding_llm.replace(":", "--")
+
+    def _get_cache_id(self, input_data: NL2QDataset) -> str:
+        """Key the cache off the dataset identity (this preprocessor's input is a dataset)."""
+        cache_id = f"{input_data.name}_{input_data.split}"
+        if input_data.databases is not None:
+            cache_id += "".join(f"_{db}" for db in input_data.databases)
+        return cache_id + self._get_cache_id_suffix()
 
     async def _get_skeleton_async(self, question: str) -> str:
         system_prompt = jinja2.Template(PREPROCESSING_SYSTEM_PROMPT).render()

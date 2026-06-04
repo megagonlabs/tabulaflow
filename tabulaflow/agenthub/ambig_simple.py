@@ -17,7 +17,7 @@ from tabulaflow.toolhub import (
 )
 from tabulaflow.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from tabulaflow.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
-from tabulaflow.preprocessors import SchemaCompressor
+from tabulaflow.core.preprocessors import SchemaCompressor
 
 
 SYSTEM_PROMPT = """

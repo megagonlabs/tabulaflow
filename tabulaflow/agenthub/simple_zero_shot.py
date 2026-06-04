@@ -6,7 +6,7 @@ import logging
 import asyncio
 from typing import Any, ClassVar
 from tabulaflow.core.utils import extract_code
-from tabulaflow.preprocessors import SchemaCompressor
+from tabulaflow.core.preprocessors import SchemaCompressor
 from tabulaflow.core.formatters import formatter_registry
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import Trajectory, SystemMessage, UserMessage, AssistantMessage, PredQuery, Usage

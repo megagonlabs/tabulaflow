@@ -3,10 +3,10 @@ from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
 from tabulaflow.core.formatters.base import BaseSQLSchemaFormatter
-from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import SQLSchema, TableRef, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+from tabulaflow.core.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.core.tools.run_query import RunQueryTool
 

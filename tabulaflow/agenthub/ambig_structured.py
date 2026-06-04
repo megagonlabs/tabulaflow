@@ -32,7 +32,7 @@ from tabulaflow.agenthub.base import (
     BaseAgentConfig,
 )
 from tabulaflow.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.preprocessors import SchemaCompressor
+from tabulaflow.core.preprocessors import SchemaCompressor
 from tabulaflow.core.utils import int_to_letter
 
 

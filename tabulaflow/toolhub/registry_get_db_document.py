@@ -8,8 +8,8 @@ from pydantic_ai import Tool
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
-from tabulaflow.preprocessors.db_summarizer import DBSummarizer
+from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.core.preprocessors.db_summarizer import DBSummarizer
 
 _MAX_CHARS = 50000
 

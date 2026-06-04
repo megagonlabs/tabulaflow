@@ -5,8 +5,8 @@ import asyncio
 from tabulate import tabulate
 import tabulaflow
 from tabulaflow.datahub import dataset_registry
-from tabulaflow.preprocessors.components import SchemaCompressor
-from tabulaflow.preprocessors.schema_preprocessor import SchemaPreprocessor
+from tabulaflow.core.preprocessors.components import SchemaCompressor
+from tabulaflow.core.preprocessors.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset
 from tabulaflow.core.utils import dict_to_df
 

@@ -9,7 +9,7 @@ import tabulaflow.core.formatters  # noqa: F401 — register sql_*, cypher, … 
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import PredQuery, Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.preprocessors import SchemaCompressor
+from tabulaflow.core.preprocessors import SchemaCompressor
 from tabulaflow.toolhub import (
     BaseTool,
     RunQueryTool,
