@@ -15,6 +15,10 @@ format:
 lint:
 	uv run ruff check .
 
+.PHONY: lint-arch
+lint-arch:
+	uv run lint-imports
+
 PYTHON_VERSIONS := 3.11 3.12 3.13
 
 .PHONY: test

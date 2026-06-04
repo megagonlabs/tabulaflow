@@ -1,0 +1,20 @@
+# Architecture contract for the layered package (see docs/migration_to_tabulaflow.md §3.2).
+#
+# Layers, lowest first: core < toolhub < {chat | research} < app
+# `chat` and `research` are siblings and must not import each other.
+#
+# NOTE: until the restructure phases land, the layer submodules do not all exist yet,
+# so `lint-imports` will report errors for missing modules. This is expected and
+# non-blocking until Phase 8 flips it to enforced (see the migration plan).
+
+[importlinter]
+root_package = tabulaflow
+
+[importlinter:contract:layers]
+name = Layered architecture
+type = layers
+layers =
+    tabulaflow.app
+    tabulaflow.chat | tabulaflow.research
+    tabulaflow.toolhub
+    tabulaflow.core
