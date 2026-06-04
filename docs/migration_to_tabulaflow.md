@@ -1,4 +1,4 @@
-# Migration Plan: `mintq` → `tabulaflow` + modular restructure
+# Migration Plan: `tabulaflow` → `tabulaflow` + modular restructure
 
 Status: proposed. Owner: Yanlin. Branch: `restructure` (single long-lived branch; each
 phase is its own commit with `make test` green before the next).
@@ -7,7 +7,7 @@ phase is its own commit with `make test` green before the next).
 
 ## 1. Goals
 
-1. **Rename** the package `mintq` → `tabulaflow` (clean break — no back-compat aliases).
+1. **Rename** the package `tabulaflow` → `tabulaflow` (clean break — no back-compat aliases).
 2. **Restructure** the flat package into four intuitive, dependency-layered modules so the
    library is easy to navigate and easy to *import from* for three distinct audiences:
    end users (the TUI app), researchers (NL2SQL benchmarking), and the interactive agent lib.
@@ -96,7 +96,7 @@ layers =
 
 | Old | New | Reason |
 |-----|-----|--------|
-| `cli/agent.py` | `chat/agent.py` | avoid collision with research `agenthub` and its `MintqAgent` |
+| `cli/agent.py` | `chat/agent.py` | avoid collision with research `agenthub` and its `TabulaflowAgent` |
 | (the agent layer) | `chat/` | conversational layer; matches `ChatAgent`/`ChatResult`; sibling-style to `toolhub` |
 | `cli/` (app part) | `app/` | it's more than a TUI (HTML `dump.py`, entrypoint); honest superset |
 | `cli/app.py` | `app/main.py` | entrypoint `tabulaflow.app.main:main` (avoid `app.app` stutter) |
@@ -118,35 +118,35 @@ from the phase noted (run report-only before that).
 - Add `import-linter` to the `dev` dependency group; add `make lint-arch` (`uv run lint-imports`).
 - Write `.importlinter` with the §3.2 contract (it will fail now — that's expected; keep it
   report-only / non-blocking until Phase 6).
-- Snapshot the import inventory (`grep -rhoE "from mintq\.[a-z_]+"`), to diff against later.
+- Snapshot the import inventory (`grep -rhoE "from tabulaflow\.[a-z_]+"`), to diff against later.
 - **Commit:** `chore: baseline + import-linter scaffolding`
 
-### Phase 1 — Rename `mintq` → `tabulaflow` (clean break)
+### Phase 1 — Rename `tabulaflow` → `tabulaflow` (clean break)
 Pure identity change on the *current* (flat) structure — easiest to verify because behavior is
 unchanged.
-- Mechanical: `git mv mintq tabulaflow`; substitute the `mintq` token across `*.py`, `*.toml`,
+- Mechanical: `git mv tabulaflow tabulaflow`; substitute the `tabulaflow` token across `*.py`, `*.toml`,
   `*.md`, `Makefile` (distinctive token, few false positives — still review the diff).
 - Deliberate, **non-mechanical** spots (clean break, no aliases):
-  - env prefix `MINTQ_` → `TABULAFLOW_` (`config.py` `env_prefix`).
-  - cache dir `~/.mintq` → `~/.tabulaflow`; session dir likewise (invalidates existing cache —
+  - env prefix `TABULAFLOW_` → `TABULAFLOW_` (`config.py` `env_prefix`).
+  - cache dir `~/.tabulaflow` → `~/.tabulaflow`; session dir likewise (invalidates existing cache —
     accepted).
   - CLI command + entrypoint: `[project.scripts] tabulaflow = "tabulaflow.cli.app:main"`
     (path fixed in Phase 7).
-  - dist name `mintq` → `tabulaflow` in `pyproject.toml`.
-  - agent self-identity: `chat`/`cli` system prompt string "You are the mintq agent…".
+  - dist name `tabulaflow` → `tabulaflow` in `pyproject.toml`.
+  - agent self-identity: `chat`/`cli` system prompt string "You are the tabulaflow agent…".
   - branding: `dump.py` banner/logo, README, AGENTS.md, CLAUDE.md, Makefile targets, tmux
-    session name `mintq`. Note: "tabulaflow" drops the *mint* pun, so the mint accent
+    session name `tabulaflow`. Note: "tabulaflow" drops the *mint* pun, so the mint accent
     `#3eb489` is now just a color — keep or revisit deliberately.
-  - `_MintqSettings` → `Settings`.
+  - `_TabulaflowSettings` → `Settings`.
 - Verify: `uv sync`; `make test` green; `tabulaflow --help` launches; one debug agent run.
-- **Commit:** `Rename mintq → tabulaflow (clean break)`
+- **Commit:** `Rename tabulaflow → tabulaflow (clean break)`
 
 ### Phase 2 — Config decoupling
 Small, isolated, still in the flat structure.
 - Remove `dataset` and `split` from `Settings` — they are experiment parameters, not config,
   and they're the only fields that would make `core`'s config know about research.
 - Move their defaults into the research CLI (`run_agent.py` argparse: `--dataset` default
-  `"bird-sql"`, `--split` default `"dev"`), and drop the `mintq_config.dataset/split` fallbacks.
+  `"bird-sql"`, `--split` default `"dev"`), and drop the `tabulaflow_config.dataset/split` fallbacks.
 - Leave everything else flat & global (no nesting, no DI — deliberate).
 - (Optional, low priority) fold `PHOENIX_*`/`LANGFUSE_*`/`LOGFIRE_TOKEN` reads into `Settings`
   so all config flows through one place.
@@ -241,8 +241,8 @@ Resolution (move code to its true layer; no new abstraction):
 
 ### Phase 8 — Enforce, document, clean up
 - Flip `import-linter` to **blocking** in CI / `make lint`; the §3.2 contract must pass.
-- `mcp/`: it imports `mintq.metadata_synthesizer`, which doesn't exist — decide **delete** the
-  dead example or fix it. Update remaining `mintq.*` references in `mcp/`.
+- `mcp/`: it imports `tabulaflow.metadata_synthesizer`, which doesn't exist — decide **delete** the
+  dead example or fix it. Update remaining `tabulaflow.*` references in `mcp/`.
 - Update AGENTS.md / CLAUDE.md / README to the new layout, commands, and `tabulaflow` name.
 - Update `Makefile` paths (`tabulaflow/research/pipelines/run_agent.py`, etc.).
 - Verify: full `make test`, `make mypy`, `make lint`, `make lint-arch` all green; behavior
@@ -275,6 +275,6 @@ Resolution (move code to its true layer; no new abstraction):
   commits; `lint-imports` localizes the offending edge; function-local (lazy) imports are an
   accepted last resort for a genuine two-way data dependency.
 - **Risk: clean break breaks someone's `.envrc` / cached schemas.** Accepted by decision
-  (clean break). Cache regenerates on next run; `.envrc` must switch `MINTQ_*` → `TABULAFLOW_*`.
+  (clean break). Cache regenerates on next run; `.envrc` must switch `TABULAFLOW_*` → `TABULAFLOW_*`.
 - **Rollback:** each phase is one revertable commit; the branch is not merged until Phase 8 is
   green end-to-end.

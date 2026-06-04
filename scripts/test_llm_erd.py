@@ -2,14 +2,14 @@ import time
 import asyncio
 import json
 import os
-import mintq
-from mintq.db_connector.snowflake_conn import SnowflakeConnector
-from mintq.visualization import er_diagram_to_graphviz
-from mintq.metadata_synthesizer import LLMERDiagramSynthesizer
+import tabulaflow
+from tabulaflow.db_connector.snowflake_conn import SnowflakeConnector
+from tabulaflow.visualization import er_diagram_to_graphviz
+from tabulaflow.metadata_synthesizer import LLMERDiagramSynthesizer
 
 
 async def main() -> None:
-    mintq.configure()
+    tabulaflow.configure()
     t0 = time.time()
     connector = SnowflakeConnector.from_credentials_async(
         "AIRLINES",

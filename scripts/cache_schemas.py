@@ -1,22 +1,22 @@
 import argparse
 import time
 import asyncio
-from mintq.datahub import dataset_registry
-import mintq
-from mintq.config import mintq_config
+from tabulaflow.datahub import dataset_registry
+import tabulaflow
+from tabulaflow.config import tabulaflow_config
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=mintq_config.dataset)
-    parser.add_argument("--split", default=mintq_config.split)
+    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
+    parser.add_argument("--split", default=tabulaflow_config.split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
     print(args)
     print()
 
-    mintq.configure(
+    tabulaflow.configure(
         schema_cache_enabled=True,
         schema_cache_required=False,
         schema_cache_overwrite=args.overwrite,

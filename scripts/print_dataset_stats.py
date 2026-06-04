@@ -3,13 +3,13 @@ import argparse
 import time
 import asyncio
 from tabulate import tabulate
-import mintq
-from mintq.config import mintq_config
-from mintq.datahub import dataset_registry
-from mintq.preprocessors.components import SchemaCompressor
-from mintq.preprocessors.schema_preprocessor import SchemaPreprocessor
-from mintq.schema import NL2QDataset
-from mintq.utils import dict_to_df
+import tabulaflow
+from tabulaflow.config import tabulaflow_config
+from tabulaflow.datahub import dataset_registry
+from tabulaflow.preprocessors.components import SchemaCompressor
+from tabulaflow.preprocessors.schema_preprocessor import SchemaPreprocessor
+from tabulaflow.schema import NL2QDataset
+from tabulaflow.utils import dict_to_df
 
 
 MAX_DBS_TO_PRINT = 12
@@ -222,8 +222,8 @@ async def print_preprocessed_schema_stats(dataset: NL2QDataset, tablefmt: str = 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=mintq_config.dataset)
-    parser.add_argument("--split", default=mintq_config.split)
+    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
+    parser.add_argument("--split", default=tabulaflow_config.split)
     parser.add_argument("--databases", default=None, nargs="+")
     parser.add_argument("--format", default="github")
     parser.add_argument("--print_preprocessed_schema_stats", action="store_true")
@@ -232,7 +232,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq.configure(schema_cache_enabled=not args.no_cache)
+    tabulaflow.configure(schema_cache_enabled=not args.no_cache)
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

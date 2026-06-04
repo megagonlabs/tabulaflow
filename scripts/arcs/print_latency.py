@@ -1,11 +1,11 @@
 # mypy: ignore-errors
-import mintq
-from mintq.schema import AmbigNL2QTask
+import tabulaflow
+from tabulaflow.schema import AmbigNL2QTask
 import os
 
 
 def main():
-    mintq.configure()
+    tabulaflow.configure()
     latency_1 = []
     for qid in os.listdir("data/ARCS/tasks_1"):
         if qid.endswith(".json"):

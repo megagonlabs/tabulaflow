@@ -10,11 +10,11 @@ import sqlparse
 import asyncio
 from pydantic import TypeAdapter
 from tabulate import tabulate
-import mintq
-from mintq.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
-from mintq.datahub import dataset_registry
-from mintq.db_connector import SQLConnector
-from mintq.utils import sort_ambiguity_points
+import tabulaflow
+from tabulaflow.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
+from tabulaflow.datahub import dataset_registry
+from tabulaflow.db_connector import SQLConnector
+from tabulaflow.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 
@@ -247,7 +247,7 @@ async def main():
     print(args)
     print()
 
-    mintq.configure()
+    tabulaflow.configure()
 
     # If output_dir exists and is not empty, exit
     if os.path.exists(args.output_dir) and os.listdir(args.output_dir):

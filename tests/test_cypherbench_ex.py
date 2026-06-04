@@ -5,14 +5,14 @@ import json
 import pandas as pd
 import pytest
 
-from mintq.metrics.cypherbench_ex import (
+from tabulaflow.metrics.cypherbench_ex import (
     _df_to_tuples,
     _normalize_cell,
     _result_eq,
     _to_hashable,
     CypherBenchEx,
 )
-from mintq.schema import ExecResult, GoldQuery, PredQuery, SimpleNL2QTaskOutput
+from tabulaflow.schema import ExecResult, GoldQuery, PredQuery, SimpleNL2QTaskOutput
 
 
 # ---------------------------------------------------------------------------

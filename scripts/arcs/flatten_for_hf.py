@@ -22,7 +22,7 @@ import json
 import random
 from pathlib import Path
 
-from mintq.datahub.arcs import ARCSDatasetLoader
+from tabulaflow.datahub.arcs import ARCSDatasetLoader
 
 
 SHUFFLE_SEED = 42

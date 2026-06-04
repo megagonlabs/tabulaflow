@@ -1,4 +1,4 @@
-"""Tests for the cell/table dump helpers in mintq.cli.dump."""
+"""Tests for the cell/table dump helpers in tabulaflow.cli.dump."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from mintq.cli.dump import (
+from tabulaflow.cli.dump import (
     render_table_html,
     serialize_cell,
     sniff_binary,

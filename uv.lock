@@ -2836,142 +2836,6 @@ wheels = [
 ]
 
 [[package]]
-name = "mintq"
-version = "0.1.0"
-source = { editable = "." }
-dependencies = [
-    { name = "aiolimiter" },
-    { name = "aiosqlite" },
-    { name = "arize-phoenix-otel" },
-    { name = "asyncmy" },
-    { name = "asyncpg" },
-    { name = "datasets" },
-    { name = "dbt-duckdb" },
-    { name = "duckdb" },
-    { name = "duckdb-engine" },
-    { name = "func-timeout" },
-    { name = "genai-prices" },
-    { name = "google-cloud-bigquery-storage" },
-    { name = "graphviz" },
-    { name = "httpx" },
-    { name = "jinja2" },
-    { name = "langfuse" },
-    { name = "litellm" },
-    { name = "logfire" },
-    { name = "mcp", extra = ["cli"] },
-    { name = "neo4j" },
-    { name = "openinference-instrumentation-litellm" },
-    { name = "pandas" },
-    { name = "playwright" },
-    { name = "plotext" },
-    { name = "pyarrow" },
-    { name = "pydantic" },
-    { name = "pydantic-ai" },
-    { name = "pydantic-ai-slim", extra = ["anthropic"] },
-    { name = "pydantic-settings" },
-    { name = "pymysql" },
-    { name = "pypdf" },
-    { name = "pyyaml" },
-    { name = "rich" },
-    { name = "snowflake-connector-python" },
-    { name = "snowflake-sqlalchemy" },
-    { name = "sqlalchemy", extra = ["asyncio"] },
-    { name = "sqlalchemy-bigquery" },
-    { name = "sqlglot" },
-    { name = "sqlparse" },
-    { name = "tabulate" },
-    { name = "textual", extra = ["syntax"] },
-    { name = "tqdm" },
-    { name = "typer" },
-    { name = "webbrowser-open" },
-]
-
-[package.optional-dependencies]
-plot = [
-    { name = "matplotlib" },
-]
-
-[package.dev-dependencies]
-dev = [
-    { name = "import-linter" },
-    { name = "ipython" },
-    { name = "mypy" },
-    { name = "pytest" },
-    { name = "pytest-asyncio" },
-    { name = "ruff" },
-    { name = "types-aiofiles" },
-    { name = "types-pyyaml" },
-    { name = "types-tabulate" },
-]
-streamlit = [
-    { name = "streamlit" },
-]
-
-[package.metadata]
-requires-dist = [
-    { name = "aiolimiter", specifier = ">=1.2.1" },
-    { name = "aiosqlite", specifier = ">=0.21.0" },
-    { name = "arize-phoenix-otel", specifier = ">=0.10.1" },
-    { name = "asyncmy", specifier = ">=0.2.11" },
-    { name = "asyncpg", specifier = ">=0.30.0" },
-    { name = "datasets", specifier = ">=4.4.2" },
-    { name = "dbt-duckdb", specifier = ">=1.10.1" },
-    { name = "duckdb", specifier = ">=1.5.0" },
-    { name = "duckdb-engine", specifier = ">=0.17.0" },
-    { name = "func-timeout", specifier = ">=4.3.5" },
-    { name = "genai-prices", specifier = ">=0.0.29" },
-    { name = "google-cloud-bigquery-storage", specifier = ">=2.36.2" },
-    { name = "graphviz", specifier = ">=0.20.3" },
-    { name = "httpx", specifier = ">=0.28.1" },
-    { name = "jinja2", specifier = ">=3.1.6" },
-    { name = "langfuse", specifier = ">=3.0.1" },
-    { name = "litellm", specifier = ">=1.82.0" },
-    { name = "logfire", specifier = ">=3.16.0" },
-    { name = "matplotlib", marker = "extra == 'plot'" },
-    { name = "mcp", extras = ["cli"], specifier = ">=1.9.4" },
-    { name = "neo4j", specifier = ">=5.28.0" },
-    { name = "openinference-instrumentation-litellm", specifier = ">=0.1.21" },
-    { name = "pandas", specifier = ">=2.2.3" },
-    { name = "playwright", specifier = ">=1.59.0" },
-    { name = "plotext", specifier = ">=5.3.2" },
-    { name = "pyarrow", specifier = ">=21.0.0" },
-    { name = "pydantic", specifier = ">=2.11.3" },
-    { name = "pydantic-ai", specifier = ">=1.61.0" },
-    { name = "pydantic-ai-slim", extras = ["anthropic"], specifier = ">=1.61.0" },
-    { name = "pydantic-settings", specifier = ">=2.11.0" },
-    { name = "pymysql", specifier = ">=1.1.1" },
-    { name = "pypdf", specifier = ">=6.12.2" },
-    { name = "pyyaml", specifier = ">=6.0.3" },
-    { name = "rich", specifier = ">=14.0.0" },
-    { name = "snowflake-connector-python", specifier = ">=3.14.1" },
-    { name = "snowflake-sqlalchemy", specifier = ">=1.7.3" },
-    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.40" },
-    { name = "sqlalchemy-bigquery", specifier = ">=1.11.0" },
-    { name = "sqlglot", specifier = ">=28.6.0" },
-    { name = "sqlparse", specifier = ">=0.5.3" },
-    { name = "tabulate", specifier = ">=0.9.0" },
-    { name = "textual", extras = ["syntax"], specifier = ">=3.0.0" },
-    { name = "tqdm", specifier = ">=4.67.1" },
-    { name = "typer", specifier = ">=0.15.0" },
-    { name = "webbrowser-open", specifier = ">=0.3.0" },
-]
-provides-extras = ["plot"]
-
-[package.metadata.requires-dev]
-dev = [
-    { name = "import-linter", specifier = ">=2.11" },
-    { name = "ipython" },
-    { name = "mypy", specifier = ">=1.15.0" },
-    { name = "pytest", specifier = ">=8.4.0" },
-    { name = "pytest-asyncio", specifier = ">=1.0.0" },
-    { name = "ruff", specifier = ">=0.11.10" },
-    { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
-    { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
-    { name = "types-tabulate", specifier = ">=0.9.0" },
-]
-streamlit = [{ name = "streamlit", specifier = ">=1.50.0" }]
-
-[[package]]
 name = "mistralai"
 version = "2.3.1"
 source = { registry = "https://pypi.org/simple" }
@@ -5290,6 +5154,142 @@ sdist = { url = "https://files.pythonhosted.org/packages/d6/f6/f7d3a0146577c1918
 wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/38/991bbf9fa3ed3d9c8e69265fc449bdaade8131c7f0f750dbd388c3c477dc/streamlit-1.50.0-py3-none-any.whl", hash = "sha256:9403b8f94c0a89f80cf679c2fcc803d9a6951e0fba542e7611995de3f67b4bb3", size = 10068477, upload_time = "2025-09-23T19:23:57.245Z" },
 ]
+
+[[package]]
+name = "tabulaflow"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "aiolimiter" },
+    { name = "aiosqlite" },
+    { name = "arize-phoenix-otel" },
+    { name = "asyncmy" },
+    { name = "asyncpg" },
+    { name = "datasets" },
+    { name = "dbt-duckdb" },
+    { name = "duckdb" },
+    { name = "duckdb-engine" },
+    { name = "func-timeout" },
+    { name = "genai-prices" },
+    { name = "google-cloud-bigquery-storage" },
+    { name = "graphviz" },
+    { name = "httpx" },
+    { name = "jinja2" },
+    { name = "langfuse" },
+    { name = "litellm" },
+    { name = "logfire" },
+    { name = "mcp", extra = ["cli"] },
+    { name = "neo4j" },
+    { name = "openinference-instrumentation-litellm" },
+    { name = "pandas" },
+    { name = "playwright" },
+    { name = "plotext" },
+    { name = "pyarrow" },
+    { name = "pydantic" },
+    { name = "pydantic-ai" },
+    { name = "pydantic-ai-slim", extra = ["anthropic"] },
+    { name = "pydantic-settings" },
+    { name = "pymysql" },
+    { name = "pypdf" },
+    { name = "pyyaml" },
+    { name = "rich" },
+    { name = "snowflake-connector-python" },
+    { name = "snowflake-sqlalchemy" },
+    { name = "sqlalchemy", extra = ["asyncio"] },
+    { name = "sqlalchemy-bigquery" },
+    { name = "sqlglot" },
+    { name = "sqlparse" },
+    { name = "tabulate" },
+    { name = "textual", extra = ["syntax"] },
+    { name = "tqdm" },
+    { name = "typer" },
+    { name = "webbrowser-open" },
+]
+
+[package.optional-dependencies]
+plot = [
+    { name = "matplotlib" },
+]
+
+[package.dev-dependencies]
+dev = [
+    { name = "import-linter" },
+    { name = "ipython" },
+    { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-asyncio" },
+    { name = "ruff" },
+    { name = "types-aiofiles" },
+    { name = "types-pyyaml" },
+    { name = "types-tabulate" },
+]
+streamlit = [
+    { name = "streamlit" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "aiolimiter", specifier = ">=1.2.1" },
+    { name = "aiosqlite", specifier = ">=0.21.0" },
+    { name = "arize-phoenix-otel", specifier = ">=0.10.1" },
+    { name = "asyncmy", specifier = ">=0.2.11" },
+    { name = "asyncpg", specifier = ">=0.30.0" },
+    { name = "datasets", specifier = ">=4.4.2" },
+    { name = "dbt-duckdb", specifier = ">=1.10.1" },
+    { name = "duckdb", specifier = ">=1.5.0" },
+    { name = "duckdb-engine", specifier = ">=0.17.0" },
+    { name = "func-timeout", specifier = ">=4.3.5" },
+    { name = "genai-prices", specifier = ">=0.0.29" },
+    { name = "google-cloud-bigquery-storage", specifier = ">=2.36.2" },
+    { name = "graphviz", specifier = ">=0.20.3" },
+    { name = "httpx", specifier = ">=0.28.1" },
+    { name = "jinja2", specifier = ">=3.1.6" },
+    { name = "langfuse", specifier = ">=3.0.1" },
+    { name = "litellm", specifier = ">=1.82.0" },
+    { name = "logfire", specifier = ">=3.16.0" },
+    { name = "matplotlib", marker = "extra == 'plot'" },
+    { name = "mcp", extras = ["cli"], specifier = ">=1.9.4" },
+    { name = "neo4j", specifier = ">=5.28.0" },
+    { name = "openinference-instrumentation-litellm", specifier = ">=0.1.21" },
+    { name = "pandas", specifier = ">=2.2.3" },
+    { name = "playwright", specifier = ">=1.59.0" },
+    { name = "plotext", specifier = ">=5.3.2" },
+    { name = "pyarrow", specifier = ">=21.0.0" },
+    { name = "pydantic", specifier = ">=2.11.3" },
+    { name = "pydantic-ai", specifier = ">=1.61.0" },
+    { name = "pydantic-ai-slim", extras = ["anthropic"], specifier = ">=1.61.0" },
+    { name = "pydantic-settings", specifier = ">=2.11.0" },
+    { name = "pymysql", specifier = ">=1.1.1" },
+    { name = "pypdf", specifier = ">=6.12.2" },
+    { name = "pyyaml", specifier = ">=6.0.3" },
+    { name = "rich", specifier = ">=14.0.0" },
+    { name = "snowflake-connector-python", specifier = ">=3.14.1" },
+    { name = "snowflake-sqlalchemy", specifier = ">=1.7.3" },
+    { name = "sqlalchemy", extras = ["asyncio"], specifier = ">=2.0.40" },
+    { name = "sqlalchemy-bigquery", specifier = ">=1.11.0" },
+    { name = "sqlglot", specifier = ">=28.6.0" },
+    { name = "sqlparse", specifier = ">=0.5.3" },
+    { name = "tabulate", specifier = ">=0.9.0" },
+    { name = "textual", extras = ["syntax"], specifier = ">=3.0.0" },
+    { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "typer", specifier = ">=0.15.0" },
+    { name = "webbrowser-open", specifier = ">=0.3.0" },
+]
+provides-extras = ["plot"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "import-linter", specifier = ">=2.11" },
+    { name = "ipython" },
+    { name = "mypy", specifier = ">=1.15.0" },
+    { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pytest-asyncio", specifier = ">=1.0.0" },
+    { name = "ruff", specifier = ">=0.11.10" },
+    { name = "types-aiofiles", specifier = ">=24.1.0.20250516" },
+    { name = "types-pyyaml", specifier = ">=6.0.12.20260518" },
+    { name = "types-tabulate", specifier = ">=0.9.0" },
+]
+streamlit = [{ name = "streamlit", specifier = ">=1.50.0" }]
 
 [[package]]
 name = "tabulate"

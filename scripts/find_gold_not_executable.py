@@ -2,22 +2,22 @@ import asyncio
 import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
-import mintq
-from mintq.config import mintq_config
-from mintq.datahub import dataset_registry
-from mintq.pipelines.populate_exec_results import populate_task_async
+import tabulaflow
+from tabulaflow.config import tabulaflow_config
+from tabulaflow.datahub import dataset_registry
+from tabulaflow.pipelines.populate_exec_results import populate_task_async
 
 
 async def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", default=mintq_config.dataset)
-    parser.add_argument("--split", default=mintq_config.split)
+    parser.add_argument("--dataset", default=tabulaflow_config.dataset)
+    parser.add_argument("--split", default=tabulaflow_config.split)
     parser.add_argument("--batch_size", type=int, default=8)
     args = parser.parse_args()
     print(args)
     print()
 
-    mintq.configure()
+    tabulaflow.configure()
 
     t0 = time.time()
     dataset_loader = dataset_registry.get_class(args.dataset)()

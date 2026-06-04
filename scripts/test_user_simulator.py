@@ -1,12 +1,12 @@
 # mypy: ignore-errors
 import asyncio
-import mintq
-from mintq.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
-from mintq.datahub import dataset_registry
+import tabulaflow
+from tabulaflow.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
+from tabulaflow.datahub import dataset_registry
 
 
 async def main() -> None:
-    mintq.configure()
+    tabulaflow.configure()
     dataset_loader = dataset_registry.get_class("arcs")()
     dataset = await dataset_loader.get_split_async("dev")
     user_simulator = UserSimulator.from_ambig_nl2q_task(dataset.tasks[3])  # type: ignore

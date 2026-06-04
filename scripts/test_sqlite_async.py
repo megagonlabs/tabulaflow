@@ -2,9 +2,9 @@
 import time
 import asyncio
 from typing import Any
-import mintq
-from mintq.datahub import dataset_registry
-from mintq.db_connector import BaseSQLDBConnector
+import tabulaflow
+from tabulaflow.datahub import dataset_registry
+from tabulaflow.db_connector import BaseSQLDBConnector
 
 query = """
 SELECT n.n_name AS nation, SUM(l.l_extendedprice) AS total_revenue
@@ -55,7 +55,7 @@ async def run_query(db_connector: BaseSQLDBConnector, query: str, parameters: di
 
 
 async def main() -> None:
-    mintq.configure()
+    tabulaflow.configure()
     dataset_loader = dataset_registry.get_class("arcs")()
     # dataset = await dataset_loader.get_split_async("dev")
     # db_connector: SQLConnector = dataset.db_connectors["retails"]

@@ -47,14 +47,14 @@ exp_file="exp/${exp_name}.sh"
 # Next, write the following script to the new file:
 # set -e
 #
-# .venv/bin/python -u -m mintq.run_model --model <model> --dataset <dataset> --llm <llm>  --result_dir output/<exp_id>_run_model/ --overwrite
-# .venv/bin/python -u -m mintq.evaluate --result_dir output/<exp_id>_run_model/
+# .venv/bin/python -u -m tabulaflow.run_model --model <model> --dataset <dataset> --llm <llm>  --result_dir output/<exp_id>_run_model/ --overwrite
+# .venv/bin/python -u -m tabulaflow.evaluate --result_dir output/<exp_id>_run_model/
 
 cat <<EOF >$exp_file
 set -e
 
-.venv/bin/python -u -m mintq.run_model --model $model --dataset $dataset --llm $llm --result_dir output/${exp_name}/ --overwrite
-.venv/bin/python -u -m mintq.evaluate --result_json output/${exp_name}/result.json
+.venv/bin/python -u -m tabulaflow.run_model --model $model --dataset $dataset --llm $llm --result_dir output/${exp_name}/ --overwrite
+.venv/bin/python -u -m tabulaflow.evaluate --result_json output/${exp_name}/result.json
 EOF
 
 echo "Created $exp_file with the following content:"

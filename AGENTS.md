@@ -1,4 +1,4 @@
-# mintq
+# tabulaflow
 
 Minimalist Text-to-Query toolkit for NL2SQL research. Supports BIRD-SQL, Spider 2.0, Beaver, ARCS, and AMBROSIA datasets.
 
@@ -15,7 +15,7 @@ Use `uv` for all Python operations:
 make test          # pytest with all caching disabled
 make format        # ruff format + ruff check --fix
 make lint          # ruff check
-make mypy          # mypy mintq/ tests/
+make mypy          # mypy tabulaflow/ tests/
 make sync          # sync uv dependencies
 ```
 
@@ -30,16 +30,16 @@ make test-simple               # bird-sql, spider2-snow, beaver with simple_zero
 
 Pipeline scripts (used directly):
 ```bash
-uv run mintq/pipelines/run_agent.py --agent <agent> --dataset <dataset> --debug
-uv run mintq/pipelines/populate_exec_results.py --debug
-uv run mintq/pipelines/evaluate.py --debug
-uv run mintq/pipelines/analyze_errors.py --debug
+uv run tabulaflow/pipelines/run_agent.py --agent <agent> --dataset <dataset> --debug
+uv run tabulaflow/pipelines/populate_exec_results.py --debug
+uv run tabulaflow/pipelines/evaluate.py --debug
+uv run tabulaflow/pipelines/analyze_errors.py --debug
 ```
 
 ## Project Structure
 
 ```
-mintq/
+tabulaflow/
 ├── agenthub/        # text-to-query agents (sql_agent, ambig_*_sql_agent, etc.)
 ├── toolhub/         # agent tools (run_query, get_schema, search_keywords, etc.)
 ├── datahub/         # dataset loaders (bird_sql, spider2, beaver, arcs, ambrosia)
@@ -62,9 +62,9 @@ cache/               # schema and preprocessing cache
 Managed via `direnv` (`.envrc` file, not committed):
 - `OPENAI_API_KEY`
 - `SF_USER`, `SF_PASSWORD`, `SF_ACCOUNT` — Snowflake (Spider 2.0)
-- `MINTQ_SCHEMA_CACHE_ENABLED`, `MINTQ_SCHEMA_CACHE_REQUIRED` — schema cache control
-- `MINTQ_PREPROCESSOR_CACHE_ENABLED`, `MINTQ_PREPROCESSOR_CACHE_REQUIRED` — preprocessor cache control
-- `MINTQ_MAX_LLM_CONCURRENCY`, `MINTQ_MAX_LLM_REQUESTS_PER_MINUTE` — rate limiting
+- `TABULAFLOW_SCHEMA_CACHE_ENABLED`, `TABULAFLOW_SCHEMA_CACHE_REQUIRED` — schema cache control
+- `TABULAFLOW_PREPROCESSOR_CACHE_ENABLED`, `TABULAFLOW_PREPROCESSOR_CACHE_REQUIRED` — preprocessor cache control
+- `TABULAFLOW_MAX_LLM_CONCURRENCY`, `TABULAFLOW_MAX_LLM_REQUESTS_PER_MINUTE` — rate limiting
 - `OTEL_EXPORTER_OTLP_ENDPOINT`, `LOGFIRE_TOKEN` — tracing (optional)
 
 ## LLM Identifiers
@@ -88,12 +88,12 @@ Managed via `direnv` (`.envrc` file, not committed):
 
 ## Tmux Sessions
 
-Run long experiments in tmux session `mintq`:
+Run long experiments in tmux session `tabulaflow`:
 ```bash
-tmux send-keys -t mintq "<command>" Enter
+tmux send-keys -t tabulaflow "<command>" Enter
 ```
 
-For experiment scripts in `exp/`, run them in tmux session `mintq`:
+For experiment scripts in `exp/`, run them in tmux session `tabulaflow`:
 ```bash
 bash exp/123_xxx.sh &> log/123.out &
 ```
@@ -103,7 +103,7 @@ If (and only if) resuming an interrupted experiment, append to the log file:
 bash exp/123_xxx.sh &>> log/123.out &
 ```
 
-## Design Language (HTML table dumps in `mintq/cli/dump.py`)
+## Design Language (HTML table dumps in `tabulaflow/cli/dump.py`)
 
 Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 
@@ -117,7 +117,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
   - Mint accent: `#3eb489` (headers, banner logo, focus highlights)
   - Text primary `#e4e4e7`; dim / row-numbers `#6a737d`
 - **Layout**:
-  - Sticky top banner with `mintq` mint-mono logo (left) and GitHub repo link (right).
+  - Sticky top banner with `tabulaflow` mint-mono logo (left) and GitHub repo link (right).
   - Table sits in a bordered card that `min-height`s the viewport — short tables still anchor a panel, no floating-in-void.
   - Table layout `fitDataFill`: columns are content-sized, rows fill container width (blank space on the right is intentional).
   - Width: card fills page. Height: only force a pixel height when row count > 100 (so virtual scroll engages); otherwise free-flow.

@@ -9,10 +9,10 @@ from sqlalchemy import (
     insert,
 )
 import os
-import mintq
-from mintq.db_connector import SQLConnector
-from mintq.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
-from mintq.schema import SimpleNL2QTask, GoldQuery
+import tabulaflow
+from tabulaflow.db_connector import SQLConnector
+from tabulaflow.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
+from tabulaflow.schema import SimpleNL2QTask, GoldQuery
 
 
 def create_db(db_path: str) -> None:
@@ -55,7 +55,7 @@ def create_db(db_path: str) -> None:
 
 
 async def main() -> None:
-    mintq.configure(schema_cache_enabled=False)
+    tabulaflow.configure(schema_cache_enabled=False)
     db_path = "output/test.db"
     create_db(db_path)
     db_connector = await SQLConnector.from_url_async(

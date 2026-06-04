@@ -5,8 +5,8 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
-from mintq.toolhub.run_query import RunQueryTool, LLMParameter
-from mintq.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
+from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter
+from tabulaflow.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
 INIT_SQL = [
@@ -240,7 +240,7 @@ def test_run_query_pydantic_tool_signatures() -> None:
     """as_pydantic_ai_tool should select the variant matching the enabled flags."""
     import inspect
 
-    from mintq.toolhub.run_query import RunQueryTool
+    from tabulaflow.toolhub.run_query import RunQueryTool
 
     class _StubConnector:
         connector_type = "sql"

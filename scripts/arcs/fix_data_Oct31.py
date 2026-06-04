@@ -1,13 +1,13 @@
-import mintq
-from mintq.datahub.arcs import ARCSDatasetLoader
-from mintq.schema import AmbigNL2QTask
+import tabulaflow
+from tabulaflow.datahub.arcs import ARCSDatasetLoader
+from tabulaflow.schema import AmbigNL2QTask
 from pydantic import TypeAdapter
 import os
 import asyncio
 
 
 async def main():
-    mintq.configure()
+    tabulaflow.configure()
     dataset_loader = ARCSDatasetLoader()
     dataset = await dataset_loader.get_split_async("test")
     tasks = [task for task in dataset.tasks if task.qid.endswith("-0")]

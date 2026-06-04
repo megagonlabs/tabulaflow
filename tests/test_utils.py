@@ -1,5 +1,5 @@
 import pytest
-from mintq.utils import extract_code
+from tabulaflow.utils import extract_code
 
 
 @pytest.mark.asyncio

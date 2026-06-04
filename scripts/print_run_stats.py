@@ -3,9 +3,9 @@ import argparse
 import asyncio
 import os
 from tabulate import tabulate
-import mintq
-from mintq.schema import NL2QRunResult, StructuredAmbigNL2QTaskOutput
-from mintq.utils import dict_to_df
+import tabulaflow
+from tabulaflow.schema import NL2QRunResult, StructuredAmbigNL2QTaskOutput
+from tabulaflow.utils import dict_to_df
 
 
 def print_ambig_stats(tasks: list[StructuredAmbigNL2QTaskOutput]) -> None:
@@ -53,7 +53,7 @@ async def main() -> None:
     print(args)
     print()
 
-    mintq.configure()
+    tabulaflow.configure()
 
     with open(os.path.join(args.result_dir, "result.json"), "r") as f:
         result = NL2QRunResult.model_validate_json(f.read())

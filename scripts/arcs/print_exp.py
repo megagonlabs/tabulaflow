@@ -1,8 +1,8 @@
 import math
 import os
 from typing import Any
-import mintq
-from mintq.schema import AmbigNL2QTask, NL2QRunResult
+import tabulaflow
+from tabulaflow.schema import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
 from tabulate import tabulate
 import time
@@ -93,7 +93,7 @@ EXPS = [
 TALBE_FMT = "github"
 
 
-mintq.configure()
+tabulaflow.configure()
 
 for exp in EXPS:
     assert os.path.exists(os.path.join("output", "paper", exp, "result.json")), f"Result file not found for {exp}"

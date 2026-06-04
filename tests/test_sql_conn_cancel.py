@@ -13,7 +13,7 @@ from pathlib import Path
 import duckdb
 import pytest
 
-from mintq.db_connector.sql_conn import SQLConnector, ThrottledEngine
+from tabulaflow.db_connector.sql_conn import SQLConnector, ThrottledEngine
 
 
 @pytest.fixture
@@ -85,7 +85,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     """
     import pandas as pd
 
-    from mintq.db_connector.loaders.files import load_files
+    from tabulaflow.db_connector.loaders.files import load_files
 
     csv = tmp_path / "data.csv"
     pd.DataFrame({"x": list(range(200000)) * 4}).to_csv(csv, index=False)

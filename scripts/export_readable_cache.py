@@ -1,13 +1,13 @@
 import argparse
 import os
-import mintq
-from mintq.config import mintq_config
-from mintq.preprocessors.db_summarizer import DBSummary
-from mintq.schema import SQLSchema
-from mintq.preprocessors.components.schema_compressor import SchemaCompressor
-from mintq.preprocessors.er_diagram import ERDiagram
-from mintq.formatters.sql_ddl import SQLDDLSchemaFormatter
-from mintq.formatters.er_diagram import ERDiagramMermaidFormatter
+import tabulaflow
+from tabulaflow.config import tabulaflow_config
+from tabulaflow.preprocessors.db_summarizer import DBSummary
+from tabulaflow.schema import SQLSchema
+from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.preprocessors.er_diagram import ERDiagram
+from tabulaflow.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.formatters.er_diagram import ERDiagramMermaidFormatter
 
 
 def main() -> None:
@@ -16,9 +16,9 @@ def main() -> None:
     parser.add_argument("--skip_exists", action="store_true", help="Skip if output file already exists")
     args = parser.parse_args()
 
-    mintq.configure()
+    tabulaflow.configure()
 
-    input_dir = os.path.join(mintq_config.cache_dir, "schemas")
+    input_dir = os.path.join(tabulaflow_config.cache_dir, "schemas")
     output_dir = os.path.join(args.output_dir, "schemas")
     os.makedirs(output_dir, exist_ok=True)
     for file in os.listdir(input_dir):
@@ -32,7 +32,7 @@ def main() -> None:
             f.write(compressed_schema_str)
     print(f"Exported {len(os.listdir(input_dir))} schemas to {output_dir}")
 
-    input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "db_summarizer")
+    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "db_summarizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "db_summarizer")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -44,7 +44,7 @@ def main() -> None:
             f.write(summary.db_summary_markdown)
     print(f"Exported {len(os.listdir(input_dir))} DB summaries to {output_dir}")
 
-    input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "schema_preprocessor")
+    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "schema_preprocessor")
     output_dir = os.path.join(args.output_dir, "preprocessors", "schema_preprocessor")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):
@@ -57,7 +57,7 @@ def main() -> None:
             f.write(schema_str)
     print(f"Exported {len(os.listdir(input_dir))} preprocessed schemas to {output_dir}")
 
-    input_dir = os.path.join(mintq_config.cache_dir, "preprocessors", "er_diagram_synthesizer")
+    input_dir = os.path.join(tabulaflow_config.cache_dir, "preprocessors", "er_diagram_synthesizer")
     output_dir = os.path.join(args.output_dir, "preprocessors", "er_diagram_synthesizer")
     os.makedirs(output_dir, exist_ok=True)
     for f in os.listdir(input_dir):

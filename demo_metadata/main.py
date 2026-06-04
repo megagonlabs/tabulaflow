@@ -6,18 +6,18 @@ import argparse
 import json
 import os
 import logging
-from mintq.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
-from mintq.db_connector import SQLConnector
-from mintq.formatters import SQLBasicSchemaFormatter
-from mintq.utils import extract_code
+from tabulaflow.schema import NL2QDataset, SimpleNL2QTask, GoldQuery
+from tabulaflow.db_connector import SQLConnector
+from tabulaflow.formatters import SQLBasicSchemaFormatter
+from tabulaflow.utils import extract_code
 
-# os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
+# os.environ["TABULAFLOW_SCHEMA_CACHE_ENABLED"] = "0"
 
 
 logger = logging.getLogger(__name__)
 
 logging.basicConfig(level=logging.WARNING)
-logging.getLogger("mintq").setLevel(logging.INFO)
+logging.getLogger("tabulaflow").setLevel(logging.INFO)
 
 
 PROMPT = """

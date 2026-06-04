@@ -2,7 +2,7 @@ import pandas as pd
 from decimal import Decimal
 from pandas.testing import assert_frame_equal
 
-from mintq.schema import (
+from tabulaflow.schema import (
     ExecResult,
     _DF_SERIALIZATION_FORMAT,
     _DF_SERIALIZATION_FORMAT_FEATHER,
@@ -73,7 +73,7 @@ def test_dataframe_deserialize_legacy_payload() -> None:
 
 def test_dataframe_round_trip_nested_columns() -> None:
     """Nested dicts/lists round-trip as native Python objects (no key merging)."""
-    from mintq.schema import _sanitize_df
+    from tabulaflow.schema import _sanitize_df
 
     df = pd.DataFrame(
         {

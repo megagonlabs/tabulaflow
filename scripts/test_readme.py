@@ -1,13 +1,13 @@
 import asyncio
-import mintq
-from mintq.agenthub import SQLAgent, BasicAgentConfig
-from mintq.datahub import BirdSQLDatasetLoader
-from mintq.metrics import BirdSQLEx
-from mintq.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
+import tabulaflow
+from tabulaflow.agenthub import SQLAgent, BasicAgentConfig
+from tabulaflow.datahub import BirdSQLDatasetLoader
+from tabulaflow.metrics import BirdSQLEx
+from tabulaflow.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
 
 
 async def main() -> None:
-    mintq.configure()
+    tabulaflow.configure()
     dataloader = BirdSQLDatasetLoader()
     # dataset includes the text-to-query tasks and the database connectors
     dataset = await dataloader.get_split_async("dev")

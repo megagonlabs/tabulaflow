@@ -1,6 +1,6 @@
 import os
-import mintq
-from mintq.schema import NL2QRunResult
+import tabulaflow
+from tabulaflow.schema import NL2QRunResult
 
 
 EXP_DIRS = {
@@ -26,7 +26,7 @@ EXP_DIRS = {
 TALBE_FMT = "github"
 
 
-mintq.configure()
+tabulaflow.configure()
 
 EXP_RESULTS = {}
 for method, exp_dir in EXP_DIRS.items():

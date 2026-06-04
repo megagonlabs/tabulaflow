@@ -3,7 +3,7 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "mintq"
+name = "tabulaflow"
 authors = [{ name = "Yanlin Feng", email = "yanlinf23@gmail.com" }]
 version = "0.1.0"
 description = "Minimalist Text to Query Toolkit"
@@ -60,17 +60,17 @@ dependencies = [
 plot = ["matplotlib"]
 
 [project.scripts]
-mintq = "mintq.cli.app:main"
+tabulaflow = "tabulaflow.cli.app:main"
 
 [tool.setuptools.packages.find]
-include = ["mintq*"]
+include = ["tabulaflow*"]
 
 [tool.setuptools.package-data]
-mintq = ["cli/assets/tabulator/*", "cli/assets/debug/*"]
+tabulaflow = ["cli/assets/tabulator/*", "cli/assets/debug/*"]
 
 [tool.ruff]
 line-length = 120
-include = ["mintq/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
+include = ["tabulaflow/**/*.py", "tests/**/*.py", "scripts/**/*.py"]
 
 [dependency-groups]
 dev = [

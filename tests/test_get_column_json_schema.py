@@ -2,9 +2,9 @@ from typing import Any
 
 import pytest
 
-from mintq.utils import format_json_schema
-from mintq.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
-from mintq.toolhub.get_column_json_schema import (
+from tabulaflow.utils import format_json_schema
+from tabulaflow.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.toolhub.get_column_json_schema import (
     GetColumnJsonSchemaTool,
     _extract_examples_at_path,
     _parse_json_examples,

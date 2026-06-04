@@ -3,8 +3,8 @@ import pandas as pd
 import numpy as np
 import math
 from pydantic import BaseModel
-from mintq.metrics import SimpleEx, Spider2Ex
-from mintq.schema import SimpleNL2QTaskOutput, GoldQuery, PredQuery, ExecResult, NL2QTaskOutput
+from tabulaflow.metrics import SimpleEx, Spider2Ex
+from tabulaflow.schema import SimpleNL2QTaskOutput, GoldQuery, PredQuery, ExecResult, NL2QTaskOutput
 
 
 class ExampleCase(BaseModel):

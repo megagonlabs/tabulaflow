@@ -4,15 +4,15 @@ from typing import ClassVar
 import asyncio
 import os
 import json
-from mintq.toolhub import RunQueryTool, SearchKeywordsTool
-from mintq.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
-from mintq.db_connector import SQLConnector
-from mintq.metadata_synthesizer import HSchemaSynthesizer
-from mintq.schema import SQLSchema, HSQLSchema
+from tabulaflow.toolhub import RunQueryTool, SearchKeywordsTool
+from tabulaflow.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
+from tabulaflow.db_connector import SQLConnector
+from tabulaflow.metadata_synthesizer import HSchemaSynthesizer
+from tabulaflow.schema import SQLSchema, HSQLSchema
 from mcp.server.fastmcp import FastMCP
 
 
-# os.environ["MINTQ_SCHEMA_CACHE_ENABLED"] = "0"
+# os.environ["TABULAFLOW_SCHEMA_CACHE_ENABLED"] = "0"
 
 
 mcp = FastMCP("postgres_github_repos", host="0.0.0.0", port=8127)

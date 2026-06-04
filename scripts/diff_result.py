@@ -1,8 +1,8 @@
 import argparse
 import os
-import mintq
-from mintq.metrics.utils import get_default_metric
-from mintq.schema import NL2QRunResult
+import tabulaflow
+from tabulaflow.metrics.utils import get_default_metric
+from tabulaflow.schema import NL2QRunResult
 
 
 def main():
@@ -14,7 +14,7 @@ def main():
     print(args)
     print()
 
-    mintq.configure()
+    tabulaflow.configure()
 
     with open(os.path.join(args.result_dir_a, "result.json"), "r") as f:
         result_a = NL2QRunResult.model_validate_json(f.read())

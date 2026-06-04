@@ -18,9 +18,9 @@ from pathlib import Path
 import pandas as pd
 import sqlalchemy
 
-from mintq.db_connector.db_registry import DBRegistry
-from mintq.db_connector.sql_conn import SQLConnector
-from mintq.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
+from tabulaflow.db_connector.db_registry import DBRegistry
+from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 logger = logging.getLogger(__name__)
 
@@ -56,7 +56,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--limit", type=int, default=10)
     parser.add_argument("--labeled-only", action="store_true", default=True)
-    parser.add_argument("--db", type=str, default="/tmp/mintq_subagent_ag.duckdb")
+    parser.add_argument("--db", type=str, default="/tmp/tabulaflow_subagent_ag.duckdb")
     parser.add_argument("--llm", type=str, default="openai-responses:gpt-5-mini")
     args = parser.parse_args()
 

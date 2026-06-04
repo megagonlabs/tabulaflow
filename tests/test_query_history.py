@@ -6,9 +6,9 @@ from typing import AsyncGenerator
 import pandas as pd
 import pytest
 
-from mintq.db_connector.sql_conn import SQLConnector
-from mintq.schema import ExecResult, PredQuery
-from mintq.toolhub.query_history import QueryHistory
+from tabulaflow.db_connector.sql_conn import SQLConnector
+from tabulaflow.schema import ExecResult, PredQuery
+from tabulaflow.toolhub.query_history import QueryHistory
 
 
 def _make_pred_query(n_rows: int = 5) -> PredQuery:
@@ -17,7 +17,7 @@ def _make_pred_query(n_rows: int = 5) -> PredQuery:
 
 
 def _make_error_pred_query() -> PredQuery:
-    from mintq.schema import ErrorInfo
+    from tabulaflow.schema import ErrorInfo
 
     return PredQuery(
         query="SELECT bad",

@@ -2,8 +2,8 @@ import argparse
 import random
 import asyncio
 import collections
-import mintq
-from mintq.datahub.arcs import ARCSDatasetLoader
+import tabulaflow
+from tabulaflow.datahub.arcs import ARCSDatasetLoader
 import json
 
 
@@ -17,7 +17,7 @@ async def main():
     print(args)
     print()
 
-    mintq.configure()
+    tabulaflow.configure()
     total_tasks = 0
 
     random.seed(args.seed)

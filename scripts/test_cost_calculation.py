@@ -1,5 +1,5 @@
-import mintq
-from mintq.schema import Usage
+import tabulaflow
+from tabulaflow.schema import Usage
 
 LLMS = [
     "openai:gpt-4.1",
@@ -15,7 +15,7 @@ LLMS = [
 
 
 def main():
-    mintq.configure()
+    tabulaflow.configure()
     for llm in LLMS:
         print(llm)
         usage = Usage.create(llm, 1, 1000000, 1000000)

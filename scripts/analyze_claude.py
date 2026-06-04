@@ -1,8 +1,8 @@
 import os
-import mintq
-from mintq.schema import NL2QRunResult
+import tabulaflow
+from tabulaflow.schema import NL2QRunResult
 
-mintq.configure()
+tabulaflow.configure()
 
 result_dir = "output/115_o4-mini-structured/"
 

@@ -1,10 +1,10 @@
-# mintq-cli
+# tabulaflow-cli
 
 ## Installation (for developers)
 
 ```bash
-git clone git@github.com:megagon-internal/mintq.git
-cd mintq
+git clone git@github.com:megagon-internal/tabulaflow.git
+cd tabulaflow
 uv venv
 make sync
 ```
@@ -14,7 +14,7 @@ make sync
 
 ```bash
 export OPENAI_API_KEY=...  # not needed if you are only browsing data
-uv run mintq
+uv run tabulaflow
 ```
 
 Use `/connect` to connect to a data source (Huggingface datasets, local csv/excel files, SQL databases, etc.), then either run `/browse` to manually browse the data or say "Analyze" to have LLM analyze the data.
@@ -27,7 +27,7 @@ We use `make` to manage a few common commands we frequently use (see [`Makefile`
 make format          # format and lint
 make mypy            # type check with mypy
 make sync            # sync the dependencies in pyproject.toml into the venv (e.g. when others have updated the dependencies)
-make last-trajectory # print the path to the last trajectory of mintq-cli agent
+make last-trajectory # print the path to the last trajectory of tabulaflow-cli agent
 ```
 
 ## Use Cases
@@ -321,17 +321,17 @@ May 29
 
 ---
 
-# mintq
+# tabulaflow
 
 **Min**imalist **T**ext-to-**Q**uery Library
 
 A **Min**imalist **T**ext-to-**Q**uery Library that offers:
 
-📐 **Everything Structured**: All data—including database schemas—is structured and explicitly [defined](mintq/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
+📐 **Everything Structured**: All data—including database schemas—is structured and explicitly [defined](tabulaflow/schema.py). No more dealing with complex black-box dictionaries or parsing massive schema strings.
 
 🔍 **Type-safe**: Every method is type-hinted and checked with static type checker mypy.
 
-🧩 **Modular**: Core components like [database connectors](mintq/db_connector/base.py), [dataloaders](mintq/datahub/base.py), [agents](mintq/agenthub/base.py), [tools](mintq/toolhub/base.py), [metrics](mintq/metrics/base.py) follow the interfaces defined in the base.py files.
+🧩 **Modular**: Core components like [database connectors](tabulaflow/db_connector/base.py), [dataloaders](tabulaflow/datahub/base.py), [agents](tabulaflow/agenthub/base.py), [tools](tabulaflow/toolhub/base.py), [metrics](tabulaflow/metrics/base.py) follow the interfaces defined in the base.py files.
 
 🔌 **Extensible**: Intefaces are designed to be minimal and flexible, without heavy abstractions. You are free to use any agent library to build your own text-to-query agent.
 
@@ -356,14 +356,14 @@ A **Min**imalist **T**ext-to-**Q**uery Library that offers:
 
 First, follow the [Development](#-development) section to install the library. Next, follow the [Dataset Setup](#-dataset-setup) section to download the datasets you want to use.
 
-### Using `mintq` as a library
+### Using `tabulaflow` as a library
 
 ```python
 import asyncio
-from mintq.agenthub import SQLAgent, BasicAgentConfig
-from mintq.datahub import BirdSQLDatasetLoader
-from mintq.metrics import BirdSQLEx
-from mintq.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
+from tabulaflow.agenthub import SQLAgent, BasicAgentConfig
+from tabulaflow.datahub import BirdSQLDatasetLoader
+from tabulaflow.metrics import BirdSQLEx
+from tabulaflow.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
 
 
 async def main() -> None:
@@ -402,18 +402,18 @@ if __name__ == "__main__":
 
 ### Running experiments with provided scripts
 
-We also provide the [run_model.py](mintq/run_model.py) and [evaluate.py](mintq/evaluate.py) scripts for convenience:
+We also provide the [run_model.py](tabulaflow/run_model.py) and [evaluate.py](tabulaflow/evaluate.py) scripts for convenience:
 
 ```bash
-uv run mintq/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
-uv run mintq/pipelines/populate_exec_results.py --result_dir output/test/
-uv run mintq/pipelines/evaluate.py --result_dir output/test/
+uv run tabulaflow/pipelines/run_agent.py --agent sql_agent --dataset bird-sql --llm "openai:gpt-4o-mini" --result_dir output/test/ --debug
+uv run tabulaflow/pipelines/populate_exec_results.py --result_dir output/test/
+uv run tabulaflow/pipelines/evaluate.py --result_dir output/test/
 ```
 
 ## Project Structure
 
 ```
-mintq
+tabulaflow
 ├── agenthub/               # text-to-query methods
 │   ├── simple_zero_shot.py
 │   ├── sql_agent.py
@@ -643,7 +643,7 @@ make sync        # sync the dependencies in pyproject.toml into the venv (e.g. w
   - [ ] Quoting identifiers for snowflake?
   - [ ] Check not executable queries (both spider2-snow and spider2-lite)
 - [ ] Revise db_summarizer prompt - "used for efficient navigation and SQL writing by SQL experts"
-- [ ] schema linking for mintq_agent
+- [ ] schema linking for tabulaflow_agent
 - [ ] Code edit tool for editting complex queries
 - [ ] non-empty ratio
 - [ ] partial trajectories on error
