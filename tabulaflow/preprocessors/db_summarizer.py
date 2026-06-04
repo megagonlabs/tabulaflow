@@ -78,7 +78,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         return "_" + self.llm.replace(":", "--")
 
     async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> DBSummary:
-        from tabulaflow.toolhub.run_query import RunQueryTool
+        from tabulaflow.core.tools.run_query import RunQueryTool
 
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)
 

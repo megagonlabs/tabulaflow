@@ -1,4 +1,4 @@
-from tabulaflow.toolhub.base import BaseTool
+from tabulaflow.core.tools.base import BaseTool
 from tabulaflow.toolhub.ask_user import AskUserTool
 from tabulaflow.toolhub.execute_bash import ExecuteBashTool
 from tabulaflow.toolhub.file_editor import FileEditorTool
@@ -21,7 +21,7 @@ from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_run_subagent_for_each_row import RegistryRunSubagentForEachRowTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
-from tabulaflow.toolhub.run_query import RunQueryTool
+from tabulaflow.core.tools.run_query import RunQueryTool
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.toolhub.search_keywords import SearchKeywordsTool
 from tabulaflow.toolhub.web_browser import (

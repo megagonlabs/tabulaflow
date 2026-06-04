@@ -8,7 +8,7 @@ from tabulaflow.core.types import SQLSchema, TableRef, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.toolhub.run_query import RunQueryTool
+from tabulaflow.core.tools.run_query import RunQueryTool
 
 ER_DIAGRAM_SYNTHESIS_PROMPT = """
 You are an AI database expert tasked with generating an ER diagram given a physical database schema.
