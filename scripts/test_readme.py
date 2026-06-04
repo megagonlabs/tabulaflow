@@ -1,9 +1,9 @@
 import asyncio
 import tabulaflow
-from tabulaflow.agenthub import SQLAgent, BasicAgentConfig
-from tabulaflow.datahub import BirdSQLDatasetLoader
-from tabulaflow.metrics import BirdSQLEx
-from tabulaflow.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
+from tabulaflow.research.agenthub import SQLAgent, BasicAgentConfig
+from tabulaflow.research.datahub import BirdSQLDatasetLoader
+from tabulaflow.research.metrics import BirdSQLEx
+from tabulaflow.research.pipelines import run_agent_async, populate_exec_results_async, evaluate_async
 
 
 async def main() -> None:

@@ -13,7 +13,7 @@ from tabulate import tabulate
 import tabulaflow
 from tabulaflow.core.types import GoldQuery
 from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite
-from tabulaflow.datahub import dataset_registry
+from tabulaflow.research.datahub import dataset_registry
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.research.utils import sort_ambiguity_points
 

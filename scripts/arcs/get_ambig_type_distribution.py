@@ -1,5 +1,5 @@
 import tabulaflow
-from tabulaflow.datahub.arcs import ARCSDatasetLoader
+from tabulaflow.research.datahub.arcs import ARCSDatasetLoader
 import asyncio
 
 

@@ -1,8 +1,8 @@
 # mypy: ignore-errors
 import asyncio
 import tabulaflow
-from tabulaflow.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
-from tabulaflow.datahub import dataset_registry
+from tabulaflow.research.agenthub.user_simulator import UserSimulator, UserFreeTextQuestion
+from tabulaflow.research.datahub import dataset_registry
 
 
 async def main() -> None:

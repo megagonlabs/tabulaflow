@@ -3,7 +3,7 @@ import os
 import tabulaflow
 from tabulaflow.research.types import NL2QRunResult
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.datahub import BirdSQLDatasetLoader
+from tabulaflow.research.datahub import BirdSQLDatasetLoader
 
 
 async def main() -> None:

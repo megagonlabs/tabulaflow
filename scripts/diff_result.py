@@ -1,7 +1,7 @@
 import argparse
 import os
 import tabulaflow
-from tabulaflow.metrics.utils import get_default_metric
+from tabulaflow.research.metrics.utils import get_default_metric
 from tabulaflow.research.types import NL2QRunResult
 
 

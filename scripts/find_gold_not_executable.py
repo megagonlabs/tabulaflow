@@ -3,8 +3,8 @@ import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
 import tabulaflow
-from tabulaflow.datahub import dataset_registry
-from tabulaflow.pipelines.populate_exec_results import populate_task_async
+from tabulaflow.research.datahub import dataset_registry
+from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
 
 
 async def main() -> None:

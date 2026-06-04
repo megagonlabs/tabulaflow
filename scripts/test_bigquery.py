@@ -2,7 +2,7 @@
 """Test BigQuery schema loading via Spider2LiteDatasetLoader."""
 
 import asyncio
-from tabulaflow.datahub.spider2_lite import Spider2LiteDatasetLoader
+from tabulaflow.research.datahub.spider2_lite import Spider2LiteDatasetLoader
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 
 

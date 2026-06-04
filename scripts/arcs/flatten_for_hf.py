@@ -22,7 +22,7 @@ import json
 import random
 from pathlib import Path
 
-from tabulaflow.datahub.arcs import ARCSDatasetLoader
+from tabulaflow.research.datahub.arcs import ARCSDatasetLoader
 
 
 SHUFFLE_SEED = 42

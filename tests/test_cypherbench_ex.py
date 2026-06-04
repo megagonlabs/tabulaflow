@@ -5,7 +5,7 @@ import json
 import pandas as pd
 import pytest
 
-from tabulaflow.metrics.cypherbench_ex import (
+from tabulaflow.research.metrics.cypherbench_ex import (
     _df_to_tuples,
     _normalize_cell,
     _result_eq,

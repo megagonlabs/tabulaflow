@@ -3,7 +3,7 @@ import pandas as pd
 import numpy as np
 import math
 from pydantic import BaseModel
-from tabulaflow.metrics import SimpleEx, Spider2Ex
+from tabulaflow.research.metrics import SimpleEx, Spider2Ex
 from tabulaflow.core.types import GoldQuery, PredQuery, ExecResult
 from tabulaflow.research.types import SimpleNL2QTaskOutput, NL2QTaskOutput
 

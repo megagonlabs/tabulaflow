@@ -1,7 +1,7 @@
 # mypy: ignore-errors
 import asyncio
 import tabulaflow
-from tabulaflow.datahub import dataset_registry
+from tabulaflow.research.datahub import dataset_registry
 
 
 async def main() -> None:

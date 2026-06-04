@@ -11,7 +11,7 @@ from sqlalchemy import (
 import os
 import tabulaflow
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
+from tabulaflow.research.agenthub.simple_zero_shot import SimpleZeroShotNL2Q, SimpleZeroShotNL2QConfig
 from tabulaflow.core.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask
 
