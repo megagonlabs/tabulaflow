@@ -11,10 +11,11 @@ import asyncio
 from pydantic import TypeAdapter
 from tabulate import tabulate
 import tabulaflow
-from tabulaflow.schema import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite, GoldQuery
+from tabulaflow.core.types import GoldQuery
+from tabulaflow.research.types import AmbigNL2QTask, GoldAmbiguityPointFinite, GoldAmbiguityPointInfinite
 from tabulaflow.datahub import dataset_registry
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.core.utils import sort_ambiguity_points
+from tabulaflow.research.utils import sort_ambiguity_points
 
 AMBIGUITY_POINT_IDS = list("ABCDEFGHIJKLMNOPQRSTUVWXYZ")
 

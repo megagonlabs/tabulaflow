@@ -1,6 +1,6 @@
 import tabulaflow
 from tabulaflow.datahub.arcs import ARCSDatasetLoader
-from tabulaflow.schema import AmbigNL2QTask
+from tabulaflow.research.types import AmbigNL2QTask
 from pydantic import TypeAdapter
 import os
 import asyncio

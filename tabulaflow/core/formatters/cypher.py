@@ -2,12 +2,7 @@ from typing import ClassVar
 from dataclasses import dataclass
 
 from tabulaflow.core.formatters.base import formatter_registry
-from tabulaflow.schema import (
-    GraphPropertySchema,
-    NodeSchema,
-    PropertyGraphSchema,
-    RelationshipSchema,
-)
+from tabulaflow.core.types import GraphPropertySchema, NodeSchema, PropertyGraphSchema, RelationshipSchema
 
 
 @formatter_registry.register

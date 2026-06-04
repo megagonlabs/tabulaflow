@@ -1,8 +1,14 @@
 from typing import ClassVar
 from dataclasses import dataclass, field
-from tabulaflow.schema import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
+from tabulaflow.core.types import SQLDialect, SQLSchema, SQLTableSchema, SQLColumnSchema
 from tabulaflow.core.formatters.base import formatter_registry
-from tabulaflow.core.utils import format_df, flatten_multiline, format_json_schema, format_ratio_as_percent, render_column_dtype
+from tabulaflow.core.utils import (
+    format_df,
+    flatten_multiline,
+    format_json_schema,
+    format_ratio_as_percent,
+    render_column_dtype,
+)
 
 _DIALECT_QUOTING: dict[str, tuple[str, bool]] = {
     "bigquery": ("`", False),

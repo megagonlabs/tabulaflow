@@ -17,7 +17,7 @@ from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.schema import Trajectory
+from tabulaflow.core.types import Trajectory
 from tabulaflow.toolhub.utils import qualified_table, sa_table
 from tabulaflow.toolhub.run_query import RunQueryTool
 

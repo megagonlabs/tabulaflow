@@ -1,6 +1,6 @@
 from typing import Any, ClassVar, Literal, Protocol, Sequence, Mapping, TypeAlias, Union
 import sqlalchemy
-from tabulaflow.schema import SQLDialect, NonSQLLanguage, SQLSchema, PropertyGraphSchema, ExecResult, TableRef
+from tabulaflow.core.types import SQLDialect, NonSQLLanguage, SQLSchema, PropertyGraphSchema, ExecResult, TableRef
 
 
 class BaseSQLDBConnector(Protocol):

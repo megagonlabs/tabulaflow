@@ -7,7 +7,7 @@ from collections import deque
 from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Literal
 
-from tabulaflow.schema import PredQuery
+from tabulaflow.core.types import PredQuery
 
 if TYPE_CHECKING:
     import pandas as pd

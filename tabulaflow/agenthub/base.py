@@ -1,6 +1,6 @@
 from typing import Protocol, ClassVar, TypeAlias, Union
 from pydantic import BaseModel
-from tabulaflow.schema import (
+from tabulaflow.research.types import (
     SimpleNL2QTask,
     AmbigNL2QTask,
     DbtTask,

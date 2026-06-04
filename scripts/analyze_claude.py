@@ -1,6 +1,6 @@
 import os
 import tabulaflow
-from tabulaflow.schema import NL2QRunResult
+from tabulaflow.research.types import NL2QRunResult
 
 tabulaflow.configure()
 

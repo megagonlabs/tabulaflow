@@ -20,7 +20,7 @@ import duckdb
 
 from tabulaflow.datahub.base import dataset_registry
 from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
-from tabulaflow.schema import DbtTask, DbtGoldTable, NL2QDataset
+from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 
 logger = logging.getLogger(__name__)
 

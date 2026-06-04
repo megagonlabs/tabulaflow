@@ -5,7 +5,7 @@ from pydantic import BaseModel
 from pydantic_ai import Tool
 
 from tabulaflow.core.utils import format_json_schema
-from tabulaflow.schema import SQLSchema
+from tabulaflow.core.types import SQLSchema
 from tabulaflow.toolhub.utils import equals_ci
 
 _DEFAULT_MAX_EXAMPLE_CHARS = 1000

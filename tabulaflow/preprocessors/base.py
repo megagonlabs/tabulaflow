@@ -7,7 +7,8 @@ import os
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.config import tabulaflow_config
 from pydantic import BaseModel
-from tabulaflow.schema import Usage, NL2QDataset
+from tabulaflow.core.types import Usage
+from tabulaflow.research.types import NL2QDataset
 from tabulaflow.core.registry import Registry
 
 

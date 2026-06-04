@@ -6,7 +6,7 @@ import pandas as pd
 from pydantic import BaseModel
 from tabulaflow.agenthub.base import BaseAgentConfig
 from tabulaflow.agenthub.utils import instrument
-from tabulaflow.schema import SimpleNL2QTask, SimpleNL2QTaskOutput
+from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.pipelines.populate_exec_results import populate_task_async
 

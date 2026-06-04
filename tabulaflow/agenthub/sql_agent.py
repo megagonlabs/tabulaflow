@@ -11,18 +11,8 @@ from pydantic import BaseModel
 from pydantic_ai import Agent
 import logging
 from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.schema import (
-    ExtraPredInfo,
-    NL2QDataset,
-    SQLSchema,
-    SQLTableSchema,
-    SimpleNL2QTask,
-    SimpleNL2QTaskOutput,
-    PredQuery,
-    Usage,
-    Trajectory,
-    ColumnRef,
-)
+from tabulaflow.core.types import SQLSchema, SQLTableSchema, PredQuery, Usage, Trajectory, ColumnRef
+from tabulaflow.research.types import ExtraPredInfo, NL2QDataset, SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.preprocessors import ERDiagramSynthesizer, QuestionEmbedder, SchemaPreprocessor
 from tabulaflow.toolhub import (
     BaseTool,

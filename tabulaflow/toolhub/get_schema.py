@@ -2,7 +2,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.core.formatters import BaseSQLSchemaFormatter
-from tabulaflow.schema import SQLSchema
+from tabulaflow.core.types import SQLSchema
 
 
 class GetSchemaToolMetrics(BaseModel):

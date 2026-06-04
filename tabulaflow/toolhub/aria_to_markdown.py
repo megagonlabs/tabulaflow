@@ -102,17 +102,36 @@ _MAX_NATIVE_OPTIONS = 15
 
 _INTERACTIVE_ROLES: frozenset[str] = frozenset(
     {
-        "button", "link", "textbox", "combobox", "checkbox", "radio",
-        "menuitem", "menuitemcheckbox", "menuitemradio", "tab", "switch",
-        "slider", "spinbutton", "searchbox", "option",
+        "button",
+        "link",
+        "textbox",
+        "combobox",
+        "checkbox",
+        "radio",
+        "menuitem",
+        "menuitemcheckbox",
+        "menuitemradio",
+        "tab",
+        "switch",
+        "slider",
+        "spinbutton",
+        "searchbox",
+        "option",
     }
 )
 
 # Form-control roles render inline as ``role "name" = "value" [flag] [ref=eN]``.
 _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
     {
-        "textbox", "searchbox", "combobox", "checkbox", "radio", "switch",
-        "slider", "spinbutton", "tab",
+        "textbox",
+        "searchbox",
+        "combobox",
+        "checkbox",
+        "radio",
+        "switch",
+        "slider",
+        "spinbutton",
+        "tab",
     }
 )
 
@@ -127,9 +146,7 @@ _FORM_CONTROL_ROLES: frozenset[str] = frozenset(
 # triggers, which made the agent type "New York" into the departure date.
 # Checkboxes/radios/switches/tabs/sliders are NOT in this set: their state
 # (checked/selected/value) carries meaning even without a name.
-_TEXTUAL_INPUT_ROLES: frozenset[str] = frozenset(
-    {"textbox", "searchbox", "combobox", "spinbutton"}
-)
+_TEXTUAL_INPUT_ROLES: frozenset[str] = frozenset({"textbox", "searchbox", "combobox", "spinbutton"})
 
 # Truly transparent roles — anonymous DOM wrappers with no semantic meaning,
 # emit children inline with no boundary.
@@ -142,8 +159,15 @@ _TEXTUAL_INPUT_ROLES: frozenset[str] = frozenset(
 #   one crammed atom via the unknown-role fallback.
 _TRANSPARENT_ROLES: frozenset[str] = frozenset(
     {
-        "generic", "group", "tooltip", "status", "alert", "progressbar",
-        "listbox", "presentation", "none",
+        "generic",
+        "group",
+        "tooltip",
+        "status",
+        "alert",
+        "progressbar",
+        "listbox",
+        "presentation",
+        "none",
     }
 )
 
@@ -162,35 +186,43 @@ _TRANSPARENT_ROLES: frozenset[str] = frozenset(
 # transparent to avoid over-separating small widgets.
 _STRONG_LANDMARK_ROLES: frozenset[str] = frozenset(
     {
-        "banner", "navigation", "main", "complementary", "contentinfo",
-        "dialog", "alertdialog", "tabpanel",
+        "banner",
+        "navigation",
+        "main",
+        "complementary",
+        "contentinfo",
+        "dialog",
+        "alertdialog",
+        "tabpanel",
     }
 )
-_NAMED_LANDMARK_ROLES: frozenset[str] = frozenset(
-    {"region", "section", "article"}
-)
+_NAMED_LANDMARK_ROLES: frozenset[str] = frozenset({"region", "section", "article"})
 _LANDMARK_ROLES: frozenset[str] = _STRONG_LANDMARK_ROLES | _NAMED_LANDMARK_ROLES
 
 # Grouping roles — logical groups of controls/items (a search form, a tab
 # strip, a menu). We always fan their meaningful children out as paragraphs
 # rather than letting them collapse onto an inline run.
-_GROUPING_ROLES: frozenset[str] = frozenset(
-    {"form", "search", "tablist", "menubar", "menu"}
-)
+_GROUPING_ROLES: frozenset[str] = frozenset({"form", "search", "tablist", "menubar", "menu"})
 
 # Layout-table parts handled as a family when they appear standalone (outside
 # an actual data table that already structured them as a GitHub-Flavored Markdown pipe table).
-_LAYOUT_PART_ROLES: frozenset[str] = frozenset(
-    {"row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"}
-)
+_LAYOUT_PART_ROLES: frozenset[str] = frozenset({"row", "rowgroup", "cell", "gridcell", "columnheader", "rowheader"})
 
 # Block-level rendered roles — they must never combine into a plain-text run
 # with surrounding inline text, even when their rendered output happens to be
 # single-line and carries no ``[ref=…]``.
 _BLOCK_ATOM_ROLES: frozenset[str] = frozenset(
     {
-        "heading", "paragraph", "list", "listitem", "table", "grid", "code",
-        "separator", "blockquote", "figure",
+        "heading",
+        "paragraph",
+        "list",
+        "listitem",
+        "table",
+        "grid",
+        "code",
+        "separator",
+        "blockquote",
+        "figure",
     }
 )
 
@@ -198,9 +230,7 @@ _BLOCK_ATOM_ROLES: frozenset[str] = frozenset(
 # ``combobox "menu" [expanded] [ref=e7]``. Captures the role, optional quoted
 # name, and the trailing bracketed attributes blob (``[ref=…]``, ``[checked]``,
 # ``[cursor=pointer]`` …) which we mine for the ref and state flags below.
-_HEADER_PATTERN = re.compile(
-    r'^(?P<role>[\w-]+)(?:\s+"(?P<name>.*?)")?(?P<attrs>(?:\s*\[[^\]]*\])*)\s*$'
-)
+_HEADER_PATTERN = re.compile(r'^(?P<role>[\w-]+)(?:\s+"(?P<name>.*?)")?(?P<attrs>(?:\s*\[[^\]]*\])*)\s*$')
 
 # State flags Playwright emits as ``[flag]`` or ``[flag=value]`` — the
 # element's interactable state. We surface these; ``[ref=…]`` / ``[active]`` /
@@ -227,7 +257,7 @@ def _split_node(node: Any) -> tuple[str | None, Any]:
     if isinstance(node, str):
         return node, None
     if isinstance(node, dict) and len(node) == 1:
-        (header, body), = node.items()
+        ((header, body),) = node.items()
         return header, body
     return None, None
 
@@ -244,8 +274,7 @@ def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...], b
     attrs = m.group("attrs") or ""
     ref_m = _REF_PATTERN.search(attrs)
     state = tuple(
-        f.group("flag") + (f"={f.group('val')}" if f.group("val") else "")
-        for f in _STATE_FLAG_PATTERN.finditer(attrs)
+        f.group("flag") + (f"={f.group('val')}" if f.group("val") else "") for f in _STATE_FLAG_PATTERN.finditer(attrs)
     )
     clickable = "[cursor=pointer]" in attrs
     return (
@@ -322,9 +351,7 @@ def _has_click_target(nodes: list[Any]) -> bool:
             parsed = _parse_header(header)
             if parsed is not None:
                 role, _, ref, _, clickable = parsed
-                if (role in _INTERACTIVE_ROLES and ref is not None) or (
-                    role == "generic" and clickable
-                ):
+                if (role in _INTERACTIVE_ROLES and ref is not None) or (role == "generic" and clickable):
                     return True
         if isinstance(body, list) and _has_click_target(body):
             return True
@@ -615,9 +642,7 @@ def _render_form_control(ctx: _Ctx) -> str:
 
 def _render_clickable_generic(ctx: _Ctx) -> str:
     """Innermost ``generic [cursor=pointer]`` — promoted as a clickable atom."""
-    inner = ((ctx.value + " ") if ctx.value else "") + _kids_md(
-        ctx.children, ctx.depth, flow=True
-    ).strip()
+    inner = ((ctx.value + " ") if ctx.value else "") + _kids_md(ctx.children, ctx.depth, flow=True).strip()
     inner_text = inner.strip()
     if inner_text:
         return f'clickable "{inner_text}"{ctx.ref_tag}'
@@ -711,9 +736,7 @@ def _kids_md(children: list[Any], depth: int, flow: bool = False) -> str:
     return "".join(parts)
 
 
-def _bullet_block(
-    value: str | None, children: list[Any], depth: int, ref_tag: str
-) -> str:
+def _bullet_block(value: str | None, children: list[Any], depth: int, ref_tag: str) -> str:
     """Render a transparent/structural container as nested bullets.
 
     Collapses single-child wrappers so deep ``generic > generic > generic``
@@ -752,9 +775,7 @@ def _bullet_block(
     return "\n" + "\n".join(lines) + "\n"
 
 
-def _flatten_to_leaves(
-    nodes: list[Any], depth: int, out: list[tuple[str, bool]]
-) -> None:
+def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]) -> None:
     """Walk transparent containers, collecting renderable leaves into ``out``.
 
     Each leaf is ``(text, is_plain)``:
@@ -831,7 +852,7 @@ def _render_md_table(children: list[Any]) -> str:
         0,
     )
     header_cells = _row_cells(rows[header_idx])
-    body_rows = rows[:header_idx] + rows[header_idx + 1:]
+    body_rows = rows[:header_idx] + rows[header_idx + 1 :]
     width = max((len(header_cells), *[len(_row_cells(r)) for r in body_rows]))
     header = _pipe_join(header_cells, width)
     sep = "| " + " | ".join(["---"] * width) + " |"
@@ -924,20 +945,20 @@ def _render_unknown(ctx: _Ctx) -> str:
 
 _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     # Block-level markdown forms.
-    "heading":      _render_heading,
-    "paragraph":    _render_paragraph,
-    "code":         _render_code,
-    "separator":    _render_separator,
-    "list":         _render_list,
-    "listitem":     _render_listitem,
-    "table":        _render_table_node,
-    "grid":         _render_table_node,
+    "heading": _render_heading,
+    "paragraph": _render_paragraph,
+    "code": _render_code,
+    "separator": _render_separator,
+    "list": _render_list,
+    "listitem": _render_listitem,
+    "table": _render_table_node,
+    "grid": _render_table_node,
     # Inline atoms.
-    "text":         _render_text,
-    "link":         _render_link,
-    "button":       _render_button,
-    "img":          _render_img,
-    "option":       _render_option,
+    "text": _render_text,
+    "link": _render_link,
+    "button": _render_button,
+    "img": _render_img,
+    "option": _render_option,
     # Role families.
     **{r: _render_form_control for r in _FORM_CONTROL_ROLES},
     **{r: _render_layout_part for r in _LAYOUT_PART_ROLES},
@@ -962,18 +983,21 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
     children = body if isinstance(body, list) else []
     value = str(body) if isinstance(body, str | int | float) else None
     ctx = _Ctx(
-        role=role, name=name, ref=ref, state=state, clickable=clickable,
-        children=children, value=value, ref_tag=f" [ref={ref}]" if ref else "",
-        header=header, depth=depth, flow=flow,
+        role=role,
+        name=name,
+        ref=ref,
+        state=state,
+        clickable=clickable,
+        children=children,
+        value=value,
+        ref_tag=f" [ref={ref}]" if ref else "",
+        header=header,
+        depth=depth,
+        flow=flow,
     )
 
     # Predicates win over the dispatch table — they need state beyond role.
-    if (
-        role == "generic"
-        and clickable
-        and ref is not None
-        and not _has_click_target(children)
-    ):
+    if role == "generic" and clickable and ref is not None and not _has_click_target(children):
         return _render_clickable_generic(ctx)
     if role in _NAMED_LANDMARK_ROLES and name:
         return _render_landmark(ctx)
@@ -1010,5 +1034,3 @@ def extract_refs(text: str) -> list[str]:
     on the page.
     """
     return list(dict.fromkeys(_REF_PATTERN.findall(text)))
-
-

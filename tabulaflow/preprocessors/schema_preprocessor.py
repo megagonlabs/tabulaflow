@@ -1,5 +1,5 @@
 from typing import ClassVar, Literal
-from tabulaflow.schema import SQLSchema, Usage
+from tabulaflow.core.types import SQLSchema, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.preprocessors.components.column_profiler import ColumnProfiler
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor

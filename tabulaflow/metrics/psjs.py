@@ -14,7 +14,8 @@ from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.db_connector.neo4j_conn import Neo4jConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.utils import get_final_gold_query, get_final_pred_query
-from tabulaflow.schema import NL2QTaskOutput, NumericOrNull
+from tabulaflow.core.types import NumericOrNull
+from tabulaflow.research.types import NL2QTaskOutput
 
 logger = logging.getLogger(__name__)
 

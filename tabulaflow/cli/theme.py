@@ -28,7 +28,7 @@ FOCUS_SURFACE = "#2D2D2D"
 
 # Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
 # Kept separate from ACCENT so the two can evolve independently.
-KEY_HINT_COLOR ="#3EB489"  # "#9EC8B2"
+KEY_HINT_COLOR = "#3EB489"  # "#9EC8B2"
 KEY_HINT = f"bold {KEY_HINT_COLOR}"
 # Inactive hint keys use the same ``"dim"`` foreground as their labels so
 # the colors match exactly (e.g. "Enter" and "Inspect" share a color), but

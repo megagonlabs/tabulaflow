@@ -1,5 +1,5 @@
 import tabulaflow
-from tabulaflow.schema import Usage
+from tabulaflow.core.types import Usage
 
 LLMS = [
     "openai:gpt-4.1",

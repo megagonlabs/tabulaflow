@@ -9,7 +9,7 @@ import neo4j
 import pandas as pd
 
 from tabulaflow.core.config import tabulaflow_config
-from tabulaflow.schema import (
+from tabulaflow.core.types import (
     ErrorInfo,
     ExecResult,
     GraphPropertySchema,

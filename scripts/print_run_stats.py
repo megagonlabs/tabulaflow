@@ -4,7 +4,7 @@ import asyncio
 import os
 from tabulate import tabulate
 import tabulaflow
-from tabulaflow.schema import NL2QRunResult, StructuredAmbigNL2QTaskOutput
+from tabulaflow.research.types import NL2QRunResult, StructuredAmbigNL2QTaskOutput
 from tabulaflow.core.utils import dict_to_df
 
 

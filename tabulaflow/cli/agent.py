@@ -29,7 +29,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.core.db_connector.base import NL2QDBConnector
     from tabulaflow.core.db_connector.db_registry import DBRegistry
-    from tabulaflow.schema import Usage
+    from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         QueryHistory,
@@ -374,7 +374,7 @@ class ChatAgent:
             n_patterns = len(connector.schema.relationships)
             return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
 
-        from tabulaflow.schema import SQLSchema
+        from tabulaflow.core.types import SQLSchema
 
         schema = connector.schema
         n_tables = len(schema.tables) if isinstance(schema, SQLSchema) else 0
@@ -444,7 +444,7 @@ class ChatAgent:
         from pydantic_ai import CallToolsNode, ModelRequestNode
         from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 
-        from tabulaflow.schema import Usage
+        from tabulaflow.core.types import Usage
 
         progress.start()
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
@@ -514,7 +514,7 @@ class ChatAgent:
         if not self._message_history:
             return
         try:
-            from tabulaflow.schema import Trajectory
+            from tabulaflow.core.types import Trajectory
 
             trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
             self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)

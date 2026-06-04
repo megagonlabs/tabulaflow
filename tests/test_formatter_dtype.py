@@ -1,6 +1,6 @@
 """Tests for native_dtype rendering in schema formatters."""
 
-from tabulaflow.schema import SQLColumnSchema
+from tabulaflow.core.types import SQLColumnSchema
 from tabulaflow.core.utils import render_column_dtype
 from tabulaflow.core.formatters.sql_basic import SQLBasicSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter

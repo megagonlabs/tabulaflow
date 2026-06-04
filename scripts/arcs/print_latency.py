@@ -1,6 +1,6 @@
 # mypy: ignore-errors
 import tabulaflow
-from tabulaflow.schema import AmbigNL2QTask
+from tabulaflow.research.types import AmbigNL2QTask
 import os
 
 

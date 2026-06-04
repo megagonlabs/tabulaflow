@@ -15,7 +15,8 @@ from tabulaflow.agenthub.base import (
     UserValueQuestion,
     UserValueAnswer,
 )
-from tabulaflow.schema import AmbigNL2QTask, Usage, Trajectory
+from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.research.types import AmbigNL2QTask
 
 CONTROL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}

@@ -16,9 +16,9 @@ from tabulaflow.core.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.pipelines.utils import bool_flag
 from tabulaflow.agenthub import NL2QAgent, BaseAgentConfig
 from tabulaflow.agenthub.user_simulator import UserSimulator
-from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.datahub.spider2_dbt import prepare_working_env_async
-from tabulaflow.schema import (
+from tabulaflow.core.types import Usage
+from tabulaflow.research.types import (
     NL2QDataset,
     NL2QRunResult,
     NL2QTask,
@@ -28,7 +28,6 @@ from tabulaflow.schema import (
     FlatAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
     DbtTaskOutput,
-    Usage,
 )
 
 logger = logging.getLogger(__name__)

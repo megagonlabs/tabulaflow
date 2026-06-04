@@ -16,7 +16,7 @@ from rich.text import Text
 from tabulaflow.cli.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
-    from tabulaflow.schema import SQLSchema
+    from tabulaflow.core.types import SQLSchema
 
 COMMAND_PREFIX = "/"
 WORKSPACE_ALIAS = "workspace"

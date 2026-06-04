@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic_ai import Tool, RunContext, ToolDefinition
 from pydantic import BaseModel
-from tabulaflow.schema import BaseUserSimulator, UserFreeTextQuestion
+from tabulaflow.research.types import BaseUserSimulator, UserFreeTextQuestion
 
 
 class AskUserToolMetrics(BaseModel):

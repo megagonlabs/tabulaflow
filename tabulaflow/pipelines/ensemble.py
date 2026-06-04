@@ -16,11 +16,7 @@ from tabulaflow.agenthub.ensemblers.llm_ensembler import LLMEnsembler, LLMEnsemb
 from tabulaflow.agenthub.ensemblers.agent_ensembler import AgentEnsembler, AgentEnsemblerConfig
 from tabulaflow.agenthub.ensemblers.dbt_llm_ensembler import DbtLLMEnsembler, DbtLLMEnsemblerConfig
 from tabulaflow.metrics import SimpleInferenceMetricsAggregator
-from tabulaflow.schema import (
-    NL2QRunResult,
-    NL2QDataset,
-    NL2QTaskOutput,
-)
+from tabulaflow.research.types import NL2QRunResult, NL2QDataset, NL2QTaskOutput
 from tabulaflow.pipelines.utils import bool_flag
 from tabulaflow.core.utils import tqdm_gather_with_exceptions
 

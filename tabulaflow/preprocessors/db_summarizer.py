@@ -9,7 +9,7 @@ from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.preprocessors.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.preprocessors.components.schema_compressor import SchemaCompressor
-from tabulaflow.schema import Usage
+from tabulaflow.core.types import Usage
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.

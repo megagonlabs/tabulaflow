@@ -2,7 +2,7 @@ import math
 import os
 from typing import Any
 import tabulaflow
-from tabulaflow.schema import AmbigNL2QTask, NL2QRunResult
+from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
 from decimal import Decimal
 from tabulate import tabulate
 import time

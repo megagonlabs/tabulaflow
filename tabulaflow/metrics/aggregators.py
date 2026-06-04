@@ -1,5 +1,5 @@
 from typing import Any, Literal
-from tabulaflow.schema import AmbigNL2QTask, NL2QRunResult
+from tabulaflow.research.types import AmbigNL2QTask, NL2QRunResult
 from tabulaflow.core.utils import aggregate_metrics
 
 

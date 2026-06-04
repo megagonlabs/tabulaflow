@@ -6,7 +6,8 @@ from opentelemetry import trace
 from pydantic_ai import RunContext
 from pydantic_ai.messages import ModelMessage, ModelRequest, UserPromptPart
 from pydantic import BaseModel
-from tabulaflow.schema import NL2QTask, Usage, Trajectory, SQLSchema
+from tabulaflow.core.types import Usage, Trajectory, SQLSchema
+from tabulaflow.research.types import NL2QTask
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.toolhub import BaseTool

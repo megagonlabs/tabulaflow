@@ -1,10 +1,10 @@
 import copy
 from typing import ClassVar
-from tabulaflow.schema import NL2QTaskOutput, SimpleNL2QTaskOutput
+from tabulaflow.research.types import NL2QTaskOutput, SimpleNL2QTaskOutput
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.simple_ex import SimpleEx
-from tabulaflow.schema import NumericOrNull
+from tabulaflow.core.types import NumericOrNull
 
 
 @metric_registry.register

@@ -16,7 +16,8 @@ from tabulaflow.agenthub.utils import BasicAgentConfig, get_max_steps_processor,
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters import NL2QFormatter, formatter_registry
 from tabulaflow.preprocessors import DBSummarizer
-from tabulaflow.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
+from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.toolhub import ExecuteBashTool, FileEditorTool, GetTableSchemaTool, RunDbtTool, RunQueryTool
 
 logger = logging.getLogger(__name__)

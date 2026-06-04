@@ -5,7 +5,7 @@ import time
 from tqdm.asyncio import tqdm_asyncio
 from tabulaflow import metric_registry, dataset_registry
 import tabulaflow
-from tabulaflow.schema import NL2QTaskOutput, NL2QRunResult, NL2QDataset
+from tabulaflow.research.types import NL2QTaskOutput, NL2QRunResult, NL2QDataset
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics import NL2QMetric, BaseMetricAggregator
 from tabulaflow.metrics.aggregators import (

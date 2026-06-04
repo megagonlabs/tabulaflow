@@ -98,10 +98,10 @@ class TestTables:
         y = (
             "- table [ref=e1]:\n"
             "    - row [ref=e2]:\n"
-            '        - cell [ref=e3]:\n'
+            "        - cell [ref=e3]:\n"
             '            - text: "headline"\n'
             "    - row [ref=e4]:\n"
-            '        - cell [ref=e5]:\n'
+            "        - cell [ref=e5]:\n"
             '            - text: "body"'
         )
         out = md(y)
@@ -111,9 +111,7 @@ class TestTables:
 
 class TestFormControls:
     def test_textbox_inlines_value(self) -> None:
-        assert md('- textbox "Where from" [ref=e1]: SFO') == (
-            'textbox "Where from" = "SFO" [ref=e1]'
-        )
+        assert md('- textbox "Where from" [ref=e1]: SFO') == ('textbox "Where from" = "SFO" [ref=e1]')
 
     def test_combobox_with_state(self) -> None:
         assert md('- combobox "menu" [expanded] [ref=e1]: One way') == (
@@ -146,11 +144,7 @@ class TestFormControls:
 
     def test_expanded_bare_combobox_with_options_is_kept(self) -> None:
         # Interactive descendants mean it's an active popup — keep + bullet.
-        y = (
-            "- combobox [ref=e1]:\n"
-            '    - option "A" [ref=e2]\n'
-            '    - option "B" [ref=e3]'
-        )
+        y = '- combobox [ref=e1]:\n    - option "A" [ref=e2]\n    - option "B" [ref=e3]'
         out = md(y)
         assert "combobox [ref=e1]" in out
         assert '- option "A" [ref=e2]' in out
@@ -175,11 +169,7 @@ class TestFormControls:
     def test_textbox_with_interactive_children_promotes_to_sublist(self) -> None:
         # Autocomplete textbox carrying a child suggestion listbox — same
         # cramming bug class as expanded combobox; same fix.
-        y = (
-            '- textbox "Search" [ref=e1]:\n'
-            '    - option "First" [ref=e2]\n'
-            '    - option "Second" [ref=e3]'
-        )
+        y = '- textbox "Search" [ref=e1]:\n    - option "First" [ref=e2]\n    - option "Second" [ref=e3]'
         out = md(y)
         assert '= "' not in out
         assert 'textbox "Search" [ref=e1]' in out
@@ -192,7 +182,7 @@ class TestFormControls:
         # collapsing into one inline run.
         y = (
             '- combobox "Where to?" [expanded] [ref=e1]:\n'
-            '    - generic [ref=e2]:\n'
+            "    - generic [ref=e2]:\n"
             '        - option "Anywhere" [ref=e3]\n'
             '        - option "Europe" [ref=e4]\n'
             '        - option "Paris" [ref=e5]'
@@ -210,7 +200,7 @@ class TestFormControls:
         y = (
             '- combobox "Where to?" [expanded] [ref=e1]:\n'
             '    - option "Anywhere" [ref=e2]\n'
-            '    - presentation [ref=e3]:\n'
+            "    - presentation [ref=e3]:\n"
             '        - text: "Label"\n'
             '        - button "Action" [ref=e4]'
         )
@@ -227,7 +217,7 @@ class TestFormControls:
         # interactive atom (option/button) gets its own bullet.
         y = (
             '- combobox "Where to?" [expanded] [ref=e1]:\n'
-            '    - listbox [ref=e2]:\n'
+            "    - listbox [ref=e2]:\n"
             '        - option "Anywhere" [ref=e3]\n'
             '        - option "Paris" [ref=e4]\n'
             '        - button "Toggle nearby" [ref=e5]\n'
@@ -243,16 +233,12 @@ class TestFormControls:
 class TestClickableGeneric:
     def test_leaf_clickable_generic_inlined_as_button(self) -> None:
         # Pill-style div: cursor=pointer, no interactive descendants.
-        out = md('- generic [ref=e1] [cursor=pointer]: May 23')
+        out = md("- generic [ref=e1] [cursor=pointer]: May 23")
         assert out == 'clickable "May 23" [ref=e1]'
 
     def test_wrapper_clickable_generic_does_not_inline_itself(self) -> None:
         # Wrapper around a link → render the inner link only.
-        y = (
-            "- generic [ref=e1] [cursor=pointer]:\n"
-            '    - link "Deal" [ref=e2]:\n'
-            "        - /url: /x"
-        )
+        y = '- generic [ref=e1] [cursor=pointer]:\n    - link "Deal" [ref=e2]:\n        - /url: /x'
         out = md(y)
         assert out == "[Deal](/x) [ref=e2]"
 
@@ -260,8 +246,8 @@ class TestClickableGeneric:
 class TestRobustness:
     def test_yaml_special_scalar_does_not_break(self) -> None:
         # ``=`` and ``~`` would error under SafeLoader; BaseLoader keeps them strings.
-        assert "=" in md('- generic [ref=e1]: =')
-        assert "~" in md('- generic [ref=e2]: ~')
+        assert "=" in md("- generic [ref=e1]: =")
+        assert "~" in md("- generic [ref=e2]: ~")
 
     def test_empty_input(self) -> None:
         assert render_aria_markdown("") == ""

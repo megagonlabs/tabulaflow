@@ -7,7 +7,7 @@ import pandas as pd
 import pytest
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.schema import ExecResult, PredQuery
+from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 
 
@@ -17,7 +17,7 @@ def _make_pred_query(n_rows: int = 5) -> PredQuery:
 
 
 def _make_error_pred_query() -> PredQuery:
-    from tabulaflow.schema import ErrorInfo
+    from tabulaflow.core.types import ErrorInfo
 
     return PredQuery(
         query="SELECT bad",

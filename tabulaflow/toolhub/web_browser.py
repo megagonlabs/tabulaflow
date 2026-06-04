@@ -507,8 +507,7 @@ async def format_tab_response(state: _TabState) -> str:
             url=snapshot.url if snapshot else "",
             title=snapshot.title if snapshot else "",
             annotation="[PDF document — extracted text, no interactive elements]",
-            body=state.pdf_text
-            or "(PDF has no extractable text layer — likely scanned/image-only)",
+            body=state.pdf_text or "(PDF has no extractable text layer — likely scanned/image-only)",
         )
 
     snapshot = await take_snapshot(state.page)
@@ -567,6 +566,7 @@ class WebBrowserTool:
         """
         if headless is None:
             from tabulaflow.core.config import tabulaflow_config
+
             headless = tabulaflow_config.browser_headless
         self._manager = manager
         self._isolated = isolated
@@ -698,9 +698,7 @@ class WebBrowserTool:
             return self._format_error(f"navigation failed: {self._error_message(e)}")
         return await self._render_pdf_bytes(state, url, body, content_type)
 
-    async def _render_pdf_bytes(
-        self, state: "_TabState", url: str, body: bytes, content_type: str
-    ) -> str | None:
+    async def _render_pdf_bytes(self, state: "_TabState", url: str, body: bytes, content_type: str) -> str | None:
         """Detect and extract a PDF from raw bytes onto ``state``.
 
         Returns ``None`` on success (``state.pdf_text`` and ``state.last_snapshot``
@@ -712,9 +710,7 @@ class WebBrowserTool:
         is_pdf = "application/pdf" in content_type or body[:5] == b"%PDF-"
         if not is_pdf:
             kind = content_type.split(";")[0] or "unknown type"
-            return self._format_error(
-                f"navigation triggered a download ({kind}); only PDFs can be read as text"
-            )
+            return self._format_error(f"navigation triggered a download ({kind}); only PDFs can be read as text")
 
         try:
             title, text = await asyncio.to_thread(extract_pdf_text, body)
@@ -766,8 +762,7 @@ class WebBrowserTool:
         manager = await self._ensure_manager()
         if not await manager.acquire_page(block=len(self._tabs) == 0):
             return None, self._format_error(
-                "browser at capacity — pass tab=<id> to reuse an existing tab, "
-                "or reduce parallelism and retry"
+                "browser at capacity — pass tab=<id> to reuse an existing tab, or reduce parallelism and retry"
             )
 
         try:
@@ -867,9 +862,7 @@ class WebBrowserTool:
             await locator.evaluate("el => el.click()")
             self._metrics.num_clicks_dispatched_through_overlay += 1
 
-    async def browser_type(
-        self, tab: str, ref: str, text: str, submit: bool = False
-    ) -> str:
+    async def browser_type(self, tab: str, ref: str, text: str, submit: bool = False) -> str:
         """Type text into an editable element on a specific tab.
 
         Always types one character at a time so per-keystroke handlers fire —
@@ -918,9 +911,7 @@ class WebBrowserTool:
                 #   Skip the re-snapshot and return a cheap ack; the agent's
                 #   existing refs keep resolving.
                 try:
-                    await state.page.wait_for_selector(
-                        "[role=option]", timeout=_AUTOCOMPLETE_WAIT_MS
-                    )
+                    await state.page.wait_for_selector("[role=option]", timeout=_AUTOCOMPLETE_WAIT_MS)
                 except Exception:
                     return f"[tab={tab}] typed into ref={ref}"
                 # ``wait_for_selector`` returns on the first option attaching to
@@ -1085,13 +1076,9 @@ class WebBrowserTool:
         async with state.op_lock:
             try:
                 if text is not None:
-                    await state.page.get_by_text(text).first.wait_for(
-                        state="visible", timeout=seconds * 1000
-                    )
+                    await state.page.get_by_text(text).first.wait_for(state="visible", timeout=seconds * 1000)
                 elif text_gone is not None:
-                    await state.page.get_by_text(text_gone).first.wait_for(
-                        state="hidden", timeout=seconds * 1000
-                    )
+                    await state.page.get_by_text(text_gone).first.wait_for(state="hidden", timeout=seconds * 1000)
                 else:
                     await asyncio.sleep(seconds)
             except Exception:
@@ -1277,10 +1264,7 @@ class WebBrowserTool:
             return
         state = self._tabs.get(tab_id)
         if state is not None:
-            state.popup_notice = (
-                f"[note: {dialog_type} dialog on tab {tab_id} auto-{action}; "
-                f"message: {message!r}]"
-            )
+            state.popup_notice = f"[note: {dialog_type} dialog on tab {tab_id} auto-{action}; message: {message!r}]"
 
     async def _settle(self, state: _TabState) -> None:
         timeout = _NETWORKIDLE_WAIT_MS
@@ -1314,9 +1298,7 @@ class WebBrowserTool:
                 "snapshot and pick a ref from there"
             )
             raise _RefError(
-                f"page {state.tab_id}: unknown ref {ref!r}. "
-                + ". ".join(hints)
-                + f". Available refs: {shown}{suffix}"
+                f"page {state.tab_id}: unknown ref {ref!r}. " + ". ".join(hints) + f". Available refs: {shown}{suffix}"
             )
         return state.page.locator(f"aria-ref={ref}")
 

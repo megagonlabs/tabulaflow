@@ -13,7 +13,8 @@ from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.utils import format_df
 from tabulaflow.pipelines.populate_exec_results import populate_task_async
 from tabulaflow.preprocessors import DBSummarizer
-from tabulaflow.schema import SimpleNL2QTask, SimpleNL2QTaskOutput, Usage, Trajectory
+from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 
 
 logger = logging.getLogger(__name__)

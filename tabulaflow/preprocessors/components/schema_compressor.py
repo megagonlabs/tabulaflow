@@ -4,13 +4,7 @@ from typing import Any, Hashable, Protocol, TypeVar
 from dataclasses import dataclass, field
 import datetime
 import re
-from tabulaflow.schema import (
-    NamePattern,
-    SQLSchema,
-    SQLTableSchema,
-    SQLColumnSchema,
-    ForeignKeySchema,
-)
+from tabulaflow.core.types import NamePattern, SQLSchema, SQLTableSchema, SQLColumnSchema, ForeignKeySchema
 
 
 T = TypeVar("T")

@@ -1,5 +1,5 @@
 from typing import Protocol, ClassVar, TypeAlias, Union
-from tabulaflow.schema import (
+from tabulaflow.core.types import (
     SQLDialect,
     SQLSchema,
     SQLTableSchema,

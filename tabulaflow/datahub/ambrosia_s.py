@@ -6,7 +6,7 @@ from typing import ClassVar
 
 import pandas as pd
 
-from tabulaflow.schema import AmbigNL2QTask, NL2QDataset
+from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.datahub.base import dataset_registry
 

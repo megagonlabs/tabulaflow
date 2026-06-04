@@ -20,7 +20,7 @@ import pandas as pd
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.metrics.utils import get_final_gold_query, get_final_pred_query
-from tabulaflow.schema import NL2QTaskOutput
+from tabulaflow.research.types import NL2QTaskOutput
 
 
 # ---------------------------------------------------------------------------

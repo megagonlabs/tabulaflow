@@ -9,7 +9,8 @@ from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
 import tabulaflow
-from tabulaflow.schema import NL2QRunResult, Usage, NL2QTaskOutput
+from tabulaflow.core.types import Usage
+from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
 from tabulaflow.pipelines.utils import bool_flag
 
 

@@ -61,7 +61,7 @@ if TYPE_CHECKING:
 
     from tabulaflow.cli.agent import ChatResult
     from tabulaflow.cli.display import RecordGroup, ViewItem
-    from tabulaflow.schema import Usage
+    from tabulaflow.core.types import Usage
 
 
 # ---------------------------------------------------------------------------
@@ -2455,7 +2455,7 @@ class SchemaBrowserScreen(Screen[None]):
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
-        from tabulaflow.schema import SQLSchema, SQLTableSchema
+        from tabulaflow.core.types import SQLSchema, SQLTableSchema
 
         tree = self.query_one("#browse-tree", Tree)
 
@@ -2506,7 +2506,7 @@ class SchemaBrowserScreen(Screen[None]):
                     self._add_table_node(db_node, alias, t)
 
     def _add_table_node(self, parent: object, alias: str, table: object) -> None:
-        from tabulaflow.schema import SQLTableSchema
+        from tabulaflow.core.types import SQLTableSchema
 
         assert isinstance(table, SQLTableSchema)
         parent_node: Any = parent
@@ -2558,7 +2558,7 @@ class SchemaBrowserScreen(Screen[None]):
         """
         from textual.widgets import Tree
 
-        from tabulaflow.schema import SQLSchema
+        from tabulaflow.core.types import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:
@@ -2646,7 +2646,7 @@ class SchemaBrowserScreen(Screen[None]):
         """Return True if the cursor is on a table node with sampled_df."""
         from textual.widgets import Tree
 
-        from tabulaflow.schema import SQLSchema
+        from tabulaflow.core.types import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:
@@ -2670,7 +2670,7 @@ class SchemaBrowserScreen(Screen[None]):
         """Update the status bar with table/column/row counts for the highlighted scope."""
         from textual.widgets import Tree
 
-        from tabulaflow.schema import SQLSchema
+        from tabulaflow.core.types import SQLSchema
 
         tree = self.query_one("#browse-tree", Tree)
         try:

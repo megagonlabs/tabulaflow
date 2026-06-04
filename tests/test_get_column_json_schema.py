@@ -3,7 +3,7 @@ from typing import Any
 import pytest
 
 from tabulaflow.core.utils import format_json_schema
-from tabulaflow.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core.types import SQLColumnSchema, SQLSchema, SQLTableSchema
 from tabulaflow.toolhub.get_column_json_schema import (
     GetColumnJsonSchemaTool,
     _extract_examples_at_path,

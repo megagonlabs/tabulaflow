@@ -7,14 +7,8 @@ from pydantic import BaseModel
 from pydantic_ai import Agent, ToolOutput
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.base import formatter_registry, NL2QFormatter
-from tabulaflow.schema import (
-    AmbigNL2QTask,
-    FlatAmbigNL2QTaskOutput,
-    PredQuery,
-    Usage,
-    Trajectory,
-    PredAmbiguityPointInfinite,
-)
+from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.research.types import AmbigNL2QTask, FlatAmbigNL2QTaskOutput, PredAmbiguityPointInfinite
 from tabulaflow.toolhub import (
     BaseTool,
     RunQueryTool,

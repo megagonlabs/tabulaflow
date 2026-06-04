@@ -16,7 +16,8 @@ from tabulaflow.agenthub.utils import instrument
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.preprocessors import DBSummarizer
-from tabulaflow.schema import DbtTask, DbtTaskOutput, Usage, Trajectory
+from tabulaflow.core.types import Usage, Trajectory
+from tabulaflow.research.types import DbtTask, DbtTaskOutput
 
 logger = logging.getLogger(__name__)
 

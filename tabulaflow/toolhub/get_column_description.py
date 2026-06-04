@@ -1,7 +1,7 @@
 from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
-from tabulaflow.schema import SQLSchema
+from tabulaflow.core.types import SQLSchema
 from tabulaflow.toolhub.utils import equals_ci
 
 

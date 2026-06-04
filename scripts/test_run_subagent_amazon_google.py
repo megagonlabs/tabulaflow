@@ -138,9 +138,7 @@ async def main() -> None:
     for amazon_id, canonical_id in preds.items():
         gt = truth.get(amazon_id)
         is_match_pred = (
-            canonical_id is not None
-            and isinstance(canonical_id, str)
-            and canonical_id.startswith("http://www.google")
+            canonical_id is not None and isinstance(canonical_id, str) and canonical_id.startswith("http://www.google")
         )
         if gt is not None:
             if is_match_pred and canonical_id == gt:

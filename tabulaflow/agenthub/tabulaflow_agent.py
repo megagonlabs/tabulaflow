@@ -4,13 +4,8 @@ from typing import ClassVar
 from pydantic_ai import Agent
 import logging
 from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.schema import (
-    SimpleNL2QTask,
-    SimpleNL2QTaskOutput,
-    PredQuery,
-    Usage,
-    Trajectory,
-)
+from tabulaflow.core.types import PredQuery, Usage, Trajectory
+from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.preprocessors import DBSummarizer
 from tabulaflow.toolhub import (
     BaseTool,

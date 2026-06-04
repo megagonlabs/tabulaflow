@@ -4,7 +4,7 @@ import json
 import jinja2
 from pydantic import BaseModel
 from pydantic_ai import Agent
-from tabulaflow.schema import SQLSchema, ColumnRef, Usage
+from tabulaflow.core.types import SQLSchema, ColumnRef, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 

@@ -15,7 +15,8 @@ from typing import Any, ClassVar, Mapping
 
 from tabulaflow.datahub.base import dataset_registry
 from tabulaflow.core.db_connector import Neo4jConnector
-from tabulaflow.schema import GoldQuery, NL2QDataset, SimpleNL2QTask
+from tabulaflow.core.types import GoldQuery
+from tabulaflow.research.types import NL2QDataset, SimpleNL2QTask
 
 # Host Bolt port per graph (container listens on 7687). Matches official compose.
 CYPHERBENCH_DEFAULT_GRAPH_PORTS: dict[str, int] = {

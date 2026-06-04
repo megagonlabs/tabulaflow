@@ -4,7 +4,8 @@ import numpy as np
 import math
 from pydantic import BaseModel
 from tabulaflow.metrics import SimpleEx, Spider2Ex
-from tabulaflow.schema import SimpleNL2QTaskOutput, GoldQuery, PredQuery, ExecResult, NL2QTaskOutput
+from tabulaflow.core.types import GoldQuery, PredQuery, ExecResult
+from tabulaflow.research.types import SimpleNL2QTaskOutput, NL2QTaskOutput
 
 
 class ExampleCase(BaseModel):

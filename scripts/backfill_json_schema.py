@@ -39,7 +39,7 @@ from tabulaflow.core.db_connector.sql_conn import (
     _is_async_url,
 )
 from tabulaflow.core.db_connector.utils import infer_json_schema, looks_like_json
-from tabulaflow.schema import SQLColumnSchema, SQLSchema, SQLTableSchema
+from tabulaflow.core.types import SQLColumnSchema, SQLSchema, SQLTableSchema
 
 logger = logging.getLogger(__name__)
 

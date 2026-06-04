@@ -4,7 +4,7 @@ import random
 import json
 import copy
 from typing import ClassVar
-from tabulaflow.schema import AmbigNL2QTask, NL2QDataset
+from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.datahub.base import dataset_registry
 

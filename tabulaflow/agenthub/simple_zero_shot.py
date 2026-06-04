@@ -9,16 +9,8 @@ from tabulaflow.core.utils import extract_code
 from tabulaflow.preprocessors import SchemaCompressor
 from tabulaflow.core.formatters import formatter_registry
 from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.schema import (
-    SimpleNL2QTask,
-    SimpleNL2QTaskOutput,
-    Trajectory,
-    SystemMessage,
-    UserMessage,
-    AssistantMessage,
-    PredQuery,
-    Usage,
-)
+from tabulaflow.core.types import Trajectory, SystemMessage, UserMessage, AssistantMessage, PredQuery, Usage
+from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.agenthub.utils import instrument, BasicAgentConfig
 

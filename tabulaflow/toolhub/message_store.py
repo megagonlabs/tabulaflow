@@ -67,7 +67,9 @@ def make_snippet(message_id: str, content: str) -> str:
     total = len(content)
     head = content[:MESSAGE_HEAD_CHARS]
     tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
-    deref = f"run_query(db_alias=\"workspace\", \"SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id='{message_id}'\")"
+    deref = (
+        f'run_query(db_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
+    )
     marker = f"... [truncated, {total} chars total — read full content with {deref}]"
     parts = [id_marker(message_id), head, marker]
     if tail:

@@ -2,7 +2,7 @@ import argparse
 import os
 import tabulaflow
 from tabulaflow.metrics.utils import get_default_metric
-from tabulaflow.schema import NL2QRunResult
+from tabulaflow.research.types import NL2QRunResult
 
 
 def main():

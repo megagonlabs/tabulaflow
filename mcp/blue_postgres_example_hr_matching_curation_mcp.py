@@ -8,7 +8,7 @@ from tabulaflow.toolhub import RunQueryTool, SearchKeywordsTool
 from tabulaflow.core.formatters import SQLBasicSchemaFormatter, HSchemaFormatter
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.metadata_synthesizer import HSchemaSynthesizer
-from tabulaflow.schema import SQLSchema, HSQLSchema
+from tabulaflow.core.types import SQLSchema, HSQLSchema
 from mcp.server.fastmcp import FastMCP
 
 

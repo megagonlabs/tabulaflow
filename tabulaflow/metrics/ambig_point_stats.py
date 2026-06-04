@@ -3,17 +3,17 @@ from typing import ClassVar, Any
 from pydantic import BaseModel
 from pydantic_ai import Agent
 import jinja2
-from tabulaflow.schema import (
+from tabulaflow.core.types import NumericOrNull
+from tabulaflow.research.types import (
     ARCSAmbiguityType,
     FlatAmbigNL2QTaskOutput,
     NL2QTaskOutput,
-    NumericOrNull,
     SimpleAmbigNL2QTaskOutput,
     StructuredAmbigNL2QTaskOutput,
 )
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.metrics.base import metric_registry
-from tabulaflow.schema import PredAmbiguityPoint, GoldAmbiguityPoint
+from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
 from tabulaflow.core.utils import int_to_letter
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput

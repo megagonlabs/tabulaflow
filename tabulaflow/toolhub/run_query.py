@@ -3,7 +3,7 @@ import pandas as pd
 from pydantic_ai import Tool
 from pydantic import BaseModel, Field
 from tabulaflow.core.db_connector import NL2QDBConnector
-from tabulaflow.schema import PredQuery
+from tabulaflow.core.types import PredQuery
 from tabulaflow.core.utils import format_df
 from tabulaflow.toolhub.utils import format_sqlalchemy_error_msg
 from tabulaflow.core.config import tabulaflow_config

@@ -6,7 +6,8 @@ import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent, Embedder
 from tabulaflow.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
-from tabulaflow.schema import NL2QDataset, Usage, NL2QTask
+from tabulaflow.core.types import Usage
+from tabulaflow.research.types import NL2QDataset, NL2QTask
 
 
 # Revised based on https://github.com/antgroup/Agentar-Scale-SQL/blob/main/ScaleSQL/prompts/nlu.yaml

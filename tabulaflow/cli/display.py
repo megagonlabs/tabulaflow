@@ -39,7 +39,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
 
-    from tabulaflow.schema import (
+    from tabulaflow.core.types import (
         NodeSchema,
         PropertyGraphSchema,
         RelationshipSchema,

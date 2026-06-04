@@ -96,7 +96,7 @@ from sqlalchemy.exc import SAWarning
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncEngine
 from sqlalchemy.engine.url import URL as SQLAlchemyURL
 from sqlalchemy import create_engine, event, select, func, distinct, inspect, text
-from tabulaflow.schema import (
+from tabulaflow.core.types import (
     ErrorInfo,
     SQLDialect,
     SQLSchema,
@@ -1478,7 +1478,9 @@ async def load_schema_with_cache_async(
             dialect,  # type: ignore
             group_date_partitioned_tables,
             group_table_regexes,
-            column_stats_mode=column_stats_mode if column_stats_mode is not None else tabulaflow_config.column_stats_mode,
+            column_stats_mode=column_stats_mode
+            if column_stats_mode is not None
+            else tabulaflow_config.column_stats_mode,
             include_schema_names=include_schema_names,
         )
         if t_eng.engine_type == "async":

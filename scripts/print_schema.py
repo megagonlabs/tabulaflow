@@ -2,10 +2,9 @@ import asyncio
 import argparse
 import time
 import tabulaflow
-from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.datahub import dataset_registry
 from tabulaflow.core.formatters import formatter_registry
-from tabulaflow.schema import SQLSchema
+from tabulaflow.core.types import SQLSchema
 from tabulaflow.preprocessors.components import SchemaCompressor
 
 
@@ -13,9 +12,7 @@ async def main() -> None:
     parser = argparse.ArgumentParser(description="Print a database schema from a dataset or a cached JSON file.")
 
     # Source: either --file or --dataset + --database
-    parser.add_argument(
-        "--dataset", default="bird-sql", help="Dataset name (e.g. bird-sql, spider2-snow, beaver)"
-    )
+    parser.add_argument("--dataset", default="bird-sql", help="Dataset name (e.g. bird-sql, spider2-snow, beaver)")
     parser.add_argument("--split", default="dev", help="Dataset split (auto-detected if omitted)")
     source = parser.add_mutually_exclusive_group()
     source.add_argument(

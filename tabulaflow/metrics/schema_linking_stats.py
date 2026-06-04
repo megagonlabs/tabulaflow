@@ -1,5 +1,6 @@
 from typing import ClassVar
-from tabulaflow.schema import NL2QTaskOutput, NumericOrNull, SQLSchema
+from tabulaflow.core.types import NumericOrNull, SQLSchema
+from tabulaflow.research.types import NL2QTaskOutput
 from tabulaflow.metrics.base import metric_registry
 from tabulaflow.core.utils import extract_all_source_columns
 from tabulaflow.core.db_connector import NL2QDBConnector

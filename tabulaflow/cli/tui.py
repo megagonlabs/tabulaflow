@@ -195,9 +195,7 @@ class TabulaflowApp(App[None]):
 
         if self._session is None or not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
-            chat_log.mount(
-                SystemMessage(Text("No databases connected. Use /connect first.", style="red"))
-            )
+            chat_log.mount(SystemMessage(Text("No databases connected. Use /connect first.", style="red")))
             chat_log.scroll_end(animate=False)
             return
         self.push_screen(
@@ -268,7 +266,7 @@ class TabulaflowApp(App[None]):
         have no spill connector, so the async ``add()`` path would just be an
         awkward way to do the same in-memory bookkeeping.
         """
-        from tabulaflow.schema import ExecResult, PredQuery
+        from tabulaflow.core.types import ExecResult, PredQuery
         from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 
         history = QueryHistory()
