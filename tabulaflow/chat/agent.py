@@ -22,9 +22,9 @@ from tabulaflow.toolhub.message_store import (
 )
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES
 from tabulaflow.core.llm import make_agent
+from tabulaflow.chat.result import ChatResult, ChatResultRecord
 
 if TYPE_CHECKING:
-    import pandas as pd
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
@@ -220,38 +220,6 @@ class ProgressSink(Protocol):
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
-
-
-@dataclass
-class ChatResultRecord:
-    """Display-ready data for one referenced query record."""
-
-    record_id: str
-    label: str | None
-    query: str | None
-    df: pd.DataFrame | None
-    chart_spec: dict[str, object] | None
-    query_lexer: str = "sql"
-
-
-@dataclass
-class ChatResult:
-    """Display-ready result of a single chat turn."""
-
-    text: str
-    records: list[ChatResultRecord] = field(default_factory=list)
-    primary_record_index: int | None = 0
-    usage: Usage | None = None
-
-    @property
-    def primary_record(self) -> ChatResultRecord | None:
-        if not self.records:
-            return None
-        if self.primary_record_index is None:
-            return None
-        if self.primary_record_index < 0 or self.primary_record_index >= len(self.records):
-            return None
-        return self.records[self.primary_record_index]
 
 
 @dataclass

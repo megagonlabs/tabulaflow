@@ -289,7 +289,7 @@ def build_result_views(result: object, width: int = 80) -> list[RecordGroup]:
     ordered Chart -> Data -> Query and absent kinds are omitted. Records with
     no views at all are dropped.
     """
-    from tabulaflow.chat.agent import ChatResult
+    from tabulaflow.chat import ChatResult
 
     assert isinstance(result, ChatResult)
 

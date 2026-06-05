@@ -27,7 +27,7 @@ from tabulaflow.app.widgets import (
 )
 
 if TYPE_CHECKING:
-    from tabulaflow.chat.agent import ChatResult
+    from tabulaflow.chat import ChatResult
     from tabulaflow.toolhub.query_history import QueryHistory
 
 logger = logging.getLogger(__name__)
@@ -298,7 +298,7 @@ class TabulaflowApp(App[None]):
     def _build_debug_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         import datetime
         import json
@@ -674,7 +674,7 @@ LIMIT 4000"""
         """
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         def long_json(n_items: int, note_chars: int = 0) -> dict[str, object]:
             # Pretty-printed lines per item are ~8; with note_chars > 0 each
@@ -777,7 +777,7 @@ LIMIT 4000"""
         import pandas as pd
         from PIL import Image, ImageDraw
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         def wav_bytes(freq_hz: float, seconds: float = 0.4, rate: int = 8000) -> bytes:
             # Minimal PCM WAV: header + 16-bit mono samples of a sine tone.
@@ -886,7 +886,7 @@ LIMIT 4000"""
     def _build_debug_small_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         df = pd.DataFrame(
             [
@@ -929,7 +929,7 @@ LIMIT 4000"""
         """Compact 4-record fixture exercising every view-kind combination."""
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         # Record 1: Chart + Data + Query
         regions_df = pd.DataFrame(
@@ -1052,7 +1052,7 @@ LIMIT 4000"""
 
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         rng = random.Random(20260423)
 
@@ -1263,7 +1263,7 @@ LIMIT 4000"""
     def _build_debug_chart_result_widget(self) -> AgentResultWidget:
         import pandas as pd
 
-        from tabulaflow.chat.agent import ChatResult, ChatResultRecord
+        from tabulaflow.chat import ChatResult, ChatResultRecord
 
         df = pd.DataFrame(
             {

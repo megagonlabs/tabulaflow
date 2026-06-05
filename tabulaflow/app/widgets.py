@@ -59,7 +59,7 @@ if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
 
-    from tabulaflow.chat.agent import ChatResult
+    from tabulaflow.chat import ChatResult
     from tabulaflow.app.display import RecordGroup, ViewItem
     from tabulaflow.core.types import Usage
 

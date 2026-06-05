@@ -68,7 +68,7 @@ class SessionState:
         data_dir: Path,
         workspace_db_path: Path,
     ) -> None:
-        from tabulaflow.chat.agent import ChatAgent
+        from tabulaflow.chat import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
 
         self.agent_name = agent
