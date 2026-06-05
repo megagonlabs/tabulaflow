@@ -11,7 +11,7 @@ import math
 import itertools
 from tabulaflow.core.types import (
     ColumnRef,
-    GoldQuery,
+    ExecResult,
     PredQuery,
     SQLSchema,
     Trajectory,
@@ -20,6 +20,48 @@ from tabulaflow.core.types import (
 )
 
 logger = logging.getLogger(__name__)
+
+
+class GoldQuery(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
+    id: str = "GQRY"
+    query: str | None
+    """In Spider2, some gold queries are not available, so we allow it to be None"""
+    parameter_names: list[str] = Field(default_factory=list)
+    parameter_values: dict[str, Any] = Field(default_factory=dict)
+    """If `parameter_names` is not empty and `parameter_values` is empty, the query is parameterized."""
+    exec_result: ExecResult | None = None
+    required_columns: list[int] | None = None
+    """Columns that must be present in the result, None means all columns must be present"""
+    required_sorted: bool = False
+    """True if row order matters"""
+    alternative_results: list[ExecResult] = Field(default_factory=list)
+    """Alternative correct results, used in spider2-snow"""
+    extra_info: dict[str, Any] = Field(default_factory=dict)
+
+    def to_directory(self, directory: str) -> None:
+        os.makedirs(directory, exist_ok=True)
+        if self.exec_result is not None and self.exec_result.df is not None:
+            self.exec_result.df.to_csv(os.path.join(directory, f"{self.id}.csv"), index=False)
+        for i, exec_result in enumerate(self.alternative_results):
+            if exec_result.df is not None:
+                exec_result.df.to_csv(os.path.join(directory, f"{self.id}_alternative_{i}.csv"), index=False)
+
+    def to_markdown(self, heading_level: int = 2) -> str:
+        h = "#" * heading_level
+        lines = [f"{h} Gold Query"]
+        if self.query:
+            lines.append("\n```sql")
+            lines.append(self.query)
+            lines.append("```")
+        if self.exec_result is not None:
+            lines.append("\n**Execution Result:**\n")
+            lines.append(self.exec_result.to_markdown())
+        for i, exec_result in enumerate(self.alternative_results):
+            lines.append(f"\n**Alt Result {i}:**\n")
+            lines.append(exec_result.to_markdown())
+        return "\n".join(lines)
 
 
 class CSVSummaryRow(BaseModel):

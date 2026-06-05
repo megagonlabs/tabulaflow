@@ -3,7 +3,7 @@ import json
 import random
 import asyncio
 from typing import Any, ClassVar
-from tabulaflow.core.types import GoldQuery
+from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
 from tabulaflow.research.datahub.base import dataset_registry

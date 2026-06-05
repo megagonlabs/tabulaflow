@@ -14,7 +14,8 @@ import asyncio
 from urllib.parse import quote_plus
 from typing import Any, ClassVar, Literal, Optional
 import pandas as pd
-from tabulaflow.core.types import GoldQuery, ExecResult
+from tabulaflow.core.types import ExecResult
+from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
 from tabulaflow.research.datahub.base import dataset_registry
