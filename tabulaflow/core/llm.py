@@ -221,7 +221,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    name: str | None = None,
+    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, _OutputT]: ...
@@ -233,7 +233,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    name: str | None = None,
+    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, _OutputT]: ...
@@ -244,7 +244,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    name: str | None = None,
+    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[None, str]: ...
@@ -255,7 +255,7 @@ def make_agent(
     instructions: str | None = None,
     tools: Sequence[Any] = (),
     model_settings: Any = None,
-    name: str | None = None,
+    history_processors: Sequence[Any] | None = None,
     retries: int = 1,
     **kwargs: Any,
 ) -> Agent[Any, Any]:
@@ -263,8 +263,10 @@ def make_agent(
 
     The model is wrapped with throttling / ``<tool_call>`` parsing / vertex-claude
     resolution, and runs default to ``usage_limits=DEFAULT_USAGE_LIMITS`` (no
-    50-request cap). Every tabulaflow ``Agent`` should be built via this. Any
-    keyword accepted by :class:`pydantic_ai.Agent` may be passed via ``**kwargs``.
+    50-request cap). Every tabulaflow ``Agent`` should be built via this. The named
+    params are the commonly-used ones (for discovery + type-checking); any other
+    keyword accepted by :class:`pydantic_ai.Agent` (e.g. ``capabilities``,
+    ``deps_type``) flows through ``**kwargs``.
     """
     return _Agent(
         _make_model(model),
@@ -272,7 +274,7 @@ def make_agent(
         instructions=instructions,
         tools=tools,
         model_settings=model_settings,
-        name=name,
+        history_processors=history_processors,
         retries=retries,
         **kwargs,
     )
