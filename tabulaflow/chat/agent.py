@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import asyncio
-from collections.abc import Iterable
+from collections.abc import AsyncIterator, Callable, Iterable
 import json
 import logging
 from pathlib import Path
 import re
+from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Protocol, runtime_checkable
+from typing import TYPE_CHECKING, Any
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
@@ -23,6 +24,21 @@ from tabulaflow.toolhub.message_store import (
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES
 from tabulaflow.core.llm import make_agent
 from tabulaflow.chat.result import ChatResult, ChatResultRecord
+from tabulaflow.chat.events import (
+    ChatEvent,
+    ColumnsReturned,
+    Completed,
+    Failed,
+    Finished,
+    RowsReturned,
+    TextDelta,
+    ThinkingDelta,
+    ToolFinished,
+    ToolOutcome,
+    ToolProgress,
+    ToolStarted,
+    UsageUpdated,
+)
 
 if TYPE_CHECKING:
     from pydantic_ai import Agent
@@ -195,26 +211,6 @@ Steps:
 4. Join on the resolved column with a standard SQL query.
 </examples>
 """.strip()
-
-
-# ---------------------------------------------------------------------------
-# Progress sink protocol
-# ---------------------------------------------------------------------------
-
-
-@runtime_checkable
-class ProgressSink(Protocol):
-    """Interface for displaying agent execution progress."""
-
-    def start(self) -> None: ...
-    def finish(self) -> None: ...
-    def tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None: ...
-    def tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None: ...
-    def tool_progress(self, completed: int, total: int, stage: str | None = None) -> None: ...
-    def text_delta(self, delta: str) -> None: ...
-    def set_status(self, text: str) -> None: ...
-    def usage_update(self, usage: Usage) -> None: ...
-    def freeze_as_interrupted(self) -> None: ...
 
 
 # ---------------------------------------------------------------------------
@@ -405,21 +401,54 @@ class ChatAgent:
             },
         )
 
-    async def run(self, question: str, progress: ProgressSink) -> ChatResult:
-        """Run the agent on a user question, streaming progress to the sink.
+    async def run_stream(self, question: str) -> AsyncIterator[ChatEvent]:
+        """Run the agent on a user question, yielding progress as ``ChatEvent``s.
 
-        Uses ``agent.iter()`` so that on cancellation we can still snapshot the
-        partial trajectory and accumulated usage from the live ``AgentRun``.
+        The stream ends with exactly one ``Finished`` (carrying the ``ChatResult``)
+        on normal completion. Failures propagate as exceptions. To interrupt, cancel
+        the task iterating this generator: it raises ``CancelledError`` and the
+        agent's message history / ``last_usage`` are left reflecting the partial run.
+
+        A background driver task runs the agent loop and pushes events onto a queue;
+        this is what lets fan-out tools' progress callbacks (which fire deep inside
+        tool execution, not at a ``yield``) reach the consumer live.
         """
+        queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
+
+        async def _drive() -> None:
+            try:
+                await self._drive_run(question, queue.put_nowait)
+            finally:
+                queue.put_nowait(None)  # sentinel: stream exhausted
+
+        task = asyncio.create_task(_drive())
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield event
+            await task  # surface any exception raised by the driver
+        finally:
+            if not task.done():
+                task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await task
+
+    async def _drive_run(self, question: str, emit: Callable[[ChatEvent], None]) -> None:
+        """Run the agent loop, emitting events. Body of ``run_stream`` (runs in the
+        driver task). Uses ``agent.iter()`` so that on cancellation we can still
+        snapshot the partial trajectory and accumulated usage from the live run."""
         from pydantic_ai import CallToolsNode, ModelRequestNode
         from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 
         from tabulaflow.core.types import Usage
 
-        progress.start()
-        self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: progress.tool_progress(c, t)
-        self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: progress.tool_progress(c, t)
-        self._tools.add_canonical_name.on_progress = lambda stage, c, t: progress.tool_progress(c, t, stage=stage)
+        self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
+        self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
+        self._tools.add_canonical_name.on_progress = lambda stage, c, t: emit(
+            ToolProgress(completed=c, total=t, stage=stage)
+        )
 
         assert self._pydantic_ai_agent is not None
 
@@ -447,11 +476,11 @@ class ChatAgent:
                                     event.result, ToolReturnPart
                                 ):
                                     completed_results[event.tool_call_id] = event.result
-                                await _handle_stream_event(
-                                    event, progress, self._query_history, self._tools.get_table_schema
+                                await _emit_stream_event(
+                                    event, emit, self._query_history, self._tools.get_table_schema
                                 )
                                 await asyncio.sleep(0)
-                        progress.usage_update(Usage.from_pydantic_ai_usage(agent_run.usage(), self.model))
+                        emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
                 except asyncio.CancelledError:
                     interrupted = True
                     raise
@@ -465,19 +494,19 @@ class ChatAgent:
                     self.last_usage = final_usage
                     if agent_run.result is not None:
                         answer_text = agent_run.result.output
-
         finally:
             self._tools.run_subagent_for_each_row.on_row_complete = None
-            if final_usage is not None:
-                progress.usage_update(final_usage)
-            if interrupted:
-                progress.freeze_as_interrupted()
-            progress.finish()
+            self._tools.extract_rows_from_documents.on_row_complete = None
+            self._tools.add_canonical_name.on_progress = None
             self._save_trajectory_for_debug()
 
+        # Only reached on normal completion (cancellation re-raised above): emit the
+        # authoritative final usage, then the terminal result.
+        if final_usage is not None:
+            emit(UsageUpdated(usage=final_usage))
         result = await _build_chat_result(answer_text, self._query_history)
         result.usage = final_usage
-        return result
+        emit(Finished(result=result))
 
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory for debugging."""
@@ -609,113 +638,83 @@ def _chat_result_record_from_query_record(
 # ---------------------------------------------------------------------------
 
 
-async def _handle_stream_event(
+async def _emit_stream_event(
     event: object,
-    progress: ProgressSink,
+    emit: Callable[[ChatEvent], None],
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
 ) -> None:
-    from pydantic_ai.messages import FunctionToolCallEvent, FunctionToolResultEvent, PartDeltaEvent, TextPartDelta
+    """Map one pydantic-ai stream event to ``ChatEvent``s and emit them.
+
+    Events carry structured data only: ``ToolStarted.args`` is the raw call args
+    (a frontend renders them); ``ToolFinished.outcome`` is the structured
+    ``ToolOutcome`` (built here because it needs the agent's query history). Answer
+    text streams via ``PartDeltaEvent`` (unchanged from before); reasoning also
+    honors the initial ``PartStartEvent`` chunk (some providers put it there).
+    """
+    from pydantic_ai.messages import (
+        FunctionToolCallEvent,
+        FunctionToolResultEvent,
+        PartDeltaEvent,
+        PartStartEvent,
+        TextPartDelta,
+        ThinkingPart,
+        ThinkingPartDelta,
+    )
 
     if isinstance(event, FunctionToolCallEvent):
-        tool_call_id = event.tool_call_id
-        tool_name = event.part.tool_name
-        args = event.part.args
-        args_summary = _summarize_args(tool_name, args)
-        progress.tool_start(tool_call_id, tool_name, args_summary)
+        emit(ToolStarted(tool_call_id=event.tool_call_id, name=event.part.tool_name, args=_coerce_args(event.part.args)))
 
     elif isinstance(event, FunctionToolResultEvent):
-        tool_call_id = event.tool_call_id
-        result_tool_name = event.result.tool_name or ""
-        result_summary = await _summarize_result(result_tool_name, query_history, get_table_schema_tool)
-        progress.tool_end(tool_call_id, result_tool_name, result_summary)
+        tool_name = event.result.tool_name or ""
+        outcome = await _build_outcome(tool_name, query_history, get_table_schema_tool)
+        emit(ToolFinished(tool_call_id=event.tool_call_id, name=tool_name, outcome=outcome))
+
+    elif isinstance(event, PartStartEvent):
+        part = event.part
+        if isinstance(part, ThinkingPart) and part.content:
+            emit(ThinkingDelta(content=part.content))
 
     elif isinstance(event, PartDeltaEvent):
-        if isinstance(event.delta, TextPartDelta):
-            progress.text_delta(event.delta.content_delta)
+        delta = event.delta
+        if isinstance(delta, ThinkingPartDelta) and delta.content_delta:
+            emit(ThinkingDelta(content=delta.content_delta))
+        elif isinstance(delta, TextPartDelta) and delta.content_delta:
+            emit(TextDelta(content=delta.content_delta))
 
 
-def _summarize_args(tool_name: str, args: str | dict[str, object] | None) -> str:
-    if args is None:
-        return ""
+def _coerce_args(args: object) -> dict[str, Any]:
+    """Normalize a tool call's ``args`` (pydantic-ai gives a JSON string or dict) to a dict."""
     if isinstance(args, str):
         try:
             args = json.loads(args)
         except (json.JSONDecodeError, TypeError):
-            return str(args)[:80]
-    if not isinstance(args, dict):
-        return str(args)[:80]
-
-    db_prefix = ""
-    if args.get("db_alias"):
-        db_prefix = f"[{args['db_alias']}] "
-
-    if tool_name == "run_query":
-        query = " ".join(str(args.get("query", "")).split())
-        if len(query) > 40:
-            query = query[:37] + "..."
-        return f"{db_prefix}{query}"
-    if tool_name == "get_table_schema":
-        parts = []
-        if args.get("schema_name"):
-            parts.append(str(args["schema_name"]))
-        parts.append(str(args.get("table_name", "")))
-        return f"{db_prefix}{'.'.join(parts)}"
-    if tool_name == "get_db_document":
-        refresh = bool(args.get("refresh", False))
-        return f"{db_prefix}{'refresh' if refresh else 'cached'}"
-    if tool_name == "get_column_json_schema":
-        parts = []
-        if args.get("schema_name"):
-            parts.append(str(args["schema_name"]))
-        parts.append(str(args.get("table_name", "")))
-        parts.append(str(args.get("column_name", "")))
-        label = ".".join(parts)
-        if args.get("path"):
-            label += f", path={args['path']}"
-        return f"{db_prefix}{label}"
-    if tool_name == "render_chart":
-        spec_str = args.get("vegalite_spec", "")
-        try:
-            spec = json.loads(spec_str) if isinstance(spec_str, str) else spec_str
-            mark = spec.get("mark", "") if isinstance(spec, dict) else ""
-            if isinstance(mark, dict):
-                mark = mark.get("type", "")
-            title = spec.get("title", "") if isinstance(spec, dict) else ""
-            return str(title) if title else str(mark)
-        except (json.JSONDecodeError, TypeError):
-            return "chart"
-    if tool_name == "transfer_record":
-        record_id = str(args.get("record_id", ""))
-        target_alias = str(args.get("target_alias", ""))
-        target_schema = str(args.get("target_schema", "")) if args.get("target_schema") else ""
-        target_table = str(args.get("target_table", ""))
-        mode = str(args.get("mode", "append"))
-        target = f"{target_schema}.{target_table}" if target_schema else target_table
-        return f"{record_id} -> [{target_alias}] {target} ({mode})"
-    if tool_name == "run_subagent_for_each_row":
-        table_name = str(args.get("table_name", ""))
-        return f"{db_prefix}{table_name}"
-    return str(args)[:80]
+            return {}
+    return args if isinstance(args, dict) else {}
 
 
-async def _summarize_result(
+async def _build_outcome(
     tool_name: str,
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
-) -> str:
+) -> ToolOutcome:
+    """Derive the structured tool outcome from the agent's recorded state. Only
+    ``run_query`` (rows / error) and ``get_table_schema`` (columns) report a count;
+    everything else is ``Completed``. See ``chat.events`` for the tool→outcome map."""
     if tool_name == "run_query":
         try:
             record = await query_history.last()
             pred = record.pred_query
             if pred.exec_result and pred.exec_result.df is not None:
-                return f"{len(pred.exec_result.df)} rows"
+                return RowsReturned(count=len(pred.exec_result.df))
             if pred.exec_result and pred.exec_result.error:
-                return "error"
+                return Failed()
         except ValueError:
             pass
     if tool_name == "get_table_schema" and get_table_schema_tool is not None:
         n = get_table_schema_tool.last_columns_returned
         if n is not None:
-            return f"{n} columns"
-    return "done"
+            return ColumnsReturned(count=n)
+    return Completed()
+
+

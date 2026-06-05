@@ -83,7 +83,7 @@ class MessageStore:
     The store assigns sequential ``M1``, ``M2``, ... ids and persists every entry
     even when it is below the truncation threshold so the agent can SQL-introspect
     the conversation. The model-visible truncation logic lives separately
-    (``ChatAgent.run`` for user prompts; ``MessageStoreCapability`` for tool returns).
+    (``ChatAgent.run_stream`` for user prompts; ``MessageStoreCapability`` for tool returns).
     """
 
     def __init__(self, *, spill_connector: SQLConnector | None = None) -> None:

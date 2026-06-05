@@ -5,17 +5,16 @@ result it produces. All of it is re-exported here so frontends import from
 ``tabulaflow.chat`` rather than reaching into submodules.
 """
 
-from tabulaflow.chat.agent import ChatAgent, ProgressSink
+from tabulaflow.chat.agent import ChatAgent
 from tabulaflow.chat.events import (
     ChatEvent,
     ColumnsReturned,
     Completed,
-    Errored,
     Failed,
     Finished,
     RowsReturned,
-    StatusChanged,
     TextDelta,
+    ThinkingDelta,
     ToolFinished,
     ToolOutcome,
     ToolProgress,
@@ -26,18 +25,16 @@ from tabulaflow.chat.result import ChatResult, ChatResultRecord
 
 __all__ = [
     "ChatAgent",
-    "ProgressSink",
     "ChatResult",
     "ChatResultRecord",
     "ChatEvent",
     "TextDelta",
+    "ThinkingDelta",
     "ToolStarted",
     "ToolFinished",
     "ToolProgress",
-    "StatusChanged",
     "UsageUpdated",
     "Finished",
-    "Errored",
     "ToolOutcome",
     "RowsReturned",
     "ColumnsReturned",

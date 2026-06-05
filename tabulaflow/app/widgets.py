@@ -23,6 +23,20 @@ from textual.widgets import DataTable, Input, Static, TextArea
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
 from tabulaflow.app.theme import ACCENT, ACCENT_DIM, DRACULA_TRANSPARENT, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.chat import (
+    ChatEvent,
+    ColumnsReturned,
+    Failed,
+    Finished,
+    RowsReturned,
+    TextDelta,
+    ThinkingDelta,
+    ToolFinished,
+    ToolOutcome,
+    ToolProgress,
+    ToolStarted,
+    UsageUpdated,
+)
 
 
 def _normalize_json_like(value: object) -> object:
@@ -445,12 +459,77 @@ class SpinnerWidget(Widget):
 
 
 # ---------------------------------------------------------------------------
-# Agent progress widget (implements ProgressSink)
+# Agent progress widget (consumes the ChatAgent event stream)
 # ---------------------------------------------------------------------------
 
 
+def summarize_tool_args(name: str, args: dict[str, object]) -> str:
+    """Render a tool call's raw args as a compact one-line label for the TUI.
+
+    Presentation lives here (the consumer), not in ``chat`` — the events carry the
+    raw ``args`` dict and each frontend renders it as it likes. Truncates the query
+    to keep the step line short."""
+    db_prefix = f"[{args['db_alias']}] " if args.get("db_alias") else ""
+
+    if name == "run_query":
+        query = " ".join(str(args.get("query", "")).split())
+        if len(query) > 40:
+            query = query[:37] + "..."
+        return f"{db_prefix}{query}"
+    if name == "get_table_schema":
+        parts = [str(args["schema_name"])] if args.get("schema_name") else []
+        parts.append(str(args.get("table_name", "")))
+        return f"{db_prefix}{'.'.join(parts)}"
+    if name == "get_db_document":
+        return f"{db_prefix}{'refresh' if args.get('refresh') else 'cached'}"
+    if name == "get_column_json_schema":
+        parts = [str(args["schema_name"])] if args.get("schema_name") else []
+        parts.append(str(args.get("table_name", "")))
+        parts.append(str(args.get("column_name", "")))
+        label = ".".join(parts)
+        if args.get("path"):
+            label += f", path={args['path']}"
+        return f"{db_prefix}{label}"
+    if name == "render_chart":
+        spec_str = args.get("vegalite_spec", "")
+        try:
+            spec = json.loads(spec_str) if isinstance(spec_str, str) else spec_str
+            mark = spec.get("mark", "") if isinstance(spec, dict) else ""
+            if isinstance(mark, dict):
+                mark = mark.get("type", "")
+            title = spec.get("title", "") if isinstance(spec, dict) else ""
+            return str(title) if title else str(mark)
+        except (json.JSONDecodeError, TypeError):
+            return "chart"
+    if name == "transfer_record":
+        record_id = str(args.get("record_id", ""))
+        target_alias = str(args.get("target_alias", ""))
+        target_schema = str(args.get("target_schema", "")) if args.get("target_schema") else ""
+        target_table = str(args.get("target_table", ""))
+        mode = str(args.get("mode", "append"))
+        target = f"{target_schema}.{target_table}" if target_schema else target_table
+        return f"{record_id} -> [{target_alias}] {target} ({mode})"
+    if name == "run_subagent_for_each_row":
+        return f"{db_prefix}{args.get('table_name', '')}"
+    return str(args)[:80] if args else ""
+
+
+def summarize_outcome(outcome: ToolOutcome) -> str:
+    """Render a structured tool outcome as the TUI's default one-line label."""
+    if isinstance(outcome, RowsReturned):
+        return f"{outcome.count} rows"
+    if isinstance(outcome, ColumnsReturned):
+        return f"{outcome.count} columns"
+    if isinstance(outcome, Failed):
+        return "error"
+    return "done"  # Completed
+
+
 class AgentProgressWidget(Widget):
-    """Shows agent execution progress with tool steps and streaming text."""
+    """Shows agent execution progress with tool steps and streaming text.
+
+    Driven by ``apply(event)`` over the ``ChatAgent.run_stream`` event stream; the
+    consumer (``tui._run_agent``) calls ``mark_interrupted`` on cancellation."""
 
     DEFAULT_CSS = """
     AgentProgressWidget {
@@ -464,6 +543,7 @@ class AgentProgressWidget(Widget):
         self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
         self._streaming_text = ""
         self._raw_text = ""
+        self._thinking_text = ""
         self._separator_seen = False
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
@@ -512,6 +592,11 @@ class AgentProgressWidget(Widget):
                 self._status_spinner.text = Text(self._status_text, style="dim")
                 parts.append(self._status_spinner)
 
+        if self._thinking_text and not self._streaming_text and not self._frozen:
+            if self._steps:
+                parts.append(Text())
+            parts.append(Text(self._thinking_text, style="dim italic"))
+
         if self._streaming_text:
             if self._steps:
                 parts.append(Text())
@@ -519,12 +604,32 @@ class AgentProgressWidget(Widget):
 
         return Group(*parts) if parts else Text()
 
-    # ProgressSink interface
+    # Event-stream consumption
 
-    def start(self) -> None:
-        pass
+    def apply(self, event: ChatEvent) -> None:
+        """Dispatch one ``ChatEvent`` from ``ChatAgent.run_stream`` to the renderer."""
+        if isinstance(event, ToolStarted):
+            self._on_tool_start(event.tool_call_id, event.name, summarize_tool_args(event.name, event.args))
+        elif isinstance(event, ToolFinished):
+            self._on_tool_end(event.tool_call_id, event.name, summarize_outcome(event.outcome))
+        elif isinstance(event, ToolProgress):
+            self._on_tool_progress(event.completed, event.total, event.stage)
+        elif isinstance(event, TextDelta):
+            self._on_text_delta(event.content)
+        elif isinstance(event, ThinkingDelta):
+            self._on_thinking_delta(event.content)
+        elif isinstance(event, UsageUpdated):
+            self._on_usage(event.usage)
+        elif isinstance(event, Finished):
+            self._on_finished(event.result)
 
-    def finish(self) -> None:
+    def _on_finished(self, result: ChatResult) -> None:
+        # Reconcile the live-streamed prose with the authoritative final text, then
+        # freeze. (The terminal Finished event carries the full ChatResult.)
+        if self._streaming_text != result.text:
+            self._streaming_text = result.text
+        if result.usage is not None:
+            self._usage = result.usage
         self._status_text = None
         self._frozen = True
         if self._timer is not None:
@@ -532,7 +637,24 @@ class AgentProgressWidget(Widget):
             self._timer = None
         self._refresh(layout=True)
 
-    def tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
+    def mark_interrupted(self, usage: Usage | None = None) -> None:
+        """Freeze the widget after a cancelled run (the consumer calls this on
+        ``CancelledError``; no terminal ``Finished`` arrives for an interrupt)."""
+        if usage is not None:
+            self._usage = usage
+        self._interrupted = True
+        self._status_text = None
+        self._frozen = True
+        if self._timer is not None:
+            self._timer.stop()
+            self._timer = None
+        # If we never produced any content, collapse out of the layout so the
+        # following "Interrupted" line sits flush against the user prompt.
+        if not self._steps and not self._streaming_text:
+            self.display = False
+        self._refresh(layout=True)
+
+    def _on_tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
         if self._status_text and self._status_text != "Thinking...":
             self._steps.append(("done", "", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
@@ -541,7 +663,7 @@ class AgentProgressWidget(Widget):
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
-    def tool_progress(self, completed: int, total: int, stage: str | None = None) -> None:
+    def _on_tool_progress(self, completed: int, total: int, stage: str | None = None) -> None:
         """Update the running tool step with a (completed/total) counter.
 
         When ``stage`` is provided, it's prepended to the counter so the user can
@@ -561,7 +683,7 @@ class AgentProgressWidget(Widget):
                 break
         self._refresh(layout=True, scroll=True)
 
-    def tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
+    def _on_tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
         for i in range(len(self._steps) - 1, -1, -1):
             step = self._steps[i]
             if step[0] == "running" and step[1] == tool_call_id:
@@ -580,7 +702,7 @@ class AgentProgressWidget(Widget):
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
 
-    def text_delta(self, delta: str) -> None:
+    def _on_text_delta(self, delta: str) -> None:
         self._raw_text += delta
         # Only display text after the --- separator
         if self._separator_seen:
@@ -590,29 +712,20 @@ class AgentProgressWidget(Widget):
             self._streaming_text = self._raw_text.split("---", 1)[1].lstrip("\n")
         else:
             return
+        self._thinking_text = ""  # answer started — drop the reasoning trace
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
-    def set_status(self, text: str) -> None:
-        self._status_text = text
-        self._refresh()
+    def _on_thinking_delta(self, delta: str) -> None:
+        # Surface the model's reasoning summary dim, until the answer prose begins.
+        if self._separator_seen:
+            return
+        self._thinking_text += delta
+        self._refresh(layout=True, scroll=True)
 
-    def usage_update(self, usage: Usage) -> None:
+    def _on_usage(self, usage: Usage) -> None:
         self._usage = usage
         self._refresh()
-
-    def freeze_as_interrupted(self) -> None:
-        self._interrupted = True
-        self._status_text = None
-        self._frozen = True
-        if self._timer is not None:
-            self._timer.stop()
-            self._timer = None
-        # If we never produced any content, collapse out of the layout so the
-        # following "Interrupted" line sits flush against the user prompt.
-        if not self._steps and not self._streaming_text:
-            self.display = False
-        self._refresh(layout=True)
 
     def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
         try:

@@ -57,7 +57,7 @@ tabulaflow/
 ├── modulehub/       # LLM-powered schema-analysis modules — depends on toolhub, core
 │                    #   db_summarizer, er_diagram (synth), fk_predictor, column_profiler,
 │                    #   text_summarizer, schema_preprocessor + the caching base
-├── chat/            # the interactive tabulaflow agent (ChatAgent, ProgressSink, ChatResult)
+├── chat/            # the interactive tabulaflow agent (ChatAgent.run_stream → ChatEvent stream, ChatResult)
 ├── research/        # NL2SQL research — sibling of chat, never imports it
 │   ├── agenthub/  benchmarks/  metrics/  pipelines/   # benchmarks = eval datasets (tasks+gold+metrics)
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)

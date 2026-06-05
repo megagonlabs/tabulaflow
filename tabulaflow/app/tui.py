@@ -1614,16 +1614,22 @@ LIMIT 4000"""
     ) -> None:
         import asyncio
 
+        from tabulaflow.chat import Finished
+
         progress = AgentProgressWidget()
         await chat_log.mount(progress)
         chat_log.scroll_end(animate=False)
 
+        result: ChatResult | None = None
         try:
-            result: ChatResult = await session.chat_agent.run(question, progress)
+            async for event in session.chat_agent.run_stream(question):
+                progress.apply(event)
+                if isinstance(event, Finished):
+                    result = event.result
         except asyncio.CancelledError:
-            # Keep the partial progress widget visible — ChatAgent has already
-            # frozen it via progress.freeze_as_interrupted() with the resume
-            # hint and final usage.
+            # Freeze the partial progress widget; ChatAgent's message history and
+            # last_usage already reflect the interrupted run.
+            progress.mark_interrupted(session.chat_agent.last_usage)
             await chat_log.mount(SystemMessage("[dim]Interrupted[/dim]"))
             chat_log.scroll_end(animate=False)
             self._restore_input_text(display_text if display_text is not None else question)
@@ -1638,9 +1644,8 @@ LIMIT 4000"""
             self._busy = False
             self._current_worker = None
 
-        if progress._streaming_text != result.text:
-            progress._streaming_text = result.text
-            progress._refresh(layout=True)
+        if result is None:
+            return  # normal completion always yields a terminal Finished
 
         session.last_result = result
         if result.records:

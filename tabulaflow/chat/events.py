@@ -1,6 +1,6 @@
 """The chat ⇄ frontend event contract.
 
-``ChatAgent.run()`` yields a stream of these events; any frontend (the TUI, a
+``ChatAgent.run_stream()`` yields a stream of these events; any frontend (the TUI, a
 future webapp, a CLI logger, a test harness) consumes the stream and decides how
 to render each one. Events are **semantic** — they carry the data of what the
 agent did, never pre-rendered presentation — so a frontend renders / words /
@@ -14,7 +14,9 @@ wire (de)serialization:
     raw = event.model_dump_json()                       # produce (server)
     event = TypeAdapter(ChatEvent).validate_json(raw)    # consume (client)
 
-The stream is terminated by exactly one of ``Finished`` / ``Errored``.
+The stream ends with exactly one ``Finished`` (carrying the result) on normal
+completion. Failures propagate as exceptions; an interrupted run raises
+``CancelledError`` and the agent's message history / usage reflect the partial run.
 """
 
 from __future__ import annotations
@@ -95,6 +97,14 @@ class TextDelta(_ChatEvent):
     content: str
 
 
+class ThinkingDelta(_ChatEvent):
+    """A chunk of the model's reasoning summary (reasoning models only). Distinct
+    from ``TextDelta`` so a frontend can show / collapse it separately from the answer."""
+
+    kind: Literal["thinking_delta"] = "thinking_delta"
+    content: str
+
+
 class ToolStarted(_ChatEvent):
     """The agent invoked a tool. ``args`` is the raw tool-call arguments (lossless,
     so a frontend can show the full query / spec, or render its own compact line)."""
@@ -129,13 +139,6 @@ class ToolProgress(_ChatEvent):
     tool_call_id: str | None = None
 
 
-class StatusChanged(_ChatEvent):
-    """A high-level status line for the frontend (e.g. 'thinking', 'querying')."""
-
-    kind: Literal["status_changed"] = "status_changed"
-    text: str
-
-
 class UsageUpdated(_ChatEvent):
     """Cumulative token/cost usage so far this turn (for a live cost readout)."""
 
@@ -144,36 +147,27 @@ class UsageUpdated(_ChatEvent):
 
 
 # ---------------------------------------------------------------------------
-# Terminal events (exactly one ends the stream)
+# Terminal event (ends the stream on normal completion)
 # ---------------------------------------------------------------------------
 
 
 class Finished(_ChatEvent):
-    """The turn completed; carries the full result. ``result.interrupted`` (if
-    added) flags an early stop from a graceful (in-band) stop request."""
+    """The turn completed normally; carries the full result. The only terminal
+    event — failures and interrupts surface as exceptions on the iterator, not here."""
 
     kind: Literal["finished"] = "finished"
     result: ChatResult
 
 
-class Errored(_ChatEvent):
-    """The turn failed; carries a human-readable message. Emitted instead of
-    propagating an exception so every frontend handles failure uniformly."""
-
-    kind: Literal["errored"] = "errored"
-    message: str
-
-
 ChatEvent: TypeAlias = Annotated[
     Union[
         TextDelta,
+        ThinkingDelta,
         ToolStarted,
         ToolFinished,
         ToolProgress,
-        StatusChanged,
         UsageUpdated,
         Finished,
-        Errored,
     ],
     Field(discriminator="kind"),
 ]
