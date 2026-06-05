@@ -85,7 +85,7 @@ async def test_load_files_cancel_then_retry(tmp_path: Path) -> None:
     """
     import pandas as pd
 
-    from tabulaflow.core.db_connector.loaders.files import load_files
+    from tabulaflow.datasources.files import load_files
 
     csv = tmp_path / "data.csv"
     pd.DataFrame({"x": list(range(200000)) * 4}).to_csv(csv, index=False)

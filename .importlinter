@@ -18,4 +18,5 @@ layers =
     tabulaflow.chat | tabulaflow.research
     tabulaflow.modulehub
     tabulaflow.toolhub
+    tabulaflow.datasources
     tabulaflow.core

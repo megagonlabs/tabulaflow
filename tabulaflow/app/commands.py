@@ -357,7 +357,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 alias = f"{base_alias}_{suffix}"
                 suffix += 1
 
-        from tabulaflow.core.db_connector.loaders.files import load_files
+        from tabulaflow.datasources.files import load_files
 
         global_id = f"cli+{alias}"
         file_label = ", ".join(os.path.basename(f) for f in file_args)
@@ -381,7 +381,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
     # --- HuggingFace dataset connections ---
-    from tabulaflow.core.db_connector.loaders import is_hf_dataset_url
+    from tabulaflow.datasources import is_hf_dataset_url
 
     if is_hf_dataset_url(args[0]):
         return await _connect_hf_dataset(args, session)
@@ -426,7 +426,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
 async def _connect_hf_dataset(args: list[str], session: SessionState) -> CommandResult:
     """Handle /connect for HuggingFace dataset URLs."""
-    from tabulaflow.core.db_connector.loaders import load_hf_dataset, parse_hf_dataset_url
+    from tabulaflow.datasources import load_hf_dataset, parse_hf_dataset_url
 
     url = args[0]
     try:
