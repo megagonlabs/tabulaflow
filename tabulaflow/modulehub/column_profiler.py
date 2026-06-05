@@ -3,11 +3,10 @@ import copy
 import json
 import jinja2
 from pydantic import BaseModel
-from pydantic_ai import Agent
 from tabulaflow.core.types import SQLSchema, ColumnRef, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 COLUMN_PROFILER_SYSTEM_PROMPT = """
 <goal>
@@ -66,14 +65,9 @@ class ColumnProfiler:
             schema=self.formatter.format(schema, add_description=True)
         )
         # run_query_tool = RunQueryNoParamsTool(db_connector)
-        agent = Agent[None, LLMOutput](
-            model=make_model(self.llm),
-            output_type=LLMOutput,
-            instructions=system_prompt,
-            # tools=[run_query_tool.as_pydantic_ai_tool()],
-        )
+        agent = make_agent(self.llm, output_type=LLMOutput, instructions=system_prompt)
         user_prompt = format_user_prompt(column_ref)
-        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output
 

@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
-from pydantic_ai import Agent
 
 from tabulaflow.research.agenthub.base import agent_registry, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import BasicAgentConfig, get_max_steps_processor, instrument
@@ -20,7 +19,7 @@ from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.toolhub import GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import ExecuteBashTool, FileEditorTool, RunDbtTool
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 logger = logging.getLogger(__name__)
 
@@ -177,24 +176,18 @@ class DbtAgent:
             use_bash_tool=self.config.use_bash_tool,
         )
 
-        agent = Agent[None, None](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[
+        agent = make_agent(self.config.llm, tools=[
                 file_editor.as_pydantic_ai_tool(),
                 run_query.as_pydantic_ai_tool(),
                 run_tool.as_pydantic_ai_tool(),
                 get_table_schema.as_pydantic_ai_tool(),
-            ],
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
+            ], instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
 
         await db_connector.disconnect_async()
 
         result = await agent.run(
             f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
-        , usage_limits=DEFAULT_USAGE_LIMITS)
+        )
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 

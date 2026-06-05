@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import logging
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 logger = logging.getLogger(__name__)
 
@@ -29,15 +29,10 @@ class TextSummarizer:
 
     async def summarize(self, text: str) -> str:
         """Return a summarized version of the input text."""
-        from pydantic_ai import Agent
 
         settings: dict[str, object] = {"openai_reasoning_effort": "low"}
         if self.model_settings:
             settings.update(self.model_settings)
-        agent = Agent[None, str](  # type: ignore[call-overload]
-            model=make_model(self.llm),
-            instructions=_SYSTEM_PROMPT.format(max_words=self.max_words),
-            model_settings=settings,
-        )
-        result = await agent.run(text, usage_limits=DEFAULT_USAGE_LIMITS)
-        return result.output  # type: ignore[no-any-return]
+        agent = make_agent(self.llm, instructions=_SYSTEM_PROMPT.format(max_words=self.max_words), model_settings=settings)
+        result = await agent.run(text)
+        return result.output

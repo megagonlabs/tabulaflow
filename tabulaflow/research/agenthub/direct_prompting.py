@@ -1,7 +1,6 @@
 import jinja2
 import time
 from typing import ClassVar
-from pydantic_ai import Agent
 import logging
 
 import tabulaflow.core.formatters  # noqa: F401 — register sql_*, cypher, … formatters
@@ -17,7 +16,7 @@ from tabulaflow.research.agenthub.utils import (
     BasicAgentConfig,
 )
 from tabulaflow.core.utils import extract_code
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -103,12 +102,8 @@ class DirectPrompting:
             document=task.document,
         )
 
-        agent = Agent[None, str](  # type: ignore
-            model=make_model(self.config.llm),
-            instructions=system_prompt,
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
+        agent = make_agent(self.config.llm, instructions=system_prompt, model_settings=self.config.to_model_settings())
+        result = await agent.run(format_question(task))
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")
         pred_query = PredQuery(query=extract_code(result.output))

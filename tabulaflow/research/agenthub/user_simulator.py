@@ -17,7 +17,7 @@ from tabulaflow.research.agenthub.base import (
 )
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import AmbigNL2QTask
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 CONTROL_AGENT_SYSTEM_PROMPT = """
 You are a data analyst trying to solve the following task: {{task}}
@@ -97,12 +97,7 @@ class UserSimulator:
             ambig_points=[ap.model_dump() for ap in self.config.ambig_points],
         )
 
-        self.control_agent = Agent(
-            model=make_model(self.config.llm),
-            tools=[],
-            instructions=control_agent_system_prompt,
-            model_settings={"temperature": self.config.temperature},
-        )
+        self.control_agent = make_agent(self.config.llm, tools=[], instructions=control_agent_system_prompt, model_settings={"temperature": self.config.temperature})
         self._message_history: list[pydantic_ai.messages.ModelMessage] = []
         self._usage = Usage.create(llm=self.config.llm)
         self._user_effort = 0.0
@@ -177,7 +172,6 @@ class UserSimulator:
                 )
             ],
             message_history=self._message_history if self.config.include_history else None,
-            usage_limits=DEFAULT_USAGE_LIMITS,
         )
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         self._message_history += result.new_messages()
@@ -208,14 +202,9 @@ class UserSimulator:
                 task=self.config.task,
                 ambig_points=[ap.model_dump() for ap in relevant_ambig_points],
             )
-            answer_agent: Agent[None, UserAnswer | None] = Agent(
-                model=make_model(self.config.llm),
-                instructions=answer_agent_system_prompt,
-                output_type=ToolOutput(output_type_or_func, name="answer"),
-                model_settings={"temperature": self.config.temperature},
-            )
+            answer_agent: Agent[None, UserAnswer | None] = make_agent(self.config.llm, instructions=answer_agent_system_prompt, output_type=ToolOutput(output_type_or_func, name="answer"), model_settings={"temperature": self.config.temperature})
 
-            result = await answer_agent.run(question_str, usage_limits=DEFAULT_USAGE_LIMITS)
+            result = await answer_agent.run(question_str)
             self._user_effort += self._compute_user_effort(question_str, result.output)
 
             self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)

@@ -4,7 +4,7 @@ from typing import Any, ClassVar
 
 import jinja2
 from pydantic import BaseModel
-from pydantic_ai import Agent, ToolOutput
+from pydantic_ai import ToolOutput
 
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
@@ -15,7 +15,7 @@ from tabulaflow.research.pipelines.populate_exec_results import populate_task_as
 from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -212,13 +212,8 @@ class LLMEnsembler:
                 return 0
             return number - 1
 
-        agent = Agent[None, int](  # type: ignore
-            model=make_model(self.config.llm),
-            instructions=system_prompt,
-            output_type=ToolOutput(answer, name="answer"),
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        agent = make_agent(self.config.llm, instructions=system_prompt, output_type=ToolOutput(answer, name="answer"), model_settings=self.config.to_model_settings())
+        result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 

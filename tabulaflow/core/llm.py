@@ -15,11 +15,12 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+from collections.abc import Sequence
 from contextlib import AsyncExitStack, asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any, AsyncIterator, TypeVar, overload
 
 from aiolimiter import AsyncLimiter
-from pydantic_ai import UsageLimits
+from pydantic_ai import Agent, ToolOutput, UsageLimits
 from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models import Model, ModelRequestParameters, infer_model
 from pydantic_ai.models.wrapper import WrapperModel
@@ -176,16 +177,105 @@ def _resolve_base(llm: str | Model) -> Model:
     return infer_model(llm)
 
 
-def make_model(llm: str | Model) -> Model:
-    """Build a throttled, patched pydantic-ai model from a model identifier.
-
-    All tabulaflow ``Agent(...)`` calls should pass ``make_model(llm)`` as the
-    model so throttling / tool-call parsing / vertex-claude apply by construction.
-    """
+def _make_model(llm: str | Model) -> Model:
+    """Wrap a model identifier in tabulaflow's throttle + tool-call parsing."""
     model = _resolve_base(llm)
     if type(model).__name__ == "OpenAIChatModel":  # innermost: post-process the real response
         model = _ToolCallParsingModel(model)
     return _ThrottledModel(model)
+
+
+class _Agent(Agent):
+    """``pydantic_ai.Agent`` that defaults ``usage_limits`` to lift the 50-request
+    cap, so ``max_steps`` is the sole governor. Constructed via :func:`make_agent`."""
+
+    async def run(self, *args: Any, **kwargs: Any) -> Any:
+        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        return await super().run(*args, **kwargs)
+
+    def run_sync(self, *args: Any, **kwargs: Any) -> Any:
+        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        return super().run_sync(*args, **kwargs)
+
+    def run_stream(self, *args: Any, **kwargs: Any) -> Any:
+        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        return super().run_stream(*args, **kwargs)
+
+    def iter(self, *args: Any, **kwargs: Any) -> Any:
+        kwargs.setdefault("usage_limits", DEFAULT_USAGE_LIMITS)
+        return super().iter(*args, **kwargs)
+
+
+_OutputT = TypeVar("_OutputT")
+
+
+# The common, stable Agent(...) params are named for discoverability + type-checking;
+# the long tail (capabilities, deps_type, builtin_tools, ...) flows through **kwargs.
+# Deliberately NOT a verbatim copy of Agent.__init__ — that signature is large,
+# overloaded, and version-volatile; **kwargs keeps make_agent forward-compatible.
+@overload
+def make_agent(
+    model: str | Model,
+    *,
+    output_type: type[_OutputT],
+    instructions: str | None = None,
+    tools: Sequence[Any] = (),
+    model_settings: Any = None,
+    name: str | None = None,
+    retries: int = 1,
+    **kwargs: Any,
+) -> Agent[None, _OutputT]: ...
+@overload
+def make_agent(
+    model: str | Model,
+    *,
+    output_type: ToolOutput[_OutputT],
+    instructions: str | None = None,
+    tools: Sequence[Any] = (),
+    model_settings: Any = None,
+    name: str | None = None,
+    retries: int = 1,
+    **kwargs: Any,
+) -> Agent[None, _OutputT]: ...
+@overload
+def make_agent(
+    model: str | Model,
+    *,
+    instructions: str | None = None,
+    tools: Sequence[Any] = (),
+    model_settings: Any = None,
+    name: str | None = None,
+    retries: int = 1,
+    **kwargs: Any,
+) -> Agent[None, str]: ...
+def make_agent(
+    model: str | Model,
+    *,
+    output_type: Any = str,
+    instructions: str | None = None,
+    tools: Sequence[Any] = (),
+    model_settings: Any = None,
+    name: str | None = None,
+    retries: int = 1,
+    **kwargs: Any,
+) -> Agent[Any, Any]:
+    """Build a pydantic-ai Agent wired with tabulaflow's defaults.
+
+    The model is wrapped with throttling / ``<tool_call>`` parsing / vertex-claude
+    resolution, and runs default to ``usage_limits=DEFAULT_USAGE_LIMITS`` (no
+    50-request cap). Every tabulaflow ``Agent`` should be built via this. Any
+    keyword accepted by :class:`pydantic_ai.Agent` may be passed via ``**kwargs``.
+    """
+    return _Agent(
+        _make_model(model),
+        output_type=output_type,
+        instructions=instructions,
+        tools=tools,
+        model_settings=model_settings,
+        name=name,
+        retries=retries,
+        **kwargs,
+    )
 
 
 # ---------------------------------------------------------------------------

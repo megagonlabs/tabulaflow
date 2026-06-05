@@ -4,7 +4,7 @@ import time
 from typing import Any, ClassVar
 
 import jinja2
-from pydantic_ai import Agent, ModelRetry, RunContext, ToolOutput
+from pydantic_ai import ModelRetry, RunContext, ToolOutput
 
 from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.ensemblers.majority_ensembler import _normalize_value
@@ -17,7 +17,7 @@ from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Trajectory, Usage
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -267,16 +267,9 @@ class AgentEnsembler:
                 "or execute a query via run_query first."
             )
 
-        agent = Agent[None, int | None](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[tool.as_pydantic_ai_tool() for tool in tools.values()],
-            output_type=ToolOutput(finish, name="finish"),
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
+        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for tool in tools.values()], output_type=ToolOutput(finish, name="finish"), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
 
-        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 

@@ -1,7 +1,6 @@
 from typing import ClassVar, Literal
 
 import jinja2
-from pydantic_ai import Agent
 
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.er_diagram import ERDiagram
@@ -11,7 +10,7 @@ from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import SQLSchema, Usage
 from tabulaflow.modulehub.base import CacheableResult, CachedPreprocessorMixin, preprocessor_registry
 from tabulaflow.toolhub.run_query import RunQueryTool
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 ER_DIAGRAM_SYNTHESIS_PROMPT = """
 You are an AI database expert tasked with generating an ER diagram given a physical database schema.
@@ -84,14 +83,9 @@ class ERDiagramSynthesizer(CachedPreprocessorMixin[ERDiagram]):
 
         system_prompt = jinja2.Template(ER_DIAGRAM_SYNTHESIS_PROMPT).render()
         run_query_tool = RunQueryTool(db_connector)
-        agent = Agent[None, ERDiagram](
-            model=make_model(self.llm),
-            output_type=ERDiagram,
-            instructions=system_prompt,
-            tools=[run_query_tool.as_pydantic_ai_tool()],
-        )
+        agent = make_agent(self.llm, output_type=ERDiagram, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()])
         user_prompt = format_user_prompt(schema, self.formatter)
-        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         erd = result.output
         # Sometimes LLM put database name as the schema name, remove it if the database does not have any schema names

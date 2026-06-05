@@ -62,7 +62,7 @@ def configure(**kwargs: object) -> None:
     logger.debug("TABULAFLOW Configuration: %s", tabulaflow_config)
 
     # Process-global LLM setup (was patches.setup(); throttling/tool-call parsing
-    # now apply per-agent via core.llm.make_model, not by monkey-patching).
+    # now apply per-agent via core.llm.make_agent, not by monkey-patching).
     llm.register_custom_model_prices()
     if tabulaflow_config.disable_bigquery_tracing:
         llm.disable_bigquery_tracing()

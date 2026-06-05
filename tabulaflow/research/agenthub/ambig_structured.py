@@ -28,7 +28,7 @@ from tabulaflow.research.agenthub.base import (
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.utils import int_to_letter
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 DISAMBIGUATION_PROMPT = """
@@ -149,14 +149,7 @@ class AmbigStructuredSQLAgent:
         output_type: type[BaseModel] | ToolOutput[PredQuery],
         tool_keys: list[str],
     ) -> Agent[None, Any]:
-        return Agent[None, Any](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
-            output_type=output_type,
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
+        return make_agent(self.config.llm, tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys], output_type=output_type, instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
 
     async def _disambiguate_async(self, ctx: TaskRunContext) -> list[PredAmbiguityPoint]:
         class LLMPredAmbiguityPointFinite(BaseModel):
@@ -197,7 +190,7 @@ class AmbigStructuredSQLAgent:
                 if ap.type == "infinite":
                     prompt += f'\n- "{ap.phrase}" (parameter)'
 
-        result = await disamb_agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await disamb_agent.run(prompt)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
@@ -240,7 +233,7 @@ class AmbigStructuredSQLAgent:
                 for ap in infinite_aps
             ]
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
-        result = await sql_agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await sql_agent.run(prompt)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
         pred_query: PredQuery = ctx.tools["run_query"].last_pred_query()  # type: ignore
         pred_query.id = query_id

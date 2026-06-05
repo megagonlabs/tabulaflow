@@ -1,7 +1,6 @@
 import json
 from typing import ClassVar, Any
 from pydantic import BaseModel
-from pydantic_ai import Agent
 import jinja2
 from tabulaflow.core.types import NumericOrNull
 from tabulaflow.research.types import (
@@ -15,7 +14,7 @@ from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
 from tabulaflow.core.utils import int_to_letter
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 
@@ -215,15 +214,11 @@ class AmbigPointStats:
         pred_aps = [self._to_simple_dict(ap, "PRED") for ap in task.pred_ambiguity_points]
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
 
-        agent = Agent[None, LLMOutput](
-            model=make_model(self.llm),
-            output_type=LLMOutput,
-            instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
-        )
+        agent = make_agent(self.llm, output_type=LLMOutput, instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT)
         prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
-        result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await agent.run(prompt)
         matches = self._clean_matches(result.output.matches)
         res = []
         for gold_ap_id, pred_ap_id in matches:
@@ -267,15 +262,11 @@ class AmbigPointStats:
                 for i, question in enumerate(questions)
             ]
 
-            agent = Agent[None, LLMOutput](
-                model=make_model(self.llm),
-                output_type=LLMOutput,
-                instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
-            )
+            agent = make_agent(self.llm, output_type=LLMOutput, instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT)
             prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
                 question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
             )
-            result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+            result = await agent.run(prompt)
             matches = self._clean_matches(result.output.matches)
 
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
@@ -349,18 +340,14 @@ class AmbigPointStats:
                     for i, interpretation in enumerate(pred_ap.interpretations)
                 ]
 
-                agent = Agent[None, LLMOutput](
-                    model=make_model(self.llm),
-                    output_type=LLMOutput,
-                    instructions=INTERPRETATION_MATCHING_SYSTEM_PROMPT,
-                )
+                agent = make_agent(self.llm, output_type=LLMOutput, instructions=INTERPRETATION_MATCHING_SYSTEM_PROMPT)
                 prompt = jinja2.Template(INTERPRETATION_MATCHING_USER_PROMPT).render(
                     question=task.question,
                     phrase=gold_ap.phrase,
                     gold_interpretations=json.dumps(gold_interpretations, indent=2),
                     pred_interpretations=json.dumps(pred_interpretations, indent=2),
                 )
-                result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+                result = await agent.run(prompt)
                 assert len(pred_ap.interpretations) > 0
                 assert len(gold_ap.interpretations) > 0
                 p, r, f1 = self._p_r_f1(  # type: ignore

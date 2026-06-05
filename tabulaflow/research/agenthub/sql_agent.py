@@ -8,7 +8,6 @@ from typing import ClassVar, Any
 import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
-from pydantic_ai import Agent
 import logging
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import SQLSchema, SQLTableSchema, PredQuery, Usage, Trajectory, ColumnRef
@@ -28,7 +27,7 @@ from tabulaflow.research.agenthub.utils import (
 from tabulaflow.core.utils import extract_code, extract_all_source_columns
 from tabulaflow.core.er_diagram import ERDiagram
 from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -198,15 +197,8 @@ class SchemaLinker:
             examples=ctx.few_shot_examples,
         )
 
-        agent = Agent[None, None](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
-            output_type=tools["finish"].as_pydantic_ai_tool(),
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
+        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"], output_type=tools["finish"].as_pydantic_ai_tool(), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+        result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
@@ -226,11 +218,7 @@ class SchemaLinker:
         current_columns = schema_to_expand.get_all_column_refs()
 
         async def process_batch_async(batch_idx: int, batch: list[ColumnRef]) -> list[ColumnWithAlternatives]:
-            agent = Agent[None, LLMOutput](  # type: ignore
-                model=make_model(self.config.llm),
-                output_type=LLMOutput,
-                model_settings=self.config.to_model_settings(),
-            )
+            agent = make_agent(self.config.llm, output_type=LLMOutput, model_settings=self.config.to_model_settings())
             prompt = jinja2.Template(EXPAND_COLUMNS_PROMPT).render(
                 schema=ctx.schema_formatter.format(ctx.preprocessed_schema),
                 question=format_question(task),
@@ -243,12 +231,12 @@ class SchemaLinker:
                 ),
                 document=task.document,
             )
-            result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+            result = await agent.run(prompt)
             ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             ctx.trajectories.append(
                 Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-EXPAND-SCHEMA-{batch_idx}")
             )
-            return result.output.results  # type: ignore
+            return result.output.results
 
         batches = [current_columns[i : i + batch_size] for i in range(0, len(current_columns), batch_size)]
         all_results = await asyncio.gather(*[process_batch_async(i, batch) for i, batch in enumerate(batches)])
@@ -346,10 +334,7 @@ class Postprocessor:
         # if not task.dataset_instructions:
         #     return pred_query
 
-        agent = Agent[None, str](  # type: ignore
-            model=make_model(self.config.llm),
-            model_settings=self.config.to_model_settings(),
-        )
+        agent = make_agent(self.config.llm, model_settings=self.config.to_model_settings())
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
             language=ctx.db_connector.language,
             question=format_question(task),
@@ -357,7 +342,7 @@ class Postprocessor:
             examples=ctx.few_shot_examples,
             raw_pred_query_with_exec_results=pred_query.to_markdown(),
         )
-        result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+        result = await agent.run(prompt)
         revised_pred_query = extract_code(result.output)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
@@ -513,15 +498,8 @@ class SQLAgent:
             examples=examples,
         )
 
-        agent = Agent[None, None](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
-            output_type=tools["finish"].as_pydantic_ai_tool(),
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
+        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"], output_type=tools["finish"].as_pydantic_ai_tool(), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+        result = await agent.run(format_question(task))
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")

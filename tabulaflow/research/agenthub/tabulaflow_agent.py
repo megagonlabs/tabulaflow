@@ -1,7 +1,6 @@
 import jinja2
 import time
 from typing import ClassVar
-from pydantic_ai import Agent
 import logging
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.types import PredQuery, Usage, Trajectory
@@ -16,7 +15,7 @@ from tabulaflow.research.agenthub.utils import (
     instrument,
     BasicAgentConfig,
 )
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 logger = logging.getLogger(__name__)
@@ -129,15 +128,8 @@ class TabulaflowAgent:
             "finish": FinishTool(),
         }
 
-        agent = Agent[None, None](  # type: ignore
-            model=make_model(self.config.llm),
-            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
-            output_type=tools["finish"].as_pydantic_ai_tool(),
-            instructions=system_prompt,
-            history_processors=[get_max_steps_processor(self.config.max_steps)],
-            model_settings=self.config.to_model_settings(),
-        )
-        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
+        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"], output_type=tools["finish"].as_pydantic_ai_tool(), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+        result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")

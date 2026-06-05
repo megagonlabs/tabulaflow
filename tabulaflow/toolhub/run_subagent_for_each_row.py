@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 import jinja2
 import sqlalchemy
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, Tool, ToolOutput
+from pydantic_ai import Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
@@ -29,7 +29,7 @@ from tabulaflow.toolhub.message_store import (
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES, WebBrowserTool
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 
 _COL_EXCEPTION = "_subagent_exception"
@@ -458,20 +458,14 @@ class RunSubagentForEachRowTool:
                 subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
                 capabilities.append(MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES))
 
-            subagent = Agent(
-                model=make_model(self.subagent_llm),
-                tools=tools,
-                capabilities=capabilities or None,
-                output_type=[
+            subagent = make_agent(self.subagent_llm, tools=tools, capabilities=capabilities or None, output_type=[
                     str,
                     ToolOutput(
                         AbortTask,
                         name="abort_task",
                         description=_ABORT_TOOL_DESCRIPTION,
                     ),
-                ],
-                model_settings=self.model_settings,
-            )
+                ], model_settings=self.model_settings)
             key_payload = {col: row.get(col) for col in key_columns}
             error_msg: str | None = None
             metadata: tuple[str | None, str | None] | None = None
@@ -482,7 +476,7 @@ class RunSubagentForEachRowTool:
                     message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
                     if len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)
-                result = await subagent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
+                result = await subagent.run(prompt)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
                 _write_trajectory_file(row_idx, traj)
                 if isinstance(result.output, AbortTask):

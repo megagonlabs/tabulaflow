@@ -21,7 +21,7 @@ from tabulaflow.toolhub.message_store import (
     make_snippet,
 )
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES
-from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
+from tabulaflow.core.llm import make_agent
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -402,13 +402,10 @@ class ChatAgent:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
-        from pydantic_ai import Agent
 
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
-        self._pydantic_ai_agent = Agent(
-            model=make_model(self.model),  # type: ignore[call-overload]
-            tools=[
+        self._pydantic_ai_agent = make_agent(self.model, tools=[
                 self._tools.run_query.as_pydantic_ai_tool(),
                 self._tools.get_db_document.as_pydantic_ai_tool(),
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
@@ -419,8 +416,7 @@ class ChatAgent:
                 self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
-            ],
-            capabilities=[
+            ], capabilities=[
                 self._tools.web_browser.lifecycle_capability(),
                 # Drop the root agent's browser tabs before it fans out, so it
                 # holds no page permits while awaiting subagent rows that need
@@ -430,14 +426,11 @@ class ChatAgent:
                     store=self._main_scope,
                     tool_allowlist=BROWSER_TOOL_NAMES,
                 ),
-            ],
-            instructions=self._system_prompt,
-            model_settings={
+            ], instructions=self._system_prompt, model_settings={
                 "openai_service_tier": "priority",
                 "openai_reasoning_effort": "medium",
                 "openai_reasoning_summary": "detailed",
-            },
-        )
+            })
 
     async def run(self, question: str, progress: ProgressSink) -> ChatResult:
         """Run the agent on a user question, streaming progress to the sink.
@@ -470,7 +463,6 @@ class ChatAgent:
             async with self._pydantic_ai_agent.iter(
                 question,
                 message_history=self._message_history or None,
-                usage_limits=DEFAULT_USAGE_LIMITS,
             ) as agent_run:
                 try:
                     async for node in agent_run:

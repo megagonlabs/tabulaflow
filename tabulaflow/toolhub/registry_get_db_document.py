@@ -102,7 +102,7 @@ class RegistryGetDBDocumentTool:
                 llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings
             )
             db_summary = await db_summarizer.preprocess_async(connector)
-            document = db_summary.db_summary_markdown
+            document: str = db_summary.db_summary_markdown
         else:
             schema_doc = self._format_direct_document(db_alias)
             document = f"<db_schema>\n{schema_doc}\n</db_schema>"
