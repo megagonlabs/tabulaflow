@@ -409,41 +409,37 @@ class ChatAgent:
         the task iterating this generator: it raises ``CancelledError`` and the
         agent's message history / ``last_usage`` are left reflecting the partial run.
 
-        A background driver task runs the agent loop and pushes events onto a queue;
-        this is what lets fan-out tools' progress callbacks (which fire deep inside
-        tool execution, not at a ``yield``) reach the consumer live.
+        The agent loop runs as a background task (``_run_to_queue``) that pushes
+        events onto a queue; this is what lets fan-out tools' progress callbacks
+        (which fire deep inside tool execution, not at a ``yield``) reach the
+        consumer live. The producer signals end-of-stream with a ``None`` sentinel.
         """
         queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
-
-        async def _drive() -> None:
-            try:
-                await self._drive_run(question, queue.put_nowait)
-            finally:
-                queue.put_nowait(None)  # sentinel: stream exhausted
-
-        task = asyncio.create_task(_drive())
+        task = asyncio.create_task(self._run_to_queue(question, queue))
         try:
             while True:
                 event = await queue.get()
                 if event is None:
                     break
                 yield event
-            await task  # surface any exception raised by the driver
+            await task  # surface any exception raised by the producer
         finally:
             if not task.done():
                 task.cancel()
                 with suppress(asyncio.CancelledError):
                     await task
 
-    async def _drive_run(self, question: str, emit: Callable[[ChatEvent], None]) -> None:
-        """Run the agent loop, emitting events. Body of ``run_stream`` (runs in the
-        driver task). Uses ``agent.iter()`` so that on cancellation we can still
-        snapshot the partial trajectory and accumulated usage from the live run."""
+    async def _run_to_queue(self, question: str, queue: asyncio.Queue[ChatEvent | None]) -> None:
+        """Run the agent loop in the background task, pushing events onto ``queue``
+        and a terminating ``None`` sentinel. Uses ``agent.iter()`` so that on
+        cancellation we can still snapshot the partial trajectory and accumulated
+        usage from the live run."""
         from pydantic_ai import CallToolsNode, ModelRequestNode
         from pydantic_ai.messages import FunctionToolResultEvent, ToolReturnPart
 
         from tabulaflow.core.types import Usage
 
+        emit = queue.put_nowait
         self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
         self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
         self._tools.add_canonical_name.on_progress = lambda stage, c, t: emit(
@@ -462,51 +458,54 @@ class ChatAgent:
         completed_results: dict[str, ToolReturnPart] = {}
 
         try:
-            async with self._pydantic_ai_agent.iter(
-                question,
-                message_history=self._message_history or None,
-            ) as agent_run:
-                try:
-                    async for node in agent_run:
-                        if not isinstance(node, (ModelRequestNode, CallToolsNode)):
-                            continue
-                        async with node.stream(agent_run.ctx) as stream:
-                            async for event in stream:
-                                if isinstance(event, FunctionToolResultEvent) and isinstance(
-                                    event.result, ToolReturnPart
-                                ):
-                                    completed_results[event.tool_call_id] = event.result
-                                await _emit_stream_event(
-                                    event, emit, self._query_history, self._tools.get_table_schema
-                                )
-                                await asyncio.sleep(0)
-                        emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
-                except asyncio.CancelledError:
-                    interrupted = True
-                    raise
-                finally:
-                    final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
-                    partial_messages = list(agent_run.all_messages())
-                    if interrupted:
-                        self._message_history = _patch_interrupted_messages(partial_messages, completed_results)
-                    else:
-                        self._message_history = partial_messages
-                    self.last_usage = final_usage
-                    if agent_run.result is not None:
-                        answer_text = agent_run.result.output
-        finally:
-            self._tools.run_subagent_for_each_row.on_row_complete = None
-            self._tools.extract_rows_from_documents.on_row_complete = None
-            self._tools.add_canonical_name.on_progress = None
-            self._save_trajectory_for_debug()
+            try:
+                async with self._pydantic_ai_agent.iter(
+                    question,
+                    message_history=self._message_history or None,
+                ) as agent_run:
+                    try:
+                        async for node in agent_run:
+                            if not isinstance(node, (ModelRequestNode, CallToolsNode)):
+                                continue
+                            async with node.stream(agent_run.ctx) as stream:
+                                async for event in stream:
+                                    if isinstance(event, FunctionToolResultEvent) and isinstance(
+                                        event.result, ToolReturnPart
+                                    ):
+                                        completed_results[event.tool_call_id] = event.result
+                                    await _emit_stream_event(
+                                        event, emit, self._query_history, self._tools.get_table_schema
+                                    )
+                                    await asyncio.sleep(0)
+                            emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
+                    except asyncio.CancelledError:
+                        interrupted = True
+                        raise
+                    finally:
+                        final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
+                        partial_messages = list(agent_run.all_messages())
+                        if interrupted:
+                            self._message_history = _patch_interrupted_messages(partial_messages, completed_results)
+                        else:
+                            self._message_history = partial_messages
+                        self.last_usage = final_usage
+                        if agent_run.result is not None:
+                            answer_text = agent_run.result.output
+            finally:
+                self._tools.run_subagent_for_each_row.on_row_complete = None
+                self._tools.extract_rows_from_documents.on_row_complete = None
+                self._tools.add_canonical_name.on_progress = None
+                self._save_trajectory_for_debug()
 
-        # Only reached on normal completion (cancellation re-raised above): emit the
-        # authoritative final usage, then the terminal result.
-        if final_usage is not None:
-            emit(UsageUpdated(usage=final_usage))
-        result = await _build_chat_result(answer_text, self._query_history)
-        result.usage = final_usage
-        emit(Finished(result=result))
+            # Only reached on normal completion (cancellation re-raised above): emit
+            # the authoritative final usage, then the terminal result.
+            if final_usage is not None:
+                emit(UsageUpdated(usage=final_usage))
+            result = await _build_chat_result(answer_text, self._query_history)
+            result.usage = final_usage
+            emit(Finished(result=result))
+        finally:
+            queue.put_nowait(None)  # sentinel: stream exhausted (success, error, or cancel)
 
     def _save_trajectory_for_debug(self) -> None:
         """Persist the latest conversation trajectory for debugging."""
