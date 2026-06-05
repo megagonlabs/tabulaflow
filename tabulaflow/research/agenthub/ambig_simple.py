@@ -93,11 +93,18 @@ class AmbigSimpleSQLAgent:
         tools["run_query"] = RunQueryTool(db_connector, enable_params=True)
         tools["finish"] = FinishTool()
 
-        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"], output_type=tools["finish"].as_pydantic_ai_tool(), instructions=jinja2.Template(SYSTEM_PROMPT).render(
+        agent = make_agent(
+            self.config.llm,
+            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
+            output_type=tools["finish"].as_pydantic_ai_tool(),
+            instructions=jinja2.Template(SYSTEM_PROMPT).render(
                 language=db_connector.language,
                 dataset_instructions=task.dataset_instructions,
                 user_patience=user_patience,
-            ), history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+            ),
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
 
         result = await agent.run(task.question)
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore

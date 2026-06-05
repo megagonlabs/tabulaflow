@@ -212,7 +212,12 @@ class LLMEnsembler:
                 return 0
             return number - 1
 
-        agent = make_agent(self.config.llm, instructions=system_prompt, output_type=ToolOutput(answer, name="answer"), model_settings=self.config.to_model_settings())
+        agent = make_agent(
+            self.config.llm,
+            instructions=system_prompt,
+            output_type=ToolOutput(answer, name="answer"),
+            model_settings=self.config.to_model_settings(),
+        )
         result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")

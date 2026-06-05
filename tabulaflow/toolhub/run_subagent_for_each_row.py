@@ -458,14 +458,20 @@ class RunSubagentForEachRowTool:
                 subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
                 capabilities.append(MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES))
 
-            subagent = make_agent(self.subagent_llm, tools=tools, capabilities=capabilities or None, output_type=[
+            subagent = make_agent(
+                self.subagent_llm,
+                tools=tools,
+                capabilities=capabilities or None,
+                output_type=[
                     str,
                     ToolOutput(
                         AbortTask,
                         name="abort_task",
                         description=_ABORT_TOOL_DESCRIPTION,
                     ),
-                ], model_settings=self.model_settings)
+                ],
+                model_settings=self.model_settings,
+            )
             key_payload = {col: row.get(col) for col in key_columns}
             error_msg: str | None = None
             metadata: tuple[str | None, str | None] | None = None

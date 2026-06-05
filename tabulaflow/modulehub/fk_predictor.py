@@ -63,7 +63,9 @@ class ForeignKeyPredictor:
             schema=self.formatter.format(schema, add_description=True)
         )
         run_query_tool = RunQueryTool(db_connector)
-        agent = make_agent(self.llm, output_type=LLMOutput, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()])
+        agent = make_agent(
+            self.llm, output_type=LLMOutput, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()]
+        )
         user_prompt = format_user_prompt(table_ref)
         result = await agent.run(user_prompt)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)

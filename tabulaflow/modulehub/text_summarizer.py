@@ -33,6 +33,8 @@ class TextSummarizer:
         settings: dict[str, object] = {"openai_reasoning_effort": "low"}
         if self.model_settings:
             settings.update(self.model_settings)
-        agent = make_agent(self.llm, instructions=_SYSTEM_PROMPT.format(max_words=self.max_words), model_settings=settings)
+        agent = make_agent(
+            self.llm, instructions=_SYSTEM_PROMPT.format(max_words=self.max_words), model_settings=settings
+        )
         result = await agent.run(text)
         return result.output

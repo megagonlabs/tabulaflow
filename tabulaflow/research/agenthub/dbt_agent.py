@@ -176,12 +176,18 @@ class DbtAgent:
             use_bash_tool=self.config.use_bash_tool,
         )
 
-        agent = make_agent(self.config.llm, tools=[
+        agent = make_agent(
+            self.config.llm,
+            tools=[
                 file_editor.as_pydantic_ai_tool(),
                 run_query.as_pydantic_ai_tool(),
                 run_tool.as_pydantic_ai_tool(),
                 get_table_schema.as_pydantic_ai_tool(),
-            ], instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+            ],
+            instructions=system_prompt,
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
 
         await db_connector.disconnect_async()
 

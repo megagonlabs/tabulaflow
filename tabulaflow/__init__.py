@@ -68,7 +68,6 @@ def configure(**kwargs: object) -> None:
         llm.disable_bigquery_tracing()
 
     if tabulaflow_config.instrument_enabled:
-
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
             from phoenix.otel import register
 

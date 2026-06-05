@@ -477,7 +477,12 @@ class AddCanonicalNameTool:
                 input_column=input_column,
                 value=value,
             )
-            subagent = make_agent(self.subagent_llm, tools=[run_query_pa_tool], output_type=_ResolvePeersOutput, model_settings=self.model_settings)
+            subagent = make_agent(
+                self.subagent_llm,
+                tools=[run_query_pa_tool],
+                output_type=_ResolvePeersOutput,
+                model_settings=self.model_settings,
+            )
             result = await subagent.run(prompt)
             self._write_trajectory(traj_dir, f"resolve-{value_to_idx[value]:04d}", result)
             return result.output
@@ -658,7 +663,13 @@ class AddCanonicalNameTool:
             input_column=input_column,
             seen_list=_relevant_seen(collided, seen, _DISAMBIGUATE_SEEN_SHOWN),
         )
-        subagent: Agent[None, _DisambiguationOutput] = make_agent(self.subagent_llm, tools=[run_query_pa_tool], output_type=_DisambiguationOutput, model_settings=self.model_settings, retries=_MAX_DISAMBIGUATE_RETRIES)
+        subagent: Agent[None, _DisambiguationOutput] = make_agent(
+            self.subagent_llm,
+            tools=[run_query_pa_tool],
+            output_type=_DisambiguationOutput,
+            model_settings=self.model_settings,
+            retries=_MAX_DISAMBIGUATE_RETRIES,
+        )
 
         @subagent.output_validator
         def _validate(output: _DisambiguationOutput) -> _DisambiguationOutput:

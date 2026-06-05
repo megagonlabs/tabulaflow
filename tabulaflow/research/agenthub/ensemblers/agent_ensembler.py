@@ -267,7 +267,14 @@ class AgentEnsembler:
                 "or execute a query via run_query first."
             )
 
-        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for tool in tools.values()], output_type=ToolOutput(finish, name="finish"), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+        agent = make_agent(
+            self.config.llm,
+            tools=[tool.as_pydantic_ai_tool() for tool in tools.values()],
+            output_type=ToolOutput(finish, name="finish"),
+            instructions=system_prompt,
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
 
         result = await agent.run(user_prompt)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)

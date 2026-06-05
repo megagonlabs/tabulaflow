@@ -128,7 +128,14 @@ class TabulaflowAgent:
             "finish": FinishTool(),
         }
 
-        agent = make_agent(self.config.llm, tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"], output_type=tools["finish"].as_pydantic_ai_tool(), instructions=system_prompt, history_processors=[get_max_steps_processor(self.config.max_steps)], model_settings=self.config.to_model_settings())
+        agent = make_agent(
+            self.config.llm,
+            tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
+            output_type=tools["finish"].as_pydantic_ai_tool(),
+            instructions=system_prompt,
+            history_processors=[get_max_steps_processor(self.config.max_steps)],
+            model_settings=self.config.to_model_settings(),
+        )
         result = await agent.run(format_question(task))
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)

@@ -106,7 +106,13 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             model_settings["openai_reasoning_effort"] = self.openai_reasoning_effort
             model_settings["openai_reasoning_summary"] = "detailed"
 
-        agent = make_agent(self.llm, output_type=DBSummary, instructions=system_prompt, tools=[run_query_tool.as_pydantic_ai_tool()], model_settings=model_settings)
+        agent = make_agent(
+            self.llm,
+            output_type=DBSummary,
+            instructions=system_prompt,
+            tools=[run_query_tool.as_pydantic_ai_tool()],
+            model_settings=model_settings,
+        )
         result = await agent.run(truncate_user_prompt(user_prompt))
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output

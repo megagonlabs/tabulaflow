@@ -114,7 +114,9 @@ class EntityExtractor:
             "ExtractionResult",
             entities=(list[entity_model], ...),  # type: ignore[valid-type]
         )
-        self._agent = make_agent(llm, output_type=self._result_model, model_settings=model_settings, instructions=_EXTRACTION_SYSTEM_PROMPT)
+        self._agent = make_agent(
+            llm, output_type=self._result_model, model_settings=model_settings, instructions=_EXTRACTION_SYSTEM_PROMPT
+        )
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
     async def extract(self, text: str, *, instruction: str) -> list[dict[str, Any]]:
