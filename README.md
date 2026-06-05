@@ -243,6 +243,7 @@ May 28
 May 29
 - [x] add_canonical_name tool
 
+- [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
 - [ ] Offload truncated cell + read_message tool
 - [ ] Save extraction subagents trajectories
 - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
