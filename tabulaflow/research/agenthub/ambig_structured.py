@@ -28,6 +28,7 @@ from tabulaflow.research.agenthub.base import (
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.utils import int_to_letter
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 DISAMBIGUATION_PROMPT = """
@@ -149,7 +150,7 @@ class AmbigStructuredSQLAgent:
         tool_keys: list[str],
     ) -> Agent[None, Any]:
         return Agent[None, Any](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
             instructions=system_prompt,
@@ -196,7 +197,7 @@ class AmbigStructuredSQLAgent:
                 if ap.type == "infinite":
                     prompt += f'\n- "{ap.phrase}" (parameter)'
 
-        result = await disamb_agent.run(prompt)
+        result = await disamb_agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
 
@@ -239,7 +240,7 @@ class AmbigStructuredSQLAgent:
                 for ap in infinite_aps
             ]
             prompt += f"\nYou can use any of the following parameters as placeholders in the query:\n{json.dumps(params, indent=2, default=str)}"
-        result = await sql_agent.run(prompt)
+        result = await sql_agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         query_id = "PQRY" + "".join(f"-{ap.id}.{idx}" for ap, idx in zip(finite_aps, finite_interpretation_indexes))
         pred_query: PredQuery = ctx.tools["run_query"].last_pred_query()  # type: ignore
         pred_query.id = query_id

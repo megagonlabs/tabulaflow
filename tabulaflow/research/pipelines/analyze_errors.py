@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 import jinja2
 from pydantic_ai import Agent
 import tabulaflow
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import NL2QRunResult, NL2QTaskOutput
 from tabulaflow.research.pipelines.utils import bool_flag
@@ -197,14 +198,14 @@ class LLMErrorClassifier:
 
         output_type = list[Literal[tuple(c.name for c in self.categories)]]  # type: ignore
         agent = Agent[None, output_type](  # type: ignore
-            model=self.llm,
+            model=make_model(self.llm),
             output_type=output_type,
             model_settings={
                 "openai_reasoning_effort": "medium",
                 "openai_reasoning_summary": "detailed",
             },
         )
-        result = await agent.run(prompt)
+        result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return list(set(result.output))
 

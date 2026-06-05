@@ -10,6 +10,7 @@ from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.modulehub.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import Usage
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 SUMMARIZATION_PROMPT = """
 You are an AI database expert tasked with producing a summary for a database.
@@ -107,12 +108,12 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
             model_settings["openai_reasoning_summary"] = "detailed"
 
         agent = Agent[None, DBSummary](  # type: ignore
-            model=self.llm,
+            model=make_model(self.llm),
             output_type=DBSummary,
             instructions=system_prompt,
             tools=[run_query_tool.as_pydantic_ai_tool()],
             model_settings=model_settings,
         )
-        result = await agent.run(truncate_user_prompt(user_prompt))
+        result = await agent.run(truncate_user_prompt(user_prompt), usage_limits=DEFAULT_USAGE_LIMITS)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output  # type: ignore

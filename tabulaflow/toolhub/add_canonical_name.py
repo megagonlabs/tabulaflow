@@ -20,6 +20,7 @@ from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import Trajectory
 from tabulaflow.toolhub.utils import qualified_table, sa_table
 from tabulaflow.toolhub.run_query import RunQueryTool
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -477,12 +478,12 @@ class AddCanonicalNameTool:
                 value=value,
             )
             subagent = Agent(
-                model=self.subagent_llm,
+                model=make_model(self.subagent_llm),
                 tools=[run_query_pa_tool],
                 output_type=_ResolvePeersOutput,
                 model_settings=self.model_settings,
             )
-            result = await subagent.run(prompt)
+            result = await subagent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
             self._write_trajectory(traj_dir, f"resolve-{value_to_idx[value]:04d}", result)
             return result.output
 
@@ -663,7 +664,7 @@ class AddCanonicalNameTool:
             seen_list=_relevant_seen(collided, seen, _DISAMBIGUATE_SEEN_SHOWN),
         )
         subagent: Agent[None, _DisambiguationOutput] = Agent(
-            model=self.subagent_llm,
+            model=make_model(self.subagent_llm),
             tools=[run_query_pa_tool],
             output_type=_DisambiguationOutput,
             model_settings=self.model_settings,
@@ -697,7 +698,7 @@ class AddCanonicalNameTool:
             return output
 
         try:
-            result = await subagent.run(prompt)
+            result = await subagent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         except UnexpectedModelBehavior:
             logger.exception(
                 "disambiguation exhausted %d retries for collided canonical %r",
@@ -731,12 +732,12 @@ class AddCanonicalNameTool:
             logger.info("Picker cluster has %d members; sampling %d longest", len(members), _PICKER_MAX_MEMBERS)
         prompt = _CANONICALIZE_PROMPT.render(instruction=instruction, values=members[:_PICKER_MAX_MEMBERS])
         subagent = Agent(
-            model=self.subagent_llm,
+            model=make_model(self.subagent_llm),
             output_type=_CanonicalOutput,
             model_settings=self.model_settings,
         )
         try:
-            result = await subagent.run(prompt)
+            result = await subagent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
             self._write_trajectory(traj_dir, f"picker-{cluster_idx:04d}", result)
             return result.output.canonical
         except Exception:

@@ -19,6 +19,7 @@ from tabulaflow.research.agenthub.utils import (
     instrument,
     BasicAgentConfig,
 )
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 logger = logging.getLogger(__name__)
@@ -118,14 +119,14 @@ class MiniAgent:
         }
 
         agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(format_question(task))
+        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")

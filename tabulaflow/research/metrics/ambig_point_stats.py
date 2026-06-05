@@ -15,6 +15,7 @@ from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.research.metrics.base import metric_registry
 from tabulaflow.research.types import PredAmbiguityPoint, GoldAmbiguityPoint
 from tabulaflow.core.utils import int_to_letter
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 AmbigTaskOutput = SimpleAmbigNL2QTaskOutput | FlatAmbigNL2QTaskOutput | StructuredAmbigNL2QTaskOutput
 
@@ -215,14 +216,14 @@ class AmbigPointStats:
         gold_aps = [self._to_simple_dict(ap, "GOLD") for ap in task.gold_ambiguity_points]
 
         agent = Agent[None, LLMOutput](
-            model=self.llm,
+            model=make_model(self.llm),
             output_type=LLMOutput,
             instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
         )
         prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
             question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
         )
-        result = await agent.run(prompt)
+        result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         matches = self._clean_matches(result.output.matches)
         res = []
         for gold_ap_id, pred_ap_id in matches:
@@ -267,14 +268,14 @@ class AmbigPointStats:
             ]
 
             agent = Agent[None, LLMOutput](
-                model=self.llm,
+                model=make_model(self.llm),
                 output_type=LLMOutput,
                 instructions=AMBIG_POINT_MATCHING_SYSTEM_PROMPT,
             )
             prompt = jinja2.Template(AMBIG_POINT_MATCHING_USER_PROMPT).render(
                 question=task.question, gold_aps=json.dumps(gold_aps, indent=2), pred_aps=json.dumps(pred_aps, indent=2)
             )
-            result = await agent.run(prompt)
+            result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
             matches = self._clean_matches(result.output.matches)
 
         p, r, f1 = self._p_r_f1(len(matches), len(pred_aps), len(gold_aps))
@@ -349,7 +350,7 @@ class AmbigPointStats:
                 ]
 
                 agent = Agent[None, LLMOutput](
-                    model=self.llm,
+                    model=make_model(self.llm),
                     output_type=LLMOutput,
                     instructions=INTERPRETATION_MATCHING_SYSTEM_PROMPT,
                 )
@@ -359,7 +360,7 @@ class AmbigPointStats:
                     gold_interpretations=json.dumps(gold_interpretations, indent=2),
                     pred_interpretations=json.dumps(pred_interpretations, indent=2),
                 )
-                result = await agent.run(prompt)
+                result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
                 assert len(pred_ap.interpretations) > 0
                 assert len(gold_ap.interpretations) > 0
                 p, r, f1 = self._p_r_f1(  # type: ignore

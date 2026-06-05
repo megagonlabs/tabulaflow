@@ -17,6 +17,7 @@ from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Trajectory, Usage
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 from tabulaflow.toolhub import BaseTool, GetColumnJsonSchemaTool, GetTableSchemaTool, RunQueryTool
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 logger = logging.getLogger(__name__)
@@ -267,7 +268,7 @@ class AgentEnsembler:
             )
 
         agent = Agent[None, int | None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[tool.as_pydantic_ai_tool() for tool in tools.values()],
             output_type=ToolOutput(finish, name="finish"),
             instructions=system_prompt,
@@ -275,7 +276,7 @@ class AgentEnsembler:
             model_settings=self.config.to_model_settings(),
         )
 
-        result = await agent.run(user_prompt)
+        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-ENSEMBLE")
 

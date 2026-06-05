@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -34,9 +35,9 @@ class TextSummarizer:
         if self.model_settings:
             settings.update(self.model_settings)
         agent = Agent[None, str](  # type: ignore[call-overload]
-            model=self.llm,
+            model=make_model(self.llm),
             instructions=_SYSTEM_PROMPT.format(max_words=self.max_words),
             model_settings=settings,
         )
-        result = await agent.run(text)
+        result = await agent.run(text, usage_limits=DEFAULT_USAGE_LIMITS)
         return result.output  # type: ignore[no-any-return]

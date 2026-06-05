@@ -8,6 +8,7 @@ from pydantic_ai import Agent, Embedder
 from tabulaflow.modulehub.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import NL2QDataset, NL2QTask
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS, embedding_throttle
 
 
 # Revised based on https://github.com/antgroup/Agentar-Scale-SQL/blob/main/ScaleSQL/prompts/nlu.yaml
@@ -92,11 +93,11 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
         system_prompt = jinja2.Template(PREPROCESSING_SYSTEM_PROMPT).render()
         user_prompt = jinja2.Template(PREPROCESSING_USER_PROMPT).render(question=question)
         agent = Agent[None, str](
-            self.preprocessing_llm,
+            make_model(self.preprocessing_llm),
             output_type=str,
             instructions=system_prompt,
         )
-        result = await agent.run(user_prompt)
+        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.preprocessing_llm)
         return result.output
 
@@ -106,7 +107,8 @@ class QuestionEmbedder(CachedPreprocessorMixin[tuple[npt.NDArray[Any], QuestionE
             skeleton = await self._get_skeleton_async(question)
         else:
             skeleton = question
-        result = await self.embedder.embed_query(skeleton)
+        async with embedding_throttle():
+            result = await self.embedder.embed_query(skeleton)
         self._usage += Usage.from_pydantic_ai_usage(result.usage, self.embedding_llm)
         return np.array(result.embeddings[0]), QuestionSkeleton(qid=task.qid, question=question, skeleton=skeleton)
 

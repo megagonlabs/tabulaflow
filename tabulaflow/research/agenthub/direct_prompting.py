@@ -17,6 +17,7 @@ from tabulaflow.research.agenthub.utils import (
     BasicAgentConfig,
 )
 from tabulaflow.core.utils import extract_code
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 logger = logging.getLogger(__name__)
@@ -103,11 +104,11 @@ class DirectPrompting:
         )
 
         agent = Agent[None, str](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             instructions=system_prompt,
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(format_question(task))
+        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-QUERY")
         pred_query = PredQuery(query=extract_code(result.output))

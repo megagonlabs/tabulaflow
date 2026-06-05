@@ -21,6 +21,7 @@ from tabulaflow.toolhub.message_store import (
     make_snippet,
 )
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -401,13 +402,12 @@ class ChatAgent:
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
-        import tabulaflow.core.patches  # noqa: F401
         from pydantic_ai import Agent
 
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
         self._pydantic_ai_agent = Agent(
-            model=self.model,  # type: ignore[call-overload]
+            model=make_model(self.model),  # type: ignore[call-overload]
             tools=[
                 self._tools.run_query.as_pydantic_ai_tool(),
                 self._tools.get_db_document.as_pydantic_ai_tool(),
@@ -470,6 +470,7 @@ class ChatAgent:
             async with self._pydantic_ai_agent.iter(
                 question,
                 message_history=self._message_history or None,
+                usage_limits=DEFAULT_USAGE_LIMITS,
             ) as agent_run:
                 try:
                     async for node in agent_run:

@@ -17,6 +17,7 @@ from tabulaflow.research.tools import (
 from tabulaflow.research.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
 from tabulaflow.core.schema_compressor import SchemaCompressor
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 SYSTEM_PROMPT = """
@@ -94,7 +95,7 @@ class AmbigSimpleSQLAgent:
         tools["finish"] = FinishTool()
 
         agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=jinja2.Template(SYSTEM_PROMPT).render(
@@ -106,7 +107,7 @@ class AmbigSimpleSQLAgent:
             model_settings=self.config.to_model_settings(),
         )
 
-        result = await agent.run(task.question)
+        result = await agent.run(task.question, usage_limits=DEFAULT_USAGE_LIMITS)
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages())
 

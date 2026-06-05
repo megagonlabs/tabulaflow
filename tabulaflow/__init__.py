@@ -51,7 +51,7 @@ def configure(**kwargs: object) -> None:
             instrument_enabled=False,
         )
     """
-    import tabulaflow.core.patches
+    from tabulaflow.core import llm
     from tabulaflow.core.config import tabulaflow_config
 
     tabulaflow_config.configure(**kwargs)
@@ -61,8 +61,13 @@ def configure(**kwargs: object) -> None:
 
     logger.debug("TABULAFLOW Configuration: %s", tabulaflow_config)
 
+    # Process-global LLM setup (was patches.setup(); throttling/tool-call parsing
+    # now apply per-agent via core.llm.make_model, not by monkey-patching).
+    llm.register_custom_model_prices()
+    if tabulaflow_config.disable_bigquery_tracing:
+        llm.disable_bigquery_tracing()
+
     if tabulaflow_config.instrument_enabled:
-        tabulaflow.core.patches.setup()
 
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):
             from phoenix.otel import register

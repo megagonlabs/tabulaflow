@@ -21,6 +21,7 @@ from tabulaflow.research.agenthub.base import (
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.utils import int_to_letter
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 DISAMBIGUATION_PROMPT = """
@@ -127,7 +128,7 @@ class AmbigFlatSQLAgent:
         tool_keys: list[str],
     ) -> Agent[None, Any]:
         return Agent[None, Any](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[ctx.tools[t].as_pydantic_ai_tool() for t in tool_keys],
             output_type=output_type,
             instructions=system_prompt,
@@ -147,7 +148,7 @@ class AmbigFlatSQLAgent:
             output_type=LLMOutput,
             tool_keys=["get_schema"],
         )
-        result = await disamb_interp_agent.run(f"List all interpretations: {ctx.task.question}")
+        result = await disamb_interp_agent.run(f"List all interpretations: {ctx.task.question}", usage_limits=DEFAULT_USAGE_LIMITS)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-INTERP"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return result.output.interpretations
@@ -172,7 +173,7 @@ class AmbigFlatSQLAgent:
             output_type=LLMOutput,
             tool_keys=["get_schema"],
         )
-        result = await disamb_param_agent.run(f"List all parameter ambiguity points: {ctx.task.question}")
+        result = await disamb_param_agent.run(f"List all parameter ambiguity points: {ctx.task.question}", usage_limits=DEFAULT_USAGE_LIMITS)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DISAMB-PARAM"))
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         return [
@@ -210,7 +211,7 @@ class AmbigFlatSQLAgent:
             default=str,
         )
         params_str = f"You can use any of the following parameters as placeholders in the query:\n{params_str}"
-        result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params_str}")
+        result = await sql_agent.run(f"{ctx.task.question} {interpretation}\n{params_str}", usage_limits=DEFAULT_USAGE_LIMITS)
         pred_query: PredQuery = ctx.tools["run_query"].last_pred_query()  # type: ignore
         pred_query.id = query_id
         ctx.trajectories.append(

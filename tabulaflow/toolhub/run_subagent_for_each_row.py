@@ -29,6 +29,7 @@ from tabulaflow.toolhub.message_store import (
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES, WebBrowserTool
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 _COL_EXCEPTION = "_subagent_exception"
@@ -458,7 +459,7 @@ class RunSubagentForEachRowTool:
                 capabilities.append(MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES))
 
             subagent = Agent(
-                model=self.subagent_llm,
+                model=make_model(self.subagent_llm),
                 tools=tools,
                 capabilities=capabilities or None,
                 output_type=[
@@ -481,7 +482,7 @@ class RunSubagentForEachRowTool:
                     message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
                     if len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)
-                result = await subagent.run(prompt)
+                result = await subagent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
                 traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
                 _write_trajectory_file(row_idx, traj)
                 if isinstance(result.output, AbortTask):

@@ -18,6 +18,7 @@ from typing import Any
 from pydantic import create_model
 from pydantic_ai import Agent
 from pydantic_ai.settings import ModelSettings
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 # Chunk geometry defaults: keep one chunk well within a small model's context while
 # overlapping enough that an entity straddling a boundary is seen whole by at least
@@ -115,7 +116,7 @@ class EntityExtractor:
             entities=(list[entity_model], ...),  # type: ignore[valid-type]
         )
         self._agent = Agent(
-            model=llm,
+            model=make_model(llm),
             output_type=self._result_model,
             model_settings=model_settings,
             instructions=_EXTRACTION_SYSTEM_PROMPT,
@@ -143,6 +144,6 @@ class EntityExtractor:
 
     async def _extract_chunk(self, prompt: str) -> list[dict[str, Any]]:
         async with self._semaphore:
-            result = await self._agent.run(prompt)
+            result = await self._agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         output: Any = result.output  # dynamic create_model; fields not statically known
         return [e.model_dump() for e in output.entities]

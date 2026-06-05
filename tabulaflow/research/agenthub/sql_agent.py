@@ -28,6 +28,7 @@ from tabulaflow.research.agenthub.utils import (
 from tabulaflow.core.utils import extract_code, extract_all_source_columns
 from tabulaflow.core.er_diagram import ERDiagram
 from tabulaflow.core.formatters.er_diagram import ERDiagramMermaidFormatter
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 
 logger = logging.getLogger(__name__)
@@ -198,14 +199,14 @@ class SchemaLinker:
         )
 
         agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(format_question(task))
+        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
         pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-SCHEMA-LINK-SQL")
@@ -226,7 +227,7 @@ class SchemaLinker:
 
         async def process_batch_async(batch_idx: int, batch: list[ColumnRef]) -> list[ColumnWithAlternatives]:
             agent = Agent[None, LLMOutput](  # type: ignore
-                model=self.config.llm,
+                model=make_model(self.config.llm),
                 output_type=LLMOutput,
                 model_settings=self.config.to_model_settings(),
             )
@@ -242,7 +243,7 @@ class SchemaLinker:
                 ),
                 document=task.document,
             )
-            result = await agent.run(prompt)
+            result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
             ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
             ctx.trajectories.append(
                 Trajectory.from_pydantic_ai_messages(result.all_messages(), id=f"TRJY-EXPAND-SCHEMA-{batch_idx}")
@@ -346,7 +347,7 @@ class Postprocessor:
         #     return pred_query
 
         agent = Agent[None, str](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             model_settings=self.config.to_model_settings(),
         )
         prompt = jinja2.Template(POSTPROCESS_PROMPT).render(
@@ -356,7 +357,7 @@ class Postprocessor:
             examples=ctx.few_shot_examples,
             raw_pred_query_with_exec_results=pred_query.to_markdown(),
         )
-        result = await agent.run(prompt)
+        result = await agent.run(prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         revised_pred_query = extract_code(result.output)
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         ctx.trajectories.append(Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-POSTPROCESS"))
@@ -513,14 +514,14 @@ class SQLAgent:
         )
 
         agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[tool.as_pydantic_ai_tool() for key, tool in tools.items() if key != "finish"],
             output_type=tools["finish"].as_pydantic_ai_tool(),
             instructions=system_prompt,
             history_processors=[get_max_steps_processor(self.config.max_steps)],
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(format_question(task))
+        result = await agent.run(format_question(task), usage_limits=DEFAULT_USAGE_LIMITS)
         raw_pred_query: PredQuery = tools["run_query"].last_pred_query()  # type: ignore
         ctx.usage += Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-GEN-SQL")

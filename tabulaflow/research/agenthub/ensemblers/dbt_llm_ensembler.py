@@ -18,6 +18,7 @@ from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
 from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -190,12 +191,12 @@ class DbtLLMEnsembler:
             return number - 1
 
         agent = Agent[None, int](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             instructions=system_prompt,
             output_type=ToolOutput(answer, name="answer"),
             model_settings=self.config.to_model_settings(),
         )
-        result = await agent.run(user_prompt)
+        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-ENSEMBLE")
 

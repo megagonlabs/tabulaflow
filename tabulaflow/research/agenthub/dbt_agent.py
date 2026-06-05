@@ -20,6 +20,7 @@ from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 from tabulaflow.toolhub import GetTableSchemaTool, RunQueryTool
 from tabulaflow.research.tools import ExecuteBashTool, FileEditorTool, RunDbtTool
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 logger = logging.getLogger(__name__)
 
@@ -177,7 +178,7 @@ class DbtAgent:
         )
 
         agent = Agent[None, None](  # type: ignore
-            model=self.config.llm,
+            model=make_model(self.config.llm),
             tools=[
                 file_editor.as_pydantic_ai_tool(),
                 run_query.as_pydantic_ai_tool(),
@@ -193,7 +194,7 @@ class DbtAgent:
 
         result = await agent.run(
             f"Complete the dbt project by writing the missing SQL model files and running `dbt run` successfully:\n{task.question}"
-        )
+        , usage_limits=DEFAULT_USAGE_LIMITS)
         usage = Usage.from_pydantic_ai_usage(result.usage(), self.config.llm)
         trajectory = Trajectory.from_pydantic_ai_messages(result.all_messages(), id="TRJY-DBT-AGENT")
 

@@ -8,6 +8,7 @@ from tabulaflow.core.types import SQLSchema, Usage, ForeignKeySchema, TableRef
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
+from tabulaflow.core.llm import make_model, DEFAULT_USAGE_LIMITS
 
 FK_PREDICTOR_SYSTEM_PROMPT = """
 <goal>
@@ -64,13 +65,13 @@ class ForeignKeyPredictor:
         )
         run_query_tool = RunQueryTool(db_connector)
         agent = Agent[None, LLMOutput](
-            model=self.llm,
+            model=make_model(self.llm),
             output_type=LLMOutput,
             instructions=system_prompt,
             tools=[run_query_tool.as_pydantic_ai_tool()],
         )
         user_prompt = format_user_prompt(table_ref)
-        result = await agent.run(user_prompt)
+        result = await agent.run(user_prompt, usage_limits=DEFAULT_USAGE_LIMITS)
         self._usage += Usage.from_pydantic_ai_usage(result.usage(), self.llm)
         return result.output.missing_foreign_keys
 
