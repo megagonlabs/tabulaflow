@@ -148,3 +148,4 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - Prioritize long term cleanliness and maintainability.
 - Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
 - Use Google style for all Python docstrings.
+- This is a research library, do not over-abstract.
