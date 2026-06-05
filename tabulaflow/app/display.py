@@ -18,7 +18,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, KEY_HINT
 
 TABULAFLOW_THEME = Theme(
     {
@@ -244,7 +244,7 @@ def build_chart(
 
     try:
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
-        chart_str = render_plotext(mark, x_field, y_field, title, df, width, height)
+        chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)
         return Text.from_ansi(chart_str)
     except Exception as e:
         return Text.from_markup(f"[red]Chart error:[/red] {e}")

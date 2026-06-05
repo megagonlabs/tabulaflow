@@ -48,7 +48,7 @@ tabulaflow/
 │   ├── types.py     #   core data structures (schema, queries, ExecResult, Usage, Trajectory)
 │   ├── dataframe.py #   Arrow/DataFrame (de)serialization
 │   ├── er_diagram.py schema_compressor.py   # ERD data types + deterministic schema compression
-│   ├── config.py registry.py utils.py theme.py
+│   ├── config.py registry.py utils.py
 │   └── db_connector/  formatters/
 ├── toolhub/         # agent tools — depends on core
 │                    #   BaseTool, run_query, registry_* (wrap the plain tools),

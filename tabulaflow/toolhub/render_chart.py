@@ -72,14 +72,13 @@ def render_plotext(
     df: pd.DataFrame,
     console_width: int | None = None,
     console_height: int | None = None,
+    color: tuple[int, int, int] | None = None,
 ) -> str:
     """Render a plotext chart and return the built string.
 
     Raises on failure so the caller can report the error.
     """
     import plotext as plt
-
-    from tabulaflow.core.theme import ACCENT_RGB
 
     effective_height = console_height or 18
     # In preview mode (no explicit height), cap width by an aspect ratio of
@@ -106,7 +105,8 @@ def render_plotext(
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()
 
-    color = ACCENT_RGB
+    # Caller (e.g. the app) may pass a brand color; otherwise plotext's default.
+    color_kw = {"color": color} if color is not None else {}
 
     if mark == "bar":
         x_labels = [str(v) for v in x_data]
@@ -114,12 +114,12 @@ def render_plotext(
         # Reserve ~4 chars for y-axis; divide remaining width among bars.
         max_label_len = max(1, (effective_width - 4) // max(len(x_labels), 1) - 1)
         tick_labels = [s[:max_label_len] if len(s) > max_label_len else s for s in x_labels]
-        plt.bar(x_labels, y_data, color=color)
+        plt.bar(x_labels, y_data, **color_kw)
         plt.xticks(list(range(1, len(x_labels) + 1)), tick_labels)
     elif mark == "line":
-        plt.plot(x_data, y_data, color=color)
+        plt.plot(x_data, y_data, **color_kw)
     elif mark == "scatter":
-        plt.scatter(x_data, y_data, color=color)
+        plt.scatter(x_data, y_data, **color_kw)
 
     if title:
         plt.title(title)
