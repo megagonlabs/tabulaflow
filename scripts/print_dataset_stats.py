@@ -4,7 +4,7 @@ import time
 import asyncio
 from tabulate import tabulate
 import tabulaflow
-from tabulaflow.research.datahub import dataset_registry
+from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.modulehub.schema_preprocessor import SchemaPreprocessor
 from tabulaflow.research.types import NL2QDataset

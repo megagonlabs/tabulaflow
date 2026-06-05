@@ -472,7 +472,7 @@ class SQLAgent:
 
         ##### Remove #####
         # if hasattr(task, "pred_query") and task.pred_query is not None:
-        #     from tabulaflow.research.datahub.bird_sql import BIRD_DATASET_INSTRUCTIONS
+        #     from tabulaflow.research.benchmarks.bird_sql import BIRD_DATASET_INSTRUCTIONS
 
         #     task.dataset_instructions = BIRD_DATASET_INSTRUCTIONS
         #     postprocessed_pred_query = await self.postprocessor.postprocess_async(

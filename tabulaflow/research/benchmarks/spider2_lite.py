@@ -18,7 +18,7 @@ from tabulaflow.core.types import ExecResult
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
-from tabulaflow.research.datahub.base import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 
 logger = logging.getLogger(__name__)
 

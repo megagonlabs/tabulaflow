@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from tabulaflow.research.agenthub.base import agent_registry as agent_registry
-    from tabulaflow.research.datahub.base import dataset_registry as dataset_registry
+    from tabulaflow.research.benchmarks.base import dataset_registry as dataset_registry
     from tabulaflow.core.formatters.base import formatter_registry as formatter_registry
     from tabulaflow.research.metrics.base import metric_registry as metric_registry
     from tabulaflow.modulehub.base import preprocessor_registry as preprocessor_registry
@@ -15,7 +15,7 @@ def __getattr__(name: str) -> object:
     """Lazy-load registries on first access to avoid heavy imports at startup."""
     _lazy = {
         "agent_registry": ("tabulaflow.research.agenthub.base", "agent_registry"),
-        "dataset_registry": ("tabulaflow.research.datahub.base", "dataset_registry"),
+        "dataset_registry": ("tabulaflow.research.benchmarks.base", "dataset_registry"),
         "metric_registry": ("tabulaflow.research.metrics.base", "metric_registry"),
         "formatter_registry": ("tabulaflow.core.formatters.base", "formatter_registry"),
         "preprocessor_registry": ("tabulaflow.modulehub.base", "preprocessor_registry"),

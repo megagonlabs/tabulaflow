@@ -39,7 +39,7 @@ uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ## Project Structure
 
 The package is organized into dependency layers, enforced by `import-linter`
-(`make lint-arch`): **`core < toolhub < modulehub < {chat | research} < app`**.
+(`make lint-arch`): **`core < datasources < toolhub < modulehub < {chat | research} < app`**.
 `chat` and `research` are siblings and must not import each other.
 
 ```
@@ -48,8 +48,9 @@ tabulaflow/
 │   ├── types.py     #   core data structures (schema, queries, ExecResult, Usage, Trajectory)
 │   ├── dataframe.py #   Arrow/DataFrame (de)serialization
 │   ├── er_diagram.py schema_compressor.py   # ERD data types + deterministic schema compression
-│   ├── config.py registry.py utils.py
+│   ├── config.py registry.py utils.py llm.py
 │   └── db_connector/  formatters/
+├── datasources/     # acquire external data → a connector (files, HuggingFace, …) — depends on core
 ├── toolhub/         # agent tools — depends on core
 │                    #   BaseTool, run_query, registry_* (wrap the plain tools),
 │                    #   web_browser, render_chart, run_subagent, message_store, ...
@@ -58,9 +59,9 @@ tabulaflow/
 │                    #   text_summarizer, schema_preprocessor + the caching base
 ├── chat/            # the interactive tabulaflow agent (ChatAgent, ProgressSink, ChatResult)
 ├── research/        # NL2SQL research — sibling of chat, never imports it
-│   ├── agenthub/  datahub/  metrics/  pipelines/
+│   ├── agenthub/  benchmarks/  metrics/  pipelines/   # benchmarks = eval datasets (tasks+gold+metrics)
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
-│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset, dataset-level analysis
+│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset/GoldQuery, dataset-level analysis
 └── app/             # end-user TUI — tui, dump (HTML export), widgets, main, assets
 tests/               # pytest tests
 scripts/             # utility scripts

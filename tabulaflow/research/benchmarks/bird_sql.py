@@ -7,7 +7,7 @@ from datasets import load_dataset
 from tabulaflow.research.types import GoldQuery
 from tabulaflow.research.types import SimpleNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.research.datahub.base import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 
 
 BIRD_DATASET_INSTRUCTIONS = """

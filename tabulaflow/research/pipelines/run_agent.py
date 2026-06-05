@@ -16,7 +16,7 @@ from tabulaflow.core.utils import pprint_dict, tqdm_gather_with_exceptions
 from tabulaflow.research.pipelines.utils import bool_flag
 from tabulaflow.research.agenthub import NL2QAgent, BaseAgentConfig
 from tabulaflow.research.agenthub.user_simulator import UserSimulator
-from tabulaflow.research.datahub.spider2_dbt import prepare_working_env_async
+from tabulaflow.research.benchmarks.spider2_dbt import prepare_working_env_async
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import (
     NL2QDataset,

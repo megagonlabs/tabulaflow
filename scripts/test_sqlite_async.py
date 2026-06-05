@@ -3,7 +3,7 @@ import time
 import asyncio
 from typing import Any
 import tabulaflow
-from tabulaflow.research.datahub import dataset_registry
+from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 
 query = """

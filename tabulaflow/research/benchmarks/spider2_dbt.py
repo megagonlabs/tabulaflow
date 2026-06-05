@@ -18,7 +18,7 @@ from typing import Any, ClassVar
 
 import duckdb
 
-from tabulaflow.research.datahub.base import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 from tabulaflow.core.db_connector import SQLConnector, BaseSQLDBConnector
 from tabulaflow.research.types import DbtTask, DbtGoldTable, NL2QDataset
 

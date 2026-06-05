@@ -6,7 +6,7 @@ import copy
 from typing import ClassVar
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.research.datahub.base import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 
 ARCS_DATASET_INSTRUCTIONS = """
 - Follow these requirements when writing SQL. When disambiguating, do not consider these as ambiguities:

@@ -3,7 +3,7 @@ import argparse
 import time
 from tqdm.asyncio import tqdm_asyncio
 import tabulaflow
-from tabulaflow.research.datahub import dataset_registry
+from tabulaflow.research.benchmarks import dataset_registry
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
 
 

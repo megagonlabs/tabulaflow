@@ -8,7 +8,7 @@ import pandas as pd
 
 from tabulaflow.research.types import AmbigNL2QTask, NL2QDataset
 from tabulaflow.core.db_connector import SQLConnector
-from tabulaflow.research.datahub.base import dataset_registry
+from tabulaflow.research.benchmarks.base import dataset_registry
 
 
 AMBROSIA_TAXONOMY = """
