@@ -456,10 +456,13 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
         )
 
     try:
+        from tabulaflow.modulehub.text_summarizer import TextSummarizer
+
         connector = await load_hf_dataset(
             url,
             db_name=alias,
             read_only=True,
+            summarize=TextSummarizer().summarize,
         )
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))

@@ -1,6 +1,6 @@
 """Get-db-document tool backed by a DBRegistry."""
 
-from typing import ClassVar
+from typing import Any, Callable, ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
@@ -8,8 +8,7 @@ from pydantic_ai import Tool
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
-from tabulaflow.core.preprocessors.db_summarizer import DBSummarizer
+from tabulaflow.core.schema_compressor import SchemaCompressor
 
 _MAX_CHARS = 50000
 
@@ -36,6 +35,7 @@ class RegistryGetDBDocumentTool:
         self,
         registry: DBRegistry,
         *,
+        db_summarizer_cls: Callable[..., Any],
         db_summarizer_llm: str = "openai-responses:gpt-5.4",
         summary_max_words: int = 2000,
         min_items_for_summary: int = 10,
@@ -57,6 +57,7 @@ class RegistryGetDBDocumentTool:
                 summarizer agents (e.g. ``openai_service_tier``).
         """
         self.registry = registry
+        self._db_summarizer_cls = db_summarizer_cls
         self.db_summarizer_llm = db_summarizer_llm
         self.model_settings = model_settings
         self.summary_max_words = summary_max_words
@@ -97,7 +98,7 @@ class RegistryGetDBDocumentTool:
         )
 
         if use_summarizer:
-            db_summarizer = DBSummarizer(
+            db_summarizer = self._db_summarizer_cls(
                 llm=self.db_summarizer_llm, max_summary_words=self.summary_max_words, model_settings=self.model_settings
             )
             db_summary = await db_summarizer.preprocess_async(connector)

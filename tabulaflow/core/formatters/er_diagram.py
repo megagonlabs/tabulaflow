@@ -1,10 +1,6 @@
 from typing import ClassVar
 from dataclasses import dataclass
-from tabulaflow.core.preprocessors.er_diagram import (
-    ERDiagram,
-    ERDConceptualEntity,
-    ERDRelationship,
-)
+from tabulaflow.core.er_diagram import ERDiagram, ERDConceptualEntity, ERDRelationship
 
 
 @dataclass

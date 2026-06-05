@@ -4,9 +4,9 @@ from pydantic_ai import Tool
 from pydantic import BaseModel
 from tabulaflow.core.db_connector.base import BaseSQLDBConnector
 from tabulaflow.core.formatters import BaseSQLSchemaFormatter
-from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import SQLColumnSchema, SQLSchema, SQLTableSchema, TableRef
-from tabulaflow.core.tools.utils import equals_ci
+from tabulaflow.toolhub.utils import equals_ci
 
 
 class GetTableSchemaToolMetrics(BaseModel):

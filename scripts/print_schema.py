@@ -5,7 +5,7 @@ import tabulaflow
 from tabulaflow.research.datahub import dataset_registry
 from tabulaflow.core.formatters import formatter_registry
 from tabulaflow.core.types import SQLSchema
-from tabulaflow.core.preprocessors.components import SchemaCompressor
+from tabulaflow.core.schema_compressor import SchemaCompressor
 
 
 async def main() -> None:

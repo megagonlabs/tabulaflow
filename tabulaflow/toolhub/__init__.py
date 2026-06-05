@@ -1,4 +1,4 @@
-from tabulaflow.core.tools.base import BaseTool
+from tabulaflow.toolhub.base import BaseTool
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
@@ -14,7 +14,7 @@ from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
 from tabulaflow.toolhub.registry_run_subagent_for_each_row import RegistryRunSubagentForEachRowTool
 from tabulaflow.toolhub.registry_transfer_record import RegistryTransferRecordTool
-from tabulaflow.core.tools.run_query import RunQueryTool
+from tabulaflow.toolhub.run_query import RunQueryTool
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 from tabulaflow.toolhub.web_browser import (
     WebBrowserManager,

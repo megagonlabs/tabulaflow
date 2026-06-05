@@ -16,5 +16,6 @@ type = layers
 layers =
     tabulaflow.app
     tabulaflow.chat | tabulaflow.research
+    tabulaflow.modulehub
     tabulaflow.toolhub
     tabulaflow.core

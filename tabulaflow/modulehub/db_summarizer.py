@@ -7,8 +7,8 @@ from typing import Any, ClassVar, Literal
 from tabulaflow.core.db_connector import NL2QDBConnector
 from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.core.preprocessors.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
-from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
+from tabulaflow.modulehub.base import CachedPreprocessorMixin, CacheableResult, preprocessor_registry
+from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.types import Usage
 
 SUMMARIZATION_PROMPT = """
@@ -78,7 +78,7 @@ class DBSummarizer(CachedPreprocessorMixin[DBSummary]):
         return "_" + self.llm.replace(":", "--")
 
     async def _preprocess_impl_async(self, db_connector: NL2QDBConnector) -> DBSummary:
-        from tabulaflow.core.tools.run_query import RunQueryTool
+        from tabulaflow.toolhub.run_query import RunQueryTool
 
         system_prompt = jinja2.Template(SUMMARIZATION_PROMPT).render(max_summary_words=self.max_summary_words)
 

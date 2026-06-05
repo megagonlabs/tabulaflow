@@ -12,7 +12,7 @@ from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.utils import format_df
 from tabulaflow.research.pipelines.populate_exec_results import populate_task_async
-from tabulaflow.core.preprocessors import DBSummarizer
+from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import SimpleNL2QTask, SimpleNL2QTaskOutput
 

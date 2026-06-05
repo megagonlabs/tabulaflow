@@ -16,7 +16,7 @@ from tabulaflow.research.tools import (
 )
 from tabulaflow.research.agenthub.base import agent_registry, BaseUserSimulator, BaseAgentConfig
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, BasicAgentConfig
-from tabulaflow.core.preprocessors import SchemaCompressor
+from tabulaflow.core.schema_compressor import SchemaCompressor
 
 
 SYSTEM_PROMPT = """

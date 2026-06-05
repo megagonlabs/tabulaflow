@@ -1,10 +1,10 @@
 from typing import ClassVar, Literal
 from tabulaflow.core.types import SQLSchema, Usage
 from tabulaflow.core.db_connector import BaseSQLDBConnector
-from tabulaflow.core.preprocessors.components.column_profiler import ColumnProfiler
-from tabulaflow.core.preprocessors.components.schema_compressor import SchemaCompressor
-from tabulaflow.core.preprocessors.components.fk_predictor import ForeignKeyPredictor
-from tabulaflow.core.preprocessors.base import (
+from tabulaflow.modulehub.column_profiler import ColumnProfiler
+from tabulaflow.core.schema_compressor import SchemaCompressor
+from tabulaflow.modulehub.fk_predictor import ForeignKeyPredictor
+from tabulaflow.modulehub.base import (
     CachedPreprocessorMixin,
     preprocessor_registry,
     CacheableResult,

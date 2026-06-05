@@ -15,7 +15,7 @@ from tabulaflow.research.agenthub.base import BaseAgentConfig
 from tabulaflow.research.agenthub.utils import instrument
 from tabulaflow.core.db_connector import BaseSQLDBConnector
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
-from tabulaflow.core.preprocessors import DBSummarizer
+from tabulaflow.modulehub import DBSummarizer
 from tabulaflow.core.types import Usage, Trajectory
 from tabulaflow.research.types import DbtTask, DbtTaskOutput
 

@@ -26,7 +26,7 @@ from tabulaflow.research.agenthub.base import (
     BaseAgentConfig,
 )
 from tabulaflow.research.agenthub.utils import get_max_steps_processor, instrument, TaskRunContext, BasicAgentConfig
-from tabulaflow.core.preprocessors import SchemaCompressor
+from tabulaflow.core.schema_compressor import SchemaCompressor
 from tabulaflow.core.utils import int_to_letter
 
 

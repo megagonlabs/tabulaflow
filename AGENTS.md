@@ -39,24 +39,28 @@ uv run tabulaflow/research/pipelines/analyze_errors.py --debug
 ## Project Structure
 
 The package is organized into dependency layers, enforced by `import-linter`
-(`make lint-arch`): **`core < toolhub < {chat | research} < app`**. `chat` and
-`research` are siblings and must not import each other.
+(`make lint-arch`): **`core < toolhub < modulehub < {chat | research} < app`**.
+`chat` and `research` are siblings and must not import each other.
 
 ```
 tabulaflow/
-├── core/            # foundation — depends on nothing else in tabulaflow
+├── core/            # deterministic foundation — depends on nothing else in tabulaflow
 │   ├── types.py     #   core data structures (schema, queries, ExecResult, Usage, Trajectory)
 │   ├── dataframe.py #   Arrow/DataFrame (de)serialization
+│   ├── er_diagram.py schema_compressor.py   # ERD data types + deterministic schema compression
 │   ├── config.py registry.py utils.py theme.py
-│   ├── db_connector/  formatters/  preprocessors/   # connector/schema-level preprocessing
-│   └── tools/       #   BaseTool protocol + the atomic RunQueryTool primitive
-├── toolhub/         # agent tools (registry_* wrap the plain tools, web_browser,
-│                    #   render_chart, run_subagent, message_store, ...) — depends on core
+│   └── db_connector/  formatters/
+├── toolhub/         # agent tools — depends on core
+│                    #   BaseTool, run_query, registry_* (wrap the plain tools),
+│                    #   web_browser, render_chart, run_subagent, message_store, ...
+├── modulehub/       # LLM-powered schema-analysis modules — depends on toolhub, core
+│                    #   db_summarizer, er_diagram (synth), fk_predictor, column_profiler,
+│                    #   text_summarizer, schema_preprocessor + the caching base
 ├── chat/            # the interactive tabulaflow agent (ChatAgent, ProgressSink, ChatResult)
 ├── research/        # NL2SQL research — sibling of chat, never imports it
 │   ├── agenthub/  datahub/  metrics/  pipelines/
 │   ├── tools/       #   research-only tools (ask_user, run_dbt, finish, get_schema, ...)
-│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset, dataset-level preprocessing
+│   └── types.py utils.py question_embedder.py   # NL2QTask/NL2QDataset, dataset-level analysis
 └── app/             # end-user TUI — tui, dump (HTML export), widgets, main, assets
 tests/               # pytest tests
 scripts/             # utility scripts

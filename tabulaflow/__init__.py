@@ -8,7 +8,7 @@ if TYPE_CHECKING:
     from tabulaflow.research.datahub.base import dataset_registry as dataset_registry
     from tabulaflow.core.formatters.base import formatter_registry as formatter_registry
     from tabulaflow.research.metrics.base import metric_registry as metric_registry
-    from tabulaflow.core.preprocessors.base import preprocessor_registry as preprocessor_registry
+    from tabulaflow.modulehub.base import preprocessor_registry as preprocessor_registry
 
 
 def __getattr__(name: str) -> object:
@@ -18,7 +18,7 @@ def __getattr__(name: str) -> object:
         "dataset_registry": ("tabulaflow.research.datahub.base", "dataset_registry"),
         "metric_registry": ("tabulaflow.research.metrics.base", "metric_registry"),
         "formatter_registry": ("tabulaflow.core.formatters.base", "formatter_registry"),
-        "preprocessor_registry": ("tabulaflow.core.preprocessors.base", "preprocessor_registry"),
+        "preprocessor_registry": ("tabulaflow.modulehub.base", "preprocessor_registry"),
     }
     if name in _lazy:
         module_path, attr = _lazy[name]

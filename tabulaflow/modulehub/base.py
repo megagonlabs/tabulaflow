@@ -69,7 +69,7 @@ class CachedPreprocessorMixin(Generic[OutputT]):
         level preprocessors (whose input has no ``global_id``) override this to
         derive the id from the dataset identity instead.
         """
-        return input_data.global_id + self._get_cache_id_suffix()
+        return f"{input_data.global_id}{self._get_cache_id_suffix()}"
 
     def _is_ndarray_type(self, t: type) -> bool:
         """Check if a type is a numpy ndarray type."""

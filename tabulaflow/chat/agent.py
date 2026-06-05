@@ -288,6 +288,7 @@ class ChatAgent:
 
     def __post_init__(self) -> None:
         from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
+        from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
             QueryHistory,
@@ -308,7 +309,10 @@ class ChatAgent:
         self._tools = Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
-                self.registry, model_settings={"openai_service_tier": "priority"}, enable_refresh=True
+                self.registry,
+                db_summarizer_cls=DBSummarizer,
+                model_settings={"openai_service_tier": "priority"},
+                enable_refresh=True,
             ),
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),

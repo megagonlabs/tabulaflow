@@ -5,7 +5,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel
 from pydantic_ai import Agent, Embedder
-from tabulaflow.core.preprocessors.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
+from tabulaflow.modulehub.base import CachedPreprocessorMixin, preprocessor_registry, CacheableResult
 from tabulaflow.core.types import Usage
 from tabulaflow.research.types import NL2QDataset, NL2QTask
 

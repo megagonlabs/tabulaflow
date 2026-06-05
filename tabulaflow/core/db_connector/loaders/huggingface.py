@@ -17,6 +17,7 @@ import logging
 import os
 import re
 import sys
+from collections.abc import Awaitable, Callable
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -472,6 +473,7 @@ async def load_hf_dataset(
     *,
     db_name: str | None = None,
     read_only: bool = True,
+    summarize: Callable[[str], Awaitable[str]] | None = None,
 ) -> SQLConnector:
     """Load a HuggingFace dataset into a DuckDB-backed SQLConnector.
 
@@ -508,11 +510,8 @@ async def load_hf_dataset(
     if not os.path.exists(schema_cache_path):
         hf_description = await _fetch_hf_description(dataset_id)
         if hf_description:
-            if len(hf_description) > 5000:
-                from tabulaflow.core.preprocessors.components.text_summarizer import TextSummarizer
-
-                summarizer = TextSummarizer()
-                hf_description = await summarizer.summarize(hf_description)
+            if len(hf_description) > 5000 and summarize is not None:
+                hf_description = await summarize(hf_description)
             description = f"Source: HuggingFace dataset {dataset_url}\n\n<readme>\n{hf_description}\n</readme>"
 
     url = f"duckdb:///{db_path}"
