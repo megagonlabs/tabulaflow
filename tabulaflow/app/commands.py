@@ -28,8 +28,6 @@ _FILE_EXTENSIONS: dict[str, str] = {
     ".duckdb": "duckdb",
 }
 
-_DATA_FILE_EXTENSIONS = frozenset({".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson"})
-
 
 # ---------------------------------------------------------------------------
 # Command result
@@ -136,7 +134,9 @@ class SessionState:
 
 
 def _is_data_file(path: str) -> bool:
-    return os.path.splitext(path)[1].lower() in _DATA_FILE_EXTENSIONS
+    from tabulaflow.datasources.files import DATA_FILE_EXTENSIONS
+
+    return os.path.splitext(path)[1].lower() in DATA_FILE_EXTENSIONS
 
 
 def _is_db_file(path: str) -> bool:
