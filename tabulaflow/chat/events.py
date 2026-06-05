@@ -2,8 +2,10 @@
 
 ``ChatAgent.run()`` yields a stream of these events; any frontend (the TUI, a
 future webapp, a CLI logger, a test harness) consumes the stream and decides how
-to render each one. Events are **semantic** — they describe what the agent did,
-never how to display it — so the same stream drives every frontend.
+to render each one. Events are **semantic** — they carry the data of what the
+agent did, never pre-rendered presentation — so a frontend renders / words /
+truncates however it wants. Rendering is deliberately the frontend's job; this
+module ships no summarizers.
 
 They're pydantic models forming a **discriminated union** on ``kind`` (consistent
 with the rest of the data layer), which gives a frontend free, robust, two-way
@@ -17,7 +19,7 @@ The stream is terminated by exactly one of ``Finished`` / ``Errored``.
 
 from __future__ import annotations
 
-from typing import Annotated, Literal, TypeAlias, Union
+from typing import Annotated, Any, Literal, TypeAlias, Union
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -25,15 +27,65 @@ from tabulaflow.chat.result import ChatResult
 from tabulaflow.core.types import Usage
 
 
-class _ChatEvent(BaseModel):
-    """Base for all chat events (immutable)."""
+# ---------------------------------------------------------------------------
+# Tool outcomes — the structured ``ToolFinished`` payload.
+# Tool-AGNOSTIC (keyed by outcome shape, not by tool): the consumer matches the
+# outcome and renders / words it however it likes. Rendering is the frontend's
+# job — there is deliberately no default summarizer here.
+#
+# Which tool produces which outcome (every chat tool maps to exactly one):
+#   run_query                  -> RowsReturned (on success) | Failed (on error)
+#   get_table_schema           -> ColumnsReturned
+#   get_db_document            -> Completed
+#   get_column_json_schema     -> Completed
+#   render_chart               -> Completed
+#   transfer_record            -> Completed
+#   run_subagent_for_each_row  -> Completed
+# Any tool not listed (or with no count to report) -> Completed. Adding a tool
+# that returns rows/columns just reuses RowsReturned/ColumnsReturned — the union
+# is keyed by outcome shape, so it stays closed as tools grow.
+# ---------------------------------------------------------------------------
 
+
+class _Outcome(BaseModel):
     model_config = ConfigDict(frozen=True)
+
+
+class RowsReturned(_Outcome):
+    kind: Literal["rows"] = "rows"
+    count: int
+
+
+class ColumnsReturned(_Outcome):
+    kind: Literal["columns"] = "columns"
+    count: int
+
+
+class Failed(_Outcome):
+    kind: Literal["error"] = "error"
+    message: str | None = None
+
+
+class Completed(_Outcome):
+    """A tool finished with no count to report."""
+
+    kind: Literal["ok"] = "ok"
+
+
+ToolOutcome: TypeAlias = Annotated[
+    Union[RowsReturned, ColumnsReturned, Failed, Completed], Field(discriminator="kind")
+]
 
 
 # ---------------------------------------------------------------------------
 # Streaming events (emitted during a turn)
 # ---------------------------------------------------------------------------
+
+
+class _ChatEvent(BaseModel):
+    """Base for all chat events (immutable)."""
+
+    model_config = ConfigDict(frozen=True)
 
 
 class TextDelta(_ChatEvent):
@@ -44,21 +96,23 @@ class TextDelta(_ChatEvent):
 
 
 class ToolStarted(_ChatEvent):
-    """The agent invoked a tool."""
+    """The agent invoked a tool. ``args`` is the raw tool-call arguments (lossless,
+    so a frontend can show the full query / spec, or render its own compact line)."""
 
     kind: Literal["tool_started"] = "tool_started"
     tool_call_id: str
     name: str
-    args_summary: str
+    args: dict[str, Any]
 
 
 class ToolFinished(_ChatEvent):
-    """A tool call returned (``result_summary`` is a short human-readable outcome)."""
+    """A tool call returned. ``outcome`` is structured so a frontend can reword it;
+    the full result (if any) arrives later in ``Finished.result``."""
 
     kind: Literal["tool_finished"] = "tool_finished"
     tool_call_id: str
     name: str
-    result_summary: str
+    outcome: ToolOutcome
 
 
 class ToolProgress(_ChatEvent):

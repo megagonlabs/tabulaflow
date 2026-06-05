@@ -8,11 +8,16 @@ result it produces. All of it is re-exported here so frontends import from
 from tabulaflow.chat.agent import ChatAgent, ProgressSink
 from tabulaflow.chat.events import (
     ChatEvent,
+    ColumnsReturned,
+    Completed,
     Errored,
+    Failed,
     Finished,
+    RowsReturned,
     StatusChanged,
     TextDelta,
     ToolFinished,
+    ToolOutcome,
     ToolProgress,
     ToolStarted,
     UsageUpdated,
@@ -33,4 +38,9 @@ __all__ = [
     "UsageUpdated",
     "Finished",
     "Errored",
+    "ToolOutcome",
+    "RowsReturned",
+    "ColumnsReturned",
+    "Failed",
+    "Completed",
 ]
