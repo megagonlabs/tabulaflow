@@ -95,3 +95,21 @@ exclude = ["scripts/test_readme.py", "scripts/mcp_client.py"]
 testpaths = ["tests"]
 norecursedirs = ["data/*"]
 asyncio_mode = "auto"
+
+# Architecture contract for the layered package (see AGENTS.md "Project Structure").
+# Layers, lowest first: core < datasources < toolhub < modulehub < {chat | research} < app.
+# `chat` and `research` are siblings and must not import each other. Run: make lint-arch
+[tool.importlinter]
+root_package = "tabulaflow"
+
+[[tool.importlinter.contracts]]
+name = "Layered architecture"
+type = "layers"
+layers = [
+    "tabulaflow.app",
+    "tabulaflow.chat | tabulaflow.research",
+    "tabulaflow.modulehub",
+    "tabulaflow.toolhub",
+    "tabulaflow.datasources",
+    "tabulaflow.core",
+]
