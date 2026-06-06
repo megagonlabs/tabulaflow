@@ -17,7 +17,7 @@ from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
-from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -202,7 +202,7 @@ class TabulaflowApp(App[None]):
 
         if self._session is None or not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
-            chat_log.mount(SystemMessage(Text("No databases connected. Use /connect first.", style="red")))
+            chat_log.mount(SystemMessage(Text("No databases connected. Use /connect first.", style=ERROR)))
             chat_log.scroll_end(animate=False)
             return
         self.push_screen(
@@ -478,7 +478,7 @@ class TabulaflowApp(App[None]):
 
         if not session.registry.list_aliases():
             await chat_log.mount(UserMessage(text))
-            msg = SystemMessage(Text.from_markup("[red]No database connected.[/red] Use /connect first."))
+            msg = SystemMessage(Text.from_markup("[#ff5555]No database connected.[/#ff5555] Use /connect first."))
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
@@ -608,7 +608,11 @@ class TabulaflowApp(App[None]):
             raise
         except Exception as e:
             await progress.remove()
-            msg = SystemMessage(f"[red]Agent error:[/red] {e}")
+            # Build the detail as plain text (not interpolated into markup) so a
+            # ``[...]`` in the exception message can't be parsed as a markup tag.
+            error_text = Text.from_markup("[#ff5555]Agent error:[/#ff5555] ")
+            error_text.append(str(e))
+            msg = SystemMessage(error_text)
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return

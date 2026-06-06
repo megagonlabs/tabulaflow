@@ -212,7 +212,7 @@ async def handle_command(text: str, session: SessionState) -> CommandResult:
     handler = COMMANDS.get(cmd)
     if handler is None:
         return CommandResult(
-            output=Text.from_markup(f"[red]Unknown command:[/red] {cmd}. Type /help for available commands.")
+            output=Text.from_markup(f"[#ff5555]Unknown command:[/#ff5555] {cmd}. Type /help for available commands.")
         )
 
     return await handler(args, session)  # type: ignore[operator, no-any-return]
@@ -241,7 +241,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(
             output=Text.from_markup(
-                "[red]Usage:[/red] /connect <url_or_path> \\[alias]\n"
+                "[#ff5555]Usage:[/#ff5555] /connect <url_or_path> \\[alias]\n"
                 "[dim]  /connect ./data/schools.sqlite\n"
                 "  /connect ./sales.csv\n"
                 "  /connect ./sales.csv ./inventory.csv mydb\n"
@@ -265,7 +265,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         if db_file_args:
             return CommandResult(
                 output=Text.from_markup(
-                    "[red]Cannot mix database files and data files.[/red] "
+                    "[#ff5555]Cannot mix database files and data files.[/#ff5555] "
                     "Connect them separately:\n"
                     f"[dim]  /connect {db_file_args[0]}\n"
                     f"  /connect {' '.join(os.path.basename(f) for f in file_args)}[/dim]"
@@ -280,7 +280,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         if existing is not None:
             return CommandResult(
                 output=Text.from_markup(
-                    f"[red]Already loaded as[/red] {existing}. "
+                    f"[#ff5555]Already loaded as[/#ff5555] {existing}. "
                     f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
                 )
             )
@@ -291,7 +291,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
             if session.registry.has(alias):
                 return CommandResult(
                     output=Text.from_markup(
-                        f"[red]Alias already in use:[/red] {alias}. "
+                        f"[#ff5555]Alias already in use:[/#ff5555] {alias}. "
                         "Disconnect first or provide a different alias: /connect <files...> <alias>"
                     )
                 )
@@ -321,7 +321,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
                 enable_query_caching=False,
             )
         except Exception as e:
-            return CommandResult(output=Text.from_markup(f"[red]Failed to load files:[/red] {e}"))
+            return CommandResult(output=Text.from_markup(f"[#ff5555]Failed to load files:[/#ff5555] {e}"))
 
         session.registry.register(alias, connector)
         session.register_source(source_key, alias)
@@ -337,7 +337,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if "huggingface.co" in args[0]:
         return CommandResult(
             output=Text.from_markup(
-                "[red]Unsupported HuggingFace URL format.[/red]\n"
+                "[#ff5555]Unsupported HuggingFace URL format.[/#ff5555]\n"
                 "[dim]Expected: https://huggingface.co/datasets/\\<owner>/\\<dataset>\\[/viewer/\\<subset>\\[/\\<split>\\]\\][/dim]"
             )
         )
@@ -352,7 +352,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if existing is not None:
         return CommandResult(
             output=Text.from_markup(
-                f"[red]Already connected as[/red] {existing}. "
+                f"[#ff5555]Already connected as[/#ff5555] {existing}. "
                 f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reconnect."
             )
         )
@@ -360,7 +360,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if session.registry.has(alias):
         return CommandResult(
             output=Text.from_markup(
-                f"[red]Alias already in use:[/red] {alias}. "
+                f"[#ff5555]Alias already in use:[/#ff5555] {alias}. "
                 "Disconnect first or provide a different alias: /connect <url> <alias>"
             )
         )
@@ -380,14 +380,14 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     try:
         dataset_id, _, _ = parse_hf_dataset_url(url)
     except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[red]{e}[/red]"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]{e}[/#ff5555]"))
 
     source_key = ("hf", url)
     existing = session.find_alias_by_source(source_key)
     if existing is not None:
         return CommandResult(
             output=Text.from_markup(
-                f"[red]Already loaded as[/red] {existing}. "
+                f"[#ff5555]Already loaded as[/#ff5555] {existing}. "
                 f"Use that alias, or [dim]/disconnect {existing}[/dim] first to reload."
             )
         )
@@ -398,7 +398,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     if session.registry.has(alias):
         return CommandResult(
             output=Text.from_markup(
-                f"[red]Alias already in use:[/red] {alias}. "
+                f"[#ff5555]Alias already in use:[/#ff5555] {alias}. "
                 "Disconnect first or provide a different alias: /connect <url> <alias>"
             )
         )
@@ -413,7 +413,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
             summarize=TextSummarizer().summarize,
         )
     except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[red]Failed to load HF dataset:[/red] {e}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]Failed to load HF dataset:[/#ff5555] {e}"))
 
     session.registry.register(alias, connector)
     session.register_source(source_key, alias)
@@ -460,7 +460,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
                 enable_schema_caching=True,
             )
         except Exception as e:
-            return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
+            return CommandResult(output=Text.from_markup(f"[#ff5555]Connection failed:[/#ff5555] {e}"))
 
         session.registry.register(alias, neo_connector)
         session.register_source(("url", url), alias)
@@ -470,7 +470,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     try:
         engine_kwargs = _engine_kwargs_for_url(url)
     except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]Connection failed:[/#ff5555] {e}"))
 
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
@@ -485,7 +485,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
             **engine_kwargs,
         )
     except Exception as e:
-        return CommandResult(output=Text.from_markup(f"[red]Connection failed:[/red] {e}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]Connection failed:[/#ff5555] {e}"))
 
     session.registry.register(alias, connector)
     session.register_source(("url", url), alias)
@@ -500,14 +500,14 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         if len(user_aliases) == 1:
             alias = user_aliases[0]
         else:
-            return CommandResult(output=Text.from_markup("[red]Usage:[/red] /disconnect <alias>"))
+            return CommandResult(output=Text.from_markup("[#ff5555]Usage:[/#ff5555] /disconnect <alias>"))
     else:
         alias = args[0]
 
     if alias == WORKSPACE_ALIAS:
         return CommandResult(
             output=Text.from_markup(
-                f"[red]Cannot disconnect[/red] [bold]{WORKSPACE_ALIAS}[/bold] — the workspace is built-in."
+                f"[#ff5555]Cannot disconnect[/#ff5555] [bold]{WORKSPACE_ALIAS}[/bold] — the workspace is built-in."
             )
         )
 
@@ -515,7 +515,7 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         session.unregister_alias_sources(alias)
         return CommandResult(output=Text(f"✓ Disconnected from {alias}", style="dim"))
     else:
-        return CommandResult(output=Text.from_markup(f"[red]No connection named:[/red] {alias}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]No connection named:[/#ff5555] {alias}"))
 
 
 async def _cmd_databases(args: list[str], session: SessionState) -> CommandResult:
@@ -563,7 +563,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
 
     aliases = session.registry.list_aliases()
     if not aliases:
-        return CommandResult(output=Text.from_markup("[red]No database connected.[/red] Use /connect first."))
+        return CommandResult(output=Text.from_markup("[#ff5555]No database connected.[/#ff5555] Use /connect first."))
 
     alias, rest = _resolve_alias(args, session)
     if alias is None:
@@ -577,7 +577,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
         else:
             return CommandResult(
                 output=Text.from_markup(
-                    f"[red]Unknown alias or table:[/red] {args[0]}. Available databases: {', '.join(aliases)}"
+                    f"[#ff5555]Unknown alias or table:[/#ff5555] {args[0]}. Available databases: {', '.join(aliases)}"
                 )
             )
 
@@ -596,7 +596,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
         rel_patterns = resolve_graph_rel_patterns(graph_schema, rest[0])
         if rel_patterns:
             return CommandResult(output=build_graph_reltype_detail(rest[0], rel_patterns))
-        return CommandResult(output=Text.from_markup(f"[red]Unknown label or relationship type:[/red] {rest[0]}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]Unknown label or relationship type:[/#ff5555] {rest[0]}"))
 
     sql_schema = cast("SQLSchema", schema)
     multi = _is_multi_schema(sql_schema)
@@ -606,9 +606,9 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
 
     result = resolve_table(sql_schema, rest[0])
     if result is None:
-        return CommandResult(output=Text.from_markup(f"[red]Table not found:[/red] {rest[0]}"))
+        return CommandResult(output=Text.from_markup(f"[#ff5555]Table not found:[/#ff5555] {rest[0]}"))
     if isinstance(result, list):
-        lines = [f"[red]Ambiguous table name:[/red] {rest[0]}. Matches:"]
+        lines = [f"[#ff5555]Ambiguous table name:[/#ff5555] {rest[0]}. Matches:"]
         for t in result:
             lines.append(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
         lines.append("[dim]Use the qualified name: /schema \\[alias] <schema>.<table>[/dim]")
@@ -622,7 +622,7 @@ async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
     col = resolve_column(tbl, rest[1])
     if col is None:
         return CommandResult(
-            output=Text.from_markup(f"[red]Column not found:[/red] {rest[1]} in {_display_name(tbl, multi)}")
+            output=Text.from_markup(f"[#ff5555]Column not found:[/#ff5555] {rest[1]} in {_display_name(tbl, multi)}")
         )
 
     return CommandResult(output=build_column_detail(tbl, col))

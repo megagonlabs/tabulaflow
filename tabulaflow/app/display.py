@@ -247,7 +247,7 @@ def build_chart(
         chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)
         return Text.from_ansi(chart_str)
     except Exception as e:
-        return Text.from_markup(f"[red]Chart error:[/red] {e}")
+        return Text.from_markup(f"[#ff5555]Chart error:[/#ff5555] {e}")
 
 
 # ---------------------------------------------------------------------------

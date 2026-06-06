@@ -17,7 +17,7 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.theme import ACCENT, DRACULA_TRANSPARENT, KEY_HINT
+from tabulaflow.app.theme import ACCENT, DRACULA_TRANSPARENT, ERROR, KEY_HINT
 
 
 if TYPE_CHECKING:
@@ -92,15 +92,15 @@ def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text]
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
     except AttributeError:
-        status(Text("save failed: no cell dumps dir", style="red"))
+        status(Text("save failed: no cell dumps dir", style=ERROR))
         return None
     try:
         path = write_cell_dump(value, dumps_dir)
     except OSError as exc:
-        status(Text(f"write failed: {exc}", style="red"))
+        status(Text(f"write failed: {exc}", style=ERROR))
         return None
     except Exception as exc:
-        status(Text(f"serialize failed: {exc}", style="red"))
+        status(Text(f"serialize failed: {exc}", style=ERROR))
         return None
     _open_path_in_browser(path, status=status)
     return path
@@ -124,16 +124,16 @@ def open_table_in_browser(
     try:
         dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
     except AttributeError:
-        status(Text("save failed: no cell dumps dir", style="red"))
+        status(Text("save failed: no cell dumps dir", style=ERROR))
         return None
     html_path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
     try:
         render_table_html(df, html_path, title=title)
     except OSError as exc:
-        status(Text(f"write failed: {exc}", style="red"))
+        status(Text(f"write failed: {exc}", style=ERROR))
         return None
     except Exception as exc:
-        status(Text(f"render failed: {exc}", style="red"))
+        status(Text(f"render failed: {exc}", style=ERROR))
         return None
     _open_path_in_browser(html_path, status=status)
     return html_path
@@ -1441,7 +1441,7 @@ class SchemaBrowserScreen(Screen[None]):
         result = await connector.run_query_async(stmt, timeout=30)
         if result.error is not None:
             msg = result.error.message.replace("\n", " ").strip()
-            self._status.update(Text.from_markup(f"[red]Preview error:[/red] {msg}"))
+            self._status.update(Text.from_markup(f"[#ff5555]Preview error:[/#ff5555] {msg}"))
             return
         self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()
