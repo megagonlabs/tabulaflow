@@ -194,13 +194,16 @@ class TabulaflowApp(App[None]):
         """Push the SchemaBrowserScreen — the canonical data explorer.
 
         Triggered by ``Ctrl+O`` from the input or by clicking the
-        ``Open data explorer`` button next to the input. Falls back to a
-        system message when no databases are connected.
+        ``Open data explorer`` button next to the input. Until the session's
+        workspace is ready it silently does nothing (the button keeps its normal
+        look); once ready it falls back to a system message if nothing is connected.
         """
         from tabulaflow.app.screens import SchemaBrowserScreen
         from tabulaflow.app.widgets import SystemMessage
 
-        if self._session is None or not self._session.registry.list_aliases():
+        if self._session is None:
+            return  # workspace not ready yet — do nothing
+        if not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
             chat_log.mount(SystemMessage(Text("No databases connected. Use /connect first.", style=ERROR)))
             chat_log.scroll_end(animate=False)
