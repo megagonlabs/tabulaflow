@@ -104,10 +104,43 @@ def _build_logo() -> Text:
     return Text("\n").join(out)
 
 
+# Provider prefixes -> human-friendly vendor names for the banner.
+_PROVIDER_NAMES = {
+    "openai-responses": "OpenAI",
+    "openai": "OpenAI",
+    "anthropic": "Anthropic",
+    "google-vertex": "Google",
+    "google": "Google",
+    "fireworks": "Fireworks",
+    "together": "Together",
+}
+# Model-name tokens shown as an uppercase acronym rather than title-cased.
+_MODEL_ACRONYMS = {"gpt"}
+
+
+def _pretty_model(model: str) -> str:
+    """Humanize a model id, e.g. ``openai-responses:gpt-5.4`` -> ``OpenAI GPT 5.4``."""
+    provider, sep, name = model.partition(":")
+    if not sep:  # no provider prefix
+        provider, name = "", provider
+    provider_label = _PROVIDER_NAMES.get(provider, provider.replace("-", " ").title())
+
+    parts = []
+    for tok in name.split("-"):
+        if tok.lower() in _MODEL_ACRONYMS:
+            parts.append(tok.upper())
+        elif tok[:1].isalpha():
+            parts.append(tok.capitalize())
+        else:  # version numbers like 5.4, 2.0
+            parts.append(tok)
+    return " ".join([provider_label, *parts]).strip()
+
+
 def build_banner(*, model: str) -> RenderableType:
     """Build the welcome banner as a Rich renderable."""
     info = Text.from_markup(
-        f"[dim]model:[/dim] {model}    [dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
+        f"[dim]model:[/dim] {_pretty_model(model)}    "
+        "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
     return Group(
         _build_logo(),
