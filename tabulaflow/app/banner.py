@@ -48,7 +48,7 @@ _WAVE_WIDTH = 17  # columns of wave
 _WAVE_ROWS = 2
 _WAVE_EIGHTHS = " ▁▂▃▄▅▆▇█"  # vertical eighth blocks, fill from the bottom up
 _WAVE_SUBPIX = _WAVE_ROWS * 8
-_WAVE_FLOOR = 0.08  # thin sliver of water at the trough so the wave reads continuous
+_WAVE_FLOOR = 0.2  # thin sliver of water at the trough so the wave reads continuous
 _WAVE_PHASE_INSET = 0.5  # trim the sine domain to [inset, 2pi - inset]
 
 
