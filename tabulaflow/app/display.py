@@ -18,7 +18,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, KEY_HINT
 
 TABULAFLOW_THEME = Theme(
     {
@@ -247,7 +247,7 @@ def build_chart(
         chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)
         return Text.from_ansi(chart_str)
     except Exception as e:
-        return Text.from_markup(f"[#ff5555]Chart error:[/#ff5555] {e}")
+        return Text.from_markup(f"[{ERROR}]Chart error:[/] {e}")
 
 
 # ---------------------------------------------------------------------------

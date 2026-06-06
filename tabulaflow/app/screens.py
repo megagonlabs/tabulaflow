@@ -1441,7 +1441,7 @@ class SchemaBrowserScreen(Screen[None]):
         result = await connector.run_query_async(stmt, timeout=30)
         if result.error is not None:
             msg = result.error.message.replace("\n", " ").strip()
-            self._status.update(Text.from_markup(f"[#ff5555]Preview error:[/#ff5555] {msg}"))
+            self._status.update(Text.from_markup(f"[{ERROR}]Preview error:[/] {msg}"))
             return
         self._update_status()
         df = result.df if result.df is not None else pd.DataFrame()

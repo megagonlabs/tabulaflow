@@ -11,10 +11,9 @@ ACCENT_RGB = (62, 180, 137)
 
 # Error / danger red. An explicit hex (not the named ``red``) on purpose: Rich
 # resolves ``red`` to (128,0,0) but Textual resolves it to (255,0,0), so the same
-# ``[red]`` markup rendered via the two paths produced two different shades. Use
-# ``style=ERROR`` in code, or the literal ``[#ff5555]`` in markup strings (kept in
-# sync with this value).
-ERROR = "#ff6666"
+# ``[red]`` markup rendered via the two paths produced two different shades. The one
+# canonical value: use ``style=ERROR`` in code, or ``f"[{ERROR}]…[/]"`` in markup.
+ERROR = "#ff7777"
 
 # Grey shade for inactive/unfocused states of widgets that normally
 # display mint accents (record pill bg, view stepper chevrons / label in

@@ -478,7 +478,7 @@ class TabulaflowApp(App[None]):
 
         if not session.registry.list_aliases():
             await chat_log.mount(UserMessage(text))
-            msg = SystemMessage(Text.from_markup("[#ff5555]No database connected.[/#ff5555] Use /connect first."))
+            msg = SystemMessage(Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
             await chat_log.mount(msg)
             chat_log.scroll_end(animate=False)
             return
@@ -610,7 +610,7 @@ class TabulaflowApp(App[None]):
             await progress.remove()
             # Build the detail as plain text (not interpolated into markup) so a
             # ``[...]`` in the exception message can't be parsed as a markup tag.
-            error_text = Text.from_markup("[#ff5555]Agent error:[/#ff5555] ")
+            error_text = Text.from_markup(f"[{ERROR}]Agent error:[/] ")
             error_text.append(str(e))
             msg = SystemMessage(error_text)
             await chat_log.mount(msg)

@@ -393,13 +393,20 @@ class UserMessage(Static):
 
 
 class SystemMessage(Static):
-    """Displays system/command output."""
+    """Displays system/command output.
+
+    Coerces a plain ``str`` to a Rich ``Text`` so markup is always parsed by Rich,
+    never by Textual's own (differently-resolving) markup — keeping colors consistent
+    with the rest of the app, which builds Rich renderables throughout."""
 
     DEFAULT_CSS = """
     SystemMessage {
         padding: 0 1;
     }
     """
+
+    def __init__(self, content: "RenderableType") -> None:
+        super().__init__(Text.from_markup(content) if isinstance(content, str) else content)
 
 
 class SpinnerWidget(Widget):
