@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT, ACCENT_RGB
+from tabulaflow.app.theme import ACCENT_RGB
 
 if TYPE_CHECKING:
     from rich.console import RenderableType
@@ -63,7 +63,12 @@ def _wave_rows(width: int = _WAVE_WIDTH) -> list[str]:
     return rows
 
 
-def _logo_gradient_block(lines: list[str], start: tuple[int, int, int], end: tuple[int, int, int]) -> list[Text]:
+def _logo_gradient_block(
+    lines: list[str],
+    start: tuple[int, int, int],
+    end: tuple[int, int, int],
+    weight: str = "bold",
+) -> list[Text]:
     """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient."""
     cols = max(len(line) for line in lines)
     out = []
@@ -72,7 +77,7 @@ def _logo_gradient_block(lines: list[str], start: tuple[int, int, int], end: tup
         for ci, ch in enumerate(line):
             t = ci / max(cols - 1, 1)
             r, g, b = (round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-            text.append(ch, style=f"bold #{r:02x}{g:02x}{b:02x}")
+            text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
         out.append(text)
     return out
 
@@ -142,9 +147,15 @@ def build_banner(*, model: str) -> RenderableType:
         f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
+    # Tagline sweeps the same mint -> split stretch as the wordmark (first
+    # _LOGO_LETTERS_FRACTION of the mint -> blue gradient).
+    split: tuple[int, int, int] = tuple(  # type: ignore[assignment]
+        round(_LOGO_MINT[i] + (_LOGO_BLUE[i] - _LOGO_MINT[i]) * _LOGO_LETTERS_FRACTION) for i in range(3)
+    )
+    tagline = _logo_gradient_block([_TAGLINE], _LOGO_MINT, split, weight="italic")[0]
     return Group(
         _build_logo(),
-        Text(_TAGLINE, style=f"italic {ACCENT}"),
+        tagline,
         Text(),
         info,
     )
