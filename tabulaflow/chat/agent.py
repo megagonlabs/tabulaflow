@@ -213,6 +213,14 @@ Steps:
 """.strip()
 
 
+# Reasoning config shared by the subagent-backed tools (the fan-out / extraction
+# tools). ``run_subagent_for_each_row`` additionally requests reasoning summaries.
+_SUBAGENT_MODEL_SETTINGS = OpenAIChatModelSettings(
+    openai_service_tier="priority",
+    openai_reasoning_effort="medium",
+)
+
+
 # ---------------------------------------------------------------------------
 # Data classes
 # ---------------------------------------------------------------------------
@@ -256,11 +264,22 @@ class ChatAgent:
     _running: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
+        from tabulaflow.toolhub import QueryHistory
+
+        self._query_history = QueryHistory()
+        self._message_store = MessageStore()
+        self._main_scope = self._message_store.scoped("main")
+        subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
+        self._tools = self._build_tools(subagent_dir)
+        self._build_agent()
+
+    def _build_tools(self, subagent_dir: Path | None) -> _Toolset:
+        """Construct the agent's toolset, wiring in the shared query history and
+        message store. ``subagent_dir`` (if set) is where subagent trajectories land."""
         from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
-            QueryHistory,
             RegistryExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
             RegistryGetDBDocumentTool,
@@ -272,11 +291,7 @@ class ChatAgent:
             WebBrowserTool,
         )
 
-        self._query_history = QueryHistory()
-        self._message_store = MessageStore()
-        self._main_scope = self._message_store.scoped("main")
-        subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
-        self._tools = _Toolset(
+        return _Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
@@ -300,22 +315,15 @@ class ChatAgent:
             ),
             extract_rows_from_documents=RegistryExtractRowsFromDocumentsTool(
                 self.registry,
-                model_settings=OpenAIChatModelSettings(
-                    openai_service_tier="priority",
-                    openai_reasoning_effort="medium",
-                ),
+                model_settings=_SUBAGENT_MODEL_SETTINGS,
             ),
             add_canonical_name=AddCanonicalNameTool(
-                model_settings=OpenAIChatModelSettings(
-                    openai_service_tier="priority",
-                    openai_reasoning_effort="medium",
-                ),
+                model_settings=_SUBAGENT_MODEL_SETTINGS,
                 trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
         )
-        self._build_agent()
 
     @property
     def query_history(self) -> QueryHistory:
@@ -534,7 +542,7 @@ class ChatAgent:
             path = self.trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
         except Exception:
-            logger.exception("Failed to persist CLI trajectory debug file")
+            logger.exception("Failed to persist trajectory debug file")
 
 
 async def _build_chat_result(
@@ -591,30 +599,22 @@ def _patch_interrupted_messages(
 _SEPARATOR = "---"
 
 
+def _parse_refs(text: str) -> list[tuple[str, str | None]]:
+    """Extract ``(record_id, label)`` pairs from ``[[record:Q<id>:<label>]]`` markers
+    (label normalized to ``None`` when absent or blank)."""
+    return [(m.group(1), (m.group(2) or "").strip() or None) for m in _QUERY_REF_RE.finditer(text)]
+
+
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    # Split on the --- separator; refs are before it, display text after.
-    if _SEPARATOR in answer_text:
-        prefix, display_text = answer_text.split(_SEPARATOR, 1)
-    else:
-        # No explicit separator means the full output is user-facing text.
-        prefix, display_text = "", answer_text
-
-    refs: list[tuple[str, str | None]] = []
-    for match in _QUERY_REF_RE.finditer(prefix):
-        record_id = match.group(1)
-        raw_label = match.group(2)
-        label = raw_label.strip() if raw_label is not None else None
-        refs.append((record_id, label or None))
-
-    # Fallback: also scan display_text for refs (in case agent doesn't follow format)
+    # Refs live in the citation block before the --- separator; user-facing text after.
+    # No separator means the whole output is user-facing text.
+    prefix, display_text = answer_text.split(_SEPARATOR, 1) if _SEPARATOR in answer_text else ("", answer_text)
+    refs = _parse_refs(prefix)
     if not refs:
-        for match in _QUERY_REF_RE.finditer(display_text):
-            record_id = match.group(1)
-            raw_label = match.group(2)
-            label = raw_label.strip() if raw_label is not None else None
-            refs.append((record_id, label or None))
+        # Fallback: the agent didn't follow the citation-block format — scan the
+        # display text for inline markers and strip them out of it.
+        refs = _parse_refs(display_text)
         display_text = _QUERY_REF_RE.sub("", display_text)
-
     return display_text.strip(), refs
 
 
