@@ -19,9 +19,9 @@ if TYPE_CHECKING:
 # ``_LOGO_LETTERS_FRACTION`` of a mint -> blue gradient and the wave traverses
 # the rest, so the color change reads clearly on both.
 _LOGO_LINES = [
-    "░▀█▀░█▀█░█▀▄░█░█░█░░░█▀█░█▀▀░█░░░█▀█░█░█",
-    "░░█░░█▀█░█▀▄░█░█░█░░░█▀█░█▀▀░█░░░█░█░█▄█",
-    "░░▀░░▀░▀░▀▀░░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀",
+    "░▀█▀░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█▀█░█░█",
+    "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█▄█",
+    "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀",
 ]
 _TAGLINE = "AI that outputs tables"
 
