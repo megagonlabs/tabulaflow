@@ -80,7 +80,6 @@ class SessionState:
         self.chat_agent: ChatAgent = ChatAgent(
             registry=self.registry,
             model=model,
-            session_id=session_id,
             trajectory_log_dir=trajectories_dir,
         )
         self.last_result: object | None = None

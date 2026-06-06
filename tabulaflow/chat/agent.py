@@ -240,8 +240,11 @@ class ChatAgent:
 
     registry: DBRegistry
     model: str
-    session_id: str
-    trajectory_log_dir: Path
+    # Where to persist conversation + subagent trajectories. ``None`` (default)
+    # disables all trajectory persistence — set a dir to enable it. Servers leave it
+    # off (avoids per-turn disk I/O and cross-conversation clobbering of the single
+    # ``trajectory.md``); a single interactive session passes a dir.
+    trajectory_log_dir: Path | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
@@ -250,6 +253,7 @@ class ChatAgent:
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
     _tools: _Toolset = field(init=False)
+    _running: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
         from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -271,6 +275,7 @@ class ChatAgent:
         self._query_history = QueryHistory()
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
+        subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
         self._tools = _Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
@@ -291,7 +296,7 @@ class ChatAgent:
                     openai_reasoning_summary="detailed",
                 ),
                 store_metadata=True,
-                trajectory_log_dir=self.trajectory_log_dir / "subagents",
+                trajectory_log_dir=subagent_dir,
             ),
             extract_rows_from_documents=RegistryExtractRowsFromDocumentsTool(
                 self.registry,
@@ -305,7 +310,7 @@ class ChatAgent:
                     openai_service_tier="priority",
                     openai_reasoning_effort="medium",
                 ),
-                trajectory_log_dir=self.trajectory_log_dir / "subagents",
+                trajectory_log_dir=subagent_dir,
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
@@ -401,7 +406,15 @@ class ChatAgent:
         events onto a queue; this is what lets fan-out tools' progress callbacks
         (which fire deep inside tool execution, not at a ``yield``) reach the
         consumer live. The producer signals end-of-stream with a ``None`` sentinel.
+
+        A ``ChatAgent`` runs one turn at a time — its conversation state is mutable,
+        so calling this while a turn is already in flight raises ``RuntimeError``
+        rather than silently corrupting history. Run separate conversations on
+        separate ``ChatAgent`` instances.
         """
+        if self._running:
+            raise RuntimeError("a turn is already in progress on this ChatAgent")
+        self._running = True
         queue: asyncio.Queue[ChatEvent | None] = asyncio.Queue()
         task = asyncio.create_task(self._run_to_queue(question, queue))
         try:
@@ -416,6 +429,19 @@ class ChatAgent:
                 task.cancel()
                 with suppress(asyncio.CancelledError):
                     await task
+            self._running = False
+
+    async def run(self, question: str) -> ChatResult:
+        """Non-streaming convenience: run a turn and return its ``ChatResult``.
+
+        Equivalent to draining ``run_stream`` and taking the terminal ``Finished``
+        payload — for callers (tests, batch jobs) that want the result, not the live
+        events. Cancellation and the one-turn-at-a-time guard behave as in
+        ``run_stream``."""
+        async for event in self.run_stream(question):
+            if isinstance(event, Finished):
+                return event.result
+        raise RuntimeError("run_stream ended without a Finished event")
 
     async def _run_to_queue(self, question: str, queue: asyncio.Queue[ChatEvent | None]) -> None:
         """Run the agent loop in the background task, pushing events onto ``queue``
@@ -496,13 +522,14 @@ class ChatAgent:
             queue.put_nowait(None)  # sentinel: stream exhausted (success, error, or cancel)
 
     def _save_trajectory_for_debug(self) -> None:
-        """Persist the latest conversation trajectory for debugging."""
-        if not self._message_history:
+        """Persist the latest conversation trajectory to disk, when a
+        ``trajectory_log_dir`` was provided (otherwise a no-op)."""
+        if self.trajectory_log_dir is None or not self._message_history:
             return
         try:
             from tabulaflow.core.types import Trajectory
 
-            trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CLI")
+            trajectory = Trajectory.from_pydantic_ai_messages(self._message_history, id="TRJY-CHAT")
             self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
             path = self.trajectory_log_dir / "trajectory.md"
             path.write_text(trajectory.to_markdown(), encoding="utf-8")
