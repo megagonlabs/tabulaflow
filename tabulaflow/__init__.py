@@ -51,7 +51,6 @@ def configure(**kwargs: object) -> None:
             instrument_enabled=False,
         )
     """
-    from tabulaflow.core import llm
     from tabulaflow.core.config import tabulaflow_config
 
     tabulaflow_config.configure(**kwargs)
@@ -61,11 +60,10 @@ def configure(**kwargs: object) -> None:
 
     logger.debug("TABULAFLOW Configuration: %s", tabulaflow_config)
 
-    # Process-global LLM setup (was patches.setup(); throttling/tool-call parsing
-    # now apply per-agent via core.llm.make_agent, not by monkey-patching).
-    llm.register_custom_model_prices()
-    if tabulaflow_config.disable_bigquery_tracing:
-        llm.disable_bigquery_tracing()
+    # Process-global LLM setup (custom prices + BigQuery-tracing suppression) is
+    # deferred: it imports litellm (~1s), so it would block startup before the first
+    # banner. ``core.llm.make_agent`` runs it once, lazily, when the first agent is
+    # built (in the background session worker for the TUI). See llm.ensure_global_setup.
 
     if tabulaflow_config.instrument_enabled:
         if os.getenv("PHOENIX_COLLECTOR_ENDPOINT"):

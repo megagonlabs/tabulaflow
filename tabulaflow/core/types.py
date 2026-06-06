@@ -2,14 +2,19 @@ import copy
 from decimal import Decimal
 import json
 import os
-import litellm
 from pydantic import BaseModel, Field, field_serializer, model_validator, ConfigDict, field_validator
-import pydantic_ai
-from typing import Any, Literal, Annotated, TypeAlias, Union
+from typing import TYPE_CHECKING, Any, Literal, Annotated, TypeAlias, Union
 import pandas as pd
 import logging
 from tabulaflow.core.config import tabulaflow_config
 from tabulaflow.core.dataframe import _deserialize_dataframe, _sanitize_df, _serialize_dataframe
+
+# litellm (~1.5s) and pydantic_ai (~0.9s) are heavy imports needed only by a few
+# conversion helpers below. Import them lazily (in those functions) so that the 66
+# modules importing core.types — including the TUI's UI shell — don't pay for them
+# at startup.
+if TYPE_CHECKING:
+    import pydantic_ai
 
 logger = logging.getLogger(__name__)
 
@@ -371,7 +376,7 @@ class Trajectory(BaseModel):
 
     @classmethod
     def from_pydantic_ai_messages(
-        cls, messages: list[pydantic_ai.messages.ModelMessage], id: str = "TRJY"
+        cls, messages: "list[pydantic_ai.messages.ModelMessage]", id: str = "TRJY"
     ) -> "Trajectory":
         trajectory = cls(messages=[], id=id)
         if not messages:
@@ -516,6 +521,8 @@ def pydantic_ai_model_to_litellm_model(llm: str) -> str:
 
 
 def compute_api_cost(llm: str, input_tokens: int, output_tokens: int, api_requests: int = 1) -> Decimal:
+    import litellm
+
     # Note: We found litellm to be more accurate than genai-prices
     # try:
     #     provider, model = llm.split(":")
@@ -598,8 +605,10 @@ class Usage(BaseModel):
 
     @classmethod
     def from_pydantic_ai_usage(
-        cls, usage: pydantic_ai.usage.RunUsage | pydantic_ai.usage.RequestUsage, llm: str
+        cls, usage: "pydantic_ai.usage.RunUsage | pydantic_ai.usage.RequestUsage", llm: str
     ) -> "Usage":
+        import pydantic_ai
+
         if isinstance(usage, pydantic_ai.usage.RunUsage):
             return cls.create(
                 llm=llm,

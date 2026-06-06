@@ -268,6 +268,7 @@ def make_agent(
     keyword accepted by :class:`pydantic_ai.Agent` (e.g. ``capabilities``,
     ``deps_type``) flows through ``**kwargs``.
     """
+    ensure_global_setup()
     return _Agent(
         _make_model(model),
         output_type=output_type,
@@ -313,3 +314,25 @@ def disable_bigquery_tracing() -> None:
         opentelemetry_tracing.HAS_OPENTELEMETRY = False
     except ImportError:
         pass
+
+
+_global_setup_done = False
+
+
+def ensure_global_setup() -> None:
+    """Run process-global LLM setup (custom model prices + optional BigQuery-tracing
+    suppression) exactly once.
+
+    Deferred out of ``configure()`` and invoked lazily by ``make_agent``: registering
+    prices imports litellm (~1s), so doing it eagerly at ``configure()`` blocked app
+    startup before the first banner. It now runs when the first agent is built —
+    which for the TUI is in the background session worker, off the UI thread."""
+    global _global_setup_done
+    if _global_setup_done:
+        return
+    _global_setup_done = True
+    register_custom_model_prices()
+    from tabulaflow.core.config import tabulaflow_config
+
+    if tabulaflow_config.disable_bigquery_tracing:
+        disable_bigquery_tracing()

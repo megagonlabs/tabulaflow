@@ -34,6 +34,14 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _warm_session_imports() -> None:
+    """Import the heavy session/DB stack (sqlalchemy, duckdb, the agent) so it loads
+    off the UI thread. The workspace connector is built on the main event loop, where
+    a cold first import of this chain (~3s) would otherwise freeze the UI at startup."""
+    import tabulaflow.chat  # noqa: F401  — pulls in toolhub + db_connector + sqlalchemy
+    import tabulaflow.core.db_connector.sql_conn  # noqa: F401  — the workspace connector
+
+
 def _focused_has_binding_for(widget: object, key: str) -> bool:
     """True if ``widget`` (or any base class) declares a ``BINDINGS`` entry
     matching ``key``.
@@ -416,10 +424,18 @@ class TabulaflowApp(App[None]):
             return self._session
         import asyncio
 
+        from tabulaflow.app.session import create_workspace_connector
+
         async with self._session_lock:
             if self._session is not None:
                 return self._session
             loop = asyncio.get_running_loop()
+            # The workspace connector must be built on this (main) event loop, but its
+            # first import pulls in the heavy sqlalchemy/duckdb/agent stack (~3s cold) —
+            # which would freeze the UI. Warm that import off the UI thread first, so
+            # both the workspace creation and the construction below stay responsive.
+            await loop.run_in_executor(None, _warm_session_imports)
+            workspace = await create_workspace_connector(self._runtime_paths.workspace_db_path)
             self._session = await loop.run_in_executor(
                 None,
                 SessionState,
@@ -428,9 +444,8 @@ class TabulaflowApp(App[None]):
                 self._session_id,
                 self._runtime_paths.trajectories_dir,
                 self._runtime_paths.data_dir,
-                self._runtime_paths.workspace_db_path,
+                workspace,
             )
-            await self._session.connect_workspace_db()
             return self._session
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:

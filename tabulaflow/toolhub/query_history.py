@@ -58,12 +58,6 @@ class QueryHistory:
         self._spill_connector = spill_connector
         self._schema_created = False
 
-    def attach_spill_connector(self, connector: SQLConnector) -> None:
-        """Enable disk spill of older result DataFrames to ``connector`` (the session
-        workspace). Lazily (re)creates the spill schema on the next spill."""
-        self._spill_connector = connector
-        self._schema_created = False
-
     async def add(
         self, db_alias: str, connector_type: Literal["sql", "property_graph"], pred_query: PredQuery
     ) -> QueryRecord:

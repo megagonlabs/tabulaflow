@@ -44,8 +44,8 @@ if TYPE_CHECKING:
     from pydantic_ai import Agent
     from pydantic_ai.messages import ModelMessage, ToolReturnPart
 
-    from tabulaflow.core.db_connector.base import NL2QDBConnector
     from tabulaflow.core.db_connector.db_registry import DBRegistry
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
@@ -253,6 +253,10 @@ class ChatAgent:
     # off (avoids per-turn disk I/O and cross-conversation clobbering of the single
     # ``trajectory.md``); a single interactive session passes a dir.
     trajectory_log_dir: Path | None = None
+    # The session workspace — a SQL scratch DB used to spill query-result DataFrames,
+    # offload long messages, and back canonical-name resolution. ``None`` (default)
+    # runs in-memory with those persistence features off.
+    workspace: SQLConnector | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
@@ -266,11 +270,14 @@ class ChatAgent:
     def __post_init__(self) -> None:
         from tabulaflow.toolhub import QueryHistory
 
-        self._query_history = QueryHistory()
+        self._query_history = QueryHistory(spill_connector=self.workspace)
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
         subagent_dir = self.trajectory_log_dir / "subagents" if self.trajectory_log_dir is not None else None
         self._tools = self._build_tools(subagent_dir)
+        if self.workspace is not None:
+            self._message_store.attach_connector(self.workspace)
+            self._tools.add_canonical_name.attach_connector(self.workspace)
         self._build_agent()
 
     def _build_tools(self, subagent_dir: Path | None) -> _Toolset:
@@ -337,18 +344,6 @@ class ChatAgent:
             return
         self.model = model
         self._build_agent()
-
-    def set_workspace(self, connector: NL2QDBConnector) -> None:
-        """Attach a SQL workspace connector for persisting (spilling) query-history
-        DataFrames. Mutates the live history in place, so the tools holding a
-        reference to it pick up the spill target without rewiring."""
-        from tabulaflow.core.db_connector.sql_conn import SQLConnector
-
-        if not isinstance(connector, SQLConnector):
-            raise TypeError(f"set_workspace requires a SQLConnector, got {type(connector).__name__}")
-        self._query_history.attach_spill_connector(connector)
-        self._message_store.attach_connector(connector)
-        self._tools.add_canonical_name.attach_connector(connector)
 
     def note_event(self, description: str) -> None:
         """Make the agent aware of a host/app event (typically a user action — e.g.

@@ -5,8 +5,32 @@ from __future__ import annotations
 
 import os
 from pathlib import Path
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
 WORKSPACE_ALIAS = "workspace"
+
+
+async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
+    """Create the per-session workspace DuckDB connector at ``workspace_db_path``.
+
+    Async, so the caller builds it before the (synchronous) ``SessionState`` — the
+    connector is handed to the session/agent at construction rather than attached
+    afterwards."""
+    from tabulaflow.core.db_connector.sql_conn import SQLConnector
+
+    workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
+    abspath = os.path.abspath(workspace_db_path)
+    return await SQLConnector.from_url_async(
+        global_id=f"cli+{WORKSPACE_ALIAS}",
+        url=f"duckdb:///{abspath}",
+        db_name=WORKSPACE_ALIAS,
+        read_only=False,
+        enable_schema_caching=False,
+        enable_query_caching=False,
+    )
 
 
 class SessionState:
@@ -19,7 +43,7 @@ class SessionState:
         session_id: str,
         trajectories_dir: Path,
         data_dir: Path,
-        workspace_db_path: Path,
+        workspace: SQLConnector | None,
     ) -> None:
         from tabulaflow.chat import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
@@ -27,11 +51,13 @@ class SessionState:
         self.agent_name = agent
         self.session_id = session_id
         self.data_dir = data_dir
-        self.workspace_db_path = workspace_db_path
         self.registry: DBRegistry = DBRegistry()
+        if workspace is not None:
+            self.registry.register(WORKSPACE_ALIAS, workspace)
         self.chat_agent: ChatAgent = ChatAgent(
             registry=self.registry,
             model=model,
+            workspace=workspace,
             trajectory_log_dir=trajectories_dir,
         )
         self.last_result: object | None = None
@@ -52,24 +78,6 @@ class SessionState:
     def unregister_alias_sources(self, alias: str) -> None:
         """Remove every source entry pointing at ``alias``."""
         self._sources = {k: v for k, v in self._sources.items() if v != alias}
-
-    async def connect_workspace_db(self) -> None:
-        """Create and register the per-session workspace DuckDB."""
-        from tabulaflow.core.db_connector.sql_conn import SQLConnector
-
-        self.workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
-        workspace_abspath = os.path.abspath(self.workspace_db_path)
-        url = f"duckdb:///{workspace_abspath}"
-        connector = await SQLConnector.from_url_async(
-            global_id=f"cli+{WORKSPACE_ALIAS}",
-            url=url,
-            db_name=WORKSPACE_ALIAS,
-            read_only=False,
-            enable_schema_caching=False,
-            enable_query_caching=False,
-        )
-        self.registry.register(WORKSPACE_ALIAS, connector)
-        self.chat_agent.set_workspace(connector)
 
     @property
     def model(self) -> str:
