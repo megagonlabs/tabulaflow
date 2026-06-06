@@ -367,12 +367,12 @@ class BannerWidget(Static):
 
     DEFAULT_CSS = """
     BannerWidget {
-        margin: 1 0;
+        margin: 2 3;
     }
     """
 
     def __init__(self, *, model: str) -> None:
-        from tabulaflow.app.display import build_banner
+        from tabulaflow.app.banner import build_banner
 
         super().__init__(build_banner(model=model))
 
