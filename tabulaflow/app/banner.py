@@ -23,7 +23,7 @@ _LOGO_LINES = [
     "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█▄█",
     "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀",
 ]
-_TAGLINE = "AI that outputs tables"
+_TAGLINE = "AI for everything tabular"
 
 _LOGO_MINT = ACCENT_RGB  # (62, 180, 137)
 _LOGO_BLUE = (96, 165, 250)
