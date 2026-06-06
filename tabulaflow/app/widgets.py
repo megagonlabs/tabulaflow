@@ -30,7 +30,6 @@ from tabulaflow.chat import (
     Finished,
     RowsReturned,
     TextDelta,
-    ThinkingDelta,
     ToolFinished,
     ToolOutcome,
     ToolProgress,
@@ -514,7 +513,6 @@ class AgentProgressWidget(Widget):
         self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
         self._streaming_text = ""
         self._raw_text = ""
-        self._thinking_text = ""
         self._separator_seen = False
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
@@ -563,11 +561,6 @@ class AgentProgressWidget(Widget):
                 self._status_spinner.text = Text(self._status_text, style="dim")
                 parts.append(self._status_spinner)
 
-        if self._thinking_text and not self._streaming_text and not self._frozen:
-            if self._steps:
-                parts.append(Text())
-            parts.append(Text(self._thinking_text, style="dim italic"))
-
         if self._streaming_text:
             if self._steps:
                 parts.append(Text())
@@ -578,7 +571,13 @@ class AgentProgressWidget(Widget):
     # Event-stream consumption
 
     def apply(self, event: ChatEvent) -> None:
-        """Dispatch one ``ChatEvent`` from ``ChatAgent.run_stream`` to the renderer."""
+        """Dispatch one ``ChatEvent`` from ``ChatAgent.run_stream`` to the renderer.
+
+        ``ThinkingDelta`` (model reasoning) is intentionally not rendered — the TUI
+        shows the "Thinking..." spinner rather than streaming the reasoning text.
+        Another frontend (e.g. a webapp) is free to render the trace from the same
+        event; the choice of how to surface reasoning is the frontend's.
+        """
         if isinstance(event, ToolStarted):
             self._on_tool_start(event.tool_call_id, event.name, summarize_tool_args(event.name, event.args))
         elif isinstance(event, ToolFinished):
@@ -587,8 +586,6 @@ class AgentProgressWidget(Widget):
             self._on_tool_progress(event.completed, event.total, event.stage)
         elif isinstance(event, TextDelta):
             self._on_text_delta(event.content)
-        elif isinstance(event, ThinkingDelta):
-            self._on_thinking_delta(event.content)
         elif isinstance(event, UsageUpdated):
             self._on_usage(event.usage)
         elif isinstance(event, Finished):
@@ -683,15 +680,7 @@ class AgentProgressWidget(Widget):
             self._streaming_text = self._raw_text.split("---", 1)[1].lstrip("\n")
         else:
             return
-        self._thinking_text = ""  # answer started — drop the reasoning trace
         self._status_text = None
-        self._refresh(layout=True, scroll=True)
-
-    def _on_thinking_delta(self, delta: str) -> None:
-        # Surface the model's reasoning summary dim, until the answer prose begins.
-        if self._separator_seen:
-            return
-        self._thinking_text += delta
         self._refresh(layout=True, scroll=True)
 
     def _on_usage(self, usage: Usage) -> None:
