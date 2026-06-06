@@ -30,6 +30,12 @@ _LOGO_BLUE = (96, 165, 250)
 _LOGO_LETTERS_FRACTION = 0.3  # share of the mint -> blue sweep spent on the wordmark
 _LOGO_GAP = 2  # blank columns between the wordmark and the wave
 
+# Color where the wordmark's share of the gradient ends and the wave's begins.
+# The wordmark and the tagline both sweep mint -> this split.
+_LOGO_SPLIT: tuple[int, int, int] = tuple(  # type: ignore[assignment]
+    round(_LOGO_MINT[i] + (_LOGO_BLUE[i] - _LOGO_MINT[i]) * _LOGO_LETTERS_FRACTION) for i in range(3)
+)
+
 # Background "shade": ``░`` reads as a stipple and renders badly in iTerm2, so we
 # draw a solid full block dimmed to ``_LOGO_SHADE_DIM`` of the stroke brightness
 # in its place. Letter strokes get no background, so the empty half of each
@@ -107,14 +113,8 @@ def _build_logo() -> Text:
     wave = [" " * _WAVE_WIDTH] * (len(_LOGO_LINES) - len(wave)) + wave
 
     pagga_w = max(len(line) for line in _LOGO_LINES)
-
-    def _lerp(i: int) -> int:
-        return round(_LOGO_MINT[i] + (_LOGO_BLUE[i] - _LOGO_MINT[i]) * _LOGO_LETTERS_FRACTION)
-
-    split: tuple[int, int, int] = (_lerp(0), _lerp(1), _lerp(2))
-
-    left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, split, shade=True)
-    right = _logo_gradient_block(wave, split, _LOGO_BLUE)  # remaining stretch of the sweep
+    left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, _LOGO_SPLIT, shade=True)
+    right = _logo_gradient_block(wave, _LOGO_SPLIT, _LOGO_BLUE)  # remaining stretch of the sweep
 
     out: list[Text] = []
     for left_line, right_line in zip(left, right):
@@ -164,12 +164,8 @@ def build_banner(*, model: str) -> RenderableType:
         f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
-    # Tagline sweeps the same mint -> split stretch as the wordmark (first
-    # _LOGO_LETTERS_FRACTION of the mint -> blue gradient).
-    split: tuple[int, int, int] = tuple(  # type: ignore[assignment]
-        round(_LOGO_MINT[i] + (_LOGO_BLUE[i] - _LOGO_MINT[i]) * _LOGO_LETTERS_FRACTION) for i in range(3)
-    )
-    tagline = _logo_gradient_block([_TAGLINE], _LOGO_MINT, split, weight="italic")[0]
+    # Tagline sweeps the same mint -> split stretch as the wordmark.
+    tagline = _logo_gradient_block([_TAGLINE], _LOGO_MINT, _LOGO_SPLIT, weight="italic")[0]
     return Group(
         _build_logo(),
         tagline,
