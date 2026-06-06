@@ -118,7 +118,7 @@ class SessionState:
         )
         self.registry.register(WORKSPACE_ALIAS, connector)
         self.chat_agent.set_workspace(connector)
-        self.chat_agent.add_database([(WORKSPACE_ALIAS, connector)])
+        self.chat_agent.announce_database(WORKSPACE_ALIAS, connector)
 
     @property
     def model(self) -> str:
@@ -377,7 +377,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         session.registry.register(alias, connector)
         session.register_source(source_key, alias)
         info = session.chat_agent.database_info(connector)
-        session.chat_agent.add_database([(alias, connector)])
+        session.chat_agent.announce_database(alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
     # --- HuggingFace dataset connections ---
@@ -470,7 +470,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     session.registry.register(alias, connector)
     session.register_source(source_key, alias)
     info = session.chat_agent.database_info(connector)
-    session.chat_agent.add_database([(alias, connector)])
+    session.chat_agent.announce_database(alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
 
@@ -518,7 +518,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         session.registry.register(alias, neo_connector)
         session.register_source(("url", url), alias)
         info = session.chat_agent.database_info(neo_connector)
-        session.chat_agent.add_database([(alias, neo_connector)])
+        session.chat_agent.announce_database(alias, neo_connector)
         return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
     try:
@@ -544,7 +544,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     session.registry.register(alias, connector)
     session.register_source(("url", url), alias)
     info = session.chat_agent.database_info(connector)
-    session.chat_agent.add_database([(alias, connector)])
+    session.chat_agent.announce_database(alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 

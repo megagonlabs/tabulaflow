@@ -1653,7 +1653,7 @@ LIMIT 4000"""
             result_widget = AgentResultWidget(
                 result,
                 width=self.size.width - 11,
-                query_history=session.chat_agent._query_history,
+                query_history=session.chat_agent.query_history,
             )
             await chat_log.mount(result_widget)
             self._refresh_esc_hint()

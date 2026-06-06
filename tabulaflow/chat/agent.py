@@ -219,8 +219,8 @@ Steps:
 
 
 @dataclass
-class Toolset:
-    """Typed bundle of agent tools."""
+class _Toolset:
+    """Typed bundle of agent tools (internal to ``ChatAgent``)."""
 
     run_query: RegistryRunQueryTool
     get_db_document: RegistryGetDBDocumentTool
@@ -242,14 +242,14 @@ class ChatAgent:
     model: str
     session_id: str
     trajectory_log_dir: Path
-    _message_history: list[ModelMessage] = field(default_factory=list)
-    _system_prompt: str = SYSTEM_PROMPT
-    _pydantic_ai_agent: Agent[None, str] | None = None
+    last_usage: Usage | None = None
+    _message_history: list[ModelMessage] = field(init=False, default_factory=list)
+    _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
+    _pydantic_ai_agent: Agent[None, str] | None = field(init=False, default=None)
     _query_history: QueryHistory = field(init=False)
     _message_store: MessageStore = field(init=False)
     _main_scope: ScopedMessageStore = field(init=False)
-    _tools: Toolset = field(init=False)
-    last_usage: Usage | None = None
+    _tools: _Toolset = field(init=False)
 
     def __post_init__(self) -> None:
         from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -271,7 +271,7 @@ class ChatAgent:
         self._query_history = QueryHistory()
         self._message_store = MessageStore()
         self._main_scope = self._message_store.scoped("main")
-        self._tools = Toolset(
+        self._tools = _Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
             get_db_document=RegistryGetDBDocumentTool(
                 self.registry,
@@ -312,24 +312,28 @@ class ChatAgent:
         )
         self._build_agent()
 
+    @property
+    def query_history(self) -> QueryHistory:
+        """The live query history — results the agent's answers reference."""
+        return self._query_history
+
     def set_model(self, model: str) -> None:
-        """Update model and rebuild the bound runtime agent."""
+        """Update the model and rebuild the bound runtime agent. Use this rather
+        than assigning ``self.model`` directly — a bare assignment skips the rebuild."""
         if self.model == model:
             return
         self.model = model
         self._build_agent()
 
     def set_workspace(self, connector: NL2QDBConnector) -> None:
-        """Attach a workspace connector for persisting query-history DataFrames."""
+        """Attach a SQL workspace connector for persisting (spilling) query-history
+        DataFrames. Mutates the live history in place, so the tools holding a
+        reference to it pick up the spill target without rewiring."""
         from tabulaflow.core.db_connector.sql_conn import SQLConnector
-        from tabulaflow.toolhub.query_history import QueryHistory
 
         if not isinstance(connector, SQLConnector):
-            return
-        self._query_history = QueryHistory(spill_connector=connector)
-        self._tools.run_query._history = self._query_history
-        self._tools.transfer_record._history = self._query_history
-        self._tools.render_chart._history = self._query_history
+            raise TypeError(f"set_workspace requires a SQLConnector, got {type(connector).__name__}")
+        self._query_history.attach_spill_connector(connector)
         self._message_store.attach_connector(connector)
         self._tools.add_canonical_name.attach_connector(connector)
 
@@ -350,19 +354,18 @@ class ChatAgent:
         dialect = connector.language or "unknown"
         return f"{dialect}, {n_tables} tables"
 
-    def add_database(self, databases: list[tuple[str, NL2QDBConnector]]) -> None:
-        """Append a synthetic user message about newly registered databases."""
+    def announce_database(self, alias: str, connector: NL2QDBConnector) -> None:
+        """Make the agent aware of a newly available data source by injecting a
+        synthetic system message naming its alias. This does NOT register the
+        connector (the caller registers it in the ``DBRegistry``); it only tells
+        the running conversation the alias now exists."""
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
-        if not databases:
-            return
-        lines = [
+        content = (
             "[system: data sources now available — use these aliases in db_alias tool args. "
-            "Do NOT expose alias names, dialect, or engine details to the user.]"
-        ]
-        for alias, connector in databases:
-            lines.append(f"- {alias}: {self.database_info(connector)}")
-        content = "\n".join(lines)
+            "Do NOT expose alias names, dialect, or engine details to the user.]\n"
+            f"- {alias}: {self.database_info(connector)}"
+        )
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
 
     def _build_agent(self) -> None:
