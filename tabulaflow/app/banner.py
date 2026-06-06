@@ -30,12 +30,12 @@ _LOGO_BLUE = (96, 165, 250)
 _LOGO_LETTERS_FRACTION = 0.3  # share of the mint -> blue sweep spent on the wordmark
 _LOGO_GAP = 2  # blank columns between the wordmark and the wave
 
-# Background "shade": ``░`` reads as a stipple and renders badly in iTerm2. Instead
-# we lay the wordmark on a solid dim "plate" — the gradient color dimmed to
-# ``_LOGO_SHADE_DIM`` as a cell *background* — so bright half-block letters sit on
-# a clean solid field rather than a glyph texture.
+# Background "shade": ``░`` reads as a stipple and renders badly in iTerm2, so we
+# draw a solid full block dimmed to ``_LOGO_SHADE_DIM`` of the stroke brightness
+# in its place. Letter strokes get no background, so the empty half of each
+# half-block stays transparent against the page.
 _LOGO_SHADE_CHAR = "░"
-_LOGO_SHADE_DIM = 0.3  # plate brightness vs the bright letter strokes (0=black, 1=same)
+_LOGO_SHADE_DIM = 0.3  # shade-block brightness vs the bright letter strokes (0=black, 1=same)
 
 # Sine "water" wave settings.
 _WAVE_WIDTH = 17  # columns of wave
@@ -79,11 +79,10 @@ def _logo_gradient_block(
 ) -> list[Text]:
     """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient.
 
-    When ``shade`` is set, the wordmark sits on a solid dim "plate": every
-    non-padding cell gets the local gradient color dimmed to ``_LOGO_SHADE_DIM``
-    as its background, ``_LOGO_SHADE_CHAR`` cells render as bare plate, and the
-    letter strokes paint the bright gradient on top. A clean, iTerm-safe
-    stand-in for a shade glyph.
+    When ``shade`` is set, ``_LOGO_SHADE_CHAR`` cells become a solid full block
+    painted at ``_LOGO_SHADE_DIM`` of the local gradient color — a clean,
+    iTerm-safe stand-in for a shade glyph. The letter strokes keep no background,
+    so the empty half of each half-block stays transparent (page background).
     """
     cols = max(len(line) for line in lines)
     out = []
@@ -92,18 +91,10 @@ def _logo_gradient_block(
         for ci, ch in enumerate(line):
             t = ci / max(cols - 1, 1)
             r, g, b = (round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-            if not shade:
-                text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
-                continue
-            if ch == " ":  # trailing padding stays transparent
-                text.append(" ")
-                continue
-            dr, dg, db = (round(c * _LOGO_SHADE_DIM) for c in (r, g, b))
-            bg = f"#{dr:02x}{dg:02x}{db:02x}"
-            if ch == _LOGO_SHADE_CHAR:  # bare plate
-                text.append(" ", style=f"on {bg}")
-            else:  # bright stroke on the plate
-                text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x} on {bg}")
+            if shade and ch == _LOGO_SHADE_CHAR:  # solid dim block in place of the shade glyph
+                r, g, b = (round(c * _LOGO_SHADE_DIM) for c in (r, g, b))
+                ch = "█"
+            text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
         out.append(text)
     return out
 
