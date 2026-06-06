@@ -246,8 +246,10 @@ May 29
 June 4 - June 5
 - [x] Refactor to tabulaflow
 - [x] Rewrite ChatAgent interface with streaming API
+- [x] New banner!
 - Fix bugs
   - [x] Fix inconsistent error message color
+  - [x] Disable "open data explorer" button when workspace not ready
   - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 
 - [ ] Option + left/right for input box cursor movement
