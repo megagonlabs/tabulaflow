@@ -98,7 +98,7 @@ class TabulaflowApp(App[None]):
         # The same instance is passed to every SchemaBrowserScreen, which
         # mutates it on close so reopening lands the user where they left
         # off.
-        from tabulaflow.app.widgets import _ExplorerState
+        from tabulaflow.app.screens import _ExplorerState
 
         self._explorer_state = _ExplorerState()
 
@@ -186,7 +186,8 @@ class TabulaflowApp(App[None]):
         ``Open data explorer`` button next to the input. Falls back to a
         system message when no databases are connected.
         """
-        from tabulaflow.app.widgets import SchemaBrowserScreen, SystemMessage
+        from tabulaflow.app.screens import SchemaBrowserScreen
+        from tabulaflow.app.widgets import SystemMessage
 
         if self._session is None or not self._session.registry.list_aliases():
             chat_log = self.query_one("#chat-log", VerticalScroll)
