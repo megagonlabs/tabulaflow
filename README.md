@@ -243,11 +243,17 @@ May 28
 May 29
 - [x] add_canonical_name tool
 
+June 4 - June 5
+- [x] Refactor to tabulaflow
+- [x] Rewrite ChatAgent interface with streaming API
+- Fix bugs
+  - [x] Fix inconsistent error message color
+  - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
+
 - [ ] Option + left/right for input box cursor movement
 - [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
 - [ ] Offload truncated cell + read_message tool
 - [ ] Save extraction subagents trajectories
-- [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 - [ ] clickable url in browser table
 - [ ] Inlucde table schema for add_canonical_name tool
 - [ ] extraction tool display
@@ -255,7 +261,6 @@ May 29
 - [ ] Multi-column output for subagents
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
 - [ ] Auto-close old tab on re-navigate
-
 - [ ] Handle records with empty results or zero-row results
 - [ ] One-time subagent tool
 - [ ] web_fetch tool for static html
