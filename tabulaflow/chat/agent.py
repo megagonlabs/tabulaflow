@@ -337,36 +337,21 @@ class ChatAgent:
         self._message_store.attach_connector(connector)
         self._tools.add_canonical_name.attach_connector(connector)
 
-    @staticmethod
-    def database_info(connector: NL2QDBConnector) -> str:
-        """Build a concise database summary string."""
-        from tabulaflow.core.db_connector import Neo4jConnector
+    def note_event(self, description: str) -> None:
+        """Make the agent aware of a host/app event (typically a user action — e.g.
+        connecting a data source, uploading a file) by appending it to the
+        conversation. The caller supplies ``description`` in its own domain terms;
+        the agent owns how it enters the conversation: a system-tagged turn in the
+        message history.
 
-        if isinstance(connector, Neo4jConnector):
-            n_labels = len(connector.schema.nodes)
-            n_patterns = len(connector.schema.relationships)
-            return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
-
-        from tabulaflow.core.types import SQLSchema
-
-        schema = connector.schema
-        n_tables = len(schema.tables) if isinstance(schema, SQLSchema) else 0
-        dialect = connector.language or "unknown"
-        return f"{dialect}, {n_tables} tables"
-
-    def announce_database(self, alias: str, connector: NL2QDBConnector) -> None:
-        """Make the agent aware of a newly available data source by injecting a
-        synthetic system message naming its alias. This does NOT register the
-        connector (the caller registers it in the ``DBRegistry``); it only tells
-        the running conversation the alias now exists."""
+        Events go in the message history, not the system instructions, on purpose:
+        the instructions stay static so the model's large prompt prefix is fully
+        prompt-cached, and each event is a pure append to the history tail — itself
+        cache-friendly. The message also gives the agent temporal awareness (it
+        knows the event *just* happened)."""
         from pydantic_ai.messages import ModelRequest, UserPromptPart
 
-        content = (
-            "[system: data sources now available — use these aliases in db_alias tool args. "
-            "Do NOT expose alias names, dialect, or engine details to the user.]\n"
-            f"- {alias}: {self.database_info(connector)}"
-        )
-        self._message_history.append(ModelRequest(parts=[UserPromptPart(content=content)]))
+        self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
 
     def _build_agent(self) -> None:
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout

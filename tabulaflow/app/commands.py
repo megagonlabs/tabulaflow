@@ -17,6 +17,7 @@ from tabulaflow.app.theme import ACCENT, ACCENT_BOLD
 
 if TYPE_CHECKING:
     from tabulaflow.core.types import SQLSchema
+    from tabulaflow.core.db_connector.base import NL2QDBConnector
 
 COMMAND_PREFIX = "/"
 WORKSPACE_ALIAS = "workspace"
@@ -118,7 +119,6 @@ class SessionState:
         )
         self.registry.register(WORKSPACE_ALIAS, connector)
         self.chat_agent.set_workspace(connector)
-        self.chat_agent.announce_database(WORKSPACE_ALIAS, connector)
 
     @property
     def model(self) -> str:
@@ -131,6 +131,32 @@ class SessionState:
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
+
+def database_info(connector: NL2QDBConnector) -> str:
+    """Concise human-readable summary of a connector — for the connect confirmation
+    message and the agent event note."""
+    from tabulaflow.core.db_connector import Neo4jConnector
+
+    if isinstance(connector, Neo4jConnector):
+        n_labels = len(connector.schema.nodes)
+        n_patterns = len(connector.schema.relationships)
+        return f"cypher, {n_labels} label{'s' if n_labels != 1 else ''}, {n_patterns} rel pattern{'s' if n_patterns != 1 else ''}"
+
+    from tabulaflow.core.types import SQLSchema
+
+    schema = connector.schema
+    n_tables = len(schema.tables) if isinstance(schema, SQLSchema) else 0
+    dialect = connector.language or "unknown"
+    return f"{dialect}, {n_tables} tables"
+
+
+def _announce_connect(session: SessionState, alias: str, connector: NL2QDBConnector) -> str:
+    """Tell the agent the user just connected ``alias`` (so it gains temporal
+    awareness of the new source) and return the connector's display summary."""
+    info = database_info(connector)
+    session.chat_agent.note_event(f"the user just connected a new data source `{alias}` ({info}).")
+    return info
 
 
 def _is_data_file(path: str) -> bool:
@@ -376,8 +402,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
         session.registry.register(alias, connector)
         session.register_source(source_key, alias)
-        info = session.chat_agent.database_info(connector)
-        session.chat_agent.announce_database(alias, connector)
+        info = _announce_connect(session, alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
     # --- HuggingFace dataset connections ---
@@ -469,8 +494,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
 
     session.registry.register(alias, connector)
     session.register_source(source_key, alias)
-    info = session.chat_agent.database_info(connector)
-    session.chat_agent.announce_database(alias, connector)
+    info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
 
@@ -517,8 +541,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
 
         session.registry.register(alias, neo_connector)
         session.register_source(("url", url), alias)
-        info = session.chat_agent.database_info(neo_connector)
-        session.chat_agent.announce_database(alias, neo_connector)
+        info = _announce_connect(session, alias, neo_connector)
         return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
     try:
@@ -543,8 +566,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
 
     session.registry.register(alias, connector)
     session.register_source(("url", url), alias)
-    info = session.chat_agent.database_info(connector)
-    session.chat_agent.announce_database(alias, connector)
+    info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
 
