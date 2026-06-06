@@ -30,6 +30,13 @@ _LOGO_BLUE = (96, 165, 250)
 _LOGO_LETTERS_FRACTION = 0.3  # share of the mint -> blue sweep spent on the wordmark
 _LOGO_GAP = 2  # blank columns between the wordmark and the wave
 
+# Background "shade": ``░`` reads as a stipple and renders badly in iTerm2. Instead
+# we lay the wordmark on a solid dim "plate" — the gradient color dimmed to
+# ``_LOGO_SHADE_DIM`` as a cell *background* — so bright half-block letters sit on
+# a clean solid field rather than a glyph texture.
+_LOGO_SHADE_CHAR = "░"
+_LOGO_SHADE_DIM = 0.3  # plate brightness vs the bright letter strokes (0=black, 1=same)
+
 # Sine "water" wave settings.
 _WAVE_WIDTH = 17  # columns of wave
 _WAVE_ROWS = 2
@@ -68,8 +75,16 @@ def _logo_gradient_block(
     start: tuple[int, int, int],
     end: tuple[int, int, int],
     weight: str = "bold",
+    shade: bool = False,
 ) -> list[Text]:
-    """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient."""
+    """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient.
+
+    When ``shade`` is set, the wordmark sits on a solid dim "plate": every
+    non-padding cell gets the local gradient color dimmed to ``_LOGO_SHADE_DIM``
+    as its background, ``_LOGO_SHADE_CHAR`` cells render as bare plate, and the
+    letter strokes paint the bright gradient on top. A clean, iTerm-safe
+    stand-in for a shade glyph.
+    """
     cols = max(len(line) for line in lines)
     out = []
     for line in lines:
@@ -77,7 +92,18 @@ def _logo_gradient_block(
         for ci, ch in enumerate(line):
             t = ci / max(cols - 1, 1)
             r, g, b = (round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-            text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
+            if not shade:
+                text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
+                continue
+            if ch == " ":  # trailing padding stays transparent
+                text.append(" ")
+                continue
+            dr, dg, db = (round(c * _LOGO_SHADE_DIM) for c in (r, g, b))
+            bg = f"#{dr:02x}{dg:02x}{db:02x}"
+            if ch == _LOGO_SHADE_CHAR:  # bare plate
+                text.append(" ", style=f"on {bg}")
+            else:  # bright stroke on the plate
+                text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x} on {bg}")
         out.append(text)
     return out
 
@@ -96,7 +122,7 @@ def _build_logo() -> Text:
 
     split: tuple[int, int, int] = (_lerp(0), _lerp(1), _lerp(2))
 
-    left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, split)
+    left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, split, shade=True)
     right = _logo_gradient_block(wave, split, _LOGO_BLUE)  # remaining stretch of the sweep
 
     out: list[Text] = []
