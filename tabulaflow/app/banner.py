@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT_DIM, ACCENT_RGB
+from tabulaflow.app.theme import ACCENT, ACCENT_RGB
 
 if TYPE_CHECKING:
     from rich.console import RenderableType
@@ -139,12 +139,12 @@ def _pretty_model(model: str) -> str:
 def build_banner(*, model: str) -> RenderableType:
     """Build the welcome banner as a Rich renderable."""
     info = Text.from_markup(
-        f"[dim]model:[/dim] {_pretty_model(model)}    "
+        f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
     return Group(
         _build_logo(),
-        Text(_TAGLINE, style=f"italic {ACCENT_DIM}"),
+        Text(_TAGLINE, style=f"italic {ACCENT}"),
         Text(),
         info,
     )
