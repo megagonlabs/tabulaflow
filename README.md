@@ -1,4 +1,4 @@
-# tabulaflow-cli
+# tabulaflow
 
 ## Installation (for developers)
 
