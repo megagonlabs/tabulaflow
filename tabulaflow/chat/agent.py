@@ -662,15 +662,18 @@ async def _emit_stream_event(
 
     Events carry structured data only: ``ToolStarted.args`` is the raw call args
     (a frontend renders them); ``ToolFinished.outcome`` is the structured
-    ``ToolOutcome`` (built here because it needs the agent's query history). Answer
-    text streams via ``PartDeltaEvent`` (unchanged from before); reasoning also
-    honors the initial ``PartStartEvent`` chunk (some providers put it there).
+    ``ToolOutcome`` (built here because it needs the agent's query history).
+
+    Text and reasoning each arrive as a ``PartStartEvent`` (the first chunk — its
+    content is non-empty on content-bearing streaming providers) followed by
+    ``PartDeltaEvent``s. Both points must be handled or the first chunk is dropped.
     """
     from pydantic_ai.messages import (
         FunctionToolCallEvent,
         FunctionToolResultEvent,
         PartDeltaEvent,
         PartStartEvent,
+        TextPart,
         TextPartDelta,
         ThinkingPart,
         ThinkingPartDelta,
@@ -688,6 +691,8 @@ async def _emit_stream_event(
         part = event.part
         if isinstance(part, ThinkingPart) and part.content:
             emit(ThinkingDelta(content=part.content))
+        elif isinstance(part, TextPart) and part.content:
+            emit(TextDelta(content=part.content))
 
     elif isinstance(event, PartDeltaEvent):
         delta = event.delta
