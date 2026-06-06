@@ -35,11 +35,14 @@ logger = logging.getLogger(__name__)
 
 
 def _warm_session_imports() -> None:
-    """Import the heavy session/DB stack (sqlalchemy, duckdb, the agent) so it loads
-    off the UI thread. The workspace connector is built on the main event loop, where
-    a cold first import of this chain (~3s) would otherwise freeze the UI at startup."""
-    import tabulaflow.chat  # noqa: F401  — pulls in toolhub + db_connector + sqlalchemy
-    import tabulaflow.core.db_connector.sql_conn  # noqa: F401  — the workspace connector
+    """Import the workspace connector's sqlalchemy/duckdb stack off the UI thread.
+
+    ``create_workspace_connector`` runs on the main event loop (the async engine is
+    loop-bound), so its first import of this stack (~0.7s cold) would briefly freeze
+    the UI during the background session build. Warming it in the executor first keeps
+    the UI responsive. The agent's other heavy imports happen in the executor-thread
+    ``SessionState`` construction, so they need no warming here."""
+    import tabulaflow.core.db_connector.sql_conn  # noqa: F401
 
 
 def _focused_has_binding_for(widget: object, key: str) -> bool:
