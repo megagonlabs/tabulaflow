@@ -13,7 +13,8 @@ from textual.binding import Binding
 from textual.containers import Horizontal, VerticalScroll
 from textual.widgets import Button, Input, Static
 
-from tabulaflow.app.commands import COMMAND_PREFIX, SessionState, handle_command
+from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
+from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
 from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM

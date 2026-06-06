@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import re
-from pathlib import Path
 import shlex
 from typing import TYPE_CHECKING, Any, cast
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
@@ -14,13 +13,13 @@ from rich.table import Table
 from rich.text import Text
 
 from tabulaflow.app.theme import ACCENT, ACCENT_BOLD
+from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
 
 if TYPE_CHECKING:
     from tabulaflow.core.types import SQLSchema
     from tabulaflow.core.db_connector.base import NL2QDBConnector
 
 COMMAND_PREFIX = "/"
-WORKSPACE_ALIAS = "workspace"
 
 _FILE_EXTENSIONS: dict[str, str] = {
     ".sqlite": "sqlite+aiosqlite",
@@ -50,81 +49,6 @@ class CommandResult:
         self.should_quit = should_quit
         self.should_clear = should_clear
         self.password_prompt = password_prompt
-
-
-# ---------------------------------------------------------------------------
-# Session interface (avoids circular import with tui.py)
-# ---------------------------------------------------------------------------
-
-
-class SessionState:
-    """Holds state for a single interactive session."""
-
-    def __init__(
-        self,
-        model: str,
-        agent: str,
-        session_id: str,
-        trajectories_dir: Path,
-        data_dir: Path,
-        workspace_db_path: Path,
-    ) -> None:
-        from tabulaflow.chat import ChatAgent
-        from tabulaflow.core.db_connector.db_registry import DBRegistry
-
-        self.agent_name = agent
-        self.session_id = session_id
-        self.data_dir = data_dir
-        self.workspace_db_path = workspace_db_path
-        self.registry: DBRegistry = DBRegistry()
-        self.chat_agent: ChatAgent = ChatAgent(
-            registry=self.registry,
-            model=model,
-            trajectory_log_dir=trajectories_dir,
-        )
-        self.last_result: object | None = None
-        # Maps a "what's this connection's source" key (frozenset of file
-        # paths, normalized URL, etc.) to the alias under which it is
-        # registered.  Used by ``/connect`` to detect duplicate sources
-        # being registered under different aliases.
-        self._sources: dict[object, str] = {}
-
-    def find_alias_by_source(self, key: object) -> str | None:
-        """Return the alias registered for ``key``, or None."""
-        return self._sources.get(key)
-
-    def register_source(self, key: object, alias: str) -> None:
-        """Record that ``alias`` is associated with the source ``key``."""
-        self._sources[key] = alias
-
-    def unregister_alias_sources(self, alias: str) -> None:
-        """Remove every source entry pointing at ``alias``."""
-        self._sources = {k: v for k, v in self._sources.items() if v != alias}
-
-    async def connect_workspace_db(self) -> None:
-        """Create and register the per-session workspace DuckDB."""
-        from tabulaflow.core.db_connector.sql_conn import SQLConnector
-
-        self.workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
-        workspace_abspath = os.path.abspath(self.workspace_db_path)
-        url = f"duckdb:///{workspace_abspath}"
-        connector = await SQLConnector.from_url_async(
-            global_id=f"cli+{WORKSPACE_ALIAS}",
-            url=url,
-            db_name=WORKSPACE_ALIAS,
-            read_only=False,
-            enable_schema_caching=False,
-            enable_query_caching=False,
-        )
-        self.registry.register(WORKSPACE_ALIAS, connector)
-        self.chat_agent.set_workspace(connector)
-
-    @property
-    def model(self) -> str:
-        return self.chat_agent.model
-
-    def set_model(self, model: str) -> None:
-        self.chat_agent.set_model(model)
 
 
 # ---------------------------------------------------------------------------
