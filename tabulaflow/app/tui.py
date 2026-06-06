@@ -18,9 +18,9 @@ from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
 from tabulaflow.app.theme import FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.result_widget import AgentResultWidget
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
-    AgentResultWidget,
     BannerWidget,
     HistoryInput,
     SpinnerWidget,

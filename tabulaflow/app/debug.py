@@ -9,7 +9,7 @@ from __future__ import annotations
 import os
 from typing import TYPE_CHECKING, Any
 
-from tabulaflow.app.widgets import AgentResultWidget
+from tabulaflow.app.result_widget import AgentResultWidget
 
 if TYPE_CHECKING:
     from textual.containers import VerticalScroll
@@ -48,11 +48,13 @@ def _debug_history_for(result: "ChatResult") -> "QueryHistory":
         history._in_memory.append(record.record_id)
     return history
 
+
 def debug_enabled() -> bool:
     raw = os.getenv("DEBUG")
     if raw is None:
         return False
     return raw.strip().lower() not in {"", "0", "false", "no", "off"}
+
 
 def _build_debug_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
@@ -424,6 +426,7 @@ LIMIT 4000"""
         query_history=_debug_history_for(result),
     )
 
+
 def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Cells of varying long/wide shapes for testing CellBrowserScreen.
 
@@ -521,6 +524,7 @@ def _build_debug_huge_cell_result_widget(app: TabulaflowApp) -> AgentResultWidge
         query_history=_debug_history_for(result),
     )
 
+
 def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Synthetic table with image/audio/PDF/SVG payloads.
 
@@ -576,20 +580,17 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     # ratios) — exercises non-square sources and verifies that the cell
     # box hugs each image's natural dimensions.
     jpeg = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes()
-        for i in range(len(colors))
+        _debug_files("tabulaflow.app.assets.debug").joinpath(f"jpeg_{i}.jpg").read_bytes() for i in range(len(colors))
     ]
     # Five real animated GIFs at varied sizes — exercises both inline
     # (small ones) and sibling-file spill (large ones >256 KB).
     gif = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"gif_{i}.gif").read_bytes()
-        for i in range(len(colors))
+        _debug_files("tabulaflow.app.assets.debug").joinpath(f"gif_{i}.gif").read_bytes() for i in range(len(colors))
     ]
     # Five real public-domain PDFs vendored under assets/debug —
     # exercises the PDF anchor renderer and click-to-open in new tab.
     pdf = [
-        _debug_files("tabulaflow.app.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes()
-        for i in range(len(colors))
+        _debug_files("tabulaflow.app.assets.debug").joinpath(f"pdf_{i}.pdf").read_bytes() for i in range(len(colors))
     ]
     wav = [wav_bytes(f) for f in notes]
 
@@ -642,6 +643,7 @@ def _build_debug_media_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         query_history=_debug_history_for(result),
     )
 
+
 def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
 
@@ -684,6 +686,7 @@ def _build_debug_small_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         query_history=_debug_history_for(result),
     )
 
+
 def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Compact 4-record fixture exercising every view-kind combination."""
     import pandas as pd
@@ -707,8 +710,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         "title": "Revenue by Region",
     }
     regions_query = (
-        "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\n"
-        "FROM sales GROUP BY region ORDER BY revenue DESC"
+        "SELECT region, SUM(amount) AS revenue, COUNT(*) AS orders\nFROM sales GROUP BY region ORDER BY revenue DESC"
     )
 
     # Record 2: Data + Query (no chart)
@@ -804,6 +806,7 @@ def _build_debug_quad_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         width=app.size.width - 11,
         query_history=_debug_history_for(result),
     )
+
 
 def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """Exercises the two-level tab UI with 15 records of varying view kinds."""
@@ -1018,6 +1021,7 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
         width=app.size.width - 11,
         query_history=_debug_history_for(result),
     )
+
 
 def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     import pandas as pd
