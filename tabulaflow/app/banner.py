@@ -18,6 +18,7 @@ interpolated) colors have nothing to band, so the banner also looks identical on
 
 from __future__ import annotations
 
+import os
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -30,10 +31,15 @@ if TYPE_CHECKING:
 
 Color = str  # a "#rrggbb" hex color (Rich style token)
 
+# Truecolor terminals advertise 24-bit support via COLORTERM; 256-color ones
+# (e.g. macOS Terminal.app) don't. The dim-mint shade quantizes to a muddy entry
+# on a 256-color palette, so fall back to a neutral grey there.
+_TRUECOLOR = os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
+
 # Flat palette, sampled from the original mint -> blue gradient:
 COLOR_TABULA: Color = ACCENT  # "#3EB489" mint — the "tabula" letters
 COLOR_FLOW: Color = "#48b0ab"  # mint -> blue at 30% — the "flow" letters
-COLOR_SHADE: Color = "#133629"  # mint dimmed to 30% — the ░ shade blocks
+COLOR_SHADE: Color = "#133629" if _TRUECOLOR else "#303030"  # ░ shade (grey on 256-color)
 COLOR_PAGE: Color = "#0f1117"  # black-ish page below/around the letters
 
 _TAGLINE = "AI for everything tabular"
