@@ -23,18 +23,18 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT_RGB
+from tabulaflow.app.theme import ACCENT
 
 if TYPE_CHECKING:
     from rich.console import RenderableType
 
-Color = tuple[int, int, int]
+Color = str  # a "#rrggbb" hex color (Rich style token)
 
 # Flat palette, sampled from the original mint -> blue gradient:
-COLOR_TABULA: Color = ACCENT_RGB  # mint — the "tabula" letters
-COLOR_FLOW: Color = (72, 176, 171)  # mint -> blue at 30% — the "flow" letters
-COLOR_SHADE: Color = (19, 54, 41)  # mint dimmed to 30% — the ░ shade blocks
-COLOR_PAGE: Color = (15, 17, 23)  # #0f1117 — black-ish page below/around the letters
+COLOR_TABULA: Color = ACCENT  # "#3EB489" mint — the "tabula" letters
+COLOR_FLOW: Color = "#48b0ab"  # mint -> blue at 30% — the "flow" letters
+COLOR_SHADE: Color = "#133629"  # mint dimmed to 30% — the ░ shade blocks
+COLOR_PAGE: Color = "#0f1117"  # black-ish page below/around the letters
 
 _TAGLINE = "AI for everything tabular"
 _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
@@ -55,10 +55,6 @@ _DECODE = {
     "░": ("shade", "shade"),
     " ": ("off", "off"),
 }
-
-
-def _hex(c: Color) -> str:
-    return f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
 
 
 def _flow_start_col(lines: list[str]) -> int:
@@ -103,12 +99,12 @@ def _cell(top: Color, bottom: Color) -> tuple[str, str | None]:
     if top == bottom:
         if top == COLOR_PAGE:
             return " ", None  # fully empty -> transparent
-        return " ", f"on {_hex(top)}"  # solid letter cell, or a ░ shade block
+        return " ", f"on {top}"  # solid letter cell, or a ░ shade block
     if _is_ink(top):  # ink on top -> ink as background, carve the bottom
-        return "▄", f"{_hex(bottom)} on {_hex(top)}"
+        return "▄", f"{bottom} on {top}"
     if _is_ink(bottom):  # ink on bottom -> ink as background, carve the top
-        return "▀", f"{_hex(top)} on {_hex(bottom)}"
-    return "▀", f"{_hex(top)} on {_hex(bottom)}"  # two backgrounds meet (rare)
+        return "▀", f"{top} on {bottom}"
+    return "▀", f"{top} on {bottom}"  # two backgrounds meet (rare)
 
 
 def _wordmark() -> list[Text]:
@@ -177,7 +173,7 @@ def build_banner(*, model: str) -> RenderableType:
     )
     return Group(
         *_wordmark(),
-        Text(_TAGLINE, style=f"italic {_hex(COLOR_TABULA)}"),
+        Text(_TAGLINE, style=f"italic {COLOR_TABULA}"),
         Text(),
         info,
     )
