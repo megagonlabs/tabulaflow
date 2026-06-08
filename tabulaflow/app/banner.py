@@ -44,6 +44,7 @@ _LOGO_SHADE_CHAR = "░"
 _LOGO_SHADE_DIM = 0.3  # shade-block brightness vs the bright letter strokes (0=black, 1=same)
 
 # Sine "water" wave settings.
+_INCLUDE_WAVE = False  # append the flow wave to the right of the wordmark
 _WAVE_WIDTH = 17  # columns of wave
 _WAVE_ROWS = 2
 _WAVE_EIGHTHS = " ▁▂▃▄▅▆▇█"  # vertical eighth blocks, fill from the bottom up
@@ -106,14 +107,20 @@ def _logo_gradient_block(
 
 
 def _build_logo() -> Text:
-    """Wordmark + flow wave splitting one mint -> blue gradient."""
-    wave = _wave_rows()
-    # The wave is shorter than the wordmark; pad blank rows on top so the water
-    # stays bottom-aligned with the wordmark's baseline.
-    wave = [" " * _WAVE_WIDTH] * (len(_LOGO_LINES) - len(wave)) + wave
+    """Wordmark (mint -> split), optionally plus a flow wave (split -> blue).
 
+    The wordmark always sweeps only the first ``_LOGO_LETTERS_FRACTION`` of the
+    gradient; the wave, when included, carries the remaining stretch.
+    """
     pagga_w = max(len(line) for line in _LOGO_LINES)
     left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, _LOGO_SPLIT, shade=True)
+    if not _INCLUDE_WAVE:
+        return Text("\n").join(left)
+
+    # The wave is shorter than the wordmark; pad blank rows on top so the water
+    # stays bottom-aligned with the wordmark's baseline.
+    wave = _wave_rows()
+    wave = [" " * _WAVE_WIDTH] * (len(_LOGO_LINES) - len(wave)) + wave
     right = _logo_gradient_block(wave, _LOGO_SPLIT, _LOGO_BLUE)  # remaining stretch of the sweep
 
     out: list[Text] = []
