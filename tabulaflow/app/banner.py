@@ -1,8 +1,23 @@
-"""Welcome banner: the gradient ``tabulaflow`` wordmark + sine flow wave."""
+"""Welcome banner: a seam-free block ``tabulaflow`` wordmark, tagline, and info line.
+
+The wordmark is the half-block "pagga" art, but rendered so it stays seamless in
+macOS Terminal.app — whose renderer leaves a hairline between vertically-stacked
+*foreground* block glyphs (``█ ▀ ▄``), which shows up as scanlines through the
+letters. The fix, borrowed from terminal image viewers (chafa/viu/timg):
+
+  * Decode the 3-row art into a 6-px-tall sub-pixel bitmap (each cell is two
+    vertical sub-pixels).
+  * Draw each cell so the *ink* sub-pixel is always a cell **background fill**
+    (background fills tile gap-free across rows) and only the empty side is a
+    foreground half-block. Every ink-to-ink connection is then seam-free.
+
+Colors are four flat tones sampled from the old mint -> blue gradient. Flat (not
+interpolated) colors have nothing to band, so the banner also looks identical on
+256-color terminals.
+"""
 
 from __future__ import annotations
 
-import math
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -13,124 +28,113 @@ from tabulaflow.app.theme import ACCENT_RGB
 if TYPE_CHECKING:
     from rich.console import RenderableType
 
+Color = tuple[int, int, int]
 
-# "tabulaflow" wordmark in the half-block "pagga" style (3 rows), paired with a
-# small sine "flow" wave to its right. The wordmark traverses the first
-# ``_LOGO_LETTERS_FRACTION`` of a mint -> blue gradient and the wave traverses
-# the rest, so the color change reads clearly on both.
+# Flat palette, sampled from the original mint -> blue gradient:
+COLOR_TABULA: Color = ACCENT_RGB  # mint — the "tabula" letters
+COLOR_FLOW: Color = (72, 176, 171)  # mint -> blue at 30% — the "flow" letters
+COLOR_SHADE: Color = (19, 54, 41)  # mint dimmed to 30% — the ░ shade blocks
+COLOR_PAGE: Color = (15, 17, 23)  # #0f1117 — black-ish page below/around the letters
+
+_TAGLINE = "AI for everything tabular"
+_TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
+
+# "tabulaflow" in the half-block "pagga" style (3 rows).
 _LOGO_LINES = [
     "░▀█▀░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█▀█░█░█",
-    "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█▄█",
+    "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█▀█",
     "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀░▀",
 ]
-_TAGLINE = "AI for everything tabular"
 
-_LOGO_MINT = ACCENT_RGB  # (62, 180, 137)
-_LOGO_BLUE = (96, 165, 250)
-_LOGO_LETTERS_FRACTION = 0.3  # share of the mint -> blue sweep spent on the wordmark
-_LOGO_GAP = 2  # blank columns between the wordmark and the wave
-
-# Color where the wordmark's share of the gradient ends and the wave's begins.
-# The wordmark and the tagline both sweep mint -> this split.
-_LOGO_SPLIT: tuple[int, int, int] = tuple(  # type: ignore[assignment]
-    round(_LOGO_MINT[i] + (_LOGO_BLUE[i] - _LOGO_MINT[i]) * _LOGO_LETTERS_FRACTION) for i in range(3)
-)
-
-# Background "shade": ``░`` reads as a stipple and renders badly in iTerm2, so we
-# draw a solid full block dimmed to ``_LOGO_SHADE_DIM`` of the stroke brightness
-# in its place. Letter strokes get no background, so the empty half of each
-# half-block stays transparent against the page.
-_LOGO_SHADE_CHAR = "░"
-_LOGO_SHADE_DIM = 0.3  # shade-block brightness vs the bright letter strokes (0=black, 1=same)
-
-# Sine "water" wave settings.
-_INCLUDE_WAVE = False  # append the flow wave to the right of the wordmark
-_WAVE_WIDTH = 17  # columns of wave
-_WAVE_ROWS = 2
-_WAVE_EIGHTHS = " ▁▂▃▄▅▆▇█"  # vertical eighth blocks, fill from the bottom up
-_WAVE_SUBPIX = _WAVE_ROWS * 8
-_WAVE_FLOOR = 0.2  # thin sliver of water at the trough so the wave reads continuous
-_WAVE_PHASE_INSET = 0.5  # trim the sine domain to [inset, 2pi - inset]
+# Each pagga cell -> (top sub-pixel, bottom sub-pixel). 'ink' = a letter stroke,
+# 'shade' = the dim ░ block, 'off' = the black-ish page.
+_DECODE = {
+    "█": ("ink", "ink"),
+    "▀": ("ink", "off"),
+    "▄": ("off", "ink"),
+    "░": ("shade", "shade"),
+    " ": ("off", "off"),
+}
 
 
-def _wave_levels(width: int) -> list[float]:
-    """Fill level (floor .. 1=full) per column across the trimmed sine domain."""
-    lo = _WAVE_PHASE_INSET
-    hi = 2 * math.pi - _WAVE_PHASE_INSET
-    levels = []
-    for i in range(width):
-        angle = lo + i / max(width - 1, 1) * (hi - lo)
-        levels.append(_WAVE_FLOOR + (1 - _WAVE_FLOOR) * (math.sin(angle) + 1) / 2)
-    return levels
+def _hex(c: Color) -> str:
+    return f"#{c[0]:02x}{c[1]:02x}{c[2]:02x}"
 
 
-def _wave_rows(width: int = _WAVE_WIDTH) -> list[str]:
-    """Render the sine 'water' wave as ``_WAVE_ROWS`` eighth-block text lines."""
-    levels = _wave_levels(width)
-    rows = []
-    for cell in range(_WAVE_ROWS - 1, -1, -1):  # top cell first
-        line = ""
-        for level in levels:
-            filled = level * _WAVE_SUBPIX - cell * 8  # sub-pixels filled within this cell
-            line += _WAVE_EIGHTHS[max(0, min(8, round(filled)))]
-        rows.append(line)
+def _flow_start_col(lines: list[str]) -> int:
+    """Column where the first 'flow' letter begins (splits tabula | flow)."""
+    width = max(len(line) for line in lines)
+    grid = [line.ljust(width) for line in lines]
+    is_gap = [all(grid[r][c] in "░ " for r in range(len(grid))) for c in range(width)]
+    groups: list[int] = []  # start column of each letter group
+    in_letter = False
+    for c in range(width):
+        if not is_gap[c] and not in_letter:
+            groups.append(c)
+            in_letter = True
+        elif is_gap[c]:
+            in_letter = False
+    return groups[_TABULA_LETTERS] if len(groups) > _TABULA_LETTERS else width
+
+
+_FLOW_START = _flow_start_col(_LOGO_LINES)
+
+
+def _is_ink(c: Color) -> bool:
+    return c in (COLOR_TABULA, COLOR_FLOW)
+
+
+def _sub_color(state: str, col: int) -> Color:
+    """Flat color for one sub-pixel: page, shade, or the tabula/flow letter color."""
+    if state == "ink":
+        return COLOR_TABULA if col < _FLOW_START else COLOR_FLOW
+    if state == "shade":
+        return COLOR_SHADE
+    return COLOR_PAGE
+
+
+def _cell(top: Color, bottom: Color) -> tuple[str, str | None]:
+    """Return ``(glyph, style)`` for one cell, keeping ink in the seam-free background.
+
+    A hairline gap at a cell edge reveals the cell's *background*, so the ink
+    sub-pixel is always the background fill and the empty side is carved with a
+    foreground half-block.
+    """
+    if top == bottom:
+        if top == COLOR_PAGE:
+            return " ", None  # fully empty -> transparent
+        return " ", f"on {_hex(top)}"  # solid letter cell, or a ░ shade block
+    if _is_ink(top):  # ink on top -> ink as background, carve the bottom
+        return "▄", f"{_hex(bottom)} on {_hex(top)}"
+    if _is_ink(bottom):  # ink on bottom -> ink as background, carve the top
+        return "▀", f"{_hex(top)} on {_hex(bottom)}"
+    return "▀", f"{_hex(top)} on {_hex(bottom)}"  # two backgrounds meet (rare)
+
+
+def _wordmark() -> list[Text]:
+    """Render 'tabulaflow' as three seam-free ``Text`` rows."""
+    width = max(len(line) for line in _LOGO_LINES)
+    # Decode the art into a 6-row sub-pixel bitmap of flat colors.
+    bitmap: list[list[Color]] = []
+    for line in _LOGO_LINES:
+        padded = line.ljust(width)
+        top: list[Color] = []
+        bottom: list[Color] = []
+        for col, ch in enumerate(padded):
+            top_state, bottom_state = _DECODE.get(ch, ("off", "off"))
+            top.append(_sub_color(top_state, col))
+            bottom.append(_sub_color(bottom_state, col))
+        bitmap.append(top)
+        bitmap.append(bottom)
+
+    rows: list[Text] = []
+    for tr in range(len(_LOGO_LINES)):
+        row = Text()
+        for top_px, bottom_px in zip(bitmap[2 * tr], bitmap[2 * tr + 1]):
+            glyph, style = _cell(top_px, bottom_px)
+            row.append(glyph, style=style)
+        rows.append(row)
     return rows
-
-
-def _logo_gradient_block(
-    lines: list[str],
-    start: tuple[int, int, int],
-    end: tuple[int, int, int],
-    weight: str = "bold",
-    shade: bool = False,
-) -> list[Text]:
-    """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient.
-
-    When ``shade`` is set, ``_LOGO_SHADE_CHAR`` cells become a solid full block
-    painted at ``_LOGO_SHADE_DIM`` of the local gradient color — a clean,
-    iTerm-safe stand-in for a shade glyph. The letter strokes keep no background,
-    so the empty half of each half-block stays transparent (page background).
-    """
-    cols = max(len(line) for line in lines)
-    out = []
-    for line in lines:
-        text = Text()
-        for ci, ch in enumerate(line):
-            t = ci / max(cols - 1, 1)
-            r, g, b = (round(start[i] + (end[i] - start[i]) * t) for i in range(3))
-            if shade and ch == _LOGO_SHADE_CHAR:  # solid dim block in place of the shade glyph
-                r, g, b = (round(c * _LOGO_SHADE_DIM) for c in (r, g, b))
-                ch = "█"
-            text.append(ch, style=f"{weight} #{r:02x}{g:02x}{b:02x}")
-        out.append(text)
-    return out
-
-
-def _build_logo() -> Text:
-    """Wordmark (mint -> split), optionally plus a flow wave (split -> blue).
-
-    The wordmark always sweeps only the first ``_LOGO_LETTERS_FRACTION`` of the
-    gradient; the wave, when included, carries the remaining stretch.
-    """
-    pagga_w = max(len(line) for line in _LOGO_LINES)
-    left = _logo_gradient_block([line.ljust(pagga_w) for line in _LOGO_LINES], _LOGO_MINT, _LOGO_SPLIT, shade=True)
-    if not _INCLUDE_WAVE:
-        return Text("\n").join(left)
-
-    # The wave is shorter than the wordmark; pad blank rows on top so the water
-    # stays bottom-aligned with the wordmark's baseline.
-    wave = _wave_rows()
-    wave = [" " * _WAVE_WIDTH] * (len(_LOGO_LINES) - len(wave)) + wave
-    right = _logo_gradient_block(wave, _LOGO_SPLIT, _LOGO_BLUE)  # remaining stretch of the sweep
-
-    out: list[Text] = []
-    for left_line, right_line in zip(left, right):
-        line = Text()
-        line.append_text(left_line)
-        line.append(" " * _LOGO_GAP)
-        line.append_text(right_line)
-        out.append(line)
-    return Text("\n").join(out)
 
 
 # Provider prefixes -> human-friendly vendor names for the banner.
@@ -171,11 +175,9 @@ def build_banner(*, model: str) -> RenderableType:
         f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
-    # Tagline sweeps the same mint -> split stretch as the wordmark.
-    tagline = _logo_gradient_block([_TAGLINE], _LOGO_MINT, _LOGO_SPLIT, weight="italic")[0]
     return Group(
-        _build_logo(),
-        tagline,
+        *_wordmark(),
+        Text(_TAGLINE, style=f"italic {_hex(COLOR_TABULA)}"),
         Text(),
         info,
     )
