@@ -39,7 +39,6 @@ from tabulaflow.chat import (
 
 
 if TYPE_CHECKING:
-
     import pandas as pd
     from rich.console import RenderableType
 
@@ -372,9 +371,17 @@ class BannerWidget(Static):
     """
 
     def __init__(self, *, model: str) -> None:
+        super().__init__()
+        self._model = model
+
+    def on_mount(self) -> None:
         from tabulaflow.app.banner import build_banner
 
-        super().__init__(build_banner(model=model))
+        # Carve the wordmark's empty halves with this widget's *own* effective
+        # background so they read as transparent against the chat log, whatever
+        # the theme resolves it to.
+        surface = self.background_colors[0].hex
+        self.update(build_banner(model=self._model, surface=surface))
 
 
 class UserMessage(Static):

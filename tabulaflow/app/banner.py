@@ -40,7 +40,10 @@ _TRUECOLOR = os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
 COLOR_TABULA: Color = ACCENT  # "#3EB489" mint — the "tabula" letters
 COLOR_FLOW: Color = "#48b0ab"  # mint -> blue at 30% — the "flow" letters
 COLOR_SHADE: Color = "#133629" if _TRUECOLOR else "#303030"  # ░ shade (grey on 256-color)
-COLOR_PAGE: Color = "#0f1117"  # black-ish page below/around the letters
+# Carve color for the empty halves around the letters. Defaults to the
+# ``textual-dark`` background; ``build_banner(surface=...)`` overrides it with the
+# widget's own effective background so the carves match the chat log exactly.
+COLOR_PAGE: Color = "#121212"
 
 _TAGLINE = "AI for everything tabular"
 _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
@@ -82,46 +85,44 @@ def _flow_start_col(lines: list[str]) -> int:
 _FLOW_START = _flow_start_col(_LOGO_LINES)
 
 
-def _is_ink(c: Color) -> bool:
-    return c in (COLOR_TABULA, COLOR_FLOW)
-
-
-def _sub_color(state: str, col: int) -> Color:
-    """Flat color for one sub-pixel: page, shade, or the tabula/flow letter color."""
+def _sub_color(state: str, col: int) -> Color | None:
+    """Color for one sub-pixel: a letter color, the shade, or None (transparent)."""
     if state == "ink":
         return COLOR_TABULA if col < _FLOW_START else COLOR_FLOW
     if state == "shade":
         return COLOR_SHADE
-    return COLOR_PAGE
+    return None  # 'off' -> transparent (shows the chat background)
 
 
-def _cell(top: Color, bottom: Color) -> tuple[str, str | None]:
+def _cell(top: Color | None, bottom: Color | None, surface: Color) -> tuple[str, str | None]:
     """Return ``(glyph, style)`` for one cell, keeping ink in the seam-free background.
 
-    A hairline gap at a cell edge reveals the cell's *background*, so the ink
-    sub-pixel is always the background fill and the empty side is carved with a
-    foreground half-block.
+    ``None`` sub-pixels are the empty page. A fully-empty cell renders transparent
+    so the chat background shows through; a half-empty cell keeps its colored
+    sub-pixel as the (gap-free) background fill and carves the empty half with
+    ``surface`` — the chat background color — so it reads as transparent while
+    staying seamless.
     """
+    if top is None and bottom is None:
+        return " ", None  # fully empty -> transparent (chat background)
     if top == bottom:
-        if top == COLOR_PAGE:
-            return " ", None  # fully empty -> transparent
         return " ", f"on {top}"  # solid letter cell, or a ░ shade block
-    if _is_ink(top):  # ink on top -> ink as background, carve the bottom
-        return "▄", f"{bottom} on {top}"
-    if _is_ink(bottom):  # ink on bottom -> ink as background, carve the top
-        return "▀", f"{top} on {bottom}"
-    return "▀", f"{top} on {bottom}"  # two backgrounds meet (rare)
+    if top is not None and bottom is not None:
+        return "▀", f"{top} on {bottom}"  # two colors meet (rare)
+    if top is not None:  # color top, empty bottom -> color as bg, carve the bottom
+        return "▄", f"{surface} on {top}"
+    return "▀", f"{surface} on {bottom}"  # empty top, color bottom
 
 
-def _wordmark() -> list[Text]:
-    """Render 'tabulaflow' as three seam-free ``Text`` rows."""
+def _wordmark(surface: Color) -> list[Text]:
+    """Render 'tabulaflow' as three seam-free ``Text`` rows over ``surface``."""
     width = max(len(line) for line in _LOGO_LINES)
-    # Decode the art into a 6-row sub-pixel bitmap of flat colors.
-    bitmap: list[list[Color]] = []
+    # Decode the art into a 6-row sub-pixel bitmap (None = transparent page).
+    bitmap: list[list[Color | None]] = []
     for line in _LOGO_LINES:
         padded = line.ljust(width)
-        top: list[Color] = []
-        bottom: list[Color] = []
+        top: list[Color | None] = []
+        bottom: list[Color | None] = []
         for col, ch in enumerate(padded):
             top_state, bottom_state = _DECODE.get(ch, ("off", "off"))
             top.append(_sub_color(top_state, col))
@@ -133,7 +134,7 @@ def _wordmark() -> list[Text]:
     for tr in range(len(_LOGO_LINES)):
         row = Text()
         for top_px, bottom_px in zip(bitmap[2 * tr], bitmap[2 * tr + 1]):
-            glyph, style = _cell(top_px, bottom_px)
+            glyph, style = _cell(top_px, bottom_px, surface)
             row.append(glyph, style=style)
         rows.append(row)
     return rows
@@ -171,14 +172,19 @@ def _pretty_model(model: str) -> str:
     return " ".join([provider_label, *parts]).strip()
 
 
-def build_banner(*, model: str) -> RenderableType:
-    """Build the welcome banner as a Rich renderable."""
+def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
+    """Build the welcome banner as a Rich renderable.
+
+    ``surface`` is the chat background color the wordmark's empty halves are carved
+    with so they read as transparent — pass the live theme's ``$surface``. Falls
+    back to ``COLOR_PAGE`` when not given.
+    """
     info = Text.from_markup(
         f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
     return Group(
-        *_wordmark(),
+        *_wordmark(surface or COLOR_PAGE),
         Text(_TAGLINE, style=f"italic {COLOR_TABULA}"),
         Text(),
         info,
