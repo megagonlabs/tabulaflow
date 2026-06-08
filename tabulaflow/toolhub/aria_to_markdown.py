@@ -421,13 +421,20 @@ def _render_heading(ctx: _Ctx) -> str:
     m = _LEVEL_PATTERN.search(ctx.header)
     level = max(1, min(int(m.group(1)) if m else 2, 6))
     # Prefer rendered children: preserves any inner link/button refs that
-    # accessible-name flattening would otherwise drop.
-    content = _kids_md(ctx.children, ctx.depth, flow=True).strip() or ctx.name
+    # accessible-name flattening would otherwise drop. Fall back to name, then
+    # to a scalar body (``heading: "text"``) so a plain-text heading isn't lost.
+    content = _kids_md(ctx.children, ctx.depth, flow=True).strip() or ctx.name or (ctx.value or "")
     return f"\n\n{'#' * level} {content}\n\n"
 
 
 def _render_paragraph(ctx: _Ctx) -> str:
-    return f"\n\n{_kids_md(ctx.children, ctx.depth, flow=True).strip()}\n\n"
+    # A plain-text paragraph arrives as a scalar body (``paragraph: "..."``),
+    # landing in ``ctx.value`` with no children — fall back to it (then name)
+    # so prose paragraphs aren't dropped. Mirrors ``_render_heading``/``_render_code``.
+    content = _kids_md(ctx.children, ctx.depth, flow=True).strip() or ctx.value or ctx.name
+    if not content:
+        return ""
+    return f"\n\n{content}\n\n"
 
 
 def _render_code(ctx: _Ctx) -> str:

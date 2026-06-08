@@ -22,6 +22,11 @@ class TestHeadingsAndProse:
         )
         assert md(y) == "Read the [docs](/docs) [ref=e2]."
 
+    def test_plain_text_paragraph(self) -> None:
+        # A prose paragraph with no inline elements arrives as a scalar body
+        # (``paragraph: "..."``); its text must not be dropped.
+        assert md('- paragraph [ref=e1]: Hello world, this is a bio.') == "Hello world, this is a bio."
+
 
 class TestLinksAndButtons:
     def test_link_inlines_href_and_ref(self) -> None:

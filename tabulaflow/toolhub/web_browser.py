@@ -577,6 +577,10 @@ class WebBrowserTool:
         self._next_tab_seq = 1
         self._turn_counter = 0
         self._metrics = WebBrowserToolMetrics()
+        # Strong references to fire-and-forget popup/dialog handler tasks. The
+        # event loop only weakly references tasks, so without this they can be
+        # garbage-collected mid-execution. Entries self-remove on completion.
+        self._bg_tasks: set[asyncio.Task[None]] = set()
 
     # === LLM-facing tool methods ============================================
 
@@ -641,6 +645,10 @@ class WebBrowserTool:
                 return err or self._format_error("failed to open tab")
             is_new = True
 
+        # Mark touched on interaction, not just on success: an in-place nav that
+        # errors must still refresh the idle-close keep-alive, otherwise a tab the
+        # agent is actively re-navigating can be auto-closed at the next turn.
+        state.last_touched_turn = self._turn_counter
         async with state.op_lock:
             state.pdf_text = None  # clear any prior PDF content on in-place nav
             try:
@@ -657,7 +665,6 @@ class WebBrowserTool:
                         if is_new:
                             await self._discard_tab(state)
                         return err
-                    state.last_touched_turn = self._turn_counter
                     return await format_tab_response(state)
                 if is_new:
                     await self._discard_tab(state)
@@ -675,7 +682,6 @@ class WebBrowserTool:
                     if is_new:
                         await self._discard_tab(state)
                     return err
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     @staticmethod
@@ -814,6 +820,10 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        # Mark touched on interaction, not just on success: an action that errors
+        # (e.g. a stale ref) must still refresh the idle-close keep-alive, else a
+        # tab the agent is actively trying to recover gets auto-closed next turn.
+        state.last_touched_turn = self._turn_counter
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -823,7 +833,6 @@ class WebBrowserTool:
                 return self._format_error(str(e))
             except Exception as e:
                 return self._format_error(f"click failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     async def _click_with_overlay_fallback(self, locator: "Locator") -> None:
@@ -887,6 +896,7 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on error
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -899,7 +909,6 @@ class WebBrowserTool:
                 return self._format_error(str(e))
             except Exception as e:
                 return self._format_error(f"type failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             if not submit:
                 # Two outcomes from the wait:
                 # - Options surfaced (autocomplete dropdown appeared): the DOM
@@ -936,6 +945,7 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on error
         async with state.op_lock:
             try:
                 if direction == "down":
@@ -949,7 +959,6 @@ class WebBrowserTool:
                 await asyncio.sleep(0.5)
             except Exception as e:
                 return self._format_error(f"scroll failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     async def browser_back(self, tab: str) -> str:
@@ -973,6 +982,7 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on error
         async with state.op_lock:
             try:
                 await state.page.go_back(wait_until="load", timeout=_NAV_TIMEOUT_MS)
@@ -983,7 +993,6 @@ class WebBrowserTool:
                 await asyncio.sleep(_POST_LOAD_SETTLE_MS / 1000)
             except Exception as e:
                 return self._format_error(f"back failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     async def browser_press(self, tab: str, key: str) -> str:
@@ -1003,13 +1012,13 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on error
         async with state.op_lock:
             try:
                 await state.page.keyboard.press(_normalize_key(key))
                 await self._settle(state)
             except Exception as e:
                 return self._format_error(f"press failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     async def browser_select(self, tab: str, ref: str, option: str) -> str:
@@ -1030,6 +1039,7 @@ class WebBrowserTool:
         state = self._tabs.get(tab)
         if state is None:
             return self._format_error(self._unknown_tab(tab))
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on error
         async with state.op_lock:
             try:
                 locator = self._resolve_ref(state, ref)
@@ -1039,7 +1049,6 @@ class WebBrowserTool:
                 return self._format_error(str(e))
             except Exception as e:
                 return self._format_error(f"select failed: {self._error_message(e)}")
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     async def browser_wait(
@@ -1073,6 +1082,7 @@ class WebBrowserTool:
         if state is None:
             return self._format_error(self._unknown_tab(tab))
         seconds = max(0.0, seconds)
+        state.last_touched_turn = self._turn_counter  # touched on interaction, even on timeout
         async with state.op_lock:
             try:
                 if text is not None:
@@ -1085,7 +1095,6 @@ class WebBrowserTool:
                 # Timed out waiting for the condition — fall through and
                 # snapshot anyway so the agent sees the current state.
                 pass
-            state.last_touched_turn = self._turn_counter
             return await format_tab_response(state)
 
     # === Lifecycle ===========================================================
@@ -1125,6 +1134,11 @@ class WebBrowserTool:
 
     async def close(self) -> None:
         """Close all tabs and (if isolated) the private context."""
+        # Cancel in-flight popup/dialog handlers before tearing down pages so
+        # they don't run against closed pages or outlive the tool.
+        for task in list(self._bg_tasks):
+            task.cancel()
+        self._bg_tasks.clear()
         states = list(self._tabs.values())
         self._tabs.clear()
         for state in states:
@@ -1208,15 +1222,34 @@ class WebBrowserTool:
         open_ids = sorted(self._tabs.keys())
         return f"no tab {tab_id!r}; open tabs: {open_ids or 'none'}"
 
+    def _spawn_bg(self, coro: "Any") -> None:
+        """Schedule a fire-and-forget handler, retaining a strong reference.
+
+        The asyncio event loop holds only a weak reference to a bare
+        ``create_task`` result, so an un-retained task can be garbage-collected
+        and cancelled mid-flight. We keep it in ``self._bg_tasks`` until done.
+        """
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+
     def _on_popup_sync(self, tab_id: str, popup: "Page") -> None:
         """Sync wrapper that schedules the async popup adoption."""
-        asyncio.create_task(self._on_popup(tab_id, popup))
+        self._spawn_bg(self._on_popup(tab_id, popup))
 
     async def _on_popup(self, tab_id: str, popup: "Page") -> None:
         """Adopt a site-popped tab as the active page for ``tab_id``."""
         state = self._tabs.get(tab_id)
         if state is None:
-            return  # original tab was closed
+            # Original tab was closed before the popup arrived. Nothing will
+            # ever adopt this page, so close it rather than leak a live
+            # Chromium page (it holds no budget permit, so the budget would
+            # silently undercount real pages otherwise).
+            try:
+                await popup.close()
+            except Exception:
+                pass
+            return
         try:
             await popup.wait_for_load_state("domcontentloaded", timeout=_SETTLE_TIMEOUT_MS)
         except Exception:
@@ -1239,7 +1272,7 @@ class WebBrowserTool:
 
     def _on_dialog_sync(self, tab_id: str, dialog: Any) -> None:
         """Sync wrapper that schedules the async dialog handler."""
-        asyncio.create_task(self._on_dialog(tab_id, dialog))
+        self._spawn_bg(self._on_dialog(tab_id, dialog))
 
     async def _on_dialog(self, tab_id: str, dialog: Any) -> None:
         """Auto-dismiss a JS dialog so it doesn't block the tab.
