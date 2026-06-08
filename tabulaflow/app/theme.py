@@ -9,6 +9,10 @@ ACCENT = "#3EB489"
 ACCENT_BOLD = f"bold {ACCENT}"
 ACCENT_RGB = (62, 180, 137)
 
+# Project repository — shown in the TUI banner and the HTML dump header.
+GITHUB_SLUG = "megagonlabs/tabulaflow"
+GITHUB_URL = f"https://github.com/{GITHUB_SLUG}"
+
 # Error / danger red. An explicit hex (not the named ``red``) on purpose: Rich
 # resolves ``red`` to (128,0,0) but Textual resolves it to (255,0,0), so the same
 # ``[red]`` markup rendered via the two paths produced two different shades. The one

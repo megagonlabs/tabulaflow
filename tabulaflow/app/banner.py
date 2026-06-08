@@ -24,7 +24,7 @@ from typing import TYPE_CHECKING
 from rich.console import Group
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT
+from tabulaflow.app.theme import ACCENT, GITHUB_URL
 
 if TYPE_CHECKING:
     from rich.console import RenderableType
@@ -186,6 +186,8 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     return Group(
         *_wordmark(surface or COLOR_PAGE),
         Text(_TAGLINE, style=f"italic {COLOR_TABULA}"),
+        Text(),
+        Text(GITHUB_URL, style="dim"),
         Text(),
         info,
     )
