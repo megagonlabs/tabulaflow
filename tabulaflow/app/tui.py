@@ -17,7 +17,7 @@ from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
 from tabulaflow.app.session import SessionState
 from tabulaflow.app.debug import debug_enabled, mount_debug_widgets
 from tabulaflow.app.runtime_paths import RuntimePaths, generate_session_id, prune_old_dumps
-from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.theme import ERROR, FOCUS_SURFACE, KEY_HINT
 from tabulaflow.app.widgets import (
     AgentProgressWidget,
     AgentResultWidget,
@@ -133,12 +133,15 @@ class TabulaflowApp(App[None]):
             # Content set by ``_refresh_esc_hint`` once mounted — initial
             # state will be "Esc dim · Go to results" because no result
             # widgets exist yet.
-            yield Static(id="input-esc-hint")
+            yield Static(id="input-esc-hint", disabled=True)
             yield Static("│", classes="input-sep")
             explorer_label = Text()
             explorer_label.append("Ctrl+O", style=KEY_HINT)
             explorer_label.append("  Open data explorer", style="dim")
-            yield Button(explorer_label, id="open-explorer-btn")
+            # Disabled until the background session build + sample auto-connect
+            # completes (re-enabled at the end of ``_ensure_session``), so the user
+            # can't open an empty explorer before any database is connected.
+            yield Button(explorer_label, id="open-explorer-btn", disabled=True)
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -155,9 +158,10 @@ class TabulaflowApp(App[None]):
         """Update the docked ``Esc`` hint label to match current state.
 
         The label flips between ``Go to results`` (when focus is on the
-        input) and ``Go to input`` (when focus is on a result widget),
-        and the ``Esc`` glyph dims when no result widgets exist yet —
-        signalling that the key is currently a no-op.
+        input) and ``Go to input`` (when focus is on a result widget). When no
+        result widgets exist yet the hint is ``disabled`` — its ``:disabled``
+        CSS fades it exactly like the disabled ``Open data explorer`` button, so
+        the two input-row hints read consistently.
         """
         try:
             hint = self.query_one("#input-esc-hint", Static)
@@ -166,9 +170,10 @@ class TabulaflowApp(App[None]):
         has_results = bool(self.query(AgentResultWidget))
         in_result = isinstance(self.focused, AgentResultWidget)
         label = Text()
-        label.append("Esc", style=KEY_HINT if has_results else KEY_HINT_DIM)
+        label.append("Esc", style=KEY_HINT)
         label.append("  Go to input" if in_result else "  Go to results", style="dim")
         hint.update(label)
+        hint.disabled = not has_results
 
     def on_descendant_focus(self, event: events.DescendantFocus) -> None:
         """Re-render the Esc hint when focus moves between input/results."""
@@ -455,7 +460,15 @@ class TabulaflowApp(App[None]):
                 self._reasoning_effort,
             )
             await self._maybe_autoconnect_sample(self._session)
+            self._enable_explorer_button()
             return self._session
+
+    def _enable_explorer_button(self) -> None:
+        """Enable the data-explorer button once the session (and sample) are ready."""
+        try:
+            self.query_one("#open-explorer-btn", Button).disabled = False
+        except Exception:
+            pass
 
     async def _maybe_autoconnect_sample(self, session: SessionState) -> None:
         """Silently load the bundled sample DB when the user connected nothing of their own."""
