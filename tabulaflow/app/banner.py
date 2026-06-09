@@ -68,7 +68,7 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         "Transform",
         [
             "Tag each review's sentiment and flag any mentioning a refund",
-            "Label each failure as a retrieval, reasoning, or output formatting error",
+            "Label each failed sample's error pattern as retrieval, reasoning, or output formatting, then visualize the distribution",
         ],
     ),
 ]
@@ -224,11 +224,19 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
         f"[dim]{_pretty_model(model)}[/dim]      "
         "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
+    # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
+    # Styles are per-span (not a base style) so the URL stays plain dim grey rather
+    # than inheriting the tagline's mint color. The scheme is dropped from the
+    # displayed text (modern app convention) but kept as a real OSC-8 hyperlink so
+    # the label stays clickable in terminals that support it.
+    url_label = GITHUB_URL.split("://", 1)[-1]
+    tagline = Text()
+    tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
+    tagline.append("    ")
+    tagline.append(url_label, style=f"dim link {GITHUB_URL}")
     return Group(
         *_wordmark(surface or COLOR_PAGE),
-        Text(_TAGLINE, style=f"bold italic {COLOR_TABULA}"),
-        Text(),
-        Text(GITHUB_URL, style="dim"),
+        tagline,
         Text(),
         *_examples(),
         Text(),
