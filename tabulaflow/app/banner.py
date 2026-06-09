@@ -18,7 +18,6 @@ interpolated) colors have nothing to band, so the banner also looks identical on
 
 from __future__ import annotations
 
-import os
 import textwrap
 from typing import TYPE_CHECKING
 
@@ -32,15 +31,13 @@ if TYPE_CHECKING:
 
 Color = str  # a "#rrggbb" hex color (Rich style token)
 
-# Truecolor terminals advertise 24-bit support via COLORTERM; 256-color ones
-# (e.g. macOS Terminal.app) don't. The dim-mint shade quantizes to a muddy entry
-# on a 256-color palette, so fall back to a neutral grey there.
-_TRUECOLOR = os.environ.get("COLORTERM", "").lower() in ("truecolor", "24bit")
-
 # Flat palette, sampled from the original mint -> blue gradient:
 COLOR_TABULA: Color = ACCENT  # "#3EB489" mint — the "tabula" letters
 COLOR_FLOW: Color = "#48b0ab"  # mint -> blue at 30% — the "flow" letters
-COLOR_SHADE: Color = "#133629" if _TRUECOLOR else "#303030"  # ░ shade (grey on 256-color)
+# ░ shade for the wordmark's lower half. A dim mint, but red is lifted just enough
+# that on a 256-color terminal (e.g. macOS Terminal.app) it quantizes straight to
+# neutral grey #303030 instead of a muddy green — no truecolor special-casing.
+COLOR_SHADE: Color = "#283629"
 # Carve color for the empty halves around the letters. Defaults to the
 # ``textual-dark`` background; ``build_banner(surface=...)`` overrides it with the
 # widget's own effective background so the carves match the chat log exactly.
