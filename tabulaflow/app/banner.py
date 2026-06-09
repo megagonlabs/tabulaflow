@@ -19,6 +19,7 @@ interpolated) colors have nothing to band, so the banner also looks identical on
 from __future__ import annotations
 
 import os
+import textwrap
 from typing import TYPE_CHECKING
 
 from rich.console import Group
@@ -46,6 +47,10 @@ COLOR_SHADE: Color = "#133629" if _TRUECOLOR else "#303030"  # ░ shade (grey o
 COLOR_PAGE: Color = "#121212"
 
 _TAGLINE = "AI for everything tabular"
+
+# Hard-wrap example lines at this column so wrapping is identical on every terminal
+# width (rather than reflowing at the terminal edge).
+_EXAMPLE_WRAP = 70
 
 # Starter questions grouped by category, shown under the banner.
 _EXAMPLES: list[tuple[str, list[str]]] = [
@@ -200,16 +205,21 @@ def _pretty_model(model: str) -> str:
 
 def _examples() -> list[Text]:
     """Render the starter-question block: each category as a heading, its example
-    questions beneath as bulleted lines, with a blank line between categories."""
+    questions beneath as bulleted lines, with a blank line between categories.
+
+    Long questions are hard-wrapped at ``_EXAMPLE_WRAP`` with a hanging indent so
+    the layout is identical regardless of terminal width.
+    """
     rows: list[Text] = []
     for i, (category, questions) in enumerate(_EXAMPLES):
         if i:
             rows.append(Text())  # blank line between categories
         rows.append(Text(category, style=f"bold {COLOR_TABULA}"))
         for question in questions:
-            row = Text("  • ", style="dim")
-            row.append(question, style="dim")
-            rows.append(row)
+            lines = textwrap.wrap(
+                question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    "
+            )
+            rows.extend(Text(line, style="dim") for line in lines)
     return rows
 
 
@@ -233,7 +243,7 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     url_label = GITHUB_URL.split("://", 1)[-1]
     tagline = Text()
     tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
-    tagline.append("    ")
+    tagline.append("  ·  ", style="dim")
     tagline.append(url_label, style="dim")
     return Group(
         *_wordmark(surface or COLOR_PAGE),
