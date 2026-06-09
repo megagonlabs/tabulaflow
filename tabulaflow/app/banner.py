@@ -50,7 +50,7 @@ _TAGLINE = "AI for everything tabular"
 # Starter questions grouped by category, shown under the banner.
 _EXAMPLES: list[tuple[str, list[str]]] = [
     (
-        "Collect",
+        "Large-scale data collection",
         [
             "Find every direct flight from SFO to NYC in the next 10 days",
             "Pull all remote software-engineer jobs posted this week, with salaries",
@@ -58,17 +58,17 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         ],
     ),
     (
-        "Analyze",
-        [
-            "Plot monthly revenue and flag the biggest drop",
-            "Break down this run's accuracy by category and flag the weakest",
-        ],
-    ),
-    (
-        "Transform",
+        "Semantic transformation",
         [
             "Tag each review's sentiment and flag any mentioning a refund",
             "Label each failed sample's error pattern as retrieval, reasoning, or output formatting, then visualize the distribution",
+        ],
+    ),
+    (
+        "Analysis and visualization",
+        [
+            "Plot monthly revenue and flag the biggest drop",
+            "Break down this run's accuracy by category and flag the weakest",
         ],
     ),
 ]
@@ -227,13 +227,14 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
     # Styles are per-span (not a base style) so the URL stays plain dim grey rather
     # than inheriting the tagline's mint color. The scheme is dropped from the
-    # displayed text (modern app convention) but kept as a real OSC-8 hyperlink so
-    # the label stays clickable in terminals that support it.
+    # displayed text (modern app convention). Rendered as plain text, NOT an OSC-8
+    # hyperlink — a real link makes terminals draw a dashed underline affordance
+    # that can't be styled away, so we trade clickability for the clean label.
     url_label = GITHUB_URL.split("://", 1)[-1]
     tagline = Text()
     tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
     tagline.append("    ")
-    tagline.append(url_label, style=f"dim link {GITHUB_URL}")
+    tagline.append(url_label, style="dim")
     return Group(
         *_wordmark(surface or COLOR_PAGE),
         tagline,
