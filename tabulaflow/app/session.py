@@ -44,6 +44,7 @@ class SessionState:
         trajectories_dir: Path,
         data_dir: Path,
         workspace: SQLConnector | None,
+        reasoning_effort: str,
     ) -> None:
         from tabulaflow.chat import ChatAgent
         from tabulaflow.core.db_connector.db_registry import DBRegistry
@@ -57,6 +58,7 @@ class SessionState:
         self.chat_agent: ChatAgent = ChatAgent(
             registry=self.registry,
             model=model,
+            reasoning_effort=reasoning_effort,
             workspace=workspace,
             trajectory_log_dir=trajectories_dir,
         )
@@ -85,3 +87,10 @@ class SessionState:
 
     def set_model(self, model: str) -> None:
         self.chat_agent.set_model(model)
+
+    @property
+    def reasoning_effort(self) -> str:
+        return self.chat_agent.reasoning_effort
+
+    def set_reasoning_effort(self, reasoning_effort: str) -> None:
+        self.chat_agent.set_reasoning_effort(reasoning_effort)

@@ -89,12 +89,13 @@ class TabulaflowApp(App[None]):
 
     _INTERRUPT_DOUBLE_PRESS_WINDOW = 1.0
 
-    def __init__(self, *, model: str, agent: str) -> None:
+    def __init__(self, *, model: str, agent: str, reasoning_effort: str) -> None:
         import asyncio
 
         super().__init__()
         self._model = model
         self._agent = agent
+        self._reasoning_effort = reasoning_effort
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
         prune_old_dumps()
@@ -142,7 +143,7 @@ class TabulaflowApp(App[None]):
     def on_mount(self) -> None:
         self._setup_logging()
         chat_log = self.query_one("#chat-log", VerticalScroll)
-        chat_log.mount(BannerWidget(model=self._model))
+        chat_log.mount(BannerWidget(model=self._model, reasoning_effort=self._reasoning_effort))
         if debug_enabled():
             mount_debug_widgets(self, chat_log)
         self.query_one("#input-bar", Input).focus()
@@ -451,6 +452,7 @@ class TabulaflowApp(App[None]):
                 self._runtime_paths.trajectories_dir,
                 self._runtime_paths.data_dir,
                 workspace,
+                self._reasoning_effort,
             )
             return self._session
 
@@ -571,7 +573,9 @@ class TabulaflowApp(App[None]):
 
         if result.should_clear:
             chat_log.remove_children()
-            chat_log.mount(BannerWidget(model=session.model))
+            chat_log.mount(
+                BannerWidget(model=session.model, reasoning_effort=session.reasoning_effort)
+            )
             return
 
         if result.output is not None:
@@ -650,7 +654,7 @@ class TabulaflowApp(App[None]):
         self.call_after_refresh(chat_log.scroll_end, animate=False)
 
 
-async def run_tui(model: str, agent: str) -> None:
+async def run_tui(model: str, agent: str, reasoning_effort: str) -> None:
     """Launch the Textual TUI app."""
-    app = TabulaflowApp(model=model, agent=agent)
+    app = TabulaflowApp(model=model, agent=agent, reasoning_effort=reasoning_effort)
     await app.run_async()

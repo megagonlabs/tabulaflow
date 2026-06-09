@@ -370,9 +370,10 @@ class BannerWidget(Static):
     }
     """
 
-    def __init__(self, *, model: str) -> None:
+    def __init__(self, *, model: str, reasoning_effort: str) -> None:
         super().__init__()
         self._model = model
+        self._reasoning_effort = reasoning_effort
 
     def on_mount(self) -> None:
         from tabulaflow.app.banner import build_banner
@@ -381,7 +382,11 @@ class BannerWidget(Static):
         # background so they read as transparent against the chat log, whatever
         # the theme resolves it to.
         surface = self.background_colors[0].hex
-        self.update(build_banner(model=self._model, surface=surface))
+        self.update(
+            build_banner(
+                model=self._model, reasoning_effort=self._reasoning_effort, surface=surface
+            )
+        )
 
 
 class UserMessage(Static):

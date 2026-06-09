@@ -24,6 +24,12 @@ def chat(
         "-a",
         help="Agent name from the tabulaflow agent registry.",
     ),
+    reasoning_effort: str = typer.Option(
+        "medium",
+        "--reasoning-effort",
+        "-r",
+        help="Reasoning effort for OpenAI models: minimal | low | medium | high.",
+    ),
 ) -> None:
     """Start an interactive database chat session (SQL or Neo4j Cypher)."""
     import asyncio
@@ -39,7 +45,7 @@ def chat(
 
     from tabulaflow.app.tui import run_tui
 
-    asyncio.run(run_tui(model=model, agent=agent))
+    asyncio.run(run_tui(model=model, agent=agent, reasoning_effort=reasoning_effort))
 
 
 def main() -> None:

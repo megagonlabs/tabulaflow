@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 from contextlib import suppress
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, Final
 
 from pydantic_ai.models.openai import OpenAIChatModelSettings
 
@@ -213,11 +213,16 @@ Steps:
 """.strip()
 
 
+# Fixed reasoning effort for the subagent-backed fan-out / extraction tools — an
+# internal detail of the chat lib, independent of the (app-configured) interactive
+# agent's ``reasoning_effort``.
+_SUBAGENT_REASONING_EFFORT: Final = "medium"
+
 # Reasoning config shared by the subagent-backed tools (the fan-out / extraction
 # tools). ``run_subagent_for_each_row`` additionally requests reasoning summaries.
 _SUBAGENT_MODEL_SETTINGS = OpenAIChatModelSettings(
     openai_service_tier="priority",
-    openai_reasoning_effort="medium",
+    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
 )
 
 
@@ -248,6 +253,12 @@ class ChatAgent:
 
     registry: DBRegistry
     model: str
+    # Reasoning effort for the interactive agent (OpenAI models only):
+    # minimal | low | medium | high. Required — the app owns the default (its
+    # ``--reasoning-effort`` option), as it does for ``model``. Mutable at runtime via
+    # ``set_reasoning_effort`` (peer of ``model``/``set_model``); the subagent fan-out
+    # tools keep their own fixed effort (``_SUBAGENT_REASONING_EFFORT``).
+    reasoning_effort: str
     # Where to persist conversation + subagent trajectories. ``None`` (default)
     # disables all trajectory persistence — set a dir to enable it. Servers leave it
     # off (avoids per-turn disk I/O and cross-conversation clobbering of the single
@@ -314,7 +325,7 @@ class ChatAgent:
                 message_store=self._message_store,
                 model_settings=OpenAIChatModelSettings(
                     openai_service_tier="priority",
-                    openai_reasoning_effort="medium",
+                    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
                     openai_reasoning_summary="detailed",
                 ),
                 store_metadata=True,
@@ -343,6 +354,16 @@ class ChatAgent:
         if self.model == model:
             return
         self.model = model
+        self._build_agent()
+
+    def set_reasoning_effort(self, reasoning_effort: str) -> None:
+        """Update the interactive agent's reasoning effort and rebuild the bound
+        runtime agent. Use this rather than assigning ``self.reasoning_effort``
+        directly — a bare assignment skips the rebuild. (Affects the main agent only;
+        subagent tools stay on ``_SUBAGENT_REASONING_EFFORT``.)"""
+        if self.reasoning_effort == reasoning_effort:
+            return
+        self.reasoning_effort = reasoning_effort
         self._build_agent()
 
     def note_event(self, description: str) -> None:
@@ -392,7 +413,7 @@ class ChatAgent:
             instructions=self._system_prompt,
             model_settings={
                 "openai_service_tier": "priority",
-                "openai_reasoning_effort": "medium",
+                "openai_reasoning_effort": self.reasoning_effort,
                 "openai_reasoning_summary": "detailed",
             },
         )
