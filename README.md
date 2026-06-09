@@ -252,6 +252,7 @@ June 4 - June 5
   - [x] Disable "open data explorer" button when workspace not ready
   - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 
+- [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
