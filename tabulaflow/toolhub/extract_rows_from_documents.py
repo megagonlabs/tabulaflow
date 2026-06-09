@@ -16,7 +16,8 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.utils import qualified_table
-from tabulaflow.toolhub.entity_extractor import DEFAULT_CHUNK_CHARS, DEFAULT_CHUNK_OVERLAP_CHARS, EntityExtractor
+from tabulaflow.toolhub.entity_extractor import EntityExtractor
+from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +49,7 @@ class ExtractRowsFromDocumentsTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
-        chunk_chars: int = DEFAULT_CHUNK_CHARS,
-        chunk_overlap_chars: int = DEFAULT_CHUNK_OVERLAP_CHARS,
+        chunk_chars: int = DEFAULT_MAX_CHARS,
     ) -> None:
         """Initialize the tool.
 
@@ -61,16 +61,13 @@ class ExtractRowsFromDocumentsTool:
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run
                 concurrently across all documents.
-            chunk_chars: Maximum characters per document chunk.
-            chunk_overlap_chars: Overlap between adjacent chunks, so an entity
-                spanning a boundary is seen whole by at least one chunk.
+            chunk_chars: Target maximum characters per document chunk.
         """
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
         self.chunk_chars = chunk_chars
-        self.chunk_overlap_chars = chunk_overlap_chars
         self.on_row_complete: Callable[[int, int], None] | None = None
 
     async def __call__(
@@ -182,7 +179,6 @@ class ExtractRowsFromDocumentsTool:
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
                 chunk_chars=self.chunk_chars,
-                chunk_overlap_chars=self.chunk_overlap_chars,
             )
         except ValueError as e:
             return f"(error: {e})"

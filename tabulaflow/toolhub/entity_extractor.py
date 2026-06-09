@@ -18,12 +18,7 @@ from typing import Any
 from pydantic import create_model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
-
-# Chunk geometry defaults: keep one chunk well within a small model's context while
-# overlapping enough that an entity straddling a boundary is seen whole by at least
-# one chunk.
-DEFAULT_CHUNK_CHARS = 12_000
-DEFAULT_CHUNK_OVERLAP_CHARS = 1_000
+from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, split_markdown
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -37,27 +32,16 @@ _EXTRACTION_SYSTEM_PROMPT = (
 )
 
 
-def _chunk_text(text: str, *, size: int, overlap: int) -> list[str]:
-    """Split ``text`` into overlapping windows of at most ``size`` chars."""
-    if len(text) <= size:
-        return [text]
-    step = size - overlap
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        chunks.append(text[start : start + size])
-        start += step
-    return chunks
-
-
 class EntityExtractor:
     """Extract structured entities from document text by chunking and LLM extraction.
 
-    A single document is split into overlapping chunks; a leaf subagent extracts a
-    list of entities from each chunk concurrently (bounded by ``max_concurrency``), and
-    the union is returned. Entities are flat dicts keyed by ``output_columns`` (all
-    string-valued). No deduplication is performed — overlapping chunks may yield the
-    same entity twice, so dedup downstream with full semantic context if needed.
+    A single document is split into non-overlapping, structure-aware chunks (see
+    :func:`tabulaflow.toolhub.markdown_splitter.split_markdown`); a leaf subagent
+    extracts a list of entities from each chunk concurrently (bounded by
+    ``max_concurrency``), and the union is returned. Entities are flat dicts keyed by
+    ``output_columns`` (all string-valued). No deduplication is performed — a record
+    whose evidence straddles a chunk boundary may still be reported by neighboring
+    chunks, so dedup downstream with full semantic context if needed.
 
     The pydantic output model, the extraction Agent, and the concurrency semaphore are
     built once at construction and reused across ``extract`` calls, so build one
@@ -71,8 +55,7 @@ class EntityExtractor:
         llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
-        chunk_chars: int = DEFAULT_CHUNK_CHARS,
-        chunk_overlap_chars: int = DEFAULT_CHUNK_OVERLAP_CHARS,
+        chunk_chars: int = DEFAULT_MAX_CHARS,
     ) -> None:
         """Initialize the extractor.
 
@@ -83,13 +66,11 @@ class EntityExtractor:
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run concurrently
                 across all ``extract`` calls on this instance.
-            chunk_chars: Maximum characters per document chunk.
-            chunk_overlap_chars: Overlap between adjacent chunks, so an entity
-                spanning a boundary is seen whole by at least one chunk.
+            chunk_chars: Target maximum characters per document chunk (inclusive of any
+                section breadcrumb the splitter prepends).
 
         Raises:
-            ValueError: If ``output_columns`` is empty or the chunk geometry is
-                invalid.
+            ValueError: If ``output_columns`` is empty or a size argument is invalid.
         """
         if not output_columns:
             raise ValueError("output_columns must be non-empty")
@@ -97,12 +78,9 @@ class EntityExtractor:
             raise ValueError("max_concurrency must be greater than 0")
         if chunk_chars <= 0:
             raise ValueError("chunk_chars must be greater than 0")
-        if not 0 <= chunk_overlap_chars < chunk_chars:
-            raise ValueError("chunk_overlap_chars must satisfy 0 <= overlap < chunk_chars")
 
         self.output_columns = output_columns
         self.chunk_chars = chunk_chars
-        self.chunk_overlap_chars = chunk_overlap_chars
 
         # Dynamic structured-output model: one all-string field per output column,
         # wrapped in a list-bearing container for reliable structured extraction.
@@ -133,7 +111,7 @@ class EntityExtractor:
         """
         if not text.strip():
             return []
-        chunks = _chunk_text(text, size=self.chunk_chars, overlap=self.chunk_overlap_chars)
+        chunks = split_markdown(text, max_chars=self.chunk_chars)
         prompts = [f"{instruction}\n\n<document_excerpt>\n{chunk}\n</document_excerpt>" for chunk in chunks]
         chunk_results = await asyncio.gather(*(self._extract_chunk(p) for p in prompts))
         return [entity for chunk in chunk_results for entity in chunk]
