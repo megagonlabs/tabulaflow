@@ -41,6 +41,43 @@ class TestBudget:
         assert "".join(chunks) == text
 
 
+class TestTwoLimitPacking:
+    def test_target_packs_many_small_entities_below_target(self) -> None:
+        text = "\n\n".join(f"Entity number {i}." for i in range(200))
+        chunks = split_markdown(text, max_chars=8000, target=500)
+        assert len(chunks) > 1
+        # Each chunk fills toward target, overshooting by at most the block that crossed it.
+        assert all(len(c) <= 560 for c in chunks)
+
+    def test_block_between_target_and_max_is_kept_whole(self) -> None:
+        big = ("word " * 400).strip()  # ~2000 chars: above target, below max → never split
+        text = f"alpha.\n\n{big}\n\nomega."
+        chunks = split_markdown(text, max_chars=8000, target=500)
+        assert any(big in c for c in chunks)  # present intact in a single chunk
+
+    def test_heading_not_orphaned_before_oversize_body(self) -> None:
+        body = ("word " * 4000).strip()  # one oversize line that must be split
+        text = f"## History\n\n{body}"
+        chunks = split_markdown(text, max_chars=500)
+        # The heading rides with the first slice of its body, not alone in a tiny chunk.
+        assert chunks[0].startswith("## History")
+        assert len(chunks[0].strip()) > len("## History") + 20
+        assert all(c.strip() != "## History" for c in chunks)
+
+    def test_long_line_wraps_on_word_boundaries(self) -> None:
+        text = ("alpha bravo charlie delta echo foxtrot " * 60).strip()  # one long line, > max
+        chunks = split_markdown(text, max_chars=200)
+        # Reassembling on whitespace yields the exact source words → no mid-word cuts, no loss.
+        assert " ".join(chunks).split() == text.split()
+
+    def test_target_none_packs_to_max(self) -> None:
+        text = "\n\n".join(f"Paragraph {i} with a little body text here." for i in range(300))
+        chunks = split_markdown(text, max_chars=2000, target=None)
+        assert all(len(c) <= 2000 for c in chunks)
+        # Greedy-to-ceiling: most chunks should be reasonably full, not target-sized.
+        assert max(len(c) for c in chunks) > 1500
+
+
 class TestHeadingBreadcrumb:
     def test_continuation_chunks_carry_section_breadcrumb(self) -> None:
         body = "\n\n".join(f"Sentence {i} in the history section." for i in range(100))

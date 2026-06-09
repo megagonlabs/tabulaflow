@@ -8,8 +8,13 @@ char, so a structureless document still splits cleanly.
 Two properties replace the old fixed-window + overlap scheme (overlap only existed so a
 boundary-straddling entity was seen whole by one chunk, at the cost of duplicates):
 
-1. **Non-overlapping cuts on natural seams** — headings and paragraph breaks; mid-line
-   or mid-sentence only when a single line/sentence already exceeds the budget.
+1. **Two-limit packing on natural seams.** Whole blocks (entities — paragraphs, list
+   items, table rows) pack into a chunk until it reaches a soft ``target``; a block is
+   split only if it alone exceeds the hard ``max_chars``. This covers both regimes: many
+   small entities pack densely up to ``target``, while a larger entity stays whole up to
+   ``max_chars``. A split *fills the current chunk first* (lazy fill), so a heading rides
+   with the first slice of its oversize body instead of being orphaned, and cuts land on
+   line → sentence → word boundaries (mid-word only for a single over-long word).
 2. **Context across cuts**, carried in a ``<context>``-wrapped prefix on any continuation
    chunk (one prompt rule covers it: "don't extract from context"):
 
@@ -35,7 +40,7 @@ belongs in preprocessing, not this generic splitter.
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 # Default target chunk size in characters. Kept well within a small model's context; the
 # section breadcrumb prefix counts against this budget so chunks never exceed it.
@@ -180,144 +185,189 @@ def _section_path(stack: list[tuple[int, str]]) -> str:
     return " > ".join(title for _, title in stack)
 
 
-def _breadcrumb(stack: list[tuple[int, str]]) -> str:
-    """The section-only ``<context>`` prefix for a continuation chunk (or "")."""
-    return _context_block(section=_section_path(stack), header=None)
+def _atomize(text: str, limit: int) -> list[str]:
+    """Break ``text`` into pieces each ``<= limit`` for lazy fill.
 
-
-def _emit_table_chunks(table: _Table, stack: list[tuple[int, str]], max_chars: int) -> list[str]:
-    """Split an oversize real-header table on row boundaries (rows kept whole).
-
-    The header appears once as inline content (the first chunk renders the table
-    normally); every continuation chunk carries it inside ``<context>`` instead, so
-    column meaning survives the split without re-extracting the header as a record.
+    Splits on line boundaries (preserving markdown structure); an over-long line falls
+    back to sentence, then word, then — only when a single word exceeds ``limit`` — a
+    hard character cut. Pieces are reassembled by the packer with ``\\n`` joins.
     """
-    section = _section_path(stack)
-    header = "\n".join(table.header_lines)
-    # Reserve room for the larger of the two per-chunk overheads (first chunk: section
-    # context + inline header; continuation: section + header inside context) so neither
-    # can exceed the budget.
-    first_overhead = len(_context_block(section=section, header=None)) + len(header) + 1
-    cont_overhead = len(_context_block(section=section, header=header))
-    body_budget = max(1, max_chars - max(first_overhead, cont_overhead))
-
-    chunks: list[str] = []
-    cur: list[str] = []
-    cur_len = 0
-
-    def emit() -> None:
-        nonlocal cur, cur_len
-        if not cur:
-            return
-        if not chunks:  # first chunk: header inline as content, section-only context
-            chunks.append(_context_block(section=section, header=None) + header + "\n" + "\n".join(cur))
-        else:  # continuation: header carried as context
-            chunks.append(_context_block(section=section, header=header) + "\n".join(cur))
-        cur, cur_len = [], 0
-
-    for row in table.rows:
-        if cur and cur_len + len(row) + 1 > body_budget:
-            emit()
-        cur.append(row)
-        cur_len += len(row) + 1
-    emit()
-    return chunks
-
-
-def _split_prose(text: str, budget: int) -> list[str]:
-    """Greedily pack a too-large block into <= ``budget``-char pieces.
-
-    Packs on line boundaries first, so markdown list/table/line structure is preserved
-    (newlines are kept, not collapsed to spaces, and table rows stay whole). A single
-    line longer than ``budget`` falls back to a sentence pack, and a single sentence
-    longer than ``budget`` is hard-sliced — the only place a cut lands mid-sentence.
-    """
-    budget = max(1, budget)
-    pieces: list[str] = []
-    cur: list[str] = []
-    cur_len = 0
-
-    def flush_cur() -> None:
-        nonlocal cur, cur_len
-        if cur:
-            pieces.append("\n".join(cur))
-            cur, cur_len = [], 0
-
+    limit = max(1, limit)
+    out: list[str] = []
     for line in text.split("\n"):
-        if len(line) > budget:
-            flush_cur()
-            pieces.extend(_split_long_line(line, budget))
+        if len(line) <= limit:
+            out.append(line)
             continue
-        if cur and cur_len + len(line) + 1 > budget:
-            flush_cur()
-        cur.append(line)
-        cur_len += len(line) + 1
-    flush_cur()
-    return pieces
+        for sentence in _SENTENCE_RE.split(line):
+            if not sentence:
+                continue
+            if len(sentence) <= limit:
+                out.append(sentence)
+            else:
+                out.extend(_wrap_words(sentence, limit))
+    return out
 
 
-def _split_long_line(line: str, budget: int) -> list[str]:
-    """Split a single over-budget line on sentence boundaries, hard-slicing as needed."""
-    pieces: list[str] = []
-    cur: list[str] = []
-    cur_len = 0
-    for sentence in _SENTENCE_RE.split(line):
-        if not sentence:
-            continue
-        if len(sentence) > budget:
-            if cur:
-                pieces.append(" ".join(cur))
-                cur, cur_len = [], 0
-            for start in range(0, len(sentence), budget):
-                pieces.append(sentence[start : start + budget])
-            continue
-        if cur and cur_len + len(sentence) + 1 > budget:
-            pieces.append(" ".join(cur))
-            cur, cur_len = [], 0
-        cur.append(sentence)
-        cur_len += len(sentence) + 1
-    if cur:
-        pieces.append(" ".join(cur))
-    return pieces
+def _wrap_words(s: str, limit: int) -> list[str]:
+    """Wrap ``s`` at the last space before ``limit``; hard-cut a single over-long word."""
+    out: list[str] = []
+    while len(s) > limit:
+        cut = s.rfind(" ", 1, limit)
+        if cut <= 0:
+            cut = limit  # a single word longer than the budget: hard char cut
+        out.append(s[:cut])
+        s = s[cut:].lstrip(" ")
+    if s:
+        out.append(s)
+    return out
 
 
-@dataclass
-class _Buffer:
-    """Greedy accumulator for small blocks packed into one chunk.
+class _Packer:
+    """Packs markdown blocks into chunks under two limits, with lazy-fill splitting.
 
-    ``prefix_len`` reserves room for the breadcrumb that flush() prepends to a
-    continuation chunk, so the prepend can't push the chunk over ``max_chars``. It is
-    fixed by the first block: a heading-led buffer needs no breadcrumb (the heading is
-    inline), so its reservation is zero.
+    One rule: append whole blocks (entities) to the current chunk until it reaches
+    ``target``, then flush. A block is split only if it alone exceeds ``max_chars``, and
+    when split its pieces *fill the current chunk first* before spilling into new ones —
+    so a heading rides with the first slice of its oversize body instead of being
+    orphaned. ``target == max_chars`` degrades to plain greedy-to-ceiling packing.
+
+    Continuation chunks (those not opening with their section's heading) are prefixed
+    with a ``<context>`` block naming the section path and, while a real-header table is
+    spilling, that table's header — so columns survive the split.
     """
 
-    parts: list[str] = field(default_factory=list)
-    length: int = 0
-    prefix_len: int = 0
-    start_stack: list[tuple[int, str]] = field(default_factory=list)
-    starts_with_heading: bool = False
+    def __init__(self, target: int, max_chars: int) -> None:
+        self.target = target
+        self.max_chars = max_chars
+        self.chunks: list[str] = []
+        self.stack: list[tuple[int, str]] = []  # active heading path
+        self.body = ""
+        self.start_stack: list[tuple[int, str]] = []  # heading path at this chunk's start
+        self.starts_with_heading = False
+        self.cont_header: str | None = None  # table header shown in THIS chunk's <context>
+        self.table_header: str | None = None  # header of the table currently spilling
 
-    def add(self, block_text: str, stack: list[tuple[int, str]], *, is_heading: bool) -> None:
-        if not self.parts:
-            self.start_stack = list(stack)
-            self.starts_with_heading = is_heading
-            self.prefix_len = 0 if is_heading else len(_breadcrumb(stack))
-        self.parts.append(block_text)
-        self.length += len(block_text) + 2  # for the "\n\n" join
+    # --- chunk-state helpers ------------------------------------------------
 
-    def would_exceed(self, addition: int, max_chars: int) -> bool:
-        """Whether adding ``addition`` chars would push the prefixed chunk over budget."""
-        return bool(self.parts) and self.prefix_len + self.length + addition > max_chars
+    def _prefix(self) -> str:
+        section = "" if self.starts_with_heading else _section_path(self.start_stack)
+        return _context_block(section=section, header=self.cont_header)
+
+    def _flush(self) -> None:
+        if self.body.strip():
+            self.chunks.append(self._prefix() + self.body)
+        self.body = ""
+        # The next chunk starts as a continuation: it inherits the current section and,
+        # if a table is mid-spill, carries that table's header as context.
+        self.start_stack = list(self.stack)
+        self.starts_with_heading = False
+        self.cont_header = self.table_header
+
+    def _fits(self, seg: str, sep: int) -> bool:
+        used = len(self._prefix()) + len(self.body) + (sep if self.body else 0)
+        return used + len(seg) <= self.max_chars
+
+    def _fits_fresh(self, seg: str) -> bool:
+        prefix = _context_block(section=_section_path(self.stack), header=self.table_header)
+        return len(prefix) + len(seg) <= self.max_chars
+
+    def _append(self, seg: str, sep: str) -> None:
+        self.body = seg if not self.body else self.body + sep + seg
+
+    def _maybe_flush_target(self) -> None:
+        if len(self._prefix()) + len(self.body) >= self.target:
+            self._flush()
+
+    # --- block handlers -----------------------------------------------------
+
+    def add(self, block: _Block) -> None:
+        if isinstance(block, _Heading):
+            self._add_heading(block)
+        elif isinstance(block, _Table):
+            self._add_table(block)
+        else:
+            self._add_text(block.text)
+
+    def _add_heading(self, block: _Heading) -> None:
+        while self.stack and self.stack[-1][0] >= block.level:
+            self.stack.pop()
+        self.stack.append((block.level, block.title))
+        if self.body and not self._fits(block.text, sep=2):
+            self._flush()
+        if not self.body:
+            self.start_stack = list(self.stack)
+            self.starts_with_heading = True
+        self._append(block.text, "\n\n")
+        # No target flush after a heading: keep it with the content that follows.
+
+    def _add_text(self, text: str) -> None:
+        if self._fits(text, sep=2):
+            self._append(text, "\n\n")
+        elif self._fits_fresh(text):
+            self._flush()
+            self._append(text, "\n\n")
+        else:
+            self._spill_lines(text, block_sep="\n\n")
+        self._maybe_flush_target()
+
+    def _add_table(self, block: _Table) -> None:
+        if self._fits(block.text, sep=2):
+            self._append(block.text, "\n\n")
+            self._maybe_flush_target()
+            return
+        if self._fits_fresh(block.text):
+            self._flush()
+            self._append(block.text, "\n\n")
+            self._maybe_flush_target()
+            return
+        # Spill: header inline in the first chunk, then carried in every continuation's
+        # <context> so columns survive the row split.
+        header = "\n".join(block.header_lines)
+        if self.body and not self._fits(header, sep=2):
+            self._flush()
+        self._append(header, "\n\n")
+        self.table_header = header
+        for row in block.rows:
+            if self.body and not self._fits(row, sep=1):
+                self._flush()  # new chunk inherits cont_header = table_header
+            self._append(row, "\n")
+            self._maybe_flush_target()
+        self.table_header = None
+        self._flush()  # end the table so the next block doesn't inherit its header context
+
+    def _spill_lines(self, text: str, *, block_sep: str) -> None:
+        """Lazy-fill an oversize block: top up the current chunk, then spill into new ones."""
+        avail_fresh = self.max_chars - len(_context_block(section=_section_path(self.stack), header=self.table_header))
+        atoms = _atomize(text, avail_fresh)
+        first = True
+        for atom in atoms:
+            sep = block_sep if first else "\n"
+            if self.body and not self._fits(atom, sep=len(sep)):
+                self._flush()
+            self._append(atom, sep if self.body else "")
+            self._maybe_flush_target()  # honor target within the split, like the table path
+            first = False
+
+    def finish(self) -> None:
+        self._flush()
 
 
-def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> list[str]:
+def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS, target: int | None = None) -> list[str]:
     """Split a markdown document into non-overlapping, context-preserving chunks.
 
+    Whole blocks (entities — paragraphs, list items, table rows) pack into a chunk until
+    it reaches ``target``; a block is split only if it alone exceeds ``max_chars``, and a
+    split fills the current chunk before spilling, so nothing is orphaned. ``target``
+    therefore tunes density for many-small-entity inputs while ``max_chars`` keeps a
+    larger entity whole; ``target is None`` packs greedily up to ``max_chars``.
+
     Args:
-        text: The document text. May be richly structured markdown (web_browser
-            snapshots) or unstructured prose (PDF/plain text) — both are handled.
-        max_chars: Target maximum characters per chunk, inclusive of any prepended
-            section breadcrumb.
+        text: The document text. Richly structured markdown (web_browser snapshots) or
+            unstructured prose (PDF/plain text) — both are handled.
+        max_chars: Hard ceiling per chunk, inclusive of any ``<context>`` prefix. The
+            only threshold at which a single block is split.
+        target: Soft size to pack toward before flushing. Defaults to ``max_chars``.
+            Clamped to ``max_chars``.
 
     Returns:
         Chunks in document order. A continuation chunk is prefixed with a ``<context>``
@@ -326,51 +376,11 @@ def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> list[str
     """
     if not text.strip():
         return []
-    if len(text) <= max_chars:
+    eff_target = max_chars if target is None else max(1, min(target, max_chars))
+    if len(text) <= eff_target:
         return [text]
-
-    blocks = _parse_blocks(text)
-    chunks: list[str] = []
-    stack: list[tuple[int, str]] = []  # active heading path: (level, title)
-    buf = _Buffer()
-
-    def flush() -> None:
-        nonlocal buf
-        if not buf.parts:
-            return
-        body = "\n\n".join(buf.parts).strip()
-        if body:
-            prefix = "" if buf.starts_with_heading else _breadcrumb(buf.start_stack)
-            chunks.append(prefix + body)
-        buf = _Buffer()
-
-    for block in blocks:
-        if isinstance(block, _Heading):
-            while stack and stack[-1][0] >= block.level:
-                stack.pop()
-            stack.append((block.level, block.title))
-            if buf.would_exceed(len(block.text), max_chars):
-                flush()
-            buf.add(block.text, stack, is_heading=True)
-            continue
-
-        # _Table and _Text share the standalone path: a non-heading-led chunk is always
-        # breadcrumb-prefixed, so a fresh buffer's room for the block is reduced by it.
-        prefix = _breadcrumb(stack)
-        avail = max_chars - len(prefix)
-        if len(block.text) <= avail:
-            if buf.would_exceed(len(block.text), max_chars):
-                flush()
-            buf.add(block.text, stack, is_heading=False)
-        elif isinstance(block, _Table):
-            flush()
-            chunks.extend(_emit_table_chunks(block, stack, max_chars))
-        else:  # oversize _Text
-            flush()
-            for piece in _split_prose(block.text, avail):
-                chunks.append(prefix + piece)
-        if buf.prefix_len + buf.length >= max_chars:
-            flush()
-
-    flush()
-    return chunks
+    packer = _Packer(target=eff_target, max_chars=max_chars)
+    for block in _parse_blocks(text):
+        packer.add(block)
+    packer.finish()
+    return packer.chunks
