@@ -217,7 +217,7 @@ def _examples() -> list[Text]:
     for i, (category, questions) in enumerate(_EXAMPLES):
         if i:
             rows.append(Text())  # blank line between categories
-        rows.append(Text(category, style=f"bold {COLOR_FLOW}"))
+        rows.append(Text(category, style="bold dim"))
         for question in questions:
             lines = textwrap.wrap(
                 question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    "
