@@ -853,13 +853,19 @@ def _render_md_table(children: list[Any]) -> str:
     rows = _flatten_rows(children)
     if not rows:
         return ""
-    # Find a header row: prefer the first row containing ``columnheader``s.
-    header_idx = next(
-        (i for i, r in enumerate(rows) if _row_has_role(r, "columnheader")),
-        0,
-    )
-    header_cells = _row_cells(rows[header_idx])
-    body_rows = rows[:header_idx] + rows[header_idx + 1 :]
+    # Use a row as the header ONLY if it carries real ``columnheader``s. A layout/
+    # listing table (Hacker News front page, job/flight/search result lists) has none;
+    # promoting its first row would fabricate a header out of real data — which then
+    # duplicates or drops that record if re-prepended to later chunks downstream. For
+    # those, emit a blank header so every data row stays in the body, and the header
+    # row reliably signals "no real header here".
+    header_idx = next((i for i, r in enumerate(rows) if _row_has_role(r, "columnheader")), None)
+    if header_idx is None:
+        header_cells: list[str] = []
+        body_rows = rows
+    else:
+        header_cells = _row_cells(rows[header_idx])
+        body_rows = rows[:header_idx] + rows[header_idx + 1 :]
     width = max((len(header_cells), *[len(_row_cells(r)) for r in body_rows]))
     header = _pipe_join(header_cells, width)
     sep = "| " + " | ".join(["---"] * width) + " |"
