@@ -49,16 +49,16 @@ if TYPE_CHECKING:
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
+        ExtractRowsFromDocumentsTool,
         QueryHistory,
         QueryRecord,
         RegistryGetColumnJsonSchemaTool,
         RegistryGetDBDocumentTool,
         RegistryGetTableSchemaTool,
-        RegistryExtractRowsFromDocumentsTool,
         RegistryRunQueryTool,
-        RegistryRunSubagentForEachRowTool,
         RegistryTransferRecordTool,
         RenderPlotextChartTool,
+        RunSubagentForEachRowTool,
         WebBrowserTool,
     )
 
@@ -240,8 +240,10 @@ class _Toolset:
     get_column_json_schema: RegistryGetColumnJsonSchemaTool
     get_table_schema: RegistryGetTableSchemaTool
     transfer_record: RegistryTransferRecordTool
-    run_subagent_for_each_row: RegistryRunSubagentForEachRowTool
-    extract_rows_from_documents: RegistryExtractRowsFromDocumentsTool
+    # The fan-out tools are bound to the session workspace (the only DB they may
+    # read from and write to); ``None`` when the agent runs without a workspace.
+    run_subagent_for_each_row: RunSubagentForEachRowTool | None
+    extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
@@ -298,16 +300,39 @@ class ChatAgent:
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
-            RegistryExtractRowsFromDocumentsTool,
+            ExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
             RegistryRunQueryTool,
-            RegistryRunSubagentForEachRowTool,
             RegistryTransferRecordTool,
             RenderPlotextChartTool,
+            RunSubagentForEachRowTool,
             WebBrowserTool,
         )
+
+        # The fan-out tools operate on the workspace only: sub-tasks are laid out
+        # as workspace tables and results written back there (user data reaches
+        # them via transfer_record). Without a workspace they are disabled.
+        run_subagent_for_each_row = None
+        extract_rows_from_documents = None
+        if self.workspace is not None:
+            run_subagent_for_each_row = RunSubagentForEachRowTool(
+                self.workspace,
+                registry=self.registry,
+                message_store=self._message_store,
+                model_settings=OpenAIChatModelSettings(
+                    openai_service_tier="priority",
+                    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
+                    openai_reasoning_summary="detailed",
+                ),
+                store_metadata=True,
+                trajectory_log_dir=subagent_dir,
+            )
+            extract_rows_from_documents = ExtractRowsFromDocumentsTool(
+                self.workspace,
+                model_settings=_SUBAGENT_MODEL_SETTINGS,
+            )
 
         return _Toolset(
             run_query=RegistryRunQueryTool(self.registry, history=self._query_history, enable_refresh=True),
@@ -320,21 +345,8 @@ class ChatAgent:
             get_column_json_schema=RegistryGetColumnJsonSchemaTool(self.registry),
             get_table_schema=RegistryGetTableSchemaTool(self.registry, SQLDDLSchemaFormatter(), enable_refresh=True),
             transfer_record=RegistryTransferRecordTool(self.registry, self._query_history),
-            run_subagent_for_each_row=RegistryRunSubagentForEachRowTool(
-                self.registry,
-                message_store=self._message_store,
-                model_settings=OpenAIChatModelSettings(
-                    openai_service_tier="priority",
-                    openai_reasoning_effort=_SUBAGENT_REASONING_EFFORT,
-                    openai_reasoning_summary="detailed",
-                ),
-                store_metadata=True,
-                trajectory_log_dir=subagent_dir,
-            ),
-            extract_rows_from_documents=RegistryExtractRowsFromDocumentsTool(
-                self.registry,
-                model_settings=_SUBAGENT_MODEL_SETTINGS,
-            ),
+            run_subagent_for_each_row=run_subagent_for_each_row,
+            extract_rows_from_documents=extract_rows_from_documents,
             add_canonical_name=AddCanonicalNameTool(
                 model_settings=_SUBAGENT_MODEL_SETTINGS,
                 trajectory_log_dir=subagent_dir,
@@ -385,6 +397,11 @@ class ChatAgent:
     def _build_agent(self) -> None:
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
+        fanout_tools = [
+            tool.as_pydantic_ai_tool()
+            for tool in (self._tools.run_subagent_for_each_row, self._tools.extract_rows_from_documents)
+            if tool is not None
+        ]
         self._pydantic_ai_agent = make_agent(
             self.model,
             tools=[
@@ -393,8 +410,7 @@ class ChatAgent:
                 self._tools.get_table_schema.as_pydantic_ai_tool(),
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.transfer_record.as_pydantic_ai_tool(),
-                self._tools.run_subagent_for_each_row.as_pydantic_ai_tool(),
-                self._tools.extract_rows_from_documents.as_pydantic_ai_tool(),
+                *fanout_tools,
                 self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
@@ -478,8 +494,14 @@ class ChatAgent:
         from tabulaflow.core.types import Usage
 
         emit = queue.put_nowait
-        self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
-        self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: emit(ToolProgress(completed=c, total=t))
+        if self._tools.run_subagent_for_each_row is not None:
+            self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: emit(
+                ToolProgress(completed=c, total=t)
+            )
+        if self._tools.extract_rows_from_documents is not None:
+            self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: emit(
+                ToolProgress(completed=c, total=t)
+            )
         self._tools.add_canonical_name.on_progress = lambda stage, c, t: emit(
             ToolProgress(completed=c, total=t, stage=stage)
         )
@@ -530,8 +552,10 @@ class ChatAgent:
                         if agent_run.result is not None:
                             answer_text = agent_run.result.output
             finally:
-                self._tools.run_subagent_for_each_row.on_row_complete = None
-                self._tools.extract_rows_from_documents.on_row_complete = None
+                if self._tools.run_subagent_for_each_row is not None:
+                    self._tools.run_subagent_for_each_row.on_row_complete = None
+                if self._tools.extract_rows_from_documents is not None:
+                    self._tools.extract_rows_from_documents.on_row_complete = None
                 self._tools.add_canonical_name.on_progress = None
                 self._save_trajectory_for_debug()
 
@@ -696,7 +720,9 @@ async def _emit_stream_event(
     )
 
     if isinstance(event, FunctionToolCallEvent):
-        emit(ToolStarted(tool_call_id=event.tool_call_id, name=event.part.tool_name, args=_coerce_args(event.part.args)))
+        emit(
+            ToolStarted(tool_call_id=event.tool_call_id, name=event.part.tool_name, args=_coerce_args(event.part.args))
+        )
 
     elif isinstance(event, FunctionToolResultEvent):
         tool_name = event.result.tool_name or ""
@@ -751,5 +777,3 @@ async def _build_outcome(
         if n is not None:
             return ColumnsReturned(count=n)
     return Completed()
-
-
