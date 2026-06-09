@@ -78,4 +78,9 @@ async def autoconnect_sample(session: SessionState) -> bool:
     )
     session.registry.register(SAMPLE_ALIAS, connector)
     session.register_source(("sample", _FILENAME), SAMPLE_ALIAS)
+    session.chat_agent.note_event(
+        f"sample data is connected as `{SAMPLE_ALIAS}` so the welcome examples are runnable "
+        f"(tables: {', '.join(SAMPLE_TABLES)}). It is placeholder demo data and will be removed "
+        "automatically as soon as the user connects a data source of their own."
+    )
     return True

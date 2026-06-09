@@ -254,6 +254,10 @@ async def _register_user_db(
     if alias != SAMPLE_ALIAS and session.registry.has(SAMPLE_ALIAS):
         await session.registry.unregister_async(SAMPLE_ALIAS)
         session.unregister_alias_sources(SAMPLE_ALIAS)
+        session.chat_agent.note_event(
+            f"the bundled sample data `{SAMPLE_ALIAS}` has been removed now that the user "
+            "connected their own data; disregard it from here on."
+        )
 
 
 async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
