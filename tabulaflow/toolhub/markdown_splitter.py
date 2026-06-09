@@ -1,38 +1,31 @@
 """Structure-aware, non-overlapping splitter for markdown documents.
 
-The documents this serves come from :mod:`tabulaflow.toolhub.web_browser` (markdown
-rendered from a page's accessibility tree — real ``#``/``##`` headings, ``|`` pipe
-tables, lists) and from PDF/plain-text sources (no markdown structure at all). The
-splitter is deliberately *source-agnostic*: it cuts on whatever structure is present
-and degrades gracefully — a heading-less document falls through to paragraph, then
-line, then sentence, then hard-character cuts.
+Serves both :mod:`tabulaflow.toolhub.web_browser` snapshots (markdown from a page's
+accessibility tree) and PDF/plain text. It is *source-agnostic*: it cuts on whatever
+structure exists and degrades through heading → paragraph → line → sentence → hard
+char, so a structureless document still splits cleanly.
 
-Two properties make the boundaries semantically meaningful, replacing the old
-fixed-window + overlap scheme (overlap existed only so an entity straddling a cut was
-seen whole by one chunk, at the cost of duplicate extractions):
+Two properties replace the old fixed-window + overlap scheme (overlap only existed so a
+boundary-straddling entity was seen whole by one chunk, at the cost of duplicates):
 
-1. **Non-overlapping cuts on natural seams.** Headings, paragraph breaks, and — within
-   an oversize block — line boundaries. A cut lands mid-line only when a single line
-   already exceeds the budget, and mid-sentence only when a single sentence does.
-2. **Heading-path context across cuts.** When a section is split into multiple chunks,
-   every continuation chunk that contains no heading of its own is prefixed with a
-   ``<context>``-wrapped breadcrumb naming the section path, so it still knows which
-   section it belongs to. A section title therefore appears exactly once as extractable
-   content (the inline heading in the section's first chunk) and as context everywhere
-   else. The generic ``<context>`` marker (rather than a bespoke token) lets one prompt
-   rule cover this and any future context line folded into the same block.
+1. **Non-overlapping cuts on natural seams** — headings and paragraph breaks; mid-line
+   or mid-sentence only when a single line/sentence already exceeds the budget.
+2. **Heading-path context across cuts** — a continuation chunk with no heading of its
+   own is prefixed with a ``<context>``-wrapped section breadcrumb. So a title appears
+   once as extractable content (its inline heading) and as context elsewhere; the
+   generic ``<context>`` marker lets one prompt rule ("don't extract from context")
+   cover this and any future context line.
 
-Notable non-features, each a deliberate choice:
+Differs from langchain/llama_index markdown splitters (which we don't depend on — both
+target RAG indexing): we bound chunk size *and* keep section context in one pass (theirs
+split only on headers, then need a heading-blind size splitter chained after); context
+rides inline for an LLM reader, not as vector-store metadata; and the API is plain
+``str -> list[str]`` with no node/document classes.
 
-* **No table-header propagation.** ``render_aria_markdown`` synthesizes a ``| --- |``
-  separator after the *first row* of every table, including pure layout/listing tables
-  (e.g. a Hacker News front page, job/flight result lists) whose first row is data, not
-  a column header. The "header" signal is therefore unreliable, so tables are split like
-  any other text — on line boundaries, which keeps each row whole. Section context still
-  rides along via the breadcrumb.
-* **No ref/cleaning logic.** Stripping web_browser's ``[ref=eN]`` markers is
-  source-specific and belongs in a separate preprocessing step, not in this generic
-  splitter.
+Out of scope by choice: **table-header propagation** (``render_aria_markdown`` fabricates
+a ``| --- |`` header from row 0 even for layout/listing tables, so the signal is
+unreliable — tables split as plain lines, keeping rows whole) and **ref/cleaning**
+(``[ref=eN]`` stripping is source-specific, belongs in preprocessing).
 """
 
 from __future__ import annotations
