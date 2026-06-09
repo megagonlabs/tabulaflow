@@ -58,7 +58,7 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         "Large-scale data collection",
         [
             "Find every direct flight from SFO to NYC in the next 10 days",
-            "Pull all remote software-engineer jobs posted this week, with salaries",
+            "Pull all remote software-engineer jobs posted this week",
             "Collect Hugging Face papers with 20+ upvotes this past month",
         ],
     ),
