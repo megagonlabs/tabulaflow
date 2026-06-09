@@ -46,6 +46,32 @@ COLOR_SHADE: Color = "#133629" if _TRUECOLOR else "#303030"  # ░ shade (grey o
 COLOR_PAGE: Color = "#121212"
 
 _TAGLINE = "AI for everything tabular"
+
+# Starter questions grouped by category, shown under the banner.
+_EXAMPLES: list[tuple[str, list[str]]] = [
+    (
+        "Collect",
+        [
+            "Find every direct flight from SFO to NYC in the next 10 days",
+            "Pull all remote software-engineer jobs posted this week, with salaries",
+            "Collect Hugging Face papers with 20+ upvotes this past month",
+        ],
+    ),
+    (
+        "Analyze",
+        [
+            "Plot monthly revenue and flag the biggest drop",
+            "Visualize the top 5 regions by sales and call out the outlier",
+        ],
+    ),
+    (
+        "Transform",
+        [
+            "Tag each review's sentiment and flag any mentioning a refund",
+            "Summarize each article into a one-line headline",
+        ],
+    ),
+]
 _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
 
 # "tabulaflow" in the half-block "pagga" style (3 rows).
@@ -172,6 +198,21 @@ def _pretty_model(model: str) -> str:
     return " ".join([provider_label, *parts]).strip()
 
 
+def _examples() -> list[Text]:
+    """Render the starter-question block: each category as a heading, its example
+    questions beneath as bulleted lines, with a blank line between categories."""
+    rows: list[Text] = []
+    for i, (category, questions) in enumerate(_EXAMPLES):
+        if i:
+            rows.append(Text())  # blank line between categories
+        rows.append(Text(category, style=f"bold {COLOR_TABULA}"))
+        for question in questions:
+            row = Text("  • ", style="dim")
+            row.append(question, style="dim")
+            rows.append(row)
+    return rows
+
+
 def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     """Build the welcome banner as a Rich renderable.
 
@@ -188,6 +229,8 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
         Text(_TAGLINE, style=f"italic {COLOR_TABULA}"),
         Text(),
         Text(GITHUB_URL, style="dim"),
+        Text(),
+        *_examples(),
         Text(),
         info,
     )
