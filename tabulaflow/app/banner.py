@@ -61,14 +61,14 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
         "Analyze",
         [
             "Plot monthly revenue and flag the biggest drop",
-            "Visualize the top 5 regions by sales and call out the outlier",
+            "Break down this run's accuracy by category and flag the weakest",
         ],
     ),
     (
         "Transform",
         [
             "Tag each review's sentiment and flag any mentioning a refund",
-            "Summarize each article into a one-line headline",
+            "Label each failure as a retrieval, reasoning, or output formatting error",
         ],
     ),
 ]
@@ -226,7 +226,7 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     )
     return Group(
         *_wordmark(surface or COLOR_PAGE),
-        Text(_TAGLINE, style=f"italic {COLOR_TABULA}"),
+        Text(_TAGLINE, style=f"bold italic {COLOR_TABULA}"),
         Text(),
         Text(GITHUB_URL, style="dim"),
         Text(),
