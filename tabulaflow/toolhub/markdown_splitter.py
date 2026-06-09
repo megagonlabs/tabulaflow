@@ -22,10 +22,13 @@ split only on headers, then need a heading-blind size splitter chained after); c
 rides inline for an LLM reader, not as vector-store metadata; and the API is plain
 ``str -> list[str]`` with no node/document classes.
 
-Out of scope by choice: **table-header propagation** (``render_aria_markdown`` fabricates
-a ``| --- |`` header from row 0 even for layout/listing tables, so the signal is
-unreliable — tables split as plain lines, keeping rows whole) and **ref/cleaning**
-(``[ref=eN]`` stripping is source-specific, belongs in preprocessing).
+Out of scope by choice: **table-header propagation** — re-prepending a split table's
+header to its continuation chunks. ``render_aria_markdown`` now emits a header only for
+genuine ``<th>`` tables (layout/listing tables get a blank header row), so the signal is
+reliable and this is safe to add; deferred because the high-volume targets are headerless
+listings where it does nothing, and tables already split as plain lines that keep rows
+whole. Also **ref/cleaning**: ``[ref=eN]`` stripping is source-specific, belongs in
+preprocessing.
 """
 
 from __future__ import annotations
