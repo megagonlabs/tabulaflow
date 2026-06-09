@@ -25,7 +25,7 @@ class TestHeadingsAndProse:
     def test_plain_text_paragraph(self) -> None:
         # A prose paragraph with no inline elements arrives as a scalar body
         # (``paragraph: "..."``); its text must not be dropped.
-        assert md('- paragraph [ref=e1]: Hello world, this is a bio.') == "Hello world, this is a bio."
+        assert md("- paragraph [ref=e1]: Hello world, this is a bio.") == "Hello world, this is a bio."
 
 
 class TestLinksAndButtons:
@@ -97,6 +97,28 @@ class TestTables:
         assert "| Name [ref=e3] | Score [ref=e4] |" in out
         assert "| --- | --- |" in out
         assert "| Alice [ref=e6] | 10 [ref=e7] |" in out
+
+    def test_multicol_table_without_columnheaders_emits_blank_header(self) -> None:
+        # A multi-column table with no columnheaders (HN-style listing). The first row
+        # is data, not a header, so it must stay in the body under a BLANK header row —
+        # never promoted to the header (which would fabricate/duplicate a record).
+        y = (
+            "- table [ref=e1]:\n"
+            "    - row [ref=e2]:\n"
+            '        - cell "1." [ref=e3]\n'
+            '        - cell "Top Story" [ref=e4]\n'
+            "    - row [ref=e5]:\n"
+            '        - cell "2." [ref=e6]\n'
+            '        - cell "Next Story" [ref=e7]'
+        )
+        out = md(y)
+        assert "| --- | --- |" in out
+        # Blank header row precedes the separator; both data rows are in the body.
+        assert "|   |   |" in out
+        assert "| 1. [ref=e3] | Top Story [ref=e4] |" in out
+        assert "| 2. [ref=e6] | Next Story [ref=e7] |" in out
+        # The first data row is NOT the header line (nothing above the blank header).
+        assert out.index("|   |   |") < out.index("| 1. [ref=e3]")
 
     def test_layout_table_renders_transparently(self) -> None:
         # Single-column "table" (HN-style layout). Should NOT produce pipes.
