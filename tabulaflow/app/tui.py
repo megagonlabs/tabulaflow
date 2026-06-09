@@ -130,10 +130,15 @@ class TabulaflowApp(App[None]):
             # Dim thin separators between dock sections. Same single-glyph
             # trick: 1-row visual in a 3-row container.
             yield Static("│", classes="input-sep")
-            # Content set by ``_refresh_esc_hint`` once mounted — initial
-            # state will be "Esc dim · Go to results" because no result
-            # widgets exist yet.
-            yield Static(id="input-esc-hint", disabled=True)
+            # A Button (not a Static) so its disabled fade matches the explorer
+            # button exactly; non-focusable so it stays out of the tab order.
+            # Label is refreshed by ``_refresh_esc_hint``.
+            esc_label = Text()
+            esc_label.append("Esc", style=KEY_HINT)
+            esc_label.append("  Go to results", style="dim")
+            esc_hint = Button(esc_label, id="input-esc-hint", disabled=True)
+            esc_hint.can_focus = False
+            yield esc_hint
             yield Static("│", classes="input-sep")
             explorer_label = Text()
             explorer_label.append("Ctrl+O", style=KEY_HINT)
@@ -164,7 +169,7 @@ class TabulaflowApp(App[None]):
         the two input-row hints read consistently.
         """
         try:
-            hint = self.query_one("#input-esc-hint", Static)
+            hint = self.query_one("#input-esc-hint", Button)
         except Exception:
             return
         has_results = bool(self.query(AgentResultWidget))
@@ -172,7 +177,7 @@ class TabulaflowApp(App[None]):
         label = Text()
         label.append("Esc", style=KEY_HINT)
         label.append("  Go to input" if in_result else "  Go to results", style="dim")
-        hint.update(label)
+        hint.label = label
         hint.disabled = not has_results
 
     def on_descendant_focus(self, event: events.DescendantFocus) -> None:
@@ -223,13 +228,17 @@ class TabulaflowApp(App[None]):
         )
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
-        """Route the right-side button click to the data-explorer action."""
+        """Route the right-side button clicks to their keyboard actions."""
         if event.button.id == "open-explorer-btn":
             # Move focus to the input before pushing the explorer screen so
             # that popping back lands on the input, not the button (which
             # would otherwise keep its pressed/focus highlight).
             self.query_one("#input-bar", Input).focus()
             self.action_open_data_explorer()
+            event.stop()
+        elif event.button.id == "input-esc-hint":
+            # Mouse parity with the Esc key: click to jump between input/results.
+            self.action_toggle_focus()
             event.stop()
 
     def on_key(self, event: events.Key) -> None:
