@@ -9,6 +9,7 @@ from typing import ClassVar
 from pydantic_ai import Tool
 from pydantic_ai.settings import ModelSettings
 
+from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.message_store import MessageStore
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
@@ -59,13 +60,15 @@ class RegistryRunSubagentForEachRowTool:
         self.store_metadata = store_metadata
         self.trajectory_log_dir = trajectory_log_dir
         self.on_row_complete: Callable[[int, int], None] | None = None
-        self._tools: dict[str, RunSubagentForEachRowTool] = {}
+        self._tools: dict[str, tuple[NL2QDBConnector, RunSubagentForEachRowTool]] = {}
 
     def _get_tool(self, db_alias: str) -> RunSubagentForEachRowTool:
-        """Return a cached ``RunSubagentForEachRowTool`` for ``db_alias``, creating one if needed."""
-        tool = self._tools.get(db_alias)
-        if tool is None:
-            connector = self.registry.get(db_alias)
+        """Return a cached ``RunSubagentForEachRowTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
+        connector = self.registry.get(db_alias)
+        entry = self._tools.get(db_alias)
+        if entry is not None and entry[0] is connector:
+            tool = entry[1]
+        else:
             if connector.connector_type != "sql":
                 raise TypeError(
                     f"run_subagent_for_each_row is only supported for SQL connectors, not {connector.connector_type!r}"
@@ -79,7 +82,7 @@ class RegistryRunSubagentForEachRowTool:
                 store_metadata=self.store_metadata,
                 trajectory_log_dir=self.trajectory_log_dir,
             )
-            self._tools[db_alias] = tool
+            self._tools[db_alias] = (connector, tool)
         tool.on_row_complete = self.on_row_complete
         return tool
 

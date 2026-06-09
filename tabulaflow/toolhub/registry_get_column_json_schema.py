@@ -4,6 +4,7 @@ from typing import ClassVar
 
 from pydantic_ai import Tool
 
+from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool, GetColumnJsonSchemaToolMetrics
 from tabulaflow.toolhub.utils import sum_tool_metrics
@@ -36,14 +37,14 @@ class RegistryGetColumnJsonSchemaTool:
         self.registry = registry
         self.include_examples = include_examples
         self.max_example_chars = max_example_chars
-        self._tools: dict[str, GetColumnJsonSchemaTool] = {}
+        self._tools: dict[str, tuple[NL2QDBConnector, GetColumnJsonSchemaTool]] = {}
 
     def _get_tool(self, db_alias: str) -> GetColumnJsonSchemaTool:
-        """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, creating one if needed."""
-        tool = self._tools.get(db_alias)
-        if tool is not None:
-            return tool
+        """Return a cached ``GetColumnJsonSchemaTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
         connector = self.registry.get(db_alias)
+        entry = self._tools.get(db_alias)
+        if entry is not None and entry[0] is connector:
+            return entry[1]
         if connector.connector_type != "sql":
             raise TypeError(
                 f"get_column_json_schema is only supported for SQL connectors, not {connector.connector_type!r}"
@@ -53,7 +54,7 @@ class RegistryGetColumnJsonSchemaTool:
             include_examples=self.include_examples,
             max_example_chars=self.max_example_chars,
         )
-        self._tools[db_alias] = tool
+        self._tools[db_alias] = (connector, tool)
         return tool
 
     async def __call__(
@@ -93,4 +94,4 @@ class RegistryGetColumnJsonSchemaTool:
 
     def metrics(self) -> GetColumnJsonSchemaToolMetrics:
         """Return aggregated metrics across all aliases."""
-        return sum_tool_metrics((t.metrics() for t in self._tools.values()), GetColumnJsonSchemaToolMetrics)
+        return sum_tool_metrics((t.metrics() for _, t in self._tools.values()), GetColumnJsonSchemaToolMetrics)

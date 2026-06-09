@@ -54,15 +54,15 @@ class RegistryGetSchemaTool:
         self._graph_formatter = CypherSchemaFormatter()
         self._compressor = SchemaCompressor()
         self._metrics = RegistryGetSchemaToolMetrics()
-        self._compressed_cache: dict[str, SQLSchema] = {}
+        self._compressed_cache: dict[str, tuple[SQLSchema, SQLSchema]] = {}
 
     def _get_compressed_sql_schema(self, alias: str, schema: SQLSchema) -> SQLSchema:
-        """Return a compressed SQL schema, cached per alias."""
-        cached = self._compressed_cache.get(alias)
-        if cached is not None:
-            return cached
+        """Return a compressed SQL schema, cached per alias while its source schema is unchanged."""
+        entry = self._compressed_cache.get(alias)
+        if entry is not None and entry[0] is schema:
+            return entry[1]
         compressed = self._compressor.compress(schema)
-        self._compressed_cache[alias] = compressed
+        self._compressed_cache[alias] = (schema, compressed)
         return compressed
 
     def _truncate(self, text: str) -> str:
@@ -104,8 +104,9 @@ class RegistryGetSchemaTool:
 
         if connector.connector_type == "sql":
             if refresh:
+                # No cache pop needed: the refresh replaces ``connector.schema``,
+                # which invalidates the cached entry via its identity check.
                 await connector.refresh_schema_async()
-                self._compressed_cache.pop(db_alias, None)
             schema = self._get_compressed_sql_schema(db_alias, connector.schema)
             self._sql_formatter.set_dialect(schema.dialect)
             result = self._sql_formatter.format(schema, add_description=True)

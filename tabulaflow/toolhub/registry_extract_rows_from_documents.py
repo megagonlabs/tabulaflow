@@ -43,13 +43,15 @@ class RegistryExtractRowsFromDocumentsTool:
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.on_row_complete: Callable[[int, int], None] | None = None
-        self._tools: dict[str, ExtractRowsFromDocumentsTool] = {}
+        self._tools: dict[str, tuple[SQLConnector, ExtractRowsFromDocumentsTool]] = {}
 
     def _get_tool(self, db_alias: str) -> ExtractRowsFromDocumentsTool:
-        """Return a cached ``ExtractRowsFromDocumentsTool`` for ``db_alias``, creating one if needed."""
-        tool = self._tools.get(db_alias)
-        if tool is None:
-            connector = self.registry.get(db_alias)
+        """Return a cached ``ExtractRowsFromDocumentsTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
+        connector = self.registry.get(db_alias)
+        entry = self._tools.get(db_alias)
+        if entry is not None and entry[0] is connector:
+            tool = entry[1]
+        else:
             if not isinstance(connector, SQLConnector):
                 raise TypeError(
                     f"extract_rows_from_documents is only supported for SQL connectors, not {connector.connector_type!r}"
@@ -59,7 +61,7 @@ class RegistryExtractRowsFromDocumentsTool:
                 subagent_llm=self.subagent_llm,
                 model_settings=self.model_settings,
             )
-            self._tools[db_alias] = tool
+            self._tools[db_alias] = (connector, tool)
         tool.on_row_complete = self.on_row_complete
         return tool
 

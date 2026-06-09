@@ -5,6 +5,7 @@ from typing import Any, Callable, ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
+from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
 from tabulaflow.core.formatters.sql_ddl import SQLDDLSchemaFormatter
@@ -67,7 +68,7 @@ class RegistryGetDBDocumentTool:
         self._graph_formatter = CypherSchemaFormatter()
         self._compressor = SchemaCompressor()
         self._metrics = RegistryGetDBDocumentToolMetrics()
-        self._document_cache: dict[str, str] = {}
+        self._document_cache: dict[str, tuple[NL2QDBConnector, str]] = {}
 
     def _schema_item_count(self, db_alias: str) -> int:
         connector = self.registry.get(db_alias)
@@ -88,10 +89,10 @@ class RegistryGetDBDocumentTool:
         raise TypeError(f"Unsupported connector type for get_db_document: {connector.connector_type!r}")
 
     async def _get_document(self, db_alias: str) -> str:
-        cached = self._document_cache.get(db_alias)
-        if cached is not None:
-            return cached
         connector = self.registry.get(db_alias)
+        cached = self._document_cache.get(db_alias)
+        if cached is not None and cached[0] is connector:
+            return cached[1]
 
         use_summarizer = not (
             self.min_items_for_summary > 0 and self._schema_item_count(db_alias) < self.min_items_for_summary
@@ -107,7 +108,7 @@ class RegistryGetDBDocumentTool:
             schema_doc = self._format_direct_document(db_alias)
             document = f"<db_schema>\n{schema_doc}\n</db_schema>"
 
-        self._document_cache[db_alias] = document
+        self._document_cache[db_alias] = (connector, document)
         return document
 
     def _truncate(self, text: str) -> str:

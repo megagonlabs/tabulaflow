@@ -7,6 +7,7 @@ from typing import Any, ClassVar
 from pydantic_ai import Tool
 
 from tabulaflow.core.config import tabulaflow_config
+from tabulaflow.core.db_connector.base import NL2QDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.toolhub.query_history import QueryHistory, QueryRecord
 from tabulaflow.toolhub.run_query import LLMParameter, RunQueryTool, RunQueryToolMetrics
@@ -62,15 +63,15 @@ class RegistryRunQueryTool:
         self.max_visible_rows = max_visible_rows
         self.max_cell_width = max_cell_width
         self.floatfmt = floatfmt
-        self._tools: dict[str, RunQueryTool] = {}
+        self._tools: dict[str, tuple[NL2QDBConnector, RunQueryTool]] = {}
         self._history = history or QueryHistory()
 
     def _get_tool(self, db_alias: str) -> RunQueryTool:
-        """Return a cached ``RunQueryTool`` for ``db_alias``, creating one if needed."""
-        tool = self._tools.get(db_alias)
-        if tool is not None:
-            return tool
+        """Return a cached ``RunQueryTool`` for ``db_alias``, rebuilding it if the alias was re-bound."""
         connector = self.registry.get(db_alias)
+        entry = self._tools.get(db_alias)
+        if entry is not None and entry[0] is connector:
+            return entry[1]
         tool = RunQueryTool(
             connector,
             enable_params=self.enable_params,
@@ -80,7 +81,7 @@ class RegistryRunQueryTool:
             max_cell_width=self.max_cell_width,
             floatfmt=self.floatfmt,
         )
-        self._tools[db_alias] = tool
+        self._tools[db_alias] = (connector, tool)
         return tool
 
     async def _run_with_params_with_refresh(
@@ -192,7 +193,7 @@ class RegistryRunQueryTool:
 
     def metrics(self) -> RunQueryToolMetrics:
         """Return aggregated metrics across all aliases."""
-        return sum_tool_metrics((t.metrics() for t in self._tools.values()), RunQueryToolMetrics)
+        return sum_tool_metrics((t.metrics() for _, t in self._tools.values()), RunQueryToolMetrics)
 
     async def get_query_record(self, record_id: str) -> QueryRecord:
         """Return the record for a previously executed query.
