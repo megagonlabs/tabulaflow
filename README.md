@@ -257,6 +257,7 @@ June 8
 - Fix bugs
   - [x] web_browser.py - Paragraphs dropped on https://megagon.ai/our-team/yanlin-feng/
 
+- [ ] Gradient background in banner
 - [ ] Bug when disconnecting sample_data
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
