@@ -82,16 +82,19 @@ _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
 _LOGO_LINES = [
     "░▀█▀░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█▀█░█░░░█",
     "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█░█░█",
-    "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀▀░▀▀",
+    "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀▀▔▀▀",
 ]
 
 # Each pagga cell -> (top sub-pixel, bottom sub-pixel). 'ink' = a letter stroke,
-# 'shade' = the dim ░ block, 'off' = the black-ish page.
+# 'shade' = the dim ░ block, 'off' = the transparent page. ``▔`` is a sentinel for
+# a blackish COLOR_PAGE top half over a COLOR_SHADE bottom half — used under the
+# "w" center.
 _DECODE = {
     "█": ("ink", "ink"),
     "▀": ("ink", "off"),
     "▄": ("off", "ink"),
     "░": ("shade", "shade"),
+    "▔": ("page", "shade"),
     " ": ("off", "off"),
 }
 
@@ -121,6 +124,8 @@ def _sub_color(state: str, col: int) -> Color | None:
         return COLOR_TABULA if col < _FLOW_START else COLOR_FLOW
     if state == "shade":
         return COLOR_SHADE
+    if state == "page":
+        return COLOR_PAGE  # explicit blackish block (not the transparent carve)
     return None  # 'off' -> transparent (shows the chat background)
 
 
