@@ -214,7 +214,7 @@ def _examples() -> list[Text]:
     for i, (category, questions) in enumerate(_EXAMPLES):
         if i:
             rows.append(Text())  # blank line between categories
-        rows.append(Text(category, style=f"bold {COLOR_TABULA}"))
+        rows.append(Text(category, style=f"bold {COLOR_FLOW}"))
         for question in questions:
             lines = textwrap.wrap(
                 question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    "
@@ -230,9 +230,14 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     with so they read as transparent — pass the live theme's ``$surface``. Falls
     back to ``COLOR_PAGE`` when not given.
     """
-    info = Text.from_markup(
-        f"[dim]{_pretty_model(model)}[/dim]      "
-        "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
+    # Model name, then the same dim `·` divider as the tagline line, then the hint.
+    info = Text()
+    info.append(_pretty_model(model), style="dim")
+    info.append(" · ", style="dim")
+    info.append_text(
+        Text.from_markup(
+            "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
+        )
     )
     # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
     # Styles are per-span (not a base style) so the URL stays plain dim grey rather
@@ -243,7 +248,7 @@ def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
     url_label = GITHUB_URL.split("://", 1)[-1]
     tagline = Text()
     tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
-    tagline.append("  ·  ", style="dim")
+    tagline.append(" · ", style="dim")
     tagline.append(url_label, style="dim")
     return Group(
         *_wordmark(surface or COLOR_PAGE),
