@@ -237,6 +237,25 @@ async def _cmd_clear(args: list[str], session: SessionState) -> CommandResult:
     return CommandResult(should_clear=True)
 
 
+async def _register_user_db(
+    session: SessionState, alias: str, connector: NL2QDBConnector, source_key: object
+) -> None:
+    """Register a user-connected database, then drop the auto-loaded sample placeholder.
+
+    The bundled ``sample_data`` DB auto-connects for first-run convenience; once the
+    user connects real data it's removed so it can't be confused with (or queried in
+    place of) the user's own data.
+    """
+    session.registry.register(alias, connector)
+    session.register_source(source_key, alias)
+
+    from tabulaflow.app.sample_data import SAMPLE_ALIAS
+
+    if alias != SAMPLE_ALIAS and session.registry.has(SAMPLE_ALIAS):
+        await session.registry.unregister_async(SAMPLE_ALIAS)
+        session.unregister_alias_sources(SAMPLE_ALIAS)
+
+
 async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(
@@ -323,8 +342,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load files:[/] {e}"))
 
-        session.registry.register(alias, connector)
-        session.register_source(source_key, alias)
+        await _register_user_db(session, alias, connector, source_key)
         info = _announce_connect(session, alias, connector)
         return CommandResult(output=Text(f"✓ Loaded {file_label} as {alias} ({info})", style="dim"))
 
@@ -415,8 +433,7 @@ async def _connect_hf_dataset(args: list[str], session: SessionState) -> Command
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Failed to load HF dataset:[/] {e}"))
 
-    session.registry.register(alias, connector)
-    session.register_source(source_key, alias)
+    await _register_user_db(session, alias, connector, source_key)
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Loaded {dataset_id} as {alias} ({info})", style="dim"))
 
@@ -462,8 +479,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
         except Exception as e:
             return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
 
-        session.registry.register(alias, neo_connector)
-        session.register_source(("url", url), alias)
+        await _register_user_db(session, alias, neo_connector, ("url", url))
         info = _announce_connect(session, alias, neo_connector)
         return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 
@@ -487,8 +503,7 @@ async def _execute_connect(url: str, alias: str, session: SessionState) -> Comma
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
 
-    session.registry.register(alias, connector)
-    session.register_source(("url", url), alias)
+    await _register_user_db(session, alias, connector, ("url", url))
     info = _announce_connect(session, alias, connector)
     return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
 

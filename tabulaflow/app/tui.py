@@ -454,7 +454,17 @@ class TabulaflowApp(App[None]):
                 workspace,
                 self._reasoning_effort,
             )
+            await self._maybe_autoconnect_sample(self._session)
             return self._session
+
+    async def _maybe_autoconnect_sample(self, session: SessionState) -> None:
+        """Silently load the bundled sample DB when the user connected nothing of their own."""
+        from tabulaflow.app.sample_data import autoconnect_sample
+
+        try:
+            await autoconnect_sample(session)
+        except Exception:
+            pass  # the sample is a convenience; never block startup on it
 
     async def on_input_submitted(self, event: Input.Submitted) -> None:
         display_text = event.value.strip()
@@ -573,9 +583,7 @@ class TabulaflowApp(App[None]):
 
         if result.should_clear:
             chat_log.remove_children()
-            chat_log.mount(
-                BannerWidget(model=session.model, reasoning_effort=session.reasoning_effort)
-            )
+            chat_log.mount(BannerWidget(model=session.model, reasoning_effort=session.reasoning_effort))
             return
 
         if result.output is not None:
