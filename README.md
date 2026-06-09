@@ -252,6 +252,8 @@ June 4 - June 5
   - [x] Disable "open data explorer" button when workspace not ready
   - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 
+- [ ] Run subagent column type
+- [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
 - [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
 - [ ] Offload truncated cell + read_message tool
