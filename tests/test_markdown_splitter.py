@@ -70,19 +70,50 @@ class TestHeadingBreadcrumb:
 
 
 class TestTables:
-    def test_rows_kept_whole_and_no_header_duplication(self) -> None:
-        # A headerless listing table (the HN case): the first row is data, not a header,
-        # and must appear exactly once across all chunks — never re-prepended.
+    def test_headerless_listing_rows_kept_whole_no_duplication(self) -> None:
+        # A blank-header listing table (the HN case): the first row is data, not a header,
+        # so it must appear exactly once and never be propagated.
         rows = [f"| {i}. | Item number {i} | value {i} |" for i in range(200)]
-        text = "\n".join(rows)
+        text = "|  |  |  |\n| --- | --- | --- |\n" + "\n".join(rows)
         chunks = split_markdown(text, max_chars=800)
         assert len(chunks) > 1
-        # The first row appears in exactly one chunk.
         assert sum("| 0. | Item number 0 |" in c for c in chunks) == 1
-        # Every original row is present, and none is split mid-row.
+        # No chunk re-prepends the blank header as context (it's not a real header).
+        assert not any(c.startswith("<context>") and "| 0. |" in c.split("</context>")[0] for c in chunks)
         joined = "\n".join(_strip_breadcrumbs(c) for c in chunks)
         for row in rows:
             assert row in joined
+
+    def test_real_header_propagated_as_context_to_continuations(self) -> None:
+        # A genuine <th> data table too long for one chunk: the header rides in the
+        # <context> of every continuation chunk, and once inline in the first chunk.
+        header = "| Rank | Country | Population |\n| --- | --- | --- |"
+        rows = [f"| {i} | Country{i} | {i * 1000} |" for i in range(300)]
+        text = header + "\n" + "\n".join(rows)
+        chunks = split_markdown(text, max_chars=1000)
+        assert len(chunks) > 2
+        # First chunk renders the header inline (extractable once), no <context>.
+        assert not chunks[0].startswith("<context>")
+        assert "| Rank | Country | Population |" in chunks[0]
+        # Every continuation chunk carries the header inside its <context> block.
+        for c in chunks[1:]:
+            assert c.startswith("<context>")
+            ctx = c.split("</context>")[0]
+            assert "| Rank | Country | Population |" in ctx
+            assert "| --- | --- | --- |" in ctx
+        assert all(len(c) <= 1000 for c in chunks)
+
+    def test_real_header_table_carries_section_path_too(self) -> None:
+        header = "| A | B |\n| --- | --- |"
+        rows = [f"| {i} | {i} |" for i in range(300)]
+        text = f"# Doc\n\n## Stats\n\n{header}\n" + "\n".join(rows)
+        chunks = split_markdown(text, max_chars=600)
+        cont = [c for c in chunks if c.startswith("<context>")]
+        assert cont, "expected continuation chunks"
+        # The <context> block names both the section and the table header.
+        assert any(
+            "Section: Doc > Stats" in c.split("</context>")[0] and "| A | B |" in c.split("</context>")[0] for c in cont
+        )
 
 
 class TestCodeFences:
