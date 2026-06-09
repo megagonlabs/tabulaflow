@@ -72,8 +72,7 @@ _EXAMPLES: list[tuple[str, list[str]]] = [
     (
         "Analysis and visualization",
         [
-            "Plot monthly revenue and flag the biggest drop",
-            "Break down this run's accuracy by category and flag the weakest",
+            "Analyze and visualize my monthly spending",
         ],
     ),
 ]
@@ -223,16 +222,24 @@ def _examples() -> list[Text]:
     return rows
 
 
-def build_banner(*, model: str, surface: str | None = None) -> RenderableType:
+def build_banner(
+    *, model: str, reasoning_effort: str | None = None, surface: str | None = None
+) -> RenderableType:
     """Build the welcome banner as a Rich renderable.
+
+    ``reasoning_effort`` is appended to the model label as ``(medium)`` — but only
+    for OpenAI models, the only provider the chat lib applies the effort to.
 
     ``surface`` is the chat background color the wordmark's empty halves are carved
     with so they read as transparent — pass the live theme's ``$surface``. Falls
     back to ``COLOR_PAGE`` when not given.
     """
+    model_label = _pretty_model(model)
+    if reasoning_effort and model.partition(":")[0] in ("openai-responses", "openai"):
+        model_label += f" ({reasoning_effort})"
     # Model name, then the same dim `·` divider as the tagline line, then the hint.
     info = Text()
-    info.append(_pretty_model(model), style="dim")
+    info.append(model_label, style="dim")
     info.append(" · ", style="dim")
     info.append_text(
         Text.from_markup(
