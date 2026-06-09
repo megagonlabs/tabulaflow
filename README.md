@@ -250,8 +250,14 @@ June 4 - June 5
 - Fix bugs
   - [x] Fix inconsistent error message color
   - [x] Disable "open data explorer" button when workspace not ready
-  - [ ] Debug https://megagon.ai/our-team/yanlin-feng/
 
+June 8
+- [x] New banner that looks nice on every terminal!
+- [x] Starting examples and sample_data
+- Fix bugs
+  - [x] web_browser.py - Paragraphs dropped on https://megagon.ai/our-team/yanlin-feng/
+
+- [ ] Bug when disconnecting sample_data
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 - [ ] Context for canonicalization (e.g. pool vs swimming)
