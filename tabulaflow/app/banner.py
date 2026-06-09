@@ -82,7 +82,7 @@ _TABULA_LETTERS = 6  # "tabula" has 6 letters; the rest ("flow") use COLOR_FLOW
 _LOGO_LINES = [
     "░▀█▀░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█▀█░█░░░█",
     "░░█░░█▀█░█▀█░█░█░█░░░█▀█░█▀▀░█░░░█░█░█░█░█",
-    "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀▀▔▀▀",
+    "░░▀░░▀░▀░▀▀▀░▀▀▀░▀▀▀░▀░▀░▀░░░▀▀▀░▀▀▀░▀▀░▀▀",
 ]
 
 # Each pagga cell -> (top sub-pixel, bottom sub-pixel). 'ink' = a letter stroke,
@@ -94,7 +94,6 @@ _DECODE = {
     "▀": ("ink", "off"),
     "▄": ("off", "ink"),
     "░": ("shade", "shade"),
-    "▔": ("page", "shade"),
     " ": ("off", "off"),
 }
 
