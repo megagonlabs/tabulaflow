@@ -4,10 +4,15 @@ from tabulaflow.toolhub.markdown_splitter import split_markdown
 
 
 def _strip_breadcrumbs(chunk: str) -> str:
-    """Drop a leading ``[Section: ...]`` prefix so chunk bodies can be compared."""
-    if chunk.startswith("[Section:"):
-        return chunk.split("\n\n", 1)[1] if "\n\n" in chunk else ""
+    """Drop a leading ``<context>...</context>`` prefix so chunk bodies can be compared."""
+    if chunk.startswith("<context>"):
+        return chunk.split("</context>\n\n", 1)[1] if "</context>\n\n" in chunk else ""
     return chunk
+
+
+def _context(*sections: str) -> str:
+    """The ``<context>`` breadcrumb prefix a continuation chunk in ``sections`` carries."""
+    return "<context>\nSection: " + " > ".join(sections) + "\n</context>"
 
 
 class TestPassthrough:
@@ -45,23 +50,23 @@ class TestHeadingBreadcrumb:
         # itself begin with the heading must carry the breadcrumb.
         continuation = [c for c in chunks if not c.startswith("# Python") and "## History" not in c]
         assert continuation, "expected at least one continuation chunk"
-        assert all(c.startswith("[Section: Python > History]") for c in continuation)
+        assert all(c.startswith(_context("Python", "History")) for c in continuation)
 
     def test_nested_heading_path(self) -> None:
         body = "\n\n".join(f"Detail line {i} goes here with some words." for i in range(60))
         text = f"# A\n\n## B\n\n### C\n\n{body}"
         chunks = split_markdown(text, max_chars=300)
-        assert any(c.startswith("[Section: A > B > C]") for c in chunks)
+        assert any(c.startswith(_context("A", "B", "C")) for c in chunks)
 
     def test_breadcrumb_pops_to_sibling_section(self) -> None:
         first = "\n\n".join(f"alpha line {i} of the first subsection." for i in range(40))
         second = "\n\n".join(f"beta line {i} of the second subsection." for i in range(40))
         text = f"# Doc\n\n## First\n\n{first}\n\n## Second\n\n{second}"
         chunks = split_markdown(text, max_chars=300)
-        assert any(c.startswith("[Section: Doc > First]") for c in chunks)
-        assert any(c.startswith("[Section: Doc > Second]") for c in chunks)
+        assert any(c.startswith(_context("Doc", "First")) for c in chunks)
+        assert any(c.startswith(_context("Doc", "Second")) for c in chunks)
         # "First" must not leak into a "Second" breadcrumb.
-        assert not any(c.startswith("[Section: Doc > First > Second]") for c in chunks)
+        assert not any(c.startswith(_context("Doc", "First", "Second")) for c in chunks)
 
 
 class TestTables:
@@ -86,7 +91,7 @@ class TestCodeFences:
         text = "# Real Heading\n\n```python\n# not a heading\nx = 1\n```\n\n" + body
         chunks = split_markdown(text, max_chars=400)
         # The code comment must never be tracked as a section (no breadcrumb from it).
-        assert not any(c.startswith("[Section: Real Heading > not a heading") for c in chunks)
-        assert not any(c.startswith("[Section: not a heading") for c in chunks)
+        assert not any(c.startswith(_context("Real Heading", "not a heading")) for c in chunks)
+        assert not any(c.startswith(_context("not a heading")) for c in chunks)
         # The real heading is still tracked as the active section.
-        assert any(c.startswith("[Section: Real Heading]") for c in chunks)
+        assert any(c.startswith(_context("Real Heading")) for c in chunks)

@@ -16,7 +16,11 @@ seen whole by one chunk, at the cost of duplicate extractions):
    already exceeds the budget, and mid-sentence only when a single sentence does.
 2. **Heading-path context across cuts.** When a section is split into multiple chunks,
    every continuation chunk that contains no heading of its own is prefixed with a
-   ``[Section: A > B]`` breadcrumb, so it still knows which section it belongs to.
+   ``<context>``-wrapped breadcrumb naming the section path, so it still knows which
+   section it belongs to. A section title therefore appears exactly once as extractable
+   content (the inline heading in the section's first chunk) and as context everywhere
+   else. The generic ``<context>`` marker (rather than a bespoke token) lets one prompt
+   rule cover this and any future context line folded into the same block.
 
 Notable non-features, each a deliberate choice:
 
@@ -119,11 +123,17 @@ def _parse_blocks(text: str) -> list[_Block]:
 
 
 def _breadcrumb(stack: list[tuple[int, str]]) -> str:
-    """Render the active heading path as a ``[Section: A > B]`` prefix (or "")."""
+    """Render the active heading path as a ``<context>`` prefix block (or "").
+
+    The marker is a generic ``<context>...</context>`` block (not a bespoke
+    ``[Section: ...]`` token) so a single prompt rule — "never extract from
+    ``<context>``" — covers this and any future context line (e.g. a propagated table
+    header) folded into the same block.
+    """
     if not stack:
         return ""
     path = " > ".join(title for _, title in stack)
-    return f"[Section: {path}]\n\n"
+    return f"<context>\nSection: {path}\n</context>\n\n"
 
 
 def _split_prose(text: str, budget: int) -> list[str]:
@@ -223,8 +233,8 @@ def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS) -> list[str
 
     Returns:
         Chunks in document order. A chunk that continues a section started in an earlier
-        chunk is prefixed with a ``[Section: ...]`` breadcrumb. Returns ``[]`` for blank
-        input and ``[text]`` for input already within budget.
+        chunk is prefixed with a ``<context>``-wrapped section breadcrumb. Returns ``[]``
+        for blank input and ``[text]`` for input already within budget.
     """
     if not text.strip():
         return []

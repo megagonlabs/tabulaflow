@@ -27,8 +27,12 @@ _EXTRACTION_SYSTEM_PROMPT = (
     "You extract structured records from a document excerpt. Extract every record "
     "that matches the user's instruction and is supported by the excerpt, using only "
     "information present in it — do not infer or invent values. The excerpt may be a "
-    "fragment of a larger document; extract whatever is present. Return an empty list "
-    "if the excerpt contains no matching records."
+    "fragment of a larger document; extract whatever is present. "
+    "A `<context>...</context>` block at the very start of an excerpt holds context "
+    "about where the excerpt sits in the document (e.g. its section path) — it is "
+    "context, not content: use it to interpret the excerpt (including to populate "
+    "context-dependent fields), but never extract anything inside `<context>` as a "
+    "record of its own. Return an empty list if the excerpt contains no matching records."
 )
 
 
