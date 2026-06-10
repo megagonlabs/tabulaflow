@@ -1,6 +1,10 @@
 """Tests for the structure-aware markdown splitter."""
 
-from tabulaflow.toolhub.markdown_splitter import split_markdown
+from tabulaflow.toolhub.markdown_splitter import (
+    DEFAULT_MAX_CHARS,
+    DEFAULT_TARGET_CHARS,
+    split_markdown,
+)
 
 
 def _strip_breadcrumbs(chunk: str) -> str:
@@ -69,6 +73,17 @@ class TestTwoLimitPacking:
         chunks = split_markdown(text, max_chars=200)
         # Reassembling on whitespace yields the exact source words → no mid-word cuts, no loss.
         assert " ".join(chunks).split() == text.split()
+
+    def test_defaults_split_between_target_and_max(self) -> None:
+        # A doc above DEFAULT_TARGET_CHARS but below DEFAULT_MAX_CHARS must still split
+        # under the defaults — i.e. the soft target is active, not dormant.
+        assert DEFAULT_TARGET_CHARS < DEFAULT_MAX_CHARS
+        n = (DEFAULT_TARGET_CHARS * 2) // 40
+        text = "\n\n".join(f"Paragraph {i} with a little filler body here." for i in range(n))
+        assert DEFAULT_TARGET_CHARS < len(text) < DEFAULT_MAX_CHARS
+        chunks = split_markdown(text)  # defaults
+        assert len(chunks) > 1
+        assert all(len(c) <= DEFAULT_MAX_CHARS for c in chunks)
 
     def test_target_none_packs_to_max(self) -> None:
         text = "\n\n".join(f"Paragraph {i} with a little body text here." for i in range(300))

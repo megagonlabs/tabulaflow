@@ -42,9 +42,12 @@ from __future__ import annotations
 import re
 from dataclasses import dataclass
 
-# Default target chunk size in characters. Kept well within a small model's context; the
-# section breadcrumb prefix counts against this budget so chunks never exceed it.
-DEFAULT_MAX_CHARS = 12_000
+# Chunk-size defaults in characters (inclusive of any ``<context>`` prefix).
+# ``target`` is the soft size to pack toward; ``max`` is the hard ceiling and the only
+# threshold at which a single block is split. ``target`` keeps many-small-entity chunks
+# focused; the gap up to ``max`` lets a larger single entity stay whole.
+DEFAULT_TARGET_CHARS = 5_000
+DEFAULT_MAX_CHARS = 20_000
 
 _HEADING_RE = re.compile(r"^(#{1,6})\s+(.*\S)\s*$")
 # Sentence boundary for the last-resort prose split.
@@ -352,7 +355,9 @@ class _Packer:
         self._flush()
 
 
-def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS, target: int | None = None) -> list[str]:
+def split_markdown(
+    text: str, *, max_chars: int = DEFAULT_MAX_CHARS, target: int | None = DEFAULT_TARGET_CHARS
+) -> list[str]:
     """Split a markdown document into non-overlapping, context-preserving chunks.
 
     Whole blocks (entities — paragraphs, list items, table rows) pack into a chunk until
@@ -366,8 +371,8 @@ def split_markdown(text: str, *, max_chars: int = DEFAULT_MAX_CHARS, target: int
             unstructured prose (PDF/plain text) — both are handled.
         max_chars: Hard ceiling per chunk, inclusive of any ``<context>`` prefix. The
             only threshold at which a single block is split.
-        target: Soft size to pack toward before flushing. Defaults to ``max_chars``.
-            Clamped to ``max_chars``.
+        target: Soft size to pack toward before flushing. Clamped to ``max_chars``;
+            pass ``None`` to pack greedily up to ``max_chars``.
 
     Returns:
         Chunks in document order. A continuation chunk is prefixed with a ``<context>``
