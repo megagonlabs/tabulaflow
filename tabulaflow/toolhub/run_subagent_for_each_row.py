@@ -19,7 +19,10 @@ from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.base import BaseSQLDBConnector
 from tabulaflow.core.db_connector.db_registry import DBRegistry
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import SQLDialect, Trajectory
+from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
+from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.utils import qualified_table, sa_table
 from tabulaflow.toolhub.message_store import (
     MESSAGE_THRESHOLD_CHARS,
@@ -196,8 +199,10 @@ class RunSubagentForEachRowTool:
 
         By default the subagent has no tools: it reads its prompt, returns one text
         value, and this tool writes that value to ``output_columns[0]``. Set
-        ``enable_browser_tools=True`` to grant web-browsing tools, or
-        ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can query
+        ``enable_browser_tools=True`` to grant web-browsing tools (plus the
+        ``extract_rows_from_documents`` and ``add_canonical_name`` tools, so a row
+        that browses can mine pages into structured rows and unify entity variants),
+        or ``enable_run_query_tool=True`` to grant a ``run_query`` tool that can query
         and modify any registered database. Set ``enable_nested_subagents=True`` to
         give the subagent this same tool so it can fan out its own row-wise sub-tasks;
         this does not propagate — each deeper level must set the flag again to nest
@@ -270,7 +275,11 @@ class RunSubagentForEachRowTool:
                 tools (navigate, click, type, etc.). Each row browses in its own
                 isolated tabs (cookies/logins shared). A process-wide tab cap
                 throttles this automatically, so fan out freely — no need to
-                limit parallelism for browser load.
+                limit parallelism for browser load. The subagent also receives the
+                ``extract_rows_from_documents`` and ``add_canonical_name`` tools
+                (the document-mining + canonicalization toolchain), wired to the
+                workspace connector — so a browsing row can turn pages into clean
+                structured rows end to end.
             enable_nested_subagents: If True, each per-row subagent additionally
                 receives this ``run_subagent_for_each_row`` tool, allowing it
                 to fan out further row-wise tasks of its own. The flag does not
@@ -361,6 +370,31 @@ class RunSubagentForEachRowTool:
             )
             nested_pa_tool = nested_tool.as_pydantic_ai_tool()
 
+        # A browsing subagent should be able to mine the pages it reads into
+        # structured rows (``extract_rows_from_documents``) and unify entity
+        # variants (``add_canonical_name``) — the same document→table→clean
+        # toolchain the top-level agent uses. Both write to the shared workspace
+        # connector, so they're only wired when it is a full SQLConnector.
+        # Constructed once per call (like the nested tool) and shared across rows.
+        extract_pa_tool: Tool | None = None
+        canonical_pa_tool: Tool | None = None
+        if enable_browser_tools and isinstance(self.db_connector, SQLConnector):
+            extract_pa_tool = ExtractRowsFromDocumentsTool(
+                self.db_connector,
+                subagent_llm=self.subagent_llm,
+                model_settings=self.model_settings,
+                max_concurrency=self.max_concurrency,
+                trajectory_log_dir=self.trajectory_log_dir,
+            ).as_pydantic_ai_tool()
+            canonical_tool = AddCanonicalNameTool(
+                subagent_llm=self.subagent_llm,
+                model_settings=self.model_settings,
+                max_concurrency=self.max_concurrency,
+                trajectory_log_dir=self.trajectory_log_dir,
+            )
+            canonical_tool.attach_connector(self.db_connector)
+            canonical_pa_tool = canonical_tool.as_pydantic_ai_tool()
+
         if enable_run_query_tool and self.registry is None:
             return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
 
@@ -445,6 +479,10 @@ class RunSubagentForEachRowTool:
             if enable_browser_tools:
                 browser_tool = WebBrowserTool()
                 tools.extend(browser_tool.as_pydantic_ai_tools())
+            if extract_pa_tool is not None:
+                tools.append(extract_pa_tool)
+            if canonical_pa_tool is not None:
+                tools.append(canonical_pa_tool)
             if nested_pa_tool is not None:
                 tools.append(nested_pa_tool)
             if run_query_pa_tool is not None:
