@@ -37,6 +37,12 @@ plain ``str -> list[str]`` with no node/document classes.
 
 Out of scope by choice: **ref/cleaning** — ``[ref=eN]`` stripping is source-specific and
 belongs in preprocessing, not this generic splitter.
+
+Chunks do not overlap, so on *structureless* input (OCR/PDF dumps) a record straddling a
+cut can be split across two chunks. A possible opt-in fix is overlap marked ``<context>``
+(seen-whole without re-extraction), but it needs an end-anchored ownership prompt rule
+(the straddler spans the context/body seam) and only helps the structureless tail — so
+it's deferred behind evidence, not on by default.
 """
 
 from __future__ import annotations
