@@ -261,6 +261,8 @@ June 9
 - Fix bugs
   - [x] Bug when disconnecting sample_data
 
+- [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
+- [ ] Multi-column output for subagents
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 - [ ] Context for canonicalization (e.g. pool vs swimming)
