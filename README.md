@@ -260,7 +260,13 @@ June 8
 June 9
 - Fix bugs
   - [x] Bug when disconnecting sample_data
+  - [x] Remove /database /db /schema commands
+  - [x] Fix PK FK colors
+  - [x] Fix progress callback when concurrent tools are called at one turn
+- [x] chunking for extract_rows_from_documents tool - markdown_splitter.py
+- [x] Tune prompt
 
+- [ ] Workspace not refreshed
 - [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
 - [ ] Multi-column output for subagents
 - [ ] Include multimodal data in sample_data
