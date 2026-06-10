@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import uuid
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
@@ -33,8 +35,8 @@ class ExtractRowsFromDocumentsTool:
     columns feed the ``task_instruction`` Jinja template. ``task_query`` must project
     the document text as a column named ``content``; any other columns feed the
     template. Each document is chunked and a leaf subagent extracts entities from each
-    chunk; the union is appended to ``table_name``. Deduplication is intentionally out
-    of scope (handle it downstream with full semantic context).
+    chunk; every chunk's rows are appended to ``table_name``. Deduplication is
+    intentionally out of scope (handle it downstream with full semantic context).
 
     The DB-free extraction engine lives in :class:`EntityExtractor`; this class is the
     database adapter around it (read documents with SQL, write extracted rows back).
@@ -51,6 +53,7 @@ class ExtractRowsFromDocumentsTool:
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,
         chunk_max: int = DEFAULT_MAX_CHARS,
+        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the tool.
 
@@ -64,6 +67,9 @@ class ExtractRowsFromDocumentsTool:
                 concurrently across all documents.
             chunk_target: Soft per-chunk size the splitter packs toward.
             chunk_max: Hard per-chunk ceiling; the only size at which a block is split.
+            trajectory_log_dir: If set, each per-chunk subagent trajectory is written
+                as ``<dir>/<call_id>/doc-<D>-chunk-<N>.md``. A filesystem sink for
+                local debugging, mirroring ``run_subagent_for_each_row``.
         """
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
@@ -71,6 +77,7 @@ class ExtractRowsFromDocumentsTool:
         self.max_concurrency = max_concurrency
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
+        self.trajectory_log_dir = trajectory_log_dir
         # Called as ``on_rows_extracted(count, tool_call_id)`` with the running count
         # of entities extracted so far; tool_call_id routes progress to the right step.
         self.on_rows_extracted: Callable[[int, str | None], None] | None = None
@@ -92,6 +99,12 @@ class ExtractRowsFromDocumentsTool:
         runs one subagent per input row and writes one value back, this tool reads
         one document per input row and appends many extracted entity rows. Reach for
         it to mine a long web page (or several) into a table of entities.
+
+        Internally, each document is split into structure-aware chunks — each carrying
+        its section path and any spanning table's header as context so a cut doesn't
+        strip the surrounding structure — and a subagent extracts entities from every
+        chunk concurrently; every chunk's rows are appended (no dedup), so documents far
+        larger than one LLM context are handled.
 
         ``task_query`` selects the source documents: one result row per document, with
         the document text projected as a column named **``content``**; any other
@@ -180,6 +193,10 @@ class ExtractRowsFromDocumentsTool:
         if missing:
             return f"(error: output_columns not found in table {qualified_target}: {missing})"
 
+        # Per-call trajectory directory (one per __call__, shared across documents);
+        # EntityExtractor creates it lazily on first write.
+        traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
+
         try:
             extractor = EntityExtractor(
                 output_columns,
@@ -188,6 +205,7 @@ class ExtractRowsFromDocumentsTool:
                 max_concurrency=self.max_concurrency,
                 chunk_target=self.chunk_target,
                 chunk_max=self.chunk_max,
+                trajectory_log_dir=traj_dir,
             )
         except ValueError as e:
             return f"(error: {e})"
@@ -214,7 +232,10 @@ class ExtractRowsFromDocumentsTool:
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
                 entities = await extractor.extract(
-                    content, instruction=instruction, on_chunk_complete=_on_chunk_complete
+                    content,
+                    instruction=instruction,
+                    on_chunk_complete=_on_chunk_complete,
+                    trajectory_label=f"doc-{doc_idx}",
                 )
             except asyncio.CancelledError:
                 raise

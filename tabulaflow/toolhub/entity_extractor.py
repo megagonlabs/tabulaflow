@@ -13,13 +13,18 @@ appends the results to a table.
 from __future__ import annotations
 
 import asyncio
+import logging
 from collections.abc import Callable
+from pathlib import Path
 from typing import Any
 
 from pydantic import create_model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
+from tabulaflow.core.types import Trajectory
 from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
+
+logger = logging.getLogger(__name__)
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -82,6 +87,7 @@ class EntityExtractor:
         max_concurrency: int = 200,
         chunk_target: int = DEFAULT_TARGET_CHARS,
         chunk_max: int = DEFAULT_MAX_CHARS,
+        trajectory_log_dir: Path | None = None,
     ) -> None:
         """Initialize the extractor.
 
@@ -96,6 +102,10 @@ class EntityExtractor:
                 for many-small-entity documents.
             chunk_max: Hard per-chunk ceiling; the only size at which a single block is
                 split. A larger entity stays whole up to this.
+            trajectory_log_dir: If set, each per-chunk subagent trajectory is written
+                as ``<dir>/<label>chunk-<N>.md`` (the ``label`` prefix comes from
+                ``extract``'s ``trajectory_label``, distinguishing documents). A
+                filesystem sink for local debugging; independent of the returned data.
 
         Raises:
             ValueError: If ``output_columns`` is empty or a size argument is invalid.
@@ -110,6 +120,7 @@ class EntityExtractor:
         self.output_columns = output_columns
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
+        self.trajectory_log_dir = trajectory_log_dir
 
         # Dynamic structured-output model: one all-string field per output column,
         # wrapped in a list-bearing container for reliable structured extraction.
@@ -133,6 +144,7 @@ class EntityExtractor:
         instruction: str,
         doc_context: str | None = None,
         on_chunk_complete: Callable[[int], None] | None = None,
+        trajectory_label: str | None = None,
     ) -> list[dict[str, Any]]:
         """Extract entities from one document.
 
@@ -146,6 +158,9 @@ class EntityExtractor:
             on_chunk_complete: Optional callback invoked as each chunk finishes, with
                 the number of entities that chunk produced. Chunks run concurrently,
                 so it fires in completion order, not document order.
+            trajectory_label: Optional prefix for this document's per-chunk trajectory
+                filenames (``<label>chunk-<N>.md``), so trajectories from different
+                documents don't collide. Only used when ``trajectory_log_dir`` is set.
 
         Returns:
             One dict per extracted entity, keyed by ``output_columns``. Empty if the
@@ -158,18 +173,36 @@ class EntityExtractor:
             f"{instruction}\n\n<document_excerpt>\n{_render_excerpt(c, doc_context)}\n</document_excerpt>"
             for c in chunks
         ]
+        prefix = f"{trajectory_label}-" if trajectory_label else ""
 
-        async def _run(prompt: str) -> list[dict[str, Any]]:
-            entities = await self._extract_chunk(prompt)
+        async def _run(chunk_idx: int, prompt: str) -> list[dict[str, Any]]:
+            entities = await self._extract_chunk(prompt, f"{prefix}chunk-{chunk_idx}")
             if on_chunk_complete is not None:
                 on_chunk_complete(len(entities))
             return entities
 
-        chunk_results = await asyncio.gather(*(_run(p) for p in prompts))
+        chunk_results = await asyncio.gather(*(_run(i, p) for i, p in enumerate(prompts, start=1)))
         return [entity for chunk in chunk_results for entity in chunk]
 
-    async def _extract_chunk(self, prompt: str) -> list[dict[str, Any]]:
+    async def _extract_chunk(self, prompt: str, traj_name: str) -> list[dict[str, Any]]:
         async with self._semaphore:
             result = await self._agent.run(prompt)
+        self._write_trajectory(traj_name, result)
         output: Any = result.output  # dynamic create_model; fields not statically known
         return [e.model_dump() for e in output.entities]
+
+    def _write_trajectory(self, traj_name: str, result: Any) -> None:
+        """Persist one chunk subagent's trajectory as ``<trajectory_log_dir>/<traj_name>.md``.
+
+        Best-effort: trajectory capture is a debug sink and must never affect the
+        extraction result, so any failure (dir creation, message conversion, write)
+        is logged and swallowed.
+        """
+        if self.trajectory_log_dir is None:
+            return
+        try:
+            self.trajectory_log_dir.mkdir(parents=True, exist_ok=True)
+            traj = Trajectory.from_pydantic_ai_messages(result.all_messages())
+            (self.trajectory_log_dir / f"{traj_name}.md").write_text(traj.to_markdown(), encoding="utf-8")
+        except Exception:
+            logger.exception("Failed to write trajectory %s/%s.md", self.trajectory_log_dir, traj_name)
