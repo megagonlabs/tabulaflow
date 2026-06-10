@@ -494,16 +494,18 @@ class ChatAgent:
         from tabulaflow.core.types import Usage
 
         emit = queue.put_nowait
+        # Each fan-out tool passes its tool_call_id so the UI can route concurrent
+        # tools' progress to the right step.
         if self._tools.run_subagent_for_each_row is not None:
-            self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t: emit(
-                ToolProgress(completed=c, total=t)
+            self._tools.run_subagent_for_each_row.on_row_complete = lambda c, t, tcid: emit(
+                ToolProgress(completed=c, total=t, tool_call_id=tcid)
             )
         if self._tools.extract_rows_from_documents is not None:
-            self._tools.extract_rows_from_documents.on_rows_extracted = lambda c: emit(
-                ToolProgress(completed=c, total=None, unit="rows")
+            self._tools.extract_rows_from_documents.on_rows_extracted = lambda c, tcid: emit(
+                ToolProgress(completed=c, total=None, unit="rows", tool_call_id=tcid)
             )
-        self._tools.add_canonical_name.on_progress = lambda stage, c, t: emit(
-            ToolProgress(completed=c, total=t, stage=stage)
+        self._tools.add_canonical_name.on_progress = lambda stage, c, t, tcid: emit(
+            ToolProgress(completed=c, total=t, stage=stage, tool_call_id=tcid)
         )
 
         assert self._pydantic_ai_agent is not None

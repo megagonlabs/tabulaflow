@@ -13,7 +13,7 @@ from typing import Any, ClassVar
 import jinja2
 import sqlalchemy
 from pydantic import BaseModel, Field
-from pydantic_ai import Tool, ToolOutput
+from pydantic_ai import RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
 
@@ -166,10 +166,13 @@ class RunSubagentForEachRowTool:
         self.max_concurrency = max_concurrency
         self.store_metadata = store_metadata
         self.trajectory_log_dir = trajectory_log_dir
-        self.on_row_complete: Callable[[int, int], None] | None = None
+        # Called as ``on_row_complete(completed, total, tool_call_id)``; tool_call_id
+        # routes progress to the right step when fan-out tools run concurrently.
+        self.on_row_complete: Callable[[int, int, str | None], None] | None = None
 
     async def __call__(
         self,
+        ctx: RunContext[Any],
         schema_name: str | None,
         table_name: str,
         *,
@@ -199,6 +202,8 @@ class RunSubagentForEachRowTool:
         give the subagent this same tool so it can fan out its own row-wise sub-tasks;
         this does not propagate — each deeper level must set the flag again to nest
         further.
+
+        Safe to call multiple times in parallel in one turn.
 
         Every subagent has a built-in ``abort_task(message: str)`` tool for
         rows it can't complete; aborted rows are recorded in
@@ -375,6 +380,7 @@ class RunSubagentForEachRowTool:
             run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
         completed = 0
+        tool_call_id = ctx.tool_call_id
 
         # Build a SQLAlchemy table with all columns referenced in SET clauses.
         sa_col_names: set[str] = set(key_columns) | {output_col}
@@ -507,7 +513,7 @@ class RunSubagentForEachRowTool:
                         await _save_row_metadata(key_payload, *metadata)
                     completed += 1
                     if self.on_row_complete is not None:
-                        self.on_row_complete(completed, total)
+                        self.on_row_complete(completed, total, tool_call_id)
                         await asyncio.sleep(0)
             return error_msg
 
@@ -517,7 +523,7 @@ class RunSubagentForEachRowTool:
         # Emit a 0/total tick up front so the UI shows the counter immediately
         # rather than sitting empty until the first row finishes (often seconds).
         if self.on_row_complete is not None and total > 0:
-            self.on_row_complete(0, total)
+            self.on_row_complete(0, total, tool_call_id)
 
         async def _throttled(row_idx: int, row: dict[str, object]) -> str | None:
             async with semaphore:

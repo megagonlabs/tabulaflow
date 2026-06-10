@@ -539,8 +539,10 @@ class AgentProgressWidget(Widget):
         # Per-tool-call spinners so parallel running steps don't share a single
         # mutable spinner object (which would make every row display the same label).
         self._tool_spinners: dict[str, Spinner] = {}
-        # (completed, total, stage, unit); total None means an open-ended count.
-        self._tool_progress: tuple[int, int | None, str | None, str | None] | None = None
+        # Per-tool-call progress so concurrent fan-out tools don't overwrite each
+        # other: tool_call_id -> (completed, total, stage, unit). total None means
+        # an open-ended count.
+        self._tool_progress: dict[str, tuple[int, int | None, str | None, str | None]] = {}
         self._frozen = False
         self._timer: Timer | None = None
         self._usage: Usage | None = None
@@ -603,7 +605,7 @@ class AgentProgressWidget(Widget):
         elif isinstance(event, ToolFinished):
             self._on_tool_end(event.tool_call_id, event.name, summarize_outcome(event.outcome))
         elif isinstance(event, ToolProgress):
-            self._on_tool_progress(event.completed, event.total, event.stage, event.unit)
+            self._on_tool_progress(event.completed, event.total, event.stage, event.unit, event.tool_call_id)
         elif isinstance(event, TextDelta):
             self._on_text_delta(event.content)
         elif isinstance(event, UsageUpdated):
@@ -664,26 +666,35 @@ class AgentProgressWidget(Widget):
             body = f"{completed}/{total}"
         return f"{stage}: {body}" if stage else body
 
+    def _find_running_step(self, tool_call_id: str | None) -> int | None:
+        """Index of the running step for ``tool_call_id`` (the latest running step
+        when ``tool_call_id`` is None), or ``None`` if there is no running step."""
+        for i in range(len(self._steps) - 1, -1, -1):
+            if self._steps[i][0] == "running" and (tool_call_id is None or self._steps[i][1] == tool_call_id):
+                return i
+        return None
+
     def _on_tool_progress(
-        self, completed: int, total: int | None, stage: str | None = None, unit: str | None = None
+        self,
+        completed: int,
+        total: int | None,
+        stage: str | None = None,
+        unit: str | None = None,
+        tool_call_id: str | None = None,
     ) -> None:
         """Update the running tool step with a progress counter.
 
         ``total`` may be ``None`` for an open-ended running count (e.g. entities
         extracted so far), which renders as ``47 rows`` rather than a fraction.
+        ``tool_call_id`` routes the tick to its own step so concurrent fan-out
+        tools don't overwrite each other.
         """
-        self._tool_progress = (completed, total, stage, unit)
+        self._tool_progress[tool_call_id or ""] = (completed, total, stage, unit)
         suffix = self._format_progress(completed, total, stage, unit)
-        for i in range(len(self._steps) - 1, -1, -1):
-            if self._steps[i][0] == "running":
-                base_label = self._steps[i][3].split(" → ")[0]
-                self._steps[i] = (
-                    "running",
-                    self._steps[i][1],
-                    self._steps[i][2],
-                    f"{base_label} → {suffix}",
-                )
-                break
+        i = self._find_running_step(tool_call_id)
+        if i is not None:
+            base_label = self._steps[i][3].split(" → ")[0]
+            self._steps[i] = ("running", self._steps[i][1], self._steps[i][2], f"{base_label} → {suffix}")
         self._refresh(layout=True, scroll=True)
 
     def _on_tool_end(self, tool_call_id: str, name: str, result_summary: str) -> None:
@@ -691,9 +702,10 @@ class AgentProgressWidget(Widget):
             step = self._steps[i]
             if step[0] == "running" and step[1] == tool_call_id:
                 label = step[3]
-                if self._tool_progress is not None:
+                progress = self._tool_progress.get(tool_call_id)
+                if progress is not None:
                     base_label = label.split(" → ")[0]
-                    completed, total, last_stage, unit = self._tool_progress
+                    completed, total, last_stage, unit = progress
                     # Open-ended count: the final tick already holds the total, so
                     # show it as-is. Fraction: pin to total/total to read "complete".
                     if total is None:
@@ -705,7 +717,7 @@ class AgentProgressWidget(Widget):
                     self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
                 break
         self._tool_spinners.pop(tool_call_id, None)
-        self._tool_progress = None
+        self._tool_progress.pop(tool_call_id, None)
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
 

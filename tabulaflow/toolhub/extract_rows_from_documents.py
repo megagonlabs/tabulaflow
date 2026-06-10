@@ -11,7 +11,7 @@ import jinja2
 import jinja2.meta
 import pandas as pd
 from pandas.api import types as pdt
-from pydantic_ai import Tool
+from pydantic_ai import RunContext, Tool
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -71,10 +71,13 @@ class ExtractRowsFromDocumentsTool:
         self.max_concurrency = max_concurrency
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
-        self.on_rows_extracted: Callable[[int], None] | None = None
+        # Called as ``on_rows_extracted(count, tool_call_id)`` with the running count
+        # of entities extracted so far; tool_call_id routes progress to the right step.
+        self.on_rows_extracted: Callable[[int, str | None], None] | None = None
 
     async def __call__(
         self,
+        ctx: RunContext[Any],
         schema_name: str | None,
         table_name: str,
         *,
@@ -103,6 +106,8 @@ class ExtractRowsFromDocumentsTool:
         The same entity may appear in multiple rows, and different documents commonly
         emit variants of the same real-world entity (e.g. ``"Microsoft"``, ``"MSFT"``,
         ``"Microsoft Corp"``). Plan to follow up with a canonicalization step.
+
+        Safe to call multiple times in parallel in one turn.
 
         Args:
             schema_name: Schema containing ``table_name`` (``None`` if unqualified).
@@ -190,14 +195,15 @@ class ExtractRowsFromDocumentsTool:
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
         extracted_count = 0
+        tool_call_id = ctx.tool_call_id
         if self.on_rows_extracted is not None and total_docs > 0:
-            self.on_rows_extracted(0)
+            self.on_rows_extracted(0, tool_call_id)
 
         def _on_chunk_complete(n: int) -> None:
             nonlocal extracted_count
             extracted_count += n
             if self.on_rows_extracted is not None:
-                self.on_rows_extracted(extracted_count)
+                self.on_rows_extracted(extracted_count, tool_call_id)
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
             content = row.get(content_col)

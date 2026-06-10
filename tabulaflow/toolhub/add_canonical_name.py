@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 import jinja2
 import sqlalchemy
 from pydantic import BaseModel, Field
-from pydantic_ai import Agent, ModelRetry, Tool
+from pydantic_ai import Agent, ModelRetry, RunContext, Tool
 from pydantic_ai.exceptions import UnexpectedModelBehavior
 from pydantic_ai.settings import ModelSettings
 
@@ -227,10 +227,11 @@ class AddCanonicalNameTool:
         self.max_concurrency = max_concurrency
         self.trajectory_log_dir = trajectory_log_dir
         self._db_connector: SQLConnector | None = None
-        # Called as ``on_progress(stage, completed, total)`` where ``stage`` is one
-        # of ``"resolve"``, ``"canonicalize"``, ``"disambiguate"``. Disambiguate ticks per
-        # batch and is only emitted when collisions exist.
-        self.on_progress: Callable[[str, int, int], None] | None = None
+        # Called as ``on_progress(stage, completed, total, tool_call_id)`` where
+        # ``stage`` is one of ``"resolve"``, ``"canonicalize"``, ``"disambiguate"``.
+        # Disambiguate ticks per batch and is only emitted when collisions exist.
+        # tool_call_id routes progress to the right step under concurrent fan-out.
+        self.on_progress: Callable[[str, int, int, str | None], None] | None = None
 
     def attach_connector(self, connector: SQLConnector) -> None:
         """Bind the workspace connector after construction (mirrors QueryHistory)."""
@@ -238,6 +239,7 @@ class AddCanonicalNameTool:
 
     async def __call__(
         self,
+        ctx: RunContext[Any],
         schema_name: str | None,
         table_name: str,
         *,
@@ -264,6 +266,8 @@ class AddCanonicalNameTool:
         ``run_subagent_for_each_row`` instead — pass ``task_query="SELECT DISTINCT col
         FROM tbl"`` and ``key_columns=[col]`` to keep the one-LLM-call-per-distinct-value
         property.
+
+        Safe to call multiple times in parallel in one turn.
 
         Args:
             schema_name: Schema containing ``table_name``. Pass ``None`` for
@@ -309,7 +313,7 @@ class AddCanonicalNameTool:
                 traj_dir = None
 
         mapping, n_errors, n_clusters, cluster_error = await self._cluster_and_canonicalize(
-            distinct_values, instruction, schema_name, table_name, input_column, traj_dir
+            distinct_values, instruction, schema_name, table_name, input_column, traj_dir, ctx.tool_call_id
         )
         if cluster_error is not None:
             return cluster_error
@@ -400,6 +404,7 @@ class AddCanonicalNameTool:
         distinct_values: list[str],
         task: Callable[[str], Any],
         on_failure: Callable[[str], Any],
+        tool_call_id: str | None,
     ) -> tuple[list[Any], int]:
         """Run ``task`` per distinct value concurrently with progress + cancellation handling.
 
@@ -414,7 +419,7 @@ class AddCanonicalNameTool:
         # rather than sitting on the previous stage's last tick until the first
         # task finishes (often a multi-second LLM call).
         if self.on_progress is not None and total > 0:
-            self.on_progress(stage, 0, total)
+            self.on_progress(stage, 0, total, tool_call_id)
 
         async def _wrap(value: str) -> Any:
             nonlocal completed, n_errors
@@ -435,7 +440,7 @@ class AddCanonicalNameTool:
                 if not cancelled:
                     completed += 1
                     if self.on_progress is not None:
-                        self.on_progress(stage, completed, total)
+                        self.on_progress(stage, completed, total, tool_call_id)
                         await asyncio.sleep(0)
 
         results = await asyncio.gather(*(_wrap(v) for v in distinct_values))
@@ -459,6 +464,7 @@ class AddCanonicalNameTool:
         table_name: str,
         input_column: str,
         traj_dir: Path | None,
+        tool_call_id: str | None,
     ) -> tuple[dict[str, str], int, int, str | None]:
         """Per-value resolve-peers judgment → cluster on SAME edges → picker per cluster.
 
@@ -492,6 +498,7 @@ class AddCanonicalNameTool:
             distinct_values,
             task,
             on_failure=lambda v: _ResolvePeersOutput(same_as=[]),
+            tool_call_id=tool_call_id,
         )
 
         # Build symmetric SAME-edge graph; find connected components.
@@ -510,7 +517,7 @@ class AddCanonicalNameTool:
         n_clusters = len(clusters)
         picker_completed = 0
         if self.on_progress is not None and n_clusters > 0:
-            self.on_progress("canonicalize", 0, n_clusters)
+            self.on_progress("canonicalize", 0, n_clusters, tool_call_id)
 
         async def _pick_with_progress(cluster: set[str], cluster_idx: int) -> str:
             nonlocal picker_completed
@@ -519,7 +526,7 @@ class AddCanonicalNameTool:
             finally:
                 picker_completed += 1
                 if self.on_progress is not None:
-                    self.on_progress("canonicalize", picker_completed, n_clusters)
+                    self.on_progress("canonicalize", picker_completed, n_clusters, tool_call_id)
                     await asyncio.sleep(0)
 
         cluster_canonicals = await asyncio.gather(
@@ -535,6 +542,7 @@ class AddCanonicalNameTool:
             input_column,
             run_query_pa_tool,
             traj_dir,
+            tool_call_id,
         )
         if resolve_error is not None:
             return {}, n_errors, len(clusters), resolve_error
@@ -554,6 +562,7 @@ class AddCanonicalNameTool:
         input_column: str,
         run_query_pa_tool: Tool,
         traj_dir: Path | None,
+        tool_call_id: str | None,
     ) -> tuple[list[str], str | None]:
         """Ensure each cluster gets a globally unique canonical name.
 
@@ -591,7 +600,7 @@ class AddCanonicalNameTool:
         )
         batches_done = 0
         if self.on_progress is not None and total_batches > 0:
-            self.on_progress("disambiguate", 0, total_batches)
+            self.on_progress("disambiguate", 0, total_batches, tool_call_id)
         for collision_idx, (canonical, idxs) in enumerate(collisions):
             n_batches = (len(idxs) + _DISAMBIGUATE_BATCH_SIZE - 1) // _DISAMBIGUATE_BATCH_SIZE
             for batch_idx in range(n_batches):
@@ -623,7 +632,7 @@ class AddCanonicalNameTool:
                     seen.add(name)
                 batches_done += 1
                 if self.on_progress is not None:
-                    self.on_progress("disambiguate", batches_done, total_batches)
+                    self.on_progress("disambiguate", batches_done, total_batches, tool_call_id)
                     await asyncio.sleep(0)
 
         return resolved, None
