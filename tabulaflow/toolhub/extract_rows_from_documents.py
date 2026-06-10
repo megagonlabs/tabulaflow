@@ -17,7 +17,7 @@ from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.utils import qualified_table
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
-from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS
+from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 
 logger = logging.getLogger(__name__)
 
@@ -49,7 +49,8 @@ class ExtractRowsFromDocumentsTool:
         subagent_llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
-        chunk_chars: int = DEFAULT_MAX_CHARS,
+        chunk_target: int = DEFAULT_TARGET_CHARS,
+        chunk_max: int = DEFAULT_MAX_CHARS,
     ) -> None:
         """Initialize the tool.
 
@@ -61,13 +62,15 @@ class ExtractRowsFromDocumentsTool:
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run
                 concurrently across all documents.
-            chunk_chars: Target maximum characters per document chunk.
+            chunk_target: Soft per-chunk size the splitter packs toward.
+            chunk_max: Hard per-chunk ceiling; the only size at which a block is split.
         """
         self.db_connector = db_connector
         self.subagent_llm = subagent_llm
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
-        self.chunk_chars = chunk_chars
+        self.chunk_target = chunk_target
+        self.chunk_max = chunk_max
         self.on_rows_extracted: Callable[[int], None] | None = None
 
     async def __call__(
@@ -178,7 +181,8 @@ class ExtractRowsFromDocumentsTool:
                 llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
-                chunk_chars=self.chunk_chars,
+                chunk_target=self.chunk_target,
+                chunk_max=self.chunk_max,
             )
         except ValueError as e:
             return f"(error: {e})"
