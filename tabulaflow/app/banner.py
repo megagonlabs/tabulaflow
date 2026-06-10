@@ -228,8 +228,8 @@ def build_banner(
 ) -> RenderableType:
     """Build the welcome banner as a Rich renderable.
 
-    ``reasoning_effort`` is appended to the model label as ``(medium)`` — but only
-    for OpenAI models, the only provider the chat lib applies the effort to.
+    ``reasoning_effort`` is appended to the model label as ``(medium effort)`` —
+    but only for OpenAI models, the only provider the chat lib applies the effort to.
 
     ``surface`` is the chat background color the wordmark's empty halves are carved
     with so they read as transparent — pass the live theme's ``$surface``. Falls
@@ -237,7 +237,7 @@ def build_banner(
     """
     model_label = _pretty_model(model)
     if reasoning_effort and model.partition(":")[0] in ("openai-responses", "openai"):
-        model_label += f" ({reasoning_effort})"
+        model_label += f" ({reasoning_effort} effort)"
     # Model name, then the same dim `·` divider as the tagline line, then the hint.
     info = Text()
     info.append(model_label, style="dim")
