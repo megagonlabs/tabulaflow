@@ -23,15 +23,27 @@ in raw aria (what playwright-mcp returns)::
 
 rendered as markdown::
 
-    - 11:59 PM - 12:32 PM +1 Frontier 9 hr 33 min SFO - EWR
+    - 11:59 PM [ref=e366] - 12:32 PM [ref=e369] +1 Frontier 9 hr 33 min SFO - EWR
       - button "Carbon emissions estimate..." [ref=e394]
       - button "Flight details..." [ref=e415]
 
-About 2.7x to 4.8x smaller than raw aria across four real pages
-(flights, wikipedia, Hacker News, tabulator).  Uses real markdown (GitHub Markdown tables,
-nested bullets, prose flow) and drops aria-only narrations and
-non-clickable informational refs so the snapshot matches what a sighted
-user sees.
+A 2.7x to 4.8x smaller than raw aria across real pages. Uses real markdown
+(GitHub Markdown tables, nested bullets, prose flow) and drops aria-only
+narrations so the snapshot matches what a sighted user sees.
+
+Ref-delimited fields
+====================
+
+When a record is built from non-semantic ``<div>``/``<span>`` fields (no
+``<strong>``/``<em>`` to mark boundaries), the collapsed bullet keeps each
+field's ``[ref=eN]`` inline as a content-safe delimiter, so the row stays
+machine-parseable like the raw aria tree::
+
+    - Attention Is All You Need [ref=e2] Vaswani, Shazeer [ref=e3] [ref=e1]
+    # re.split(r'\\s*\\[ref=e\\d+\\]\\s*', row) -> ['Attention…', 'Vaswani…', '']
+
+Pages that *do* use semantic markup get ``**title** *authors*`` instead (see
+``_INLINE_MARKUP``); both shapes survive a regex split.
 
 Locating an element
 ===================
@@ -774,9 +786,12 @@ def _render_landmark(ctx: _Ctx) -> str:
 
 def _render_transparent(ctx: _Ctx) -> str:
     """Plain transparent containers (``generic``, ``region``, …)."""
-    # A bare value-bearing transparent generic is almost always an aria-
-    # labelled informational ``<div>`` — drop its ref unless actually clickable.
-    effective_ref = ctx.ref_tag if (ctx.clickable or ctx.role != "generic") else ""
+    # In a structural (bullet) context, a value-bearing generic keeps its ref as
+    # a field anchor so a div-built record stays ref-splittable like raw aria; a
+    # bare wrapper generic (no value) drops its ref unless clickable. In flow
+    # context the ref is omitted — this path derives accessible-name labels
+    # (button/heading text), which must stay clean.
+    effective_ref = ctx.ref_tag if (ctx.clickable or ctx.role != "generic" or ctx.value) else ""
     if ctx.flow:
         leading = (ctx.value + " ") if ctx.value else ""
         return leading + _kids_md(ctx.children, ctx.depth, flow=True)
@@ -885,10 +900,12 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]
         value = b if isinstance(b, str) else None
         if role in _TRANSPARENT_ROLES:
             if value:
-                if ref and clickable:
-                    out.append((f"{value} [ref={ref}]", False))  # atom
-                else:
-                    out.append((value, True))  # plain
+                # Keep the node's ref inline as a field anchor. A clickable
+                # generic is an atom (own bullet); a non-clickable value-bearing
+                # generic stays plain (merges into the row) but still carries its
+                # ref, so a collapsed record splits on ``[ref=…]`` like raw aria.
+                tagged = f"{value} [ref={ref}]" if ref else value
+                out.append((tagged, not (ref and clickable)))
             if kids:
                 _flatten_to_leaves(kids, depth, out)
             continue

@@ -305,6 +305,29 @@ class TestBlockquote:
         assert md("- blockquote: To be or not to be") == "> To be or not to be"
 
 
+class TestRefDelimitedFields:
+    """Records built from non-semantic <div>/<span> fields keep each field's ref
+    inline as a content-safe delimiter, so a collapsed row stays splittable on
+    ``[ref=…]`` — parity with the raw aria tree."""
+
+    def _fields(self, bullet: str) -> list[str]:
+        import re
+
+        return [p for p in re.split(r"\s*\[ref=e\d+\]\s*", bullet.lstrip("- ")) if p]
+
+    def test_div_soup_record_splits_on_refs(self) -> None:
+        y = "- listitem [ref=e1]:\n  - generic [ref=e2]: Title Text\n  - generic [ref=e3]: Author One, Author Two"
+        out = md(y)
+        assert "Title Text [ref=e2]" in out and "Author One, Author Two [ref=e3]" in out
+        assert self._fields(out) == ["Title Text", "Author One, Author Two"]
+
+    def test_label_derivation_stays_clean(self) -> None:
+        # The ref anchor is for record fields, not accessible-name labels — a
+        # generic child feeding a button/heading name must NOT inject its ref.
+        assert md("- button [ref=e1]:\n  - generic [ref=e2]: Save") == 'button "Save" [ref=e1]'
+        assert md('- heading "h" [level=2] [ref=e1]:\n  - generic [ref=e2]: Section').startswith("## Section")
+
+
 class TestInteractiveAtomsNeverVanish:
     """Interactive roles must surface as a clickable atom — never fall to the
     unknown-role fallback and disappear (the menuitem/treeitem ref-loss bug)."""
