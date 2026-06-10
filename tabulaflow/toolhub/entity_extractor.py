@@ -13,6 +13,7 @@ appends the results to a table.
 from __future__ import annotations
 
 import asyncio
+from collections.abc import Callable
 from typing import Any
 
 from pydantic import create_model
@@ -101,13 +102,22 @@ class EntityExtractor:
         )
         self._semaphore = asyncio.Semaphore(max_concurrency)
 
-    async def extract(self, text: str, *, instruction: str) -> list[dict[str, Any]]:
+    async def extract(
+        self,
+        text: str,
+        *,
+        instruction: str,
+        on_chunk_complete: Callable[[int], None] | None = None,
+    ) -> list[dict[str, Any]]:
         """Extract entities from one document.
 
         Args:
             text: The document text to extract from.
             instruction: Natural-language description of what one entity is and how
                 to populate ``output_columns``.
+            on_chunk_complete: Optional callback invoked as each chunk finishes, with
+                the number of entities that chunk produced. Chunks run concurrently,
+                so it fires in completion order, not document order.
 
         Returns:
             One dict per extracted entity, keyed by ``output_columns``. Empty if the
@@ -117,7 +127,14 @@ class EntityExtractor:
             return []
         chunks = split_markdown(text, max_chars=self.chunk_chars)
         prompts = [f"{instruction}\n\n<document_excerpt>\n{chunk}\n</document_excerpt>" for chunk in chunks]
-        chunk_results = await asyncio.gather(*(self._extract_chunk(p) for p in prompts))
+
+        async def _run(prompt: str) -> list[dict[str, Any]]:
+            entities = await self._extract_chunk(prompt)
+            if on_chunk_complete is not None:
+                on_chunk_complete(len(entities))
+            return entities
+
+        chunk_results = await asyncio.gather(*(_run(p) for p in prompts))
         return [entity for chunk in chunk_results for entity in chunk]
 
     async def _extract_chunk(self, prompt: str) -> list[dict[str, Any]]:

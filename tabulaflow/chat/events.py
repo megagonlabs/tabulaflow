@@ -134,7 +134,11 @@ class ToolProgress(_ChatEvent):
 
     kind: Literal["tool_progress"] = "tool_progress"
     completed: int
-    total: int
+    # ``None`` total means an open-ended running count with no known denominator
+    # (e.g. entities extracted so far) — rendered as a bare count, not a fraction.
+    total: int | None
+    # Optional noun for the open-ended count, e.g. ``"rows"`` -> ``"47 rows"``.
+    unit: str | None = None
     stage: str | None = None
     tool_call_id: str | None = None
 

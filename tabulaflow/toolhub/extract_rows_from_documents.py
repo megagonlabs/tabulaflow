@@ -68,7 +68,7 @@ class ExtractRowsFromDocumentsTool:
         self.model_settings = model_settings
         self.max_concurrency = max_concurrency
         self.chunk_chars = chunk_chars
-        self.on_row_complete: Callable[[int, int], None] | None = None
+        self.on_rows_extracted: Callable[[int], None] | None = None
 
     async def __call__(
         self,
@@ -185,34 +185,31 @@ class ExtractRowsFromDocumentsTool:
 
         rows = df.to_dict(orient="records")
         total_docs = len(rows)
-        completed_docs = 0
-        # Emit a 0/total tick up front so the UI shows the counter immediately
-        # rather than sitting empty until the first document finishes.
-        if self.on_row_complete is not None and total_docs > 0:
-            self.on_row_complete(0, total_docs)
+        extracted_count = 0
+        if self.on_rows_extracted is not None and total_docs > 0:
+            self.on_rows_extracted(0)
+
+        def _on_chunk_complete(n: int) -> None:
+            nonlocal extracted_count
+            extracted_count += n
+            if self.on_rows_extracted is not None:
+                self.on_rows_extracted(extracted_count)
 
         async def _process_document(doc_idx: int, row: dict[str, Any]) -> tuple[list[dict[str, Any]], str | None]:
-            nonlocal completed_docs
             content = row.get(content_col)
             error: str | None = None
             entities: list[dict[str, Any]] = []
-            cancelled = False
             try:
                 if not isinstance(content, str):
                     return [], None
                 instruction = task_template.render({c: row.get(c) for c in var_cols})
-                entities = await extractor.extract(content, instruction=instruction)
+                entities = await extractor.extract(
+                    content, instruction=instruction, on_chunk_complete=_on_chunk_complete
+                )
             except asyncio.CancelledError:
-                cancelled = True
                 raise
             except Exception as e:
                 error = f"document {doc_idx}: {type(e).__name__}: {e}"
-            finally:
-                if not cancelled:
-                    completed_docs += 1
-                    if self.on_row_complete is not None:
-                        self.on_row_complete(completed_docs, total_docs)
-                        await asyncio.sleep(0)
             return entities, error
 
         results = await asyncio.gather(*(_process_document(i, row) for i, row in enumerate(rows, start=1)))

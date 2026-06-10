@@ -499,8 +499,8 @@ class ChatAgent:
                 ToolProgress(completed=c, total=t)
             )
         if self._tools.extract_rows_from_documents is not None:
-            self._tools.extract_rows_from_documents.on_row_complete = lambda c, t: emit(
-                ToolProgress(completed=c, total=t)
+            self._tools.extract_rows_from_documents.on_rows_extracted = lambda c: emit(
+                ToolProgress(completed=c, total=None, unit="rows")
             )
         self._tools.add_canonical_name.on_progress = lambda stage, c, t: emit(
             ToolProgress(completed=c, total=t, stage=stage)
@@ -555,7 +555,7 @@ class ChatAgent:
                 if self._tools.run_subagent_for_each_row is not None:
                     self._tools.run_subagent_for_each_row.on_row_complete = None
                 if self._tools.extract_rows_from_documents is not None:
-                    self._tools.extract_rows_from_documents.on_row_complete = None
+                    self._tools.extract_rows_from_documents.on_rows_extracted = None
                 self._tools.add_canonical_name.on_progress = None
                 self._save_trajectory_for_debug()
 

@@ -539,7 +539,8 @@ class AgentProgressWidget(Widget):
         # Per-tool-call spinners so parallel running steps don't share a single
         # mutable spinner object (which would make every row display the same label).
         self._tool_spinners: dict[str, Spinner] = {}
-        self._tool_progress: tuple[int, int, str | None] | None = None
+        # (completed, total, stage, unit); total None means an open-ended count.
+        self._tool_progress: tuple[int, int | None, str | None, str | None] | None = None
         self._frozen = False
         self._timer: Timer | None = None
         self._usage: Usage | None = None
@@ -602,7 +603,7 @@ class AgentProgressWidget(Widget):
         elif isinstance(event, ToolFinished):
             self._on_tool_end(event.tool_call_id, event.name, summarize_outcome(event.outcome))
         elif isinstance(event, ToolProgress):
-            self._on_tool_progress(event.completed, event.total, event.stage)
+            self._on_tool_progress(event.completed, event.total, event.stage, event.unit)
         elif isinstance(event, TextDelta):
             self._on_text_delta(event.content)
         elif isinstance(event, UsageUpdated):
@@ -650,14 +651,29 @@ class AgentProgressWidget(Widget):
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
-    def _on_tool_progress(self, completed: int, total: int, stage: str | None = None) -> None:
-        """Update the running tool step with a (completed/total) counter.
+    @staticmethod
+    def _format_progress(completed: int, total: int | None, stage: str | None, unit: str | None) -> str:
+        """Format a progress counter: a ``completed/total`` fraction when ``total``
+        is known, or a bare ``completed [unit]`` running count when it's ``None``.
 
-        When ``stage`` is provided, it's prepended to the counter so the user can
-        tell which sub-phase is ticking (e.g. ``resolve: 12/88``).
+        When ``stage`` is given it's prepended (e.g. ``resolve: 12/88``).
         """
-        self._tool_progress = (completed, total, stage)
-        suffix = f"{stage}: {completed}/{total}" if stage else f"{completed}/{total}"
+        if total is None:
+            body = f"{completed} {unit}" if unit else str(completed)
+        else:
+            body = f"{completed}/{total}"
+        return f"{stage}: {body}" if stage else body
+
+    def _on_tool_progress(
+        self, completed: int, total: int | None, stage: str | None = None, unit: str | None = None
+    ) -> None:
+        """Update the running tool step with a progress counter.
+
+        ``total`` may be ``None`` for an open-ended running count (e.g. entities
+        extracted so far), which renders as ``47 rows`` rather than a fraction.
+        """
+        self._tool_progress = (completed, total, stage, unit)
+        suffix = self._format_progress(completed, total, stage, unit)
         for i in range(len(self._steps) - 1, -1, -1):
             if self._steps[i][0] == "running":
                 base_label = self._steps[i][3].split(" → ")[0]
@@ -677,9 +693,13 @@ class AgentProgressWidget(Widget):
                 label = step[3]
                 if self._tool_progress is not None:
                     base_label = label.split(" → ")[0]
-                    total = self._tool_progress[1]
-                    last_stage = self._tool_progress[2]
-                    suffix = f"{last_stage}: {total}/{total}" if last_stage else f"{total}/{total}"
+                    completed, total, last_stage, unit = self._tool_progress
+                    # Open-ended count: the final tick already holds the total, so
+                    # show it as-is. Fraction: pin to total/total to read "complete".
+                    if total is None:
+                        suffix = self._format_progress(completed, None, last_stage, unit)
+                    else:
+                        suffix = self._format_progress(total, total, last_stage, unit)
                     self._steps[i] = ("done", step[1], step[2], f"{base_label} → {suffix}")
                 else:
                     self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
