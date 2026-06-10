@@ -15,27 +15,29 @@ boundary-straddling entity was seen whole by one chunk, at the cost of duplicate
    ``max_chars``. A split *fills the current chunk first* (lazy fill), so a heading rides
    with the first slice of its oversize body instead of being orphaned, and cuts land on
    line → sentence → word boundaries (mid-word only for a single over-long word).
-2. **Context across cuts**, carried in a ``<context>``-wrapped prefix on any continuation
-   chunk (one prompt rule covers it: "don't extract from context"):
+2. **Context across cuts**, surfaced as *data* on each :class:`Chunk` (``section`` and
+   ``table_header``) — never rendered into the body. The consumer decides presentation:
+   an extraction prompt wraps it in a ``<context>`` block it tells the model not to
+   extract from; a vector store could keep it as metadata.
 
-   * *Section path* — every chunk names the sections it sits under but doesn't show
-     inline: a continuation chunk gets the full active path; a chunk that opens with an
-     inline heading gets that heading's *ancestors* (the shallower levels) — e.g. a chunk
-     led by ``### C`` carries ``Section: Doc > A``. So a title appears once as extractable
-     content (its inline heading) and as context everywhere else.
-   * *Table header* — a table row is one entity, so rows always pack toward ``target``
-     (never split mid-row), even when the whole table would fit under ``max_chars``. When
-     a real ``<th>`` table spans multiple chunks, its header row + separator ride in the
-     ``<context>`` of every continuation (the header still appears once inline, in the
-     table's first chunk) so columns aren't lost. Layout/listing tables have no real
-     header — ``render_aria_markdown`` gives them a blank one — so their noise header is
-     dropped and the rows pack with no propagated header.
+   * *Section path* (``Chunk.section``) — every chunk names the sections it sits under
+     but doesn't show inline: a continuation chunk gets the full active path; a chunk
+     that opens with an inline heading gets that heading's *ancestors* (the shallower
+     levels) — e.g. a chunk led by ``### C`` carries ``["Doc", "A"]``. So a title appears
+     once as extractable content (its inline heading) and as context everywhere else.
+   * *Table header* (``Chunk.table_header``) — a table row is one entity, so rows always
+     pack toward ``target`` (never split mid-row), even when the whole table would fit
+     under ``max_chars``. When a real ``<th>`` table spans multiple chunks, its header
+     row + separator are surfaced on every continuation chunk (the header still appears
+     once inline, in the table's first chunk) so columns aren't lost. Layout/listing
+     tables have no real header — ``render_aria_markdown`` gives them a blank one — so the
+     noise header is dropped and the rows pack with no propagated header.
 
 Differs from langchain/llama_index markdown splitters (which we don't depend on — both
-target RAG indexing): we bound chunk size *and* keep section/table context in one pass
-(theirs split only on headers, then need a heading-blind size splitter chained after);
-context rides inline for an LLM reader, not as vector-store metadata; and the API is
-plain ``str -> list[str]`` with no node/document classes.
+target RAG indexing): we bound chunk size *and* compute section/table context in one
+pass (theirs split only on headers, then need a heading-blind size splitter chained
+after); and we return context as plain data on a small ``Chunk`` so the consumer renders
+it for an LLM or keeps it as metadata, rather than committing to either.
 
 Out of scope by choice: **ref/cleaning** — ``[ref=eN]`` stripping is source-specific and
 belongs in preprocessing, not this generic splitter.
@@ -94,6 +96,22 @@ class _Text:
 
 
 _Block = _Heading | _Table | _Text
+
+
+@dataclass
+class Chunk:
+    """One output chunk: ``body`` is the content; ``section`` and ``table_header`` are
+    the context that applies to it but isn't shown inline.
+
+    The splitter surfaces context as *data*, not as rendered text — the consumer decides
+    presentation (e.g. an extraction prompt renders a ``<context>`` block it tells the
+    model not to extract from; a vector store keeps it as metadata). ``body`` is bounded
+    by ``max_chars``; any context the consumer prepends is its own (small) addition.
+    """
+
+    body: str
+    section: list[str]  # heading titles to surface as context (ancestors not shown inline here)
+    table_header: str | None = None  # a split table's header row+separator this chunk continues
 
 
 def _parse_blocks(text: str) -> list[_Block]:
@@ -182,27 +200,6 @@ def _table_from_run(run: list[str]) -> _Table | None:
     return _Table(header_lines=[], rows=run[2:])  # blank header → rows only
 
 
-def _context_block(*, section: str, header: str | None) -> str:
-    """Build the generic ``<context>...</context>`` prefix (or "" if there's nothing).
-
-    Holds whatever context a continuation chunk needs — the section path and/or a split
-    table's header — so a single prompt rule ("never extract from ``<context>``") covers
-    all of it. Lines: ``Section: A > B`` and/or the table ``header`` (row + separator).
-    """
-    lines = []
-    if section:
-        lines.append(f"Section: {section}")
-    if header:
-        lines.append(header)
-    if not lines:
-        return ""
-    return "<context>\n" + "\n".join(lines) + "\n</context>\n\n"
-
-
-def _section_path(stack: list[tuple[int, str]]) -> str:
-    return " > ".join(title for _, title in stack)
-
-
 def _atomize(text: str, limit: int) -> list[str]:
     """Break ``text`` into units each ``<= limit`` for lazy fill.
 
@@ -277,38 +274,38 @@ class _Packer:
     so a heading rides with the first slice of its oversize body instead of being
     orphaned. ``target == max_chars`` degrades to plain greedy-to-ceiling packing.
 
-    Continuation chunks (those not opening with their section's heading) are prefixed
-    with a ``<context>`` block naming the section path and, while a real-header table is
-    spilling, that table's header — so columns survive the split.
+    Emits :class:`Chunk` objects carrying the applicable context as *data* — the section
+    path (ancestors not shown inline) and, while a real-header table spills, that table's
+    header. It does not render context into the body; the consumer does.
     """
 
     def __init__(self, target: int, max_chars: int) -> None:
         self.target = target
         self.max_chars = max_chars
-        self.chunks: list[str] = []
+        self.chunks: list[Chunk] = []
         self.stack: list[tuple[int, str]] = []  # active heading path
         self.body = ""
         self.start_stack: list[tuple[int, str]] = []  # heading path at this chunk's start
         self.lead_level: int | None = None  # level of the heading this chunk opens with, if any
-        self.cont_header: str | None = None  # table header shown in THIS chunk's <context>
+        self.cont_header: str | None = None  # a spilling table's header, as THIS chunk's context
         self.table_header: str | None = None  # header of the table currently spilling
 
     # --- chunk-state helpers ------------------------------------------------
 
-    def _prefix(self) -> str:
-        # A heading-led chunk shows its inline heading's ancestors (levels shallower than
-        # the lead) as context — the lead heading itself is inline content, but its
-        # ancestors aren't visible here, so they still need naming. A continuation chunk
-        # (no lead heading) shows the full active path.
+    def _section(self) -> list[str]:
+        # A heading-led chunk surfaces its inline heading's ancestors (levels shallower
+        # than the lead) — the lead heading itself is inline content, but its ancestors
+        # aren't visible here, so they still need naming. A continuation chunk (no lead
+        # heading) surfaces the full active path.
         if self.lead_level is None:
             path = self.start_stack
         else:
             path = [e for e in self.start_stack if e[0] < self.lead_level]
-        return _context_block(section=_section_path(path), header=self.cont_header)
+        return [title for _, title in path]
 
     def _flush(self) -> None:
         if self.body.strip():
-            self.chunks.append(self._prefix() + self.body)
+            self.chunks.append(Chunk(body=self.body, section=self._section(), table_header=self.cont_header))
         self.body = ""
         # The next chunk starts as a continuation: it inherits the current section and,
         # if a table is mid-spill, carries that table's header as context.
@@ -317,18 +314,17 @@ class _Packer:
         self.cont_header = self.table_header
 
     def _fits(self, seg: str, sep: int) -> bool:
-        used = len(self._prefix()) + len(self.body) + (sep if self.body else 0)
-        return used + len(seg) <= self.max_chars
+        # max_chars bounds the body; any context the consumer prepends is its own concern.
+        return len(self.body) + (sep if self.body else 0) + len(seg) <= self.max_chars
 
     def _fits_fresh(self, seg: str) -> bool:
-        prefix = _context_block(section=_section_path(self.stack), header=self.table_header)
-        return len(prefix) + len(seg) <= self.max_chars
+        return len(seg) <= self.max_chars
 
     def _append(self, seg: str, sep: str) -> None:
         self.body = seg if not self.body else self.body + sep + seg
 
     def _maybe_flush_target(self) -> None:
-        if len(self._prefix()) + len(self.body) >= self.target:
+        if len(self.body) >= self.target:
             self._flush()
 
     # --- block handlers -----------------------------------------------------
@@ -384,8 +380,7 @@ class _Packer:
 
     def _spill_lines(self, text: str, *, block_sep: str) -> None:
         """Lazy-fill an oversize block: top up the current chunk, then spill into new ones."""
-        avail_fresh = self.max_chars - len(_context_block(section=_section_path(self.stack), header=self.table_header))
-        self._pack_lines(_atomize(text, avail_fresh), block_sep=block_sep)
+        self._pack_lines(_atomize(text, self.max_chars), block_sep=block_sep)
 
     def _pack_lines(self, lines: list[str], *, block_sep: str) -> None:
         """Pack line-units (table rows, or atoms of an oversize block) toward target.
@@ -409,7 +404,7 @@ class _Packer:
 
 def split_markdown(
     text: str, *, max_chars: int = DEFAULT_MAX_CHARS, target: int | None = DEFAULT_TARGET_CHARS
-) -> list[str]:
+) -> list[Chunk]:
     """Split a markdown document into non-overlapping, context-preserving chunks.
 
     Whole blocks (entities — paragraphs, list items, table rows) pack into a chunk until
@@ -421,21 +416,22 @@ def split_markdown(
     Args:
         text: The document text. Richly structured markdown (web_browser snapshots) or
             unstructured prose (PDF/plain text) — both are handled.
-        max_chars: Hard ceiling per chunk, inclusive of any ``<context>`` prefix. The
-            only threshold at which a single block is split.
+        max_chars: Hard ceiling for a chunk's ``body``. The only threshold at which a
+            single block is split. (Context the consumer prepends is its own addition.)
         target: Soft size to pack toward before flushing. Clamped to ``max_chars``;
             pass ``None`` to pack greedily up to ``max_chars``.
 
     Returns:
-        Chunks in document order. A continuation chunk is prefixed with a ``<context>``
-        block naming its section path and, when it continues a split table, that table's
-        header. Returns ``[]`` for blank input and ``[text]`` for input within budget.
+        :class:`Chunk` objects in document order, each carrying its ``body`` plus the
+        applicable context as data (``section`` ancestor path, and ``table_header`` when
+        it continues a split table). Returns ``[]`` for blank input and a single whole
+        chunk for input within ``target``.
     """
     if not text.strip():
         return []
     eff_target = max_chars if target is None else max(1, min(target, max_chars))
     if len(text) <= eff_target:
-        return [text]
+        return [Chunk(body=text, section=[])]
     packer = _Packer(target=eff_target, max_chars=max_chars)
     for block in _parse_blocks(text):
         packer.add(block)

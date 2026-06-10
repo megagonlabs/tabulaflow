@@ -19,7 +19,7 @@ from typing import Any
 from pydantic import create_model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
-from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, split_markdown
+from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -35,6 +35,26 @@ _EXTRACTION_SYSTEM_PROMPT = (
     "context-dependent fields), but never extract anything inside `<context>` as a "
     "record of its own. Return an empty list if the excerpt contains no matching records."
 )
+
+
+def _render_excerpt(chunk: Chunk, doc_context: str | None) -> str:
+    """Render a :class:`Chunk` as the excerpt the model reads.
+
+    The splitter returns context as data; here the consumer turns it into the LLM-facing
+    form: a ``<context>`` block (document-level ``doc_context``, the section path, and a
+    split table's header — all read-only context the prompt forbids extracting) followed
+    by the chunk body. This is the single place the ``<context>`` convention lives, next
+    to the system-prompt rule that interprets it.
+    """
+    lines: list[str] = []
+    if doc_context:
+        lines.append(doc_context)
+    if chunk.section:
+        lines.append("Section: " + " > ".join(chunk.section))
+    if chunk.table_header:
+        lines.append(chunk.table_header)
+    prefix = "<context>\n" + "\n".join(lines) + "\n</context>\n\n" if lines else ""
+    return prefix + chunk.body
 
 
 class EntityExtractor:
@@ -60,7 +80,8 @@ class EntityExtractor:
         llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
-        chunk_chars: int = DEFAULT_MAX_CHARS,
+        chunk_target: int = DEFAULT_TARGET_CHARS,
+        chunk_max: int = DEFAULT_MAX_CHARS,
     ) -> None:
         """Initialize the extractor.
 
@@ -71,8 +92,10 @@ class EntityExtractor:
                 subagent run (e.g. ``openai_service_tier``).
             max_concurrency: Maximum number of chunk subagents to run concurrently
                 across all ``extract`` calls on this instance.
-            chunk_chars: Target maximum characters per document chunk (inclusive of any
-                section breadcrumb the splitter prepends).
+            chunk_target: Soft per-chunk size the splitter packs toward — tunes density
+                for many-small-entity documents.
+            chunk_max: Hard per-chunk ceiling; the only size at which a single block is
+                split. A larger entity stays whole up to this.
 
         Raises:
             ValueError: If ``output_columns`` is empty or a size argument is invalid.
@@ -81,11 +104,12 @@ class EntityExtractor:
             raise ValueError("output_columns must be non-empty")
         if max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
-        if chunk_chars <= 0:
-            raise ValueError("chunk_chars must be greater than 0")
+        if chunk_target <= 0 or chunk_max <= 0:
+            raise ValueError("chunk_target and chunk_max must be greater than 0")
 
         self.output_columns = output_columns
-        self.chunk_chars = chunk_chars
+        self.chunk_target = chunk_target
+        self.chunk_max = chunk_max
 
         # Dynamic structured-output model: one all-string field per output column,
         # wrapped in a list-bearing container for reliable structured extraction.
@@ -107,6 +131,7 @@ class EntityExtractor:
         text: str,
         *,
         instruction: str,
+        doc_context: str | None = None,
         on_chunk_complete: Callable[[int], None] | None = None,
     ) -> list[dict[str, Any]]:
         """Extract entities from one document.
@@ -115,6 +140,9 @@ class EntityExtractor:
             text: The document text to extract from.
             instruction: Natural-language description of what one entity is and how
                 to populate ``output_columns``.
+            doc_context: Optional document-level context (e.g. ``"Source: <title> (<url>)"``)
+                surfaced in every chunk's ``<context>`` block, so provenance/framing
+                reaches each excerpt without the caller threading it through ``instruction``.
             on_chunk_complete: Optional callback invoked as each chunk finishes, with
                 the number of entities that chunk produced. Chunks run concurrently,
                 so it fires in completion order, not document order.
@@ -125,8 +153,11 @@ class EntityExtractor:
         """
         if not text.strip():
             return []
-        chunks = split_markdown(text, max_chars=self.chunk_chars)
-        prompts = [f"{instruction}\n\n<document_excerpt>\n{chunk}\n</document_excerpt>" for chunk in chunks]
+        chunks = split_markdown(text, max_chars=self.chunk_max, target=self.chunk_target)
+        prompts = [
+            f"{instruction}\n\n<document_excerpt>\n{_render_excerpt(c, doc_context)}\n</document_excerpt>"
+            for c in chunks
+        ]
 
         async def _run(prompt: str) -> list[dict[str, Any]]:
             entities = await self._extract_chunk(prompt)
