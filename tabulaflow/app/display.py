@@ -18,7 +18,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 TABULAFLOW_THEME = Theme(
     {
@@ -425,9 +425,9 @@ def build_table_detail(tbl: SQLTableSchema, multi_schema: bool = False) -> Rende
     for col in tbl.columns:
         key_parts: list[str] = []
         if col.name in pk_set:
-            key_parts.append("[bold yellow]PK[/bold yellow]")
+            key_parts.append(f"[{PK_MARKER}]PK[/]")
         if col.name in fk_col_set:
-            key_parts.append(f"[{ACCENT}]FK[/{ACCENT}]")
+            key_parts.append(f"[{FK_MARKER}]FK[/]")
         key = " ".join(key_parts)
 
         null_str = "[green]✓[/green]" if col.nullable else "[dim]✗[/dim]"

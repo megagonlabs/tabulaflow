@@ -17,7 +17,7 @@ from textual.app import ComposeResult
 from textual.screen import Screen
 from textual.widgets import DataTable, Static, TextArea
 
-from tabulaflow.app.theme import ACCENT, DRACULA_TRANSPARENT, ERROR, KEY_HINT
+from tabulaflow.app.theme import ACCENT, DRACULA_TRANSPARENT, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
 
 
 if TYPE_CHECKING:
@@ -1377,9 +1377,9 @@ class SchemaBrowserScreen(Screen[None]):
             c_label.append(col.name)
             c_label.append(f"  {col.dtype}", style="dim")
             if col.primary_key_type:
-                c_label.append(" PK", style="bold #e6c07b")
+                c_label.append(" PK", style=PK_MARKER)
             if col.foreign_keys:
-                c_label.append(" FK", style="#61afef")
+                c_label.append(" FK", style=FK_MARKER)
             table_node.add_leaf(
                 c_label,
                 data=_NodeData(

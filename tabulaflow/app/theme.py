@@ -29,6 +29,12 @@ ERROR = "#ff7777"
 # text to auto-flip to a brighter shade.
 ACCENT_DIM = "#999999"
 
+# Column key markers in the schema browser tree / column-detail tables.
+# PK rides the mint accent (it's the structurally important marker); FK uses
+# the dim grey so it reads as secondary without introducing an off-palette hue.
+PK_MARKER = ACCENT_BOLD
+FK_MARKER = f"bold {ACCENT_DIM}"
+
 # Background shade for focused/active interactive surfaces (focused
 # AgentResultWidget, focused input bar, focused/hovered explorer button).
 # Slightly lighter than ``$surface`` so the focused element pops out
