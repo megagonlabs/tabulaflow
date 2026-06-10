@@ -85,21 +85,29 @@ def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) ->
 
 @dataclass
 class ReleaseBrowserBeforeFanout(AbstractCapability[Any]):
-    """Close the row subagent's browser tabs right before it fans out.
+    """Suspend the agent's browser for the duration of a fan-out it triggers.
 
-    A subagent that can both browse and nest could hold browser page permits
-    while awaiting a nested ``run_subagent_for_each_row`` whose rows need those
-    same permits — a deadlock on the shared page budget. Dropping its tabs at
-    the moment it invokes the nested tool keeps it holding zero permits across
-    the await, so non-leaf browsing stays safe.
+    An agent that can both browse and nest could hold browser page permits (its
+    open tabs aren't released until the next turn boundary) while awaiting a
+    nested ``run_subagent_for_each_row`` whose rows need those same permits — a
+    deadlock on the shared page budget. pydantic-ai runs same-turn tool calls
+    concurrently, so closing the tabs once before the fan-out body isn't enough:
+    a sibling ``browser_*`` call in the same turn could reopen one mid fan-out.
+    Wrapping the call instead — suspend before, resume after — keeps the tool
+    holding zero permits across the whole await, while leaving the agent free to
+    browse again on later turns.
     """
 
     browser_tool: WebBrowserTool
 
-    async def before_tool_execute(self, ctx: Any, *, call: Any, tool_def: Any, args: Any) -> Any:
-        if tool_def.name == RunSubagentForEachRowTool.name:
-            await self.browser_tool.close()
-        return args
+    async def wrap_tool_execute(self, ctx: Any, *, call: Any, tool_def: Any, args: Any, handler: Any) -> Any:
+        if tool_def.name != RunSubagentForEachRowTool.name:
+            return await handler(args)
+        await self.browser_tool.suspend()
+        try:
+            return await handler(args)
+        finally:
+            self.browser_tool.resume()
 
 
 class RunSubagentForEachRowTool:
@@ -491,9 +499,9 @@ class RunSubagentForEachRowTool:
             capabilities: list[AbstractCapability[Any]] = []
             if browser_tool is not None:
                 capabilities.append(browser_tool.lifecycle_capability())
-                # If this subagent can both browse and fan out, drop its tabs
-                # before any nested fan-out so it holds no page permits while
-                # awaiting nested rows that need them (deadlock avoidance).
+                # If this subagent can both browse and fan out, suspend its
+                # browser around any nested fan-out so it holds no page permits
+                # while awaiting nested rows that need them (deadlock avoidance).
                 if nested_pa_tool is not None:
                     capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
             subagent_scope = None

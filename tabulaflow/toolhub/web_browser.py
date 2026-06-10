@@ -386,6 +386,10 @@ class _RefError(Exception):
 
 _REF_PATTERN = re.compile(r"^e\d+$")
 
+# Returned when a new-tab open is attempted while the tool is suspended for a
+# concurrent fan-out (see ``WebBrowserTool.suspend``).
+_SUSPENDED_MSG = "browser is paused during a fan-out; issue browser actions in a later turn"
+
 
 # Common natural-language aliases for keys, mapped to canonical Playwright names.
 # LLMs frequently use these spellings ("ctrl+a", "esc", "cmd+v"); without
@@ -581,6 +585,11 @@ class WebBrowserTool:
         # event loop only weakly references tasks, so without this they can be
         # garbage-collected mid-execution. Entries self-remove on completion.
         self._bg_tasks: set[asyncio.Task[None]] = set()
+        # Suspend gate. While depth > 0 the tool drops its tabs and ``_open_new_tab``
+        # refuses to take a page permit, so the tool carries zero permits from the
+        # shared budget across a fan-out it triggered (see ``suspend`` /
+        # ``ReleaseBrowserBeforeFanout``). Counted so nested/concurrent suspends stack.
+        self._suspend_depth = 0
 
     # === LLM-facing tool methods ============================================
 
@@ -755,6 +764,12 @@ class WebBrowserTool:
         ``new_page`` call fails. On failure no state is registered and any
         permit taken has been released.
         """
+        # Fail fast if suspended for a concurrent fan-out: never hold a page
+        # permit across the fan-out await — that's the deadlock the suspend gate
+        # prevents (see ``suspend``). The agent can retry in a later turn.
+        if self._suspend_depth > 0:
+            return None, self._format_error(_SUSPENDED_MSG)
+
         if len(self._tabs) >= self._max_tabs:
             return None, self._format_error(
                 f"max_tabs ({self._max_tabs}) reached. "
@@ -770,6 +785,12 @@ class WebBrowserTool:
             return None, self._format_error(
                 "browser at capacity — pass tab=<id> to reuse an existing tab, or reduce parallelism and retry"
             )
+        # A fan-out may have suspended us between the check above and the acquire
+        # (same-turn tool calls run concurrently); hand the permit straight back
+        # rather than hold it across the fan-out.
+        if self._suspend_depth > 0:
+            await manager.release_page()
+            return None, self._format_error(_SUSPENDED_MSG)
 
         try:
             ctx = await self._ensure_context()
@@ -1132,8 +1153,10 @@ class WebBrowserTool:
                 await self._manager.release_page()
             self._metrics.num_tabs_auto_closed += 1
 
-    async def close(self) -> None:
-        """Close all tabs and (if isolated) the private context."""
+    async def _drop_tabs(self) -> None:
+        """Close every open tab, releasing its page permit, and cancel in-flight
+        popup/dialog handlers. Leaves the (isolated) context intact so the tool
+        stays reusable — shared by ``close`` and ``suspend``."""
         # Cancel in-flight popup/dialog handlers before tearing down pages so
         # they don't run against closed pages or outlive the tool.
         for task in list(self._bg_tasks):
@@ -1148,6 +1171,33 @@ class WebBrowserTool:
                 pass
             if self._manager is not None:
                 await self._manager.release_page()
+
+    async def suspend(self) -> None:
+        """Drop all tabs and make new tab opens fail until :meth:`resume`.
+
+        Called around a fan-out the agent triggers while it can also browse. The
+        agent's open tabs hold page permits from the shared budget that aren't
+        released until the next turn boundary; a fan-out whose rows need those
+        permits would deadlock, waiting for a turn that can't end until the
+        fan-out returns. Suspending drops the tabs (releasing the permits) and
+        makes ``_open_new_tab`` refuse to take one until resume, so the tool
+        provably holds zero permits across the fan-out await — even if a sibling
+        ``browser_*`` call lands in the same (concurrently executed) turn; that
+        call fails fast and the agent can retry in a later turn.
+
+        Reentrant: nested/concurrent suspends stack and lift in kind.
+        """
+        self._suspend_depth += 1
+        await self._drop_tabs()
+
+    def resume(self) -> None:
+        """Lift one :meth:`suspend`; tab opens are allowed again once depth hits zero."""
+        if self._suspend_depth > 0:
+            self._suspend_depth -= 1
+
+    async def close(self) -> None:
+        """Close all tabs and (if isolated) the private context."""
+        await self._drop_tabs()
         if self._owned_context is not None:
             try:
                 await self._owned_context.close()
