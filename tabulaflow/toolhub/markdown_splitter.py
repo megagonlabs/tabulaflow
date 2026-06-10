@@ -21,11 +21,13 @@ boundary-straddling entity was seen whole by one chunk, at the cost of duplicate
    * *Section path* — a continuation chunk with no heading of its own names the section
      it's in. A title thus appears once as extractable content (its inline heading) and
      as context elsewhere.
-   * *Table header* — when a real ``<th>`` table is split, its header row + separator
-     ride in the ``<context>`` of every continuation chunk so columns aren't lost (the
-     header still appears once inline, in the table's first chunk). Layout/listing tables
-     have no real header — ``render_aria_markdown`` gives them a blank header row — so
-     they don't trigger this and just split as plain lines (rows kept whole).
+   * *Table header* — a table row is one entity, so rows always pack toward ``target``
+     (never split mid-row), even when the whole table would fit under ``max_chars``. When
+     a real ``<th>`` table spans multiple chunks, its header row + separator ride in the
+     ``<context>`` of every continuation (the header still appears once inline, in the
+     table's first chunk) so columns aren't lost. Layout/listing tables have no real
+     header — ``render_aria_markdown`` gives them a blank one — so their noise header is
+     dropped and the rows pack with no propagated header.
 
 Differs from langchain/llama_index markdown splitters (which we don't depend on — both
 target RAG indexing): we bound chunk size *and* keep section/table context in one pass
@@ -68,14 +70,14 @@ class _Heading:
 
 @dataclass
 class _Table:
-    """A pipe table with a *real* (non-blank) header — its header row + separator are
-    re-prepended as context to every continuation chunk so columns aren't lost on a
-    split. Layout/listing tables (blank header) never become a ``_Table``; they stay
-    prose and split as plain lines."""
+    """A pipe table. Each row is one entity, so rows pack toward ``target`` like any
+    other unit (never split mid-row). ``header_lines`` holds a *real* (non-blank) header
+    row + separator, re-prepended as context to every continuation chunk so columns
+    aren't lost on a split; it is empty for a layout/listing table (blank header), whose
+    noise header+separator are dropped and whose rows carry no propagated header."""
 
-    header_lines: list[str]  # header row + ``| --- |`` separator
-    rows: list[str]  # data rows, kept whole
-    text: str  # the full table, for the fits-whole fast path
+    header_lines: list[str]  # real header row + ``| --- |`` separator, or [] if headerless
+    rows: list[str]  # data rows, each kept whole
 
 
 @dataclass
@@ -136,11 +138,12 @@ def _parse_blocks(text: str) -> list[_Block]:
             while i < n and _is_table_row(lines[i]):
                 i += 1
             run = [ln.rstrip() for ln in lines[start:i]]
-            if _has_real_header(run):
+            table = _table_from_run(run)
+            if table is not None:
                 flush_para()
-                blocks.append(_Table(header_lines=run[:2], rows=run[2:], text="\n".join(run)))
+                blocks.append(table)
             else:
-                para.extend(run)  # layout/listing table → plain prose
+                para.extend(run)  # pipe lines with no separator row → plain prose
         elif line.strip() == "":
             flush_para()
             i += 1
@@ -155,16 +158,20 @@ def _is_table_row(line: str) -> bool:
     return line.lstrip().startswith("|")
 
 
-def _has_real_header(run: list[str]) -> bool:
-    """True if a ``|``-run opens with a non-blank header row over a ``| --- |`` separator.
+def _table_from_run(run: list[str]) -> _Table | None:
+    """Classify a run of ``|`` lines into a ``_Table`` (or ``None`` → treat as prose).
 
-    The renderer emits a blank header (all-empty cells) for headerless layout/listing
-    tables, so a non-blank header reliably marks a genuine ``<th>`` data table.
+    A pipe table is a run whose second line is a ``| --- |`` separator. A non-blank
+    first row is a genuine ``<th>`` header (propagated as context on splits). The
+    renderer emits an all-blank header for headerless layout/listing tables, so that
+    case keeps the rows as entities but drops the meaningless header + separator.
     """
     if len(run) < 2 or not _TABLE_SEP_RE.match(run[1]):
-        return False
+        return None
     cells = [c.strip() for c in run[0].strip().strip("|").split("|")]
-    return any(cells)
+    if any(cells):
+        return _Table(header_lines=run[:2], rows=run[2:])  # real header
+    return _Table(header_lines=[], rows=run[2:])  # blank header → rows only
 
 
 def _context_block(*, section: str, header: str | None) -> str:
@@ -314,41 +321,43 @@ class _Packer:
         self._maybe_flush_target()
 
     def _add_table(self, block: _Table) -> None:
-        if self._fits(block.text, sep=2):
-            self._append(block.text, "\n\n")
-            self._maybe_flush_target()
-            return
-        if self._fits_fresh(block.text):
-            self._flush()
-            self._append(block.text, "\n\n")
-            self._maybe_flush_target()
-            return
-        # Spill: header inline in the first chunk, then carried in every continuation's
-        # <context> so columns survive the row split.
-        header = "\n".join(block.header_lines)
-        if self.body and not self._fits(header, sep=2):
-            self._flush()
-        self._append(header, "\n\n")
-        self.table_header = header
-        for row in block.rows:
-            if self.body and not self._fits(row, sep=1):
-                self._flush()  # new chunk inherits cont_header = table_header
-            self._append(row, "\n")
-            self._maybe_flush_target()
-        self.table_header = None
-        self._flush()  # end the table so the next block doesn't inherit its header context
+        # One row = one entity: rows always pack toward target (never split mid-row),
+        # regardless of whether the whole table would fit under max.
+        if block.header_lines:
+            # Real header: inline in the table's first chunk, then carried in every
+            # continuation's <context> so columns survive the row split.
+            header = "\n".join(block.header_lines)
+            if self.body and not self._fits(header, sep=2):
+                self._flush()
+            self._append(header, "\n\n")
+            self.table_header = header
+            self._pack_lines(block.rows, block_sep="\n")
+            self.table_header = None
+            if self.cont_header is not None:
+                self._flush()  # close a continuation so the next block drops the header context
+        else:
+            # Headerless listing: rows are plain line-entities, no header to propagate.
+            self._pack_lines(block.rows, block_sep="\n\n")
 
     def _spill_lines(self, text: str, *, block_sep: str) -> None:
         """Lazy-fill an oversize block: top up the current chunk, then spill into new ones."""
         avail_fresh = self.max_chars - len(_context_block(section=_section_path(self.stack), header=self.table_header))
-        atoms = _atomize(text, avail_fresh)
+        self._pack_lines(_atomize(text, avail_fresh), block_sep=block_sep)
+
+    def _pack_lines(self, lines: list[str], *, block_sep: str) -> None:
+        """Pack line-units (table rows, or atoms of an oversize block) toward target.
+
+        Each line is kept whole; the first joins prior content with ``block_sep`` (a
+        block boundary), the rest with a single newline. Fills the current chunk before
+        spilling, and flushes at ``target`` so dense rows stay focused.
+        """
         first = True
-        for atom in atoms:
+        for line in lines:
             sep = block_sep if first else "\n"
-            if self.body and not self._fits(atom, sep=len(sep)):
+            if self.body and not self._fits(line, sep=len(sep)):
                 self._flush()
-            self._append(atom, sep if self.body else "")
-            self._maybe_flush_target()  # honor target within the split, like the table path
+            self._append(line, sep if self.body else "")
+            self._maybe_flush_target()
             first = False
 
     def finish(self) -> None:

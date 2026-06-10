@@ -155,6 +155,27 @@ class TestTables:
             assert "| --- | --- | --- |" in ctx
         assert all(len(c) <= 1000 for c in chunks)
 
+    def test_table_rows_pack_toward_target_even_under_max(self) -> None:
+        # One row = one entity: a real-header table that fits under max but exceeds target
+        # is split by rows toward target, not kept whole.
+        header = "| Rank | Country | Pop |\n| --- | --- | --- |"
+        rows = [f"| {i} | Country{i} | {i * 1000} |" for i in range(60)]
+        text = header + "\n" + "\n".join(rows)
+        assert len(text) < 8000  # comfortably under max
+        chunks = split_markdown(text, max_chars=8000, target=800)
+        assert len(chunks) > 1
+        for c in chunks[1:]:
+            assert c.startswith("<context>") and "| Rank | Country | Pop |" in c.split("</context>")[0]
+
+    def test_headerless_rows_pack_toward_target_and_drop_noise_header(self) -> None:
+        rows = [f"| {i}. | Item {i} |" for i in range(100)]
+        text = "|  |  |\n| --- | --- |\n" + "\n".join(rows)
+        assert len(text) < 8000
+        chunks = split_markdown(text, max_chars=8000, target=600)
+        assert len(chunks) > 1  # rows packed toward target, not one whole block
+        assert not any("| --- | --- |" in c for c in chunks)  # blank header + separator dropped
+        assert sum("| 0. | Item 0 |" in c for c in chunks) == 1
+
     def test_real_header_table_carries_section_path_too(self) -> None:
         header = "| A | B |\n| --- | --- |"
         rows = [f"| {i} | {i} |" for i in range(300)]
