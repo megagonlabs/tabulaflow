@@ -18,9 +18,11 @@ boundary-straddling entity was seen whole by one chunk, at the cost of duplicate
 2. **Context across cuts**, carried in a ``<context>``-wrapped prefix on any continuation
    chunk (one prompt rule covers it: "don't extract from context"):
 
-   * *Section path* — a continuation chunk with no heading of its own names the section
-     it's in. A title thus appears once as extractable content (its inline heading) and
-     as context elsewhere.
+   * *Section path* — every chunk names the sections it sits under but doesn't show
+     inline: a continuation chunk gets the full active path; a chunk that opens with an
+     inline heading gets that heading's *ancestors* (the shallower levels) — e.g. a chunk
+     led by ``### C`` carries ``Section: Doc > A``. So a title appears once as extractable
+     content (its inline heading) and as context everywhere else.
    * *Table header* — a table row is one entity, so rows always pack toward ``target``
      (never split mid-row), even when the whole table would fit under ``max_chars``. When
      a real ``<th>`` table spans multiple chunks, its header row + separator ride in the
@@ -287,15 +289,22 @@ class _Packer:
         self.stack: list[tuple[int, str]] = []  # active heading path
         self.body = ""
         self.start_stack: list[tuple[int, str]] = []  # heading path at this chunk's start
-        self.starts_with_heading = False
+        self.lead_level: int | None = None  # level of the heading this chunk opens with, if any
         self.cont_header: str | None = None  # table header shown in THIS chunk's <context>
         self.table_header: str | None = None  # header of the table currently spilling
 
     # --- chunk-state helpers ------------------------------------------------
 
     def _prefix(self) -> str:
-        section = "" if self.starts_with_heading else _section_path(self.start_stack)
-        return _context_block(section=section, header=self.cont_header)
+        # A heading-led chunk shows its inline heading's ancestors (levels shallower than
+        # the lead) as context — the lead heading itself is inline content, but its
+        # ancestors aren't visible here, so they still need naming. A continuation chunk
+        # (no lead heading) shows the full active path.
+        if self.lead_level is None:
+            path = self.start_stack
+        else:
+            path = [e for e in self.start_stack if e[0] < self.lead_level]
+        return _context_block(section=_section_path(path), header=self.cont_header)
 
     def _flush(self) -> None:
         if self.body.strip():
@@ -304,7 +313,7 @@ class _Packer:
         # The next chunk starts as a continuation: it inherits the current section and,
         # if a table is mid-spill, carries that table's header as context.
         self.start_stack = list(self.stack)
-        self.starts_with_heading = False
+        self.lead_level = None
         self.cont_header = self.table_header
 
     def _fits(self, seg: str, sep: int) -> bool:
@@ -340,7 +349,7 @@ class _Packer:
             self._flush()
         if not self.body:
             self.start_stack = list(self.stack)
-            self.starts_with_heading = True
+            self.lead_level = block.level
         self._append(block.text, "\n\n")
         # No target flush after a heading: keep it with the content that follows.
 

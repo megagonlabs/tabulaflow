@@ -133,6 +133,21 @@ class TestHeadingBreadcrumb:
         chunks = split_markdown(text, max_chars=300)
         assert any(c.startswith(_context("A", "B", "C")) for c in chunks)
 
+    def test_heading_led_chunk_carries_ancestor_path(self) -> None:
+        # A chunk that opens with an inline ### heading must still name its h1>h2
+        # ancestors as context (they aren't visible in this chunk), without repeating
+        # the ### heading itself in the breadcrumb.
+        a_body = ("x " * 400).strip()  # fills the # Doc / ## A chunk so ### C starts fresh
+        c_body = "\n\n".join(f"c line {i} of subsection body." for i in range(120))
+        text = f"# Doc\n\n## A\n\n{a_body}\n\n### C\n\n{c_body}"
+        chunks = split_markdown(text, max_chars=3000, target=600)
+        c_lead = next(c for c in chunks if "### C" in c)
+        assert c_lead.startswith("<context>\nSection: Doc > A\n</context>")  # ancestors only
+        assert "Doc > A > C" not in c_lead.split("</context>")[0]  # C not in its own breadcrumb
+        # Continuation chunks of C carry the full path including C as context.
+        cont = [c for c in chunks if c.startswith("<context>") and "### C" not in c and "c line" in c]
+        assert cont and all(c.startswith("<context>\nSection: Doc > A > C\n</context>") for c in cont)
+
     def test_breadcrumb_pops_to_sibling_section(self) -> None:
         first = "\n\n".join(f"alpha line {i} of the first subsection." for i in range(40))
         second = "\n\n".join(f"beta line {i} of the second subsection." for i in range(40))
