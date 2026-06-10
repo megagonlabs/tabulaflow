@@ -9,10 +9,9 @@ from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from rich.console import RenderableType
-from rich.table import Table
 from rich.text import Text
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ERROR
+from tabulaflow.app.theme import ACCENT, ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
 
 if TYPE_CHECKING:
@@ -525,32 +524,6 @@ async def _cmd_disconnect(args: list[str], session: SessionState) -> CommandResu
         return CommandResult(output=Text.from_markup(f"[{ERROR}]No connection named:[/] {alias}"))
 
 
-async def _cmd_databases(args: list[str], session: SessionState) -> CommandResult:
-    aliases = session.registry.list_aliases()
-    if not aliases:
-        return CommandResult(output=Text("No databases connected. Use /connect <url> to add one.", style="dim"))
-
-    from tabulaflow.core.db_connector import Neo4jConnector
-
-    table = Table(show_header=True, header_style=ACCENT_BOLD)
-    table.add_column("Alias", style="bold")
-    table.add_column("Schema")
-
-    for alias in aliases:
-        conn = session.registry.get(alias)
-        if isinstance(conn, Neo4jConnector) and conn.schema:
-            n_lab = len(conn.schema.nodes)
-            n_rel = len(conn.schema.relationships)
-            summary = f"{n_lab} labels, {n_rel} rel patterns"
-        elif conn.schema and hasattr(conn.schema, "tables"):
-            summary = f"{len(conn.schema.tables)} tables"
-        else:
-            summary = "?"
-        table.add_row(alias, summary)
-
-    return CommandResult(output=table)
-
-
 async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(output=Text.from_markup(f"[dim]Current model:[/dim] {session.model}"))
@@ -564,8 +537,6 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/clear": (_cmd_clear, "Clear the screen"),
     "/connect": (_cmd_connect, "Connect to a database: /connect <url> \\[alias]"),
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
-    "/databases": (_cmd_databases, "List connected databases"),
-    "/db": (_cmd_databases, "Alias for /databases"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
 }
 
