@@ -149,3 +149,4 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
 - Use Google style for all Python docstrings.
 - This is a research library, do not over-abstract.
+- Do not write comments if the code is self-explanatory. Only write comments for complicated or tricky logic.
