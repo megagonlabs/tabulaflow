@@ -117,6 +117,8 @@ _INTERACTIVE_ROLES: frozenset[str] = frozenset(
         "spinbutton",
         "searchbox",
         "option",
+        "treeitem",
+        "scrollbar",
     }
 )
 
@@ -169,6 +171,15 @@ _TRANSPARENT_ROLES: frozenset[str] = frozenset(
         "presentation",
         "none",
         "document",
+        "application",
+        "feed",
+        "tree",
+        "directory",
+        "figure",
+        "note",
+        "log",
+        "marquee",
+        "timer",
     }
 )
 
@@ -203,7 +214,7 @@ _LANDMARK_ROLES: frozenset[str] = _STRONG_LANDMARK_ROLES | _NAMED_LANDMARK_ROLES
 # Grouping roles — logical groups of controls/items (a search form, a tab
 # strip, a menu). We always fan their meaningful children out as paragraphs
 # rather than letting them collapse onto an inline run.
-_GROUPING_ROLES: frozenset[str] = frozenset({"form", "search", "tablist", "menubar", "menu"})
+_GROUPING_ROLES: frozenset[str] = frozenset({"form", "search", "tablist", "menubar", "menu", "radiogroup", "toolbar"})
 
 # Layout-table parts handled as a family when they appear standalone (outside
 # an actual data table that already structured them as a GitHub-Flavored Markdown pipe table).
@@ -471,10 +482,17 @@ def _render_inline_markup(ctx: _Ctx) -> str:
     return f"{pre}{body}{post}" if body else ""
 
 
-def _render_menuitem(ctx: _Ctx) -> str:
-    """Interactive menu items render as atoms so the ref survives — without a
-    handler they fall to ``_render_unknown`` and vanish entirely (ref and all).
-    ``menuitemcheckbox``/``menuitemradio`` carry state (checked/selected)."""
+# Interactive roles with no dedicated widget rendering that still must surface as
+# a clickable atom (``role "name" [state] [ref=eN]``). Without a handler they fall
+# to ``_render_unknown`` and vanish entirely — ref and all — so the agent loses the
+# element (the original ``menuitem`` / ``treeitem`` bug). ``menuitem*`` carry
+# checked/selected state; ``scrollbar`` is a range widget.
+_INTERACTIVE_ATOM_ROLES: frozenset[str] = frozenset(
+    {"menuitem", "menuitemcheckbox", "menuitemradio", "treeitem", "scrollbar"}
+)
+
+
+def _render_interactive_atom(ctx: _Ctx) -> str:
     body = ctx.name or _kids_md(ctx.children, ctx.depth, flow=True).strip()
     state = "".join(f" [{f}]" for f in ctx.state)
     extra = _swept_refs(ctx.children) if ctx.name else ""
@@ -488,6 +506,22 @@ def _render_blockquote(ctx: _Ctx) -> str:
         return ""
     quoted = "\n".join(f"> {ln}" if ln else ">" for ln in inner.splitlines())
     return f"\n\n{quoted}\n\n"
+
+
+# Roles with no portable CommonMark/GFM representation — emit their text and let
+# it flow with neighbors (a ``deletion`` pairs with ``term`` bold, a ``caption``
+# trails its figure). Inventing non-standard syntax (``==mark==``, ``<sub>``) would
+# add noise and break naive regex, so these stay plain. Registered explicitly,
+# rather than left to the ``_render_unknown`` fallback, so the ARIA role set is
+# covered exhaustively and the coverage is testable.
+_PLAIN_TEXT_ROLES: frozenset[str] = frozenset(
+    {"insertion", "subscript", "superscript", "math", "time", "meter", "caption", "definition"}
+)
+
+
+def _render_plain_text(ctx: _Ctx) -> str:
+    leading = (ctx.value + " ") if ctx.value else ""
+    return leading + _kids_md(ctx.children, ctx.depth, flow=ctx.flow)
 
 
 def _render_text(ctx: _Ctx) -> str:
@@ -1008,6 +1042,7 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     "listitem": _render_listitem,
     "table": _render_table_node,
     "grid": _render_table_node,
+    "treegrid": _render_table_node,
     # Inline atoms.
     "text": _render_text,
     "link": _render_link,
@@ -1016,7 +1051,8 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     "option": _render_option,
     # Role families.
     **{r: _render_inline_markup for r in _INLINE_MARKUP},
-    **{r: _render_menuitem for r in ("menuitem", "menuitemcheckbox", "menuitemradio")},
+    **{r: _render_interactive_atom for r in _INTERACTIVE_ATOM_ROLES},
+    **{r: _render_plain_text for r in _PLAIN_TEXT_ROLES},
     **{r: _render_form_control for r in _FORM_CONTROL_ROLES},
     **{r: _render_layout_part for r in _LAYOUT_PART_ROLES},
     **{r: _render_grouping for r in _GROUPING_ROLES},

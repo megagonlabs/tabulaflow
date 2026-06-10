@@ -1,5 +1,6 @@
 """Tests for the aria-YAML → markdown renderer."""
 
+import tabulaflow.toolhub.aria_to_markdown as a2m
 from tabulaflow.toolhub.aria_to_markdown import render_aria_markdown
 
 
@@ -282,3 +283,76 @@ class TestRobustness:
     def test_malformed_yaml_returns_empty(self) -> None:
         # No fallback for the renderer — fail-soft to empty string.
         assert render_aria_markdown('- button "x" [ref=e1]: "unclosed\n') == ""
+
+
+class TestInlineMarkup:
+    def test_strong_and_emphasis(self) -> None:
+        assert md("- strong: Title") == "**Title**"
+        assert md("- emphasis: Authors") == "*Authors*"
+
+    def test_deletion_is_strikethrough(self) -> None:
+        assert md("- deletion: old") == "~~old~~"
+
+    def test_term_definition_pair_is_regex_separable(self) -> None:
+        # The title/author shape generalized: a <dl> term/definition pair stays
+        # on one bullet but the term's ** delimiter keeps the boundary parseable.
+        y = "- listitem [ref=e1]:\n  - term [ref=e2]: HTTP\n  - definition [ref=e3]: HyperText Transfer Protocol"
+        assert md(y) == "- **HTTP** HyperText Transfer Protocol [ref=e1]"
+
+
+class TestBlockquote:
+    def test_blockquote_prefix(self) -> None:
+        assert md("- blockquote: To be or not to be") == "> To be or not to be"
+
+
+class TestInteractiveAtomsNeverVanish:
+    """Interactive roles must surface as a clickable atom — never fall to the
+    unknown-role fallback and disappear (the menuitem/treeitem ref-loss bug)."""
+
+    def test_menuitem_and_treeitem_keep_ref(self) -> None:
+        assert md('- menuitem "Save" [ref=e9]') == 'menuitem "Save" [ref=e9]'
+        assert md('- treeitem "Inbox" [ref=e9]') == 'treeitem "Inbox" [ref=e9]'
+
+    def test_menuitemcheckbox_carries_state(self) -> None:
+        assert md('- menuitemcheckbox "Wrap" [checked] [ref=e9]') == 'menuitemcheckbox "Wrap" [checked] [ref=e9]'
+
+    def test_every_interactive_role_with_ref_renders_nonempty(self) -> None:
+        for role in a2m._INTERACTIVE_ROLES:
+            out = md(f'- {role} "Label" [ref=e1]')
+            assert "e1" in out, f"interactive role {role!r} lost its ref: {out!r}"
+
+
+class TestRoleCoverage:
+    # The complete set of concrete (non-abstract) ARIA roles Playwright can emit
+    # in an aria snapshot — extracted from its role-inheritance table. Abstract
+    # roles (command/composite/input/landmark/range/roletype/section/sectionhead/
+    # select/structure/widget/window) are excluded: ARIA forbids them as a
+    # computed role, so they never appear. This is the contract the renderer must
+    # cover exhaustively; a new Playwright role must be classified, not dropped.
+    ALL_ARIA_ROLES = frozenset(
+        """alert alertdialog application article banner blockquote button caption cell checkbox
+        code columnheader combobox complementary contentinfo definition deletion dialog directory
+        document emphasis feed figure form generic grid gridcell group heading img insertion link
+        list listbox listitem log main marquee math menu menubar menuitem menuitemcheckbox
+        menuitemradio meter navigation none note option paragraph presentation progressbar radio
+        radiogroup region row rowgroup rowheader scrollbar search searchbox separator slider
+        spinbutton status strong subscript superscript switch tab table tablist tabpanel term
+        textbox time timer toolbar tooltip tree treegrid treeitem""".split()
+    )
+
+    def test_every_aria_role_has_an_explicit_disposition(self) -> None:
+        explicit = (
+            set(a2m._ROLE_HANDLERS)
+            | a2m._TRANSPARENT_ROLES
+            | a2m._LANDMARK_ROLES
+            | a2m._GROUPING_ROLES
+            | a2m._LAYOUT_PART_ROLES
+            | a2m._FORM_CONTROL_ROLES
+            | a2m._INTERACTIVE_ATOM_ROLES
+            | a2m._PLAIN_TEXT_ROLES
+            | set(a2m._INLINE_MARKUP)
+        )
+        unclassified = self.ALL_ARIA_ROLES - explicit
+        assert not unclassified, (
+            f"ARIA roles with no explicit disposition (would silently drop): {sorted(unclassified)}"
+        )
