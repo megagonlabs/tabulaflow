@@ -83,9 +83,7 @@ def wave_water(width: int = WAVE_WIDTH) -> list[str]:
     return rows
 
 
-def gradient_block(
-    lines: list[str], start: tuple[int, int, int], end: tuple[int, int, int]
-) -> list[Text]:
+def gradient_block(lines: list[str], start: tuple[int, int, int], end: tuple[int, int, int]) -> list[Text]:
     """Color each line of a block with a left-to-right ``start`` -> ``end`` gradient.
 
     The gradient spans the block's own width, so two blocks colored separately
@@ -116,9 +114,7 @@ def build_logo(gap: int = GAP) -> Text:
     wave = [" " * WAVE_WIDTH] * (len(PAGGA) - len(wave)) + wave
 
     pagga_w = max(len(p) for p in PAGGA)
-    split = tuple(
-        round(MINT[i] + (BLUE[i] - MINT[i]) * LETTERS_FRACTION) for i in range(3)
-    )
+    split = tuple(round(MINT[i] + (BLUE[i] - MINT[i]) * LETTERS_FRACTION) for i in range(3))
 
     left = gradient_block([p.ljust(pagga_w) for p in PAGGA], MINT, split)
     right = gradient_block(wave, split, BLUE)  # remaining stretch of the sweep
@@ -136,8 +132,7 @@ def build_logo(gap: int = GAP) -> Text:
 def welcome_card(logo: Text) -> Panel:
     """Wrap a colored logo in the TUI welcome card (logo + tagline + info)."""
     info = Text.from_markup(
-        f"[dim]model:[/dim] {MODEL}    "
-        "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
+        f"[dim]model:[/dim] {MODEL}    [dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
     )
     border = f"#{MINT[0]:02x}{MINT[1]:02x}{MINT[2]:02x}"
     body = Group(logo, Text(TAGLINE, style=f"italic {ACCENT_DIM}"), Text(), info)

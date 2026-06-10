@@ -168,6 +168,7 @@ _TRANSPARENT_ROLES: frozenset[str] = frozenset(
         "listbox",
         "presentation",
         "none",
+        "document",
     }
 )
 
@@ -447,6 +448,46 @@ def _render_code(ctx: _Ctx) -> str:
 
 def _render_separator(ctx: _Ctx) -> str:
     return "\n\n---\n\n"
+
+
+# Inline text-formatting roles → standard markdown delimiters. Flow-safe: they
+# only wrap the rendered text, so they concatenate into prose runs and group into
+# list bullets exactly like the plain text they replace — but stay regex-separable
+# (e.g. ``**title** *authors*`` in a paper-listing ``listitem``). Only roles with a
+# portable CommonMark/GFM representation belong here; ``insertion``/``subscript``/
+# ``superscript``/``mark``/``time``/``math`` have none, so they stay plain-text
+# passthrough via ``_render_unknown`` rather than gaining non-standard syntax.
+_INLINE_MARKUP: dict[str, tuple[str, str]] = {
+    "strong": ("**", "**"),
+    "emphasis": ("*", "*"),
+    "deletion": ("~~", "~~"),  # GFM strikethrough
+    "term": ("**", "**"),  # <dt> label in a <dl> definition list
+}
+
+
+def _render_inline_markup(ctx: _Ctx) -> str:
+    pre, post = _INLINE_MARKUP[ctx.role]
+    body = ctx.value or _kids_md(ctx.children, ctx.depth, flow=True).strip()
+    return f"{pre}{body}{post}" if body else ""
+
+
+def _render_menuitem(ctx: _Ctx) -> str:
+    """Interactive menu items render as atoms so the ref survives — without a
+    handler they fall to ``_render_unknown`` and vanish entirely (ref and all).
+    ``menuitemcheckbox``/``menuitemradio`` carry state (checked/selected)."""
+    body = ctx.name or _kids_md(ctx.children, ctx.depth, flow=True).strip()
+    state = "".join(f" [{f}]" for f in ctx.state)
+    extra = _swept_refs(ctx.children) if ctx.name else ""
+    head = f'{ctx.role} "{body}"' if body else ctx.role
+    return f"{head}{state}{ctx.ref_tag}{extra}"
+
+
+def _render_blockquote(ctx: _Ctx) -> str:
+    inner = _kids_md(ctx.children, ctx.depth, flow=True).strip() or ctx.value or ctx.name
+    if not inner:
+        return ""
+    quoted = "\n".join(f"> {ln}" if ln else ">" for ln in inner.splitlines())
+    return f"\n\n{quoted}\n\n"
 
 
 def _render_text(ctx: _Ctx) -> str:
@@ -962,6 +1003,7 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     "paragraph": _render_paragraph,
     "code": _render_code,
     "separator": _render_separator,
+    "blockquote": _render_blockquote,
     "list": _render_list,
     "listitem": _render_listitem,
     "table": _render_table_node,
@@ -973,6 +1015,8 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     "img": _render_img,
     "option": _render_option,
     # Role families.
+    **{r: _render_inline_markup for r in _INLINE_MARKUP},
+    **{r: _render_menuitem for r in ("menuitem", "menuitemcheckbox", "menuitemradio")},
     **{r: _render_form_control for r in _FORM_CONTROL_ROLES},
     **{r: _render_layout_part for r in _LAYOUT_PART_ROLES},
     **{r: _render_grouping for r in _GROUPING_ROLES},

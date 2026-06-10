@@ -266,6 +266,12 @@ June 9
 - [x] chunking for extract_rows_from_documents tool - markdown_splitter.py
 - [x] Tune prompt
 
+June 10
+- [x] Automatically suspend browser during fan-out
+- [ ] Improve aria_to_markdown
+
+- [ ] Relax regex parsing constraint to match CC behaviour
+- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
 - [ ] Workspace not refreshed
 - [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
 - [ ] Multi-column output for subagents

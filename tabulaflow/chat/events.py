@@ -74,9 +74,7 @@ class Completed(_Outcome):
     kind: Literal["ok"] = "ok"
 
 
-ToolOutcome: TypeAlias = Annotated[
-    Union[RowsReturned, ColumnsReturned, Failed, Completed], Field(discriminator="kind")
-]
+ToolOutcome: TypeAlias = Annotated[Union[RowsReturned, ColumnsReturned, Failed, Completed], Field(discriminator="kind")]
 
 
 # ---------------------------------------------------------------------------

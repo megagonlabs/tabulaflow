@@ -223,9 +223,7 @@ async def _cmd_clear(args: list[str], session: SessionState) -> CommandResult:
     return CommandResult(should_clear=True)
 
 
-async def _register_user_db(
-    session: SessionState, alias: str, connector: NL2QDBConnector, source_key: object
-) -> None:
+async def _register_user_db(session: SessionState, alias: str, connector: NL2QDBConnector, source_key: object) -> None:
     """Register a user-connected database, then drop the auto-loaded sample placeholder.
 
     The bundled ``sample_data`` DB auto-connects for first-run convenience; once the

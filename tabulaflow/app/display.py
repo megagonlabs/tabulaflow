@@ -316,4 +316,3 @@ def _unique_record_label(base_label: str, used: set[str]) -> str:
         if candidate not in used:
             return candidate
         i += 1
-

@@ -112,8 +112,7 @@ def main() -> None:
             print(f"            last output: …{tail!r}")
         else:
             app = elapsed - base
-            print(f"  run {i + 1} ({label}): {elapsed:.2f}s to banner  "
-                  f"(≈{base:.2f}s launcher + {app:.2f}s app)")
+            print(f"  run {i + 1} ({label}): {elapsed:.2f}s to banner  (≈{base:.2f}s launcher + {app:.2f}s app)")
             if i > 0:
                 warm.append(elapsed)
 

@@ -27,7 +27,6 @@ if TYPE_CHECKING:
     import pandas as pd
 
 
-
 def _normalize_json_like(value: object) -> object:
     """Coerce ``ndarray``/``dict``/``list`` cells into a JSON-ready structure.
 

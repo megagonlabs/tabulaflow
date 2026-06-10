@@ -43,6 +43,7 @@ def _uid(rng: random.Random, prefix: str, n: int, seen: set[str]) -> str:
             seen.add(token)
             return token
 
+
 # ---------------------------------------------------------------------------
 # transactions
 # ---------------------------------------------------------------------------

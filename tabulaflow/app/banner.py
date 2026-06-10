@@ -223,16 +223,12 @@ def _examples() -> list[Text]:
             rows.append(Text())  # blank line between categories
         rows.append(Text(category, style="bold dim"))
         for question in questions:
-            lines = textwrap.wrap(
-                question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    "
-            )
+            lines = textwrap.wrap(question, width=_EXAMPLE_WRAP, initial_indent="  • ", subsequent_indent="    ")
             rows.extend(Text(line, style="dim") for line in lines)
     return rows
 
 
-def build_banner(
-    *, model: str, reasoning_effort: str | None = None, surface: str | None = None
-) -> RenderableType:
+def build_banner(*, model: str, reasoning_effort: str | None = None, surface: str | None = None) -> RenderableType:
     """Build the welcome banner as a Rich renderable.
 
     ``reasoning_effort`` is appended to the model label as ``(medium effort)`` —
@@ -256,11 +252,7 @@ def build_banner(
     info = Text()
     info.append(model_label, style="dim")
     info.append(" · ", style="dim")
-    info.append_text(
-        Text.from_markup(
-            "[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"
-        )
-    )
+    info.append_text(Text.from_markup("[dim]Type [bold]/help[/bold] for commands, [bold]/exit[/bold] to exit[/dim]"))
     # Tagline on the left, then a 4-col gap, then the GitHub URL on the same line.
     # Styles are per-span (not a base style) so the URL stays plain dim grey rather
     # than inheriting the tagline's mint color. The scheme is dropped from the

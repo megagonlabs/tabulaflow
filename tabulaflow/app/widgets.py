@@ -51,9 +51,7 @@ if TYPE_CHECKING:
 # Autocomplete suggester
 # ---------------------------------------------------------------------------
 
-_SLASH_COMMANDS = sorted(
-    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/model"]
-)
+_SLASH_COMMANDS = sorted(["/help", "/exit", "/clear", "/connect", "/disconnect", "/model"])
 
 _CONNECTABLE_EXTENSIONS = frozenset(
     {".csv", ".tsv", ".xlsx", ".xls", ".parquet", ".json", ".jsonl", ".ndjson", ".sqlite", ".sqlite3", ".db", ".duckdb"}
@@ -382,11 +380,7 @@ class BannerWidget(Static):
         # background so they read as transparent against the chat log, whatever
         # the theme resolves it to.
         surface = self.background_colors[0].hex
-        self.update(
-            build_banner(
-                model=self._model, reasoning_effort=self._reasoning_effort, surface=surface
-            )
-        )
+        self.update(build_banner(model=self._model, reasoning_effort=self._reasoning_effort, surface=surface))
 
 
 class UserMessage(Static):
