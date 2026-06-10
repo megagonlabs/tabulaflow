@@ -145,8 +145,12 @@ def _cell(top: Color | None, bottom: Color | None, surface: Color) -> tuple[str,
     return "▀", f"{surface} on {bottom}"  # empty top, color bottom
 
 
-def _wordmark(surface: Color) -> list[Text]:
-    """Render 'tabulaflow' as three seam-free ``Text`` rows over ``surface``."""
+def _wordmark(surface: Color, version: str | None = None) -> list[Text]:
+    """Render 'tabulaflow' as three seam-free ``Text`` rows over ``surface``.
+
+    When ``version`` is given it is appended to the bottom row as a dim
+    ``v<version>`` badge, baseline-aligned to the foot of the wordmark.
+    """
     width = max(len(line) for line in _LOGO_LINES)
     # Decode the art into a 6-row sub-pixel bitmap (None = transparent page).
     bitmap: list[list[Color | None]] = []
@@ -168,6 +172,9 @@ def _wordmark(surface: Color) -> list[Text]:
             glyph, style = _cell(top_px, bottom_px, surface)
             row.append(glyph, style=style)
         rows.append(row)
+    if version:
+        # Baseline badge: extend the bottom row past the carved bitmap.
+        rows[-1].append(f"  v{version}", style="dim")
     return rows
 
 
@@ -235,6 +242,13 @@ def build_banner(
     with so they read as transparent — pass the live theme's ``$surface``. Falls
     back to ``COLOR_PAGE`` when not given.
     """
+    from importlib.metadata import PackageNotFoundError, version as _pkg_version
+
+    try:
+        app_version: str | None = _pkg_version("tabulaflow")
+    except PackageNotFoundError:
+        app_version = None
+
     model_label = _pretty_model(model)
     if reasoning_effort and model.partition(":")[0] in ("openai-responses", "openai"):
         model_label += f" ({reasoning_effort} effort)"
@@ -259,7 +273,7 @@ def build_banner(
     tagline.append(" · ", style="dim")
     tagline.append(url_label, style="dim")
     return Group(
-        *_wordmark(surface or COLOR_PAGE),
+        *_wordmark(surface or COLOR_PAGE, app_version),
         tagline,
         Text(),
         *_examples(),
