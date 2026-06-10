@@ -52,7 +52,7 @@ if TYPE_CHECKING:
 # ---------------------------------------------------------------------------
 
 _SLASH_COMMANDS = sorted(
-    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/schema", "/model"]
+    ["/help", "/exit", "/clear", "/connect", "/disconnect", "/databases", "/db", "/model"]
 )
 
 _CONNECTABLE_EXTENSIONS = frozenset(

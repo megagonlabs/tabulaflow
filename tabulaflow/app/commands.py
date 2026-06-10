@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import re
 import shlex
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
 
 from rich.console import RenderableType
@@ -16,7 +16,6 @@ from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
 
 if TYPE_CHECKING:
-    from tabulaflow.core.types import SQLSchema
     from tabulaflow.core.db_connector.base import NL2QDBConnector
 
 COMMAND_PREFIX = "/"
@@ -178,18 +177,6 @@ def _alias_from_url(url: str) -> str:
     if parsed.hostname:
         return _sanitize_alias(parsed.hostname)
     return _sanitize_alias(url)
-
-
-def _resolve_alias(args: list[str], session: SessionState) -> tuple[str | None, list[str]]:
-    if args and session.registry.has(args[0]):
-        return args[0], args[1:]
-    aliases = session.registry.list_aliases()
-    user_aliases = [alias for alias in aliases if alias != WORKSPACE_ALIAS]
-    if len(user_aliases) == 1:
-        return user_aliases[0], args
-    if len(aliases) == 1:
-        return aliases[0], args
-    return None, args
 
 
 def _url_needs_password(url: str) -> bool:
@@ -564,90 +551,6 @@ async def _cmd_databases(args: list[str], session: SessionState) -> CommandResul
     return CommandResult(output=table)
 
 
-async def _cmd_schema(args: list[str], session: SessionState) -> CommandResult:
-    from tabulaflow.app.display import (
-        _display_name,
-        _is_multi_schema,
-        build_column_detail,
-        build_graph_node_detail,
-        build_graph_reltype_detail,
-        build_property_graph_overview,
-        build_schema_overview,
-        build_table_detail,
-        resolve_column,
-        resolve_graph_node_label,
-        resolve_graph_rel_patterns,
-        resolve_table,
-    )
-    from tabulaflow.core.db_connector import Neo4jConnector
-
-    aliases = session.registry.list_aliases()
-    if not aliases:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]No database connected.[/] Use /connect first."))
-
-    alias, rest = _resolve_alias(args, session)
-    if alias is None:
-        if not args:
-            return CommandResult(
-                output=Text.from_markup(
-                    "[dim]Multiple databases connected. Specify alias: /schema <alias> \\[table] \\[column][/dim]\n"
-                    f"[dim]Available: {', '.join(aliases)}[/dim]"
-                )
-            )
-        else:
-            return CommandResult(
-                output=Text.from_markup(
-                    f"[{ERROR}]Unknown alias or table:[/] {args[0]}. Available databases: {', '.join(aliases)}"
-                )
-            )
-
-    conn = session.registry.get(alias)
-    schema = conn.schema
-    if schema is None:
-        return CommandResult(output=Text("Schema not available.", style="dim"))
-
-    if isinstance(conn, Neo4jConnector):
-        graph_schema = conn.schema
-        if not rest:
-            return CommandResult(output=build_property_graph_overview(graph_schema, alias))
-        node = resolve_graph_node_label(graph_schema, rest[0])
-        if node is not None:
-            return CommandResult(output=build_graph_node_detail(node))
-        rel_patterns = resolve_graph_rel_patterns(graph_schema, rest[0])
-        if rel_patterns:
-            return CommandResult(output=build_graph_reltype_detail(rest[0], rel_patterns))
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Unknown label or relationship type:[/] {rest[0]}"))
-
-    sql_schema = cast("SQLSchema", schema)
-    multi = _is_multi_schema(sql_schema)
-
-    if not rest:
-        return CommandResult(output=build_schema_overview(sql_schema, alias))
-
-    result = resolve_table(sql_schema, rest[0])
-    if result is None:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Table not found:[/] {rest[0]}"))
-    if isinstance(result, list):
-        lines = [f"[{ERROR}]Ambiguous table name:[/] {rest[0]}. Matches:"]
-        for t in result:
-            lines.append(f"  [dim]{_display_name(t, multi_schema=True)}[/dim]")
-        lines.append("[dim]Use the qualified name: /schema \\[alias] <schema>.<table>[/dim]")
-        return CommandResult(output=Text.from_markup("\n".join(lines)))
-
-    tbl = result
-
-    if len(rest) < 2:
-        return CommandResult(output=build_table_detail(tbl, multi_schema=multi))
-
-    col = resolve_column(tbl, rest[1])
-    if col is None:
-        return CommandResult(
-            output=Text.from_markup(f"[{ERROR}]Column not found:[/] {rest[1]} in {_display_name(tbl, multi)}")
-        )
-
-    return CommandResult(output=build_column_detail(tbl, col))
-
-
 async def _cmd_model(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(output=Text.from_markup(f"[dim]Current model:[/dim] {session.model}"))
@@ -663,7 +566,6 @@ _COMMAND_HELP: dict[str, tuple[object, str]] = {
     "/disconnect": (_cmd_disconnect, "Disconnect: /disconnect \\[alias]"),
     "/databases": (_cmd_databases, "List connected databases"),
     "/db": (_cmd_databases, "Alias for /databases"),
-    "/schema": (_cmd_schema, "Show schema: /schema \\[alias] \\[table] \\[column]"),
     "/model": (_cmd_model, "Switch LLM: /model <identifier>"),
 }
 

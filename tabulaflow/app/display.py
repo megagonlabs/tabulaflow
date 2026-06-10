@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
@@ -10,7 +9,6 @@ from rich.align import Align
 from rich.columns import Columns
 from rich.console import Group
 from rich.markup import escape as _rich_escape
-from rich.panel import Panel
 from rich.style import Style
 from rich import box
 from rich.syntax import Syntax
@@ -18,7 +16,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, FK_MARKER, KEY_HINT, PK_MARKER
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, KEY_HINT
 
 TABULAFLOW_THEME = Theme(
     {
@@ -38,15 +36,6 @@ QUERY_PREVIEW_MAX_LINES = 7
 if TYPE_CHECKING:
     import pandas as pd
     from rich.console import RenderableType
-
-    from tabulaflow.core.types import (
-        NodeSchema,
-        PropertyGraphSchema,
-        RelationshipSchema,
-        SQLColumnSchema,
-        SQLSchema,
-        SQLTableSchema,
-    )
 
 
 def build_query(
@@ -328,262 +317,3 @@ def _unique_record_label(base_label: str, used: set[str]) -> str:
             return candidate
         i += 1
 
-
-# ---------------------------------------------------------------------------
-# Schema rendering
-# ---------------------------------------------------------------------------
-
-
-def _qualified_name(tbl: SQLTableSchema) -> str:
-    if tbl.schema_name:
-        return f"{tbl.schema_name}.{tbl.name}"
-    return tbl.name
-
-
-def _is_multi_schema(schema: SQLSchema) -> bool:
-    schemas = {t.schema_name for t in schema.tables}
-    schemas.discard(None)
-    return len(schemas) > 1
-
-
-def _display_name(tbl: SQLTableSchema, multi_schema: bool) -> str:
-    if multi_schema and tbl.schema_name:
-        return f"{tbl.schema_name}.{tbl.name}"
-    return tbl.name
-
-
-def _format_rows(n: int | None) -> str:
-    if n is None:
-        return ""
-    return f"{n:,}"
-
-
-def _build_overview_table(tables: list[SQLTableSchema]) -> Table:
-    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style=ACCENT_BOLD, padding=(0, 2))
-    inner.add_column("Table")
-    inner.add_column("Rows", justify="right")
-    inner.add_column("Cols", justify="right")
-    inner.add_column("Description", max_width=50)
-
-    for tbl in tables:
-        inner.add_row(
-            tbl.name,
-            _format_rows(tbl.num_rows),
-            str(len(tbl.columns)),
-            (tbl.description or "")[:50],
-        )
-    return inner
-
-
-def build_schema_overview(schema: SQLSchema, alias: str) -> RenderableType:
-    """Build database-level schema overview renderable."""
-    multi = _is_multi_schema(schema)
-    total_cols = schema.num_total_columns()
-    dialect = schema.dialect or ""
-    subtitle = ", ".join(s for s in [dialect, f"{len(schema.tables)} tables", f"{total_cols} columns"] if s)
-
-    if multi:
-        grouped: dict[str | None, list[SQLTableSchema]] = defaultdict(list)
-        for tbl in schema.tables:
-            grouped[tbl.schema_name].append(tbl)
-
-        parts: list[RenderableType] = []
-        for schema_name, tables in sorted(grouped.items(), key=lambda kv: kv[0] or ""):
-            section_title = (
-                f"[bold]{alias}[/bold].[{ACCENT_BOLD}]{schema_name}[/{ACCENT_BOLD}]"
-                if schema_name
-                else f"[bold]{alias}[/bold]"
-            )
-            inner = _build_overview_table(tables)
-            parts.append(Panel(inner, title=section_title, border_style=ACCENT))
-
-        parts.append(Text(f"  {subtitle}", style="dim"))
-        return Group(*parts)
-    else:
-        title = f"[bold]{alias}[/bold]"
-        inner = _build_overview_table(schema.tables)
-        footer = Text(subtitle, style="dim")
-        return Panel(Group(inner, footer), title=title, border_style=ACCENT)
-
-
-def build_table_detail(tbl: SQLTableSchema, multi_schema: bool = False) -> RenderableType:
-    """Build column-level detail renderable for a single table."""
-    display = _display_name(tbl, multi_schema)
-    row_info = f" ({tbl.num_rows:,} rows)" if tbl.num_rows is not None else ""
-    title = f"[bold]{display}[/bold][dim]{row_info}[/dim]"
-
-    pk_set = set(tbl.primary_key)
-    fk_col_set = {col for fk in tbl.foreign_keys for col in fk.columns}
-
-    inner = Table(box=box.SIMPLE_HEAD, show_header=True, header_style=ACCENT_BOLD, padding=(0, 2))
-    inner.add_column("Column")
-    inner.add_column("Type")
-    inner.add_column("Key", justify="center")
-    inner.add_column("Null", justify="center")
-    inner.add_column("Examples", max_width=40)
-
-    for col in tbl.columns:
-        key_parts: list[str] = []
-        if col.name in pk_set:
-            key_parts.append(f"[{PK_MARKER}]PK[/]")
-        if col.name in fk_col_set:
-            key_parts.append(f"[{FK_MARKER}]FK[/]")
-        key = " ".join(key_parts)
-
-        null_str = "[green]✓[/green]" if col.nullable else "[dim]✗[/dim]"
-
-        examples_str = ""
-        if col.examples:
-            examples_str = ", ".join(str(e) for e in col.examples[:5])
-            if len(examples_str) > 40:
-                examples_str = examples_str[:37] + "..."
-
-        name_style = "bold" if col.name in pk_set else ""
-        name_text = Text(col.name, style=name_style)
-
-        inner.add_row(name_text, col.dtype or "", key, null_str, f"[dim]{examples_str}[/dim]")
-
-    parts: list[Table | Text] = [inner]
-
-    if tbl.foreign_keys:
-        fk_text = Text()
-        fk_text.append("\n")
-        for i, fk in enumerate(tbl.foreign_keys):
-            src = ", ".join(fk.columns)
-            tgt_table = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
-            tgt = ", ".join(fk.foreign_columns)
-            if i > 0:
-                fk_text.append("\n")
-            fk_text.append("  FK ", style=ACCENT_BOLD)
-            fk_text.append(f"{src} → {tgt_table}({tgt})")
-        parts.append(fk_text)
-
-    if tbl.description:
-        desc_text = Text()
-        desc_text.append("\n  ")
-        desc_text.append(tbl.description, style="dim italic")
-        parts.append(desc_text)
-
-    return Panel(Group(*parts), title=title, border_style=ACCENT)
-
-
-def build_column_detail(tbl: SQLTableSchema, col: SQLColumnSchema) -> RenderableType:
-    """Build full metadata renderable for a single column."""
-    display = _qualified_name(tbl)
-    pk_set = set(tbl.primary_key)
-
-    lines: list[str] = []
-    lines.append(f"[bold]Type:[/bold]        {col.dtype}")
-
-    if col.name in pk_set:
-        pk_label = "composite" if col.primary_key_type == "composite" else "yes"
-        lines.append(f"[bold]Primary key:[/bold] {pk_label}")
-
-    null_detail = "yes" if col.nullable else "no"
-    if col.null_ratio is not None:
-        null_detail += f" ({col.null_ratio:.1%} null)"
-    lines.append(f"[bold]Nullable:[/bold]    {null_detail}")
-
-    if col.num_unique is not None:
-        unique_detail = f"{col.num_unique:,} values"
-        if col.unique_ratio is not None:
-            unique_detail += f" ({col.unique_ratio:.1%})"
-        lines.append(f"[bold]Unique:[/bold]      {unique_detail}")
-
-    if col.examples:
-        ex_str = ", ".join(str(e) for e in col.examples[:8])
-        lines.append(f"[bold]Examples:[/bold]    [dim]{ex_str}[/dim]")
-
-    if col.description:
-        lines.append(f"[bold]Description:[/bold] {col.description}")
-
-    fk_refs = list(col.foreign_keys)
-    for fk in fk_refs:
-        tgt = f"{fk.foreign_schema_name}.{fk.foreign_table}" if fk.foreign_schema_name else fk.foreign_table
-        lines.append(f"[bold]FK →[/bold]         {tgt}({', '.join(fk.foreign_columns)})")
-
-    body = "\n".join(lines)
-    return Panel(body, title=f"[bold]{display}.{col.name}[/bold]", border_style=ACCENT)
-
-
-def resolve_table(schema: SQLSchema, name: str) -> SQLTableSchema | list[SQLTableSchema] | None:
-    """Resolve a table name, supporting optional schema.table syntax."""
-    schema_part: str | None = None
-    table_part: str = name
-    if "." in name:
-        schema_part, table_part = name.rsplit(".", 1)
-
-    exact: list[SQLTableSchema] = []
-    ci_matches: list[SQLTableSchema] = []
-
-    for tbl in schema.tables:
-        if schema_part is not None:
-            schema_match = tbl.schema_name == schema_part or (
-                tbl.schema_name is not None and tbl.schema_name.lower() == schema_part.lower()
-            )
-            if not schema_match:
-                continue
-
-        if tbl.name == table_part:
-            exact.append(tbl)
-        elif tbl.name.lower() == table_part.lower():
-            ci_matches.append(tbl)
-
-    candidates = exact or ci_matches
-    if len(candidates) == 1:
-        return candidates[0]
-    if len(candidates) > 1:
-        return candidates
-    return None
-
-
-def resolve_column(tbl: SQLTableSchema, name: str) -> SQLColumnSchema | None:
-    """Resolve a column name with case-insensitive fallback."""
-    for col in tbl.columns:
-        if col.name == name:
-            return col
-    for col in tbl.columns:
-        if col.name.lower() == name.lower():
-            return col
-    return None
-
-
-def build_property_graph_overview(schema: PropertyGraphSchema, alias: str) -> RenderableType:
-    """Build full property-graph schema renderable."""
-    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
-
-    body = CypherSchemaFormatter().format(schema)
-    return Panel(body, title=f"[bold]{alias}[/bold] · cypher", border_style=ACCENT)
-
-
-def resolve_graph_node_label(schema: PropertyGraphSchema, name: str) -> NodeSchema | None:
-    for node in schema.nodes:
-        if node.label.lower() == name.lower():
-            return node
-    return None
-
-
-def resolve_graph_rel_patterns(schema: PropertyGraphSchema, name: str) -> list[RelationshipSchema]:
-    return [r for r in schema.relationships if r.label.lower() == name.lower()]
-
-
-def build_graph_node_detail(node: NodeSchema) -> RenderableType:
-    from tabulaflow.core.formatters.cypher import CypherSchemaFormatter
-
-    fmt = CypherSchemaFormatter()
-    return Panel(fmt.format_node(node), title=f"[bold]:{node.label}[/bold]", border_style=ACCENT)
-
-
-def build_graph_reltype_detail(rel_type: str, patterns: list[RelationshipSchema]) -> RenderableType:
-    lines = [f"(:{p.source_label})-[:{p.label}]->(:{p.target_label})" for p in patterns]
-    body = "\n".join(lines)
-    props_extra = ""
-    for p in patterns:
-        if p.properties:
-            props_extra = "\n\n" + "\n".join(f"  {x.name}: {x.dtype}" for x in p.properties)
-            break
-    return Panel(
-        body + props_extra,
-        title=f"[bold]:{rel_type}[/bold] patterns",
-        border_style=ACCENT,
-    )
