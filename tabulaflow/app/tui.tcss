@@ -83,7 +83,12 @@ TabulaflowApp {
 }
 
 #open-explorer-btn {
-    width: auto;
+    /* Fixed width sized to the longest label ("Ctrl+O  Open data explorer")
+       so the button reserves its space up front: the layout doesn't shift when
+       the label swaps loading -> ready. text-wrap: nowrap keeps the label on a
+       single line — without it Textual wraps the label to the button's height. */
+    width: 32;
+    text-wrap: nowrap;
     height: 3;
     margin: 0;
     padding: 0 3;

@@ -134,13 +134,12 @@ class TabulaflowApp(App[None]):
             # (faded) until there are results to jump to.
             yield Static(id="input-esc-hint", disabled=True)
             yield Static("│", classes="input-sep")
-            explorer_label = Text()
-            explorer_label.append("Ctrl+O", style=KEY_HINT)
-            explorer_label.append("  Open data explorer", style="dim")
             # Disabled until the background session build + sample auto-connect
             # completes (re-enabled at the end of ``_ensure_session``), so the user
-            # can't open an empty explorer before any database is connected.
-            yield Button(explorer_label, id="open-explorer-btn", disabled=True)
+            # can't open an empty explorer before any database is connected. While
+            # disabled it shows a "Preparing…" label so the fade reads as a
+            # transient loading state, not a permanently unavailable feature.
+            yield Button(self._explorer_label(ready=False), id="open-explorer-btn", disabled=True)
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -462,10 +461,23 @@ class TabulaflowApp(App[None]):
             self._enable_explorer_button()
             return self._session
 
+    @staticmethod
+    def _explorer_label(*, ready: bool) -> Text:
+        """Build the explorer button label for its loading vs. ready state."""
+        label = Text()
+        if ready:
+            label.append("Ctrl+O", style=KEY_HINT)
+            label.append("  Open data explorer", style="dim")
+        else:
+            label.append("Preparing workspace…", style="dim")
+        return label
+
     def _enable_explorer_button(self) -> None:
         """Enable the data-explorer button once the session (and sample) are ready."""
         try:
-            self.query_one("#open-explorer-btn", Button).disabled = False
+            btn = self.query_one("#open-explorer-btn", Button)
+            btn.label = self._explorer_label(ready=True)
+            btn.disabled = False
         except Exception:
             pass
 
