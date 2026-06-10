@@ -85,6 +85,29 @@ class TestTwoLimitPacking:
         assert len(chunks) > 1
         assert all(len(c) <= DEFAULT_MAX_CHARS for c in chunks)
 
+    def test_list_item_with_nested_children_is_not_split(self) -> None:
+        # A list entity is a non-indented line plus its indented sub-items (e.g. a flight
+        # row with price/baggage/details bullets). Cuts must land between items, never
+        # inside one, even when the whole list is one oversize block. Each flight's lines
+        # carry a unique id so co-location is verifiable.
+        item = (
+            "- flight-{i} departs 7:50 AM arrives 9:25 PM Delta 1 stop\n"
+            '  - button "carbon emissions for flight-{i}"\n'
+            '  - button "baggage allowance for flight-{i}"\n'
+            "  - price-{i} $309 per passenger\n"
+            '  - button "details for flight-{i}"'
+        )
+        text = "\n".join(item.format(i=i) for i in range(80))
+        chunks = split_markdown(text, max_chars=4000, target=1500)
+        assert len(chunks) > 1
+        for i in range(80):
+            parent = f"- flight-{i} departs"
+            home = next(c for c in chunks if parent in c)
+            # the parent and ALL of this flight's children live in the same chunk
+            assert f"price-{i} $309" in home
+            assert f"details for flight-{i}" in home
+            assert sum(parent in c for c in chunks) == 1
+
     def test_target_none_packs_to_max(self) -> None:
         text = "\n\n".join(f"Paragraph {i} with a little body text here." for i in range(300))
         chunks = split_markdown(text, max_chars=2000, target=None)

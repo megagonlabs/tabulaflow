@@ -202,15 +202,43 @@ def _section_path(stack: list[tuple[int, str]]) -> str:
 
 
 def _atomize(text: str, limit: int) -> list[str]:
-    """Break ``text`` into pieces each ``<= limit`` for lazy fill.
+    """Break ``text`` into units each ``<= limit`` for lazy fill.
 
-    Splits on line boundaries (preserving markdown structure); an over-long line falls
-    back to sentence, then word, then — only when a single word exceeds ``limit`` — a
-    hard character cut. Pieces are reassembled by the packer with ``\\n`` joins.
+    A *unit* is a non-indented line plus its following indented (continuation/child)
+    lines — so a list item keeps its nested sub-items together as one entity (e.g. a
+    flight row with its price/baggage/details sub-bullets), and a cut lands between
+    units, not inside one. A unit over ``limit`` falls back to line → sentence → word →
+    (only for a single over-long word) hard character cut. The packer reassembles units
+    with ``\\n`` joins.
     """
     limit = max(1, limit)
     out: list[str] = []
+    for unit in _group_indented(text):
+        if len(unit) <= limit:
+            out.append(unit)
+        else:
+            out.extend(_split_oversize_unit(unit, limit))
+    return out
+
+
+def _group_indented(text: str) -> list[str]:
+    """Group lines so an indented line attaches to the preceding non-indented one."""
+    units: list[str] = []
+    cur: list[str] = []
     for line in text.split("\n"):
+        if cur and not line[:1].isspace():  # a non-indented line starts a new unit
+            units.append("\n".join(cur))
+            cur = []
+        cur.append(line)
+    if cur:
+        units.append("\n".join(cur))
+    return units
+
+
+def _split_oversize_unit(unit: str, limit: int) -> list[str]:
+    """Fallback for a unit larger than ``limit``: split on line → sentence → word."""
+    out: list[str] = []
+    for line in unit.split("\n"):
         if len(line) <= limit:
             out.append(line)
             continue
