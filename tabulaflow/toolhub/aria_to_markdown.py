@@ -844,9 +844,12 @@ def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
         cm = _render_md_node(c, depth, flow=flow)
         if not cm.strip():
             continue
-        # Block: keep boundaries intact (so it stays standalone when flowed
-        # inline by a landmark, and is re-indented by the bullet emitters).
-        if role in _BLOCK_ATOM_ROLES or "\n" in cm.strip():
+        # Block: a render with any newline — internal (a list/table) or just the
+        # ``\n\n`` boundary a landmark/grouping wraps itself in — is a standalone
+        # block region. Keep its boundaries intact so it stays separated when a
+        # landmark flows its children inline, and is re-indented by the bullet
+        # emitters. (A single-line inline atom/text never carries a newline.)
+        if role in _BLOCK_ATOM_ROLES or "\n" in cm:
             out.append(_Frag(BLOCK, cm))
             continue
         s = cm.strip()
