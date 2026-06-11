@@ -143,13 +143,14 @@ class RunSubagentForEachRowTool:
                 can query any registered database. If omitted, that flag is
                 unavailable.
             message_store: Optional workspace-backed message store. When
-                provided (together with ``registry``), non-leaf subagents
-                (``enable_nested_subagents=True``) get offload-truncation: long
-                prompts and tool returns are mirrored here and replaced with
-                snippets, and the subagent gets a registry-backed ``run_query``
-                tool to read the full content back from
-                ``workspace._internal.messages``. Without both, non-leaf
-                subagents run untruncated.
+                provided, every browser tool return is mirrored here and tagged
+                with a ``[message_id=M<n>]`` marker so the agent can reference
+                it. For non-leaf subagents (``enable_nested_subagents=True``)
+                that also have a ``registry``, oversized prompts and tool
+                returns are additionally replaced with head+tail snippets, and
+                the subagent gets a registry-backed ``run_query`` tool to read
+                the full content back from ``workspace._internal.messages``.
+                Without a store, browser returns are neither mirrored nor tagged.
             subagent_llm: LLM identifier used by per-row subagent runs.
             model_settings: Optional pydantic-ai model settings passed to
                 each subagent run (e.g. ``openai_service_tier``).
@@ -406,18 +407,20 @@ class RunSubagentForEachRowTool:
         if enable_run_query_tool and self.registry is None:
             return "(error: enable_run_query_tool=True but no registry was provided to RunSubagentForEachRowTool)"
 
-        # Offload-truncation applies only to non-leaf subagents (those that can
-        # spawn nested subagents), and only when a workspace message store and a
-        # registry are wired. Long prompts and tool returns (browser snapshots,
-        # nested-subagent summaries) are mirrored to the store and shown as
-        # snippets; the subagent dereferences them by reading
-        # ``workspace._internal.messages`` with ``run_query`` — so offload
-        # implies the run_query tool.
-        offload_enabled = enable_nested_subagents and self.message_store is not None and self.registry is not None
+        # Browser tool returns (the ``tool_allowlist`` below) are mirrored to the
+        # message store and tagged with a ``[message_id=M<n>]`` marker whenever a
+        # store is wired (``store_enabled``). Truncation — replacing an oversized
+        # prompt/return body with a head+tail snippet — is applied only for
+        # non-leaf subagents with a registry (``truncate_enabled``); those
+        # dereference the snippet by reading ``workspace._internal.messages`` with
+        # ``run_query``, so truncation implies the run_query tool. A store-only
+        # leaf subagent thus keeps full, tagged returns it can't be stranded from.
+        store_enabled = self.message_store is not None
+        truncate_enabled = enable_nested_subagents and self.message_store is not None and self.registry is not None
         call_id = uuid.uuid4().hex[:8]
 
         run_query_pa_tool: Tool | None = None
-        if enable_run_query_tool or offload_enabled:
+        if enable_run_query_tool or truncate_enabled:
             assert self.registry is not None
             run_query_pa_tool = RegistryRunQueryTool(self.registry).as_pydantic_ai_tool()
 
@@ -505,10 +508,16 @@ class RunSubagentForEachRowTool:
                 if nested_pa_tool is not None:
                     capabilities.append(ReleaseBrowserBeforeFanout(browser_tool=browser_tool))
             subagent_scope = None
-            if offload_enabled:
+            if store_enabled:
                 assert self.message_store is not None
                 subagent_scope = self.message_store.scoped(f"subagent:{call_id}:{row_idx}")
-                capabilities.append(MessageStoreCapability(store=subagent_scope, tool_allowlist=BROWSER_TOOL_NAMES))
+                capabilities.append(
+                    MessageStoreCapability(
+                        store=subagent_scope,
+                        tool_allowlist=BROWSER_TOOL_NAMES,
+                        truncate=truncate_enabled,
+                    )
+                )
 
             subagent = make_agent(
                 self.subagent_llm,
@@ -530,7 +539,10 @@ class RunSubagentForEachRowTool:
             cancelled = False
             try:
                 prompt = task_template.render(row)
-                if subagent_scope is not None:
+                # The prompt is not an allowlisted tool return, so it follows the
+                # truncation path only: stored and snippet-replaced when oversized
+                # for truncate-enabled subagents, left untouched otherwise.
+                if subagent_scope is not None and truncate_enabled:
                     message_id = await subagent_scope.add(kind="user_prompt", content=prompt)
                     if len(prompt) > MESSAGE_THRESHOLD_CHARS:
                         prompt = make_snippet(message_id, prompt)

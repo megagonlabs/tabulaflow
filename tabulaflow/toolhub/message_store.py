@@ -219,20 +219,24 @@ class ScopedMessageStore:
 
 @dataclass
 class MessageStoreCapability(AbstractCapability[Any]):
-    """Mirror tool responses into the message store; tag every one and truncate overflow.
+    """Mirror tool responses into the message store; tag every one and (optionally) truncate overflow.
 
     Only tools whose names appear in ``tool_allowlist`` are subject to the flow. Each
     allowlisted string response is persisted and returned with a ``[message_id=M<n>]``
-    marker (plus ``message_id``/``char_len`` metadata); responses over
-    ``threshold_chars`` also have their body replaced with a head + tail snippet. Tools
-    outside the allowlist (e.g. ``run_query``, which the agent uses to read back stored
-    messages) pass through untouched — crucial to avoid re-truncation cycles when the
-    agent fetches a stored message.
+    marker (plus ``message_id``/``char_len`` metadata). When ``truncate`` is True,
+    responses over ``threshold_chars`` additionally have their body replaced with a head
+    + tail snippet pointing back at the stored row; when ``truncate`` is False the full
+    body is always returned (still tagged) — for subagents that have no ``run_query``
+    deref path and would otherwise be stranded from the snippet's content. Tools outside
+    the allowlist (e.g. ``run_query``, which the agent uses to read back stored messages)
+    pass through untouched — crucial to avoid re-truncation cycles when the agent fetches
+    a stored message.
     """
 
     store: ScopedMessageStore
     tool_allowlist: frozenset[str]
     threshold_chars: int = MESSAGE_THRESHOLD_CHARS
+    truncate: bool = True
 
     async def after_tool_execute(
         self,
@@ -253,7 +257,7 @@ class MessageStoreCapability(AbstractCapability[Any]):
             tool_name=tool_def.name,
             tool_call_id=call.tool_call_id,
         )
-        if len(result) <= self.threshold_chars:
+        if not self.truncate or len(result) <= self.threshold_chars:
             return_value = make_marked(message_id, result)
         else:
             return_value = make_snippet(message_id, result)
