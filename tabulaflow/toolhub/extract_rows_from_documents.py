@@ -97,8 +97,11 @@ class ExtractRowsFromDocumentsTool:
         Use this tool to turn unstructured documents into structured rows — the
         row-expansion counterpart to ``run_subagent_for_each_row``. Where that tool
         runs one subagent per input row and writes one value back, this tool reads
-        one document per input row and appends many extracted entity rows. Reach for
-        it to mine a long web page (or several) into a table of entities.
+        one document per input row and appends many extracted entity rows (e.g.
+        mining a long web page into a table of entities). It is the LLM-based
+        extraction path: use it when the target data is irregularly formatted,
+        requires semantic understanding to extract, or when regex parsing is
+        unreliable.
 
         Internally, each document is split into structure-aware chunks — each carrying
         its section path and any spanning table's header as context so a cut doesn't
