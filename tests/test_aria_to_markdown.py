@@ -283,7 +283,7 @@ class TestClickableGeneric:
             '    - button "Emissions" [ref=e5]'
         )
         out = md(y)
-        assert out.splitlines()[0] == "- 4:00 PM [ref=e3] [ref=e2]"
+        assert out.splitlines()[0] == "- 4:00 PM [ref=e2]"  # card ref on row line; span ref dropped
         assert '  - button "Details" [ref=e4]' in out
         assert "clickable" not in out  # no dangling pseudo-child handle
 
@@ -305,9 +305,9 @@ class TestNestedSubList:
             "            - /url: /t"
         )
         out = md(y)
-        assert out == (
-            "- Programs [ref=e2]\n  - [Overview](/o) [ref=e5] [ref=e4]\n  - [Tutorials](/t) [ref=e7] [ref=e6]"
-        )
+        # "Programs" is an informational span → no ref; the sublist links keep
+        # theirs (actionable) plus their listitem record handles.
+        assert out == "- Programs\n  - [Overview](/o) [ref=e5] [ref=e4]\n  - [Tutorials](/t) [ref=e7] [ref=e6]"
 
 
 class TestRobustness:
@@ -344,25 +344,36 @@ class TestBlockquote:
         assert md("- blockquote: To be or not to be") == "> To be or not to be"
 
 
-class TestRefDelimitedFields:
-    """Records built from non-semantic <div>/<span> fields keep each field's ref
-    inline as a content-safe delimiter, so a collapsed row stays splittable on
-    ``[ref=…]`` — parity with the raw aria tree."""
+class TestRefMeansActionable:
+    """``[ref=…]`` marks an actionable element only. Informational ``generic``
+    spans (a flight time, an airline name) drop their ref so a ref always means
+    "you can act here" and rows stay uncluttered — no field-anchor noise."""
 
-    def _fields(self, bullet: str) -> list[str]:
-        import re
-
-        return [p for p in re.split(r"\s*\[ref=e\d+\]\s*", bullet.lstrip("- ")) if p]
-
-    def test_div_soup_record_splits_on_refs(self) -> None:
-        y = "- listitem [ref=e1]:\n  - generic [ref=e2]: Title Text\n  - generic [ref=e3]: Author One, Author Two"
+    def test_informational_generic_spans_drop_their_ref(self) -> None:
+        y = "- listitem [ref=e1]:\n  - generic [ref=e2]: Title Text\n  - generic [ref=e3]: Author One"
         out = md(y)
-        assert "Title Text [ref=e2]" in out and "Author One, Author Two [ref=e3]" in out
-        assert self._fields(out) == ["Title Text", "Author One, Author Two"]
+        # Spans merge into one readable run; their refs (e2/e3) are gone. The
+        # record (listitem e1) keeps its own single handle — one ref per record.
+        assert out == "- Title Text Author One [ref=e1]"
+        assert "e2" not in out and "e3" not in out
+
+    def test_clickable_row_keeps_its_single_action_ref(self) -> None:
+        # A clickable card (≥2 inner actions) surfaces exactly one ref — its own
+        # click affordance — not one per informational span.
+        y = (
+            "- listitem [ref=e1]:\n"
+            "  - generic [ref=e2] [cursor=pointer]:\n"
+            "    - generic [ref=e3]: 4:00 PM\n"
+            "    - generic [ref=e4]: Delta\n"
+            '    - button "Details" [ref=e5]\n'
+            '    - button "Emissions" [ref=e6]'
+        )
+        out = md(y)
+        assert out.splitlines()[0] == "- 4:00 PM Delta [ref=e2]"  # one row-level ref, spans dropped
+        assert '  - button "Details" [ref=e5]' in out  # inner buttons stay actionable
 
     def test_label_derivation_stays_clean(self) -> None:
-        # The ref anchor is for record fields, not accessible-name labels — a
-        # generic child feeding a button/heading name must NOT inject its ref.
+        # A generic child feeding a button/heading name must not inject its ref.
         assert md("- button [ref=e1]:\n  - generic [ref=e2]: Save") == 'button "Save" [ref=e1]'
         assert md('- heading "h" [level=2] [ref=e1]:\n  - generic [ref=e2]: Section').startswith("## Section")
 
