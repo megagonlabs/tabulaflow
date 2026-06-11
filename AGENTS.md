@@ -146,6 +146,7 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - Fail fast.
 - Fix the root cause, don't just mask the symptom.
 - Prioritize long term cleanliness and maintainability.
+- Take the principled approach, not the one based on heuristics.
 - Before writing code, always assess whether the idea aligns with common practice and if not, stop and provide such feedback to the user.
 - Use Google style for all Python docstrings.
 - This is a research library, do not over-abstract.
