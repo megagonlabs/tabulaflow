@@ -21,9 +21,10 @@ in raw aria (what playwright-mcp returns)::
         - button "Carbon emissions estimate..." [ref=e394]
         - button "Flight details..." [ref=e415]
 
-rendered as markdown::
+rendered as markdown — the whole clickable row carries one ref (its own
+"select" affordance); the informational time/airline spans drop theirs::
 
-    - 11:59 PM [ref=e366] - 12:32 PM [ref=e369] +1 Frontier 9 hr 33 min SFO - EWR
+    - 11:59 PM - 12:32 PM +1 Frontier 9 hr 33 min SFO - EWR [ref=e357]
       - button "Carbon emissions estimate..." [ref=e394]
       - button "Flight details..." [ref=e415]
 
@@ -31,19 +32,22 @@ A 2.7x to 4.8x smaller than raw aria across real pages. Uses real markdown
 (GitHub Markdown tables, nested bullets, prose flow) and drops aria-only
 narrations so the snapshot matches what a sighted user sees.
 
-Ref-delimited fields
-====================
+A ``[ref=eN]`` marks an *actionable* element — a link, button, form control,
+or clickable row/card. Non-clickable informational ``generic`` spans drop
+their ref (a sighted user can't "click" a flight time either), so a ref always
+means "you can act here" and rows stay uncluttered.
 
-When a record is built from non-semantic ``<div>``/``<span>`` fields (no
-``<strong>``/``<em>`` to mark boundaries), the collapsed bullet keeps each
-field's ``[ref=eN]`` inline as a content-safe delimiter, so the row stays
-machine-parseable like the raw aria tree::
+Field-level parsing
+===================
 
-    - Attention Is All You Need [ref=e2] Vaswani, Shazeer [ref=e3] [ref=e1]
-    # re.split(r'\\s*\\[ref=e\\d+\\]\\s*', row) -> ['Attention…', 'Vaswani…', '']
-
-Pages that *do* use semantic markup get ``**title** *authors*`` instead (see
-``_INLINE_MARKUP``); both shapes survive a regex split.
+Records stay machine-parseable at the boundary that matters: each record is one
+bullet (``\\n-``) carrying its lone action ref. *Within* a record, fields are
+separable only when the page itself marks them — a real ``<table>`` gives pipe
+columns, and semantic ``<strong>``/``<em>`` gives ``**title** *authors*`` (see
+``_INLINE_MARKUP``), both regex-splittable. Div-soup rows with no such markup
+(flight summaries) are a single readable run — the LLM reads the fields; regex
+finds the record and its ref. We deliberately do *not* stamp a ref on every
+span to force a split: that overloads "actionable" and buries the real handle.
 
 Locating an element
 ===================
@@ -835,7 +839,14 @@ def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
                     continue
                 # targets == 1: thin wrapper → elide (drop ref, splice children)
             if value:
-                out.append(_Frag(TEXT, f"{value} [ref={ref}]" if (ref and not flow) else value))
+                # A ref means "actionable". An informational ``generic`` (a
+                # labelled <div>/<span> — a flight time, an airline name) is not
+                # clickable, so it drops its ref to keep the row clean and keep
+                # ``[ref=…]`` meaning "you can act here". Other transparent roles
+                # (status/alert/listbox) keep theirs in block context. Clickable
+                # generics never reach here — handled above as atoms/cards.
+                keep_ref = ref and role != "generic" and not flow
+                out.append(_Frag(TEXT, f"{value} [ref={ref}]" if keep_ref else value))
             if kids:
                 out.extend(_fragments(kids, depth, flow))
             continue
