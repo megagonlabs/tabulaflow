@@ -276,7 +276,8 @@ June 11
 - [x] Relax regex parsing constraint in prompt
 - [x] Improve tool progress display
 - [x] "empty results" -> "statement executed successfully" for DDL statements in run_query tool
-- [ ] Workspace not refreshed
+- [x] Update schema browser - expand workspace tables, hide internal schemas
+- [x] Fix schema resolution during write_dataframe_async (fix "(default)" schema)
 
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
 - [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
