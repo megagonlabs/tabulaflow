@@ -265,10 +265,49 @@ class TestClickableGeneric:
         assert out == 'clickable "May 23" [ref=e1]'
 
     def test_wrapper_clickable_generic_does_not_inline_itself(self) -> None:
-        # Wrapper around a link → render the inner link only.
+        # Wrapper around a single action → render the inner element only (thin
+        # hit-area wrapper, redundant with its one child).
         y = '- generic [ref=e1] [cursor=pointer]:\n    - link "Deal" [ref=e2]:\n        - /url: /x'
         out = md(y)
         assert out == "[Deal](/x) [ref=e2]"
+
+    def test_clickable_card_hoists_ref_onto_row_line(self) -> None:
+        # A clickable card wrapping ≥2 distinct actions is its own affordance: its
+        # ref belongs on the row line (the card IS the row), with action atoms as
+        # nested bullets — not dangling as a pseudo-child of its own content.
+        y = (
+            "- listitem [ref=e1]:\n"
+            "  - generic [ref=e2] [cursor=pointer]:\n"
+            "    - generic [ref=e3]: 4:00 PM\n"
+            '    - button "Details" [ref=e4]\n'
+            '    - button "Emissions" [ref=e5]'
+        )
+        out = md(y)
+        assert out.splitlines()[0] == "- 4:00 PM [ref=e3] [ref=e2]"
+        assert '  - button "Details" [ref=e4]' in out
+        assert "clickable" not in out  # no dangling pseudo-child handle
+
+
+class TestNestedSubList:
+    def test_sublist_indents_consistently_under_label(self) -> None:
+        # A list nested under a labelled listitem: every sub-item indents one
+        # level under the label — the first item must not de-indent to the label's
+        # own level, and no spurious double-bullet ("- - item").
+        y = (
+            "- listitem [ref=e1]:\n"
+            "  - generic [ref=e2]: Programs\n"
+            "  - list [ref=e3]:\n"
+            "    - listitem [ref=e4]:\n"
+            '        - link "Overview" [ref=e5]:\n'
+            "            - /url: /o\n"
+            "    - listitem [ref=e6]:\n"
+            '        - link "Tutorials" [ref=e7]:\n'
+            "            - /url: /t"
+        )
+        out = md(y)
+        assert out == (
+            "- Programs [ref=e2]\n  - [Overview](/o) [ref=e5] [ref=e4]\n  - [Tutorials](/t) [ref=e7] [ref=e6]"
+        )
 
 
 class TestRobustness:

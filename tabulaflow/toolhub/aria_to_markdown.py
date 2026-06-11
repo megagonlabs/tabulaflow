@@ -90,7 +90,7 @@ string (markdown or raw YAML).
 from __future__ import annotations
 
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 
 import yaml
@@ -308,17 +308,6 @@ def _parse_header(header: str) -> tuple[str, str, str | None, tuple[str, ...], b
         state,
         clickable,
     )
-
-
-def _meaningful_children(children: list[Any]) -> list[Any]:
-    """Drop empty/skippable nodes (``/url`` annotations) before bulleting."""
-    out: list[Any] = []
-    for c in children:
-        h, _ = _split_node(c)
-        if h is None or h.strip().startswith("/url"):
-            continue
-        out.append(c)
-    return out
 
 
 def _find_url_child(children: list[Any]) -> str | None:
@@ -607,50 +596,36 @@ def _render_option(ctx: _Ctx) -> str:
 
 
 def _render_list(ctx: _Ctx) -> str:
-    return f"\n\n{_kids_md(ctx.children, ctx.depth, flow=False).strip()}\n\n"
+    # Strip only newlines, not spaces: a sub-list nested under a listitem renders
+    # its items pre-indented, and stripping leading spaces would de-indent the
+    # first item relative to its siblings.
+    inner = _emit_block_frags(_fragments(ctx.children, ctx.depth, flow=False), ctx.depth).strip("\n")
+    return f"\n\n{inner}\n\n" if inner else ""
 
 
 def _render_listitem(ctx: _Ctx) -> str:
-    """Render a listitem at ``depth``, with leaves at ``depth+1`` as bullets.
-
-    Transparent-generic descendants are flattened into a single level of
-    bullets — keeps SPA UIs (flight rows, search results) readable without
-    arbitrarily-deep nesting. Nested ``list``/``table`` children stop the
-    flattening so real sub-lists and tables keep their structure.
+    """Render a listitem: the first inline run leads the bullet line, remaining
+    units nest at ``depth+1``. Transparent descendants are flattened by
+    ``_fragments`` so SPA rows (flights, search results) stay one level deep;
+    nested ``list``/``table`` children keep their structure as standalone
+    blocks. A clickable card leads the row with its ref hoisted onto the line.
     """
     indent = "  " * ctx.depth
-    sub_indent = "  " * (ctx.depth + 1)
-    raw: list[tuple[str, bool]] = []
-    if ctx.value:
-        raw.append((ctx.value, True))
-    _flatten_to_leaves(ctx.children, ctx.depth + 1, raw)
-    # Group consecutive plain-text leaves into single bullets; actionable
-    # atoms (buttons, links, form controls, clickable generics) stay separate.
-    leaves: list[str] = []
-    buf: list[str] = []
-    for text, is_plain in raw:
-        if is_plain:
-            buf.append(text)
-        else:
-            if buf:
-                leaves.append(" ".join(buf))
-                buf = []
-            leaves.append(text)
-    if buf:
-        leaves.append(" ".join(buf))
-    if not leaves:
+    frags = ([_Frag(TEXT, ctx.value)] if ctx.value else []) + _fragments(ctx.children, ctx.depth + 1, flow=False)
+    units = _merge_runs(frags)
+    if not units:
         return f"\n{indent}-{ctx.ref_tag}" if ctx.ref_tag.strip() else ""
-    # First group on the bullet line; remainder as nested bullets at depth+1.
-    head_first, _, head_rest = leaves[0].partition("\n")
-    out = f"\n{indent}- {head_first}" + (ctx.ref_tag if len(leaves) == 1 else "")
-    if head_rest:
-        out += "\n" + head_rest
-    for leaf in leaves[1:]:
-        first, _, rest = leaf.partition("\n")
-        out += f"\n{sub_indent}- {first}"
-        if rest:
-            out += "\n" + rest
-    return out
+    first, rest = units[0], units[1:]
+    if first.kind == CARD:
+        lines = _card_bullets(first, ctx.depth)
+    else:
+        lines = _unit_bullets(first, ctx.depth)
+        # The listitem's own ref attaches only when it has a single inline leaf.
+        if len(units) == 1 and ctx.ref_tag.strip() and first.kind in (TEXT, ATOM):
+            lines[0] += ctx.ref_tag
+    for u in rest:
+        lines.extend(_unit_bullets(u, ctx.depth + 1))
+    return "\n" + "\n".join(lines) + "\n"
 
 
 def _render_table_node(ctx: _Ctx) -> str:
@@ -658,15 +633,7 @@ def _render_table_node(ctx: _Ctx) -> str:
     tables (Hacker News's outer chrome) fall back to bullet rendering."""
     if _is_data_table(ctx.children):
         return f"\n\n{_render_md_table(ctx.children)}\n\n"
-    return _bullet_block(ctx.value, ctx.children, ctx.depth, ctx.ref_tag)
-
-
-def _render_layout_part(ctx: _Ctx) -> str:
-    """A standalone row/cell/rowgroup outside a data table (e.g., Hacker News layout)."""
-    if ctx.flow:
-        leading = (ctx.value + " ") if ctx.value else ""
-        return leading + _kids_md(ctx.children, ctx.depth, flow=True)
-    return _bullet_block(ctx.value, ctx.children, ctx.depth, ctx.ref_tag)
+    return _emit_block_frags(_fragments(ctx.children, ctx.depth, flow=False), ctx.depth)
 
 
 def _render_form_control(ctx: _Ctx) -> str:
@@ -723,31 +690,13 @@ def _render_form_control(ctx: _Ctx) -> str:
     rendered = " ".join(parts)
 
     if has_interactive_kids:
-        # Flatten transparent wrappers (a listbox/generic around the options)
-        # so each interactive atom becomes its own bullet. Plain-text labels
-        # interleaved with atoms group into single text-only bullets — same
-        # rule ``_render_listitem`` applies to listitem children.
-        indent = "  " * (ctx.depth + 1)
-        raw: list[tuple[str, bool]] = []
-        _flatten_to_leaves(ctx.children, ctx.depth + 1, raw)
-        leaves: list[str] = []
-        buf: list[str] = []
-        for text, is_plain in raw:
-            if is_plain:
-                buf.append(text)
-            else:
-                if buf:
-                    leaves.append(" ".join(buf))
-                    buf = []
-                leaves.append(text)
-        if buf:
-            leaves.append(" ".join(buf))
+        # An active widget (expanded combobox, autocomplete) — its header line
+        # is followed by the interactive children as a sub-list. Flattening and
+        # grouping are the shared IR path, same as ``_render_listitem``.
+        sub_indent = "  " * (ctx.depth + 1)
         bullets: list[str] = []
-        for leaf in leaves:
-            first, _, rest = leaf.partition("\n")
-            bullets.append(f"{indent}- {first}")
-            if rest:
-                bullets.append(rest)
+        for u in _merge_runs(_fragments(ctx.children, ctx.depth + 1, flow=False)):
+            bullets.extend(_unit_bullets(u, ctx.depth + 1) if u.kind != TEXT else [f"{sub_indent}- {u.text}"])
         if bullets:
             rendered += "\n" + "\n".join(bullets)
         return rendered
@@ -758,45 +707,22 @@ def _render_form_control(ctx: _Ctx) -> str:
     return rendered
 
 
-def _render_clickable_generic(ctx: _Ctx) -> str:
-    """Innermost ``generic [cursor=pointer]`` — promoted as a clickable atom."""
-    inner = ((ctx.value + " ") if ctx.value else "") + _kids_md(ctx.children, ctx.depth, flow=True).strip()
-    inner_text = inner.strip()
-    if inner_text:
-        return f'clickable "{inner_text}"{ctx.ref_tag}'
-    return f"clickable{ctx.ref_tag}"
-
-
 def _render_grouping(ctx: _Ctx) -> str:
     """Form / search / tablist / menu containers.
 
-    Flatten transparent descendants into a flat list of leaves, then emit each
-    as its own paragraph. Avoids indent inversion from arbitrary DOM-wrapper
-    depth (Google Flights' nested form generics, Wikipedia's search wrapper).
-    Consecutive plain-text leaves combine into one paragraph; atoms keep
-    their own. Counts leaves *after* flattening so a single-child wrapper
-    can't mask a real multi-control region.
+    Flatten transparent descendants, then emit each unit as its own paragraph.
+    Avoids indent inversion from arbitrary DOM-wrapper depth (Google Flights'
+    nested form generics, Wikipedia's search wrapper). A lone unit inlines;
+    consecutive plain-text merges into one paragraph (via ``_merge_runs``) while
+    atoms keep their own.
     """
-    raw: list[tuple[str, bool]] = []
-    _flatten_to_leaves(ctx.children, ctx.depth, raw)
-    if not raw:
+    units = _merge_runs(_fragments(ctx.children, ctx.depth, flow=False))
+    if not units:
         return ""
-    if len(raw) == 1:
+    if len(units) == 1:
         leading = (ctx.value + " ") if ctx.value else ""
-        return leading + raw[0][0]
-    leaves: list[str] = []
-    buf: list[str] = []
-    for text, is_plain in raw:
-        if is_plain:
-            buf.append(text)
-        else:
-            if buf:
-                leaves.append(" ".join(buf))
-                buf = []
-            leaves.append(text)
-    if buf:
-        leaves.append(" ".join(buf))
-    return "\n\n" + "\n\n".join(leaves) + "\n\n"
+        return leading + _frag_inline(units[0])
+    return "\n\n" + "\n\n".join(_frag_inline(u) for u in units) + "\n\n"
 
 
 def _render_landmark(ctx: _Ctx) -> str:
@@ -808,110 +734,84 @@ def _render_landmark(ctx: _Ctx) -> str:
     return f"\n\n{inner}\n\n" if inner else ""
 
 
-def _render_transparent(ctx: _Ctx) -> str:
-    """Plain transparent containers (``generic``, ``region``, …)."""
-    # In a structural (bullet) context, a value-bearing generic keeps its ref as
-    # a field anchor so a div-built record stays ref-splittable like raw aria; a
-    # bare wrapper generic (no value) drops its ref unless clickable. In flow
-    # context the ref is omitted — this path derives accessible-name labels
-    # (button/heading text), which must stay clean.
-    effective_ref = ctx.ref_tag if (ctx.clickable or ctx.role != "generic" or ctx.value) else ""
-    if ctx.flow:
-        leading = (ctx.value + " ") if ctx.value else ""
-        return leading + _kids_md(ctx.children, ctx.depth, flow=True)
-    return _bullet_block(ctx.value, ctx.children, ctx.depth, effective_ref)
+# ── Fragment IR ──────────────────────────────────────────────────────────
+# The renderer runs in two phases. Phase 1 (``_fragments``) turns an aria
+# child-list into a flat list of typed fragments — eliding transparent
+# wrappers, resolving clickable cards, and classifying each surviving piece as
+# inline-text / atom / block *by structure* (role + ref presence + shape), not
+# by grepping rendered strings. Phase 2 (the ``_emit_*`` serializers) lays the
+# fragments out per container: a flowing run, nested bullets, or paragraphs.
+#
+# This split is the single home for the two questions that used to be smeared
+# across a threaded ``flow`` flag, ``(text, is_plain)`` tuples, and a
+# ``"[ref=" in cm`` string match:
+#   * inline vs block  — a fragment's ``kind``;
+#   * mergeable text vs standalone atom — ``TEXT`` vs ``ATOM``.
+
+# Fragment kinds:
+#   TEXT  — plain inline text; consecutive TEXT fragments merge into one run.
+#   ATOM  — a self-contained inline element (link/button/control/img/option/
+#           clickable leaf, or a value-bearing generic carrying its ref anchor).
+#           Inline in flow context; its own bullet in block context.
+#   BLOCK — standalone block markdown (heading/paragraph/list/table/blockquote/
+#           separator/fenced code, or any multi-line render). Never merges.
+#   CARD  — a clickable container wrapping ≥2 distinct actions (a result row /
+#           tile). Its own click is a real affordance; layout is deferred to the
+#           container so the row handle can land on the row line, not dangle.
+TEXT, ATOM, BLOCK, CARD = "text", "atom", "block", "card"
 
 
-# ── Composite helpers ───────────────────────────────────────────────────
+@dataclass
+class _Frag:
+    kind: str
+    text: str = ""
+    ref: str | None = None  # CARD: the row-level click handle
+    name: str = ""  # CARD: accessible name, if any
+    fields: list["_Frag"] = field(default_factory=list)  # CARD: inner row content
 
 
 # Punctuation/closers that should hug the preceding token (no inserted space).
 _NO_SPACE_BEFORE = frozenset(".,;:!?)]}>")
 
 
-def _kids_md(children: list[Any], depth: int, flow: bool = False) -> str:
-    """Concat children's rendered fragments, inserting a space at boundaries
-    where both sides are non-whitespace and the next side isn't punctuation.
+def _join_inline(parts: list[str]) -> str:
+    """Concatenate inline strings, inserting a space at boundaries where both
+    sides are non-whitespace and the next side isn't a closing punctuation.
 
     Prose pages have text nodes carrying their own whitespace ("is a ", " for
-    managing data"); navigation menus and grouping containers don't (the
-    visual spacing is CSS-only). Without this glue, adjacent buttons/links/
-    boxes in a nav strip collide into one run like ``[X][Y]button "Z"``.
-    Punctuation (``.``, ``,``, ``)`` …) must still hug the previous token, so
-    we skip the space when the next fragment starts with a closer.
+    managing data"); navigation menus and grouping containers don't (the visual
+    spacing is CSS-only). Without this glue, adjacent buttons/links/boxes in a
+    nav strip collide into one run like ``[X][Y]button "Z"``. Punctuation
+    (``.``, ``,``, ``)`` …) must still hug the previous token, so we skip the
+    space when the next fragment starts with a closer.
     """
-    parts: list[str] = []
-    for c in children:
-        rendered = _render_md_node(c, depth, flow=flow)
-        if not rendered:
+    out: list[str] = []
+    for p in parts:
+        if not p:
             continue
-        if (
-            parts
-            and parts[-1]
-            and parts[-1][-1] not in " \t\n"
-            and rendered[0] not in " \t\n"
-            and rendered[0] not in _NO_SPACE_BEFORE
-        ):
-            parts.append(" ")
-        parts.append(rendered)
-    return "".join(parts)
+        if out and out[-1] and out[-1][-1] not in " \t\n" and p[0] not in " \t\n" and p[0] not in _NO_SPACE_BEFORE:
+            out.append(" ")
+        out.append(p)
+    return "".join(out)
 
 
-def _bullet_block(value: str | None, children: list[Any], depth: int, ref_tag: str) -> str:
-    """Render a transparent/structural container as nested bullets.
+def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
+    """Phase 1: aria child-list → flat typed fragments.
 
-    Collapses single-child wrappers so deep ``generic > generic > generic``
-    chains don't pile up indentation. Each meaningful child becomes a bullet
-    at ``depth``; descendants recurse at ``depth+1`` in bullet mode.
+    Transparent wrappers (``generic``/``group``/landmark-less divs, standalone
+    layout ``row``/``cell``) are elided — their children splice in here, the one
+    place that decision lives. A clickable ``generic`` resolves by how many
+    interactive descendants it wraps: 0 → a clickable leaf atom; exactly 1 → a
+    redundant hit-area wrapper, demoted (ref dropped, children spliced); ≥2 → a
+    ``CARD``. Everything else is rendered via its handler and classified.
+
+    ``flow`` selects record vs label context. In block/record context
+    (``flow=False``) a value-bearing generic keeps its ``[ref=…]`` inline as a
+    field anchor, so a div-built row splits on refs like the raw aria tree. In
+    label context (``flow=True`` — deriving a button/heading accessible name)
+    the ref is omitted so labels stay clean.
     """
-    meaningful = _meaningful_children(children)
-    if not value and len(meaningful) == 0:
-        return ref_tag.strip() if ref_tag else ""
-    if not value and len(meaningful) == 1:
-        return _render_md_node(meaningful[0], depth, flow=False)
-    indent = "  " * depth
-    lines: list[str] = []
-    if value:
-        lines.append(f"{indent}- {value}{ref_tag if not meaningful else ''}")
-    for c in meaningful:
-        # Render at depth+1 in bullet mode so the child can produce its own
-        # nested structure. If it already returns bullet lines (starts with
-        # ``- ``), use as-is at depth+1 — don't double-wrap. If it's a block
-        # form (pipe table, heading, fenced code), emit it as a standalone
-        # block with blank-line boundaries so GitHub-Flavored Markdown parses it. Otherwise wrap
-        # the inline content as a single bullet at ``depth``.
-        cm = _render_md_node(c, depth + 1, flow=False).strip("\n")
-        if not cm.strip():
-            continue
-        first_nonblank = cm.lstrip().split("\n", 1)[0].lstrip()
-        if first_nonblank.startswith("- "):
-            lines.append(cm)
-        elif first_nonblank.startswith(("|", "#", "```")):
-            # Standalone block (table / heading / fenced code) — keep it out
-            # of the bullet wrapping so markdown parses it correctly.
-            lines.append("\n" + cm + "\n")
-        else:
-            first, _, rest = cm.partition("\n")
-            lines.append(f"{indent}- {first}" + (f"\n{rest}" if rest else ""))
-    return "\n" + "\n".join(lines) + "\n"
-
-
-def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]) -> None:
-    """Walk transparent containers, collecting renderable leaves into ``out``.
-
-    Each leaf is ``(text, is_plain)``:
-      * ``is_plain=True``: a transparent container's scalar value — visible
-        text with no actionable identity. Consecutive plain leaves combine
-        into one bullet line by the caller (matches how a sighted user reads
-        a row of UI text). A clickable transparent generic (cursor=pointer
-        with a ref) is treated as an atom instead.
-      * ``is_plain=False``: an actionable atom (link, button, form control,
-        list, table, heading, …) rendered via the normal walk. Atoms always
-        get their own bullet so the agent can target them.
-
-    Lists/tables stop the flattening — they recurse via ``_render_md_node``
-    so their structure is preserved as nested markdown.
-    """
+    out: list[_Frag] = []
     for c in nodes:
         h, b = _split_node(c)
         if h is None or h.strip().startswith("/url"):
@@ -922,33 +822,141 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]
         role, name, ref, _, clickable = parsed
         kids = b if isinstance(b, list) else []
         value = b if isinstance(b, str) else None
-        if role in _TRANSPARENT_ROLES:
+
+        if role in _TRANSPARENT_ROLES or role in _LAYOUT_PART_ROLES:
+            if role == "generic" and clickable and ref is not None:
+                targets = _count_click_targets(kids)
+                if targets == 0:  # innermost clickable → atom
+                    inner = _join_inline([value or "", _emit_flow(_fragments(kids, depth, True))]).strip()
+                    out.append(_Frag(ATOM, f'clickable "{inner}" [ref={ref}]' if inner else f"clickable [ref={ref}]"))
+                    continue
+                if targets >= 2:  # card: its own click is a distinct affordance
+                    out.append(_Frag(CARD, ref=ref, name=name, fields=_fragments(kids, depth, flow)))
+                    continue
+                # targets == 1: thin wrapper → elide (drop ref, splice children)
             if value:
-                # Keep the node's ref inline as a field anchor. A clickable
-                # generic is an atom (own bullet); a non-clickable value-bearing
-                # generic stays plain (merges into the row) but still carries its
-                # ref, so a collapsed record splits on ``[ref=…]`` like raw aria.
-                tagged = f"{value} [ref={ref}]" if ref else value
-                out.append((tagged, not (ref and clickable)))
+                out.append(_Frag(TEXT, f"{value} [ref={ref}]" if (ref and not flow) else value))
             if kids:
-                _flatten_to_leaves(kids, depth, out)
-            if not value and ref and clickable and _count_click_targets(kids) >= 2:
-                # Clickable *card* (result row / tile) wrapping multiple distinct
-                # actions: its own click is a separate affordance (e.g. "select
-                # flight") that the thin-wrapper demotion would otherwise drop.
-                # Emit it as a row-level handle *after* the card's fields so the
-                # row summary still leads. Thin wrappers (≤1 target) stay demoted.
-                nm = f' "{name}"' if name else ""
-                out.append((f"clickable{nm} [ref={ref}]", False))
+                out.extend(_fragments(kids, depth, flow))
             continue
-        # Non-transparent: render normally. Anything without a ``[ref=...]``
-        # is pure inline text (e.g., a ``text`` leaf, an image with alt) →
-        # plain so it combines with surrounding labels. Block-formatted roles
-        # are always atoms regardless of ref so they don't merge into a run.
-        cm = _render_md_node(c, depth, flow=True).strip()
-        if cm:
-            is_atom = role in _BLOCK_ATOM_ROLES or "[ref=" in cm
-            out.append((cm, not is_atom))
+
+        # Non-elided node: render via its handler, classify structurally.
+        cm = _render_md_node(c, depth, flow=flow)
+        if not cm.strip():
+            continue
+        # Block: keep boundaries intact (so it stays standalone when flowed
+        # inline by a landmark, and is re-indented by the bullet emitters).
+        if role in _BLOCK_ATOM_ROLES or "\n" in cm.strip():
+            out.append(_Frag(BLOCK, cm))
+            continue
+        s = cm.strip()
+        if role in _INLINE_MARKUP or role in _PLAIN_TEXT_ROLES or role == "text":
+            out.append(_Frag(TEXT, s))
+        elif ref is not None or _collect_interactive_refs(kids):
+            out.append(_Frag(ATOM, s))
+        else:
+            out.append(_Frag(TEXT, s))
+    return out
+
+
+def _merge_runs(frags: list[_Frag]) -> list[_Frag]:
+    """Collapse consecutive ``TEXT`` fragments into one inline run; atoms,
+    blocks and cards keep their own slot. The single grouping primitive shared
+    by every container layout (replaces the thrice-duplicated buf/leaves loop).
+    """
+    out: list[_Frag] = []
+    buf: list[str] = []
+    for f in frags:
+        if f.kind == TEXT:
+            buf.append(f.text)
+        else:
+            if buf:
+                out.append(_Frag(TEXT, _join_inline(buf)))
+                buf = []
+            out.append(f)
+    if buf:
+        out.append(_Frag(TEXT, _join_inline(buf)))
+    return out
+
+
+def _frag_inline(f: _Frag) -> str:
+    """A fragment's inline string form (flow context)."""
+    if f.kind == CARD:
+        inner = _emit_flow(f.fields).strip() or f.name
+        return f'clickable "{inner}" [ref={f.ref}]' if inner else f"clickable [ref={f.ref}]"
+    return f.text
+
+
+def _emit_flow(frags: list[_Frag]) -> str:
+    """Phase 2 (flow): concatenate fragments inline with spacing glue."""
+    return _join_inline([_frag_inline(f) for f in frags])
+
+
+def _unit_bullets(u: _Frag, depth: int) -> list[str]:
+    """Render one merged unit as bullet line(s) at ``depth``."""
+    indent = "  " * depth
+    if u.kind == CARD:
+        return _card_bullets(u, depth)
+    if u.kind == BLOCK:
+        cm = u.text.strip("\n")
+        first_nb = cm.lstrip().split("\n", 1)[0].lstrip()
+        if first_nb.startswith("- "):
+            return [cm]  # already bullet lines — keep as-is
+        if first_nb.startswith(("|", "#", "```")):
+            return ["\n" + cm + "\n"]  # standalone block (table/heading/fence)
+        first, _, rest = cm.partition("\n")
+        return [f"{indent}- {first}"] + ([rest] if rest else [])
+    first, _, rest = u.text.partition("\n")
+    return [f"{indent}- {first}"] + ([rest] if rest else [])
+
+
+def _card_bullets(card: _Frag, depth: int) -> list[str]:
+    """Lay a ``CARD`` out as bullets: the row summary leads with the card's ref
+    hoisted onto that line; inner action atoms follow as nested bullets. The
+    card *is* the row, so its handle belongs on the row line, not dangling as a
+    pseudo-child of its own content.
+    """
+    indent = "  " * depth
+    units = _merge_runs(card.fields)
+    lead: str | None = None
+    sub: list[str] = []
+    for u in units:
+        if lead is None and u.kind == TEXT:
+            lead = f"{indent}- {u.text} [ref={card.ref}]"
+        else:
+            sub.extend(_unit_bullets(u, depth + 1))
+    if lead is None:  # no text fields — the card itself is the handle
+        nm = f' "{card.name}"' if card.name else ""
+        lead = f"{indent}- clickable{nm} [ref={card.ref}]"
+    return [lead] + sub
+
+
+def _emit_block_frags(frags: list[_Frag], depth: int) -> str:
+    """Phase 2 (block): lay fragments out as nested bullets at ``depth``.
+
+    A single inline child collapses to bare inline text (so ``generic > generic
+    > link`` wrapper chains don't pile up bullets); otherwise each unit becomes
+    its own bullet, with blocks kept standalone and cards hoisting their ref.
+    """
+    units = _merge_runs(frags)
+    if not units:
+        return ""
+    if len(units) == 1:
+        u = units[0]
+        if u.kind in (TEXT, ATOM, BLOCK):
+            return u.text
+        return "\n" + "\n".join(_card_bullets(u, depth)) + "\n"
+    lines: list[str] = []
+    for u in units:
+        lines.extend(_unit_bullets(u, depth))
+    return "\n" + "\n".join(lines) + "\n"
+
+
+def _kids_md(children: list[Any], depth: int, flow: bool = True) -> str:
+    """Inline (label-context) render of a node's children — accessible-name
+    derivation for headings/links/buttons/cells. Thin wrapper over the IR.
+    """
+    return _emit_flow(_fragments(children, depth, flow))
 
 
 # ── Table helpers ────────────────────────────────────────────────────────
@@ -1103,11 +1111,11 @@ _ROLE_HANDLERS: dict[str, Callable[[_Ctx], str]] = {
     **{r: _render_interactive_atom for r in _INTERACTIVE_ATOM_ROLES},
     **{r: _render_plain_text for r in _PLAIN_TEXT_ROLES},
     **{r: _render_form_control for r in _FORM_CONTROL_ROLES},
-    **{r: _render_layout_part for r in _LAYOUT_PART_ROLES},
     **{r: _render_grouping for r in _GROUPING_ROLES},
     **{r: _render_landmark for r in _STRONG_LANDMARK_ROLES},
-    **{r: _render_transparent for r in _TRANSPARENT_ROLES},
 }
+# Transparent + layout-part roles have no handler: the walker routes them
+# through ``_fragments`` (elision / card resolution) before dispatch.
 
 
 # ── Walker ──────────────────────────────────────────────────────────────
@@ -1124,6 +1132,14 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
     role, name, ref, state, clickable = parsed
     children = body if isinstance(body, list) else []
     value = str(body) if isinstance(body, str | int | float) else None
+
+    # Transparent wrappers, standalone layout parts, and clickable generics
+    # (leaf / thin-wrapper / card) are resolved structurally by ``_fragments``,
+    # then serialized inline (flow) or as bullets (block).
+    if role in _TRANSPARENT_ROLES or role in _LAYOUT_PART_ROLES:
+        frags = _fragments([node], depth, flow)
+        return _emit_flow(frags) if flow else _emit_block_frags(frags, depth)
+
     ctx = _Ctx(
         role=role,
         name=name,
@@ -1138,9 +1154,7 @@ def _render_md_node(node: Any, depth: int = 0, flow: bool = False) -> str:
         flow=flow,
     )
 
-    # Predicates win over the dispatch table — they need state beyond role.
-    if role == "generic" and clickable and ref is not None and not _has_click_target(children):
-        return _render_clickable_generic(ctx)
+    # Named landmarks (region/section/article) only become blocks when named.
     if role in _NAMED_LANDMARK_ROLES and name:
         return _render_landmark(ctx)
 
