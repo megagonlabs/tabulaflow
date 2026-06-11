@@ -268,16 +268,21 @@ June 9
 
 June 10
 - [x] Automatically suspend browser during fan-out
-- [ ] Improve aria_to_markdown
+- [x] Refactor aria_to_markdown and cover all aria roles
 - [x] Refresh in schema browser
+- [x] Always offload for subagents
 
-- [ ] Relax regex parsing constraint to match CC behaviour
-- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
+June 11
+- [x] Relax regex parsing constraint in prompt
 - [ ] Workspace not refreshed
+- [ ] Improve tool progress display
+
+- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
 - [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
 - [ ] Multi-column output for subagents
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
+
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
 - [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
