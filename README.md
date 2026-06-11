@@ -284,7 +284,7 @@ June 11
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 
-- [ ] Guard against long messaeg and context overflow
+- [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
 - [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
