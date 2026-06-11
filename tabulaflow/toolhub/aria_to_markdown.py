@@ -382,6 +382,30 @@ def _has_click_target(nodes: list[Any]) -> bool:
     return False
 
 
+def _count_click_targets(nodes: list[Any], limit: int = 2) -> int:
+    """Count interactable / clickable-generic descendants, capped at ``limit``.
+
+    Distinguishes a *thin* hit-area wrapper (≤1 target — a ``cursor=pointer``
+    div around a single button, just a bigger tap zone) from a *card* (≥2 — a
+    result row / product tile whose own click is a distinct action from any
+    button it contains). Short-circuits once ``limit`` is reached.
+    """
+    n = 0
+    for node in nodes:
+        header, body = _split_node(node)
+        if header is not None:
+            parsed = _parse_header(header)
+            if parsed is not None:
+                role, _, ref, _, clickable = parsed
+                if (role in _INTERACTIVE_ROLES and ref is not None) or (role == "generic" and clickable):
+                    n += 1
+        if n < limit and isinstance(body, list):
+            n += _count_click_targets(body, limit - n)
+        if n >= limit:
+            return limit
+    return n
+
+
 def _collect_interactive_refs(children: list[Any]) -> list[str]:
     """Interactive descendant refs in document order — anchors orphans.
 
@@ -895,7 +919,7 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]
         parsed = _parse_header(h)
         if parsed is None:
             continue
-        role, _, ref, _, clickable = parsed
+        role, name, ref, _, clickable = parsed
         kids = b if isinstance(b, list) else []
         value = b if isinstance(b, str) else None
         if role in _TRANSPARENT_ROLES:
@@ -908,6 +932,14 @@ def _flatten_to_leaves(nodes: list[Any], depth: int, out: list[tuple[str, bool]]
                 out.append((tagged, not (ref and clickable)))
             if kids:
                 _flatten_to_leaves(kids, depth, out)
+            if not value and ref and clickable and _count_click_targets(kids) >= 2:
+                # Clickable *card* (result row / tile) wrapping multiple distinct
+                # actions: its own click is a separate affordance (e.g. "select
+                # flight") that the thin-wrapper demotion would otherwise drop.
+                # Emit it as a row-level handle *after* the card's fields so the
+                # row summary still leads. Thin wrappers (≤1 target) stay demoted.
+                nm = f' "{name}"' if name else ""
+                out.append((f"clickable{nm} [ref={ref}]", False))
             continue
         # Non-transparent: render normally. Anything without a ``[ref=...]``
         # is pure inline text (e.g., a ``text`` leaf, an image with alt) →
