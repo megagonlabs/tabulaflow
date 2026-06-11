@@ -76,8 +76,19 @@ async def test_run_query_empty_result(db_connector: SQLConnector) -> None:
     tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
     result: str = await tool("SELECT * FROM users WHERE age > 100")
 
-    assert "warning: query executed successfully, but results are empty" in result
+    assert "query executed successfully, but results are empty" in result
     assert tool.metrics().num_calls == 1
+
+
+@pytest.mark.asyncio
+async def test_run_query_ddl_statement_success(db_connector: SQLConnector) -> None:
+    """A non-row-returning statement (DDL) reports success, not empty results."""
+    db_connector.read_only = False
+    tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
+    result: str = await tool("CREATE TABLE doohickeys (id INTEGER PRIMARY KEY)")
+
+    assert "statement executed successfully" in result
+    assert "results are empty" not in result
 
 
 @pytest.mark.asyncio
