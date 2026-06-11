@@ -223,7 +223,7 @@ class RunQueryTool:
 
         df = exec_result.df
         if df.empty:
-            return "(warning: query executed successfully, but results are empty, the query might be incorrect)"
+            return "(query executed successfully, but results are empty)"
 
         res = format_df(
             df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
