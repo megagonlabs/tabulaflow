@@ -482,3 +482,7 @@ sqlite:
 last-trajectory:
 	@dir=$$(ls -td ~/.tabulaflow/sessions/*/trajectories 2>/dev/null | head -n 1); \
 	[ -n "$$dir" ] && find "$$dir" -type f -exec stat -f '%m %N' {} + | sort -rn | cut -d' ' -f2-
+
+.PHONY: list-trajectories
+list-trajectories:
+	@ls -tr ~/.tabulaflow/sessions/*/trajectories/trajectory.md 2>/dev/null
