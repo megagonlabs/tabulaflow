@@ -1325,14 +1325,17 @@ class SchemaBrowserScreen(Screen[None]):
             if dialect:
                 db_label.append(f"  {dialect}", style="dim")
 
-            auto_expand = alias != "workspace"
             db_node = tree.root.add(
                 db_label,
                 data=_NodeData(kind=_NODE_KIND_DB, alias=alias),
-                expand=self._expand_for((alias, None, None, None), auto_expand),
+                expand=self._expand_for((alias, None, None, None), True),
             )
 
             tables: list[SQLTableSchema] = list(schema.tables)
+            if alias == "workspace":
+                # Hide internal/scratch schemas (conventionally "_"-prefixed)
+                # from the workspace; everything else expands like any other DB.
+                tables = [t for t in tables if not (t.schema_name and t.schema_name.startswith("_"))]
             schema_names: set[str | None] = {t.schema_name for t in tables}
             has_schemas = schema_names != {None}
 
@@ -1346,7 +1349,7 @@ class SchemaBrowserScreen(Screen[None]):
                     schema_node = db_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
-                        expand=self._expand_for((alias, sn, None, None), auto_expand),
+                        expand=self._expand_for((alias, sn, None, None), True),
                     )
                     for t in sorted(groups[sn], key=lambda t: t.name):
                         self._add_table_node(schema_node, alias, t)
