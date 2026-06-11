@@ -221,6 +221,10 @@ class RunQueryTool:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
+        if not exec_result.returns_rows:
+            # A non-row-returning statement (DDL/DML) that completed.
+            return "(statement executed successfully)"
+
         df = exec_result.df
         if df.empty:
             return "(query executed successfully, but results are empty)"

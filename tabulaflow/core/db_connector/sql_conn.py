@@ -310,6 +310,8 @@ def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
 class QueryResult:
     result: list[tuple[Any, ...]] | pd.DataFrame
     latency_seconds: float
+    returns_rows: bool = True
+    """False when the statement produced no result set (DDL/DML)."""
 
 
 _ASYNC_DRIVERS = frozenset(
@@ -1161,13 +1163,13 @@ class ThrottledEngine:
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
             t0 = time.time()
-            result = await self._dispatch_with_cancel(
+            result, returns_rows = await self._dispatch_with_cancel(
                 sync_inner=lambda box: self._execute_sync_engine(query, parameters, return_df, box),
                 async_inner=lambda box: self._execute_async_engine(query, parameters, return_df, box),
                 timeout=timeout,
                 timeout_label=f"Query {query}",
             )
-            return QueryResult(result=result, latency_seconds=time.time() - t0)
+            return QueryResult(result=result, latency_seconds=time.time() - t0, returns_rows=returns_rows)
 
     async def run_with_conn_async(
         self,
@@ -1253,7 +1255,7 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         cancel_handle_box: list[Any] | None = None,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+    ) -> tuple[list[tuple[Any, ...]] | pd.DataFrame, bool]:
         with self.engine.begin() as conn:  # type: ignore
             # Publish the dialect's cancel handle so the calling task can
             # abort this specific query on cancel/timeout.  We deliberately
@@ -1273,10 +1275,16 @@ class ThrottledEngine:
                 result = conn.exec_driver_sql(statement, parameters or None)
             else:
                 result = conn.execute(statement, parameters)
+            # Non-row-returning statements (DDL/DML) have no result set;
+            # fetchall() would raise ResourceClosedError.  Report the empty
+            # result alongside returns_rows=False so callers can tell a
+            # succeeded DDL/DML apart from an empty SELECT.
+            if not result.returns_rows:
+                return (_rows_to_df([], []) if return_df else []), False
             rows = result.fetchall()
             if return_df:
-                return _rows_to_df(rows, result.keys())
-            return rows
+                return _rows_to_df(rows, result.keys()), True
+            return rows, True
 
     async def _execute_async_engine(
         self,
@@ -1284,7 +1292,7 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         cancel_handle_box: list[Any] | None = None,
-    ) -> list[tuple[Any, ...]] | pd.DataFrame:
+    ) -> tuple[list[tuple[Any, ...]] | pd.DataFrame, bool]:
         """Async-engine query path.  Mirrors :meth:`_execute_sync_engine` for the
         async case: optionally publishes a cancel handle (via the
         strategy's :meth:`_CancelStrategy.acapture`) so the calling task
@@ -1299,6 +1307,11 @@ class ThrottledEngine:
                     logger.debug("acapture failed for %s", self._cancel_strategy.name, exc_info=True)
             if isinstance(statement, str):
                 result = await conn.exec_driver_sql(statement, parameters or None)
+                # Non-row-returning statements (DDL/DML) have no result set;
+                # fetchall() would raise ResourceClosedError.  Report the
+                # empty result alongside returns_rows=False.
+                if not result.returns_rows:
+                    return (_rows_to_df([], []) if return_df else []), False
                 rows = list(result.fetchall())
             else:
                 rows = []
@@ -1306,9 +1319,12 @@ class ThrottledEngine:
                 async for row in result:
                     rows.append(row)
 
+        # Reaching here means a result set: the string path returned early on
+        # the non-row case, and the streaming path is only used for
+        # row-returning Executables.
         if return_df:
-            return _rows_to_df(rows, result.keys())
-        return rows
+            return _rows_to_df(rows, result.keys()), True
+        return rows, True
 
     def _run_callback_sync_engine(
         self,
@@ -2564,14 +2580,15 @@ class SQLConnector:
                             return cached
 
         # --- execute query ---
-        df, error, latency_seconds = None, None, None
+        df, error, latency_seconds, returns_rows = None, None, None, True
         try:
             result = await self._t_eng.execute_async(query, parameters, timeout, return_df=True)
             df = result.result
             latency_seconds = result.latency_seconds
+            returns_rows = result.returns_rows
         except Exception as e:
             error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
-        exec_result = ExecResult(df=df, error=error, latency_seconds=latency_seconds)
+        exec_result = ExecResult(df=df, error=error, latency_seconds=latency_seconds, returns_rows=returns_rows)
 
         # --- write to cache ---
         if caching_on and cache_hash is not None:

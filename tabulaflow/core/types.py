@@ -636,6 +636,11 @@ class ExecResult(BaseModel):
     df: pd.DataFrame | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""
+    returns_rows: bool = True
+    """Whether the statement produced a result set. False for non-row-returning
+    statements (DDL/DML such as CREATE/INSERT/UPDATE) that succeeded without
+    yielding rows — ``df`` is then empty. Only meaningful on success (``df`` not
+    None); a ``SELECT`` returning zero rows still has ``returns_rows=True``."""
     error: ErrorInfo | None = None
     latency_seconds: float | None = None
 
