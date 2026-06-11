@@ -1148,6 +1148,7 @@ class SchemaBrowserScreen(Screen[None]):
         Binding("left", "collapse_node", "Collapse", show=False, priority=True),
         Binding("right", "expand_node", "Expand", show=False, priority=True),
         Binding("enter", "open_preview", "Preview table", show=False, priority=True),
+        Binding("r", "refresh_schema", "Refresh", show=True),
     ]
 
     _PREVIEW_ROW_CAP = 50
@@ -1166,6 +1167,7 @@ class SchemaBrowserScreen(Screen[None]):
         self._registry: DBRegistry = registry
         self._filter_alias = alias
         self._state = state if state is not None else _ExplorerState()
+        self._refreshing = False
         self._status = Static(classes="schema-browser-status")
         self._gap = Static(classes="schema-browser-gap")
         self._hint = Static(id="browse-hint")
@@ -1296,6 +1298,14 @@ class SchemaBrowserScreen(Screen[None]):
 
     # -- tree construction ---------------------------------------------------
 
+    def _visible_aliases(self) -> list[str]:
+        """Sorted aliases the tree shows: all registered, or just the filter."""
+        aliases = self._registry.list_aliases()
+        if self._filter_alias is not None:
+            aliases = [a for a in aliases if a == self._filter_alias]
+        aliases.sort()
+        return aliases
+
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
@@ -1303,12 +1313,7 @@ class SchemaBrowserScreen(Screen[None]):
 
         tree = self.query_one("#browse-tree", Tree)
 
-        aliases = self._registry.list_aliases()
-        if self._filter_alias is not None:
-            aliases = [a for a in aliases if a == self._filter_alias]
-        aliases.sort()
-
-        for alias in aliases:
+        for alias in self._visible_aliases():
             connector = self._registry.get(alias)
             schema = connector.schema
             if not isinstance(schema, SQLSchema):
@@ -1458,6 +1463,53 @@ class SchemaBrowserScreen(Screen[None]):
     def action_close_browser(self) -> None:
         self.dismiss()
 
+    async def action_refresh_schema(self) -> None:
+        """Re-introspect the visible database(s) and rebuild the tree in place.
+
+        Re-reads each shown connector's schema directly from the live
+        database, so DDL run outside the agent (or by it) shows up here on
+        demand. Cursor and expansion state are preserved across the
+        rebuild. Re-introspection can be slow on cloud warehouses, so the
+        key is a no-op while a refresh is already in flight.
+        """
+        from textual.widgets import Tree
+
+        if self._refreshing:
+            return
+        self._refreshing = True
+        # Snapshot before clearing: ``tree.clear()`` moves the cursor and
+        # fires ``on_tree_node_highlighted``, which would overwrite
+        # ``_state.cursor`` (same hazard guarded against in ``on_mount``).
+        saved_cursor = self._state.cursor
+        self._status.update(Text("Refreshing schema...", style="dim"))
+        try:
+            failures: list[str] = []
+            for alias in self._visible_aliases():
+                connector = self._registry.get(alias)
+                try:
+                    await connector.refresh_schema_async()
+                except Exception as e:  # noqa: BLE001 - surface, don't crash the screen
+                    failures.append(f"{alias} ({type(e).__name__})")
+
+            tree = self.query_one("#browse-tree", Tree)
+            tree.clear()
+            self._build_tree()
+            self._update_status()
+            self._update_hint()
+            self.call_after_refresh(self._restore_cursor, saved_cursor)
+
+            # On success the rebuilt tree is the feedback; only surface
+            # failures. Deferred so it lands after ``_restore_cursor``'s
+            # highlight re-runs ``_update_status`` (which would clobber it).
+            if failures:
+                msg = "Schema refresh failed: " + ", ".join(failures)
+                self.call_after_refresh(
+                    self._status.update,
+                    Text.from_markup(f"[{ERROR}]{msg}[/]"),
+                )
+        finally:
+            self._refreshing = False
+
     def action_collapse_node(self) -> None:
         """Collapse the cursor node."""
         from textual.widgets import Tree
@@ -1575,4 +1627,7 @@ class SchemaBrowserScreen(Screen[None]):
             hint.append("    ", style=hint_fg)
             hint.append("↵", style=KEY_HINT)
             hint.append(" Preview table", style=hint_fg)
+        hint.append("    ", style=hint_fg)
+        hint.append("R", style=KEY_HINT)
+        hint.append(" Refresh", style=hint_fg)
         self._hint.update(hint)
