@@ -446,12 +446,37 @@ class SpinnerWidget(Widget):
 # ---------------------------------------------------------------------------
 
 
+# Keys handled by the prefix/grouping logic or too noisy to show in a step label.
+_NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
+
+
+def _fmt_arg_value(value: object, limit: int = 40) -> str:
+    """Collapse whitespace and truncate a single arg value for a step label."""
+    text = " ".join(str(value).split())
+    return text[: limit - 1] + "…" if len(text) > limit else text
+
+
+def _summarize_generic_args(args: dict[str, object]) -> str:
+    """Render arbitrary tool args as a clean label instead of a raw dict repr.
+
+    Single meaningful arg → its bare value; multiple → ``key=value`` pairs. Drops
+    empty values and noise keys so untreated tools degrade gracefully rather than
+    dumping ``{'key': 'value', ...}``."""
+    items = [(k, v) for k, v in args.items() if k not in _NOISE_ARG_KEYS and v not in (None, "", [], {})]
+    if not items:
+        return ""
+    if len(items) == 1:
+        return _fmt_arg_value(items[0][1])
+    return ", ".join(f"{k}={_fmt_arg_value(v, 24)}" for k, v in items)[:80]
+
+
 def summarize_tool_args(name: str, args: dict[str, object]) -> str:
     """Render a tool call's raw args as a compact one-line label for the TUI.
 
     Presentation lives here (the consumer), not in ``chat`` — the events carry the
-    raw ``args`` dict and each frontend renders it as it likes. Truncates the query
-    to keep the step line short."""
+    raw ``args`` dict and each frontend renders it as it likes. A handful of tools
+    get bespoke labels; everything else falls back to a generic ``key=value``
+    renderer. Truncates to keep the step line short."""
     db_prefix = f"[{args['db_alias']}] " if args.get("db_alias") else ""
 
     if name == "run_query":
@@ -494,7 +519,9 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
         return f"{record_id} -> [{target_alias}] {target} ({mode})"
     if name == "run_subagent_for_each_row":
         return f"{db_prefix}{args.get('table_name', '')}"
-    return str(args)[:80] if args else ""
+    if name == "browser_navigate":
+        return _fmt_arg_value(args.get("url", ""), 60)
+    return f"{db_prefix}{_summarize_generic_args(args)}"
 
 
 def summarize_outcome(outcome: ToolOutcome) -> str:
