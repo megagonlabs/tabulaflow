@@ -2378,6 +2378,31 @@ class SQLConnector:
             logger.info(f"Schema refreshed for {self.global_id}: {len(self.schema.tables)} tables")
             return self.schema
 
+    async def _default_schema_label_async(self) -> str | None:
+        """Schema label an unqualified object resolves to under this connector.
+
+        Mirrors the per-dialect schema labelling in :func:`build_schema_async`
+        so a table written with ``schema_name=None`` is recorded under the same
+        label a full re-introspection would assign it. Without this, the live
+        database resolves the unqualified write to its default schema (e.g.
+        DuckDB's ``main``) while the in-memory schema records it under a
+        ``None`` label — surfacing as a spurious schema-less ``(default)``
+        entry alongside the real ``main`` one.
+        """
+        dialect = self.language
+        # build_schema_async collapses these single-logical-schema dialects to a
+        # ``None`` label, so unqualified writes must resolve to None to match.
+        if dialect in ("sqlite", "mysql"):
+            return None
+
+        raw = await self._t_eng.run_with_conn_async(lambda conn: inspect(conn).default_schema_name)
+        if raw is None:
+            return None
+        if dialect == "duckdb":
+            normalized = await _normalize_duckdb_schema_names(self._t_eng, [raw])
+            return normalized[0] if normalized else None
+        return _denorm(self._t_eng, raw)
+
     async def write_dataframe_async(
         self,
         df: pd.DataFrame,
@@ -2427,7 +2452,11 @@ class SQLConnector:
             ),
         )
 
-        await self.refresh_schema_async(tables=[TableRef(schema_name=schema_name, table_name=table_name)])
+        # Resolve None to the schema the live DB actually wrote into, so the
+        # in-memory schema label matches a full re-introspection (avoids a
+        # spurious ``(default)`` entry shadowing the real default schema).
+        effective_schema = schema_name if schema_name is not None else await self._default_schema_label_async()
+        await self.refresh_schema_async(tables=[TableRef(schema_name=effective_schema, table_name=table_name)])
 
         return len(df)
 
