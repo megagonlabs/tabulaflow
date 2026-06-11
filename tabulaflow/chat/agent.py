@@ -129,7 +129,9 @@ You MUST use the `workspace` alias for data transformation tasks and semantic op
 - When asked to build or extend a dataset (e.g. listing all records that satisfy a condition, from scratch or on top of an existing table), ensure completeness: gather the full set rather than a sample, and do not stop early.
 - If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale or context-heavy collection, decompose the work into independent subtasks and run them in parallel with `run_subagent_for_each_row` rather than going over each item one by one yourself — this avoids context bloat and reduces latency (see <concurrent_task_handling>).
-- To mine unstructured documents (e.g. browsed web pages) into structured rows, use `extract_rows_from_documents`. Prefer it over regex parsing unless the structure is simple and guaranteed to be consistent.
+- To mine unstructured documents (e.g. browsed web pages) into structured rows, use the most efficient approach that still guarantees completeness and accuracy:
+  - When the target data follows a simple, consistent textual pattern, use regex parsing, falling back to `extract_rows_from_documents` if the pattern proves unreliable.
+  - When the data is irregularly formatted or requires semantic understanding to extract, use LLM-based `extract_rows_from_documents`.
 - Normalize collected values so the dataset is clean and queryable:
   - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
   - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
