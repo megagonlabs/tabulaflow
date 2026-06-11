@@ -269,6 +269,7 @@ June 9
 June 10
 - [x] Automatically suspend browser during fan-out
 - [ ] Improve aria_to_markdown
+- [x] Refresh in schema browser
 
 - [ ] Relax regex parsing constraint to match CC behaviour
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
