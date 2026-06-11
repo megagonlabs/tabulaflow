@@ -274,8 +274,9 @@ June 10
 
 June 11
 - [x] Relax regex parsing constraint in prompt
+- [x] Improve tool progress display
+- [x] "empty results" -> "statement executed successfully" for DDL statements in run_query tool
 - [ ] Workspace not refreshed
-- [ ] Improve tool progress display
 
 - [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
 - [ ] {'type': 'string_type', 'loc': ('entities', 0, 'stops'), 'msg': 'Input should be a valid string', 'input': 2},
@@ -283,6 +284,7 @@ June 11
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 
+- [ ] Guard against long messaeg and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
 - [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
