@@ -279,17 +279,18 @@ June 11
 - [x] Update schema browser - expand workspace tables, hide internal schemas
 - [x] Fix schema resolution during write_dataframe_async (fix "(default)" schema)
 - [x] Support int, numeric, boolean, date, datetime columns for extract_rows_from_documents tool
-- Improve run_subagent_for_each_row tool 
+- run_subagent_for_each_row tool 
   - [x] Validate key columns
   - [x] Ensure write-back correctness - surface error, ensure exactly one row got updated
-  - [ ] Multi-column output
+  - [x] Multi-column output
+  - [x] Validate placeholder vars in task_instruction
 - sql_conn.py
   - [x] ExecResult.return_rows for signaling DDL success
   - [x] ExecResult.affected_rows for signaling DML affected rows
 - [x] ref-aware snippet for browser snapshots
+- [x] Improve schema browser
 
-- [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
-
+- [ ] Bug: tool progress disappears on error
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
