@@ -120,11 +120,11 @@ def build_logo(gap: int = GAP) -> Text:
     right = gradient_block(wave, split, BLUE)  # remaining stretch of the sweep
 
     out = []
-    for l, r in zip(left, right):
+    for left_part, right_part in zip(left, right):
         line = Text()
-        line.append_text(l)
+        line.append_text(left_part)
         line.append(" " * gap)
-        line.append_text(r)
+        line.append_text(right_part)
         out.append(line)
     return Text("\n").join(out)
 
