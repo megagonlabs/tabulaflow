@@ -6,7 +6,6 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
-from datetime import date, datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -18,69 +17,14 @@ from pydantic_ai import RunContext, Tool
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
-from tabulaflow.core.types import SQLSchema, SQLTableSchema
+from tabulaflow.toolhub.column_types import resolve_column_types
 from tabulaflow.toolhub.utils import qualified_table
-from tabulaflow.toolhub.entity_extractor import ColumnType, EntityExtractor
+from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 
 logger = logging.getLogger(__name__)
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
-
-# Canonical ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to
-# each Python type the extraction model can emit. Remaining text-castable tokens (TIME,
-# UUID, ENUM, CHAR variants, …) fall through to ``str``; genuinely non-scalar tokens are
-# rejected up front (see ``_UNSUPPORTED_DTYPES``).
-_INT_DTYPES = {"TINYINT", "SMALLINT", "INTEGER", "INT", "INT2", "INT4", "INT8", "BIGINT"}
-_FLOAT_DTYPES = {"FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "BIGNUMERIC", "DECIMAL"}
-_BOOL_DTYPES = {"BOOLEAN", "BOOL"}
-
-# Non-scalar column types this tool refuses to target. Extraction yields flat scalar rows,
-# so semi-structured (JSON/variant/array/struct/map) and binary columns are a category
-# error — stringifying into them is fragile and aborts the batch append on strict
-# backends. Rejected with an actionable error instead of a silent str fallback.
-_UNSUPPORTED_DTYPES = {
-    "JSON", "JSONB", "VARIANT", "OBJECT", "ARRAY", "STRUCT", "MAP", "SUPER", "SQL_VARIANT",
-    "BINARY", "VARBINARY", "BYTES", "BLOB",
-}  # fmt: skip
-
-
-def _python_type_for_dtype(dtype: str) -> ColumnType:
-    """Map a canonical SQL dtype token to the Python type the LLM should emit.
-
-    Numeric, boolean, and date/timestamp columns get a native type; ``TIMESTAMP*``
-    variants all flatten to a naive ``datetime`` (timezone precision is out of scope).
-    Unknown or non-scalar tokens map to ``str``, so the default arm covers every type the
-    model can't represent natively (TIME, JSON/ARRAY/STRUCT, UUID, BINARY, …) without
-    regressing them.
-    """
-    token = dtype.upper()
-    if token in _BOOL_DTYPES:
-        return bool
-    if token in _INT_DTYPES:
-        return int
-    if token in _FLOAT_DTYPES:
-        return float
-    if token == "DATE":
-        return date
-    if token == "DATETIME" or token.startswith("TIMESTAMP"):
-        return datetime
-    return str
-
-
-def _find_table(schema: SQLSchema, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
-    """Locate a table in ``schema`` by name, tolerating schema-label mismatches.
-
-    A caller-supplied ``schema_name`` constrains the match; ``None`` matches on table
-    name alone (the common unqualified case, where the in-memory schema may record the
-    table under a resolved default label like DuckDB's ``main``). Returns ``None`` when
-    no table or more than one matches, so type resolution degrades to all-string rather
-    than guessing.
-    """
-    matches = [
-        t for t in schema.tables if t.name == table_name and (schema_name is None or t.schema_name == schema_name)
-    ]
-    return matches[0] if len(matches) == 1 else None
 
 
 class ExtractRowsFromDocumentsTool:
@@ -267,18 +211,15 @@ class ExtractRowsFromDocumentsTool:
         # (int/float/bool/date) instead of a string the database must coerce on INSERT —
         # an unparseable string would otherwise abort the whole batch append. Best-effort
         # off the connector's introspected schema; unresolved columns default to str.
-        target_table = _find_table(self.db_connector.schema, schema_name, table_name)
-        column_types: dict[str, ColumnType] = {}
-        if target_table is not None:
-            output_cols = [c for c in target_table.columns if c.name in output_columns]
-            unsupported = [f"{c.name} ({c.dtype})" for c in output_cols if c.dtype in _UNSUPPORTED_DTYPES]
-            if unsupported:
-                return (
-                    f"(error: cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
-                    "target scalar, text, or date columns — for list/nested values, use a text column "
-                    "holding a JSON string)"
-                )
-            column_types = {c.name: _python_type_for_dtype(c.dtype) for c in output_cols}
+        column_types, unsupported = resolve_column_types(
+            self.db_connector.schema, schema_name, table_name, output_columns
+        )
+        if unsupported:
+            return (
+                f"(error: cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
+                "target scalar, text, or date columns — for list/nested values, use a text column "
+                "holding a JSON string)"
+            )
 
         # Per-call trajectory directory (one per __call__, shared across documents);
         # EntityExtractor creates it lazily on first write.

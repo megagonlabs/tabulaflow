@@ -8,7 +8,7 @@ from types import SimpleNamespace
 from typing import AsyncGenerator
 
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
@@ -27,6 +27,44 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
         enable_query_caching=False,
     )
     yield connector
+
+
+@pytest.fixture
+async def sqlite_conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
+    # aiosqlite is an async engine — exercises the async execute path.
+    connector = await SQLConnector.from_url_async(
+        global_id="test-affected-sqlite",
+        url=f"sqlite+aiosqlite:///{tmp_path / 't.sqlite'}",
+        db_name="w",
+        read_only=False,
+        enable_schema_caching=False,
+        enable_query_caching=False,
+    )
+    yield connector
+
+
+class TestAsyncEngineDML:
+    @pytest.mark.asyncio
+    async def test_sqlalchemy_dml_executable_on_async_engine(self, sqlite_conn: SQLConnector) -> None:
+        # A SQLAlchemy update() Executable on an async engine must not be streamed
+        # (it returns no rows); regression for "This result object does not return rows".
+        import sqlalchemy
+
+        from tabulaflow.toolhub.utils import sa_table
+
+        await sqlite_conn.run_query_async("CREATE TABLE t(id INTEGER, v INTEGER)")
+        await sqlite_conn.run_query_async("INSERT INTO t VALUES (1,0),(2,0),(3,0)")
+
+        sa_t = sa_table(None, "t", "id", "v")
+        stmt = sqlalchemy.update(sa_t).where(sa_t.c["id"] <= 2).values({sa_t.c["v"]: 9})
+        r = await sqlite_conn.run_query_async(stmt)
+        assert r.succeeded and r.df is None and r.affected_rows == 2
+
+        # raw-string DML and SELECT still work on the async engine.
+        r0 = await sqlite_conn.run_query_async("UPDATE t SET v=1 WHERE id=999")
+        assert r0.succeeded and r0.df is None and r0.affected_rows == 0
+        rs = await sqlite_conn.run_query_async("SELECT * FROM t")
+        assert rs.df is not None and len(rs.df) == 3
 
 
 class TestConnectorAffectedRows:
@@ -104,9 +142,13 @@ def _ctx() -> SimpleNamespace:
     return SimpleNamespace(tool_call_id="c")
 
 
-def _const(text: str):
+def _emit_const(value: object):
+    """Stub subagent: call ``submit_answer`` with every output field set to ``value``."""
+
     def fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        return ModelResponse(parts=[TextPart(content=text)])
+        emit = next(t for t in info.output_tools if t.name == "submit_answer")
+        fields = list((emit.parameters_json_schema.get("properties") or {}).keys())
+        return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args={f: value for f in fields})])
 
     return fn
 
@@ -123,7 +165,7 @@ class TestSubagentZeroMatchGuard:
             "INSERT INTO t VALUES (TIMESTAMP_NS '2024-01-01 00:00:00.123456789', NULL),"
             "(TIMESTAMP_NS '2024-06-01 12:00:00.987654321', NULL)"
         )
-        tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(_const("X")), store_metadata=True)
+        tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(_emit_const("X")), store_metadata=True)
         summary = await tool.__call__(
             _ctx(),
             None,

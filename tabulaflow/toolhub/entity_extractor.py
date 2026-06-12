@@ -15,24 +15,17 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
-from datetime import date, datetime
 from pathlib import Path
-from typing import Any, TypeAlias
+from typing import Any
 
 from pydantic import create_model
 from pydantic_ai.settings import ModelSettings
 from tabulaflow.core.llm import make_agent
 from tabulaflow.core.types import Trajectory
+from tabulaflow.toolhub.column_types import ALLOWED_COLUMN_TYPES, ColumnType
 from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
 
 logger = logging.getLogger(__name__)
-
-# The Python types the extraction model can emit for a column. Restricted to what the LLM
-# produces and pydantic can put in a structured-output schema: JSON scalars plus date /
-# datetime (serialized as ISO strings via ``format: date`` / ``date-time``). Richer
-# pydantic-supported types (Decimal, time, UUID, ...) are intentionally out of scope.
-ColumnType: TypeAlias = type[str] | type[int] | type[float] | type[bool] | type[date] | type[datetime]
-_ALLOWED_COLUMN_TYPES: tuple[ColumnType, ...] = (str, int, float, bool, date, datetime)
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -132,7 +125,7 @@ class EntityExtractor:
             raise ValueError("max_concurrency must be greater than 0")
         if chunk_target <= 0 or chunk_max <= 0:
             raise ValueError("chunk_target and chunk_max must be greater than 0")
-        bad_types = {col: t for col, t in (column_types or {}).items() if t not in _ALLOWED_COLUMN_TYPES}
+        bad_types = {col: t for col, t in (column_types or {}).items() if t not in ALLOWED_COLUMN_TYPES}
         if bad_types:
             raise ValueError(f"column_types values must be one of str/int/float/bool/date/datetime; got {bad_types}")
 

@@ -12,7 +12,7 @@ from typing import Any, ClassVar
 
 import jinja2
 import sqlalchemy
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, create_model
 from pydantic_ai import RunContext, Tool, ToolOutput
 from pydantic_ai.capabilities.abstract import AbstractCapability
 from pydantic_ai.settings import ModelSettings
@@ -22,6 +22,7 @@ from tabulaflow.core.db_connector.db_registry import DBRegistry
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.core.types import SQLDialect, Trajectory
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
+from tabulaflow.toolhub.column_types import resolve_column_types
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.utils import qualified_table, sa_table
 from tabulaflow.toolhub.message_store import (
@@ -69,6 +70,12 @@ _ABORT_TOOL_DESCRIPTION = (
     "cannot be completed (e.g., required information is missing, the "
     "instruction is contradictory, or no valid output can be produced). "
     "Calling this tool ends the run."
+)
+
+_SUBMIT_ANSWER_DESCRIPTION = (
+    "Submit your answer for this task: provide a value for each field, using null "
+    "where the task instructions call for it (or where a value does not apply). "
+    "Calling this tool ends the task successfully."
 )
 
 
@@ -211,8 +218,12 @@ class RunSubagentForEachRowTool:
         ``task_instruction`` rendered with that row's ``task_query`` columns — which
         may include joined or computed columns, not just the table's own.
 
-        By default the subagent has no tools: it reads its prompt, returns one text
-        value, and this tool writes that value to ``output_columns[0]``. Set
+        By default the subagent has no tools: it reads its prompt and emits one value
+        per column in ``output_columns`` (via a structured ``submit_answer`` output), and
+        this tool writes them back to that row in a single UPDATE. Each value is typed
+        to its target column (numeric/boolean/date columns get native values, text
+        columns get text). The subagent can emit NULL for any field — state in
+        ``task_instruction`` when it should (e.g. value unknown or not applicable). Set
         ``enable_browser_tools=True`` to grant web-browsing tools (plus the
         ``extract_rows_from_documents`` and ``add_canonical_name`` tools, so a row
         that browses can mine pages into structured rows and unify entity variants),
@@ -226,7 +237,7 @@ class RunSubagentForEachRowTool:
 
         Every subagent has a built-in ``abort_task(message: str)`` tool for
         rows it can't complete; aborted rows are recorded in
-        ``_subagent_exception`` and ``output_columns[0]`` is left unwritten.
+        ``_subagent_exception`` and ``output_columns`` are left unwritten.
         Do not instruct it to emit sentinel strings like ``"NOT_COMPLETED"`` —
         describe the successful output only and let it abort otherwise.
 
@@ -284,9 +295,13 @@ class RunSubagentForEachRowTool:
                 ``table_name`` (not computed/joined-only), must appear in the
                 ``task_query`` result, and together must form a unique, non-null
                 key — one task_query row per target row.
-            output_columns: Columns to update on ``table_name``. Must be exactly
-                one column; it must already exist on the target table (does not
-                need to appear in the ``task_query`` projection).
+            output_columns: One or more columns to update on ``table_name``; the
+                subagent emits a value for each in a single ``submit_answer`` output.
+                All must already exist on the target table (they need not appear in
+                the ``task_query`` projection) and must be scalar, text, or date
+                columns. For list/nested values, target a text column holding a JSON
+                string — DuckDB ``JSON`` columns work too. Array, struct, map, and
+                binary columns are not valid targets.
             enable_browser_tools: If True, the per-row subagent gets web-browsing
                 tools (navigate, click, type, etc.). Each row browses in its own
                 isolated tabs (cookies/logins shared). A process-wide tab cap
@@ -307,20 +322,19 @@ class RunSubagentForEachRowTool:
                 ``db_alias`` per call). Enable it for tasks where row-local
                 context isn't enough:
 
-                - **Computing the output via SQL.** The subagent builds the
-                  value with ``run_query`` and writes ``output_columns[0]``
-                  itself via an ``UPDATE``. Useful when the value is large.
-                  When the subagent needs to use ``UPDATE`` to write back to
-                  the row, the ``task_instruction`` must mention the
-                  ``db_alias`` and ``table_name``, and include the key
-                  columns for the WHERE clause.
+                - **Computing a large output via SQL.** When the value is too
+                  large to round-trip through ``submit_answer``, have the subagent
+                  ``UPDATE`` the target column itself with ``run_query``, and set
+                  ``output_columns`` to a separate small acknowledgment column for
+                  ``submit_answer`` to fill. The ``task_instruction`` must give the
+                  subagent the ``db_alias``, ``table_name``, and key columns for
+                  its ``WHERE``.
                 - **Reads or writes beyond the row.** The subagent reads
-                  auxiliary tables for context, or writes outside the row's
-                  output column (other tables, INSERTs, DDL).
+                  auxiliary tables for context, or writes to other tables
+                  (INSERTs, DDL).
         """
-        if not output_columns or len(output_columns) != 1:
-            return "(error: output_columns must be exactly one column)"
-        output_col = output_columns[0]
+        if not output_columns:
+            return "(error: output_columns must be a non-empty list)"
 
         if not key_columns:
             return "(error: key_columns must be a non-empty list naming a unique key of the target table)"
@@ -353,8 +367,31 @@ class RunSubagentForEachRowTool:
             return f"(error: failed to inspect target table {qualified_target}: {detail})"
         table_columns = [str(c) for c in table_columns_result.df.columns]
 
-        if output_col not in table_columns:
-            return f"(error: output_columns not found in table {qualified_target}: [{output_col!r}])"
+        missing_output = [c for c in output_columns if c not in table_columns]
+        if missing_output:
+            return f"(error: output_columns not found in table {qualified_target}: {missing_output})"
+
+        # Resolve each output column's type so the subagent emits a native value
+        # (int/float/bool/date) instead of a string the database must coerce on write —
+        # an unparseable string would otherwise fail the row's UPDATE. Best-effort off
+        # the connector's introspected schema; unresolved columns default to str. The
+        # subagent's terminal output is one ``submit_answer`` call filling these fields.
+        column_types, unsupported = resolve_column_types(
+            self.db_connector.schema, schema_name, table_name, output_columns
+        )
+        if unsupported:
+            return (
+                f"(error: cannot write into non-scalar columns {unsupported} in {qualified_target}; "
+                "target scalar, text, or date columns — for list/nested values, use a text column "
+                "holding a JSON string)"
+            )
+        try:
+            answer_model = create_model(
+                "Answer",
+                **{c: (column_types.get(c, str) | None, None) for c in output_columns},  # type: ignore[call-overload]
+            )
+        except Exception as e:
+            return f"(error: cannot build an output schema from output_columns {output_columns}: {e})"
 
         # Validate that each key_column can address exactly one target row on
         # write-back (UPDATE ... WHERE key = value). A key that is not a real
@@ -463,7 +500,7 @@ class RunSubagentForEachRowTool:
         tool_call_id = ctx.tool_call_id
 
         # Build a SQLAlchemy table with all columns referenced in SET clauses.
-        sa_col_names: set[str] = set(key_columns) | {output_col}
+        sa_col_names: set[str] = set(key_columns) | set(output_columns)
         if self.store_metadata:
             sa_col_names.update(_INTERNAL_COLUMNS)
         sa_target = sa_table(schema_name, table_name, *sa_col_names)
@@ -493,18 +530,20 @@ class RunSubagentForEachRowTool:
             if res.error is not None:
                 logger.warning("Failed to write subagent metadata for %s: %s", key_payload, res.error.message)
 
-        async def _write_row_output(key_payload: dict[str, object], value: object) -> str | None:
-            """Write the subagent's text output to the target row.
+        async def _write_row_output(key_payload: dict[str, object], output: Any) -> str | None:
+            """Write the subagent's structured output across ``output_columns``.
 
-            Returns ``None`` on success or the database error message if the
-            write failed (e.g. the output column's type can't hold the text),
-            so the caller can record the row as failed instead of silently
-            reporting success.
+            ``output`` is a dynamically-built ``submit_answer`` model (one field per
+            output column). Sets every output column in one UPDATE (a field left
+            ``None`` is written as NULL). Returns ``None`` on success or the
+            database error message if the write failed (e.g. a value's type can't
+            be stored), so the caller can record the row as failed instead of
+            silently reporting success.
             """
             stmt = (
                 sqlalchemy.update(sa_target)
                 .where(_key_where_clause(key_columns, key_payload))
-                .values({sa_target.c[output_col]: value})
+                .values({sa_target.c[c]: getattr(output, c) for c in output_columns})
             )
             res = await self.db_connector.run_query_async(stmt)
             if res.error is not None:
@@ -578,7 +617,11 @@ class RunSubagentForEachRowTool:
                 tools=tools,
                 capabilities=capabilities or None,
                 output_type=[
-                    str,
+                    ToolOutput(
+                        answer_model,
+                        name="submit_answer",
+                        description=_SUBMIT_ANSWER_DESCRIPTION,
+                    ),
                     ToolOutput(
                         AbortTask,
                         name="abort_task",

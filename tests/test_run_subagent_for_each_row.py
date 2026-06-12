@@ -1,8 +1,9 @@
 """Tests for RunSubagentForEachRowTool — key validation and write-back error surfacing.
 
-The per-row subagent LLM is stubbed with a ``FunctionModel`` returning a fixed
-text value, so the tests assert on validation and write-back behavior rather
-than any model behavior.
+The per-row subagent LLM is stubbed with a ``FunctionModel`` that calls the
+``submit_answer`` structured-output tool with a fixed value for every output column,
+so the tests assert on validation and write-back behavior rather than any model
+behavior.
 """
 
 from __future__ import annotations
@@ -12,16 +13,20 @@ from types import SimpleNamespace
 from typing import AsyncGenerator
 
 import pytest
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic_ai.messages import ModelMessage, ModelResponse, ToolCallPart
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
 from tabulaflow.toolhub.run_subagent_for_each_row import RunSubagentForEachRowTool
 
 
-def _const(text: str):
+def _emit_const(value: object):
+    """Stub subagent: call ``submit_answer`` with every output field set to ``value``."""
+
     def fn(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
-        return ModelResponse(parts=[TextPart(content=text)])
+        emit = next(t for t in info.output_tools if t.name == "submit_answer")
+        fields = list((emit.parameters_json_schema.get("properties") or {}).keys())
+        return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args={f: value for f in fields})])
 
     return fn
 
@@ -50,8 +55,10 @@ async def conn(tmp_path: Path) -> AsyncGenerator[SQLConnector, None]:
     yield connector
 
 
-def _tool(conn: SQLConnector, text: str = "OUT", *, store_metadata: bool = False) -> RunSubagentForEachRowTool:
-    return RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(_const(text)), store_metadata=store_metadata)
+def _tool(conn: SQLConnector, value: object = "OUT", *, store_metadata: bool = False) -> RunSubagentForEachRowTool:
+    return RunSubagentForEachRowTool(
+        conn, subagent_llm=FunctionModel(_emit_const(value)), store_metadata=store_metadata
+    )
 
 
 class TestHappyPath:
@@ -71,6 +78,52 @@ class TestHappyPath:
         )
         assert "succeeded for 3 rows, failed for 0 rows" in summary
         assert [r["label"] for r in await _rows(conn, "SELECT label FROM t")] == ["DONE", "DONE", "DONE"]
+
+    @pytest.mark.asyncio
+    async def test_writes_multiple_typed_columns_across_types(self, conn: SQLConnector) -> None:
+        # Cover the full scalar type matrix in one multi-column UPDATE: text, the three
+        # integer widths (SMALLINT/INTEGER/BIGINT — note BIGINT/SMALLINT introspect to
+        # the canonical BIG_INTEGER/SMALL_INTEGER tokens), float/double/decimal, bool,
+        # date, timestamp, and an omitted column landing as NULL.
+        await conn.run_query_async(
+            "CREATE TABLE t(id INTEGER, s VARCHAR, sm SMALLINT, big BIGINT, d DOUBLE, "
+            "dec DECIMAL(10,2), b BOOLEAN, dt DATE, ts TIMESTAMP, nul VARCHAR)"
+        )
+        await conn.run_query_async("INSERT INTO t(id) VALUES (1),(2)")
+        # Refresh so output-column types resolve and submit_answer is typed accordingly.
+        await conn.refresh_schema_async()
+
+        emit = {
+            "s": "hi", "sm": 7, "big": 9_999_999_999, "d": 3.5, "dec": 12.34,
+            "b": True, "dt": "2024-03-15", "ts": "2024-03-15T10:30:00", "nul": None,
+        }  # fmt: skip
+
+        def stub(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+            return ModelResponse(parts=[ToolCallPart(tool_name="submit_answer", args=emit)])
+
+        tool = RunSubagentForEachRowTool(conn, subagent_llm=FunctionModel(stub))
+        summary = await tool.__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT * FROM t",
+            task_instruction="x",
+            key_columns=["id"],
+            output_columns=["s", "sm", "big", "d", "dec", "b", "dt", "ts", "nul"],
+        )
+        assert "succeeded for 2 rows, failed for 0 rows" in summary
+
+        import datetime
+        from decimal import Decimal
+
+        row = (await _rows(conn, "SELECT * FROM t ORDER BY id"))[0]
+        assert row["s"] == "hi"
+        assert row["sm"] == 7 and row["big"] == 9_999_999_999
+        assert row["d"] == 3.5 and row["dec"] == Decimal("12.34")
+        assert row["b"] is True
+        assert row["dt"] == datetime.date(2024, 3, 15)
+        assert row["ts"] == datetime.datetime(2024, 3, 15, 10, 30, 0)
+        assert row["nul"] is None
 
 
 class TestWriteBackErrorSurfaced:

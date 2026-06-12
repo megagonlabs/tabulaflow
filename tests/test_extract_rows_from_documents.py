@@ -15,27 +15,28 @@ import pytest
 
 import tabulaflow.toolhub.extract_rows_from_documents as mod
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.toolhub.column_types import python_type_for_dtype
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
-from tabulaflow.toolhub.extract_rows_from_documents import (
-    ExtractRowsFromDocumentsTool,
-    _python_type_for_dtype,
-)
+from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 
 
 def test_python_type_for_dtype() -> None:
     """Numeric/boolean/temporal canonical tokens map to native types; everything else to ``str``."""
-    for tok in ("TINYINT", "SMALLINT", "INTEGER", "INT", "BIGINT"):
-        assert _python_type_for_dtype(tok) is int
-    for tok in ("FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "DECIMAL"):
-        assert _python_type_for_dtype(tok) is float
-    assert _python_type_for_dtype("BOOLEAN") is bool
-    assert _python_type_for_dtype("DATE") is date
+    # Canonical SQLAlchemy visit-names the schema actually records (DuckDB workspace),
+    # plus raw-SQL fallbacks. BIG_INTEGER/SMALL_INTEGER are what BIGINT/SMALLINT columns
+    # introspect to — they must not fall through to str.
+    for tok in ("TINY_INTEGER", "SMALL_INTEGER", "INTEGER", "BIG_INTEGER", "TINYINT", "SMALLINT", "INT", "BIGINT"):
+        assert python_type_for_dtype(tok) is int, tok
+    for tok in ("FLOAT", "DOUBLE", "NUMERIC", "DECIMAL", "REAL", "DOUBLE_PRECISION"):
+        assert python_type_for_dtype(tok) is float, tok
+    assert python_type_for_dtype("BOOLEAN") is bool
+    assert python_type_for_dtype("DATE") is date
     # All TIMESTAMP variants (and DATETIME) flatten to a naive datetime.
     for tok in ("DATETIME", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NTZ", "TIMESTAMP_LTZ"):
-        assert _python_type_for_dtype(tok) is datetime
+        assert python_type_for_dtype(tok) is datetime
     # Text, TIME, and semi-structured types all fall through to str.
     for tok in ("VARCHAR", "TEXT", "TIME", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
-        assert _python_type_for_dtype(tok) is str
+        assert python_type_for_dtype(tok) is str
 
 
 def test_entity_extractor_builds_typed_model() -> None:
