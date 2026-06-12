@@ -286,15 +286,15 @@ June 11
 - sql_conn.py
   - [x] ExecResult.return_rows for signaling DDL success
   - [x] ExecResult.affected_rows for signaling DML affected rows
+- [x] ref-aware snippet for browser snapshots
+
+- [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
 
 - [ ] Include multimodal data in sample_data
-- [ ] Smart truncation for web pages - keep lines with refs
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
-- [ ] Force task_instructions to align with selected columns in run_subagent_for_each_row tool
 - [ ] Offload truncated cell + read_message tool
-- [ ] Save extraction subagents trajectories
 - [ ] clickable url in browser table
 - [ ] Inlucde table schema for add_canonical_name tool
 - [ ] extraction tool display
