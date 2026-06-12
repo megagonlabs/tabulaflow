@@ -93,6 +93,7 @@ string (markdown or raw YAML).
 
 from __future__ import annotations
 
+import contextvars
 import re
 from dataclasses import dataclass, field
 from typing import Any, Callable
@@ -547,7 +548,7 @@ _INTERACTIVE_ATOM_ROLES: frozenset[str] = frozenset(
 
 
 def _render_interactive_atom(ctx: _Ctx) -> str:
-    body = ctx.name or _kids_md(ctx.children, ctx.depth, flow=True).strip()
+    body = ctx.name or _inline_name(ctx.children, ctx.depth)
     state = "".join(f" [{f}]" for f in ctx.state)
     extra = _swept_refs(ctx.children) if ctx.name else ""
     head = f'{ctx.role} "{body}"' if body else ctx.role
@@ -582,6 +583,29 @@ def _render_text(ctx: _Ctx) -> str:
     return ctx.value or ""
 
 
+# Leading block decoration a flattened accessible name must shed (heading ``## ``,
+# blockquote ``> ``, bullet ``- ``, fence/horizontal-rule line) so an interactive
+# atom that wraps block content stays a clean single-line ``[text] [ref=eN]``.
+_BLOCK_DECORATION_RE = re.compile(r"^\s*(?:#{1,6}\s+|>\s?|[-*+]\s+|```.*$|-{3,}\s*$)")
+
+
+def _inline_name(children: list[Any], depth: int) -> str:
+    """Flatten an interactive element's children into a one-line accessible name.
+
+    Block markup (heading/blockquote/fence/rule prefixes) and newlines are
+    stripped so an atom wrapping block content — the ubiquitous
+    ``<a href><h3>Title</h3><p>desc</p></a>`` card — renders as a single-line
+    ``[Title desc](url) [ref=eN]`` atom rather than splintering across lines and
+    breaking the per-line ref contract the snapshot relies on.
+    """
+    out: list[str] = []
+    for ln in _kids_md(children, depth, flow=True).splitlines():
+        ln = _BLOCK_DECORATION_RE.sub("", ln).strip()
+        if ln:
+            out.append(ln)
+    return " ".join(out)
+
+
 def _render_link(ctx: _Ctx) -> str:
     href = _find_url_child(ctx.children)
     # Drop aria-only ``<a>`` elements: no href and no ref means the link exists
@@ -590,7 +614,7 @@ def _render_link(ctx: _Ctx) -> str:
     if not href and not ctx.ref:
         return ""
     kids = [c for c in ctx.children if not _is_url_node(c)]
-    body = ctx.name or _kids_md(kids, ctx.depth, flow=True).strip()
+    body = ctx.name or _inline_name(kids, ctx.depth)
     # When we used ``name`` (and so skipped recursing into kids), sweep up any
     # interactive descendant refs so they aren't orphaned.
     extra = _swept_refs(kids) if ctx.name else ""
@@ -600,7 +624,7 @@ def _render_link(ctx: _Ctx) -> str:
 
 
 def _render_button(ctx: _Ctx) -> str:
-    body = ctx.name or _kids_md(ctx.children, ctx.depth, flow=True).strip()
+    body = ctx.name or _inline_name(ctx.children, ctx.depth)
     extra = _swept_refs(ctx.children) if ctx.name else ""
     if body:
         return f'button "{body}"{ctx.ref_tag}{extra}'
@@ -685,7 +709,7 @@ def _render_form_control(ctx: _Ctx) -> str:
     derived_value: str | None = None
     if ctx.value is None and ctx.children and not has_interactive_kids:
         # Children are accessible-name composition (icon + text), not options.
-        kids = _kids_md(ctx.children, depth=0, flow=True).strip()
+        kids = _inline_name(ctx.children, depth=0)
         if kids:
             derived_value = kids
 
@@ -824,7 +848,30 @@ def _join_inline(parts: list[str]) -> str:
     return "".join(out)
 
 
+# Hard cap on render recursion. Every descent passes through ``_fragments`` (a
+# transparent wrapper recurses it directly; a rendered node reaches it via its
+# handler → ``_kids_md``), so guarding here bounds the whole walk. Set well below
+# Python's recursion limit (~1000 frames; a level costs several) yet far above any
+# real page's nesting, so pathological div-soup degrades (deep subtree dropped)
+# instead of raising an uncaught ``RecursionError`` that fails the whole snapshot.
+# Context-local so concurrent snapshot renders don't share the counter.
+_MAX_RENDER_DEPTH = 120
+_render_depth: contextvars.ContextVar[int] = contextvars.ContextVar("_aria_render_depth", default=0)
+
+
 def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
+    """Depth-guarded entry to :func:`_fragments_impl` (see there for behavior)."""
+    rec = _render_depth.get()
+    if rec >= _MAX_RENDER_DEPTH:
+        return []  # pathological nesting: drop the deep subtree rather than crash
+    token = _render_depth.set(rec + 1)
+    try:
+        return _fragments_impl(nodes, depth, flow)
+    finally:
+        _render_depth.reset(token)
+
+
+def _fragments_impl(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
     """Phase 1: aria child-list → flat typed fragments.
 
     Transparent wrappers (``generic``/``group``/landmark-less divs, standalone
@@ -865,7 +912,7 @@ def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
             if role == "generic" and clickable and ref is not None:
                 targets = _count_click_targets(kids)
                 if targets == 0:  # innermost clickable → atom
-                    inner = _join_inline([value or "", _emit_flow(_fragments(kids, depth, True))]).strip()
+                    inner = _join_inline([value or "", _inline_name(kids, depth)]).strip()
                     out.append(_Frag(ATOM, f'clickable "{inner}" [ref={ref}]' if inner else f"clickable [ref={ref}]"))
                     continue
                 if targets >= 2:  # card: its own click is a distinct affordance
@@ -1239,7 +1286,7 @@ def render_aria_markdown(aria_yaml: str) -> str:
     """Render an aria-snapshot YAML string as markdown with refs inlined."""
     try:
         tree = yaml.load(aria_yaml, Loader=_YamlLoader)
-    except yaml.YAMLError:
+    except (yaml.YAMLError, RecursionError):  # RecursionError: pathologically deep YAML nesting
         return ""
     if not isinstance(tree, list):
         return ""
@@ -1247,7 +1294,10 @@ def render_aria_markdown(aria_yaml: str) -> str:
     # emit their own markdown, and page-wrapping generics inline normally.
     # Listitems/grouping switch to flow=False for their children so multi-child
     # generics fan out as nested bullets instead of producing a wall.
-    text = "".join(_render_md_node(n, depth=0, flow=True) for n in tree)
+    try:
+        text = "".join(_render_md_node(n, depth=0, flow=True) for n in tree)
+    except RecursionError:  # backstop below the _MAX_RENDER_DEPTH cap
+        return ""
     text = re.sub(r"[ \t]+\n", "\n", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip() + "\n"

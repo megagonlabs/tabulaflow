@@ -470,3 +470,46 @@ class TestRecordRunFanout:
         yaml = "- generic [ref=e1]:\n  - generic [ref=e2]:\n" + "\n".join("    " + ln for ln in inner.splitlines())
         out = md(yaml)
         assert len([ln for ln in out.splitlines() if "[ref=e" in ln]) == 3
+
+
+class TestInteractiveAtomStaysSingleLine:
+    """An interactive element wrapping block content (the ubiquitous
+    anchor-wrapped card) must still render as one single-line atom — the
+    per-line ``[ref=eN]`` contract the snapshot/grep rely on."""
+
+    def test_link_wrapping_heading_and_paragraph(self) -> None:
+        y = (
+            '- link "" [ref=e1]:\n'
+            "    - /url: /card\n"
+            '    - heading "Card Title" [level=3] [ref=e2]\n'
+            "    - paragraph [ref=e3]: A long description."
+        )
+        out = md(y)
+        assert "\n" not in out  # one line
+        assert out.startswith("[Card Title A long description.](/card) [ref=e1]")
+        assert "#" not in out  # heading markup stripped from the name
+
+    def test_button_wrapping_blockquote(self) -> None:
+        y = '- button "" [ref=e1]:\n    - blockquote [ref=e2]: quoted label'
+        out = md(y)
+        assert "\n" not in out
+        assert out == 'button "quoted label" [ref=e1]'
+
+
+class TestRenderDepthGuard:
+    """Pathologically deep nesting degrades gracefully instead of raising an
+    uncaught ``RecursionError`` that would fail the whole snapshot."""
+
+    @staticmethod
+    def _nested(depth: int) -> str:
+        y = "".join("  " * i + f"- generic [ref=e{i}]:\n" for i in range(depth))
+        return y + "  " * depth + '- link "x" [ref=e99999]:\n' + "  " * (depth + 1) + "- /url: /x"
+
+    def test_deep_nesting_does_not_crash(self) -> None:
+        for depth in (150, 400, 2000):
+            out = render_aria_markdown(self._nested(depth))  # must not raise
+            assert isinstance(out, str)
+
+    def test_shallow_nesting_still_renders(self) -> None:
+        out = md(self._nested(10))
+        assert "[ref=e99999]" in out
