@@ -399,6 +399,31 @@ def _count_click_targets(nodes: list[Any], limit: int = 2) -> int:
     return n
 
 
+# Min sibling record-generics to treat a run as a record list (see ``_fragments``).
+_RECORD_RUN_MIN = 3
+
+
+def _is_record_generic(node: Any) -> bool:
+    """True if ``node`` is a non-clickable ``generic``/``group`` wrapping ≥2
+    interactive descendants — a de-facto record (a search-result / paper row).
+
+    Used to detect a *run* of such siblings: when ≥2 sit together they are a
+    record list, and each must render as its own block so they don't collapse
+    onto one inline line (the ``generic``-equivalent of the clickable CARD rule).
+    """
+    header, body = _split_node(node)
+    if header is None or header.strip().startswith("/url"):
+        return False
+    parsed = _parse_header(header)
+    if parsed is None:
+        return False
+    role, _, _, _, clickable = parsed
+    if role not in ("generic", "group") or clickable:
+        return False
+    kids = body if isinstance(body, list) else []
+    return _count_click_targets(kids) >= 2
+
+
 def _collect_interactive_refs(children: list[Any]) -> list[str]:
     """Interactive descendant refs in document order — anchors orphans.
 
@@ -815,6 +840,15 @@ def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
     label context (``flow=True`` — deriving a button/heading accessible name)
     the ref is omitted so labels stay clean.
     """
+    # A run of ≥``_RECORD_RUN_MIN`` sibling record-generics is a record list
+    # (search results, a paper index): each must render as its own block, else
+    # they collapse onto one inline line. The threshold is >2 so a mere pair —
+    # usually the two halves of a single record (an action bar + a title block) —
+    # keeps flowing inline. (The top-level body renders at flow=True, so we can't
+    # gate on flow; a leaf record is itself flowed inline, so accessible-name
+    # derivation over such children stays single line.)
+    record_run = sum(_is_record_generic(c) for c in nodes) >= _RECORD_RUN_MIN
+
     out: list[_Frag] = []
     for c in nodes:
         h, b = _split_node(c)
@@ -838,6 +872,21 @@ def _fragments(nodes: list[Any], depth: int, flow: bool) -> list[_Frag]:
                     out.append(_Frag(CARD, ref=ref, name=name, fields=_fragments(kids, depth, flow)))
                     continue
                 # targets == 1: thin wrapper → elide (drop ref, splice children)
+            if record_run and role in ("generic", "group") and not clickable and _count_click_targets(kids) >= 2:
+                # A record in a record list, rendered as a standalone block so
+                # siblings don't merge onto one line. A *leaf* record (no nested
+                # records) flows inline as a single line; a *container* record
+                # (one holding its own record list) fans its children out.
+                sub = _fragments(kids, depth, flow=False)
+                if any(f.kind in (BLOCK, CARD) for f in sub):
+                    body_md = _emit_block_frags(sub, depth)
+                else:
+                    body_md = _emit_flow(_merge_runs(sub))
+                if value:
+                    body_md = _join_inline([value, body_md]) if "\n" not in body_md else value + "\n" + body_md
+                if body_md.strip():
+                    out.append(_Frag(BLOCK, body_md))
+                continue
             if value:
                 # A ref means "actionable". An informational ``generic`` (a
                 # labelled <div>/<span> — a flight time, an airline name) is not
@@ -902,8 +951,15 @@ def _frag_inline(f: _Frag) -> str:
 
 
 def _emit_flow(frags: list[_Frag]) -> str:
-    """Phase 2 (flow): concatenate fragments inline with spacing glue."""
-    return _join_inline([_frag_inline(f) for f in frags])
+    """Phase 2 (flow): concatenate fragments inline with spacing glue.
+
+    A ``BLOCK`` fragment never merges (a record-list row, a stray heading): it
+    stands on its own line even here, so a record list under an inline-flow
+    container doesn't collapse back onto one line.
+    """
+    parts = [_frag_inline(f) for f in frags]
+    parts = ["\n" + p.strip("\n") + "\n" if f.kind == BLOCK and p.strip() else p for f, p in zip(frags, parts)]
+    return _join_inline(parts)
 
 
 def _unit_bullets(u: _Frag, depth: int) -> list[str]:

@@ -429,3 +429,44 @@ class TestRoleCoverage:
         assert not unclassified, (
             f"ARIA roles with no explicit disposition (would silently drop): {sorted(unclassified)}"
         )
+
+
+class TestRecordRunFanout:
+    """A run of ≥3 sibling record-generics (bare divs each wrapping ≥2 links) is
+    a record list — each renders on its own line instead of collapsing into one
+    inline run. A mere pair stays inline (usually the two halves of one record,
+    not two records)."""
+
+    @staticmethod
+    def _record(a: str, b: str, base: int) -> str:
+        return (
+            f"  - generic [ref=e{base}]:\n"
+            f'      - link "{a}" [ref=e{base + 1}]:\n'
+            f"          - /url: /{a}\n"
+            f'      - link "{b}" [ref=e{base + 2}]:\n'
+            f"          - /url: /{b}"
+        )
+
+    def _wrap(self, n: int) -> str:
+        recs = [self._record(f"A{i}", f"B{i}", 10 + i * 10) for i in range(n)]
+        return "- generic [ref=e1]:\n" + "\n".join(recs)
+
+    def test_three_records_fan_out_to_separate_lines(self) -> None:
+        out = md(self._wrap(3))
+        ref_lines = [ln for ln in out.splitlines() if "[ref=e" in ln]
+        assert len(ref_lines) == 3
+        assert all(ln.count("[ref=e") == 2 for ln in ref_lines)  # each record's 2 links on its own line
+
+    def test_pair_stays_inline(self) -> None:
+        out = md(self._wrap(2))
+        ref_lines = [ln for ln in out.splitlines() if "[ref=e" in ln]
+        assert len(ref_lines) == 1
+        assert ref_lines[0].count("[ref=e") == 4
+
+    def test_container_record_fans_out_its_inner_list(self) -> None:
+        # A record list nested inside a container generic still fans out, even
+        # under a top-level (flow=True) wrapper — BLOCK frags never merge inline.
+        inner = "\n".join(self._record(f"A{i}", f"B{i}", 10 + i * 10) for i in range(3))
+        yaml = "- generic [ref=e1]:\n  - generic [ref=e2]:\n" + "\n".join("    " + ln for ln in inner.splitlines())
+        out = md(yaml)
+        assert len([ln for ln in out.splitlines() if "[ref=e" in ln]) == 3
