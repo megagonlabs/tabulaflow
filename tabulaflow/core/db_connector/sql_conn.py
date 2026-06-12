@@ -1407,6 +1407,16 @@ class ThrottledEngine:
                 if not result.returns_rows:
                     return _ExecOutcome(result=None, affected_rows=_rowcount_affected(result.rowcount, is_dml))
                 rows: list[Any] = list(result.fetchall())
+            elif is_write:
+                # A write Executable (UPDATE/INSERT/DELETE/DDL) is not row-returning
+                # in general — ``conn.stream`` would raise "does not return rows".
+                # Execute it and read the affected count from rowcount instead.
+                wresult = await conn.execute(statement, parameters)
+                if not wresult.returns_rows:
+                    return _ExecOutcome(result=None, affected_rows=_rowcount_affected(wresult.rowcount, is_dml))
+                rows = list(wresult.fetchall())  # e.g. UPDATE ... RETURNING
+                keys = list(wresult.keys())
+                return _build_row_outcome(rows, keys, return_df, is_write, is_dml)
             else:
                 rows = []
                 result = await conn.stream(statement, parameters)
