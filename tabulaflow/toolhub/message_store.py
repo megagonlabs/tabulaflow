@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import TYPE_CHECKING, Any, Literal
@@ -28,9 +29,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-MESSAGE_THRESHOLD_CHARS = 8192 * 4
 MESSAGE_HEAD_CHARS = 4096 * 4
 MESSAGE_TAIL_CHARS = 1024 * 4
+
+# Truncate only once a snippet would actually shrink the payload. A message
+# barely larger than head+tail, snippeted, keeps both windows whole and adds a
+# marker — ending up *larger* than the original. The slack is the overflow we
+# require before truncating is a net win (well above the marker's own size).
+_SNIPPET_SLACK_CHARS = 4096
+MESSAGE_THRESHOLD_CHARS = MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS + _SNIPPET_SLACK_CHARS
 
 _SCHEMA = "_internal"
 _TABLE = "messages"
@@ -57,6 +64,17 @@ def make_marked(message_id: str, content: str) -> str:
     return f"{id_marker(message_id)}\n{content}"
 
 
+def deref_call(message_id: str) -> str:
+    """Return the ``run_query`` call that fetches a stored message's full content.
+
+    Shared by every snippet builder so the dereference pointer (workspace alias,
+    schema-qualified table) is written in exactly one place.
+    """
+    return (
+        f'run_query(db_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
+    )
+
+
 def make_snippet(message_id: str, content: str) -> str:
     """Return the head+tail snippet shown to the LLM for an overflowed message.
 
@@ -67,10 +85,7 @@ def make_snippet(message_id: str, content: str) -> str:
     total = len(content)
     head = content[:MESSAGE_HEAD_CHARS]
     tail = content[-MESSAGE_TAIL_CHARS:] if total > MESSAGE_HEAD_CHARS + MESSAGE_TAIL_CHARS else ""
-    deref = (
-        f'run_query(db_alias="workspace", "SELECT content FROM {_SCHEMA}.{_TABLE} WHERE message_id=\'{message_id}\'")'
-    )
-    marker = f"... [truncated, {total} chars total — read full content with {deref}]"
+    marker = f"... [truncated, {total} chars total — read full content with {deref_call(message_id)}]"
     parts = [id_marker(message_id), head, marker]
     if tail:
         parts.append(tail)
@@ -231,12 +246,19 @@ class MessageStoreCapability(AbstractCapability[Any]):
     the allowlist (e.g. ``run_query``, which the agent uses to read back stored messages)
     pass through untouched — crucial to avoid re-truncation cycles when the agent fetches
     a stored message.
+
+    ``snippet_fn`` selects the overflow view; the default head+tail
+    (:func:`make_snippet`) is content-agnostic. Allowlists with structure worth
+    preserving override it — e.g. browser snapshots inject a ref-aware snippet that
+    keeps interactive ``[ref=eN]`` handles the head+tail window would drop. The full
+    body is always persisted regardless, so the deref path stays lossless.
     """
 
     store: ScopedMessageStore
     tool_allowlist: frozenset[str]
     threshold_chars: int = MESSAGE_THRESHOLD_CHARS
     truncate: bool = True
+    snippet_fn: Callable[[str, str], str] = make_snippet
 
     async def after_tool_execute(
         self,
@@ -260,7 +282,7 @@ class MessageStoreCapability(AbstractCapability[Any]):
         if not self.truncate or len(result) <= self.threshold_chars:
             return_value = make_marked(message_id, result)
         else:
-            return_value = make_snippet(message_id, result)
+            return_value = self.snippet_fn(message_id, result)
         return ToolReturn(
             return_value=return_value,
             metadata={"message_id": message_id, "char_len": len(result)},

@@ -52,6 +52,10 @@ from .aria_to_markdown import (
     extract_refs,
     render_aria_markdown,
 )
+from .message_store import (
+    deref_call,
+    id_marker,
+)
 from .pdf_extract import extract_pdf_text
 
 if TYPE_CHECKING:
@@ -189,6 +193,118 @@ async def take_snapshot(page: "Page") -> PageSnapshot:
         refs=extract_refs(aria_yaml),
         aria_yaml=aria_yaml,
     )
+
+
+# ---------------------------------------------------------------------------
+# Ref-aware overflow snippet
+#
+# A page snapshot that overflows the message-store threshold would, under the
+# default head+tail snippet, lose every ``[ref=eN]`` interactive handle that
+# fell in the dropped middle — leaving the agent unable to click/type targets it
+# can no longer see. This snippet keeps the identical head+tail skeleton and
+# splices the middle's ref lines (each with its one-line label) back in place,
+# so it strictly dominates head+tail and reduces to it exactly when the middle
+# holds no refs.
+# ---------------------------------------------------------------------------
+
+
+_INLINE_REF = re.compile(r"\[ref=e\d+\]")
+
+# Browser-local prose windows, deliberately smaller than the global message-store
+# head+tail. Because the splice preserves the page's interactive handles
+# independently, the head/tail no longer have to be wide enough to *catch* refs —
+# they only carry prose context and page identity, so they can shrink.
+_SNIPPET_HEAD_CHARS = 8192
+_SNIPPET_TAIL_CHARS = 2048
+
+# Char ceiling on the spliced middle refs (label lines included). Caps the
+# blow-up on sitemap/infinite-scroll pages where the middle alone holds
+# thousands of refs; earliest (document-order) refs win. This is the highest-value
+# budget — when trimming, cut the prose windows before this.
+_SNIPPET_REF_BUDGET_CHARS = 8192
+
+# Overflow point for browser snapshots — pass to the message-store capability
+# alongside ``snapshot_snippet``. Public because the wiring lives in the agents.
+# Derived so the snippet always shrinks the payload: a snapshot's max snippet is
+# head + tail + ref budget, so truncating below that point could only grow it.
+SNAPSHOT_SNIPPET_THRESHOLD_CHARS = _SNIPPET_HEAD_CHARS + _SNIPPET_TAIL_CHARS + _SNIPPET_REF_BUDGET_CHARS
+
+
+def snapshot_snippet(message_id: str, content: str) -> str:
+    """Ref-aware overflow snippet for browser snapshots (a ``snippet_fn``).
+
+    Takes a head/tail prose window (``_SNIPPET_HEAD_CHARS`` / ``_SNIPPET_TAIL_CHARS``,
+    smaller than the global make_snippet windows since the splice carries refs), then
+    splices the dropped middle's ``[ref=eN]`` lines — each prefixed by its immediately
+    preceding label line, when one exists — back into document order. Spliced refs are
+    capped at ``_SNIPPET_REF_BUDGET_CHARS`` (earliest first); the marker reports how
+    many were shown. With no refs in the middle the result is a plain head+tail snippet.
+
+    Args:
+        message_id: Stored-message id, used for the dereference pointer.
+        content: Full snapshot markdown (assumed to exceed the threshold).
+
+    Returns:
+        The model-visible snippet string.
+    """
+    total = len(content)
+    head = content[:_SNIPPET_HEAD_CHARS]
+    if total <= _SNIPPET_HEAD_CHARS + _SNIPPET_TAIL_CHARS:
+        # Below the head+tail span there is no middle to mine; defer to head+tail.
+        tail = content[-_SNIPPET_TAIL_CHARS:] if total > _SNIPPET_HEAD_CHARS else ""
+        parts = [id_marker(message_id), head, "", _snapshot_marker(total, message_id, 0, 0)]
+        if tail:
+            parts.extend(["", tail])
+        return "\n".join(parts)
+
+    tail = content[-_SNIPPET_TAIL_CHARS:]
+    middle = content[_SNIPPET_HEAD_CHARS : total - _SNIPPET_TAIL_CHARS]
+    lines = middle.split("\n")
+    is_ref = [bool(_INLINE_REF.search(ln)) for ln in lines]
+
+    # Select every ref line plus, for each, the nearest preceding non-blank line
+    # when that line is plain prose (its label) — never crossing into another ref.
+    kept: set[int] = set()
+    size = 0
+    shown = 0
+    total_refs = sum(is_ref)
+    for i, ref in enumerate(is_ref):
+        if not ref:
+            continue
+        j = i - 1
+        while j >= 0 and lines[j].strip() == "":
+            j -= 1
+        ctx = j if (j >= 0 and not is_ref[j]) else None
+        add = [k for k in ((ctx,) if ctx is not None else ()) if k not in kept]
+        add.append(i)
+        add_size = sum(len(lines[k]) + 1 for k in add)
+        if shown > 0 and size + add_size > _SNIPPET_REF_BUDGET_CHARS:
+            break
+        kept.update(add)
+        size += add_size
+        shown += 1
+
+    out: list[str] = []
+    prev: int | None = None
+    for i in sorted(kept):
+        if prev is not None and i > prev + 1:
+            out.append("...")
+        out.append(lines[i])
+        prev = i
+
+    parts = [id_marker(message_id), head, "", _snapshot_marker(total, message_id, shown, total_refs), ""]
+    if out:
+        parts.append("\n".join(out))
+    parts.append(tail)
+    return "\n".join(parts)
+
+
+def _snapshot_marker(total: int, message_id: str, shown: int, total_refs: int) -> str:
+    """Truncation marker; notes spliced-ref coverage when the middle held refs."""
+    ref_note = ""
+    if total_refs:
+        ref_note = f"; {shown} of {total_refs} interactive refs from the omitted region shown below"
+    return f"... [truncated, {total} chars total{ref_note} — read full content with {deref_call(message_id)}] ..."
 
 
 # ---------------------------------------------------------------------------

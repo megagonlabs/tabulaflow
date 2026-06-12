@@ -21,7 +21,11 @@ from tabulaflow.toolhub.message_store import (
     ScopedMessageStore,
     make_snippet,
 )
-from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES
+from tabulaflow.toolhub.web_browser import (
+    BROWSER_TOOL_NAMES,
+    SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
+    snapshot_snippet,
+)
 from tabulaflow.core.llm import make_agent
 from tabulaflow.chat.result import ChatResult, ChatResultRecord
 from tabulaflow.chat.events import (
@@ -427,6 +431,8 @@ class ChatAgent:
                 MessageStoreCapability(
                     store=self._main_scope,
                     tool_allowlist=BROWSER_TOOL_NAMES,
+                    snippet_fn=snapshot_snippet,
+                    threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
                 ),
             ],
             instructions=self._system_prompt,

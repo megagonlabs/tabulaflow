@@ -31,7 +31,12 @@ from tabulaflow.toolhub.message_store import (
     make_snippet,
 )
 from tabulaflow.toolhub.registry_run_query import RegistryRunQueryTool
-from tabulaflow.toolhub.web_browser import BROWSER_TOOL_NAMES, WebBrowserTool
+from tabulaflow.toolhub.web_browser import (
+    BROWSER_TOOL_NAMES,
+    SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
+    WebBrowserTool,
+    snapshot_snippet,
+)
 from tabulaflow.core.llm import make_agent
 
 
@@ -502,7 +507,15 @@ class RunSubagentForEachRowTool:
                 .values({sa_target.c[output_col]: value})
             )
             res = await self.db_connector.run_query_async(stmt)
-            return res.error.message if res.error is not None else None
+            if res.error is not None:
+                return res.error.message
+            # affected_rows != 1 means the key located the wrong number of rows:
+            # 0 = the value didn't round-trip to a match (e.g. a fragile key type),
+            # >1 = a non-unique key (should be caught up front, but verify). When
+            # the driver doesn't report a count (None), trust the prior validation.
+            if res.affected_rows is not None and res.affected_rows != 1:
+                return f"write matched {res.affected_rows} rows (expected 1); key may not address a single row"
+            return None
 
         traj_dir: Path | None = None
         if self.trajectory_log_dir is not None:
@@ -555,6 +568,8 @@ class RunSubagentForEachRowTool:
                         store=subagent_scope,
                         tool_allowlist=BROWSER_TOOL_NAMES,
                         truncate=truncate_enabled,
+                        snippet_fn=snapshot_snippet,
+                        threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
                     )
                 )
 
