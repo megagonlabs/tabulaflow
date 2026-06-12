@@ -220,3 +220,39 @@ class TestKeyValidation:
             output_columns=["label"],
         )
         assert summary.startswith("(error:") and "tag" in summary
+
+
+class TestTemplateValidation:
+    @pytest.mark.asyncio
+    async def test_unknown_placeholder_rejected_up_front(self, conn: SQLConnector) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, txt VARCHAR, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1,'a',NULL)")
+        # A direct typo and the otherwise-silent ``default(...)`` form are both caught
+        # before any fan-out; nothing is written.
+        for instr in ("do {{ txtt }}", "do {{ foo | default('') }}"):
+            summary = await _tool(conn).__call__(
+                _ctx(),
+                None,
+                "t",
+                task_query="SELECT id, txt FROM t",
+                task_instruction=instr,
+                key_columns=["id"],
+                output_columns=["label"],
+            )
+            assert summary.startswith("(error:") and "not in the task_query result" in summary
+        assert all(r["label"] is None for r in await _rows(conn, "SELECT label FROM t"))
+
+    @pytest.mark.asyncio
+    async def test_valid_placeholder_accepted(self, conn: SQLConnector) -> None:
+        await conn.run_query_async("CREATE TABLE t(id INTEGER, txt VARCHAR, label VARCHAR)")
+        await conn.run_query_async("INSERT INTO t VALUES (1,'a',NULL)")
+        summary = await _tool(conn, "DONE").__call__(
+            _ctx(),
+            None,
+            "t",
+            task_query="SELECT id, txt FROM t",
+            task_instruction="classify {{ txt }}",
+            key_columns=["id"],
+            output_columns=["label"],
+        )
+        assert "succeeded for 1 rows" in summary

@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any, ClassVar
 
 import jinja2
+import jinja2.meta
 import sqlalchemy
 from pydantic import BaseModel, Field, create_model
 from pydantic_ai import RunContext, Tool, ToolOutput
@@ -403,11 +404,22 @@ class RunSubagentForEachRowTool:
                 "key, or add a row-id column before fan-out.)"
             )
 
-        # Compile the task instruction as a Jinja2 template.
+        # Compile the task instruction as a Jinja2 template, and require every
+        # placeholder it references to be a task_query column. Catching the mismatch
+        # here (vs. StrictUndefined at render time) fails fast before spawning the
+        # fan-out and also covers the silent ``{{ x | default(...) }}`` / ``is defined``
+        # cases that would otherwise render empty.
         try:
-            task_template = _JINJA_ENV.from_string(task_instruction)
+            parsed = _JINJA_ENV.parse(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
+        unknown = sorted(jinja2.meta.find_undeclared_variables(parsed) - set(all_columns))
+        if unknown:
+            return (
+                f"(error: task_instruction references placeholders not in the task_query result: {unknown}; "
+                f"available columns: {all_columns})"
+            )
+        task_template = _JINJA_ENV.from_string(task_instruction)
 
         # Ensure _subagent_* columns exist on the target table.
         dialect = self.db_connector.language

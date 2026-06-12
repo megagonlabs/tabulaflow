@@ -177,16 +177,25 @@ class ExtractRowsFromDocumentsTool:
             return f"(error: the 'content' column must hold document text, but has dtype {df[content_col].dtype})"
 
         # Compile the template. Reject {{ content }} upfront (it is the source the
-        # entities are extracted from, not a template variable); other undefined
-        # references surface at render time via StrictUndefined.
+        # entities are extracted from, not a template variable), and require every
+        # other placeholder to be a task_query column — catching the mismatch here
+        # (vs. StrictUndefined at render time) fails fast and covers the silent
+        # ``{{ x | default(...) }}`` / ``is defined`` cases that render empty.
         try:
             parsed = _JINJA_ENV.parse(task_instruction)
         except jinja2.TemplateSyntaxError as e:
             return f"(error: invalid Jinja2 syntax in task_instruction: {e})"
-        if content_col in jinja2.meta.find_undeclared_variables(parsed):
+        referenced = jinja2.meta.find_undeclared_variables(parsed)
+        if content_col in referenced:
             return (
                 f"(error: task_instruction may not reference {content_col!r}; "
                 f"it is the document text entities are extracted from, not interpolated into the instruction)"
+            )
+        unknown = sorted(referenced - set(var_cols))
+        if unknown:
+            return (
+                f"(error: task_instruction references placeholders not in the task_query result: {unknown}; "
+                f"available columns (excluding 'content'): {var_cols})"
             )
         task_template = _JINJA_ENV.from_string(task_instruction)
 
