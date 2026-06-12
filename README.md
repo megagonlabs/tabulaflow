@@ -279,14 +279,15 @@ June 11
 - [x] Update schema browser - expand workspace tables, hide internal schemas
 - [x] Fix schema resolution during write_dataframe_async (fix "(default)" schema)
 - [x] Support int, numeric, boolean, date, datetime columns for extract_rows_from_documents tool
-- [ ] Improve write mechanism in run_subagent tool via _subagent_rowid
-- [ ] Multi-column output for subagents
-
-- [ ] Debug /Users/yanlinf/.tabulaflow/sessions/20260610T070215Z-71834-5e0f27/trajectories/trajectory.md
+- Improve run_subagent_for_each_row tool 
+  - [x] Validate key columns
+  - [x] Ensure write-back correctness - surface error, ensure exactly one row got updated
+  - [ ] Multi-column output
+- sql_conn.py
+  - [x] ExecResult.return_rows for signaling DDL success
+  - [x] ExecResult.affected_rows for signaling DML affected rows
 
 - [ ] Include multimodal data in sample_data
-- [ ] Run subagent column type
-
 - [ ] Smart truncation for web pages - keep lines with refs
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
