@@ -263,9 +263,7 @@ class AddCanonicalNameTool:
         need to be unified (e.g. ``"Microsoft"``, ``"MSFT"``, ``"Microsoft Corp"`` →
         ``"Microsoft Corporation"``). For per-value normalization with no cross-row
         evidence, or for matching values against a separate reference table, use
-        ``run_subagent_for_each_row`` instead — pass ``task_query="SELECT DISTINCT col
-        FROM tbl"`` and ``key_columns=[col]`` to keep the one-LLM-call-per-distinct-value
-        property.
+        ``run_subagent_for_each_row`` instead.
 
         Safe to call multiple times in parallel in one turn.
 
