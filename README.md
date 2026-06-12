@@ -287,6 +287,7 @@ June 11
 - [ ] Include multimodal data in sample_data
 - [ ] Run subagent column type
 
+- [ ] Smart truncation for web pages - keep lines with refs
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Option + left/right for input box cursor movement
