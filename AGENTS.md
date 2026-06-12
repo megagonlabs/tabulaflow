@@ -153,3 +153,4 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - Do not write comments if the code is self-explanatory. Only write comments for complicated or tricky logic.
 - For large changes with multiple design decisions or multiple alternative implementations, discuss with me first.
 - Be honest when what I say has flaws or does not make sense.
+- When writing agent-facing tool description, just describe the tool's functionality and use cases, don't lecture the agent on how or when to use it or mention verbosely commonsense knowledge.
