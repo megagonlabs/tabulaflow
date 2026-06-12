@@ -6,6 +6,7 @@ to coerce on INSERT — an unparseable string would otherwise abort the whole ba
 append. These tests cover the type resolution and wiring without invoking an LLM.
 """
 
+from datetime import date, datetime
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -22,22 +23,26 @@ from tabulaflow.toolhub.extract_rows_from_documents import (
 
 
 def test_python_type_for_dtype() -> None:
-    """Numeric/boolean canonical tokens map to scalars; everything else to ``str``."""
+    """Numeric/boolean/temporal canonical tokens map to native types; everything else to ``str``."""
     for tok in ("TINYINT", "SMALLINT", "INTEGER", "INT", "BIGINT"):
         assert _python_type_for_dtype(tok) is int
     for tok in ("FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "DECIMAL"):
         assert _python_type_for_dtype(tok) is float
     assert _python_type_for_dtype("BOOLEAN") is bool
-    # Text, temporal, and semi-structured types all fall through to str.
-    for tok in ("VARCHAR", "TEXT", "DATE", "TIMESTAMP", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
+    assert _python_type_for_dtype("DATE") is date
+    # All TIMESTAMP variants (and DATETIME) flatten to a naive datetime.
+    for tok in ("DATETIME", "TIMESTAMP", "TIMESTAMPTZ", "TIMESTAMP_NTZ", "TIMESTAMP_LTZ"):
+        assert _python_type_for_dtype(tok) is datetime
+    # Text, TIME, and semi-structured types all fall through to str.
+    for tok in ("VARCHAR", "TEXT", "TIME", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
         assert _python_type_for_dtype(tok) is str
 
 
 def test_entity_extractor_builds_typed_model() -> None:
     """Per-column types produce a nullable, JSON-typed structured-output model."""
     ex = EntityExtractor(
-        ["name", "qty", "price", "active"],
-        column_types={"qty": int, "price": float, "active": bool},
+        ["name", "qty", "price", "active", "day", "at"],
+        column_types={"qty": int, "price": float, "active": bool, "day": date, "at": datetime},
     )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
     props = entity_model.model_json_schema()["properties"]
@@ -46,33 +51,45 @@ def test_entity_extractor_builds_typed_model() -> None:
         spec = props[col]
         return {s.get("type") for s in spec.get("anyOf", [spec])}
 
+    def json_formats(col: str) -> set[str | None]:
+        spec = props[col]
+        return {s.get("format") for s in spec.get("anyOf", [spec])}
+
     assert json_types("name") == {"string", "null"}
     assert json_types("qty") == {"integer", "null"}
     assert json_types("price") == {"number", "null"}
     assert json_types("active") == {"boolean", "null"}
+    # date/datetime serialize as ISO strings carrying a format hint for the LLM.
+    assert json_types("day") == {"string", "null"} and "date" in json_formats("day")
+    assert json_types("at") == {"string", "null"} and "date-time" in json_formats("at")
 
 
 def test_typed_model_coerces_and_nulls() -> None:
-    """Pydantic coerces numeric strings, accepts null, and rejects junk (no silent pass)."""
-    ex = EntityExtractor(["qty", "price", "active"], column_types={"qty": int, "price": float, "active": bool})
+    """Pydantic coerces strings to typed values, accepts null, and rejects junk (no silent pass)."""
+    ex = EntityExtractor(
+        ["qty", "price", "active", "day"],
+        column_types={"qty": int, "price": float, "active": bool, "day": date},
+    )
     entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
 
-    coerced = entity_model(qty="5", price="29.99", active="true")
-    assert (coerced.qty, coerced.price, coerced.active) == (5, 29.99, True)
+    coerced = entity_model(qty="5", price="29.99", active="true", day="2024-01-02")
+    assert (coerced.qty, coerced.price, coerced.active, coerced.day) == (5, 29.99, True, date(2024, 1, 2))
 
-    nulled = entity_model(qty=None, price=None, active=None)
-    assert (nulled.qty, nulled.price, nulled.active) == (None, None, None)
+    nulled = entity_model(qty=None, price=None, active=None, day=None)
+    assert (nulled.qty, nulled.price, nulled.active, nulled.day) == (None, None, None, None)
 
     with pytest.raises(ValueError):
         entity_model(qty="N/A")
+    with pytest.raises(ValueError):
+        entity_model(day="not a date")
 
 
 def test_entity_extractor_rejects_unsupported_column_type() -> None:
-    """Only str/int/float/bool are accepted; anything else fails fast at construction."""
-    from datetime import datetime
+    """Only str/int/float/bool/date/datetime are accepted; anything else fails fast."""
+    from decimal import Decimal
 
-    with pytest.raises(ValueError, match="str/int/float/bool"):
-        EntityExtractor(["ts"], column_types={"ts": datetime})  # type: ignore[dict-item]
+    with pytest.raises(ValueError, match="str/int/float/bool/date/datetime"):
+        EntityExtractor(["amt"], column_types={"amt": Decimal})  # type: ignore[dict-item]
 
 
 @pytest.mark.asyncio
@@ -131,14 +148,14 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
         "qty": int,
         "price": float,
         "active": bool,
-        "launched": str,
+        "launched": date,
     }
 
     back = (await conn.run_query_async("SELECT * FROM products ORDER BY name")).df
     assert back is not None
     gadget, widget = back.iloc[0], back.iloc[1]
     assert widget["name"] == "Widget" and int(widget["qty"]) == 5 and float(widget["price"]) == 29.99
-    assert bool(widget["active"]) is True
+    assert bool(widget["active"]) is True and str(widget["launched"])[:10] == "2024-01-01"
     # The missing numerics land as SQL NULL rather than a batch-aborting junk string.
     assert gadget["name"] == "Gadget"
     assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1

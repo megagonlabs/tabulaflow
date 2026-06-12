@@ -6,6 +6,7 @@ import asyncio
 import logging
 import uuid
 from collections.abc import Callable
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, ClassVar
 
@@ -27,9 +28,9 @@ logger = logging.getLogger(__name__)
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
 # Canonical ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to
-# each JSON-native scalar the extraction model can emit. Every other token — text,
-# temporal, JSON/array/struct, binary, UUID, … — falls through to ``str``, preserving the
-# all-string behavior for types the LLM can't represent natively.
+# each Python type the extraction model can emit. Every other token — JSON/array/struct,
+# binary, UUID, TIME, … — falls through to ``str``, preserving the all-string behavior for
+# types the LLM can't represent natively.
 _INT_DTYPES = {"TINYINT", "SMALLINT", "INTEGER", "INT", "INT2", "INT4", "INT8", "BIGINT"}
 _FLOAT_DTYPES = {"FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "BIGNUMERIC", "DECIMAL"}
 _BOOL_DTYPES = {"BOOLEAN", "BOOL"}
@@ -38,9 +39,11 @@ _BOOL_DTYPES = {"BOOLEAN", "BOOL"}
 def _python_type_for_dtype(dtype: str) -> ColumnType:
     """Map a canonical SQL dtype token to the Python type the LLM should emit.
 
-    Unknown or non-scalar tokens map to ``str``, so the default arm covers every type
-    the model cannot represent as a JSON scalar (DATE/TIMESTAMP, JSON/ARRAY/STRUCT,
-    UUID, BINARY, …) without regressing them.
+    Numeric, boolean, and date/timestamp columns get a native type; ``TIMESTAMP*``
+    variants all flatten to a naive ``datetime`` (timezone precision is out of scope).
+    Unknown or non-scalar tokens map to ``str``, so the default arm covers every type the
+    model can't represent natively (TIME, JSON/ARRAY/STRUCT, UUID, BINARY, …) without
+    regressing them.
     """
     token = dtype.upper()
     if token in _BOOL_DTYPES:
@@ -49,6 +52,10 @@ def _python_type_for_dtype(dtype: str) -> ColumnType:
         return int
     if token in _FLOAT_DTYPES:
         return float
+    if token == "DATE":
+        return date
+    if token == "DATETIME" or token.startswith("TIMESTAMP"):
+        return datetime
     return str
 
 
@@ -160,9 +167,10 @@ class ExtractRowsFromDocumentsTool:
 
         Entities extracted from each document are appended to ``table_name`` (one row
         per entity, populating ``output_columns``). Each value is extracted as its target
-        column's type, and the extraction LLM emits NULL for any field the document
-        doesn't provide — so instructions on producing placeholder strings like ``"N/A"``
-        are not needed.
+        column's type — numeric, boolean, and date/timestamp columns receive native typed
+        values, all other types receive text. The extraction LLM emits NULL for any field
+        the document doesn't provide — so instructions on producing placeholder strings
+        like ``"N/A"`` are not needed.
 
         **This tool does not deduplicate.** The same entity may appear in multiple rows,
         and different documents commonly emit variants of the same real-world entity

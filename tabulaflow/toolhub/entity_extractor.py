@@ -15,6 +15,7 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Callable
+from datetime import date, datetime
 from pathlib import Path
 from typing import Any, TypeAlias
 
@@ -26,11 +27,12 @@ from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARG
 
 logger = logging.getLogger(__name__)
 
-# The JSON-native scalars the extraction model can emit for a column. Restricted to
-# what the LLM produces and pydantic can put in a structured-output schema; richer
-# pydantic-supported types (datetime, Decimal, ...) are intentionally out of scope.
-ColumnType: TypeAlias = type[str] | type[int] | type[float] | type[bool]
-_ALLOWED_COLUMN_TYPES: tuple[ColumnType, ...] = (str, int, float, bool)
+# The Python types the extraction model can emit for a column. Restricted to what the LLM
+# produces and pydantic can put in a structured-output schema: JSON scalars plus date /
+# datetime (serialized as ISO strings via ``format: date`` / ``date-time``). Richer
+# pydantic-supported types (Decimal, time, UUID, ...) are intentionally out of scope.
+ColumnType: TypeAlias = type[str] | type[int] | type[float] | type[bool] | type[date] | type[datetime]
+_ALLOWED_COLUMN_TYPES: tuple[ColumnType, ...] = (str, int, float, bool, date, datetime)
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -103,9 +105,9 @@ class EntityExtractor:
         Args:
             output_columns: Fields each extracted entity populates. Must be non-empty.
             column_types: Optional per-column Python type the LLM emits for that field.
-                Each value must be one of ``str``, ``int``, ``float``, or ``bool``.
-                Columns absent from the mapping default to ``str`` (the all-string
-                behavior). Keys not in ``output_columns`` are ignored.
+                Each value must be one of ``str``, ``int``, ``float``, ``bool``, ``date``,
+                or ``datetime``. Columns absent from the mapping default to ``str`` (the
+                all-string behavior). Keys not in ``output_columns`` are ignored.
             llm: LLM identifier used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run (e.g. ``openai_service_tier``).
@@ -132,7 +134,7 @@ class EntityExtractor:
             raise ValueError("chunk_target and chunk_max must be greater than 0")
         bad_types = {col: t for col, t in (column_types or {}).items() if t not in _ALLOWED_COLUMN_TYPES}
         if bad_types:
-            raise ValueError(f"column_types values must be one of str/int/float/bool; got {bad_types}")
+            raise ValueError(f"column_types values must be one of str/int/float/bool/date/datetime; got {bad_types}")
 
         self.output_columns = output_columns
         self.column_types = column_types or {}
