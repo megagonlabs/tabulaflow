@@ -289,6 +289,8 @@ June 11
   - [x] ExecResult.affected_rows for signaling DML affected rows
 - [x] ref-aware snippet for browser snapshots
 - [x] Improve schema browser
+- [x] aria_to_markdown.py - fix list items collapsed to one line
+- [x] Note on deep links in web browser
 
 - [ ] Bug: tool progress disappears on error
 - [ ] Include multimodal data in sample_data
