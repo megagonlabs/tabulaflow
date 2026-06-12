@@ -636,13 +636,30 @@ class ExecResult(BaseModel):
     df: pd.DataFrame | None = None
     df_is_truncated: bool = False
     """True if the df is truncated, e.g. when the result is too large"""
-    returns_rows: bool = True
-    """Whether the statement produced a result set. False for non-row-returning
-    statements (DDL/DML such as CREATE/INSERT/UPDATE) that succeeded without
-    yielding rows — ``df`` is then empty. Only meaningful on success (``df`` not
-    None); a ``SELECT`` returning zero rows still has ``returns_rows=True``."""
+    affected_rows: int | None = None
+    """Rows matched/affected by a single-statement DML (INSERT/UPDATE/DELETE/MERGE),
+    when the driver reports it. ``None`` for SELECT, DDL, multi-statement scripts,
+    and drivers that don't surface a count. ``0`` means the statement ran but
+    matched no rows (e.g. a WHERE that hit nothing) — distinct from ``None``."""
     error: ErrorInfo | None = None
     latency_seconds: float | None = None
+
+    @property
+    def succeeded(self) -> bool:
+        """Whether the statement executed without error.
+
+        This is the success signal — ``error is None``. It is independent of
+        whether the statement produced rows: a successful ``CREATE``/``UPDATE``
+        has ``succeeded=True`` but no result set (``df is None``)."""
+        return self.error is None
+
+    @property
+    def has_rows(self) -> bool:
+        """Whether the statement produced a result set (``df is not None``).
+
+        ``True`` for a ``SELECT`` (even one returning zero rows — ``df`` is then
+        an empty frame). ``False`` for a non-row statement (DDL/DML) or an error."""
+        return self.df is not None
 
     @field_serializer("df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
@@ -669,13 +686,21 @@ class ExecResult(BaseModel):
 
     @model_validator(mode="after")
     def validate_df_or_error(self) -> "ExecResult":
-        if self.df is None and self.error is None or self.df is not None and self.error is not None:
-            raise ValueError("ExecResult must have either df or error, but not both")
+        # Success is ``error is None``; a result set is ``df is not None``. These
+        # are independent: a successful non-row statement (DDL/DML) has neither a
+        # df nor an error. Only a df *and* an error together is contradictory.
+        if self.df is not None and self.error is not None:
+            raise ValueError("ExecResult must not carry both df and error")
         return self
 
     def to_markdown(self) -> str:
+        if self.error is not None:
+            return f"**Error:** {self.error.exc_type}: {self.error.message}"
         if self.df is None:
-            return f"**Error:** {self.error.exc_type}: {self.error.message}" if self.error else "**Error:** Unknown"
+            # Successful non-row statement (DDL/DML).
+            if self.affected_rows is not None:
+                return f"*Statement executed successfully ({self.affected_rows} rows affected).*"
+            return "*Statement executed successfully.*"
         from tabulaflow.core.utils import format_df
 
         result = format_df(self.df)

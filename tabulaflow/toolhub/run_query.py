@@ -209,8 +209,7 @@ class RunQueryTool:
                 await self.db_connector.disconnect_async()
 
     def _format_exec_result(self, exec_result: Any) -> str:
-        if exec_result.df is None:
-            assert exec_result.error is not None
+        if exec_result.error is not None:
             if exec_result.error.exc_type == "ReadOnlyViolationError":
                 self._metrics.error_read_only_violation += 1
                 return f"(query failed: {exec_result.error.message})"
@@ -221,9 +220,16 @@ class RunQueryTool:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
-        if not exec_result.returns_rows:
-            # A non-row-returning statement (DDL/DML) that completed.
-            return "(statement executed successfully)"
+        if exec_result.df is None:
+            # A successful non-row-returning statement (DDL/DML). For DML the
+            # driver reports a matched-row count; surface it so a no-op write
+            # (0 rows) is visible rather than reading as a plain success.
+            affected = exec_result.affected_rows
+            if affected is None:
+                return "(statement executed successfully)"
+            if affected == 0:
+                return "(statement executed successfully, but 0 rows were affected — check the WHERE clause)"
+            return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected)"
 
         df = exec_result.df
         if df.empty:

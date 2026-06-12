@@ -37,6 +37,9 @@ async def db_connector(sql_engine: Any) -> SQLConnector:
         global_id="test_sqlite",
         url=sql_engine.url,
         db_name="test_db",
+        # Disable the on-disk schema cache: it is keyed by ``global_id`` and would
+        # otherwise leak a ``widgets`` table created by one run into the next.
+        enable_schema_caching=False,
     )
 
 

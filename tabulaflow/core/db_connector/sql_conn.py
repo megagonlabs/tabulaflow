@@ -154,6 +154,19 @@ _WRITE_KEYWORDS = frozenset(
     }
 )
 
+# DML subset of write keywords — statements that match/affect rows and for
+# which an affected-row count is meaningful (unlike DDL/DCL).
+_DML_KEYWORDS = frozenset(
+    {
+        "INSERT",
+        "UPDATE",
+        "DELETE",
+        "MERGE",
+        "UPSERT",
+        "REPLACE",
+    }
+)
+
 # DDL subset of write keywords — used to acquire the per-engine DDL
 # lock on dialects with optimistic concurrency (DuckDB, SQLite) where
 # concurrent DDL on the same object causes catalog conflicts.
@@ -239,6 +252,73 @@ def _contains_ddl_statement(query: str) -> bool:
     return False
 
 
+def _classify_statement(statement: str | sqlalchemy.sql.expression.Executable) -> tuple[bool, bool]:
+    """Classify a statement for affected-row accounting.
+
+    Returns ``(is_write, is_dml)``. ``is_write`` is True for any write
+    (DML/DDL/DCL/…); ``is_dml`` is True only for a *single* row-affecting DML
+    statement (INSERT/UPDATE/DELETE/MERGE/…), since an affected-row count is only
+    well-defined for one such statement (a multi-statement script reports only
+    the last). Both are best-effort: raw strings are classified by leading
+    keyword, ``Executable``s by SQLAlchemy's ``is_dml``/``is_ddl`` flags.
+    """
+    if isinstance(statement, str):
+        keywords = [_first_keyword(s) for s in sqlparse.parse(statement) if str(s).strip()]
+        is_write = any(kw in _WRITE_KEYWORDS for kw in keywords if kw is not None)
+        is_dml = len(keywords) == 1 and keywords[0] in _DML_KEYWORDS
+        return is_write, is_dml
+    is_dml = bool(getattr(statement, "is_dml", False))
+    is_ddl = bool(getattr(statement, "is_ddl", False))
+    return (is_dml or is_ddl), is_dml
+
+
+@dataclass(frozen=True)
+class _ExecOutcome:
+    """Low-level result of executing one statement against a connection.
+
+    ``result`` holds the row data (a ``DataFrame`` or a list of rows) for a
+    row-returning statement, or ``None`` for a non-row statement (DDL/DML) —
+    mirroring ``ExecResult.df``. ``affected_rows`` is the matched-row count for a
+    single DML statement, when the driver reports it, else ``None``.
+    """
+
+    result: list[tuple[Any, ...]] | pd.DataFrame | None
+    affected_rows: int | None = None
+
+
+def _rowcount_affected(rowcount: int | None, is_dml: bool) -> int | None:
+    """Affected count from a DBAPI ``rowcount`` (the cross-dialect source), or
+    ``None`` when it is not a DML or the driver reports ``-1`` (unsupported)."""
+    return rowcount if (is_dml and rowcount is not None and rowcount >= 0) else None
+
+
+def _build_row_outcome(
+    rows: Sequence[Any],
+    keys: Sequence[Any],
+    return_df: bool,
+    is_write: bool,
+    is_dml: bool,
+) -> _ExecOutcome:
+    """Build an ``_ExecOutcome`` from an already-fetched row-returning result.
+
+    Some drivers (DuckDB) report writes as a one-column ``Count`` result set
+    rather than a non-row result; fold that back to a non-row outcome carrying
+    the affected count, so the count never masquerades as query output. We
+    require the statement to be independently classified as a write, so a genuine
+    ``SELECT ... AS "Count"`` is never misread.
+    """
+    if is_write and len(keys) == 1 and str(keys[0]) == "Count":
+        affected: int | None = None
+        if is_dml and len(rows) == 1 and rows[0][0] is not None:
+            try:
+                affected = int(rows[0][0])
+            except (TypeError, ValueError):
+                affected = None
+        return _ExecOutcome(result=None, affected_rows=affected)
+    data = _rows_to_df(rows, keys) if return_df else list(rows)
+    return _ExecOutcome(result=data, affected_rows=None)
+
+
 _db_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
 _query_cache: dict[str, ExecResult] = {}
 _query_cache_locks: dict[str, asyncio.Lock] = collections.defaultdict(asyncio.Lock)
@@ -308,10 +388,23 @@ def _rows_to_df(rows: Sequence[Any], keys: Any) -> pd.DataFrame:
 
 @dataclass
 class QueryResult:
-    result: list[tuple[Any, ...]] | pd.DataFrame
+    result: list[tuple[Any, ...]] | pd.DataFrame | None
+    """Row data for a row-returning statement, or ``None`` for a non-row
+    statement (DDL/DML) — mirrors ``ExecResult.df``."""
     latency_seconds: float
-    returns_rows: bool = True
-    """False when the statement produced no result set (DDL/DML)."""
+    affected_rows: int | None = None
+    """Rows matched/affected by a single DML statement, when the driver reports
+    it; ``None`` for SELECT/DDL/multi-statement/unsupported (see ``ExecResult``)."""
+
+    @property
+    def rows(self) -> list[tuple[Any, ...]] | pd.DataFrame:
+        """The result set, asserting the statement was row-returning.
+
+        For internal callers that issue a ``SELECT`` and know rows are present
+        (introspection counts, samples). Raises if used on a non-row statement."""
+        if self.result is None:
+            raise RuntimeError("QueryResult.rows accessed on a non-row-returning statement")
+        return self.result
 
 
 _ASYNC_DRIVERS = frozenset(
@@ -1163,13 +1256,17 @@ class ThrottledEngine:
         ddl = isinstance(query, str) and _contains_ddl_statement(query)
         async with self.throttle(ddl=ddl):
             t0 = time.time()
-            result, returns_rows = await self._dispatch_with_cancel(
+            outcome = await self._dispatch_with_cancel(
                 sync_inner=lambda box: self._execute_sync_engine(query, parameters, return_df, box),
                 async_inner=lambda box: self._execute_async_engine(query, parameters, return_df, box),
                 timeout=timeout,
                 timeout_label=f"Query {query}",
             )
-            return QueryResult(result=result, latency_seconds=time.time() - t0, returns_rows=returns_rows)
+            return QueryResult(
+                result=outcome.result,
+                latency_seconds=time.time() - t0,
+                affected_rows=outcome.affected_rows,
+            )
 
     async def run_with_conn_async(
         self,
@@ -1255,7 +1352,8 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         cancel_handle_box: list[Any] | None = None,
-    ) -> tuple[list[tuple[Any, ...]] | pd.DataFrame, bool]:
+    ) -> _ExecOutcome:
+        is_write, is_dml = _classify_statement(statement)
         with self.engine.begin() as conn:  # type: ignore
             # Publish the dialect's cancel handle so the calling task can
             # abort this specific query on cancel/timeout.  We deliberately
@@ -1276,15 +1374,11 @@ class ThrottledEngine:
             else:
                 result = conn.execute(statement, parameters)
             # Non-row-returning statements (DDL/DML) have no result set;
-            # fetchall() would raise ResourceClosedError.  Report the empty
-            # result alongside returns_rows=False so callers can tell a
-            # succeeded DDL/DML apart from an empty SELECT.
+            # fetchall() would raise ResourceClosedError.  A ``None`` result
+            # distinguishes a succeeded DDL/DML from an empty SELECT.
             if not result.returns_rows:
-                return (_rows_to_df([], []) if return_df else []), False
-            rows = result.fetchall()
-            if return_df:
-                return _rows_to_df(rows, result.keys()), True
-            return rows, True
+                return _ExecOutcome(result=None, affected_rows=_rowcount_affected(result.rowcount, is_dml))
+            return _build_row_outcome(result.fetchall(), list(result.keys()), return_df, is_write, is_dml)
 
     async def _execute_async_engine(
         self,
@@ -1292,12 +1386,13 @@ class ThrottledEngine:
         parameters: Sequence[Any] | Mapping[str, Any] = (),
         return_df: bool = False,
         cancel_handle_box: list[Any] | None = None,
-    ) -> tuple[list[tuple[Any, ...]] | pd.DataFrame, bool]:
+    ) -> _ExecOutcome:
         """Async-engine query path.  Mirrors :meth:`_execute_sync_engine` for the
         async case: optionally publishes a cancel handle (via the
         strategy's :meth:`_CancelStrategy.acapture`) so the calling task
         can abort this specific query on cancel/timeout.
         """
+        is_write, is_dml = _classify_statement(statement)
         async with self.engine.begin() as conn:  # type: ignore
             # See _execute_sync_engine for the box-ownership rationale.
             if cancel_handle_box is not None and self._cancel_strategy is not None:
@@ -1308,23 +1403,22 @@ class ThrottledEngine:
             if isinstance(statement, str):
                 result = await conn.exec_driver_sql(statement, parameters or None)
                 # Non-row-returning statements (DDL/DML) have no result set;
-                # fetchall() would raise ResourceClosedError.  Report the
-                # empty result alongside returns_rows=False.
+                # fetchall() would raise ResourceClosedError.
                 if not result.returns_rows:
-                    return (_rows_to_df([], []) if return_df else []), False
-                rows = list(result.fetchall())
+                    return _ExecOutcome(result=None, affected_rows=_rowcount_affected(result.rowcount, is_dml))
+                rows: list[Any] = list(result.fetchall())
             else:
                 rows = []
                 result = await conn.stream(statement, parameters)
                 async for row in result:
                     rows.append(row)
+            keys = list(result.keys())
 
-        # Reaching here means a result set: the string path returned early on
-        # the non-row case, and the streaming path is only used for
-        # row-returning Executables.
-        if return_df:
-            return _rows_to_df(rows, result.keys()), True
-        return rows, True
+        # Reaching here means a result set: the string path returned early on the
+        # non-row case, and the streaming path is only used for row-returning
+        # Executables. ``_build_row_outcome`` folds a driver's ``Count``
+        # write-result back to a non-row outcome (see :meth:`_execute_sync_engine`).
+        return _build_row_outcome(rows, keys, return_df, is_write, is_dml)
 
     def _run_callback_sync_engine(
         self,
@@ -1767,7 +1861,7 @@ async def build_column_async(
                 col = tbl.c[column["name"]]
                 sampled_rows = int(sample_pct / 100 * num_rows)
 
-        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).result[0][0]
+        num_null = (await t_eng.execute_async(select(func.count()).select_from(tbl).where(col.is_(None)))).rows[0][0]
         null_ratio = num_null / sampled_rows
 
         num_unique = None
@@ -1775,11 +1869,9 @@ async def build_column_async(
             use_snowflake_hll = t_eng.engine.dialect.name == "snowflake" and column_stats_mode != "always_precise"
             if use_snowflake_hll:
                 # Efficient estimation using HyperLogLog (returns a float; cast to int)
-                num_unique = int((await t_eng.execute_async(select(func.hll(col)).select_from(tbl))).result[0][0])
+                num_unique = int((await t_eng.execute_async(select(func.hll(col)).select_from(tbl))).rows[0][0])
             elif can_use_distinct:
-                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).result[0][
-                    0
-                ]
+                num_unique = (await t_eng.execute_async(select(func.count(distinct(col))).select_from(tbl))).rows[0][0]
         unique_ratio = (num_unique / sampled_rows) if num_unique is not None else None
 
     examples: list[Any]
@@ -1792,7 +1884,7 @@ async def build_column_async(
             await t_eng.execute_async(
                 select(col).distinct().select_from(tbl).where(col.isnot(None)).limit(min(20, num_unique))
             )
-        ).result
+        ).rows
         # Note: examples will contain all possible values if cardinality <= 20
         examples = [_convert(row[0]) for row in examples]
     else:
@@ -1802,7 +1894,7 @@ async def build_column_async(
             stmt = select(subq.c._v).distinct().limit(5)
         else:
             stmt = select(subq.c._v).limit(5)
-        examples = (await t_eng.execute_async(stmt)).result
+        examples = (await t_eng.execute_async(stmt)).rows
         examples = [_convert(row[0]) for row in examples]
 
     # Infer JSON schema for semi-structured columns (VARIANT, JSON, JSONB, etc.)
@@ -1819,7 +1911,7 @@ async def build_column_async(
                 await t_eng.execute_async(
                     select(col).select_from(tbl).where(col.isnot(None)).limit(_JSON_SCHEMA_SAMPLE_SIZE)
                 )
-            ).result
+            ).rows
             json_sample_values = [row[0] for row in json_sample_rows]
             json_schema = infer_json_schema(json_sample_values)
 
@@ -1868,7 +1960,7 @@ async def build_table_async(
                     select(func.count()).select_from(tbl),
                     timeout=count_timeout,
                 )
-            ).result[0][0]
+            ).rows[0][0]
         except (TimeoutError, asyncio.TimeoutError):
             kind = "view" if is_view else "table"
             logger.warning(
@@ -2601,7 +2693,7 @@ class SQLConnector:
                     if os.path.exists(cache_path):
                         with open(cache_path, "r", encoding="utf-8") as f:
                             cached = ExecResult.model_validate_json(f.read())
-                        if successful_only and cached.df is None:
+                        if successful_only and not cached.succeeded:
                             logger.debug(f"Query cache skip (error in successful_only mode): {query_str[:80]}")
                         else:
                             _query_cache[cache_hash] = cached
@@ -2609,19 +2701,28 @@ class SQLConnector:
                             return cached
 
         # --- execute query ---
-        df, error, latency_seconds, returns_rows = None, None, None, True
+        # ``df`` is the result set for a row statement, ``None`` for a non-row
+        # statement (DDL/DML) or on error; success is carried by ``error is None``.
+        df: pd.DataFrame | None = None
+        error, latency_seconds = None, None
+        affected_rows: int | None = None
         try:
             result = await self._t_eng.execute_async(query, parameters, timeout, return_df=True)
-            df = result.result
+            df = result.result  # return_df=True ⟹ DataFrame | None
             latency_seconds = result.latency_seconds
-            returns_rows = result.returns_rows
+            affected_rows = result.affected_rows
         except Exception as e:
             error = ErrorInfo(exc_type=type(e).__name__, message=str(e))
-        exec_result = ExecResult(df=df, error=error, latency_seconds=latency_seconds, returns_rows=returns_rows)
+        exec_result = ExecResult(
+            df=df,
+            error=error,
+            latency_seconds=latency_seconds,
+            affected_rows=affected_rows,
+        )
 
         # --- write to cache ---
         if caching_on and cache_hash is not None:
-            skip = tabulaflow_config.query_cache_mode == "successful_only" and exec_result.df is None
+            skip = tabulaflow_config.query_cache_mode == "successful_only" and not exec_result.succeeded
             if not skip:
                 async with _query_cache_locks[cache_hash]:
                     os.makedirs(cache_dir, exist_ok=True)
