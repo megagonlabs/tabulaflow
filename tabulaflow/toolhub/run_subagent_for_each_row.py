@@ -69,7 +69,7 @@ logger = logging.getLogger(__name__)
 class AbortTask(BaseModel):
     """Terminal output indicating the task could not be completed."""
 
-    message: str = Field(description="Reason the task cannot be completed.")
+    message: str = Field(description="Reason the task cannot be completed. Be specific about the reason and what you need in order to complete the task.")
 
 
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
