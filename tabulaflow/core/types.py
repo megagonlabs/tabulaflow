@@ -650,16 +650,9 @@ class ExecResult(BaseModel):
 
         This is the success signal — ``error is None``. It is independent of
         whether the statement produced rows: a successful ``CREATE``/``UPDATE``
-        has ``succeeded=True`` but no result set (``df is None``)."""
+        has ``succeeded=True`` but no result set (``df is None``). A result set
+        is ``df is not None`` — check that directly."""
         return self.error is None
-
-    @property
-    def has_rows(self) -> bool:
-        """Whether the statement produced a result set (``df is not None``).
-
-        ``True`` for a ``SELECT`` (even one returning zero rows — ``df`` is then
-        an empty frame). ``False`` for a non-row statement (DDL/DML) or an error."""
-        return self.df is not None
 
     @field_serializer("df", when_used="always")
     def serialize_df(self, df: pd.DataFrame | None) -> dict[str, Any] | None:
