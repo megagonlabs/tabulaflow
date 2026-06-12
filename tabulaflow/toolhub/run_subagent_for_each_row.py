@@ -65,20 +65,6 @@ _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 logger = logging.getLogger(__name__)
 
 
-_ABORT_TOOL_DESCRIPTION = (
-    "Abort the task with a human-readable reason. Call this when the task "
-    "cannot be completed (e.g., required information is missing, the "
-    "instruction is contradictory, or no valid output can be produced). "
-    "Calling this tool ends the run."
-)
-
-_SUBMIT_ANSWER_DESCRIPTION = (
-    "Submit your answer for this task: provide a value for each field, using null "
-    "where the task instructions call for it (or where a value does not apply). "
-    "Calling this tool ends the task successfully."
-)
-
-
 class AbortTask(BaseModel):
     """Terminal output indicating the task could not be completed."""
 
@@ -620,12 +606,16 @@ class RunSubagentForEachRowTool:
                     ToolOutput(
                         answer_model,
                         name="submit_answer",
-                        description=_SUBMIT_ANSWER_DESCRIPTION,
+                        description=(
+                            "Submit your answer for this task. Calling this tool ends the task successfully."
+                        ),
                     ),
                     ToolOutput(
                         AbortTask,
                         name="abort_task",
-                        description=_ABORT_TOOL_DESCRIPTION,
+                        description=(
+                            "Abort the task with a human-readable reason. Calling this tool ends the task."
+                        ),
                     ),
                 ],
                 model_settings=self.model_settings,
