@@ -1346,6 +1346,7 @@ class SchemaBrowserScreen(Screen[None]):
                 for sn in sorted(groups, key=lambda s: (s is None, s or "")):
                     sn_label = Text()
                     sn_label.append(sn or "(default)", style="bold")
+                    sn_label.append("  schema", style="dim")
                     schema_node = db_node.add(
                         sn_label,
                         data=_NodeData(kind=_NODE_KIND_SCHEMA, alias=alias, schema_name=sn),
@@ -1379,9 +1380,10 @@ class SchemaBrowserScreen(Screen[None]):
             expand=self._expand_for((alias, table.schema_name, table.name, None), False),
         )
 
+        name_width = max((len(col.name) for col in table.columns), default=0)
         for col in table.columns:
             c_label = Text()
-            c_label.append(col.name)
+            c_label.append(col.name.ljust(name_width))
             c_label.append(f"  {col.dtype}", style="dim")
             if col.primary_key_type:
                 c_label.append(" PK", style=PK_MARKER)
