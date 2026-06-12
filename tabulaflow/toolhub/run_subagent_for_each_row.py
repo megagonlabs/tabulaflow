@@ -269,7 +269,10 @@ class RunSubagentForEachRowTool:
             task_instruction: A Jinja2 template rendered per-row as the subagent
                 prompt. Use ``{{ column_name }}`` to interpolate values from the
                 ``task_query`` result; standard Jinja control flow
-                (``{% for %}``, ``{% if %}``) is available. For JSON columns,
+                (``{% for %}``, ``{% if %}``) is available. For consistency, state
+                in the instruction how missing information should be handled —
+                ``abort_task`` (row fails, nothing written) or a NULL field (row
+                succeeds with that field null). For JSON columns,
                 extract the field or cast to an array in ``task_query`` using
                 the dialect's JSON functions rather than relying on the
                 template — driver materialization varies (string vs structure)
