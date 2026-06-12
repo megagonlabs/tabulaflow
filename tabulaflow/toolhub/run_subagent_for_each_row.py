@@ -300,6 +300,14 @@ class RunSubagentForEachRowTool:
                 (the document-mining + canonicalization toolchain), wired to the
                 workspace connector — so a browsing row can turn pages into clean
                 structured rows end to end.
+
+                When the task hands the subagent a deep link to a results page
+                on a large consumer site (Google Flights/Maps, Amazon, booking
+                sites) — e.g. ``.../flights/search?tfs=...`` — it can load the
+                generic landing page with no results, because the results RPC is
+                gated behind in-page interaction. If that happens, have the
+                subagent fall back to opening the entry page and submitting the
+                search form rather than giving up on the deep link.
             enable_nested_subagents: If True, each per-row subagent additionally
                 receives this ``run_subagent_for_each_row`` tool, allowing it
                 to fan out further row-wise tasks of its own. The flag does not
