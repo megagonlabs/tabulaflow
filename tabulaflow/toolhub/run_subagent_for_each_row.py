@@ -275,8 +275,10 @@ class RunSubagentForEachRowTool:
                 and only structured projections iterate reliably. Example:
                 ``"Classify the sentiment of: {{ review_text }}"``.
             key_columns: Columns used in the WHERE clause to locate each row in
-                ``table_name`` for write-back. Must appear in the ``task_query``
-                result.
+                ``table_name`` for write-back. Must be real columns of
+                ``table_name`` (not computed/joined-only), must appear in the
+                ``task_query`` result, and together must form a unique, non-null
+                key — one task_query row per target row.
             output_columns: Columns to update on ``table_name``. Must be exactly
                 one column; it must already exist on the target table (does not
                 need to appear in the ``task_query`` projection).
@@ -315,6 +317,9 @@ class RunSubagentForEachRowTool:
             return "(error: output_columns must be exactly one column)"
         output_col = output_columns[0]
 
+        if not key_columns:
+            return "(error: key_columns must be a non-empty list naming a unique key of the target table)"
+
         select_result = await self.db_connector.run_query_async(task_query)
         if select_result.error is not None or select_result.df is None:
             detail = select_result.error.message if select_result.error is not None else "no dataframe returned"
@@ -345,6 +350,31 @@ class RunSubagentForEachRowTool:
 
         if output_col not in table_columns:
             return f"(error: output_columns not found in table {qualified_target}: [{output_col!r}])"
+
+        # Validate that each key_column can address exactly one target row on
+        # write-back (UPDATE ... WHERE key = value). A key that is not a real
+        # target-table column can't be matched; a NULL key never matches in SQL
+        # (`col = NULL` is unknown); a key duplicated across task_query rows means
+        # one subagent's output would overwrite several rows. Each of these
+        # silently corrupts or no-ops, so reject them up front.
+        key_not_in_table = [c for c in key_columns if c not in table_columns]
+        if key_not_in_table:
+            return (
+                f"(error: key_columns must be columns of {qualified_target} for write-back, "
+                f"but these are not present there: {key_not_in_table})"
+            )
+        key_df = df[key_columns]
+        if bool(key_df.isnull().to_numpy().any()):
+            return (
+                "(error: key_columns contain NULL values; a NULL key cannot locate its row "
+                "for write-back. Use a non-null unique key.)"
+            )
+        if bool(key_df.duplicated().any()):
+            return (
+                "(error: key_columns are not unique across task_query rows; one subagent output "
+                "would overwrite multiple rows. Project a unique key — e.g. the table's primary "
+                "key, or add a row-id column before fan-out.)"
+            )
 
         # Compile the task instruction as a Jinja2 template.
         try:
@@ -454,16 +484,25 @@ class RunSubagentForEachRowTool:
                     }
                 )
             )
-            await self.db_connector.run_query_async(stmt)
+            res = await self.db_connector.run_query_async(stmt)
+            if res.error is not None:
+                logger.warning("Failed to write subagent metadata for %s: %s", key_payload, res.error.message)
 
-        async def _write_row_output(key_payload: dict[str, object], value: object) -> None:
-            """Write the subagent's text output to the target row."""
+        async def _write_row_output(key_payload: dict[str, object], value: object) -> str | None:
+            """Write the subagent's text output to the target row.
+
+            Returns ``None`` on success or the database error message if the
+            write failed (e.g. the output column's type can't hold the text),
+            so the caller can record the row as failed instead of silently
+            reporting success.
+            """
             stmt = (
                 sqlalchemy.update(sa_target)
                 .where(_key_where_clause(key_columns, key_payload))
                 .values({sa_target.c[output_col]: value})
             )
-            await self.db_connector.run_query_async(stmt)
+            res = await self.db_connector.run_query_async(stmt)
+            return res.error.message if res.error is not None else None
 
         traj_dir: Path | None = None
         if self.trajectory_log_dir is not None:
@@ -554,8 +593,13 @@ class RunSubagentForEachRowTool:
                     error_msg = f"row {row_idx}: {exception_msg}"
                     metadata = (exception_msg, traj.model_dump_json())
                 else:
-                    await _write_row_output(key_payload, result.output)
-                    metadata = (None, traj.model_dump_json())
+                    write_error = await _write_row_output(key_payload, result.output)
+                    if write_error is not None:
+                        exception_msg = f"write-back failed: {write_error}"
+                        error_msg = f"row {row_idx}: {exception_msg}"
+                        metadata = (exception_msg, traj.model_dump_json())
+                    else:
+                        metadata = (None, traj.model_dump_json())
             except asyncio.CancelledError:
                 cancelled = True
                 raise
