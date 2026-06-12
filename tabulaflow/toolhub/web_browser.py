@@ -261,42 +261,75 @@ def snapshot_snippet(message_id: str, content: str) -> str:
     middle = content[_SNIPPET_HEAD_CHARS : total - _SNIPPET_TAIL_CHARS]
     lines = middle.split("\n")
     is_ref = [bool(_INLINE_REF.search(ln)) for ln in lines]
+    total_refs = sum(len(_INLINE_REF.findall(ln)) for ln in lines)
 
     # Select every ref line plus, for each, the nearest preceding non-blank line
     # when that line is plain prose (its label) — never crossing into another ref.
-    kept: set[int] = set()
-    size = 0
-    shown = 0
-    total_refs = sum(is_ref)
+    selected: set[int] = set()
     for i, ref in enumerate(is_ref):
         if not ref:
             continue
+        selected.add(i)
         j = i - 1
         while j >= 0 and lines[j].strip() == "":
             j -= 1
-        ctx = j if (j >= 0 and not is_ref[j]) else None
-        add = [k for k in ((ctx,) if ctx is not None else ()) if k not in kept]
-        add.append(i)
-        add_size = sum(len(lines[k]) + 1 for k in add)
-        if shown > 0 and size + add_size > _SNIPPET_REF_BUDGET_CHARS:
-            break
-        kept.update(add)
-        size += add_size
-        shown += 1
+        if j >= 0 and not is_ref[j]:
+            selected.add(j)
+
+    # Pack whole ref-atoms in document order under a hard char budget. An
+    # over-long line (a page that crams many atoms onto one line) is clamped at
+    # its last whole ``[ref=eN]``; a line with no ref fitting the remaining budget
+    # is skipped, not hard-cut — so the snippet never exceeds the budget yet still
+    # collects the refs that do fit.
+    picked: list[tuple[int, str]] = []
+    spent = 0
+    shown = 0
+    for i in sorted(selected):
+        line = lines[i]
+        if spent + len(line) <= _SNIPPET_REF_BUDGET_CHARS:
+            picked.append((i, line))
+            spent += len(line) + 1
+            shown += len(_INLINE_REF.findall(line))
+            continue
+        clamped = _clamp_to_ref(line, _SNIPPET_REF_BUDGET_CHARS - spent)
+        if clamped:
+            picked.append((i, clamped))
+            shown += len(_INLINE_REF.findall(clamped))
+            break  # remaining budget spent on the clamp
+        # nothing from this line fits; keep scanning for shorter atoms
 
     out: list[str] = []
     prev: int | None = None
-    for i in sorted(kept):
-        if prev is not None and i > prev + 1:
+    for idx, text in picked:
+        if prev is not None and idx > prev + 1:
             out.append("...")
-        out.append(lines[i])
-        prev = i
+        out.append(text)
+        prev = idx
+    if out and shown < total_refs:
+        out.append("...")
 
     parts = [id_marker(message_id), head, "", _snapshot_marker(total, message_id, shown, total_refs), ""]
     if out:
         parts.append("\n".join(out))
     parts.append(tail)
     return "\n".join(parts)
+
+
+def _clamp_to_ref(line: str, budget: int) -> str:
+    """Longest prefix of ``line`` within ``budget`` chars ending at a whole ``[ref=eN]``.
+
+    Returns ``""`` when not even one ref marker fits, so the splice never emits a
+    ref-less fragment (e.g. a multi-KB data-URI prefix) or a dangling ``[ref=``.
+    """
+    if budget <= 0:
+        return ""
+    end = 0
+    for m in _INLINE_REF.finditer(line):
+        if m.end() <= budget:
+            end = m.end()
+        else:
+            break
+    return line[:end]
 
 
 def _snapshot_marker(total: int, message_id: str, shown: int, total_refs: int) -> str:
