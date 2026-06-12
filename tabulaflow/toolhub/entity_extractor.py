@@ -16,7 +16,7 @@ import asyncio
 import logging
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeAlias
 
 from pydantic import create_model
 from pydantic_ai.settings import ModelSettings
@@ -25,6 +25,12 @@ from tabulaflow.core.types import Trajectory
 from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS, Chunk, split_markdown
 
 logger = logging.getLogger(__name__)
+
+# The JSON-native scalars the extraction model can emit for a column. Restricted to
+# what the LLM produces and pydantic can put in a structured-output schema; richer
+# pydantic-supported types (datetime, Decimal, ...) are intentionally out of scope.
+ColumnType: TypeAlias = type[str] | type[int] | type[float] | type[bool]
+_ALLOWED_COLUMN_TYPES: tuple[ColumnType, ...] = (str, int, float, bool)
 
 # Worded as "records" deliberately: more generic than "entity" for the model, so it
 # does not narrow extraction to named real-world things (covers line items, events,
@@ -69,9 +75,11 @@ class EntityExtractor:
     :func:`tabulaflow.toolhub.markdown_splitter.split_markdown`); a leaf subagent
     extracts a list of entities from each chunk concurrently (bounded by
     ``max_concurrency``), and the union is returned. Entities are flat dicts keyed by
-    ``output_columns`` (all string-valued). No deduplication is performed — a record
-    whose evidence straddles a chunk boundary may still be reported by neighboring
-    chunks, so dedup downstream with full semantic context if needed.
+    ``output_columns``; each value is typed per ``column_types`` (defaulting to ``str``)
+    so the LLM emits a real ``int``/``float``/``bool``/``str`` (or ``None``) rather than a
+    string that a typed target column would have to coerce. No deduplication is performed
+    — a record whose evidence straddles a chunk boundary may still be reported by
+    neighboring chunks, so dedup downstream with full semantic context if needed.
 
     The pydantic output model, the extraction Agent, and the concurrency semaphore are
     built once at construction and reused across ``extract`` calls, so build one
@@ -82,6 +90,7 @@ class EntityExtractor:
         self,
         output_columns: list[str],
         *,
+        column_types: dict[str, ColumnType] | None = None,
         llm: str = "openai-responses:gpt-5-mini",
         model_settings: ModelSettings | None = None,
         max_concurrency: int = 200,
@@ -93,6 +102,10 @@ class EntityExtractor:
 
         Args:
             output_columns: Fields each extracted entity populates. Must be non-empty.
+            column_types: Optional per-column Python type the LLM emits for that field.
+                Each value must be one of ``str``, ``int``, ``float``, or ``bool``.
+                Columns absent from the mapping default to ``str`` (the all-string
+                behavior). Keys not in ``output_columns`` are ignored.
             llm: LLM identifier used by per-chunk extraction subagents.
             model_settings: Optional pydantic-ai model settings passed to each
                 subagent run (e.g. ``openai_service_tier``).
@@ -108,7 +121,8 @@ class EntityExtractor:
                 filesystem sink for local debugging; independent of the returned data.
 
         Raises:
-            ValueError: If ``output_columns`` is empty or a size argument is invalid.
+            ValueError: If ``output_columns`` is empty, ``column_types`` contains an
+                unsupported type, or a size argument is invalid.
         """
         if not output_columns:
             raise ValueError("output_columns must be non-empty")
@@ -116,17 +130,23 @@ class EntityExtractor:
             raise ValueError("max_concurrency must be greater than 0")
         if chunk_target <= 0 or chunk_max <= 0:
             raise ValueError("chunk_target and chunk_max must be greater than 0")
+        bad_types = {col: t for col, t in (column_types or {}).items() if t not in _ALLOWED_COLUMN_TYPES}
+        if bad_types:
+            raise ValueError(f"column_types values must be one of str/int/float/bool; got {bad_types}")
 
         self.output_columns = output_columns
+        self.column_types = column_types or {}
         self.chunk_target = chunk_target
         self.chunk_max = chunk_max
         self.trajectory_log_dir = trajectory_log_dir
 
-        # Dynamic structured-output model: one all-string field per output column,
-        # wrapped in a list-bearing container for reliable structured extraction.
+        # Dynamic structured-output model: one nullable, per-column-typed field (str by
+        # default), wrapped in a list-bearing container for reliable structured extraction.
+        # Typing the field lets the LLM emit a real int/float/bool (or null), so a typed
+        # target column receives a native value instead of a string it must coerce.
         entity_model = create_model(
             "ExtractedEntity",
-            **{col: (str | None, None) for col in output_columns},  # type: ignore[call-overload]
+            **{col: (self.column_types.get(col, str) | None, None) for col in output_columns},  # type: ignore[call-overload]
         )
         self._result_model = create_model(
             "ExtractionResult",

@@ -1,0 +1,144 @@
+"""Tests for type-aware row extraction in ``ExtractRowsFromDocumentsTool``.
+
+The output schema is typed per the target column: the LLM emits a native
+``int``/``float``/``bool`` (or ``null``) instead of a string the database would have
+to coerce on INSERT — an unparseable string would otherwise abort the whole batch
+append. These tests cover the type resolution and wiring without invoking an LLM.
+"""
+
+from pathlib import Path
+from types import SimpleNamespace
+
+import duckdb
+import pytest
+
+import tabulaflow.toolhub.extract_rows_from_documents as mod
+from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.toolhub.entity_extractor import EntityExtractor
+from tabulaflow.toolhub.extract_rows_from_documents import (
+    ExtractRowsFromDocumentsTool,
+    _python_type_for_dtype,
+)
+
+
+def test_python_type_for_dtype() -> None:
+    """Numeric/boolean canonical tokens map to scalars; everything else to ``str``."""
+    for tok in ("TINYINT", "SMALLINT", "INTEGER", "INT", "BIGINT"):
+        assert _python_type_for_dtype(tok) is int
+    for tok in ("FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "DECIMAL"):
+        assert _python_type_for_dtype(tok) is float
+    assert _python_type_for_dtype("BOOLEAN") is bool
+    # Text, temporal, and semi-structured types all fall through to str.
+    for tok in ("VARCHAR", "TEXT", "DATE", "TIMESTAMP", "JSON", "ARRAY", "STRUCT", "UUID", "BINARY"):
+        assert _python_type_for_dtype(tok) is str
+
+
+def test_entity_extractor_builds_typed_model() -> None:
+    """Per-column types produce a nullable, JSON-typed structured-output model."""
+    ex = EntityExtractor(
+        ["name", "qty", "price", "active"],
+        column_types={"qty": int, "price": float, "active": bool},
+    )
+    entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
+    props = entity_model.model_json_schema()["properties"]
+
+    def json_types(col: str) -> set[str | None]:
+        spec = props[col]
+        return {s.get("type") for s in spec.get("anyOf", [spec])}
+
+    assert json_types("name") == {"string", "null"}
+    assert json_types("qty") == {"integer", "null"}
+    assert json_types("price") == {"number", "null"}
+    assert json_types("active") == {"boolean", "null"}
+
+
+def test_typed_model_coerces_and_nulls() -> None:
+    """Pydantic coerces numeric strings, accepts null, and rejects junk (no silent pass)."""
+    ex = EntityExtractor(["qty", "price", "active"], column_types={"qty": int, "price": float, "active": bool})
+    entity_model = ex._result_model.model_fields["entities"].annotation.__args__[0]  # type: ignore[union-attr]
+
+    coerced = entity_model(qty="5", price="29.99", active="true")
+    assert (coerced.qty, coerced.price, coerced.active) == (5, 29.99, True)
+
+    nulled = entity_model(qty=None, price=None, active=None)
+    assert (nulled.qty, nulled.price, nulled.active) == (None, None, None)
+
+    with pytest.raises(ValueError):
+        entity_model(qty="N/A")
+
+
+def test_entity_extractor_rejects_unsupported_column_type() -> None:
+    """Only str/int/float/bool are accepted; anything else fails fast at construction."""
+    from datetime import datetime
+
+    with pytest.raises(ValueError, match="str/int/float/bool"):
+        EntityExtractor(["ts"], column_types={"ts": datetime})  # type: ignore[dict-item]
+
+
+@pytest.mark.asyncio
+async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """The tool resolves output-column types from the schema and appends native values.
+
+    The LLM is stubbed; the test exercises type resolution, extractor wiring, the
+    DataFrame build, and the DuckDB append — including a ``None`` landing as SQL NULL
+    in numeric columns.
+    """
+    db_path = str(tmp_path / "products.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE products (name VARCHAR, qty INTEGER, price DOUBLE, active BOOLEAN, launched DATE)")
+    raw.close()
+
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_rows",
+        url=f"duckdb:///{db_path}",
+        db_name="products",
+        read_only=False,
+        enable_schema_caching=False,
+    )
+    conn.read_only = False
+
+    canned: list[dict[str, object]] = [
+        {"name": "Widget", "qty": 5, "price": 29.99, "active": True, "launched": "2024-01-01"},
+        {"name": "Gadget", "qty": None, "price": None, "active": False, "launched": "2023-06-15"},
+    ]
+    captured: dict[str, dict[str, type]] = {}
+
+    class FakeExtractor:
+        def __init__(
+            self, output_columns: list[str], *, column_types: dict[str, type] | None = None, **_: object
+        ) -> None:
+            captured["column_types"] = column_types or {}
+
+        async def extract(self, content: str, **_: object) -> list[dict[str, object]]:
+            return canned
+
+    monkeypatch.setattr(mod, "EntityExtractor", FakeExtractor)
+
+    tool = ExtractRowsFromDocumentsTool(conn)
+    ctx = SimpleNamespace(tool_call_id="call-1")
+    summary = await tool(
+        ctx,  # type: ignore[arg-type]
+        None,
+        "products",
+        task_query="SELECT 'irrelevant doc text' AS content",
+        task_instruction="Extract each product.",
+        output_columns=["name", "qty", "price", "active", "launched"],
+    )
+
+    assert "Extracted 2 entities" in summary
+    assert captured["column_types"] == {
+        "name": str,
+        "qty": int,
+        "price": float,
+        "active": bool,
+        "launched": str,
+    }
+
+    back = (await conn.run_query_async("SELECT * FROM products ORDER BY name")).df
+    assert back is not None
+    gadget, widget = back.iloc[0], back.iloc[1]
+    assert widget["name"] == "Widget" and int(widget["qty"]) == 5 and float(widget["price"]) == 29.99
+    assert bool(widget["active"]) is True
+    # The missing numerics land as SQL NULL rather than a batch-aborting junk string.
+    assert gadget["name"] == "Gadget"
+    assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1

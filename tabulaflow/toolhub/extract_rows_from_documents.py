@@ -17,13 +17,54 @@ from pydantic_ai import RunContext, Tool
 from pydantic_ai.settings import ModelSettings
 
 from tabulaflow.core.db_connector.sql_conn import SQLConnector
+from tabulaflow.core.types import SQLSchema, SQLTableSchema
 from tabulaflow.toolhub.utils import qualified_table
-from tabulaflow.toolhub.entity_extractor import EntityExtractor
+from tabulaflow.toolhub.entity_extractor import ColumnType, EntityExtractor
 from tabulaflow.toolhub.markdown_splitter import DEFAULT_MAX_CHARS, DEFAULT_TARGET_CHARS
 
 logger = logging.getLogger(__name__)
 
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
+
+# Canonical ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to
+# each JSON-native scalar the extraction model can emit. Every other token — text,
+# temporal, JSON/array/struct, binary, UUID, … — falls through to ``str``, preserving the
+# all-string behavior for types the LLM can't represent natively.
+_INT_DTYPES = {"TINYINT", "SMALLINT", "INTEGER", "INT", "INT2", "INT4", "INT8", "BIGINT"}
+_FLOAT_DTYPES = {"FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "BIGNUMERIC", "DECIMAL"}
+_BOOL_DTYPES = {"BOOLEAN", "BOOL"}
+
+
+def _python_type_for_dtype(dtype: str) -> ColumnType:
+    """Map a canonical SQL dtype token to the Python type the LLM should emit.
+
+    Unknown or non-scalar tokens map to ``str``, so the default arm covers every type
+    the model cannot represent as a JSON scalar (DATE/TIMESTAMP, JSON/ARRAY/STRUCT,
+    UUID, BINARY, …) without regressing them.
+    """
+    token = dtype.upper()
+    if token in _BOOL_DTYPES:
+        return bool
+    if token in _INT_DTYPES:
+        return int
+    if token in _FLOAT_DTYPES:
+        return float
+    return str
+
+
+def _find_table(schema: SQLSchema, schema_name: str | None, table_name: str) -> SQLTableSchema | None:
+    """Locate a table in ``schema`` by name, tolerating schema-label mismatches.
+
+    A caller-supplied ``schema_name`` constrains the match; ``None`` matches on table
+    name alone (the common unqualified case, where the in-memory schema may record the
+    table under a resolved default label like DuckDB's ``main``). Returns ``None`` when
+    no table or more than one matches, so type resolution degrades to all-string rather
+    than guessing.
+    """
+    matches = [
+        t for t in schema.tables if t.name == table_name and (schema_name is None or t.schema_name == schema_name)
+    ]
+    return matches[0] if len(matches) == 1 else None
 
 
 class ExtractRowsFromDocumentsTool:
@@ -118,10 +159,15 @@ class ExtractRowsFromDocumentsTool:
             SELECT content FROM _internal.messages WHERE message_id = 'M7'
 
         Entities extracted from each document are appended to ``table_name`` (one row
-        per entity, populating ``output_columns``). **This tool does not deduplicate.**
-        The same entity may appear in multiple rows, and different documents commonly
-        emit variants of the same real-world entity (e.g. ``"Microsoft"``, ``"MSFT"``,
-        ``"Microsoft Corp"``). Plan to follow up with a canonicalization step.
+        per entity, populating ``output_columns``). Each value is extracted as its target
+        column's type, and the extraction LLM emits NULL for any field the document
+        doesn't provide — so instructions on producing placeholder strings like ``"N/A"``
+        are not needed.
+
+        **This tool does not deduplicate.** The same entity may appear in multiple rows,
+        and different documents commonly emit variants of the same real-world entity
+        (e.g. ``"Microsoft"``, ``"MSFT"``, ``"Microsoft Corp"``). Plan to follow up with a
+        canonicalization step.
 
         Safe to call multiple times in parallel in one turn.
 
@@ -142,7 +188,8 @@ class ExtractRowsFromDocumentsTool:
                 template. Example: ``"Extract every product mentioned. For each,
                 capture name and price_usd."``
             output_columns: Columns each extracted entity populates. Must be
-                non-empty and all must already exist on ``table_name``.
+                non-empty and all must already exist on ``table_name``; each is
+                extracted as that column's existing type (no type argument needed).
         """
         if not output_columns:
             return "(error: output_columns must be non-empty)"
@@ -196,6 +243,17 @@ class ExtractRowsFromDocumentsTool:
         if missing:
             return f"(error: output_columns not found in table {qualified_target}: {missing})"
 
+        # Resolve each output column's target type so the LLM emits a native value
+        # (int/float/bool) instead of a string the database must coerce on INSERT —
+        # an unparseable string would otherwise abort the whole batch append. Best-effort
+        # off the connector's introspected schema; unresolved columns default to str.
+        target_table = _find_table(self.db_connector.schema, schema_name, table_name)
+        column_types = (
+            {c.name: _python_type_for_dtype(c.dtype) for c in target_table.columns if c.name in output_columns}
+            if target_table is not None
+            else {}
+        )
+
         # Per-call trajectory directory (one per __call__, shared across documents);
         # EntityExtractor creates it lazily on first write.
         traj_dir = self.trajectory_log_dir / uuid.uuid4().hex[:12] if self.trajectory_log_dir is not None else None
@@ -203,6 +261,7 @@ class ExtractRowsFromDocumentsTool:
         try:
             extractor = EntityExtractor(
                 output_columns,
+                column_types=column_types,
                 llm=self.subagent_llm,
                 model_settings=self.model_settings,
                 max_concurrency=self.max_concurrency,
