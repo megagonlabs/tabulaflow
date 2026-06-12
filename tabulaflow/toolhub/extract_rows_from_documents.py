@@ -28,12 +28,21 @@ logger = logging.getLogger(__name__)
 _JINJA_ENV = jinja2.Environment(undefined=jinja2.StrictUndefined)
 
 # Canonical ``SQLColumnSchema.dtype`` tokens (uppercase, parameter-stripped) that map to
-# each Python type the extraction model can emit. Every other token — JSON/array/struct,
-# binary, UUID, TIME, … — falls through to ``str``, preserving the all-string behavior for
-# types the LLM can't represent natively.
+# each Python type the extraction model can emit. Remaining text-castable tokens (TIME,
+# UUID, ENUM, CHAR variants, …) fall through to ``str``; genuinely non-scalar tokens are
+# rejected up front (see ``_UNSUPPORTED_DTYPES``).
 _INT_DTYPES = {"TINYINT", "SMALLINT", "INTEGER", "INT", "INT2", "INT4", "INT8", "BIGINT"}
 _FLOAT_DTYPES = {"FLOAT", "REAL", "DOUBLE", "DOUBLE_PRECISION", "NUMERIC", "BIGNUMERIC", "DECIMAL"}
 _BOOL_DTYPES = {"BOOLEAN", "BOOL"}
+
+# Non-scalar column types this tool refuses to target. Extraction yields flat scalar rows,
+# so semi-structured (JSON/variant/array/struct/map) and binary columns are a category
+# error — stringifying into them is fragile and aborts the batch append on strict
+# backends. Rejected with an actionable error instead of a silent str fallback.
+_UNSUPPORTED_DTYPES = {
+    "JSON", "JSONB", "VARIANT", "OBJECT", "ARRAY", "STRUCT", "MAP", "SUPER", "SQL_VARIANT",
+    "BINARY", "VARBINARY", "BYTES", "BLOB",
+}  # fmt: skip
 
 
 def _python_type_for_dtype(dtype: str) -> ColumnType:
@@ -166,11 +175,14 @@ class ExtractRowsFromDocumentsTool:
             SELECT content FROM _internal.messages WHERE message_id = 'M7'
 
         Entities extracted from each document are appended to ``table_name`` (one row
-        per entity, populating ``output_columns``). Each value is extracted as its target
-        column's type — numeric, boolean, and date/timestamp columns receive native typed
-        values, all other types receive text. The extraction LLM emits NULL for any field
-        the document doesn't provide — so instructions on producing placeholder strings
-        like ``"N/A"`` are not needed.
+        per entity, populating ``output_columns``). Each value is stored as its target
+        column's type: numeric, boolean, and date/timestamp columns receive native typed
+        values, and text columns receive text. For list or nested values (e.g. multiple
+        schools per person), store a JSON string in a text column — DuckDB ``JSON`` columns
+        are also supported; choose whatever shape fits the data. Array, struct, and binary
+        columns are not valid targets. The extraction LLM can emit NULL for any field the
+        document doesn't provide — so instructions on producing placeholder strings like
+        ``"N/A"`` are not needed.
 
         **This tool does not deduplicate.** The same entity may appear in multiple rows,
         and different documents commonly emit variants of the same real-world entity
@@ -252,15 +264,21 @@ class ExtractRowsFromDocumentsTool:
             return f"(error: output_columns not found in table {qualified_target}: {missing})"
 
         # Resolve each output column's target type so the LLM emits a native value
-        # (int/float/bool) instead of a string the database must coerce on INSERT —
+        # (int/float/bool/date) instead of a string the database must coerce on INSERT —
         # an unparseable string would otherwise abort the whole batch append. Best-effort
         # off the connector's introspected schema; unresolved columns default to str.
         target_table = _find_table(self.db_connector.schema, schema_name, table_name)
-        column_types = (
-            {c.name: _python_type_for_dtype(c.dtype) for c in target_table.columns if c.name in output_columns}
-            if target_table is not None
-            else {}
-        )
+        column_types: dict[str, ColumnType] = {}
+        if target_table is not None:
+            output_cols = [c for c in target_table.columns if c.name in output_columns]
+            unsupported = [f"{c.name} ({c.dtype})" for c in output_cols if c.dtype in _UNSUPPORTED_DTYPES]
+            if unsupported:
+                return (
+                    f"(error: cannot extract into non-scalar columns {unsupported} in {qualified_target}; "
+                    "target scalar, text, or date columns — for list/nested values, use a text column "
+                    "holding a JSON string)"
+                )
+            column_types = {c.name: _python_type_for_dtype(c.dtype) for c in output_cols}
 
         # Per-call trajectory directory (one per __call__, shared across documents);
         # EntityExtractor creates it lazily on first write.

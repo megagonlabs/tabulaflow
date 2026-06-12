@@ -159,3 +159,36 @@ async def test_tool_resolves_types_and_appends_typed_rows(tmp_path: Path, monkey
     # The missing numerics land as SQL NULL rather than a batch-aborting junk string.
     assert gadget["name"] == "Gadget"
     assert back["qty"].isna().sum() == 1 and back["price"].isna().sum() == 1
+
+
+@pytest.mark.asyncio
+async def test_tool_rejects_non_scalar_output_column(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A non-scalar (array/json/...) output column is rejected up front, not stringified."""
+    db_path = str(tmp_path / "docs.duckdb")
+    raw = duckdb.connect(db_path)
+    raw.execute("CREATE TABLE docs (title VARCHAR, tags VARCHAR[])")
+    raw.close()
+
+    conn = await SQLConnector.from_url_async(
+        global_id="test+extract_rows_reject",
+        url=f"duckdb:///{db_path}",
+        db_name="docs",
+        read_only=False,
+        enable_schema_caching=False,
+    )
+    conn.read_only = False
+
+    def _boom(*_: object, **__: object) -> object:
+        raise AssertionError("extraction must not run when an output column is non-scalar")
+
+    monkeypatch.setattr(mod, "EntityExtractor", _boom)
+
+    summary = await ExtractRowsFromDocumentsTool(conn)(
+        SimpleNamespace(tool_call_id="call-1"),  # type: ignore[arg-type]
+        None,
+        "docs",
+        task_query="SELECT 'doc' AS content",
+        task_instruction="Extract each tag.",
+        output_columns=["title", "tags"],
+    )
+    assert "non-scalar" in summary and "tags" in summary and "ARRAY" in summary
