@@ -38,7 +38,7 @@ class TestConnectorAffectedRows:
         # Non-row statements: success carried by error-is-None, df is None.
         # DDL: no count.
         r = await run("CREATE TABLE t(id INT, v INT)")
-        assert r.affected_rows is None and r.df is None and r.succeeded and not r.has_rows
+        assert r.affected_rows is None and r.df is None and r.succeeded
 
         r = await run("INSERT INTO t VALUES (1,10),(2,20),(3,30)")
         assert r.affected_rows == 3 and r.df is None and r.succeeded
@@ -59,18 +59,18 @@ class TestConnectorAffectedRows:
         await conn.run_query_async("INSERT INTO t VALUES (1),(2)")
 
         r = await conn.run_query_async("SELECT * FROM t")
-        assert r.affected_rows is None and r.has_rows and r.df is not None and len(r.df) == 2
+        assert r.affected_rows is None and r.df is not None and len(r.df) == 2
 
         # A SELECT that aliases a column to "Count" must stay a row result, not be
         # mistaken for a driver write-count.
         r = await conn.run_query_async('SELECT count(*) AS "Count" FROM t')
-        assert r.affected_rows is None and r.has_rows
-        assert r.df is not None and r.df.to_dict("records") == [{"Count": 2}]
+        assert r.affected_rows is None and r.df is not None
+        assert r.df.to_dict("records") == [{"Count": 2}]
 
     @pytest.mark.asyncio
-    async def test_error_is_not_succeeded_and_has_no_rows(self, conn: SQLConnector) -> None:
+    async def test_error_is_not_succeeded_and_has_no_df(self, conn: SQLConnector) -> None:
         r = await conn.run_query_async("SELECT * FROM does_not_exist")
-        assert not r.succeeded and not r.has_rows and r.df is None and r.error is not None
+        assert not r.succeeded and r.df is None and r.error is not None
 
 
 class TestRunQueryMessaging:
