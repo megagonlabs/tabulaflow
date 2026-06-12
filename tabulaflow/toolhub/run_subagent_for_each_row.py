@@ -206,10 +206,8 @@ class RunSubagentForEachRowTool:
 
         By default the subagent has no tools: it reads its prompt and emits one value
         per column in ``output_columns`` (via a structured ``submit_answer`` output), and
-        this tool writes them back to that row in a single UPDATE. Each value is typed
-        to its target column (numeric/boolean/date columns get native values, text
-        columns get text). The subagent can emit NULL for any field — state in
-        ``task_instruction`` when it should (e.g. value unknown or not applicable). Set
+        this tool writes them back to that row in a single UPDATE. Any field may be
+        emitted as NULL — no placeholder strings like ``"N/A"`` are needed. Set
         ``enable_browser_tools=True`` to grant web-browsing tools (plus the
         ``extract_rows_from_documents`` and ``add_canonical_name`` tools, so a row
         that browses can mine pages into structured rows and unify entity variants),
@@ -283,11 +281,12 @@ class RunSubagentForEachRowTool:
                 key — one task_query row per target row.
             output_columns: One or more columns to update on ``table_name``; the
                 subagent emits a value for each in a single ``submit_answer`` output.
-                All must already exist on the target table (they need not appear in
-                the ``task_query`` projection) and must be scalar, text, or date
-                columns. For list/nested values, target a text column holding a JSON
-                string — DuckDB ``JSON`` columns work too. Array, struct, map, and
-                binary columns are not valid targets.
+                They need not appear in the ``task_query`` projection. All must
+                already exist on ``table_name`` and must be scalar, text, or date
+                columns — each value is stored as that column's type (numeric/boolean/
+                date → native values; text → text). For list/nested values, target a
+                text column holding a JSON string (DuckDB ``JSON`` columns work too).
+                Array, struct, map, and binary columns are not valid targets.
             enable_browser_tools: If True, the per-row subagent gets web-browsing
                 tools (navigate, click, type, etc.). Each row browses in its own
                 isolated tabs (cookies/logins shared). A process-wide tab cap

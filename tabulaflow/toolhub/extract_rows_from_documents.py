@@ -119,14 +119,8 @@ class ExtractRowsFromDocumentsTool:
             SELECT content FROM _internal.messages WHERE message_id = 'M7'
 
         Entities extracted from each document are appended to ``table_name`` (one row
-        per entity, populating ``output_columns``). Each value is stored as its target
-        column's type: numeric, boolean, and date/timestamp columns receive native typed
-        values, and text columns receive text. For list or nested values (e.g. multiple
-        schools per person), store a JSON string in a text column — DuckDB ``JSON`` columns
-        are also supported; choose whatever shape fits the data. Array, struct, and binary
-        columns are not valid targets. The extraction LLM can emit NULL for any field the
-        document doesn't provide — so instructions on producing placeholder strings like
-        ``"N/A"`` are not needed.
+        per entity, populating ``output_columns``). Any field may be emitted as NULL —
+        no placeholder strings like ``"N/A"`` are needed.
 
         **This tool does not deduplicate.** The same entity may appear in multiple rows,
         and different documents commonly emit variants of the same real-world entity
@@ -152,8 +146,12 @@ class ExtractRowsFromDocumentsTool:
                 template. Example: ``"Extract every product mentioned. For each,
                 capture name and price_usd."``
             output_columns: Columns each extracted entity populates. Must be
-                non-empty and all must already exist on ``table_name``; each is
-                extracted as that column's existing type (no type argument needed).
+                non-empty. All must already exist on ``table_name`` and must be
+                scalar, text, or date columns — each value is stored as that column's
+                type (numeric/boolean/date → native values; text → text). For
+                list/nested values, target a text column holding a JSON string (DuckDB
+                ``JSON`` columns work too). Array, struct, map, and binary columns are
+                not valid targets.
         """
         if not output_columns:
             return "(error: output_columns must be non-empty)"
