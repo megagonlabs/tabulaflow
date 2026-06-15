@@ -394,6 +394,9 @@ body {
 .file-link:hover { text-decoration: underline; }
 .file-link svg { width: 14px; height: 14px; flex: none; }
 .file-link .file-size { color: #6a737d; font-size: 12px; }
+/* URL cells: mint accent, underline on hover — clickable, opens in new tab. */
+.cell-link { color: #3eb489; text-decoration: none; }
+.cell-link:hover { text-decoration: underline; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio { max-width: 240px; display: block; }
 /* Native audio controls are cream-colored across all browsers; flip via
@@ -522,6 +525,13 @@ _INIT_JS_TEMPLATE = """
     function escapeHtml(s){
         return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
+    function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
+    // A cell is a link only when its whole (trimmed) value is a single
+    // http(s) URL — free text that merely contains a URL stays plain text.
+    function asUrl(s){
+        var t = String(s).trim();
+        return /^https?:\\/\\/\\S+$/.test(t) ? t : null;
+    }
 
     var DISPLAY_CAP = __DISPLAY_CAP__;
     var formatters = {
@@ -529,6 +539,13 @@ _INIT_JS_TEMPLATE = """
             var v = cell.getValue();
             if (v == null) return "";
             var s = String(v);
+            var url = asUrl(s);
+            if (url){
+                var disp = url.length <= DISPLAY_CAP ? url : url.substring(0, DISPLAY_CAP);
+                var ell = url.length > DISPLAY_CAP ? "\\u2026" : "";
+                return '<a class="cell-link" href="' + escapeAttr(url)
+                    + '" target="_blank" rel="noopener">' + escapeHtml(disp) + ell + '</a>';
+            }
             var hasNewline = s.indexOf("\\n") >= 0;
             if (s.length <= DISPLAY_CAP && !hasNewline) return escapeHtml(s);
             // Show head text only; mark expandable with the .trunc class
@@ -574,6 +591,7 @@ _INIT_JS_TEMPLATE = """
                 col.cellClick = function(e, cell){
                     var v = cell.getValue();
                     if (typeof v !== "string") return;
+                    if (asUrl(v)) return;  // anchor handles the click (navigation)
                     if (v.length > DISPLAY_CAP || v.indexOf("\\n") >= 0){
                         openModal(cell.getColumn().getDefinition().title, v);
                     }
