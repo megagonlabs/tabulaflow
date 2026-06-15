@@ -646,7 +646,9 @@ class TabulaflowApp(App[None]):
             self._restore_input_text(display_text if display_text is not None else question)
             raise
         except Exception as e:
-            await progress.remove()
+            # Freeze the partial progress widget (mirrors the interrupt path) so the
+            # tool steps run so far stay visible, then mount the error below it.
+            progress.mark_failed()
             # Build the detail as plain text (not interpolated into markup) so a
             # ``[...]`` in the exception message can't be parsed as a markup tag.
             error_text = Text.from_markup(f"[{ERROR}]Agent error:[/] ")

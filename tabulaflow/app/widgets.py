@@ -654,13 +654,23 @@ class AgentProgressWidget(Widget):
         if usage is not None:
             self._usage = usage
         self._interrupted = True
+        self._freeze_partial()
+
+    def mark_failed(self) -> None:
+        """Freeze the widget after an errored agent turn, preserving the tool steps
+        rendered so far (the consumer calls this on a non-cancellation exception; no
+        terminal ``Finished`` arrives). Mirrors ``mark_interrupted``."""
+        self._freeze_partial()
+
+    def _freeze_partial(self) -> None:
+        """Freeze a partial run (interrupt or error): stop the timer, drop the live
+        status spinner, and — when nothing was rendered — collapse out of the layout
+        so the trailing status line sits flush against the user prompt."""
         self._status_text = None
         self._frozen = True
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
-        # If we never produced any content, collapse out of the layout so the
-        # following "Interrupted" line sits flush against the user prompt.
         if not self._steps and not self._streaming_text:
             self.display = False
         self._refresh(layout=True)
