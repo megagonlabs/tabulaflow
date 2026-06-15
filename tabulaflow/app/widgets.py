@@ -179,6 +179,16 @@ class HistoryInput(Input):
         Binding("ctrl+d", "quit_only", "Quit", show=False, priority=True),
         Binding("tab", "accept_suggestion", "Accept suggestion", show=False),
         Binding("ctrl+o", "open_data_explorer", "Open data explorer"),
+        # Option/Alt+Arrow word movement. Textual's Input already binds these
+        # actions to ``ctrl+left``/``ctrl+right`` (which is what iTerm2 and
+        # Terminal.app's "Use Option as Meta key" deliver, via ESC-b/ESC-f).
+        # Modern terminals (gnome-terminal, kitty, Ghostty, WezTerm, ...) emit
+        # the modifier-3 sequence that Textual parses as ``alt+left``/
+        # ``alt+right`` instead, so bind those names to the same actions.
+        Binding("alt+left", "cursor_left_word", "Move cursor left a word", show=False),
+        Binding("alt+right", "cursor_right_word", "Move cursor right a word", show=False),
+        Binding("alt+shift+left", "cursor_left_word(True)", "Select word left", show=False),
+        Binding("alt+shift+right", "cursor_right_word(True)", "Select word right", show=False),
     ]
 
     def action_open_data_explorer(self) -> None:
