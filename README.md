@@ -296,6 +296,7 @@ June 15
 - [x] Fix bug: tool progress disappears on error
 - [x] Option + left/right for input box cursor movement
 - [x] Fix schema browser table count mismatch due to visibility
+- [x] Clickable url in browser table
 
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
