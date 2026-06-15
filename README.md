@@ -292,17 +292,19 @@ June 11
 - [x] aria_to_markdown.py - fix list items collapsed to one line
 - [x] Note on deep links in web browser
 
-- [ ] Bug: tool progress disappears on error
+June 15
+- [x] Fix bug: tool progress disappears on error
+- [x] Option + left/right for input box cursor movement
+
+
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
-- [ ] Option + left/right for input box cursor movement
 - [ ] Offload truncated cell + read_message tool
 - [ ] clickable url in browser table
 - [ ] Inlucde table schema for add_canonical_name tool
 - [ ] extraction tool display
 - [ ] Remove registry variant of extraction and run_subagent_for_each_row tools
-- [ ] Multi-column output for subagents
 - [ ] subagent prompt - ensure output consistency but don't limit the approach
 - [ ] Auto-close old tab on re-navigate
 - [ ] Handle records with empty results or zero-row results
