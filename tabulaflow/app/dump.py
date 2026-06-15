@@ -526,11 +526,25 @@ _INIT_JS_TEMPLATE = """
         return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     }
     function escapeAttr(s){ return escapeHtml(s).replace(/"/g,"&quot;"); }
-    // A cell is a link only when its whole (trimmed) value is a single
-    // http(s) URL — free text that merely contains a URL stays plain text.
-    function asUrl(s){
-        var t = String(s).trim();
-        return /^https?:\\/\\/\\S+$/.test(t) ? t : null;
+    function link(href, text){
+        return '<a class="cell-link" href="' + escapeAttr(href)
+            + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>';
+    }
+    // Linkify only when the whole cell is URL(s): a single URL, or a
+    // delimiter-separated list where *every* token is an http(s) URL (e.g.
+    // a references column). Prose that merely contains a URL stays plain
+    // text. Trailing list punctuation (``;`` ``,``) is stripped per token.
+    // Returns the URL list, or null.
+    function asUrls(s){
+        var toks = String(s).trim().split(/\\s+/);
+        var urls = [];
+        for (var i = 0; i < toks.length; i++){
+            var u = toks[i].replace(/[;,]+$/, "");
+            if (u === "") continue;
+            if (!/^https?:\\/\\/\\S+$/.test(u)) return null;
+            urls.push(u);
+        }
+        return urls.length ? urls : null;
     }
 
     var DISPLAY_CAP = __DISPLAY_CAP__;
@@ -539,12 +553,14 @@ _INIT_JS_TEMPLATE = """
             var v = cell.getValue();
             if (v == null) return "";
             var s = String(v);
-            var url = asUrl(s);
-            if (url){
-                var disp = url.length <= DISPLAY_CAP ? url : url.substring(0, DISPLAY_CAP);
-                var ell = url.length > DISPLAY_CAP ? "\\u2026" : "";
-                return '<a class="cell-link" href="' + escapeAttr(url)
-                    + '" target="_blank" rel="noopener">' + escapeHtml(disp) + ell + '</a>';
+            var urls = asUrls(s);
+            if (urls){
+                if (urls.length === 1){
+                    var u0 = urls[0];
+                    var label = u0.length <= DISPLAY_CAP ? u0 : u0.substring(0, DISPLAY_CAP) + "\\u2026";
+                    return link(u0, label);
+                }
+                return urls.map(function(u){ return link(u, u); }).join(", ");
             }
             var hasNewline = s.indexOf("\\n") >= 0;
             if (s.length <= DISPLAY_CAP && !hasNewline) return escapeHtml(s);
@@ -591,7 +607,7 @@ _INIT_JS_TEMPLATE = """
                 col.cellClick = function(e, cell){
                     var v = cell.getValue();
                     if (typeof v !== "string") return;
-                    if (asUrl(v)) return;  // anchor handles the click (navigation)
+                    if (asUrls(v)) return;  // anchor(s) handle the click (navigation)
                     if (v.length > DISPLAY_CAP || v.indexOf("\\n") >= 0){
                         openModal(cell.getColumn().getDefinition().title, v);
                     }
