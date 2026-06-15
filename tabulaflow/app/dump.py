@@ -530,18 +530,32 @@ _INIT_JS_TEMPLATE = """
         return '<a class="cell-link" href="' + escapeAttr(href)
             + '" target="_blank" rel="noopener">' + escapeHtml(text) + '</a>';
     }
-    // Linkify only when the whole cell is URL(s): a single URL, or a
+    // Linkify only when the whole cell is URL(s): a single URL, a
     // delimiter-separated list where *every* token is an http(s) URL (e.g.
-    // a references column). Prose that merely contains a URL stays plain
-    // text. Trailing list punctuation (``;`` ``,``) is stripped per token.
-    // Returns the URL list, or null.
+    // a references column), or a JSON array whose elements are all URLs.
+    // Prose that merely contains a URL stays plain text; a JSON array with
+    // any non-URL element stays JSON text. Trailing list punctuation
+    // (``;`` ``,``) is stripped per token. Returns the URL list, or null.
+    function isUrl(u){ return /^https?:\\/\\/\\S+$/.test(u); }
     function asUrls(s){
-        var toks = String(s).trim().split(/\\s+/);
+        var t = String(s).trim();
+        if (t.charAt(0) === "["){
+            var arr;
+            try { arr = JSON.parse(t); } catch (e) { return null; }
+            if (!Array.isArray(arr) || !arr.length) return null;
+            var out = [];
+            for (var j = 0; j < arr.length; j++){
+                if (typeof arr[j] !== "string" || !isUrl(arr[j].trim())) return null;
+                out.push(arr[j].trim());
+            }
+            return out;
+        }
+        var toks = t.split(/\\s+/);
         var urls = [];
         for (var i = 0; i < toks.length; i++){
             var u = toks[i].replace(/[;,]+$/, "");
             if (u === "") continue;
-            if (!/^https?:\\/\\/\\S+$/.test(u)) return null;
+            if (!isUrl(u)) return null;
             urls.push(u);
         }
         return urls.length ? urls : null;
@@ -555,6 +569,12 @@ _INIT_JS_TEMPLATE = """
             var s = String(v);
             var urls = asUrls(s);
             if (urls){
+                // JSON array: keep the brackets/quotes so an ARRAY cell still
+                // reads as JSON (not flattened into a scalar-looking string);
+                // the links sit inside the quotes.
+                if (s.trim().charAt(0) === "["){
+                    return "[" + urls.map(function(u){ return '"' + link(u, u) + '"'; }).join(", ") + "]";
+                }
                 if (urls.length === 1){
                     var u0 = urls[0];
                     var label = u0.length <= DISPLAY_CAP ? u0 : u0.substring(0, DISPLAY_CAP) + "\\u2026";
