@@ -297,7 +297,7 @@ June 15
 - [x] Option + left/right for input box cursor movement
 - [x] Fix schema browser table count mismatch due to visibility
 
-
+- [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
