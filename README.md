@@ -295,6 +295,7 @@ June 11
 June 15
 - [x] Fix bug: tool progress disappears on error
 - [x] Option + left/right for input box cursor movement
+- [x] Fix schema browser table count mismatch due to visibility
 
 
 - [ ] Include multimodal data in sample_data

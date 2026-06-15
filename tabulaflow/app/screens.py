@@ -1306,6 +1306,22 @@ class SchemaBrowserScreen(Screen[None]):
         aliases.sort()
         return aliases
 
+    @staticmethod
+    def _visible_tables(alias: str, schema: object) -> list[Any]:
+        """Tables the tree shows for ``alias``. The workspace hides internal/scratch
+        schemas (conventionally ``_``-prefixed); every other DB shows all tables.
+
+        Shared by ``_build_tree`` and ``_update_status`` so the status-bar count
+        always matches what the tree actually renders.
+        """
+        from tabulaflow.core.types import SQLSchema
+
+        assert isinstance(schema, SQLSchema)
+        tables = list(schema.tables)
+        if alias == "workspace":
+            tables = [t for t in tables if not (t.schema_name and t.schema_name.startswith("_"))]
+        return tables
+
     def _build_tree(self) -> None:
         from textual.widgets import Tree
 
@@ -1331,11 +1347,7 @@ class SchemaBrowserScreen(Screen[None]):
                 expand=self._expand_for((alias, None, None, None), True),
             )
 
-            tables: list[SQLTableSchema] = list(schema.tables)
-            if alias == "workspace":
-                # Hide internal/scratch schemas (conventionally "_"-prefixed)
-                # from the workspace; everything else expands like any other DB.
-                tables = [t for t in tables if not (t.schema_name and t.schema_name.startswith("_"))]
+            tables: list[SQLTableSchema] = self._visible_tables(alias, schema)
             schema_names: set[str | None] = {t.schema_name for t in tables}
             has_schemas = schema_names != {None}
 
@@ -1593,12 +1605,14 @@ class SchemaBrowserScreen(Screen[None]):
             return
 
         if node_data.kind == _NODE_KIND_DB:
-            tables = list(schema.tables)
+            tables = self._visible_tables(node_data.alias, schema)
             parts.append(node_data.alias)
             parts.append(f"{len(tables):,} tables")
 
         elif node_data.kind == _NODE_KIND_SCHEMA:
-            tables = [t for t in schema.tables if t.schema_name == node_data.schema_name]
+            tables = [
+                t for t in self._visible_tables(node_data.alias, schema) if t.schema_name == node_data.schema_name
+            ]
             path = f"{node_data.alias} > {node_data.schema_name or '(default)'}"
             parts.append(path)
             parts.append(f"{len(tables):,} tables")
