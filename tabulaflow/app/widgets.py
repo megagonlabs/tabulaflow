@@ -563,8 +563,28 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
     return "done"  # Completed
 
 
+class AgentTextBlock(Static):
+    """One streamed block of the agent's natural-language text.
+
+    Rendered as a plain ``Text`` in its own widget — rather than inside the
+    progress widget's render group — so it is selectable (Textual only extracts
+    selection text from ``Text``/``Content`` renders). ``AgentProgressWidget``
+    mounts one of these as a sibling per text run; the run that reaches
+    ``Finished`` is the final answer, runs ended by a tool call are mid-turn.
+    """
+
+    DEFAULT_CSS = """
+    AgentTextBlock {
+        padding: 0 1;
+        margin: 1 0 0 0;
+        height: auto;
+    }
+    """
+
+
 class AgentProgressWidget(Widget):
-    """Shows agent execution progress with tool steps and streaming text.
+    """Shows agent execution progress with tool steps; streams the agent's text
+    into sibling ``AgentTextBlock`` widgets.
 
     Driven by ``apply(event)`` over the ``ChatAgent.run_stream`` event stream; the
     consumer (``tui._run_agent``) calls ``mark_interrupted`` on cancellation."""
@@ -582,6 +602,10 @@ class AgentProgressWidget(Widget):
         self._streaming_text = ""
         self._raw_text = ""
         self._separator_seen = False
+        # Text blocks are mounted as siblings (so they're selectable). ``_text_block``
+        # is the currently-open run; ``_blocks`` is every block, for ordered mounting.
+        self._text_block: "AgentTextBlock | None" = None
+        self._blocks: list["AgentTextBlock"] = []
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
@@ -632,11 +656,6 @@ class AgentProgressWidget(Widget):
                 self._status_spinner.text = Text(self._status_text, style="dim")
                 parts.append(self._status_spinner)
 
-        if self._streaming_text:
-            if self._steps:
-                parts.append(Text())
-            parts.append(Text(self._streaming_text))
-
         return Group(*parts) if parts else Text()
 
     # Event-stream consumption
@@ -663,10 +682,11 @@ class AgentProgressWidget(Widget):
             self._on_finished(event.result)
 
     def _on_finished(self, result: ChatResult) -> None:
-        # Reconcile the live-streamed prose with the authoritative final text, then
-        # freeze. (The terminal Finished event carries the full ChatResult.)
-        if self._streaming_text != result.text:
+        # Reconcile the live-streamed prose with the authoritative final text
+        # (the terminal Finished event carries the full ChatResult), then freeze.
+        if result.text:
             self._streaming_text = result.text
+            self._set_text(result.text)
         if result.usage is not None:
             self._usage = result.usage
         self._status_text = None
@@ -699,8 +719,6 @@ class AgentProgressWidget(Widget):
         if self._timer is not None:
             self._timer.stop()
             self._timer = None
-        if not self._steps and not self._streaming_text:
-            self.display = False
         self._refresh(layout=True)
 
     def _on_tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
@@ -708,7 +726,12 @@ class AgentProgressWidget(Widget):
             self._steps.append(("done", "", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
         self._steps.append(("running", tool_call_id, name, label))
+        # End the current text run: the next text delta opens a new block (the run
+        # that reaches ``Finished`` is the final answer; runs ended here are mid-turn).
         self._streaming_text = ""
+        self._raw_text = ""
+        self._separator_seen = False
+        self._text_block = None
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
@@ -782,7 +805,7 @@ class AgentProgressWidget(Widget):
 
     def _on_text_delta(self, delta: str) -> None:
         self._raw_text += delta
-        # Only display text after the --- separator
+        # Only display text after the --- separator (the refs block precedes it).
         if self._separator_seen:
             self._streaming_text += delta
         elif "---" in self._raw_text:
@@ -791,13 +814,32 @@ class AgentProgressWidget(Widget):
         else:
             return
         self._status_text = None
+        self._set_text(self._streaming_text)
         self._refresh(layout=True, scroll=True)
+
+    def _set_text(self, text: str) -> None:
+        """Render ``text`` in the current text block, mounting a new selectable
+        block (after the progress widget or the previous block) on first use."""
+        if self._text_block is None:
+            anchor = self._blocks[-1] if self._blocks else self
+            self._text_block = AgentTextBlock(Text(text))
+            self._blocks.append(self._text_block)
+            if self.parent is not None:
+                self.parent.mount(self._text_block, after=anchor)
+        else:
+            self._text_block.update(Text(text))
 
     def _on_usage(self, usage: Usage) -> None:
         self._usage = usage
         self._refresh()
 
     def _refresh(self, *, layout: bool = False, scroll: bool = False) -> None:
+        # Collapse when there's nothing to show (no tool steps, no status spinner)
+        # — e.g. while a direct answer streams into its sibling text block. An
+        # empty render still occupies a line and blocks margin-collapse between the
+        # user message and the text block, which otherwise makes the text jump up
+        # by two rows once the widget finally collapses on finish.
+        self.display = bool(self._steps or self._status_text)
         try:
             self.refresh(layout=layout)
             if scroll:
