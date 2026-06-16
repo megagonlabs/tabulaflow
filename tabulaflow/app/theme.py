@@ -42,6 +42,12 @@ FK_MARKER = f"bold {ACCENT_DIM}"
 # ``TabulaflowApp.get_css_variables``.
 FOCUS_SURFACE = "#2D2D2D"
 
+# Background shade for settled raised content (the user-message band). A gentle
+# lift that sits *between* ``$surface`` and ``FOCUS_SURFACE`` so user messages
+# read as distinct-but-passive — and the focused surface stays the brightest,
+# uniquely-active tone above them.
+MESSAGE_SURFACE = "#252525"
+
 # Color used for keyboard-key glyphs in hint bars (e.g. "Esc", "Enter", "[/]").
 # Kept separate from ACCENT so the two can evolve independently.
 KEY_HINT_COLOR = "#3EB489"  # "#9EC8B2"
