@@ -534,6 +534,7 @@ class ChatAgent:
         final_usage: Usage | None = None
         interrupted = False
         completed_results: dict[str, ToolReturnPart] = {}
+        text_stripper = _AnswerTextStripper()
 
         try:
             try:
@@ -552,7 +553,7 @@ class ChatAgent:
                                     ):
                                         completed_results[event.tool_call_id] = event.result
                                     await _emit_stream_event(
-                                        event, emit, self._query_history, self._tools.get_table_schema
+                                        event, emit, self._query_history, self._tools.get_table_schema, text_stripper
                                     )
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
@@ -663,17 +664,73 @@ def _parse_refs(text: str) -> list[tuple[str, str | None]]:
     return [(m.group(1), (m.group(2) or "").strip() or None) for m in _QUERY_REF_RE.finditer(text)]
 
 
+def _is_citation_block(prefix: str) -> bool:
+    """True if ``prefix`` (the text before the first ``---``) is a citation block:
+    only ``[[record:...]]`` markers and whitespace, possibly empty. This is what
+    makes the ``---`` a refs/answer separator rather than content in a plain answer
+    that happens to contain a ``---``."""
+    return _QUERY_REF_RE.sub("", prefix).strip() == ""
+
+
 def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | None]]]:
-    # Refs live in the citation block before the --- separator; user-facing text after.
-    # No separator means the whole output is user-facing text.
-    prefix, display_text = answer_text.split(_SEPARATOR, 1) if _SEPARATOR in answer_text else ("", answer_text)
-    refs = _parse_refs(prefix)
-    if not refs:
-        # Fallback: the agent didn't follow the citation-block format — scan the
-        # display text for inline markers and strip them out of it.
-        refs = _parse_refs(display_text)
-        display_text = _QUERY_REF_RE.sub("", display_text)
-    return display_text.strip(), refs
+    # A leading ``---`` is the refs/answer separator only when the text before it is
+    # a citation block (refs lines and/or empty) — otherwise the ``---`` is content.
+    if _SEPARATOR in answer_text:
+        prefix, display_text = answer_text.split(_SEPARATOR, 1)
+        if _is_citation_block(prefix):
+            return display_text.strip(), _parse_refs(prefix)
+    # No citation block: the whole output is user-facing. Still strip any inline
+    # ``[[record:...]]`` markers the agent may have left in the prose.
+    refs = _parse_refs(answer_text)
+    if refs:
+        answer_text = _QUERY_REF_RE.sub("", answer_text)
+    return answer_text.strip(), refs
+
+
+class _AnswerTextStripper:
+    """Strips the citation-refs block from a streamed text run so only user-facing
+    text reaches the frontend as ``TextDelta``.
+
+    A run that opens with a citation block — zero or more ``[[record:...]]`` lines
+    terminated by ``---`` (the final answer's format; the refs may be empty) — is
+    held back until the ``---``, after which the answer streams; any other run —
+    mid-turn narration, or an answer without a citation block — streams live.
+    Reset via :meth:`reset` at the start of each text part.
+
+    Kept here (not in the frontend) so the ``---``/refs convention — owned by this
+    agent's prompt — never crosses the layer boundary.
+    """
+
+    _MARKER = "[[record:"
+
+    def __init__(self) -> None:
+        self.reset()
+
+    def reset(self) -> None:
+        self._raw = ""
+        self._open = False  # True once user-facing text has begun streaming
+
+    def feed(self, chunk: str) -> str:
+        """Accumulate ``chunk``; return its newly user-facing text (``""`` until known)."""
+        self._raw += chunk
+        if self._open:
+            return chunk
+        # A citation block (refs and/or empty) ends at the first ``---``: hide it
+        # and stream the answer. A ``---`` preceded by prose is a plain answer's
+        # own content — stream the whole thing.
+        if _SEPARATOR in self._raw:
+            prefix, answer = self._raw.split(_SEPARATOR, 1)
+            self._open = True
+            return answer.lstrip("\n") if _is_citation_block(prefix) else self._raw
+        # No separator yet: keep waiting while the lead could still be a citation
+        # block — its tail (after complete refs) is empty, a partial ref marker (a
+        # prefix of one, or one being built), or a partial ``---``. Else it's prose.
+        tail = _QUERY_REF_RE.sub("", self._raw).lstrip()
+        building_ref = tail.startswith(self._MARKER) or self._MARKER.startswith(tail)
+        if tail and not building_ref and not _SEPARATOR.startswith(tail):
+            self._open = True
+            return self._raw  # plain text — narration or a no-refs answer
+        return ""
 
 
 async def _records_from_refs(
@@ -715,6 +772,7 @@ async def _emit_stream_event(
     emit: Callable[[ChatEvent], None],
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
+    text_stripper: "_AnswerTextStripper",
 ) -> None:
     """Map one pydantic-ai stream event to ``ChatEvent``s and emit them.
 
@@ -751,15 +809,21 @@ async def _emit_stream_event(
         part = event.part
         if isinstance(part, ThinkingPart) and part.content:
             emit(ThinkingDelta(content=part.content))
-        elif isinstance(part, TextPart) and part.content:
-            emit(TextDelta(content=part.content))
+        elif isinstance(part, TextPart):
+            # A new text part begins a fresh run; strip refs from this run only.
+            text_stripper.reset()
+            visible = text_stripper.feed(part.content) if part.content else ""
+            if visible:
+                emit(TextDelta(content=visible))
 
     elif isinstance(event, PartDeltaEvent):
         delta = event.delta
         if isinstance(delta, ThinkingPartDelta) and delta.content_delta:
             emit(ThinkingDelta(content=delta.content_delta))
         elif isinstance(delta, TextPartDelta) and delta.content_delta:
-            emit(TextDelta(content=delta.content_delta))
+            visible = text_stripper.feed(delta.content_delta)
+            if visible:
+                emit(TextDelta(content=visible))
 
 
 def _coerce_args(args: object) -> dict[str, Any]:

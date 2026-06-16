@@ -564,13 +564,12 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
 
 
 class AgentTextBlock(Static):
-    """One streamed block of the agent's natural-language text.
+    """The agent's natural-language answer, streamed into its own widget.
 
-    Rendered as a plain ``Text`` in its own widget — rather than inside the
-    progress widget's render group — so it is selectable (Textual only extracts
-    selection text from ``Text``/``Content`` renders). ``AgentProgressWidget``
-    mounts one of these as a sibling per text run; the run that reaches
-    ``Finished`` is the final answer, runs ended by a tool call are mid-turn.
+    Rendered as a plain ``Text`` — not inside the progress widget's render group —
+    so it is selectable (Textual only extracts selection text from
+    ``Text``/``Content`` renders). ``AgentProgressWidget`` mounts one as a sibling
+    for the final answer; mid-turn narration (text before a tool call) is dropped.
     """
 
     DEFAULT_CSS = """
@@ -600,12 +599,10 @@ class AgentProgressWidget(Widget):
         super().__init__()
         self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
         self._streaming_text = ""
-        self._raw_text = ""
-        self._separator_seen = False
-        # Text blocks are mounted as siblings (so they're selectable). ``_text_block``
-        # is the currently-open run; ``_blocks`` is every block, for ordered mounting.
+        # The agent's answer streams into this selectable sibling block. Text
+        # emitted before a tool call (mid-turn narration) is dropped — only the
+        # final answer's run is kept (see ``_on_tool_start``).
         self._text_block: "AgentTextBlock | None" = None
-        self._blocks: list["AgentTextBlock"] = []
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
         self._status_spinner = Spinner("dots", text=Text("Thinking...", style="dim"), style="dim")
@@ -726,12 +723,12 @@ class AgentProgressWidget(Widget):
             self._steps.append(("done", "", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
         self._steps.append(("running", tool_call_id, name, label))
-        # End the current text run: the next text delta opens a new block (the run
-        # that reaches ``Finished`` is the final answer; runs ended here are mid-turn).
+        # Drop mid-turn narration: a text run ended by a tool call isn't the final
+        # answer, so discard its block (only the run that reaches ``Finished`` is kept).
+        if self._text_block is not None:
+            self._text_block.remove()
+            self._text_block = None
         self._streaming_text = ""
-        self._raw_text = ""
-        self._separator_seen = False
-        self._text_block = None
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
@@ -804,28 +801,19 @@ class AgentProgressWidget(Widget):
         self._refresh(layout=True, scroll=True)
 
     def _on_text_delta(self, delta: str) -> None:
-        self._raw_text += delta
-        # Only display text after the --- separator (the refs block precedes it).
-        if self._separator_seen:
-            self._streaming_text += delta
-        elif "---" in self._raw_text:
-            self._separator_seen = True
-            self._streaming_text = self._raw_text.split("---", 1)[1].lstrip("\n")
-        else:
-            return
+        # Deltas are already user-facing — the chat layer strips the refs block.
+        self._streaming_text += delta
         self._status_text = None
         self._set_text(self._streaming_text)
         self._refresh(layout=True, scroll=True)
 
     def _set_text(self, text: str) -> None:
-        """Render ``text`` in the current text block, mounting a new selectable
-        block (after the progress widget or the previous block) on first use."""
+        """Render ``text`` in the answer block, mounting it as a selectable sibling
+        after the progress widget on first use."""
         if self._text_block is None:
-            anchor = self._blocks[-1] if self._blocks else self
             self._text_block = AgentTextBlock(Text(text))
-            self._blocks.append(self._text_block)
             if self.parent is not None:
-                self.parent.mount(self._text_block, after=anchor)
+                self.parent.mount(self._text_block, after=self)
         else:
             self._text_block.update(Text(text))
 
