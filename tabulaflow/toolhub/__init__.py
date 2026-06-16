@@ -2,6 +2,7 @@ from tabulaflow.toolhub.base import BaseTool
 from tabulaflow.toolhub.get_column_json_schema import GetColumnJsonSchemaTool
 from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
+from tabulaflow.toolhub.create_dataset import CreateDatasetTool
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.render_chart import RenderPlotextChartTool
@@ -26,6 +27,7 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "GetTableSchemaTool",
     "AddCanonicalNameTool",
+    "CreateDatasetTool",
     "EntityExtractor",
     "ExtractRowsFromDocumentsTool",
     "RegistryGetColumnJsonSchemaTool",

@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
+        CreateDatasetTool,
         ExtractRowsFromDocumentsTool,
         QueryHistory,
         QueryRecord,
@@ -66,6 +67,7 @@ if TYPE_CHECKING:
         RunSubagentForEachRowTool,
         WebBrowserTool,
     )
+    from tabulaflow.toolhub.create_dataset import CreateDatasetFn
 
 logger = logging.getLogger(__name__)
 
@@ -268,6 +270,8 @@ class _Toolset:
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
+    # Host-facing tool; ``None`` when the app didn't supply the create-dataset callback.
+    create_dataset: CreateDatasetTool | None
 
 
 @dataclass
@@ -297,6 +301,10 @@ class ChatAgent:
     # tools that depend on them. Wired in by the app from ``RuntimePaths``.
     project_dir: Path | None = None
     scratch_dir: Path | None = None
+    # Host callback that creates + registers a writable dataset and returns its alias.
+    # ``None`` (default) omits the ``create_dataset`` tool — server contexts that don't
+    # own a registry/data dir leave it unset. Wired in by the app.
+    create_dataset_fn: CreateDatasetFn | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
@@ -327,6 +335,7 @@ class ChatAgent:
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
+            CreateDatasetTool,
             ExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
             RegistryGetDBDocumentTool,
@@ -381,6 +390,7 @@ class ChatAgent:
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
+            create_dataset=(CreateDatasetTool(self.create_dataset_fn) if self.create_dataset_fn is not None else None),
         )
 
     @property
@@ -430,6 +440,7 @@ class ChatAgent:
             for tool in (self._tools.run_subagent_for_each_row, self._tools.extract_rows_from_documents)
             if tool is not None
         ]
+        host_tools = [tool.as_pydantic_ai_tool() for tool in (self._tools.create_dataset,) if tool is not None]
         self._pydantic_ai_agent = make_agent(
             self.model,
             tools=[
@@ -439,6 +450,7 @@ class ChatAgent:
                 self._tools.get_column_json_schema.as_pydantic_ai_tool(),
                 self._tools.transfer_record.as_pydantic_ai_tool(),
                 *fanout_tools,
+                *host_tools,
                 self._tools.add_canonical_name.as_pydantic_ai_tool(),
                 self._tools.render_chart.as_pydantic_ai_tool(),
                 *self._tools.web_browser.as_pydantic_ai_tools(),
