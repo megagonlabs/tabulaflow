@@ -177,6 +177,44 @@ class TabulaflowApp(App[None]):
         """Re-render the Esc hint when focus moves between input/results."""
         self._refresh_esc_hint()
 
+    def on_text_selected(self, event: events.TextSelected) -> None:
+        """Auto-copy the chat selection to the clipboard when a drag ends.
+
+        The terminal's mouse reporting routes the drag to us, so it can't make a
+        native selection the user could copy with the terminal — so we copy the
+        in-app selection ourselves on release (``TextSelected`` is not sent for
+        Input/TextArea, which handle their own selection).
+        """
+        text = self.screen.get_selected_text()
+        if text:
+            self._copy_to_clipboard(text)
+
+    def _copy_to_clipboard(self, text: str) -> None:
+        """Write ``text`` to the system clipboard.
+
+        Always emits OSC 52 (via Textual) so copy works over SSH and in terminals
+        without a local clipboard tool; additionally pipes to a local tool when
+        present, since macOS Terminal ignores OSC 52.
+        """
+        import shutil
+        import subprocess
+        import sys
+
+        self.copy_to_clipboard(text)  # OSC 52
+
+        if sys.platform == "darwin":
+            cmd = ["pbcopy"]
+        elif shutil.which("wl-copy"):
+            cmd = ["wl-copy"]
+        elif shutil.which("xclip"):
+            cmd = ["xclip", "-selection", "clipboard"]
+        else:
+            return
+        try:
+            subprocess.run(cmd, input=text.encode("utf-8"), check=False)
+        except Exception:
+            pass
+
     def action_scroll_log(self, direction: str) -> None:
         """Page-scroll the chat log even when the input bar has focus.
 
