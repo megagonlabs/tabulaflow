@@ -244,30 +244,6 @@ async def _register_user_db(session: SessionState, alias: str, connector: NL2QDB
         )
 
 
-async def create_dataset(session: SessionState, name: str) -> str:
-    """Create an empty writable DuckDB dataset and register it; return its alias.
-
-    The dataset is a first-class, writable source (distinct from the internal
-    ``workspace``) that the agent populates and grows via ``run_query`` (CREATE TABLE /
-    INSERT). ``name`` is sanitized to an alias and suffixed on collision, so the returned
-    alias may differ from ``name``. Opening the DuckDB file read-write creates it empty —
-    there is no separate create-then-connect step.
-    """
-    from tabulaflow.app.session import create_duckdb_connector
-
-    base = _sanitize_alias(name)
-    alias = base
-    suffix = 2
-    while session.registry.has(alias):
-        alias = f"{base}_{suffix}"
-        suffix += 1
-
-    db_path = session.data_dir / f"{alias}.duckdb"
-    connector = await create_duckdb_connector(db_path, alias, read_only=False)
-    await _register_user_db(session, alias, connector, source_key=("dataset", alias))
-    return alias
-
-
 async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
     if not args:
         return CommandResult(

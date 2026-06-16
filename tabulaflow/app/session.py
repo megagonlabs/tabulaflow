@@ -13,35 +13,25 @@ if TYPE_CHECKING:
 WORKSPACE_ALIAS = "workspace"
 
 
-async def create_duckdb_connector(db_path: Path, alias: str, *, read_only: bool = False) -> SQLConnector:
-    """Create a DuckDB-backed connector at ``db_path`` registered as ``alias``.
-
-    Opening a non-existent path read-write creates the (empty) database file, and the
-    returned connector is the live connection — there is no separate create-then-connect
-    step. Backs both the session workspace and agent-built writable datasets. Schema and
-    query caching are off: these databases are mutable, so a cached schema would go stale
-    as tables/rows are added.
+async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
+    """Create the per-session workspace DuckDB connector at ``workspace_db_path``.
 
     Async, so the caller builds it before the (synchronous) ``SessionState`` — the
     connector is handed to the session/agent at construction rather than attached
     afterwards."""
     from tabulaflow.core.db_connector.sql_conn import SQLConnector
 
-    db_path.parent.mkdir(parents=True, exist_ok=True)
-    abspath = os.path.abspath(db_path)
+    workspace_db_path.parent.mkdir(parents=True, exist_ok=True)
+    abspath = os.path.abspath(workspace_db_path)
     return await SQLConnector.from_url_async(
-        global_id=f"cli+{alias}",
+        global_id=f"cli+{WORKSPACE_ALIAS}",
         url=f"duckdb:///{abspath}",
-        db_name=alias,
-        read_only=read_only,
+        db_name=WORKSPACE_ALIAS,
+        read_only=False,
+        # Mutable store: a cached schema would go stale as tables/rows change.
         enable_schema_caching=False,
         enable_query_caching=False,
     )
-
-
-async def create_workspace_connector(workspace_db_path: Path) -> SQLConnector:
-    """Create the per-session workspace DuckDB connector at ``workspace_db_path``."""
-    return await create_duckdb_connector(workspace_db_path, WORKSPACE_ALIAS, read_only=False)
 
 
 class SessionState:
@@ -82,7 +72,7 @@ class SessionState:
             trajectory_log_dir=trajectories_dir,
             project_dir=project_dir,
             scratch_dir=scratch_dir,
-            create_dataset_fn=self.create_dataset,
+            data_dir=data_dir,
         )
         self.last_result: object | None = None
         # Maps a "what's this connection's source" key (frozenset of file
@@ -90,15 +80,6 @@ class SessionState:
         # registered.  Used by ``/connect`` to detect duplicate sources
         # being registered under different aliases.
         self._sources: dict[object, str] = {}
-
-    async def create_dataset(self, name: str) -> str:
-        """Create a writable dataset on behalf of the agent; return its alias.
-
-        Bound and handed to the chat agent as a host callback so its ``create_dataset``
-        tool can register a new source through the same path as the slash commands."""
-        from tabulaflow.app.commands import create_dataset as _create_dataset
-
-        return await _create_dataset(self, name)
 
     def find_alias_by_source(self, key: object) -> str | None:
         """Return the alias registered for ``key``, or None."""

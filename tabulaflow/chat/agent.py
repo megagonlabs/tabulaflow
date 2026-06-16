@@ -67,7 +67,6 @@ if TYPE_CHECKING:
         RunSubagentForEachRowTool,
         WebBrowserTool,
     )
-    from tabulaflow.toolhub.create_dataset import CreateDatasetFn
 
 logger = logging.getLogger(__name__)
 
@@ -301,10 +300,9 @@ class ChatAgent:
     # tools that depend on them. Wired in by the app from ``RuntimePaths``.
     project_dir: Path | None = None
     scratch_dir: Path | None = None
-    # Host callback that creates + registers a writable dataset and returns its alias.
-    # ``None`` (default) omits the ``create_dataset`` tool — server contexts that don't
-    # own a registry/data dir leave it unset. Wired in by the app.
-    create_dataset_fn: CreateDatasetFn | None = None
+    # Directory under which agent-created writable datasets are materialized. ``None``
+    # (default, e.g. server contexts) omits the ``create_dataset`` tool. Wired in by the app.
+    data_dir: Path | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)
@@ -390,7 +388,7 @@ class ChatAgent:
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
-            create_dataset=(CreateDatasetTool(self.create_dataset_fn) if self.create_dataset_fn is not None else None),
+            create_dataset=(CreateDatasetTool(self.registry, self.data_dir) if self.data_dir is not None else None),
         )
 
     @property
