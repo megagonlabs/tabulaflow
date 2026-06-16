@@ -304,9 +304,11 @@ June 15
   - [x] Move "---" handling from app/ layer to chat/ layer
   - [x] NarrationDelta and AnswerDelta
 
+June 16
+- [x] Fix bug: if ask question before workspace ready, workspace load forever
 - [ ] Bash tool
 
-- [ ] Confirm: if ask question before workspace ready, workspace load forever
+
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow

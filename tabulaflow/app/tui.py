@@ -484,7 +484,7 @@ class TabulaflowApp(App[None]):
             # both the workspace creation and the construction below stay responsive.
             await loop.run_in_executor(None, _warm_session_imports)
             workspace = await create_workspace_connector(self._runtime_paths.workspace_db_path)
-            self._session = await loop.run_in_executor(
+            session = await loop.run_in_executor(
                 None,
                 SessionState,
                 self._model,
@@ -495,8 +495,12 @@ class TabulaflowApp(App[None]):
                 workspace,
                 self._reasoning_effort,
             )
-            await self._maybe_autoconnect_sample(self._session)
+            await self._maybe_autoconnect_sample(session)
             self._enable_explorer_button()
+            # Publish the session only once it is fully ready (sample autoconnected,
+            # explorer enabled). The early-return guards above key off ``self._session``,
+            # so setting it sooner would let an early question proceed mid-setup.
+            self._session = session
             return self._session
 
     @staticmethod
@@ -566,7 +570,7 @@ class TabulaflowApp(App[None]):
 
         self._busy = True
         self._current_worker = self.run_worker(
-            self._run_agent(text, session, chat_log, user_msg, display_text), exclusive=True
+            self._run_agent(text, session, chat_log, user_msg, display_text), exclusive=True, group="agent"
         )
 
     @staticmethod
