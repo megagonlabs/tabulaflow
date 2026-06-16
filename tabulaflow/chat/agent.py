@@ -291,6 +291,12 @@ class ChatAgent:
     # offload long messages, and back canonical-name resolution. ``None`` (default)
     # runs in-memory with those persistence features off.
     workspace: SQLConnector | None = None
+    # The directory the app was launched from (the user's project, where source data
+    # lives) and the agent's transient working area for staging intermediate files.
+    # ``None`` (default, e.g. server contexts) disables the host-facing shell/dataset
+    # tools that depend on them. Wired in by the app from ``RuntimePaths``.
+    project_dir: Path | None = None
+    scratch_dir: Path | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
     _system_prompt: str = field(init=False, default=SYSTEM_PROMPT)

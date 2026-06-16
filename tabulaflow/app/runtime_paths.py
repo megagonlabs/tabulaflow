@@ -26,6 +26,7 @@ class RuntimePaths:
     logs_dir: Path
     trajectories_dir: Path
     data_dir: Path
+    scratch_dir: Path
     workspace_db_path: Path
     history_path: Path
     cli_log_path: Path
@@ -39,6 +40,11 @@ class RuntimePaths:
         logs_dir = session_dir / "logs"
         trajectories_dir = session_dir / "trajectories"
         data_dir = session_dir / "data"
+        # Agent working area: transient files (e.g. parquet staged by the shell
+        # tool before in-process ingestion) and any other intermediate work for
+        # the session. Sibling of ``data/`` (which holds live connector DBs) so
+        # transient blobs never mix with materialized datasets. Wiped on exit.
+        scratch_dir = session_dir / "scratch"
         # Cell and table dumps are transient view artifacts (open in
         # browser, look, done). Keep them out of ~/.tabulaflow so they get
         # OS-level cleanup, and skip the per-session subdir to keep paths
@@ -48,6 +54,7 @@ class RuntimePaths:
             logs_dir=logs_dir,
             trajectories_dir=trajectories_dir,
             data_dir=data_dir,
+            scratch_dir=scratch_dir,
             workspace_db_path=session_dir / "workspace.duckdb",
             history_path=root / "history.jsonl",
             cli_log_path=logs_dir / "cli.log",

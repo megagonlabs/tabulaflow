@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import logging
 import os
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from rich.text import Text
@@ -98,6 +99,10 @@ class TabulaflowApp(App[None]):
         self._reasoning_effort = reasoning_effort
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
+        # The directory the app was launched from — the user's project, where source
+        # data lives and what relative paths resolve against. Captured once at startup
+        # before anything can change cwd.
+        self._project_dir = Path(os.getcwd())
         prune_old_dumps()
         self._session: SessionState | None = None
         self._session_lock = asyncio.Lock()
@@ -423,6 +428,10 @@ class TabulaflowApp(App[None]):
         except Exception:
             logger.debug("disconnect_all_async failed during exit", exc_info=True)
         finally:
+            # Transient agent working files don't outlive the session.
+            import shutil
+
+            shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
             self.exit()
 
     def _restore_input_text(self, text: str) -> None:
@@ -483,6 +492,7 @@ class TabulaflowApp(App[None]):
             # which would freeze the UI. Warm that import off the UI thread first, so
             # both the workspace creation and the construction below stay responsive.
             await loop.run_in_executor(None, _warm_session_imports)
+            self._runtime_paths.scratch_dir.mkdir(parents=True, exist_ok=True)
             workspace = await create_workspace_connector(self._runtime_paths.workspace_db_path)
             session = await loop.run_in_executor(
                 None,
@@ -494,6 +504,8 @@ class TabulaflowApp(App[None]):
                 self._runtime_paths.data_dir,
                 workspace,
                 self._reasoning_effort,
+                self._project_dir,
+                self._runtime_paths.scratch_dir,
             )
             await self._maybe_autoconnect_sample(session)
             self._enable_explorer_button()
