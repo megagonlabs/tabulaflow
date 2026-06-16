@@ -293,10 +293,14 @@ June 11
 - [x] Note on deep links in web browser
 
 June 15
-- [x] Fix bug: tool progress disappears on error
-- [x] Option + left/right for input box cursor movement
-- [x] Fix schema browser table count mismatch due to visibility
-- [x] Clickable url in browser table
+- UI Improvements
+  - [x] Option + left/right for input box cursor movement
+  - [x] Fix schema browser table count mismatch due to visibility
+  - [x] Clickable url in browser table
+  - [x] Fix bug: tool progress disappears on error
+  - [x] User message background
+  - [ ] Text selection
+  - [ ] Bash tool
 
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
@@ -315,7 +319,7 @@ June 15
 - [ ] Bash tool
 - [ ] Partial trajectory when exeption during agent turn
 - [ ] Captcha
-- [ ] Multi-line input
+- [ ] View stepper - dont switch other record's view
 
 - General
   - [ ] Improve transfer_record?
