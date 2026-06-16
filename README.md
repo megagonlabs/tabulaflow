@@ -300,10 +300,13 @@ June 15
   - [x] Fix bug: tool progress disappears on error
   - [x] User message background
   - [x] Text selection
-- [x] Move "---" handling from app/ layer to chat/ layer
+- Streaming API
+  - [x] Move "---" handling from app/ layer to chat/ layer
+  - [x] NarrationDelta and AnswerDelta
 
 - [ ] Bash tool
 
+- [ ] Confirm: if ask question before workspace ready, workspace load forever
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
 - [ ] Guard against long messages and context overflow

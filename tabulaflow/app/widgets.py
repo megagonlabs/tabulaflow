@@ -24,12 +24,12 @@ from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
 from tabulaflow.app.theme import ACCENT, ACCENT_DIM, KEY_HINT, KEY_HINT_DIM, MESSAGE_SURFACE
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.chat import (
+    AnswerDelta,
     ChatEvent,
     ColumnsReturned,
     Failed,
     Finished,
     RowsReturned,
-    TextDelta,
     ToolFinished,
     ToolOutcome,
     ToolProgress,
@@ -569,7 +569,8 @@ class AgentTextBlock(Static):
     Rendered as a plain ``Text`` — not inside the progress widget's render group —
     so it is selectable (Textual only extracts selection text from
     ``Text``/``Content`` renders). ``AgentProgressWidget`` mounts one as a sibling
-    for the final answer; mid-turn narration (text before a tool call) is dropped.
+    for the final answer; mid-turn narration arrives as a separate ``NarrationDelta``
+    the app doesn't handle, so it never reaches here.
     """
 
     DEFAULT_CSS = """
@@ -599,9 +600,9 @@ class AgentProgressWidget(Widget):
         super().__init__()
         self._steps: list[tuple[str, str, str, str]] = []  # (status, tool_call_id, name, label)
         self._streaming_text = ""
-        # The agent's answer streams into this selectable sibling block. Text
-        # emitted before a tool call (mid-turn narration) is dropped — only the
-        # final answer's run is kept (see ``_on_tool_start``).
+        # The final answer streams into this selectable sibling block. Mid-turn
+        # narration arrives as ``NarrationDelta`` (not handled), so it never reaches
+        # here — only the answer does.
         self._text_block: "AgentTextBlock | None" = None
         self._status_text: str | None = "Thinking..."
         # Persistent spinner instances so animation state survives across renders.
@@ -671,8 +672,8 @@ class AgentProgressWidget(Widget):
             self._on_tool_end(event.tool_call_id, event.name, summarize_outcome(event.outcome))
         elif isinstance(event, ToolProgress):
             self._on_tool_progress(event.completed, event.total, event.stage, event.unit, event.tool_call_id)
-        elif isinstance(event, TextDelta):
-            self._on_text_delta(event.content)
+        elif isinstance(event, AnswerDelta):
+            self._on_answer_delta(event.content)
         elif isinstance(event, UsageUpdated):
             self._on_usage(event.usage)
         elif isinstance(event, Finished):
@@ -723,12 +724,6 @@ class AgentProgressWidget(Widget):
             self._steps.append(("done", "", "__status__", self._status_text))
         label = f"{name}({args_summary})" if args_summary else name
         self._steps.append(("running", tool_call_id, name, label))
-        # Drop mid-turn narration: a text run ended by a tool call isn't the final
-        # answer, so discard its block (only the run that reaches ``Finished`` is kept).
-        if self._text_block is not None:
-            self._text_block.remove()
-            self._text_block = None
-        self._streaming_text = ""
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
@@ -800,8 +795,9 @@ class AgentProgressWidget(Widget):
         self._status_text = "Thinking..."
         self._refresh(layout=True, scroll=True)
 
-    def _on_text_delta(self, delta: str) -> None:
-        # Deltas are already user-facing — the chat layer strips the refs block.
+    def _on_answer_delta(self, delta: str) -> None:
+        # Only the final answer arrives as ``AnswerDelta`` (refs already stripped by
+        # the chat layer); mid-turn ``NarrationDelta`` is not handled, so it's dropped.
         self._streaming_text += delta
         self._status_text = None
         self._set_text(self._streaming_text)

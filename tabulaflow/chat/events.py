@@ -88,16 +88,25 @@ class _ChatEvent(BaseModel):
     model_config = ConfigDict(frozen=True)
 
 
-class TextDelta(_ChatEvent):
-    """A chunk of the assistant's streaming natural-language answer."""
+class AnswerDelta(_ChatEvent):
+    """A chunk of the assistant's streaming final answer (the user-facing reply)."""
 
-    kind: Literal["text_delta"] = "text_delta"
+    kind: Literal["answer_delta"] = "answer_delta"
+    content: str
+
+
+class NarrationDelta(_ChatEvent):
+    """A chunk of mid-turn narration — text the model emits while working, before its
+    final answer. Distinct from ``AnswerDelta`` so a frontend can drop or dim it
+    separately (the TUI drops it; a webapp might show it greyed)."""
+
+    kind: Literal["narration_delta"] = "narration_delta"
     content: str
 
 
 class ThinkingDelta(_ChatEvent):
     """A chunk of the model's reasoning summary (reasoning models only). Distinct
-    from ``TextDelta`` so a frontend can show / collapse it separately from the answer."""
+    from ``AnswerDelta`` so a frontend can show / collapse it separately from the answer."""
 
     kind: Literal["thinking_delta"] = "thinking_delta"
     content: str
@@ -163,7 +172,8 @@ class Finished(_ChatEvent):
 
 ChatEvent: TypeAlias = Annotated[
     Union[
-        TextDelta,
+        AnswerDelta,
+        NarrationDelta,
         ThinkingDelta,
         ToolStarted,
         ToolFinished,

@@ -31,11 +31,12 @@ from tabulaflow.chat.result import ChatResult, ChatResultRecord
 from tabulaflow.chat.events import (
     ChatEvent,
     ColumnsReturned,
+    AnswerDelta,
     Completed,
     Failed,
     Finished,
+    NarrationDelta,
     RowsReturned,
-    TextDelta,
     ThinkingDelta,
     ToolFinished,
     ToolOutcome,
@@ -93,16 +94,23 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 <presenting_data>
 - Always present results in tabular form using the format below when applicable for better readability.
   - If the results are not available in the database, persist it to the workspace database first.
-- You can present one or multiple tables in the final response using the following format:
-  - In your final response, begin with result reference lines, followed by a `---` separator, then your natural language answer.
-    The references tell the system which query results to display alongside your answer. The user sees only the text after `---`.
-    - Format: [[record:Q<id>:<label>]] (e.g. [[record:Q3:num_players]]).
+- Your final answer MUST be preceded by a `---` separator on its own line: put any result
+  reference lines above the `---`, then the `---`, then your natural language answer.
+    - ALWAYS include the `---`, even when there are no references (just the `---`, with nothing
+      above it). It marks where your final answer begins; the system shows the user only the
+      text after it. Any text you write that is NOT after a `---` is treated as intermediate
+      narration and is not shown as your answer.
+    - Reference format: [[record:Q<id>:<label>]] (e.g. [[record:Q3:num_players]]). The references
+      tell the system which query results to display alongside your answer.
     - Every reference MUST include a label. The label is a short, human-readable description of what the table contains (e.g. `players`, `top_movies`, `revenue_by_month`). Keep labels concise.
     - If you are unsure what to label a record, use `result` as the default (e.g. [[record:Q3:result]]). NEVER use the record id (e.g. `Q3`, `Q41`) as the label.
-    - Example format:
+    - Example with tables:
       [[record:Q3:num_players]]
       ---
       There are 42 players in the database.
+    - Example without tables:
+      ---
+      The connection succeeded.
 - Do not reference every query you ran. Select only the most relevant results with minimal overlap.
 - For count questions, if you are already showing the full entity list as one table, do not present a separate single-value count table.
 - Our data browser handles large tables and long cell values automatically, so there is no need to truncate results.
@@ -534,7 +542,7 @@ class ChatAgent:
         final_usage: Usage | None = None
         interrupted = False
         completed_results: dict[str, ToolReturnPart] = {}
-        text_stripper = _AnswerTextStripper()
+        text_router = _TextStreamRouter()
 
         try:
             try:
@@ -553,7 +561,7 @@ class ChatAgent:
                                     ):
                                         completed_results[event.tool_call_id] = event.result
                                     await _emit_stream_event(
-                                        event, emit, self._query_history, self._tools.get_table_schema, text_stripper
+                                        event, emit, self._query_history, self._tools.get_table_schema, text_router
                                     )
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
@@ -687,17 +695,17 @@ def _extract_result_refs(answer_text: str) -> tuple[str, list[tuple[str, str | N
     return answer_text.strip(), refs
 
 
-class _AnswerTextStripper:
-    """Strips the citation-refs block from a streamed text run so only user-facing
-    text reaches the frontend as ``TextDelta``.
+class _TextStreamRouter:
+    """Routes a streamed text run into the final answer vs. mid-turn narration, and
+    strips the citation-refs block from the answer.
 
     A run that opens with a citation block — zero or more ``[[record:...]]`` lines
-    terminated by ``---`` (the final answer's format; the refs may be empty) — is
-    held back until the ``---``, after which the answer streams; any other run —
-    mid-turn narration, or an answer without a citation block — streams live.
-    Reset via :meth:`reset` at the start of each text part.
+    terminated by ``---`` (the final answer's format; the refs may be empty) — is the
+    **answer**: held back until the ``---``, then the text after it streams. Any other
+    run is **narration** and streams live. After the first chunk that yields text,
+    :attr:`is_answer` says which it is. Reset via :meth:`reset` per text part.
 
-    Kept here (not in the frontend) so the ``---``/refs convention — owned by this
+    Kept here (not the frontend) so the ``---``/refs convention — owned by this
     agent's prompt — never crosses the layer boundary.
     """
 
@@ -708,28 +716,39 @@ class _AnswerTextStripper:
 
     def reset(self) -> None:
         self._raw = ""
-        self._open = False  # True once user-facing text has begun streaming
+        self._open = False  # True once text has begun streaming
+        self.is_answer = False  # whether the opened run is the final answer
 
     def feed(self, chunk: str) -> str:
-        """Accumulate ``chunk``; return its newly user-facing text (``""`` until known)."""
+        """Accumulate ``chunk``; return its newly emittable text (``""`` until known).
+        Once non-empty, :attr:`is_answer` is set for the run."""
         self._raw += chunk
         if self._open:
             return chunk
-        # A citation block (refs and/or empty) ends at the first ``---``: hide it
-        # and stream the answer. A ``---`` preceded by prose is a plain answer's
-        # own content — stream the whole thing.
+        # A citation block (refs and/or empty) ends at the first ``---``: that's the
+        # answer — hide the block, stream the rest. A ``---`` preceded by prose isn't
+        # a citation block, so the run is narration streamed whole.
         if _SEPARATOR in self._raw:
             prefix, answer = self._raw.split(_SEPARATOR, 1)
+            if _is_citation_block(prefix):
+                answer = answer.lstrip("\n")
+                if not answer:
+                    return ""  # separator seen but the answer hasn't started — wait
+                self._open = True
+                self.is_answer = True
+                return answer
             self._open = True
-            return answer.lstrip("\n") if _is_citation_block(prefix) else self._raw
+            self.is_answer = False
+            return self._raw  # ``---`` after prose: narration streamed whole
         # No separator yet: keep waiting while the lead could still be a citation
         # block — its tail (after complete refs) is empty, a partial ref marker (a
-        # prefix of one, or one being built), or a partial ``---``. Else it's prose.
+        # prefix of one, or one being built), or a partial ``---``. Else it's narration.
         tail = _QUERY_REF_RE.sub("", self._raw).lstrip()
         building_ref = tail.startswith(self._MARKER) or self._MARKER.startswith(tail)
         if tail and not building_ref and not _SEPARATOR.startswith(tail):
             self._open = True
-            return self._raw  # plain text — narration or a no-refs answer
+            self.is_answer = False
+            return self._raw  # narration (or an answer the model failed to delimit)
         return ""
 
 
@@ -772,7 +791,7 @@ async def _emit_stream_event(
     emit: Callable[[ChatEvent], None],
     query_history: QueryHistory,
     get_table_schema_tool: RegistryGetTableSchemaTool | None,
-    text_stripper: "_AnswerTextStripper",
+    text_router: "_TextStreamRouter",
 ) -> None:
     """Map one pydantic-ai stream event to ``ChatEvent``s and emit them.
 
@@ -810,20 +829,19 @@ async def _emit_stream_event(
         if isinstance(part, ThinkingPart) and part.content:
             emit(ThinkingDelta(content=part.content))
         elif isinstance(part, TextPart):
-            # A new text part begins a fresh run; strip refs from this run only.
-            text_stripper.reset()
-            visible = text_stripper.feed(part.content) if part.content else ""
+            text_router.reset()  # a new text part begins a fresh run
+            visible = text_router.feed(part.content) if part.content else ""
             if visible:
-                emit(TextDelta(content=visible))
+                emit((AnswerDelta if text_router.is_answer else NarrationDelta)(content=visible))
 
     elif isinstance(event, PartDeltaEvent):
         delta = event.delta
         if isinstance(delta, ThinkingPartDelta) and delta.content_delta:
             emit(ThinkingDelta(content=delta.content_delta))
         elif isinstance(delta, TextPartDelta) and delta.content_delta:
-            visible = text_stripper.feed(delta.content_delta)
+            visible = text_router.feed(delta.content_delta)
             if visible:
-                emit(TextDelta(content=visible))
+                emit((AnswerDelta if text_router.is_answer else NarrationDelta)(content=visible))
 
 
 def _coerce_args(args: object) -> dict[str, Any]:
