@@ -228,11 +228,11 @@ def _examples() -> list[Text]:
     return rows
 
 
-def build_banner(*, model: str, reasoning_effort: str | None = None, surface: str | None = None) -> RenderableType:
-    """Build the welcome banner as a Rich renderable.
+def build_wordmark(surface: str | None = None) -> RenderableType:
+    """Build the 'tabulaflow' wordmark art (with version badge) as a Rich renderable.
 
-    ``reasoning_effort`` is appended to the model label as ``(medium effort)`` —
-    but only for OpenAI models, the only provider the chat lib applies the effort to.
+    Split from the banner's text block so the art renders in its own widget — the
+    half-block art has no meaningful text to select, while the text block does.
 
     ``surface`` is the chat background color the wordmark's empty halves are carved
     with so they read as transparent — pass the live theme's ``$surface``. Falls
@@ -245,6 +245,19 @@ def build_banner(*, model: str, reasoning_effort: str | None = None, surface: st
     except PackageNotFoundError:
         app_version = None
 
+    return Group(*_wordmark(surface or COLOR_PAGE, app_version))
+
+
+def build_banner_text(*, model: str, reasoning_effort: str | None = None) -> Text:
+    """Build the banner's text block — tagline, starter examples, model/help line.
+
+    Returned as a single ``Text`` (rows joined with newlines) rather than a
+    ``Group`` so the widget rendering it is selectable: Textual only extracts
+    selection text from widgets whose render is a ``Text``/``Content``.
+
+    ``reasoning_effort`` is appended to the model label as ``(medium effort)`` —
+    but only for OpenAI models, the only provider the chat lib applies the effort to.
+    """
     model_label = _pretty_model(model)
     if reasoning_effort and model.partition(":")[0] in ("openai-responses", "openai"):
         model_label += f" ({reasoning_effort} effort)"
@@ -264,11 +277,4 @@ def build_banner(*, model: str, reasoning_effort: str | None = None, surface: st
     tagline.append(_TAGLINE, style=f"bold italic {COLOR_TABULA}")
     tagline.append(" · ", style="dim")
     tagline.append(url_label, style="dim")
-    return Group(
-        *_wordmark(surface or COLOR_PAGE, app_version),
-        tagline,
-        Text(),
-        *_examples(),
-        Text(),
-        info,
-    )
+    return Text("\n").join([tagline, Text(), *_examples(), Text(), info])

@@ -369,12 +369,22 @@ class HistoryInput(Input):
 # ---------------------------------------------------------------------------
 
 
-class BannerWidget(Static):
-    """Displays the welcome banner."""
+class BannerWidget(Widget):
+    """Displays the welcome banner: the wordmark art above a text block.
+
+    The two parts are separate widgets so the text block (tagline, starter
+    examples, model/help line) renders from a single ``Text`` and is therefore
+    selectable, while the half-block art — which has no meaningful text to copy —
+    is left as its own, non-selectable widget.
+    """
 
     DEFAULT_CSS = """
     BannerWidget {
+        height: auto;
         margin: 2 3;
+    }
+    BannerWidget > Static {
+        height: auto;
     }
     """
 
@@ -383,14 +393,21 @@ class BannerWidget(Static):
         self._model = model
         self._reasoning_effort = reasoning_effort
 
-    def on_mount(self) -> None:
-        from tabulaflow.app.banner import build_banner
+    def compose(self) -> ComposeResult:
+        from tabulaflow.app.banner import build_banner_text
 
-        # Carve the wordmark's empty halves with this widget's *own* effective
+        yield Static(classes="banner-art")
+        yield Static(build_banner_text(model=self._model, reasoning_effort=self._reasoning_effort))
+
+    def on_mount(self) -> None:
+        from tabulaflow.app.banner import build_wordmark
+
+        # Carve the wordmark's empty halves with the art widget's *own* effective
         # background so they read as transparent against the chat log, whatever
         # the theme resolves it to.
-        surface = self.background_colors[0].hex
-        self.update(build_banner(model=self._model, reasoning_effort=self._reasoning_effort, surface=surface))
+        art = self.query_one(".banner-art", Static)
+        surface = art.background_colors[0].hex
+        art.update(build_wordmark(surface))
 
 
 class UserMessage(Static):
