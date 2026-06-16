@@ -308,6 +308,7 @@ June 16
 - [x] Fix bug: if ask question before workspace ready, workspace load forever
 - [ ] Bash tool
 
+- [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
