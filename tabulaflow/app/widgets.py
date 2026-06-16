@@ -21,7 +21,7 @@ from textual.widget import Widget
 from textual.widgets import Input, Static
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
-from tabulaflow.app.theme import ACCENT, ACCENT_DIM, KEY_HINT, KEY_HINT_DIM
+from tabulaflow.app.theme import ACCENT, ACCENT_DIM, FOCUS_SURFACE, KEY_HINT, KEY_HINT_DIM
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.chat import (
     ChatEvent,
@@ -398,9 +398,10 @@ class UserMessage(Static):
 
     DEFAULT_CSS = f"""
     UserMessage {{
-        margin: 1 0 1 0;
+        margin: 1 2 1 0;
         padding: 0 1;
         border-left: heavy {ACCENT};
+        background: {FOCUS_SURFACE};
     }}
     """
 
