@@ -804,7 +804,7 @@ class AgentResultWidget(Widget):
     DEFAULT_CSS = """
     AgentResultWidget {
         padding: 1 1;
-        margin: 1 4 0 1;
+        margin: 1 2 0 1;
         height: auto;
         background: $surface;
     }
