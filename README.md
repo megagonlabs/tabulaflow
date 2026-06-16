@@ -299,8 +299,10 @@ June 15
   - [x] Clickable url in browser table
   - [x] Fix bug: tool progress disappears on error
   - [x] User message background
-  - [ ] Text selection
-  - [ ] Bash tool
+  - [x] Text selection
+- [x] Move "---" handling from app/ layer to chat/ layer
+
+- [ ] Bash tool
 
 - [ ] Banner - /connect pre-built data sources as most important use case
 - [ ] Include multimodal data in sample_data
