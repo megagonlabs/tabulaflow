@@ -315,6 +315,7 @@ June 16
   - [x] url.py
   - [ ] Revise prompt
 
+- [ ] file_editor tool?
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
