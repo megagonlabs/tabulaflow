@@ -100,8 +100,9 @@ honored **by construction**, not by a "safe" cwd default:
 
 - The **connected deliverable** (a dataset) always lives in the session's `data/` — the
   agent never names its path.
-- **Common paths write no project files**: Route A (direct ingest) and `export_record`
-  write nothing via the shell. Only the rare custom-transform (Route B) writes a file,
+- **Common paths write no project files**: Route A (direct ingest) and export
+  (`run_query` + `COPY … TO`) write nothing via the shell. Only the rare custom-transform
+  (Route B) writes a file,
   and it targets `$SCRATCH` (absolute).
 - Residual (accepted): a *naive* relative write in a Route-B transform could land in the
   project. Mitigated by handing the agent `$SCRATCH` + instruction; the hard requirement
@@ -201,21 +202,36 @@ Opening a DuckDB connector **read-write at a non-existent path** creates the emp
 workspace connector pattern; **not** `load_files` (nothing to load). Read-only open of a
 missing file errors — datasets are RW precisely so the file is born and stays writable.
 
-### D13. Export tool: typed, with an overwrite guard
+### D13. Export = `run_query` + DuckDB `COPY` — no dedicated tool
 
-`export_record(record_id, path, format?)` — serialize a prior query-result handle
-(`Q1`, `Q2`, … from `query_history`) to a file; format inferred from the path extension.
-Better than exporting via the shell (no re-query; reuses the `record_id` abstraction;
-mirror of `transfer_record`). The **one genuinely destructive write** is overwriting an
-existing user file — guard it: refuse to clobber unless explicitly asked. Because the
-shell can *also* write to the project (for long-tail/exotic formats — export to parquet,
-then transform in bash), the overwrite guard applies in **both** places, not only the
-typed tool.
+Export is the inverse of import, and import is already `run_query` with DuckDB's native
+file reading (`read_csv_auto`/`read_parquet`). DuckDB has the symmetric write —
+`COPY (SELECT …) TO '<path>' (FORMAT parquet|csv|json)` — which works through `run_query`
+with the same in-process path semantics (cwd=project / `$SCRATCH`). Verified: `COPY … TO`
+succeeds against a writable dataset/workspace. So a dedicated `export_record` tool is
+**redundant** for the primary case (saving the data you *built*, which lives in a writable
+DuckDB) and is dropped — one fewer tool, perfect import/export symmetry, smaller surface.
+
+Gaps and how they're handled (none justify a tool):
+- **Exotic formats** (xlsx, markdown, LaTeX) — not DuckDB-native → the bash escape hatch
+  (COPY to parquet, then transform), consistent with the long-tail philosophy.
+- **Read-only sources** — `COPY … TO` is blocked by the connector's read-only guard
+  (it classifies COPY as a write). Route via the workspace, or — a possible future,
+  principled relax — allow `COPY … TO` on read-only connectors (it reads the DB, doesn't
+  modify it; only `COPY … FROM` is a real write). Not done now.
+- **Overwrite** — `COPY` silently overwrites. Accepted: export is user-requested *with* a
+  path, so clobbering the named file is the intent, and import has no guard either. (This
+  reverses the earlier "typed tool with an overwrite guard" plan — the guard was the only
+  thing a dedicated tool added, and it isn't worth a tool.)
+
+The agent learns to export via `COPY … TO` through **prompt guidance** (Phase 6), the same
+way it learns to import via `read_csv_auto`.
 
 ### D14. Visibility
 
-Agent-initiated connect/create/export must surface a **legible chat line**
-("✓ Connected `experiment_results` (1,234 rows)" / "✓ Exported … to ./results.csv").
+Agent-initiated connect/create surface a **legible chat line** from the tool response
+("✓ Connected `experiment_results` (1,234 rows)"). Export rides the visible `run_query`
+tool call (the `COPY … TO` statement) plus the agent's natural-language confirmation.
 The explorer reflects new sources on next open. A **live refresh of an already-open
 explorer is deferred** (nice-to-have).
 
@@ -237,7 +253,7 @@ in `toolhub` and depend only on callbacks/dirs handed in at construction — nev
 | `connect_data_source` | toolhub (registry + data_dir) | registry (read-only source) | expose an existing file, db URL, or HF dataset as-is (defers credentialed URLs to the user) |
 | `create_dataset` | toolhub (registry + data_dir) | registry (writable dataset) | new empty writable named DuckDB |
 | `run_query` (extended) | toolhub | writable connectors only | query **and** ingest/append (gated by `read_only`) |
-| `export_record` | toolhub | a user-named file | serialize a result handle to disk |
+| *(export)* | — | a user-named file | not a tool — `run_query` + DuckDB `COPY … TO` (D13) |
 
 ---
 
@@ -340,28 +356,24 @@ so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward 
 refused; re-connecting suffixes the alias; db-file / missing-file / bad-alias return clear
 errors; `/connect` slash behavior unchanged.
 
-### Phase 5 — `export_record`
+### Phase 5 — Export (no tool)
 
-- `ExportRecordTool` (toolhub): `record_id` + `path` + optional `format`; serialize the
-  `query_history` record; infer format from extension (csv/tsv/parquet/json/xlsx; +
-  markdown/LaTeX if cheap). **Overwrite guard**: refuse to clobber an existing file unless
-  explicitly forced/confirmed.
-- Apply the same overwrite check on the shell path for project writes.
-
-**Acceptance:** agent exports a result to csv/parquet/xlsx; re-exporting onto an existing
-file is refused with a clear message; emits a visible chat line.
+**Dropped as a tool** (D13): export is `run_query` + DuckDB `COPY (…) TO '<path>' (FORMAT …)`,
+the mirror of import. No code; the agent learns it via prompt guidance in Phase 6.
 
 ### Phase 6 — Prompts, polish, QA
 
 - System-prompt additions: the per-session absolute scratch path; the `connect` vs
   `create_dataset` rule (D11); shell usage ("write intermediates to `$SCRATCH`, absolute";
   prefer parquet; one-shot `COPY … TO … (FORMAT parquet)` when sources are tabular);
-  export guidance.
+  **export guidance** — save results with `COPY (SELECT …) TO '<path>' (FORMAT parquet|csv|json)`
+  via `run_query` (from a writable dataset/workspace); exotic formats (xlsx/markdown/LaTeX)
+  via the shell.
 - Confirm chat-stream visibility lines render; confirm session-end scratch wipe.
 
 **Acceptance:** full manual QA of the motivating scenario — *scattered `output/` results →
 agent gathers → dataset appears in explorer → user asks to add more → appended →
-user asks to export → file written*. lint/mypy/tests green.
+user asks to export → file written via `COPY … TO`*. lint/mypy/tests green.
 
 ---
 
