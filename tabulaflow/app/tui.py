@@ -100,8 +100,11 @@ class TabulaflowApp(App[None]):
         self._session_id = generate_session_id()
         self._runtime_paths = RuntimePaths.for_session(self._session_id)
         # The directory the app was launched from — the user's project, where source
-        # data lives and what relative paths resolve against. Captured once at startup
-        # before anything can change cwd.
+        # data lives and what relative paths resolve against. Captured once at startup.
+        # INVARIANT: the process must never chdir. The shell tool uses this captured
+        # value as its cwd, while in-process run_query/DuckDB (COPY, read_csv_auto, …)
+        # resolve relative paths against the *live* process cwd; the "relative = project
+        # dir" design holds only while those two stay equal, i.e. cwd never changes.
         self._project_dir = Path(os.getcwd())
         prune_old_dumps()
         self._session: SessionState | None = None

@@ -162,13 +162,15 @@ You can read external files and connect or build data sources for the user. Pick
 
 Reading files (DuckDB SQL, in `workspace` or a dataset): `read_csv_auto('output/**/*.csv', union_by_name=true)`, `read_parquet(...)`, `read_json_auto(...)` — this consolidates scattered files in one statement, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)`.
 
+Paths: relative paths — in `run_query` (both reads and `COPY`) and in the shell — resolve against the user's project directory. The `$SCRATCH` directory is OUTSIDE it, so reference scratch files by absolute path; note `$SCRATCH` is a shell variable and does NOT expand in SQL, so put the literal absolute path in the query.
+
 Use the `execute_bash` shell tool only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas). It runs in the user's project directory with network access. Write intermediate files under the directory in the `$SCRATCH` env var (run `echo $SCRATCH` for its absolute path); prefer producing Parquet (typed, lossless); then read the file back by that absolute path: `... FROM read_parquet('<abs $SCRATCH path>')`.
 
 Export to a file with DuckDB COPY via `run_query`, against a writable database (a dataset or `workspace`, never a read-only source):
 - `COPY (SELECT ...) TO '<path>' (FORMAT parquet)`
 - `COPY (SELECT ...) TO '<path>' (FORMAT csv, HEADER)`
 - `COPY (SELECT ...) TO '<path>' (FORMAT json)`
-The SELECT may read source files inline. A relative path lands in the project directory; match FORMAT to the file extension the user asked for. For xlsx / markdown / other formats, COPY to parquet or csv first, then convert with the shell.
+The SELECT may read source files inline. Match FORMAT to the file extension the user asked for. For xlsx / markdown / other formats, COPY to parquet or csv first, then convert with the shell.
 </connecting_and_building_data>
 
 <concurrent_task_handling>
@@ -425,7 +427,18 @@ class ChatAgent:
         ``$SCRATCH``, and guards against catastrophic commands via the denylist."""
         if self.project_dir is None or self.scratch_dir is None:
             return None
+        import os
         import shlex
+
+        # The shell tool runs with cwd=project_dir, while in-process run_query/DuckDB
+        # resolve relative paths against the live process cwd. The "relative = project
+        # dir" design requires these to be equal — assert it loudly rather than silently
+        # reading/writing the wrong files if something ever changed cwd.
+        if os.path.realpath(os.getcwd()) != os.path.realpath(self.project_dir):
+            raise RuntimeError(
+                f"process cwd ({os.getcwd()!r}) != project_dir ({str(self.project_dir)!r}); "
+                "relative-path resolution would diverge between the shell tool and run_query."
+            )
 
         from tabulaflow.toolhub import ExecuteBashTool
         from tabulaflow.toolhub.shell_guard import dangerous_command_reason
