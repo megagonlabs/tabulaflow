@@ -234,7 +234,7 @@ in `toolhub` and depend only on callbacks/dirs handed in at construction — nev
 | Tool | Layer | Mutates | Purpose |
 |---|---|---|---|
 | `execute_bash` (`ExecuteBashTool`, moved into toolhub) | toolhub | files in `$SCRATCH` (and project only on explicit request) | gather / custom transforms; cwd=project, network on, denylist guard |
-| `connect_data_source` | toolhub (registry + data_dir) | registry (read-only source) | expose an existing local data file / HF dataset as-is |
+| `connect_data_source` | toolhub (registry + data_dir) | registry (read-only source) | expose an existing file, db URL, or HF dataset as-is (defers credentialed URLs to the user) |
 | `create_dataset` | toolhub (registry + data_dir) | registry (writable dataset) | new empty writable named DuckDB |
 | `run_query` (extended) | toolhub | writable connectors only | query **and** ingest/append (gated by `read_only`) |
 | `export_record` | toolhub | a user-named file | serialize a result handle to disk |
@@ -316,11 +316,17 @@ so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward 
 
 - `ConnectDataSourceTool(registry, data_dir)` (toolhub): resolve `source` → `load_files`
   (local data file) or `load_hf_dataset` (HF URL) with `read_only=True` → `registry.register`.
-- **Scope: any local file + HuggingFace.** Data files → `load_files`; local **database
-  files** (SQLite/DuckDB) → `from_url` (no credentials, no network). Only **remote/
-  credentialed DB URLs** stay user-only `/connect` — the principled line is local/
-  credential-free → agent, remote/credentialed → user. The response reports the source's
-  **actual** dialect (e.g. `sqlite SQL` vs `duckdb SQL`) so the agent writes correct syntax.
+- **Scope: any local file + database URL + HuggingFace.** Data files → `load_files`;
+  local db files (SQLite/DuckDB) and **database URLs** (Postgres/MySQL/BigQuery/Snowflake/
+  Neo4j) → `connect_url`; HF → `load_hf_dataset`. A URL that needs a password not in
+  it is **deferred to the user** (`url_needs_password` pre-check, plus an "ask the user to
+  /connect" hint on any connection error). The response reports the source's **actual**
+  dialect (e.g. `sqlite SQL` / `duckdb SQL` / `cypher`) so the agent writes correct syntax.
+- **URL→connector logic was extracted to `core/db_connector/from_url.py`** —
+  `connect_url` (+ `normalize_url`, `url_needs_password`, `DB_FILE_SCHEMES`), a smart
+  constructor above the type-specific `from_url_async`. This lives in `db_connector` (not
+  `datasources`, which is for *acquiring* file/HF data) and is shared by `/cmd_connect`
+  (now a thin caller) and the agent tool. `normalize_url` is idempotent.
 - Alias: the agent supplies it, used **verbatim-or-error** (like `create_dataset`) — no
   derivation, sanitization, or collision-suffixing; an invalid or taken alias is rejected.
 - Response names the dialect (`sqlite SQL` / `duckdb SQL`, N tables), host-agnostic.

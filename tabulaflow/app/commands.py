@@ -5,27 +5,20 @@ from __future__ import annotations
 import os
 import re
 import shlex
-from typing import TYPE_CHECKING, Any
-from urllib.parse import parse_qsl, urlencode, urlparse, urlunparse
+from typing import TYPE_CHECKING
+from urllib.parse import urlparse, urlunparse
 
 from rich.console import RenderableType
 from rich.text import Text
 
 from tabulaflow.app.theme import ACCENT, ERROR
 from tabulaflow.app.session import WORKSPACE_ALIAS, SessionState
+from tabulaflow.core.db_connector import DB_FILE_SCHEMES, connect_url, normalize_url, url_needs_password
 
 if TYPE_CHECKING:
     from tabulaflow.core.db_connector.base import NL2QDBConnector
 
 COMMAND_PREFIX = "/"
-
-_FILE_EXTENSIONS: dict[str, str] = {
-    ".sqlite": "sqlite+aiosqlite",
-    ".sqlite3": "sqlite+aiosqlite",
-    ".db": "sqlite+aiosqlite",
-    ".duckdb": "duckdb",
-}
-
 
 # ---------------------------------------------------------------------------
 # Command result
@@ -87,7 +80,7 @@ def _is_data_file(path: str) -> bool:
 
 
 def _is_db_file(path: str) -> bool:
-    return os.path.splitext(path)[1].lower() in _FILE_EXTENSIONS
+    return os.path.splitext(path)[1].lower() in DB_FILE_SCHEMES
 
 
 def _sanitize_alias(raw: str) -> str:
@@ -105,66 +98,6 @@ def _alias_from_files(file_paths: list[str]) -> str:
     return "local_files"
 
 
-def _engine_kwargs_for_url(url: str) -> dict[str, Any]:
-    scheme = url.split("://", 1)[0].split("+", 1)[0].lower()
-    if scheme != "bigquery":
-        return {}
-
-    google_cloud_project = os.environ.get("GOOGLE_CLOUD_PROJECT") or os.environ.get("GCP_BILLING_PROJECT")
-    if not google_cloud_project:
-        raise ValueError("BigQuery billing project required: set GOOGLE_CLOUD_PROJECT (or GCP_BILLING_PROJECT).")
-
-    engine_kwargs: dict[str, Any] = {"billing_project_id": google_cloud_project}
-    google_application_credentials = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
-    if google_application_credentials:
-        engine_kwargs["credentials_path"] = google_application_credentials
-    return engine_kwargs
-
-
-_ASYNC_DRIVER_UPGRADES: dict[str, str] = {
-    "sqlite": "sqlite+aiosqlite",
-    "postgresql": "postgresql+asyncpg",
-    "postgres": "postgresql+asyncpg",
-    "mysql": "mysql+asyncmy",
-}
-
-
-def _is_neo4j_bolt_url(url: str) -> bool:
-    if "://" not in url:
-        return False
-    scheme = url.split("://", 1)[0].lower()
-    return scheme == "neo4j" or scheme.startswith("neo4j+") or scheme == "bolt" or scheme.startswith("bolt+")
-
-
-def _neo4j_driver_url_and_database(url: str) -> tuple[str, str | None]:
-    parsed = urlparse(url)
-    pairs = parse_qsl(parsed.query, keep_blank_values=True)
-    database: str | None = None
-    kept: list[tuple[str, str]] = []
-    for k, v in pairs:
-        if k.lower() in ("database", "db"):
-            if database is None and v:
-                database = v
-            continue
-        kept.append((k, v))
-    new_query = urlencode(kept) if kept else ""
-    return urlunparse(parsed._replace(query=new_query)), database
-
-
-def _normalize_url(raw: str) -> str:
-    for ext, scheme in _FILE_EXTENSIONS.items():
-        if raw.endswith(ext):
-            abspath = os.path.abspath(os.path.expanduser(raw))
-            return f"{scheme}:///{abspath}"
-
-    if "://" in raw:
-        scheme, rest = raw.split("://", 1)
-        if "+" not in scheme and scheme in _ASYNC_DRIVER_UPGRADES:
-            return f"{_ASYNC_DRIVER_UPGRADES[scheme]}://{rest}"
-
-    return raw
-
-
 def _alias_from_url(url: str) -> str:
     if ":///" in url:
         path = url.split("///", 1)[-1]
@@ -176,12 +109,6 @@ def _alias_from_url(url: str) -> str:
     if parsed.hostname:
         return _sanitize_alias(parsed.hostname)
     return _sanitize_alias(url)
-
-
-def _url_needs_password(url: str) -> bool:
-    """Check if URL has a username but no password."""
-    parsed = urlparse(url)
-    return bool(parsed.username and not parsed.password and parsed.hostname)
 
 
 # ---------------------------------------------------------------------------
@@ -329,7 +256,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
 
     # --- URL / database-file connections ---
     raw = args[0]
-    url = _normalize_url(raw)
+    url = normalize_url(raw)
     alias = _sanitize_alias(args[1]) if len(args) > 1 else _alias_from_url(url)
 
     url_source_key = ("url", url)
@@ -351,7 +278,7 @@ async def _cmd_connect(args: list[str], session: SessionState) -> CommandResult:
         )
 
     # Check if password prompt is needed
-    if _url_needs_password(url):
+    if url_needs_password(url):
         return CommandResult(password_prompt=f"connect:{url}:{alias}")
 
     return await _execute_connect(url, alias, session)
@@ -415,58 +342,10 @@ async def execute_connect_with_password(url: str, alias: str, password: str, ses
     return await _execute_connect(url, alias, session)
 
 
-def _global_id_from_url(url: str) -> str:
-    """Derive a stable global_id from a database URL, stripping credentials."""
-    parsed = urlparse(url)
-    # Keep scheme, host, port, path (database name) — drop user/password.
-    host = parsed.hostname or ""
-    stripped = parsed._replace(netloc=host + (f":{parsed.port}" if parsed.port else ""))
-    safe = re.sub(r"[^a-zA-Z0-9_]", "_", urlunparse(stripped))
-    return f"cli+{safe}"
-
-
 async def _execute_connect(url: str, alias: str, session: SessionState) -> CommandResult:
     """Execute the actual database connection."""
-    global_id = _global_id_from_url(url)
-
-    if _is_neo4j_bolt_url(url):
-        from tabulaflow.core.db_connector.neo4j_conn import Neo4jConnector
-
-        driver_url, neo4j_database = _neo4j_driver_url_and_database(url)
-        try:
-            neo_connector = await Neo4jConnector.from_url_async(
-                global_id=global_id,
-                url=driver_url,
-                database=neo4j_database,
-                db_name=alias,
-                read_only=True,
-                auth=("neo4j", "cypherbench"),
-                enable_schema_caching=True,
-            )
-        except Exception as e:
-            return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
-
-        await session.register_db(alias, neo_connector, ("url", url))
-        info = _announce_connect(session, alias, neo_connector)
-        return CommandResult(output=Text(f"✓ Connected to {alias} ({info})", style="dim"))
-
     try:
-        engine_kwargs = _engine_kwargs_for_url(url)
-    except ValueError as e:
-        return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
-
-    from tabulaflow.core.db_connector.sql_conn import SQLConnector
-
-    try:
-        connector = await SQLConnector.from_url_async(
-            global_id=global_id,
-            url=url,
-            db_name=alias,
-            read_only=True,
-            enable_schema_caching=True,
-            enable_query_caching=False,
-            **engine_kwargs,
-        )
+        connector = await connect_url(url, db_name=alias, read_only=True)
     except Exception as e:
         return CommandResult(output=Text.from_markup(f"[{ERROR}]Connection failed:[/] {e}"))
 
