@@ -69,7 +69,9 @@ logger = logging.getLogger(__name__)
 class AbortTask(BaseModel):
     """Terminal output indicating the task could not be completed."""
 
-    message: str = Field(description="Reason the task cannot be completed. Be specific about the reason and what you need in order to complete the task.")
+    message: str = Field(
+        description="Reason the task cannot be completed. Be specific about the reason and what you need in order to complete the task."
+    )
 
 
 def _key_where_clause(key_columns: list[str], key_payload: dict[str, object]) -> sqlalchemy.ColumnElement[bool]:
@@ -628,16 +630,12 @@ class RunSubagentForEachRowTool:
                     ToolOutput(
                         answer_model,
                         name="submit_answer",
-                        description=(
-                            "Submit your answer for this task. Calling this tool ends the task successfully."
-                        ),
+                        description=("Submit your answer for this task. Calling this tool ends the task successfully."),
                     ),
                     ToolOutput(
                         AbortTask,
                         name="abort_task",
-                        description=(
-                            "Abort the task with a human-readable reason. Calling this tool ends the task."
-                        ),
+                        description=("Abort the task with a human-readable reason. Calling this tool ends the task."),
                     ),
                 ],
                 model_settings=self.model_settings,

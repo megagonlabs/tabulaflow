@@ -446,6 +446,12 @@ class ChatAgent:
         import os
         import shlex
 
+        if os.name != "posix":
+            # The shell tool is POSIX-only (PTY-based). Omit it so the rest of the app
+            # still runs on Windows; the agent just loses shell-based gather/transform.
+            logger.warning("execute_bash is unavailable on this platform; the agent runs without a shell tool")
+            return None
+
         # The shell tool runs with cwd=project_dir, while in-process run_query/DuckDB
         # resolve relative paths against the live process cwd. The "relative = project
         # dir" design requires these to be equal — assert it loudly rather than silently
@@ -640,6 +646,7 @@ class ChatAgent:
         answer_text = ""
         final_usage: Usage | None = None
         interrupted = False
+        completed_normally = False
         completed_results: dict[str, ToolReturnPart] = {}
         text_router = _TextStreamRouter()
 
@@ -664,16 +671,24 @@ class ChatAgent:
                                     )
                                     await asyncio.sleep(0)
                             emit(UsageUpdated(usage=Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)))
+                        completed_normally = True
                     except asyncio.CancelledError:
                         interrupted = True
                         raise
                     finally:
                         final_usage = Usage.from_pydantic_ai_usage(agent_run.usage(), self.model)
                         partial_messages = list(agent_run.all_messages())
-                        if interrupted:
-                            self._message_history = _patch_interrupted_messages(partial_messages, completed_results)
-                        else:
+                        # Any abnormal exit — user interrupt or an error (LLM API
+                        # failure, a tool raising) — can leave the trailing
+                        # ModelResponse with unanswered ToolCallParts, which every
+                        # provider rejects on the next turn. Patch them either way;
+                        # only a clean finish keeps the history verbatim.
+                        if completed_normally:
                             self._message_history = partial_messages
+                        else:
+                            self._message_history = _patch_incomplete_messages(
+                                partial_messages, completed_results, interrupted=interrupted
+                            )
                         self.last_usage = final_usage
                         if agent_run.result is not None:
                             answer_text = agent_run.result.output
@@ -721,20 +736,27 @@ async def _build_chat_result(
     return ChatResult(text=display_text, records=records, primary_record_index=primary_record_index)
 
 
-def _patch_interrupted_messages(
+def _patch_incomplete_messages(
     messages: list[ModelMessage],
     completed_results: dict[str, ToolReturnPart],
+    *,
+    interrupted: bool,
 ) -> list[ModelMessage]:
     """Make ``messages`` valid as ``message_history`` for the next agent run.
 
-    Pydantic-ai's ``CallToolsNode`` only appends the aggregated tool-return
-    ``ModelRequest`` once all tools finish, so a mid-run interrupt always
-    leaves the trailing ``ModelResponse`` with unanswered ``ToolCallPart``s.
-    For each: substitute the real ``ToolReturnPart`` if its result event
-    reached us before cancellation, otherwise a synthetic placeholder noting
-    the result is unknown.
+    A run that ends before completing — the user interrupts it, or it raises
+    (an LLM API failure, a tool error) — leaves the trailing ``ModelResponse``
+    with unanswered ``ToolCallPart``s, because pydantic-ai's ``CallToolsNode``
+    only appends the aggregated tool-return ``ModelRequest`` once all tools
+    finish. Every provider rejects a tool call with no matching result, so each
+    pending call must be answered: with its real ``ToolReturnPart`` if the result
+    event reached us before the break, otherwise a synthetic placeholder. A
+    trailing system turn records why the run stopped. ``interrupted`` selects
+    the wording (user cancel vs. error).
     """
     from pydantic_ai.messages import ModelRequest, ModelResponse, ToolCallPart, ToolReturnPart, UserPromptPart
+
+    cause = "was interrupted by the user" if interrupted else "failed with an error"
 
     out = list(messages)
     last = out[-1] if out else None
@@ -749,8 +771,8 @@ def _patch_interrupted_messages(
                         tool_name=p.tool_name,
                         tool_call_id=p.tool_call_id,
                         content=(
-                            "[system: interrupted by user before result was captured. "
-                            "The tool may have completed before cancellation — any side effects "
+                            f"[system: the run {cause} before this result was captured. "
+                            "The tool may have completed first — any side effects "
                             "(e.g. writes) may or may not have taken effect.]"
                         ),
                     )
@@ -758,7 +780,7 @@ def _patch_interrupted_messages(
                 ]
             )
         )
-    out.append(ModelRequest(parts=[UserPromptPart(content="[system: the user interrupted the previous run.]")]))
+    out.append(ModelRequest(parts=[UserPromptPart(content=f"[system: the previous run {cause}.]")]))
     return out
 
 
