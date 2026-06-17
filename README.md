@@ -315,6 +315,7 @@ June 16
   - [x] url.py
   - [x] Revise prompt
 
+- [ ] Debug bash tool not working for python /Users/yanlinf/.tabulaflow/sessions/20260617T072041Z-29901-2194a0/trajectories/trajectory.md
 - [ ] local pdf via browser
 - [ ] is transfer_record needed?
 - [ ] file_editor tool?
