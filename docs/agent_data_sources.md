@@ -234,8 +234,8 @@ in `toolhub` and depend only on callbacks/dirs handed in at construction — nev
 | Tool | Layer | Mutates | Purpose |
 |---|---|---|---|
 | `execute_bash` (`ExecuteBashTool`, moved into toolhub) | toolhub | files in `$SCRATCH` (and project only on explicit request) | gather / custom transforms; cwd=project, network on, denylist guard |
-| `connect_data_source` | toolhub (→ app callback) | registry (read-only source) | expose existing HF/CSV/JSON/DB-URL as-is |
-| `create_dataset` | toolhub (→ app callback) | registry (writable dataset) | new empty writable named DuckDB |
+| `connect_data_source` | toolhub (registry + data_dir) | registry (read-only source) | expose an existing local data file / HF dataset as-is |
+| `create_dataset` | toolhub (registry + data_dir) | registry (writable dataset) | new empty writable named DuckDB |
 | `run_query` (extended) | toolhub | writable connectors only | query **and** ingest/append (gated by `read_only`) |
 | `export_record` | toolhub | a user-named file | serialize a result handle to disk |
 
@@ -303,17 +303,36 @@ runs; cwd is the project dir; `$SCRATCH` is set and writable; writes default to 
 (project stays clean). Route B end-to-end: shell writes `$SCRATCH/x.parquet`, `run_query`
 ingests it by absolute path into a dataset.
 
-### Phase 4 — `connect_data_source` (read-only, agent-driven `/connect`)
+### Phase 4 — `connect_data_source` (read-only)
 
-- Factor the connect core out of `_cmd_connect` into a reusable `connect_source(session, source, alias?)`
-  shared by the slash command and the agent callback. Restrict the **agent** path to
-  non-interactive sources (HF, local files, credential-less URLs); reject/àsk-back on
-  password-requiring URLs rather than prompting.
-- App callback `connect(source, alias?)`; `ConnectDataSourceTool` (toolhub) thin wrapper.
-- Write the **complementary tool descriptions** (D11) for `connect` and `create_dataset`.
+**Self-contained, twin to `create_dataset` — no app callback.** `datasources < toolhub`,
+so the tool calls `load_files`/`load_hf_dataset` directly; the only pull toward the app was
+*session policy* (`note_event`, `_sources` dedup, sample-removal), and — as with
+`create_dataset` — none of it is essential for the agent path:
+- `note_event` is redundant (the agent initiates the connect and gets the alias back);
+- source dedup is best-effort via alias collision (skip the `_sources` map);
+- sample-removal is dropped from the agent path (consistent with `create_dataset`; the
+  prompt already steers to real data). A uniform app-level cleanup can be revisited later.
 
-**Acceptance:** agent connects a HuggingFace dataset and a local CSV read-only; both appear
-in the explorer; `/connect` slash command behavior unchanged (shares the same core).
+- `ConnectDataSourceTool(registry, data_dir)` (toolhub): resolve `source` → `load_files`
+  (local data file) or `load_hf_dataset` (HF URL) with `read_only=True` → `registry.register`.
+- **Scope: any local file + HuggingFace.** Data files → `load_files`; local **database
+  files** (SQLite/DuckDB) → `from_url` (no credentials, no network). Only **remote/
+  credentialed DB URLs** stay user-only `/connect` — the principled line is local/
+  credential-free → agent, remote/credentialed → user. The response reports the source's
+  **actual** dialect (e.g. `sqlite SQL` vs `duckdb SQL`) so the agent writes correct syntax.
+- Alias: the agent supplies it, used **verbatim-or-error** (like `create_dataset`) — no
+  derivation, sanitization, or collision-suffixing; an invalid or taken alias is rejected.
+- Response names the dialect (`sqlite SQL` / `duckdb SQL`, N tables), host-agnostic.
+  Descriptions are **self-contained — no sibling tool names** (so the tools stay modular
+  for standalone library use); disambiguation from `create_dataset` comes from each tool's
+  own description (read-only/existing vs writable/new), not cross-references.
+- `/cmd_connect` is **untouched** — no shared factoring needed (both already share
+  `load_files`/`load_hf_dataset` in `datasources`).
+
+**Acceptance:** agent connects a local CSV (and a HuggingFace dataset) read-only; writes are
+refused; re-connecting suffixes the alias; db-file / missing-file / bad-alias return clear
+errors; `/connect` slash behavior unchanged.
 
 ### Phase 5 — `export_record`
 

@@ -54,6 +54,7 @@ if TYPE_CHECKING:
     from tabulaflow.core.types import Usage
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
+        ConnectDataSourceTool,
         CreateDatasetTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
@@ -272,6 +273,7 @@ class _Toolset:
     web_browser: WebBrowserTool
     # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
     create_dataset: CreateDatasetTool | None
+    connect_data_source: ConnectDataSourceTool | None
     bash: ExecuteBashTool | None
 
 
@@ -335,6 +337,7 @@ class ChatAgent:
         from tabulaflow.modulehub.db_summarizer import DBSummarizer
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
+            ConnectDataSourceTool,
             CreateDatasetTool,
             ExtractRowsFromDocumentsTool,
             RegistryGetColumnJsonSchemaTool,
@@ -391,6 +394,9 @@ class ChatAgent:
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
             create_dataset=(CreateDatasetTool(self.registry, self.data_dir) if self.data_dir is not None else None),
+            connect_data_source=(
+                ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
+            ),
             bash=self._build_bash_tool(),
         )
 
@@ -465,7 +471,9 @@ class ChatAgent:
             if tool is not None
         ]
         host_tools = [
-            tool.as_pydantic_ai_tool() for tool in (self._tools.create_dataset, self._tools.bash) if tool is not None
+            tool.as_pydantic_ai_tool()
+            for tool in (self._tools.create_dataset, self._tools.connect_data_source, self._tools.bash)
+            if tool is not None
         ]
         self._pydantic_ai_agent = make_agent(
             self.model,

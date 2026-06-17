@@ -25,10 +25,10 @@ class CreateDatasetTool:
         self._dataset_dir = dataset_dir
 
     async def __call__(self, name: str) -> str:
-        """Create a new empty writable dataset that you build up with run_query (CREATE
-        TABLE / INSERT) — for consolidating scattered files into one table or accumulating
-        computed results. The dataset is a first-class source you can query and keep adding
-        to across the conversation.
+        """Create a new empty writable dataset — for consolidating scattered files into one
+        table or accumulating computed results. The dataset is registered as a queryable
+        source you can write to (CREATE TABLE / INSERT) and keep adding to across the
+        conversation.
 
         Args:
             name: The dataset's name, used verbatim as its alias — letters, digits, and
@@ -51,7 +51,7 @@ class CreateDatasetTool:
             enable_query_caching=False,
         )
         self._registry.register(name, connector)
-        return f"Created writable dataset '{name}' (DuckDB SQL). Populate and query it with run_query using db_alias='{name}'."
+        return f"Created writable dataset '{name}' (DuckDB SQL). Query and populate it using the alias '{name}'."
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
