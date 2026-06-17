@@ -313,8 +313,10 @@ June 16
   - [x] connect_data_source
   - [x] create_dataset
   - [x] url.py
-  - [ ] Revise prompt
+  - [x] Revise prompt
 
+- [ ] local pdf via browser
+- [ ] is transfer_record needed?
 - [ ] file_editor tool?
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
