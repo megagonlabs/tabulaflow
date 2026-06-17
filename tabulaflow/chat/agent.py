@@ -162,9 +162,9 @@ You can read external files and connect or build data sources for the user. Pick
 
 Reading files (DuckDB SQL, in `workspace` or a dataset): `read_csv_auto('output/**/*.csv', union_by_name=true)`, `read_parquet(...)`, `read_json_auto(...)` — this consolidates scattered files in one statement, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)`.
 
-Paths: relative paths — in `run_query` (both reads and `COPY`) and in the shell — resolve against the user's project directory. The `$SCRATCH` directory is OUTSIDE it, so reference scratch files by absolute path; note `$SCRATCH` is a shell variable and does NOT expand in SQL, so put the literal absolute path in the query.
+Paths: relative paths — in `run_query` (both reads and `COPY`) and in the shell — resolve against the user's project directory. The scratch directory is OUTSIDE it, so reference scratch files by their absolute path (given in <session_paths>); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal absolute path in the query.
 
-Use the `execute_bash` shell tool only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas). It runs in the user's project directory with network access. Write intermediate files under the directory in the `$SCRATCH` env var (run `echo $SCRATCH` for its absolute path); prefer producing Parquet (typed, lossless); then read the file back by that absolute path: `... FROM read_parquet('<abs $SCRATCH path>')`.
+Use the `execute_bash` shell tool only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas). It runs in the user's project directory with network access. Write intermediate files under the scratch directory (`$SCRATCH` in the shell; absolute path in <session_paths>); prefer producing Parquet (typed, lossless); then read the file back by that absolute path: `... FROM read_parquet('<scratch abs path>')`.
 
 Export to a file with DuckDB COPY via `run_query`, against a writable database (a dataset or `workspace`, never a read-only source):
 - `COPY (SELECT ...) TO '<path>' (FORMAT parquet)`
@@ -255,6 +255,18 @@ Steps:
 4. Join on the resolved column with a standard SQL query.
 </examples>
 """.strip()
+
+
+# Appended to the (static) system prompt per session when the host provides the project
+# and scratch dirs, so the agent has their absolute paths without spending a shell call to
+# discover them. Kept at the tail so the large static prefix still prompt-caches.
+_SESSION_PATHS_BLOCK = """
+
+<session_paths>
+(internal implementation details, never mention to the user)
+- Project directory — the shell's working dir; relative paths in the shell and in `run_query` resolve here: {project_dir}
+- Scratch directory — for intermediate files; use this absolute path when referencing scratch files in SQL (also available as `$SCRATCH` in the shell): {scratch_dir}
+</session_paths>"""
 
 
 # Fixed reasoning effort for the subagent-backed fan-out / extraction tools — an
@@ -348,6 +360,10 @@ class ChatAgent:
         if self.workspace is not None:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
+        if self.project_dir is not None and self.scratch_dir is not None:
+            self._system_prompt = SYSTEM_PROMPT + _SESSION_PATHS_BLOCK.format(
+                project_dir=self.project_dir, scratch_dir=self.scratch_dir
+            )
         self._build_agent()
 
     def _build_tools(self, subagent_dir: Path | None) -> _Toolset:
