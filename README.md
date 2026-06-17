@@ -305,8 +305,15 @@ June 15
   - [x] NarrationDelta and AnswerDelta
 
 June 16
-- [x] Fix bug: if ask question before workspace ready, workspace load forever
-- [ ] Bash tool
+- [x] Fix bugs
+  - [x] Fix bug: if ask question before workspace ready, workspace load forever
+  - [x] Fix unpatched tool calls on agent error
+- agent data sources
+  - [x] execute_bash
+  - [x] connect_data_source
+  - [x] create_dataset
+  - [x] url.py
+  - [ ] Revise prompt
 
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
