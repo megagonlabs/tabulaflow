@@ -235,25 +235,6 @@ Visualization:
 - Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
 - Prefer bar for categorical comparisons, line for time series, point for correlations.
 </tool_calling>
-
-<examples>
-Example: Cross-source semantic join
-
-User question: "Which employees work at offices that were flagged for safety violations?"
-Available databases:
-  - `hr`: table `employees` with columns (emp_id, name, office_code)  — office_code values like "SF-HQ", "NYC-3", "CHI-W"
-  - `compliance`: table `violations` with columns (facility_name, violation_date, status) — facility_name values like "San Francisco Headquarters", "New York City Office 3", "Chicago West Campus"
-
-There is no shared key between office_code and facility_name. The mapping requires world knowledge.
-
-Steps:
-1. Transfer both tables into `workspace`.
-2. Add a resolved/normalized column to one (or both) tables.
-3. Use `run_subagent_for_each_row` to populate the new column by matching values across tables.
-   - (preferred when the lookup space is large) approach (a): Add a foreign-key column to one table and have the subagent resolve the match against the other table at runtime — set `enable_run_query_tool=True`. Do not embed a large vocabulary in the task instruction.
-   - approach (b): Add a normalized column to both tables and have the subagent normalize each side to a canonical form (e.g., "normalize to IATA airport code") independently. No `run_query` access needed.
-4. Join on the resolved column with a standard SQL query.
-</examples>
 """.strip()
 
 
