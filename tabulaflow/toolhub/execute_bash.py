@@ -5,11 +5,9 @@ following the OpenHands terminal implementation pattern.
 """
 
 import asyncio
-import fcntl
 import json
 import logging
 import os
-import pty
 import re
 import shutil
 import signal
@@ -21,6 +19,17 @@ from typing import ClassVar
 
 from pydantic import BaseModel
 from pydantic_ai import Tool
+
+# pty/fcntl are POSIX-only. Guard the import so this module (and therefore the whole
+# toolhub package) still loads on Windows; the tool raises a clear error at construction
+# there instead of a cryptic ImportError. See ``ExecuteBashTool.__init__``.
+try:
+    import fcntl
+    import pty
+
+    _POSIX = True
+except ImportError:  # pragma: no cover - Windows only
+    _POSIX = False
 
 logger = logging.getLogger(__name__)
 
@@ -102,6 +111,8 @@ class ExecuteBashTool:
                 string before execution. Return ``None`` to allow it, or a short
                 reason string to block it (surfaced to the caller).
         """
+        if not _POSIX:
+            raise RuntimeError("ExecuteBashTool requires macOS or Linux; the shell tool is not supported on Windows.")
         self._working_dir = working_dir or os.getcwd()
         self._no_change_timeout = no_change_timeout
         self._max_output_chars = max_output_chars
