@@ -25,10 +25,11 @@ class CreateDatasetTool:
         self._dataset_dir = dataset_dir
 
     async def __call__(self, name: str) -> str:
-        """Create a new empty writable dataset — for consolidating scattered files into one
-        table or accumulating computed results. The dataset is registered as a queryable
-        source you can write to (CREATE TABLE / INSERT) and keep adding to across the
-        conversation.
+        """Create a new empty writable dataset to consolidate scattered local files into one
+        named, queryable source. Build its tables by writing to it (CREATE TABLE / INSERT);
+        the name becomes a data source you can query and keep adding to during the session.
+        It is session-scoped, not a way to save data — to durably keep data, export it to a
+        file instead.
 
         Args:
             name: The dataset's name, used verbatim as its alias — letters, digits, and
