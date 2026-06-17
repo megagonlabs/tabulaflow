@@ -89,7 +89,7 @@ class ExecuteBashTool:
         no_change_timeout: int = _NO_CHANGE_TIMEOUT,
         max_output_chars: int = _MAX_OUTPUT_CHARS,
         init_commands: list[str] | None = None,
-        command_filter: Callable[[str], bool] | None = None,
+        command_filter: Callable[[str], str | None] | None = None,
     ) -> None:
         """Initialize the bash tool.
 
@@ -98,9 +98,9 @@ class ExecuteBashTool:
             no_change_timeout: Seconds with no new output before returning.
             max_output_chars: Maximum characters in returned output.
             init_commands: Commands to run at session startup (e.g. PATH setup).
-            command_filter: Optional guard function. Called with each new
-                command string before execution. Return ``True`` to allow,
-                ``False`` to block the command.
+            command_filter: Optional guard function. Called with each new command
+                string before execution. Return ``None`` to allow it, or a short
+                reason string to block it (surfaced to the caller).
         """
         self._working_dir = working_dir or os.getcwd()
         self._no_change_timeout = no_change_timeout
@@ -363,9 +363,10 @@ class ExecuteBashTool:
         command = command.strip()
 
         if command and not is_input and self._command_filter is not None:
-            if not self._command_filter(command):
+            reason = self._command_filter(command)
+            if reason is not None:
                 self._metrics.num_errors += 1
-                return "(error: command is not allowed.)"
+                return f"(error: command blocked: {reason})"
 
         running = self._prev_status in ("no_change_timeout", "hard_timeout")
 

@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         CreateDatasetTool,
+        ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         QueryHistory,
         QueryRecord,
@@ -269,8 +270,9 @@ class _Toolset:
     add_canonical_name: AddCanonicalNameTool
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
-    # Host-facing tool; ``None`` when the app didn't supply the create-dataset callback.
+    # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
     create_dataset: CreateDatasetTool | None
+    bash: ExecuteBashTool | None
 
 
 @dataclass
@@ -389,6 +391,25 @@ class ChatAgent:
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
             create_dataset=(CreateDatasetTool(self.registry, self.data_dir) if self.data_dir is not None else None),
+            bash=self._build_bash_tool(),
+        )
+
+    def _build_bash_tool(self) -> ExecuteBashTool | None:
+        """Build the shell tool, or ``None`` when the host dirs aren't available.
+
+        Runs commands in the user's project dir, exposes the session scratch dir as
+        ``$SCRATCH``, and guards against catastrophic commands via the denylist."""
+        if self.project_dir is None or self.scratch_dir is None:
+            return None
+        import shlex
+
+        from tabulaflow.toolhub import ExecuteBashTool
+        from tabulaflow.toolhub.shell_guard import dangerous_command_reason
+
+        return ExecuteBashTool(
+            working_dir=str(self.project_dir),
+            init_commands=[f"export SCRATCH={shlex.quote(str(self.scratch_dir))}"],
+            command_filter=dangerous_command_reason,
         )
 
     @property
@@ -430,6 +451,11 @@ class ChatAgent:
 
         self._message_history.append(ModelRequest(parts=[UserPromptPart(content=f"[system: {description}]")]))
 
+    async def aclose(self) -> None:
+        """Release session-scoped resources — currently the persistent shell session."""
+        if self._tools.bash is not None:
+            await self._tools.bash.close()
+
     def _build_agent(self) -> None:
         from tabulaflow.toolhub.run_subagent_for_each_row import ReleaseBrowserBeforeFanout
 
@@ -438,7 +464,9 @@ class ChatAgent:
             for tool in (self._tools.run_subagent_for_each_row, self._tools.extract_rows_from_documents)
             if tool is not None
         ]
-        host_tools = [tool.as_pydantic_ai_tool() for tool in (self._tools.create_dataset,) if tool is not None]
+        host_tools = [
+            tool.as_pydantic_ai_tool() for tool in (self._tools.create_dataset, self._tools.bash) if tool is not None
+        ]
         self._pydantic_ai_agent = make_agent(
             self.model,
             tools=[

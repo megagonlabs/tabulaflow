@@ -4,6 +4,7 @@ from tabulaflow.toolhub.get_table_schema import GetTableSchemaTool
 from tabulaflow.toolhub.add_canonical_name import AddCanonicalNameTool
 from tabulaflow.toolhub.create_dataset import CreateDatasetTool
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
+from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
 from tabulaflow.toolhub.render_chart import RenderPlotextChartTool
 from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
@@ -27,8 +28,10 @@ __all__ = [
     "GetColumnJsonSchemaTool",
     "GetTableSchemaTool",
     "AddCanonicalNameTool",
+    "BashToolMetrics",
     "CreateDatasetTool",
     "EntityExtractor",
+    "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",

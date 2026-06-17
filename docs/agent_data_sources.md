@@ -233,7 +233,7 @@ in `toolhub` and depend only on callbacks/dirs handed in at construction — nev
 
 | Tool | Layer | Mutates | Purpose |
 |---|---|---|---|
-| `run_shell` (bash) | toolhub | files in `$SCRATCH` (and project only on explicit request) | gather / custom transforms; cwd=project, network on, denylist |
+| `execute_bash` (`ExecuteBashTool`, moved into toolhub) | toolhub | files in `$SCRATCH` (and project only on explicit request) | gather / custom transforms; cwd=project, network on, denylist guard |
 | `connect_data_source` | toolhub (→ app callback) | registry (read-only source) | expose existing HF/CSV/JSON/DB-URL as-is |
 | `create_dataset` | toolhub (→ app callback) | registry (writable dataset) | new empty writable named DuckDB |
 | `run_query` (extended) | toolhub | writable connectors only | query **and** ingest/append (gated by `read_only`) |
@@ -280,13 +280,28 @@ it. End-to-end with **no shell** for homogeneous source files.
 
 ### Phase 3 — Shell tool
 
-- `RunShellTool` (toolhub): subprocess with `cwd=project_dir`, `env={**os.environ, "SCRATCH": <abs scratch>}`,
-  network allowed, **denylist refuse-on-match**, returns stdout/stderr/exit code (truncated sensibly).
-- Wire `project_dir`/`scratch_dir` into `ChatAgent` and the tool.
+**Reuse, don't rebuild.** A capable, well-tested `ExecuteBashTool` already existed in
+`research/tools/` (persistent PTY session, completion detection, interrupt/background
+support, output truncation, and a `command_filter` hook). It lived in `research`, a
+sibling of `chat`, so the chat agent couldn't import it.
 
-**Acceptance:** denylist refuses a catastrophic command and explains; an ordinary command
-runs; cwd is the project dir; `$SCRATCH` is set and writable. Route B end-to-end: shell
-writes `$SCRATCH/x.parquet`, `run_query` ingests it by absolute path into a dataset.
+- **Move** `ExecuteBashTool` `research/tools/ → toolhub/` (below both `chat` and
+  `research`); `research/tools/__init__` re-exports it so `dbt_agent` is unchanged.
+- **`command_filter`** changed from `Callable[[str], bool]` → `Callable[[str], str | None]`
+  (return a block reason, surfaced to the agent; `None` allows).
+- **`toolhub/shell_guard.py`** — `dangerous_command_reason(cmd)`: small high-signal
+  denylist (rm -rf of root/home/cwd, fork bomb, mkfs/dd, device/system writes, curl|sh,
+  destructive git, shutdown, sudo). Guardrail, not a sandbox. Covered by `tests/test_shell_guard.py`.
+- **Wire into `ChatAgent`** (built only when `project_dir`/`scratch_dir` are set):
+  `working_dir=project_dir`, `init_commands=["export SCRATCH=<abs scratch>"]` (persists in
+  the session shell), `command_filter=dangerous_command_reason`. Full env, network on.
+- **Lifecycle:** `ChatAgent.aclose()` closes the persistent shell; called from the app's
+  shutdown path.
+
+**Acceptance:** denylist blocks a catastrophic command with a reason; an ordinary command
+runs; cwd is the project dir; `$SCRATCH` is set and writable; writes default to scratch
+(project stays clean). Route B end-to-end: shell writes `$SCRATCH/x.parquet`, `run_query`
+ingests it by absolute path into a dataset.
 
 ### Phase 4 — `connect_data_source` (read-only, agent-driven `/connect`)
 

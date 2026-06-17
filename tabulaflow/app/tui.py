@@ -424,6 +424,10 @@ class TabulaflowApp(App[None]):
     async def _shutdown_then_exit(self) -> None:
         assert self._session is not None
         try:
+            await self._session.chat_agent.aclose()
+        except Exception:
+            logger.debug("chat_agent.aclose failed during exit", exc_info=True)
+        try:
             await self._session.registry.disconnect_all_async()
         except Exception:
             logger.debug("disconnect_all_async failed during exit", exc_info=True)

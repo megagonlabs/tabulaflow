@@ -3,7 +3,7 @@ from collections.abc import AsyncIterator
 
 import pytest
 
-from tabulaflow.research.tools.execute_bash import ExecuteBashTool
+from tabulaflow.toolhub.execute_bash import ExecuteBashTool
 
 
 @pytest.fixture
@@ -138,12 +138,13 @@ class TestMetrics:
 class TestCommandFilter:
     async def test_filter_blocks_command(self) -> None:
         tool = ExecuteBashTool(
-            command_filter=lambda cmd: not cmd.strip().startswith("rm "),
+            command_filter=lambda cmd: "no rm allowed" if cmd.strip().startswith("rm ") else None,
         )
         try:
             result = await tool("rm -rf /tmp/something")
             assert "error" in result.lower()
-            assert "not allowed" in result
+            assert "blocked" in result
+            assert "no rm allowed" in result
             assert tool.metrics().num_errors == 1
 
             result = await tool("echo safe")
@@ -153,11 +154,11 @@ class TestCommandFilter:
             await tool.close()
 
     async def test_filter_does_not_block_input(self) -> None:
-        tool = ExecuteBashTool(command_filter=lambda cmd: False, no_change_timeout=3)
+        tool = ExecuteBashTool(command_filter=lambda cmd: "blocked", no_change_timeout=3)
         try:
             result = await tool("hello", is_input=True)
             assert "error" in result.lower()
-            assert "not allowed" not in result
+            assert "blocked" not in result
         finally:
             await tool.close()
 

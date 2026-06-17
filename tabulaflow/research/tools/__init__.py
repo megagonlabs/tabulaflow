@@ -1,6 +1,6 @@
 from tabulaflow.research.tools.ask_user import AskUserTool, AskUserToolMetrics
 from tabulaflow.research.tools.run_dbt import RunDbtTool, RunDbtToolMetrics
-from tabulaflow.research.tools.execute_bash import ExecuteBashTool, BashToolMetrics
+from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.research.tools.file_editor import FileEditorTool, FileEditorToolMetrics
 from tabulaflow.research.tools.search_keywords import SearchKeywordsTool, SearchKeywordsToolMetrics
 from tabulaflow.research.tools.finish import FinishTool, FinishToolMetrics
