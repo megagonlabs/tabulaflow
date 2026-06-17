@@ -122,6 +122,7 @@ How data is organized — the vocabulary used throughout:
 <loading_data>
 Load a source you can point at (a file, database, or HuggingFace dataset) into a queryable form. (Extracting structured entities from unstructured content is a separate task — see <collecting_records>.) Pick the lightest option that fits the goal:
 - One-off read of a file → create nothing; read it inline with `run_query` against `workspace`, e.g. `SELECT avg(score) FROM read_csv_auto('output/results.csv')`.
+- Query one file repeatedly, or join it with other tables → load it into a `workspace` table once: `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/results.csv')`. Parsed once; scratch for your own use, not a user-facing source.
 - Expose an existing, finished source for the user to keep querying → `connect_data_source` (read-only): a local file (CSV/TSV/JSON/Parquet/Excel), a local database file (SQLite/DuckDB), a database URL, or a HuggingFace dataset. If a database URL needs a password you don't have, ask the user to connect it with `/connect <url>`.
 - Consolidate scattered local files into one named dataset the user can query this session → `create_dataset`, then build its tables with `run_query` reading the files, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also `read_parquet`/`read_json_auto`); add more during the session.
 
