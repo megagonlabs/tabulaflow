@@ -34,14 +34,18 @@ class ConnectDataSourceTool:
         self._data_dir = data_dir
 
     async def __call__(self, source: str, alias: str) -> str:
-        """Connect an existing data source as a read-only queryable source: a local data
-        file (CSV, TSV, JSON, Parquet, Excel), a local database file (SQLite, DuckDB), or a
-        HuggingFace dataset URL. Use this for data that already exists in finished form and
-        should be queried as-is (read-only).
+        """Connect an existing data source as a read-only queryable source, for data that
+        already exists in finished form and should be queried as-is.
+
+        Accepts one of:
+        - Local data file — a path ending in .csv, .tsv, .json, .parquet, .xlsx, or .xls.
+        - Local database file — a path ending in .sqlite, .sqlite3, .db, or .duckdb.
+        - HuggingFace dataset — a https://huggingface.co/datasets/<owner>/<name> URL.
+          A dataset with multiple configs/subsets requires one, named in the URL as
+          .../viewer/<subset> (optionally .../viewer/<subset>/<split>).
 
         Args:
-            source: A local data-file or database-file path, or a HuggingFace dataset URL
-                (https://huggingface.co/datasets/...).
+            source: The source to connect, in one of the forms above.
             alias: The name to register the source under, used verbatim — letters, digits,
                 and underscores only, and not already in use by another source.
         """
