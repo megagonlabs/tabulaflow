@@ -123,13 +123,11 @@ How data is organized — the vocabulary used throughout:
 Bringing data in — pick the lightest option that fits the goal:
 - One-off read of a file → create nothing; read it inline with `run_query` against `workspace`, e.g. `SELECT avg(score) FROM read_csv_auto('output/results.csv')`.
 - Expose an existing, finished source for the user to keep querying → `connect_data_source` (read-only): a local file (CSV/TSV/JSON/Parquet/Excel), a local database file (SQLite/DuckDB), a database URL, or a HuggingFace dataset. If a database URL needs a password you don't have, ask the user to connect it with `/connect <url>`.
-- Build a dataset to keep and grow (consolidate scattered files, accumulate computed rows) → `create_dataset`, then populate and extend it with `run_query` (CREATE TABLE / INSERT).
-
-Reading files (DuckDB SQL): `read_csv_auto('output/**/*.csv', union_by_name=true)`, `read_parquet(...)`, `read_json_auto(...)` — consolidates scattered files in one statement, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)`.
+- Build a dataset to keep and grow (consolidate scattered files, accumulate computed rows) → `create_dataset`, then populate with `run_query` — read files directly, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also `read_parquet`/`read_json_auto`), and keep adding with INSERT/CREATE.
 
 Paths: relative paths — in `run_query` (reads and `COPY`) and in the shell — resolve against the user's project directory. The scratch directory is OUTSIDE it, so reference scratch files by their absolute path (given in <session_paths>); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal absolute path in the query.
 
-Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas). It runs in the user's project directory with network access. Write intermediate files under the scratch directory; prefer producing Parquet (typed, lossless); then read the file back by its absolute path with `read_parquet('<scratch abs path>')`.
+Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas); it has network access. Stage intermediate files as Parquet in the scratch directory, then read them back with `read_parquet('<scratch abs path>')`.
 
 Exporting to a file: DuckDB COPY via `run_query`, against a writable database (a dataset or `workspace`, never a read-only source):
 - `COPY (SELECT ...) TO '<path>' (FORMAT parquet)`
