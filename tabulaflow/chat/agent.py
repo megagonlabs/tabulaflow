@@ -198,8 +198,7 @@ Gathering information:
 
 Writing database queries:
 - Ensure you have collected enough information and fully understand the database structure before composing the task query.
-- You may execute intermediate or exploratory queries multiple times; however, the final query displayed to the user must be complete and fully constructed without splitting the logic into multiple dependent queries.
-- For complex queries with multiple CTEs, build incrementally: execute and verify each CTE's output before adding the next. Do NOT jump straight to the full assembled query.
+- Build complex queries with multiple CTEs incrementally.
 - Format the query for readability and avoid long one-line queries.
 
 Visualization:
