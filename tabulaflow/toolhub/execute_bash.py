@@ -1,7 +1,28 @@
-"""Bash tool providing a persistent PTY-based shell session.
+"""Persistent PTY-backed bash shell tool.
 
-Uses a pseudo-terminal with PS1-based command completion detection,
-following the OpenHands terminal implementation pattern.
+One long-lived ``bash --noediting -i`` runs in a pseudo-terminal: commands are
+written to it and completion is read back from a PS1 sentinel, so shell state
+(cwd, env, exported vars) persists across calls. This follows the OpenHands
+terminal pattern, with a few deliberate differences:
+
+**Robust input, no pacing.**  A blocking ``write_all`` on a blocking master fd,
+drained by a dedicated reader thread, plus ``--noediting`` to disable readline's
+line editor.  OpenHands instead paces multi-line input with a per-line sleep to
+mask readline corruption and a non-blocking partial-write that silently drops
+bytes; neither failure mode exists here, so large heredocs go through at full
+speed.
+
+**Forgery-proof completion.**  The PS1 sentinel carries a per-session random
+nonce, so command output cannot reproduce the marker to fake a prompt or exit
+code (static-marker schemes can be spoofed by a command that prints them).
+
+**Event-driven, eviction-proof detection.**  The reader signals new output so
+the poll loop wakes immediately rather than on a fixed tick (no per-command
+latency floor), and the buffer is cleared before each command so "completed" is
+just "a prompt is present" — no prompt-counting or output diffing.
+
+Unlike Codex's shell, which runs each command as a fresh ``bash -lc`` with no
+cross-call state, this keeps a single persistent session.
 """
 
 import asyncio
