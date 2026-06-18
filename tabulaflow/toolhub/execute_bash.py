@@ -593,30 +593,27 @@ class ExecuteBashTool:
     ) -> str:
         """Execute a bash command in a persistent shell session.
 
-        Commands run in a persistent bash process. Environment variables,
-        working directory, and shell state persist between calls.
-
-        If a previous command is still running (indicated by ``exit_code: -1``),
-        set ``is_input`` to True to interact with it:
-
-        - Send empty ``command`` to retrieve additional output.
-        - Send text to write to STDIN of the running process.
-        - Send ``C-c`` to interrupt (Ctrl+C), ``C-d`` for EOF, or ``C-z`` to
-          suspend the running process.
-
-        For long-running commands, run them in the background, e.g.
+        Environment variables, working directory, and shell state persist
+        between calls. The result ends with ``[exit_code: N]``; ``N`` is ``-1``
+        when the command is still running (it produced no new output for a
+        while, or hit ``timeout``), in which case poll or interact with
+        ``is_input``. Long-running commands can be backgrounded, e.g.
         ``python3 app.py > server.log 2>&1 &``.
 
         Args:
-            command: The bash command to execute. When ``is_input`` is True,
-                this is sent as input to the currently running process.
-            is_input: If True, send ``command`` as input to a running process
-                instead of executing it as a new command.
-            timeout: Optional hard timeout in seconds. When set, the
-                no-change timeout is disabled and the command is allowed to
-                run until this wall-clock limit is reached.
-            reset: If True, reset the shell session before executing the
-                command. Use when the session is in an unrecoverable state.
+            command: The bash command to run. When ``is_input`` is True this is
+                instead sent to the running command: empty polls it for more
+                output, or it may be a key — ``C-c`` (interrupt), ``C-d`` (EOF),
+                ``C-z`` (suspend), or any ``C-<letter>``.
+            is_input: If True, send ``command`` to the running command's stdin
+                instead of starting a new command. Only valid while a command is
+                still running (its result ended with ``exit_code: -1``).
+            timeout: Hard timeout in seconds. When set, the command may run this
+                long; when unset, it returns after no new output for the
+                no-change interval. Use a higher value for slow commands.
+            reset: If True, restart the shell first, losing all session state
+                (env vars, cwd, background processes). For an unresponsive
+                session; cannot be combined with ``is_input``.
         """
         async with self._lock:
             if reset:
