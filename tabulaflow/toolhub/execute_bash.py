@@ -12,6 +12,7 @@ import re
 import shutil
 import signal
 import subprocess
+import threading
 import time
 from collections import deque
 from collections.abc import Callable
@@ -20,11 +21,10 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-# pty/fcntl are POSIX-only. Guard the import so this module (and therefore the whole
+# pty is POSIX-only. Guard the import so this module (and therefore the whole
 # toolhub package) still loads on Windows; the tool raises a clear error at construction
 # there instead of a cryptic ImportError. See ``ExecuteBashTool.__init__``.
 try:
-    import fcntl
     import pty
 
     _POSIX = True
@@ -123,6 +123,8 @@ class ExecuteBashTool:
         self._process: subprocess.Popen[bytes] | None = None
         self._pty_fd: int | None = None
         self._buf: deque[str] = deque(maxlen=_HISTORY_LIMIT + 50)
+        self._buf_lock = threading.Lock()
+        self._reader_thread: threading.Thread | None = None
         self._loop: asyncio.AbstractEventLoop | None = None
         self._initialized = False
         self._closed = False
@@ -149,8 +151,13 @@ class ExecuteBashTool:
 
         master_fd, slave_fd = pty.openpty()
         try:
+            # --noediting disables readline's interactive line editor. We feed
+            # commands programmatically, so its history/cursor handling is unused
+            # and its redisplay interleaves bytes when a large multi-line command
+            # arrives faster than it can process — corrupting the input. We keep
+            # interactive mode (-i) for job control and PS1 prompts.
             self._process = subprocess.Popen(
-                [bash_path, "-i"],
+                [bash_path, "--noediting", "-i"],
                 stdin=slave_fd,
                 stdout=slave_fd,
                 stderr=slave_fd,
@@ -166,11 +173,14 @@ class ExecuteBashTool:
 
         self._pty_fd = master_fd
         self._closed = False
-        flags = fcntl.fcntl(master_fd, fcntl.F_GETFL)
-        fcntl.fcntl(master_fd, fcntl.F_SETFL, flags | os.O_NONBLOCK)
 
         self._loop = asyncio.get_running_loop()
-        self._loop.add_reader(master_fd, self._on_data)
+        # Keep the master fd BLOCKING and drain it on a dedicated thread. Reading
+        # output concurrently with writing input is what lets a blocking write_all
+        # of the command always complete: bash never stalls on a full stdout buffer,
+        # so it keeps consuming stdin and the kernel input buffer keeps draining.
+        self._reader_thread = threading.Thread(target=self._read_loop, args=(master_fd,), daemon=True)
+        self._reader_thread.start()
         self._initialized = True
 
         init_cmd = f'set +H; export PROMPT_COMMAND=\'export PS1="{ps1}"\'; export PS2=""'
@@ -189,9 +199,10 @@ class ExecuteBashTool:
             await self._wait_for_prompt(timeout=10.0)
             self._clear_screen()
 
-        # Let the event loop drain any remaining PTY output, then clear
+        # Let the reader thread drain any remaining PTY output, then clear
         await asyncio.sleep(0.1)
-        self._buf.clear()
+        with self._buf_lock:
+            self._buf.clear()
 
     async def _ensure_session(self) -> None:
         """Restart the session if the process died."""
@@ -229,47 +240,56 @@ class ExecuteBashTool:
             pass
         finally:
             if self._pty_fd is not None:
-                if self._loop is not None:
-                    try:
-                        self._loop.remove_reader(self._pty_fd)
-                    except Exception:
-                        pass
+                # Closing the master fd makes the reader thread's blocking os.read
+                # return/raise, so it can exit and be joined below.
                 try:
                     os.close(self._pty_fd)
                 except Exception:
                     pass
                 self._pty_fd = None
+            if self._reader_thread is not None:
+                self._reader_thread.join(timeout=1)
+                self._reader_thread = None
             self._loop = None
             self._process = None
             self._initialized = False
             self._closed = True
-            self._buf.clear()
+            with self._buf_lock:
+                self._buf.clear()
             self._prev_status = None
             self._prev_output = ""
 
     # -- low-level I/O ---------------------------------------------------------
 
     def _write_pty(self, data: bytes) -> None:
-        if self._pty_fd is None:
-            raise RuntimeError("PTY not initialized")
-        os.write(self._pty_fd, data)
+        """Write all bytes to the PTY, blocking until the kernel accepts them.
 
-    def _on_data(self) -> None:
-        """Event loop callback: read available PTY output into the buffer."""
+        The master fd is blocking, so when its input buffer fills this parks
+        (on a worker thread) until the reader thread drains bash's output and
+        bash consumes more stdin — rather than dropping the unwritten tail, the
+        failure mode of a single non-blocking ``os.write`` that ignores its
+        return count.
+        """
         fd = self._pty_fd
         if fd is None:
-            return
-        try:
-            while True:
+            raise RuntimeError("PTY not initialized")
+        view = memoryview(data)
+        while view:
+            n = os.write(fd, view)
+            view = view[n:]
+
+    def _read_loop(self, fd: int) -> None:
+        """Drain the PTY master on a background thread until the fd closes (EOF)."""
+        while True:
+            try:
                 chunk = os.read(fd, 4096)
-                if not chunk:
-                    break
-                text = chunk.decode("utf-8", errors="replace")
+            except OSError:
+                break
+            if not chunk:
+                break
+            text = chunk.decode("utf-8", errors="replace")
+            with self._buf_lock:
                 self._buf_append(text)
-        except BlockingIOError:
-            pass
-        except OSError:
-            pass
 
     def _buf_append(self, text: str) -> None:
         """Append text to the buffer, keeping one line per deque entry."""
@@ -283,28 +303,31 @@ class ExecuteBashTool:
 
     def _read_screen(self) -> str:
         """Snapshot the current buffer, stripping ANSI escapes and \\r."""
-        raw = "".join(self._buf).replace("\r", "")
-        return _ANSI_ESCAPE.sub("", raw)
+        with self._buf_lock:
+            raw = "".join(self._buf)
+        return _ANSI_ESCAPE.sub("", raw.replace("\r", ""))
 
     def _clear_screen(self) -> None:
         """Truncate the buffer to the last PS1 block."""
-        if not self._buf:
-            return
-        data = "".join(self._buf)
-        begin = data.rfind(_PS1_BEGIN.strip())
-        end = data.rfind(_PS1_END.strip())
-        if begin != -1 and end != -1 and end >= begin:
-            self._buf.clear()
-            self._buf.append(data[begin:])
-        else:
-            self._buf.clear()
+        with self._buf_lock:
+            if not self._buf:
+                return
+            data = "".join(self._buf)
+            begin = data.rfind(_PS1_BEGIN.strip())
+            end = data.rfind(_PS1_END.strip())
+            if begin != -1 and end != -1 and end >= begin:
+                self._buf.clear()
+                self._buf.append(data[begin:])
+            else:
+                self._buf.clear()
 
     async def _wait_for_prompt(self, timeout: float = 5.0) -> bool:
         """Wait until the PS1 end marker appears in the buffer."""
         pat = re.compile(re.escape(_PS1_END.strip()) + r"\s*$")
         deadline = time.time() + timeout
         while time.time() < deadline:
-            tail = "".join(self._buf)[-4096:]
+            with self._buf_lock:
+                tail = "".join(self._buf)[-4096:]
             if pat.search(tail):
                 return True
             await asyncio.sleep(0.05)
@@ -399,7 +422,11 @@ class ExecuteBashTool:
             )
 
         if command:
-            self._send_keys(command, enter=not self._is_special_key(command))
+            # Run the blocking write_all on a worker thread; the reader thread keeps
+            # draining output so the write completes even for large multi-line input.
+            loop = self._loop
+            assert loop is not None
+            await loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command))
 
         start = time.time()
         last_change = start

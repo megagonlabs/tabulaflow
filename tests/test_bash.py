@@ -49,6 +49,27 @@ class TestBasic:
         assert "line3" in result
 
 
+class TestLargeMultilineInput:
+    async def test_large_heredoc_completes(self) -> None:
+        """A heredoc far larger than the PTY kernel input buffer must not hang.
+
+        Regression for the non-blocking partial-write byte-drop: a single
+        ``os.write`` on an ``O_NONBLOCK`` master fd dropped the unwritten tail
+        (including the heredoc terminator), so ``python3 -`` waited on stdin
+        forever. The blocking ``write_all`` + threaded reader must push it all.
+        """
+        tool = ExecuteBashTool(no_change_timeout=5, max_output_chars=60000)
+        try:
+            body = "\n".join(f"a{i} = {i}" for i in range(400))
+            cmd = f"python3 - <<'PY'\n{body}\nprint('SUM', a0 + a399)\nprint('DONE_MARKER')\nPY"
+            result = await tool(cmd, timeout=30)
+            assert "DONE_MARKER" in result
+            assert "SUM 399" in result
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
+
 class TestTimeout:
     async def test_no_change_timeout(self, bash: ExecuteBashTool) -> None:
         result = await bash("sleep 60")
