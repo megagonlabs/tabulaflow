@@ -26,7 +26,7 @@ from tabulaflow.chat.events import (
 from tabulaflow.chat.result import ChatResult, ChatResultRecord
 
 if TYPE_CHECKING:
-    from tabulaflow.chat.agent import ChatAgent
+    from tabulaflow.chat.agent import SYSTEM_PROMPT, ChatAgent
 
 
 def __getattr__(name: str) -> object:
@@ -34,15 +34,18 @@ def __getattr__(name: str) -> object:
     # pydantic-ai, ~3s) so that importing the lightweight event/result types — as the
     # TUI's widgets do — doesn't drag in the full agent stack. The agent itself loads
     # the first time it's accessed (when a session opens, off the UI thread).
-    if name == "ChatAgent":
-        from tabulaflow.chat.agent import ChatAgent
+    # ``SYSTEM_PROMPT`` (the baseline prompt callers extend via ``extra_instructions``)
+    # lives in the same module, so it loads on the same terms.
+    if name in ("ChatAgent", "SYSTEM_PROMPT"):
+        from tabulaflow.chat import agent
 
-        return ChatAgent
+        return getattr(agent, name)
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
 __all__ = [
     "ChatAgent",
+    "SYSTEM_PROMPT",
     "ChatResult",
     "ChatResultRecord",
     "ChatEvent",

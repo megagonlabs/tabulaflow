@@ -280,6 +280,14 @@ class ChatAgent:
     # ``set_reasoning_effort`` (peer of ``model``/``set_model``); the subagent fan-out
     # tools keep their own fixed effort (``_SUBAGENT_REASONING_EFFORT``).
     reasoning_effort: str
+    # Host-supplied instructions appended to the baseline prompt — a persona, domain
+    # guidance, or frontend-specific phrasing (e.g. slash-command vocabulary). ``None``
+    # (default) uses the baseline alone. Composed between the static prefix and the
+    # session-paths tail (see ``_compose_system_prompt``), so the large prefix still
+    # prompt-caches; keep it stable across a session's turns. A full prompt replacement
+    # is intentionally not offered: the baseline ``SYSTEM_PROMPT`` is half of a contract
+    # with this module's tools and citation parser, so callers extend rather than swap it.
+    extra_instructions: str | None = None
     # Where to persist conversation + subagent trajectories. ``None`` (default)
     # disables all trajectory persistence — set a dir to enable it. Servers leave it
     # off (avoids per-turn disk I/O and cross-conversation clobbering of the single
@@ -319,11 +327,22 @@ class ChatAgent:
         if self.workspace is not None:
             self._message_store.attach_connector(self.workspace)
             self._tools.add_canonical_name.attach_connector(self.workspace)
-        if self.project_dir is not None and self.scratch_dir is not None:
-            self._system_prompt = SYSTEM_PROMPT + _SESSION_PATHS_BLOCK.format(
-                project_dir=self.project_dir, scratch_dir=self.scratch_dir
-            )
+        self._system_prompt = self._compose_system_prompt()
         self._build_agent()
+
+    def _compose_system_prompt(self) -> str:
+        """Assemble the agent's instructions: the baseline ``SYSTEM_PROMPT``, then any
+        host ``extra_instructions``, then the session-paths tail (when the project and
+        scratch dirs are known). The ordering keeps the large static prefix first so it
+        prompt-caches, and the per-session paths last."""
+        parts = [SYSTEM_PROMPT]
+        if self.extra_instructions:
+            parts.append(self.extra_instructions.strip())
+        if self.project_dir is not None and self.scratch_dir is not None:
+            parts.append(
+                _SESSION_PATHS_BLOCK.format(project_dir=self.project_dir, scratch_dir=self.scratch_dir).strip()
+            )
+        return "\n\n".join(parts)
 
     def _build_tools(self, subagent_dir: Path | None) -> _Toolset:
         """Construct the agent's toolset, wiring in the shared query history and
