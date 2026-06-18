@@ -5,7 +5,7 @@ import tempfile
 import sqlalchemy
 import os
 from typing import AsyncGenerator, Any
-from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter
+from tabulaflow.toolhub.run_query import RunQueryTool, LLMParameter, _format_latency
 from tabulaflow.core.db_connector.sql_conn import SQLConnector, _contains_ddl_statement, _contains_write_statement
 from sqlalchemy.ext.asyncio import create_async_engine
 
@@ -57,6 +57,22 @@ async def test_run_query_successful(db_connector: SQLConnector) -> None:
     assert tool.metrics().num_calls == 1
     assert tool.metrics().error_query_failed == 0
     assert tool.metrics().error_timeout == 0
+
+
+def test_format_latency() -> None:
+    assert _format_latency(None) == ""
+    assert _format_latency(0.23) == "230ms"
+    assert _format_latency(0.0009) == "1ms"
+    assert _format_latency(1.5) == "1.50s"
+    assert _format_latency(12.345) == "12.35s"
+
+
+@pytest.mark.asyncio
+async def test_run_query_reports_latency(db_connector: SQLConnector) -> None:
+    """A successful query surfaces the connector-measured latency in its response."""
+    tool = RunQueryTool(db_connector, enable_params=True, timeout=10)
+    result: str = await tool("SELECT * FROM users ORDER BY id")
+    assert "(latency:" in result
 
 
 @pytest.mark.asyncio

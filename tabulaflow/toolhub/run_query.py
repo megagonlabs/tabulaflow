@@ -11,6 +11,18 @@ from tabulaflow.core.config import tabulaflow_config
 _UNSET = object()
 
 
+def _format_latency(seconds: float | None) -> str:
+    """Render a query's execution latency as a compact string (``""`` when unknown).
+
+    Sub-second timings are shown in milliseconds, larger ones in seconds.
+    """
+    if seconds is None:
+        return ""
+    if seconds < 1:
+        return f"{seconds * 1000:.0f}ms"
+    return f"{seconds:.2f}s"
+
+
 def _detect_result_hints(df: pd.DataFrame) -> list[str]:
     """Detect common problematic result patterns and return actionable hints."""
     hints: list[str] = []
@@ -220,25 +232,30 @@ class RunQueryTool:
                 self._metrics.error_query_failed += 1
                 return f"(query failed: {format_sqlalchemy_error_msg(exec_result.error.message)})"
 
+        # Successful execution — surface the connector-measured latency as a trailing
+        # line (omitted when the connector recorded none, e.g. older cached results).
+        lat = _format_latency(exec_result.latency_seconds)
+        lat_line = f"\n(latency: {lat})" if lat else ""
+
         if exec_result.df is None:
             # A successful non-row-returning statement (DDL/DML). For DML the
             # driver reports a matched-row count; surface it so a no-op write
             # (0 rows) is visible rather than reading as a plain success.
             affected = exec_result.affected_rows
             if affected is None:
-                return "(statement executed successfully)"
+                return f"(statement executed successfully){lat_line}"
             if affected == 0:
-                return "(statement executed successfully, but 0 rows were affected — check the WHERE clause)"
-            return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected)"
+                return f"(statement executed successfully, but 0 rows were affected — check the WHERE clause){lat_line}"
+            return f"(statement executed successfully, {affected} row{'s' if affected != 1 else ''} affected){lat_line}"
 
         df = exec_result.df
         if df.empty:
-            return "(query executed successfully, but results are empty)"
+            return f"(query executed successfully, but results are empty){lat_line}"
 
         res = format_df(
             df, max_visible_rows=self.max_visible_rows, max_cell_width=self.max_cell_width, floatfmt=self.floatfmt
         )
-        res += f"\n({len(df)} rows)"
+        res += f"\n({len(df)} rows){lat_line}"
         res += f"\n\n(disaplay configuration: max_visible_rows={self.max_visible_rows}, max_cell_width={self.max_cell_width}, floatfmt='{self.floatfmt}'. Full execution results have been recorded.)"
 
         for hint in _detect_result_hints(df):
