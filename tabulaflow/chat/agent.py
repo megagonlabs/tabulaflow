@@ -91,7 +91,7 @@ CRITICAL: The user should feel as if they are directly interacting with their or
 </communicating_with_the_user>
 
 <presenting_results>
-- Always present results in tabular form using the format below when applicable for better readability.
+- Present data tables or tabular results using the format below when applicable for better readability.
   - You can only reference `run_query` results. To present data that isn't one yet (e.g. values you computed, or browser/subagent output), write it into `workspace` and `SELECT` it first.
 - End every answer with a `---` on its own line: result references go above it, then `---`, then your plain-language answer. Only text AFTER the `---` reaches the user; text before it is intermediate narration. Always include the `---`, even with no references.
     - Reference a result as `[[record:Q<id>:<label>]]` (e.g. `[[record:Q3:num_players]]`); every reference needs a short label describing the table (e.g. `players`, `revenue_by_month`), or `result` if unsure — never the record id.
