@@ -93,6 +93,26 @@ class TestRobustness:
         finally:
             await tool.close()
 
+    async def test_large_command_echo_not_leaked(self) -> None:
+        """A large command's source must not appear in the result.
+
+        tty ECHO is off, so the fast-echo-overflow that dropped a chunk of the
+        captured command text (garbling it and leaking it through the failed
+        echo-strip) cannot happen.
+        """
+        tool = ExecuteBashTool(no_change_timeout=6, max_output_chars=500000)
+        try:
+            lines = ["python3 - <<'PY'", "rows = []"]
+            for k in range(40):
+                lines.append(f"rows.append({{'key_{k}': 'value {k} padding text xxxxxxxx', 'n': {k}}})")
+            lines += ["print('RAN_OK', len(rows))", "PY"]
+            result = await tool("\n".join(lines), timeout=30)
+            assert "RAN_OK 40" in result
+            assert "[exit_code: 0]" in result
+            assert "rows.append" not in result  # echoed source must not leak in
+        finally:
+            await tool.close()
+
     async def test_fast_command_low_latency(self, bash: ExecuteBashTool) -> None:
         """Completion is event-driven, so a trivial command returns well under
         the old fixed 0.5s poll-interval floor."""

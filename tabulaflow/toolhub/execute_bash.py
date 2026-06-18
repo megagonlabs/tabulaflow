@@ -44,11 +44,12 @@ from typing import ClassVar
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
-# pty is POSIX-only. Guard the import so this module (and therefore the whole
-# toolhub package) still loads on Windows; the tool raises a clear error at construction
-# there instead of a cryptic ImportError. See ``ExecuteBashTool.__init__``.
+# pty/termios are POSIX-only. Guard the import so this module (and therefore the
+# whole toolhub package) still loads on Windows; the tool raises a clear error at
+# construction there instead of a cryptic ImportError. See ``ExecuteBashTool.__init__``.
 try:
     import pty
+    import termios
 
     _POSIX = True
 except ImportError:  # pragma: no cover - Windows only
@@ -193,6 +194,14 @@ class ExecuteBashTool:
         env["TERM"] = "xterm-256color"
 
         master_fd, slave_fd = pty.openpty()
+        # Disable terminal ECHO. We feed commands ourselves and only read program
+        # output back, so echoing input is pure noise that we strip anyway — and a
+        # fast bulk command makes the tty echo it faster than the reader drains,
+        # overflowing the ~1 KB echo queue and silently dropping a chunk, which
+        # garbles the captured (not the executed) command text.
+        attrs = termios.tcgetattr(slave_fd)
+        attrs[3] &= ~(termios.ECHO | termios.ECHONL)  # c_lflag
+        termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
         try:
             # --noediting disables readline's interactive line editor. We feed
             # commands programmatically, so its history/cursor handling is unused
