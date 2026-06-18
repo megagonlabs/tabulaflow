@@ -5,10 +5,12 @@ following the OpenHands terminal implementation pattern.
 """
 
 import asyncio
+import codecs
 import json
 import logging
 import os
 import re
+import secrets
 import shutil
 import signal
 import subprocess
@@ -33,39 +35,11 @@ except ImportError:  # pragma: no cover - Windows only
 
 logger = logging.getLogger(__name__)
 
-# PS1 markers for completion detection
-_PS1_BEGIN = "\n###PS1JSON###\n"
-_PS1_END = "\n###PS1END###"
-_PS1_REGEX = re.compile(
-    rf"^{re.escape(_PS1_BEGIN.strip())}"
-    rf"((?:(?!{re.escape(_PS1_BEGIN.strip())}).)*?)"
-    rf"{re.escape(_PS1_END.strip())}",
-    re.DOTALL | re.MULTILINE,
-)
-
 _ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|\([A-Z])")
 _MAX_OUTPUT_CHARS = 30000
 _NO_CHANGE_TIMEOUT = 30
 _POLL_INTERVAL = 0.5
 _HISTORY_LIMIT = 10000
-
-
-def _build_ps1() -> str:
-    """Build a PS1 prompt that emits JSON metadata on each display."""
-    json_str = json.dumps({"exit_code": "$?", "cwd": "$(pwd)"}, indent=2)
-    return _PS1_BEGIN + json_str.replace('"', r"\"") + _PS1_END + "\n"
-
-
-def _find_ps1_matches(text: str) -> list[re.Match[str]]:
-    """Find all valid PS1 JSON metadata blocks in terminal output."""
-    matches: list[re.Match[str]] = []
-    for m in _PS1_REGEX.finditer(text):
-        try:
-            json.loads(m.group(1).strip())
-            matches.append(m)
-        except json.JSONDecodeError:
-            pass
-    return matches
 
 
 def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
@@ -120,17 +94,52 @@ class ExecuteBashTool:
         self._command_filter = command_filter
         self._metrics = BashToolMetrics()
 
+        # The completion sentinel carries a per-session random nonce so a child
+        # command cannot forge a prompt by printing the marker bytes in its output
+        # (the tool reads stdout in-band and otherwise cannot tell them apart).
+        nonce = secrets.token_hex(16)
+        self._ps1_begin = f"\n###PS1JSON_{nonce}###\n"
+        self._ps1_end = f"\n###PS1END_{nonce}###"
+        self._ps1_regex = re.compile(
+            rf"^{re.escape(self._ps1_begin.strip())}"
+            rf"((?:(?!{re.escape(self._ps1_begin.strip())}).)*?)"
+            rf"{re.escape(self._ps1_end.strip())}",
+            re.DOTALL | re.MULTILINE,
+        )
+
         self._process: subprocess.Popen[bytes] | None = None
         self._pty_fd: int | None = None
         self._buf: deque[str] = deque(maxlen=_HISTORY_LIMIT + 50)
         self._buf_lock = threading.Lock()
         self._reader_thread: threading.Thread | None = None
+        # Streaming UTF-8 decoder: a multibyte char split across two PTY reads
+        # must not be decoded as two invalid fragments. Recreated per session.
+        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         self._loop: asyncio.AbstractEventLoop | None = None
+        # Serializes _execute: one PTY/session is single-tenant, so concurrent
+        # calls would interleave bytes and steal each other's output/exit codes.
+        self._lock = asyncio.Lock()
         self._initialized = False
         self._closed = False
 
         self._prev_status: str | None = None
         self._prev_output: str = ""
+
+    def _build_ps1(self) -> str:
+        """Build a PS1 prompt that emits nonce-tagged JSON metadata each display."""
+        json_str = json.dumps({"exit_code": "$?", "cwd": "$(pwd)"}, indent=2)
+        return self._ps1_begin + json_str.replace('"', r"\"") + self._ps1_end + "\n"
+
+    def _find_ps1_matches(self, text: str) -> list[re.Match[str]]:
+        """Find all valid PS1 JSON metadata blocks in terminal output."""
+        matches: list[re.Match[str]] = []
+        for m in self._ps1_regex.finditer(text):
+            try:
+                json.loads(m.group(1).strip())
+                matches.append(m)
+            except json.JSONDecodeError:
+                pass
+        return matches
 
     # -- session lifecycle -----------------------------------------------------
 
@@ -143,7 +152,8 @@ class ExecuteBashTool:
         if bash_path is None:
             raise RuntimeError("Could not find bash in PATH")
 
-        ps1 = _build_ps1()
+        ps1 = self._build_ps1()
+        self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
         env = os.environ.copy()
         env["PS1"] = ps1
         env["PS2"] = ""
@@ -287,7 +297,9 @@ class ExecuteBashTool:
                 break
             if not chunk:
                 break
-            text = chunk.decode("utf-8", errors="replace")
+            # Stateful decode: a multibyte char split across reads is held until
+            # its continuation bytes arrive, instead of producing two U+FFFD.
+            text = self._decoder.decode(chunk)
             with self._buf_lock:
                 self._buf_append(text)
 
@@ -313,8 +325,8 @@ class ExecuteBashTool:
             if not self._buf:
                 return
             data = "".join(self._buf)
-            begin = data.rfind(_PS1_BEGIN.strip())
-            end = data.rfind(_PS1_END.strip())
+            begin = data.rfind(self._ps1_begin.strip())
+            end = data.rfind(self._ps1_end.strip())
             if begin != -1 and end != -1 and end >= begin:
                 self._buf.clear()
                 self._buf.append(data[begin:])
@@ -323,7 +335,7 @@ class ExecuteBashTool:
 
     async def _wait_for_prompt(self, timeout: float = 5.0) -> bool:
         """Wait until the PS1 end marker appears in the buffer."""
-        pat = re.compile(re.escape(_PS1_END.strip()) + r"\s*$")
+        pat = re.compile(re.escape(self._ps1_end.strip()) + r"\s*$")
         deadline = time.time() + timeout
         while time.time() < deadline:
             with self._buf_lock:
@@ -345,6 +357,24 @@ class ExecuteBashTool:
         if enter:
             payload += b"\n"
         self._write_pty(payload)
+
+    async def _send_command(self, command: str) -> str | None:
+        """Write a command to the PTY on a worker thread (blocking write_all).
+
+        The reader thread keeps draining output so the write completes even for
+        large multi-line input. Returns ``None`` on success, or an ``(error: …)``
+        string if the PTY is gone (e.g. EIO after the process died), after marking
+        the session dead so the next call restarts it.
+        """
+        loop = self._loop
+        assert loop is not None
+        try:
+            await loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command))
+        except OSError as e:
+            self._metrics.num_errors += 1
+            await self._close_internal()
+            return f"(error: shell session is gone: {e})"
+        return None
 
     # -- output helpers --------------------------------------------------------
 
@@ -413,20 +443,18 @@ class ExecuteBashTool:
                 return "(error: no running command to interact with.)"
 
         initial = self._read_screen()
-        initial_ps1_n = len(_find_ps1_matches(initial))
+        initial_ps1_n = len(self._find_ps1_matches(initial))
 
-        if running and not initial.rstrip().endswith(_PS1_END.strip()) and not is_input and command:
+        if running and not initial.rstrip().endswith(self._ps1_end.strip()) and not is_input and command:
             self._metrics.num_errors += 1
             return (
                 "(error: previous command is still running. Use is_input=true to interact, or send C-c to interrupt.)"
             )
 
         if command:
-            # Run the blocking write_all on a worker thread; the reader thread keeps
-            # draining output so the write completes even for large multi-line input.
-            loop = self._loop
-            assert loop is not None
-            await loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command))
+            error = await self._send_command(command)
+            if error is not None:
+                return error
 
         start = time.time()
         last_change = start
@@ -436,7 +464,7 @@ class ExecuteBashTool:
             await asyncio.sleep(_POLL_INTERVAL)
 
             screen = self._read_screen()
-            ps1s = _find_ps1_matches(screen)
+            ps1s = self._find_ps1_matches(screen)
             ps1_n = len(ps1s)
 
             if screen != last_screen:
@@ -444,7 +472,7 @@ class ExecuteBashTool:
                 last_change = time.time()
 
             # 1) Completed — new PS1 appeared
-            if (ps1_n > initial_ps1_n or screen.rstrip().endswith(_PS1_END.strip())) and ps1s:
+            if (ps1_n > initial_ps1_n or screen.rstrip().endswith(self._ps1_end.strip())) and ps1s:
                 meta = _parse_ps1_metadata(ps1s[-1])
                 before_first = ps1_n == 1
                 raw = self._extract_between_ps1s(screen, ps1s, before_first=before_first)
@@ -525,13 +553,14 @@ class ExecuteBashTool:
             reset: If True, reset the shell session before executing the
                 command. Use when the session is in an unrecoverable state.
         """
-        if reset:
-            await self._close_internal()
-        if is_input:
-            self._metrics.num_input_calls += 1
-        else:
-            self._metrics.num_calls += 1
-        return await self._execute(command, is_input, timeout)
+        async with self._lock:
+            if reset:
+                await self._close_internal()
+            if is_input:
+                self._metrics.num_input_calls += 1
+            else:
+                self._metrics.num_calls += 1
+            return await self._execute(command, is_input, timeout)
 
     async def close(self) -> None:
         """Terminate the bash session and clean up resources."""
