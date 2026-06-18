@@ -93,6 +93,21 @@ class TestRobustness:
         finally:
             await tool.close()
 
+    async def test_is_input_preserves_indentation(self) -> None:
+        """is_input is raw stdin and must not be stripped, so an indented REPL
+        block reaches the process intact (regression: leading whitespace was
+        stripped, breaking indentation-sensitive input)."""
+        tool = ExecuteBashTool(no_change_timeout=2)
+        try:
+            await tool("python3 -q -u", timeout=4)
+            await tool("for i in range(3):", is_input=True, timeout=2)
+            await tool("    print('LOOP', i)", is_input=True, timeout=2)
+            result = await tool("\n", is_input=True, timeout=3)  # blank line runs the block
+            assert all(f"LOOP {i}" in result for i in range(3))
+        finally:
+            await tool("C-c", is_input=True, timeout=2)
+            await tool.close()
+
     async def test_multi_command_returns_all_output(self) -> None:
         """Newline-separated statements in one call must all run and all output
         captured (regression: bash prints a prompt between them and we used to

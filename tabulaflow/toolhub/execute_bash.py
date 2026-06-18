@@ -533,7 +533,9 @@ class ExecuteBashTool:
 
     async def _execute(self, command: str, is_input: bool, timeout: float | None) -> str:
         await self._ensure_session()
-        command = command.strip()
+        # is_input is raw stdin for a running process — never strip it, or
+        # whitespace-sensitive input (indented REPL lines, passwords) is corrupted.
+        command = command if is_input else command.strip()
 
         if command and not is_input and self._command_filter is not None:
             reason = self._command_filter(command)
