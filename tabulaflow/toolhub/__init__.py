@@ -7,6 +7,7 @@ from tabulaflow.toolhub.create_dataset import CreateDatasetTool
 from tabulaflow.toolhub.entity_extractor import EntityExtractor
 from tabulaflow.toolhub.execute_bash import BashToolMetrics, ExecuteBashTool
 from tabulaflow.toolhub.extract_rows_from_documents import ExtractRowsFromDocumentsTool
+from tabulaflow.toolhub.file_editor import FileEditorTool, FileEditorToolMetrics
 from tabulaflow.toolhub.render_chart import RenderPlotextChartTool
 from tabulaflow.toolhub.registry_get_column_json_schema import RegistryGetColumnJsonSchemaTool
 from tabulaflow.toolhub.registry_get_db_document import RegistryGetDBDocumentTool
@@ -35,6 +36,8 @@ __all__ = [
     "EntityExtractor",
     "ExecuteBashTool",
     "ExtractRowsFromDocumentsTool",
+    "FileEditorTool",
+    "FileEditorToolMetrics",
     "RegistryGetColumnJsonSchemaTool",
     "RegistryGetDBDocumentTool",
     "RegistryGetSchemaTool",

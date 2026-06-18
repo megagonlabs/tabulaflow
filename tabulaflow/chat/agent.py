@@ -58,6 +58,7 @@ if TYPE_CHECKING:
         CreateDatasetTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
+        FileEditorTool,
         QueryHistory,
         QueryRecord,
         RegistryGetColumnJsonSchemaTool,
@@ -186,9 +187,10 @@ To keep your context lean, every browser response is mirrored into the `_interna
 General:
 - Try to batch tool calls if they can be run in parallel to reduce latency.
 
-Paths and the shell:
+Paths, the shell, and files:
 - Relative paths — in `run_query` (reads and `COPY`) and in the shell — resolve against the user's project directory. Keep intermediate files in the scratch directory (OUTSIDE the project); do NOT write to the project directory unless the user explicitly asks you to save or export there. Reference scratch files by their absolute path (given in <session_paths>); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal absolute path in the query.
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas); it has network access and can explore the project's files (`ls`/`find`/`head`). Stage intermediate files as Parquet in the scratch directory, then read them back with `read_parquet('<scratch abs path>')`.
+- File editor (`file_editor`): `view` / `write_file` / `str_replace` for text files, paths relative to the project. Use it to author or edit files the user wants kept in the project (e.g. dbt models, scripts) — not to stage intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell `sed`/`echo` for writing or editing files.
 - Before running any destructive or irreversible command (deleting or overwriting files, changing system state), stop and ask the user to confirm first.
 
 Inspecting schemas and data:
@@ -267,6 +269,7 @@ class _Toolset:
     create_dataset: CreateDatasetTool | None
     connect_data_source: ConnectDataSourceTool | None
     bash: ExecuteBashTool | None
+    file_editor: FileEditorTool | None
 
 
 @dataclass
@@ -355,6 +358,7 @@ class ChatAgent:
             ConnectDataSourceTool,
             CreateDatasetTool,
             ExtractRowsFromDocumentsTool,
+            FileEditorTool,
             RegistryGetColumnJsonSchemaTool,
             RegistryGetDBDocumentTool,
             RegistryGetTableSchemaTool,
@@ -413,6 +417,7 @@ class ChatAgent:
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
             ),
             bash=self._build_bash_tool(),
+            file_editor=(FileEditorTool(str(self.project_dir)) if self.project_dir is not None else None),
         )
 
     def _build_bash_tool(self) -> ExecuteBashTool | None:
@@ -504,7 +509,12 @@ class ChatAgent:
         ]
         host_tools = [
             tool.as_pydantic_ai_tool()
-            for tool in (self._tools.create_dataset, self._tools.connect_data_source, self._tools.bash)
+            for tool in (
+                self._tools.create_dataset,
+                self._tools.connect_data_source,
+                self._tools.bash,
+                self._tools.file_editor,
+            )
             if tool is not None
         ]
         self._pydantic_ai_agent = make_agent(

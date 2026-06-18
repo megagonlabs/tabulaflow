@@ -1,4 +1,4 @@
-"""File editor tool for dbt agents.
+"""File editor tool.
 
 Provides ``view``, ``write_file``, and ``str_replace`` commands scoped to a
 working directory.  Paths are always relative to the working directory and
@@ -236,7 +236,7 @@ class FileEditorTool:
         new_str: str | None = None,
         view_range: list[int] | None = None,
     ) -> str:
-        """Edit files in the dbt project directory.
+        """View and edit text files in the project directory.
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
@@ -244,7 +244,7 @@ class FileEditorTool:
         - ``str_replace``: Replace an exact string in a file. ``old_str`` must
           match exactly one location.
 
-        All paths are relative to the project working directory.
+        All paths are relative to the project directory.
 
         Args:
             command: One of ``"view"``, ``"write_file"``, ``"str_replace"``.
