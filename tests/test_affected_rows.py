@@ -135,7 +135,8 @@ class TestRunQueryMessaging:
     @pytest.mark.asyncio
     async def test_ddl_plain_success(self, conn: SQLConnector) -> None:
         msg = await self._tool(conn)("CREATE TABLE t(id INT)")
-        assert msg == "(statement executed successfully)"
+        assert msg.startswith("(statement executed successfully)")
+        assert "affected" not in msg  # plain DDL success carries no row-count clause
 
 
 def _ctx() -> SimpleNamespace:
