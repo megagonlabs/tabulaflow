@@ -93,6 +93,17 @@ class TestRobustness:
         finally:
             await tool.close()
 
+    async def test_huge_output_with_trailing_completes(self) -> None:
+        """Completion must be detected for output larger than the buffer even
+        when a backgrounded write lands after the prompt (regression for the
+        eviction-vs-initial_ps1_n miss that returned a false exit_code:-1)."""
+        tool = ExecuteBashTool(no_change_timeout=6, max_output_chars=5000)
+        try:
+            result = await tool("seq 1 300000; { sleep 0.3; echo TRAIL; } &", timeout=20)
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
     async def test_concurrent_calls_serialized(self, bash: ExecuteBashTool) -> None:
         """Concurrent __call__s queue on the lock instead of scrambling the PTY."""
         r1, r2 = await asyncio.gather(

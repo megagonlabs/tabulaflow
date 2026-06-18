@@ -35,7 +35,12 @@ except ImportError:  # pragma: no cover - Windows only
 
 logger = logging.getLogger(__name__)
 
-_ANSI_ESCAPE = re.compile(r"\x1b(?:\[[0-9;?]*[a-zA-Z]|\([A-Z])")
+_ANSI_ESCAPE = re.compile(
+    r"\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)"  # OSC: ESC ] ... terminated by BEL or ST
+    r"|\x1b[\[\]][0-9;?]*[a-zA-Z]"  # CSI: ESC [ ... final letter
+    r"|\x1b[()][A-Za-z0-9]"  # charset designation: ESC ( / ESC ) X
+    r"|\x1b[0-9A-Za-z=><]"  # single-final escapes: ESC 7/8/c/=/> etc.
+)
 _MAX_OUTPUT_CHARS = 30000
 _NO_CHANGE_TIMEOUT = 30
 _POLL_INTERVAL = 0.5
@@ -123,7 +128,6 @@ class ExecuteBashTool:
         self._closed = False
 
         self._prev_status: str | None = None
-        self._prev_output: str = ""
 
     def _build_ps1(self) -> str:
         """Build a PS1 prompt that emits nonce-tagged JSON metadata each display."""
@@ -267,7 +271,6 @@ class ExecuteBashTool:
             with self._buf_lock:
                 self._buf.clear()
             self._prev_status = None
-            self._prev_output = ""
 
     # -- low-level I/O ---------------------------------------------------------
 
@@ -384,24 +387,6 @@ class ExecuteBashTool:
         return len(c) == 3 and c.startswith("C-")
 
     @staticmethod
-    def _extract_between_ps1s(
-        content: str,
-        matches: list[re.Match[str]],
-        before_first: bool = False,
-    ) -> str:
-        """Return the text between PS1 blocks."""
-        if not matches:
-            return content
-        if len(matches) == 1:
-            if before_first:
-                return content[: matches[0].start()]
-            return content[matches[0].end() + 1 :]
-        parts: list[str] = []
-        for i in range(len(matches) - 1):
-            parts.append(content[matches[i].end() + 1 : matches[i + 1].start()])
-        return "".join(parts)
-
-    @staticmethod
     def _strip_command_echo(output: str, command: str) -> str:
         return output.lstrip().removeprefix(command.strip()).lstrip()
 
@@ -411,14 +396,18 @@ class ExecuteBashTool:
         half = self._max_output_chars // 2
         return text[:half] + f"\n\n... (output truncated: {len(text)} chars total) ...\n\n" + text[-half:]
 
-    def _get_output(self, command: str, raw: str) -> str:
-        """Diff against prev_output, strip command echo, rstrip."""
-        if self._prev_output:
-            output = raw.removeprefix(self._prev_output)
-        else:
-            output = raw
-        self._prev_output = raw
-        return self._strip_command_echo(output, command).rstrip()
+    def _consume_output(self, body: str, command: str) -> str:
+        """Strip the command echo, truncate, and clear the consumed buffer.
+
+        Clearing here is what makes the next poll/command start from a clean
+        slate: the buffer always holds only output produced since the last
+        return, so completion is simply "a prompt is present" — no diffing a
+        prior snapshot against a bounded buffer that may have evicted it.
+        """
+        out = self._truncate(self._strip_command_echo(body, command).rstrip())
+        with self._buf_lock:
+            self._buf.clear()
+        return out
 
     # -- main execution loop ---------------------------------------------------
 
@@ -435,21 +424,23 @@ class ExecuteBashTool:
         running = self._prev_status in ("no_change_timeout", "hard_timeout")
 
         if not running:
-            if not command and is_input:
-                self._metrics.num_errors += 1
-                return "(error: no running command to retrieve output from.)"
             if is_input:
                 self._metrics.num_errors += 1
+                if not command:
+                    return "(error: no running command to retrieve output from.)"
                 return "(error: no running command to interact with.)"
-
-        initial = self._read_screen()
-        initial_ps1_n = len(self._find_ps1_matches(initial))
-
-        if running and not initial.rstrip().endswith(self._ps1_end.strip()) and not is_input and command:
+        elif not is_input and command:
             self._metrics.num_errors += 1
             return (
                 "(error: previous command is still running. Use is_input=true to interact, or send C-c to interrupt.)"
             )
+
+        # A fresh command starts from a clean buffer so that any prompt we later
+        # see is unambiguously this command's. Resume polls (is_input) keep the
+        # buffer, returning only output produced since the previous poll.
+        if command and not is_input:
+            with self._buf_lock:
+                self._buf.clear()
 
         if command:
             error = await self._send_command(command)
@@ -458,29 +449,24 @@ class ExecuteBashTool:
 
         start = time.time()
         last_change = start
-        last_screen = initial
+        last_screen = self._read_screen()
 
         while True:
             await asyncio.sleep(_POLL_INTERVAL)
 
             screen = self._read_screen()
             ps1s = self._find_ps1_matches(screen)
-            ps1_n = len(ps1s)
 
             if screen != last_screen:
                 last_screen = screen
                 last_change = time.time()
 
-            # 1) Completed — new PS1 appeared
-            if (ps1_n > initial_ps1_n or screen.rstrip().endswith(self._ps1_end.strip())) and ps1s:
-                meta = _parse_ps1_metadata(ps1s[-1])
-                before_first = ps1_n == 1
-                raw = self._extract_between_ps1s(screen, ps1s, before_first=before_first)
-                out = self._truncate(self._get_output(command, raw))
-
+            # 1) Completed — our prompt reappeared (only this command's prompt
+            #    can be in the freshly-cleared buffer).
+            if ps1s:
+                meta = _parse_ps1_metadata(ps1s[0])
+                out = self._consume_output(screen[: ps1s[0].start()], command)
                 self._prev_status = "completed"
-                self._prev_output = ""
-                self._clear_screen()
                 result = f"{out}\n[exit_code: {meta['exit_code']}]"
                 if meta["cwd"]:
                     result += f"\n[Current working directory: {meta['cwd']}]"
@@ -489,32 +475,24 @@ class ExecuteBashTool:
             # 2) No-change timeout (skipped when per-call timeout is set,
             #    since the caller explicitly chose to wait longer)
             if timeout is None and (time.time() - last_change >= self._no_change_timeout):
-                raw = self._extract_between_ps1s(screen, ps1s)
-                out = self._truncate(self._get_output(command, raw))
-
+                out = self._consume_output(screen, command)
                 self._prev_status = "no_change_timeout"
                 self._metrics.num_timeouts += 1
                 return (
                     f"{out}\n\n"
-                    f"[No new output for {self._no_change_timeout}s. "
-                    f"exit_code: -1]\n"
-                    "Send empty command with is_input=true to check, "
-                    "or C-c to interrupt."
+                    f"[No new output for {self._no_change_timeout}s. exit_code: -1]\n"
+                    "Send empty command with is_input=true to check, or C-c to interrupt."
                 )
 
             # 3) Hard timeout (only when per-call timeout is set)
             if timeout is not None and time.time() - start >= timeout:
-                raw = self._extract_between_ps1s(screen, ps1s)
-                out = self._truncate(self._get_output(command, raw))
-
+                out = self._consume_output(screen, command)
                 self._prev_status = "hard_timeout"
                 self._metrics.num_timeouts += 1
                 return (
                     f"{out}\n\n"
-                    f"[Command timed out after {timeout}s. "
-                    f"exit_code: -1]\n"
-                    "Send empty command with is_input=true to check, "
-                    "or C-c to interrupt."
+                    f"[Command timed out after {timeout}s. exit_code: -1]\n"
+                    "Send empty command with is_input=true to check, or C-c to interrupt."
                 )
 
     # -- BaseTool protocol -----------------------------------------------------
