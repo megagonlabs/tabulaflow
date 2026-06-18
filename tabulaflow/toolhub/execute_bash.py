@@ -32,9 +32,11 @@ import logging
 import os
 import re
 import secrets
+import shlex
 import shutil
 import signal
 import subprocess
+import tempfile
 import threading
 import time
 from collections import deque
@@ -154,6 +156,9 @@ class ExecuteBashTool:
         # Serializes _execute: one PTY/session is single-tenant, so concurrent
         # calls would interleave bytes and steal each other's output/exit codes.
         self._lock = asyncio.Lock()
+        # Reusable temp file (system temp dir) for staging multi-line commands; see
+        # _stage_multiline. Created lazily, overwritten per call, removed on close.
+        self._cmd_file: str | None = None
         self._initialized = False
         self._closed = False
 
@@ -416,6 +421,25 @@ class ExecuteBashTool:
             payload += b"\n"
         self._write_pty(payload)
 
+    def _stage_multiline(self, command: str) -> str:
+        """Stage a multi-line command to a temp file and return a ``source`` call.
+
+        Interactive bash prints a PS1 prompt between each newline-separated
+        top-level command, which breaks our one-prompt completion detection (we
+        would stop at the first). Running the whole thing as a single sourced
+        script yields exactly one prompt; ``source`` runs it in the current shell
+        so cwd/env still persist. The file lives in the system temp dir (not the
+        project or scratch dir) and is owner-only.
+        """
+        if self._cmd_file is None:
+            fd, path = tempfile.mkstemp(prefix="tabulaflow-bash-", suffix=".sh")
+            os.close(fd)
+            self._cmd_file = path
+        with open(self._cmd_file, "w", encoding="utf-8") as f:
+            f.write(command)
+            f.write("\n")
+        return f"source {shlex.quote(self._cmd_file)}"
+
     async def _send_command(self, command: str) -> str | None:
         """Write a command to the PTY on a worker thread (blocking write_all).
 
@@ -538,8 +562,13 @@ class ExecuteBashTool:
             with self._buf_lock:
                 self._reset_buf()
 
+        # Multi-line commands are run as one sourced script: interactive bash
+        # prints a prompt between newline-separated statements, which would make
+        # us stop at the first. (is_input is raw stdin, not a new command.)
+        sent = self._stage_multiline(command) if (command and not is_input and "\n" in command) else command
+
         if command:
-            error = await self._send_command(command)
+            error = await self._send_command(sent)
             if error is not None:
                 return error
 
@@ -561,7 +590,7 @@ class ExecuteBashTool:
             #    can be in the freshly-cleared buffer).
             if ps1s:
                 meta = _parse_ps1_metadata(ps1s[0])
-                out = self._consume_output(screen[: ps1s[0].start()], command)
+                out = self._consume_output(screen[: ps1s[0].start()], sent)
                 self._prev_status = "completed"
                 result = f"{out}\n[exit_code: {meta['exit_code']}]"
                 if meta["cwd"]:
@@ -571,7 +600,7 @@ class ExecuteBashTool:
             # 2) No-change timeout (skipped when per-call timeout is set,
             #    since the caller explicitly chose to wait longer)
             if timeout is None and (time.time() - last_change >= self._no_change_timeout):
-                out = self._consume_output(screen, command)
+                out = self._consume_output(screen, sent)
                 self._prev_status = "no_change_timeout"
                 self._metrics.num_timeouts += 1
                 return (
@@ -582,7 +611,7 @@ class ExecuteBashTool:
 
             # 3) Hard timeout (only when per-call timeout is set)
             if timeout is not None and time.time() - start >= timeout:
-                out = self._consume_output(screen, command)
+                out = self._consume_output(screen, sent)
                 self._prev_status = "hard_timeout"
                 self._metrics.num_timeouts += 1
                 return (
@@ -636,6 +665,12 @@ class ExecuteBashTool:
     async def close(self) -> None:
         """Terminate the bash session and clean up resources."""
         await self._close_internal()
+        if self._cmd_file is not None:
+            try:
+                os.unlink(self._cmd_file)
+            except OSError:
+                pass
+            self._cmd_file = None
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

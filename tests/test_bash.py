@@ -93,6 +93,27 @@ class TestRobustness:
         finally:
             await tool.close()
 
+    async def test_multi_command_returns_all_output(self) -> None:
+        """Newline-separated statements in one call must all run and all output
+        captured (regression: bash prints a prompt between them and we used to
+        stop at the first). Multi-line commands run as one sourced script."""
+        tool = ExecuteBashTool(no_change_timeout=6, max_output_chars=50000)
+        try:
+            cmd = "echo FIRST_OUT\nprintf 'mid\\n'\necho SECOND_OUT\nfind . -maxdepth 1 -type d | head -3\necho THIRD_OUT"
+            result = await tool(cmd, timeout=15)
+            assert "FIRST_OUT" in result
+            assert "SECOND_OUT" in result
+            assert "THIRD_OUT" in result
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
+    async def test_multi_command_state_persists(self, bash: ExecuteBashTool) -> None:
+        """`cd` in a sourced multi-line command must persist to later calls."""
+        await bash("cd /tmp\necho moved")
+        result = await bash("pwd")
+        assert "/tmp" in result
+
     async def test_large_command_echo_not_leaked(self) -> None:
         """A large command's source must not appear in the result.
 
