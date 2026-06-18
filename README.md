@@ -315,7 +315,11 @@ June 16
   - [x] url.py
   - [x] Revise prompt
 
-- [ ] Debug bash tool not working for python /Users/yanlinf/.tabulaflow/sessions/20260617T072041Z-29901-2194a0/trajectories/trajectory.md
+June 17
+- [x] Fix bugs in bash tool
+- [x] Show latency in run_query
+- [x] `extra_instructions` for agent
+
 - [ ] local pdf via browser
 - [ ] is transfer_record needed?
 - [ ] file_editor tool?
