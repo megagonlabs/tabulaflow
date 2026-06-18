@@ -45,6 +45,10 @@ _MAX_OUTPUT_CHARS = 30000
 _NO_CHANGE_TIMEOUT = 30
 _POLL_INTERVAL = 0.5
 _HISTORY_LIMIT = 10000
+# Upper bound on how long a blocking write_all of the command may take. A
+# normal write finishes in milliseconds; hitting this means the shell is not
+# draining stdin (e.g. a foreground process ignoring input), so we reset.
+_WRITE_TIMEOUT = 10.0
 
 
 def _parse_ps1_metadata(match: re.Match[str]) -> dict[str, str | int]:
@@ -116,7 +120,11 @@ class ExecuteBashTool:
         self._pty_fd: int | None = None
         self._buf: deque[str] = deque(maxlen=_HISTORY_LIMIT + 50)
         self._buf_lock = threading.Lock()
+        self._dropped_lines = 0
         self._reader_thread: threading.Thread | None = None
+        # Signalled (cross-thread) by the reader whenever new output lands, so the
+        # poll loop wakes immediately on output instead of sleeping a fixed tick.
+        self._data_event: asyncio.Event | None = None
         # Streaming UTF-8 decoder: a multibyte char split across two PTY reads
         # must not be decoded as two invalid fragments. Recreated per session.
         self._decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
@@ -189,6 +197,7 @@ class ExecuteBashTool:
         self._closed = False
 
         self._loop = asyncio.get_running_loop()
+        self._data_event = asyncio.Event()
         # Keep the master fd BLOCKING and drain it on a dedicated thread. Reading
         # output concurrently with writing input is what lets a blocking write_all
         # of the command always complete: bash never stalls on a full stdout buffer,
@@ -216,7 +225,7 @@ class ExecuteBashTool:
         # Let the reader thread drain any remaining PTY output, then clear
         await asyncio.sleep(0.1)
         with self._buf_lock:
-            self._buf.clear()
+            self._reset_buf()
 
     async def _ensure_session(self) -> None:
         """Restart the session if the process died."""
@@ -268,8 +277,9 @@ class ExecuteBashTool:
             self._process = None
             self._initialized = False
             self._closed = True
+            self._data_event = None
             with self._buf_lock:
-                self._buf.clear()
+                self._reset_buf()
             self._prev_status = None
 
     # -- low-level I/O ---------------------------------------------------------
@@ -305,6 +315,12 @@ class ExecuteBashTool:
             text = self._decoder.decode(chunk)
             with self._buf_lock:
                 self._buf_append(text)
+            loop, ev = self._loop, self._data_event
+            if loop is not None and ev is not None:
+                try:
+                    loop.call_soon_threadsafe(ev.set)
+                except RuntimeError:  # loop already closed during teardown
+                    pass
 
     def _buf_append(self, text: str) -> None:
         """Append text to the buffer, keeping one line per deque entry."""
@@ -312,9 +328,20 @@ class ExecuteBashTool:
             text = self._buf.pop() + text
         lines = text.split("\n")
         for line in lines[:-1]:
-            self._buf.append(line + "\n")
+            self._append_line(line + "\n")
         if lines[-1]:
-            self._buf.append(lines[-1])
+            self._append_line(lines[-1])
+
+    def _append_line(self, item: str) -> None:
+        """Append one entry, counting any maxlen-eviction so loss is reportable."""
+        if len(self._buf) == self._buf.maxlen:
+            self._dropped_lines += 1
+        self._buf.append(item)
+
+    def _reset_buf(self) -> None:
+        """Clear the buffer and eviction counter. Caller must hold ``_buf_lock``."""
+        self._buf.clear()
+        self._dropped_lines = 0
 
     def _read_screen(self) -> str:
         """Snapshot the current buffer, stripping ANSI escapes and \\r."""
@@ -330,11 +357,9 @@ class ExecuteBashTool:
             data = "".join(self._buf)
             begin = data.rfind(self._ps1_begin.strip())
             end = data.rfind(self._ps1_end.strip())
+            self._reset_buf()
             if begin != -1 and end != -1 and end >= begin:
-                self._buf.clear()
                 self._buf.append(data[begin:])
-            else:
-                self._buf.clear()
 
     async def _wait_for_prompt(self, timeout: float = 5.0) -> bool:
         """Wait until the PS1 end marker appears in the buffer."""
@@ -372,7 +397,22 @@ class ExecuteBashTool:
         loop = self._loop
         assert loop is not None
         try:
-            await loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command))
+            await asyncio.wait_for(
+                loop.run_in_executor(None, self._send_keys, command, not self._is_special_key(command)),
+                timeout=_WRITE_TIMEOUT,
+            )
+        except (TimeoutError, asyncio.TimeoutError):
+            self._metrics.num_errors += 1
+            # Closing the fd unblocks the worker thread stuck in os.write so the
+            # session can be torn down without _close_internal's exit-write hanging.
+            if self._pty_fd is not None:
+                try:
+                    os.close(self._pty_fd)
+                except OSError:
+                    pass
+                self._pty_fd = None
+            await self._close_internal()
+            return "(error: timed out writing command to shell; session reset.)"
         except OSError as e:
             self._metrics.num_errors += 1
             await self._close_internal()
@@ -406,8 +446,34 @@ class ExecuteBashTool:
         """
         out = self._truncate(self._strip_command_echo(body, command).rstrip())
         with self._buf_lock:
-            self._buf.clear()
+            dropped = self._dropped_lines
+            self._reset_buf()
+        if dropped:
+            out = f"... ({dropped} earlier lines dropped) ...\n{out}"
         return out
+
+    async def _wait_for_output(self, start: float, last_change: float, timeout: float | None) -> None:
+        """Block until new output arrives or the next timeout check is due.
+
+        Wakes immediately when the reader signals fresh bytes (no fixed-tick
+        latency floor) but never sleeps past the active timeout boundary.
+        """
+        now = time.time()
+        remaining = (
+            (timeout - (now - start)) if timeout is not None else (self._no_change_timeout - (now - last_change))
+        )
+        budget = min(_POLL_INTERVAL, remaining)
+        if budget <= 0:
+            return
+        ev = self._data_event
+        if ev is None:
+            await asyncio.sleep(budget)
+            return
+        try:
+            await asyncio.wait_for(ev.wait(), budget)
+        except (TimeoutError, asyncio.TimeoutError):
+            pass
+        ev.clear()
 
     # -- main execution loop ---------------------------------------------------
 
@@ -440,7 +506,7 @@ class ExecuteBashTool:
         # buffer, returning only output produced since the previous poll.
         if command and not is_input:
             with self._buf_lock:
-                self._buf.clear()
+                self._reset_buf()
 
         if command:
             error = await self._send_command(command)
@@ -452,7 +518,7 @@ class ExecuteBashTool:
         last_screen = self._read_screen()
 
         while True:
-            await asyncio.sleep(_POLL_INTERVAL)
+            await self._wait_for_output(start, last_change, timeout)
 
             screen = self._read_screen()
             ps1s = self._find_ps1_matches(screen)

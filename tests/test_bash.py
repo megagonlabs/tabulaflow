@@ -93,6 +93,30 @@ class TestRobustness:
         finally:
             await tool.close()
 
+    async def test_fast_command_low_latency(self, bash: ExecuteBashTool) -> None:
+        """Completion is event-driven, so a trivial command returns well under
+        the old fixed 0.5s poll-interval floor."""
+        import time
+
+        await bash("echo warmup")  # pay session init once
+        t0 = time.monotonic()
+        result = await bash("echo quick")
+        dt = time.monotonic() - t0
+        assert "quick" in result
+        assert "[exit_code: 0]" in result
+        assert dt < 0.4
+
+    async def test_eviction_reports_dropped_lines(self) -> None:
+        """Output exceeding the line buffer reports dropped lines instead of
+        silently losing the start."""
+        tool = ExecuteBashTool(no_change_timeout=8, max_output_chars=200000)
+        try:
+            result = await tool("seq 1 20000", timeout=30)
+            assert "earlier lines dropped" in result
+            assert "[exit_code: 0]" in result
+        finally:
+            await tool.close()
+
     async def test_huge_output_with_trailing_completes(self) -> None:
         """Completion must be detected for output larger than the buffer even
         when a backgrounded write lands after the prompt (regression for the
