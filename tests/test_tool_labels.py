@@ -1,7 +1,8 @@
 """Tests for the TUI tool-step label rendering (file editor diffstat)."""
 
 from tabulaflow.app.theme import DIFF_ADDED, DIFF_REMOVED
-from tabulaflow.app.widgets import _line_diffstat, _styled_label, summarize_tool_args
+from tabulaflow.app.widgets import _line_diffstat, _styled_label, summarize_outcome, summarize_tool_args
+from tabulaflow.chat.events import Completed, Failed, RowsReturned
 
 
 class TestLineDiffstat:
@@ -51,3 +52,15 @@ class TestStyledLabel:
         # a hyphen-number in a path must not be mistaken for a removed-line count
         text = _styled_label("file_editor", "View model-2.sql")
         assert text.spans == []
+
+
+class TestSummarizeOutcome:
+    def test_plain_completion_has_no_suffix(self) -> None:
+        # no "done" — completion is shown by the step's done-state, not a label
+        assert summarize_outcome(Completed()) == ""
+
+    def test_rows_kept(self) -> None:
+        assert summarize_outcome(RowsReturned(count=42)) == "42 rows"
+
+    def test_error_kept(self) -> None:
+        assert summarize_outcome(Failed()) == "error"

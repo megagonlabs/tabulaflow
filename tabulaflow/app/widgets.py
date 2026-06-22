@@ -596,14 +596,16 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
 
 
 def summarize_outcome(outcome: ToolOutcome) -> str:
-    """Render a structured tool outcome as the TUI's default one-line label."""
+    """A short outcome label for a finished tool step, or ``""`` when the outcome
+    carries no extra information (a plain completion is already marked by the
+    step's done-state, so it gets no suffix)."""
     if isinstance(outcome, RowsReturned):
         return f"{outcome.count} rows"
     if isinstance(outcome, ColumnsReturned):
         return f"{outcome.count} columns"
     if isinstance(outcome, Failed):
         return "error"
-    return "done"  # Completed
+    return ""  # Completed — no suffix
 
 
 def _styled_label(name: str, label: str) -> Text:
@@ -852,7 +854,10 @@ class AgentProgressWidget(Widget):
                         suffix = self._format_progress(total, total, last_stage, unit)
                     self._steps[i] = ("done", step[1], step[2], f"{base_label} → {suffix}")
                 else:
-                    self._steps[i] = ("done", step[1], step[2], f"{label} → {result_summary}")
+                    # Append the outcome only when it carries information (rows /
+                    # columns / error); a plain completion gets no suffix.
+                    new_label = f"{label} → {result_summary}" if result_summary else label
+                    self._steps[i] = ("done", step[1], step[2], new_label)
                 break
         self._tool_spinners.pop(tool_call_id, None)
         self._tool_progress.pop(tool_call_id, None)
