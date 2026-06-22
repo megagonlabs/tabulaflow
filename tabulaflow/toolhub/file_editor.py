@@ -242,7 +242,8 @@ class FileEditorTool:
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
           ``old_str`` must match exactly (whitespace included) and be unique, unless
-          ``replace_all`` is set.
+          ``replace_all`` is set. It must be the file's raw text — do NOT include the
+          line-number prefixes shown by ``view``.
 
         All paths are relative to the project directory.
 
