@@ -21,7 +21,8 @@ import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.page import render_page
+from tabulaflow.app.page import BORDER, CARD_BG, TEXT, TEXT_MUTED, render_page
+from tabulaflow.app.theme import ACCENT
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -330,8 +331,8 @@ _CUSTOM_CSS = """
    sit in a defined panel instead of floating against a vast page bg. */
 #table-wrap {
     width: 100%;
-    background: #131720;
-    border: 1px solid #21262d;
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 6px;
     min-height: calc(100vh - 90px);
     overflow: hidden;
@@ -339,21 +340,21 @@ _CUSTOM_CSS = """
 
 /* Cell helpers shared across formatters. */
 .trunc { cursor: pointer; }
-.trunc::after { content: " …"; color: #3eb489; }
+.trunc::after { content: " …"; color: var(--accent); }
 .multiline { cursor: pointer; }
-.multiline::after { content: " ↵"; color: #3eb489; }
+.multiline::after { content: " ↵"; color: var(--accent); }
 /* Boolean cells: mint check for true, dim cross for false — matches the
    terminal data browser's bool rendering. */
-.bool-yes { color: #3eb489; font-size: 15px; }
-.bool-no { color: #6a737d; font-size: 15px; }
+.bool-yes { color: var(--accent); font-size: 15px; }
+.bool-no { color: var(--text-dim); font-size: 15px; }
 /* File/PDF links: mint accent, no underline, small file icon + dim size. */
 .file-link { display: inline-flex; align-items: center; gap: 6px;
-    color: #3eb489; text-decoration: none; }
+    color: var(--accent); text-decoration: none; }
 .file-link:hover { text-decoration: underline; }
 .file-link svg { width: 14px; height: 14px; flex: none; }
-.file-link .file-size { color: #6a737d; font-size: 12px; }
+.file-link .file-size { color: var(--text-dim); font-size: 12px; }
 /* URL cells: mint accent, underline on hover — clickable, opens in new tab. */
-.cell-link { color: #3eb489; text-decoration: none; }
+.cell-link { color: var(--accent); text-decoration: none; }
 .cell-link:hover { text-decoration: underline; }
 img { max-height: 96px; max-width: 200px; display: block; }
 audio { max-width: 240px; display: block; }
@@ -380,7 +381,7 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 .tabulator,
 .tabulator .tabulator-tableholder,
 .tabulator .tabulator-table {
-    background-color: #131720 !important;
+    background-color: var(--card) !important;
     border: none !important;
 }
 /* Kill the macOS rubber-band overscroll on the body's scroll container.
@@ -391,17 +392,17 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 
 /* Header */
 .tabulator .tabulator-header {
-    background-color: #131720 !important;
-    border-bottom: 1px solid #21262d;
+    background-color: var(--card) !important;
+    border-bottom: 1px solid var(--border);
 }
 .tabulator .tabulator-header .tabulator-col {
     background-color: transparent !important;
-    border-right: 1px solid #21262d;
+    border-right: 1px solid var(--border);
 }
 .tabulator .tabulator-header .tabulator-col:last-child { border-right: none; }
 .tabulator .tabulator-header .tabulator-col,
 .tabulator .tabulator-header .tabulator-col .tabulator-col-title {
-    color: #3eb489;
+    color: var(--accent);
     font-weight: 600;
     font-size: 15px;
     letter-spacing: 0.02em;
@@ -414,20 +415,20 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 /* Rows: transparent so right-side blank space stays page-dark; zebra on
    cells only. Even row gets a very subtle lift, not a hard contrast. */
 .tabulator .tabulator-row { background-color: transparent !important; border: none; }
-.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: #131720; }
-.tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: #1a1f2a; }
+.tabulator .tabulator-row.tabulator-row-odd .tabulator-cell { background-color: var(--card); }
+.tabulator .tabulator-row.tabulator-row-even .tabulator-cell { background-color: var(--stripe); }
 .tabulator .tabulator-row:hover .tabulator-cell {
-    background-color: #1f2532 !important;
+    background-color: var(--hover) !important;
 }
 .tabulator .tabulator-row .tabulator-cell {
-    color: #e4e4e7;
+    color: var(--text);
     border-right: none;
     border-top: none;
     padding: 6px 12px;
 }
 .tabulator .tabulator-row .tabulator-cell.tabulator-row-header {
-    color: #6a737d;
-    background-color: #131720 !important;
+    color: var(--text-dim);
+    background-color: var(--card) !important;
     border: none !important;
 }
 /* Kill border + frozen-column shadow on the row-number column in both
@@ -443,11 +444,11 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
     align-items: center; justify-content: center; z-index: 1000; }
 #modal.open { display: flex; }
-#modal-card { background: #14171c; color: #e6e6e6; border: 1px solid #2c3038;
+#modal-card { background: var(--popover-bg); color: #e6e6e6; border: 1px solid var(--popover-border);
     border-radius: 4px; max-width: 80vw; max-height: 80vh; min-width: 480px;
     display: flex; flex-direction: column;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
-#modal-header { padding: 8px 14px; border-bottom: 1px solid #2c3038;
+#modal-header { padding: 8px 14px; border-bottom: 1px solid var(--popover-border);
     display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
 #modal-title { font-size: 13px; color: #8a94a3; font-family: ui-monospace, monospace; }
 #modal-actions { display: flex; gap: 4px; align-items: center; }
@@ -458,7 +459,7 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
     fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
 #modal-close { color: #8a94a3; border: 1px solid transparent;
     padding: 5px 6px; }
-#modal-close:hover { background: rgba(255, 255, 255, 0.06); color: #e4e4e7; }
+#modal-close:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
 #modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
     font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
@@ -955,32 +956,34 @@ _SVG_ROW_LIMIT = 5_000
 # spec sets explicitly — including agent-requested colors — overrides it, since
 # Vega layers config underneath the spec's own mark/encoding properties.
 _VEGA_DARK_CONFIG: dict[str, object] = {
-    "background": "#131720",
+    "background": CARD_BG,
     "view": {"stroke": "transparent"},
     "font": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "title": {"color": "#e4e4e7", "subtitleColor": "#9aa4b2", "fontSize": 17, "fontWeight": 600},
+    "title": {"color": TEXT, "subtitleColor": TEXT_MUTED, "fontSize": 17, "fontWeight": 600},
     "axis": {
-        "labelColor": "#9aa4b2",
-        "titleColor": "#e4e4e7",
-        "gridColor": "#21262d",
-        "domainColor": "#21262d",
-        "tickColor": "#21262d",
+        "labelColor": TEXT_MUTED,
+        "titleColor": TEXT,
+        "gridColor": BORDER,
+        "domainColor": BORDER,
+        "tickColor": BORDER,
         "labelFontSize": 12,
         "titleFontSize": 14,
         "labelLimit": 160,
     },
-    "legend": {"labelColor": "#9aa4b2", "titleColor": "#e4e4e7", "labelFontSize": 12, "titleFontSize": 13},
+    "legend": {"labelColor": TEXT_MUTED, "titleColor": TEXT, "labelFontSize": 12, "titleFontSize": 13},
+    # Categorical palette: the mint accent first, then off-palette hues used
+    # only for chart series (not part of the page design tokens).
     "range": {
-        "category": ["#3eb489", "#5ac8fa", "#f5a623", "#bd6cf0", "#f06292", "#4dd0e1", "#aed581", "#ff8a65"],
+        "category": [ACCENT, "#5ac8fa", "#f5a623", "#bd6cf0", "#f06292", "#4dd0e1", "#aed581", "#ff8a65"],
         "ramp": {"scheme": "greens"},
         "heatmap": {"scheme": "greens"},
     },
-    "mark": {"color": "#3eb489", "tooltip": True},
-    "bar": {"fill": "#3eb489"},
-    "line": {"stroke": "#3eb489"},
-    "point": {"fill": "#3eb489"},
-    "area": {"fill": "#3eb489"},
-    "arc": {"stroke": "#131720"},
+    "mark": {"color": ACCENT, "tooltip": True},
+    "bar": {"fill": ACCENT},
+    "line": {"stroke": ACCENT},
+    "point": {"fill": ACCENT},
+    "area": {"fill": ACCENT},
+    "arc": {"stroke": CARD_BG},
 }
 
 _CHART_CSS = """
@@ -998,8 +1001,8 @@ _CHART_CSS = """
 #vis-wrap {
     width: 100%;
     max-width: 1040px;
-    background: #131720;
-    border: 1px solid #21262d;
+    background: var(--card);
+    border: 1px solid var(--border);
     border-radius: 6px;
     padding: 24px;
     box-sizing: border-box;
@@ -1013,33 +1016,33 @@ _CHART_CSS = """
    the card (Vega-Lite can't size those to a container). */
 #vis-wrap.content { max-height: calc(100vh - 120px); overflow: auto; }
 #vis-wrap.content #vis { width: 100%; }
-.vis-error { color: #ff7777; white-space: pre-wrap;
+.vis-error { color: var(--error); white-space: pre-wrap;
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
 /* vega-embed action ("...") menu — dark to match the page. */
 .vega-embed { width: 100%; }
 .vega-embed .vega-actions {
-    background: #14171c; border: 1px solid #2c3038; border-radius: 4px;
+    background: var(--popover-bg); border: 1px solid var(--popover-border); border-radius: 4px;
     box-shadow: 0 6px 20px rgba(0,0,0,0.5);
 }
-.vega-embed .vega-actions a { color: #e4e4e7; }
-.vega-embed .vega-actions a:hover { background: #1f2532; color: #3eb489; }
-.vega-embed summary { color: #6a737d; }
-.vega-embed summary:hover { color: #3eb489; }
+.vega-embed .vega-actions a { color: var(--text); }
+.vega-embed .vega-actions a:hover { background: var(--hover); color: var(--accent); }
+.vega-embed summary { color: var(--text-dim); }
+.vega-embed summary:hover { color: var(--accent); }
 /* Bound-input widgets (slider/checkbox/radio/dropdown/text). ``accent-color``
    is inherited, so one declaration recolors the range track+thumb, checkboxes,
    and radios from the browser's default blue to mint; selects/text inputs have
    no accent fill, so they're dark-themed explicitly. */
-.vega-bindings { accent-color: #3eb489; color: #e4e4e7; font-size: 13px; margin-top: 14px; }
+.vega-bindings { accent-color: var(--accent); color: var(--text); font-size: 13px; margin-top: 14px; }
 .vega-bindings .vega-bind { margin: 4px 0; }
-.vega-bindings .vega-bind-name { color: #9aa4b2; margin-right: 8px; }
+.vega-bindings .vega-bind-name { color: var(--text-muted); margin-right: 8px; }
 .vega-bindings select,
 .vega-bindings input[type="text"],
 .vega-bindings input[type="number"] {
-    background: #0f1117; color: #e4e4e7; border: 1px solid #21262d;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
     border-radius: 4px; padding: 2px 6px;
 }
 .vega-bindings select:focus,
-.vega-bindings input:focus { outline: none; border-color: #3eb489; }
+.vega-bindings input:focus { outline: none; border-color: var(--accent); }
 """
 
 

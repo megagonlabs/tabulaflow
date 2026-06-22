@@ -10,20 +10,39 @@ from __future__ import annotations
 
 import html
 
-from tabulaflow.app.theme import ACCENT, GITHUB_SLUG, GITHUB_URL
+from tabulaflow.app.theme import ACCENT, ERROR, GITHUB_SLUG, GITHUB_URL
 
 # Web palette — the single source for the HTML dump colors. ``theme.py`` holds
-# the terminal palette (and the mint ``ACCENT`` reused here); these are the
-# richer web shades from the design language (page bg, card surface, borders).
+# the terminal palette (and the mint ``ACCENT`` / ``ERROR`` reused here); these
+# are the richer web shades from the design language (page bg, card surface,
+# borders). They're also published as the ``:root`` CSS custom properties below,
+# so dump.py's table/chart CSS can reference them as ``var(--accent)`` etc.
 PAGE_BG = "#0f1117"
 CARD_BG = "#131720"
 ROW_STRIPE = "#1a1f2a"
 ROW_HOVER = "#1f2532"
 BORDER = "#21262d"
 TEXT = "#e4e4e7"
+TEXT_MUTED = "#9aa4b2"
 TEXT_DIM = "#6a737d"
+POPOVER_BG = "#14171c"
+POPOVER_BORDER = "#2c3038"
 
 _BASE_CSS = f"""
+:root {{
+    --accent: {ACCENT};
+    --bg: {PAGE_BG};
+    --card: {CARD_BG};
+    --stripe: {ROW_STRIPE};
+    --hover: {ROW_HOVER};
+    --border: {BORDER};
+    --text: {TEXT};
+    --text-muted: {TEXT_MUTED};
+    --text-dim: {TEXT_DIM};
+    --popover-bg: {POPOVER_BG};
+    --popover-border: {POPOVER_BORDER};
+    --error: {ERROR};
+}}
 html, body {{ margin: 0; padding: 0; min-height: 100%; background: {PAGE_BG}; color: {TEXT}; }}
 body {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
