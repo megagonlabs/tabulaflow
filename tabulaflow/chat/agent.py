@@ -55,7 +55,6 @@ if TYPE_CHECKING:
     from tabulaflow.toolhub import (
         AddCanonicalNameTool,
         ConnectDataSourceTool,
-        CreateDatasetTool,
         ExecuteBashTool,
         ExtractRowsFromDocumentsTool,
         FileEditorTool,
@@ -115,17 +114,15 @@ How data is organized — the vocabulary used throughout:
 - Tables in different aliases cannot be joined directly. To join across sources, first move the relevant tables into `workspace` with `transfer_record`, then join them there.
 - Kinds of sources:
   - Connected sources — data the user or you connected, read-only: local files, databases, or HuggingFace datasets.
-  - `workspace` — an always-available, writable scratch database for intermediate and transformation tables; tables in it persist for the whole session.
-  - Datasets you create — `create_dataset` consolidates scattered local files into a named, queryable database (writable during the session). Session-scoped: not saved across sessions.
-- `workspace` and any dataset you create are DuckDB; write their queries in DuckDB SQL. Single-quoted string literals do NOT process backslash escapes, so regex patterns use single backslashes: `regexp_extract_all(x, '\[(.*?)\]', 1)`, not `'\\['`.
+  - `workspace` — an always-available, writable scratch database for intermediate, consolidated, and transformation tables; tables in it persist for the whole session (but not across sessions — export to a file to keep data).
+- `workspace` is DuckDB; write its queries in DuckDB SQL. Single-quoted string literals do NOT process backslash escapes, so regex patterns use single backslashes: `regexp_extract_all(x, '\[(.*?)\]', 1)`, not `'\\['`.
 </data_model>
 
 <loading_data>
 Load a source you can point at (a file, database, or HuggingFace dataset) into a queryable form. (Extracting structured entities from unstructured content is a separate task — see <collecting_records>.) Pick the lightest option that fits the goal:
 - One-off read of a file (only choose this if it is truly one-off and you don't want user to see it in the data explorer) → create nothing; read it inline with `run_query` against `workspace`, e.g. `SELECT avg(score) FROM read_csv_auto('output/results.csv')`.
-- Query one file multiple times, or expose it to user in `workspace` → load it into a `workspace` table once: `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/results.csv')`.
+- Query one or more files repeatedly, or consolidate scattered files for the user to query in `workspace` → load them into a `workspace` table once: `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also `read_parquet`/`read_json_auto`); add more during the session.
 - Expose an existing, finished source for the user to keep querying as a separate source to the `workspace` → `connect_data_source` (read-only): a local file (CSV/TSV/JSON/Parquet/Excel), a local database file (SQLite/DuckDB), a database URL, or a HuggingFace dataset. If a database URL needs a password you don't have, ask the user to connect it with `/connect <url>`.
-- Consolidate scattered local files into one named dataset the user can query this session → `create_dataset`, then build its tables with `run_query` reading the files, e.g. `CREATE TABLE runs AS SELECT * FROM read_csv_auto('output/**/*.csv', union_by_name=true)` (also `read_parquet`/`read_json_auto`); add more during the session.
 </loading_data>
 
 <task_modes>
@@ -161,7 +158,7 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
 </task_modes>
 
 <exporting_data>
-Saving a result to a file is the only way to durably keep data, since datasets and `workspace` don't survive the session. Export with DuckDB COPY via `run_query`, against a writable database (a dataset or `workspace`, never a read-only source):
+Saving a result to a file is the only way to durably keep data, since `workspace` doesn't survive the session. Export with DuckDB COPY via `run_query`, against a writable database (`workspace`, never a read-only source):
 - `COPY (SELECT ...) TO '<path>' (FORMAT parquet)`
 - `COPY (SELECT ...) TO '<path>' (FORMAT csv, HEADER)`
 - `COPY (SELECT ...) TO '<path>' (FORMAT json)`
@@ -266,7 +263,6 @@ class _Toolset:
     render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
     # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
-    create_dataset: CreateDatasetTool | None
     connect_data_source: ConnectDataSourceTool | None
     bash: ExecuteBashTool | None
     file_editor: FileEditorTool | None
@@ -307,8 +303,8 @@ class ChatAgent:
     # tools that depend on them. Wired in by the app from ``RuntimePaths``.
     project_dir: Path | None = None
     scratch_dir: Path | None = None
-    # Directory under which agent-created writable datasets are materialized. ``None``
-    # (default, e.g. server contexts) omits the ``create_dataset`` tool. Wired in by the app.
+    # Directory where ``connect_data_source`` materializes connected sources. ``None``
+    # (default, e.g. server contexts) omits that tool. Wired in by the app.
     data_dir: Path | None = None
     last_usage: Usage | None = None
     _message_history: list[ModelMessage] = field(init=False, default_factory=list)
@@ -356,7 +352,6 @@ class ChatAgent:
         from tabulaflow.toolhub import (
             AddCanonicalNameTool,
             ConnectDataSourceTool,
-            CreateDatasetTool,
             ExtractRowsFromDocumentsTool,
             FileEditorTool,
             RegistryGetColumnJsonSchemaTool,
@@ -412,7 +407,6 @@ class ChatAgent:
             ),
             render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
-            create_dataset=(CreateDatasetTool(self.registry, self.data_dir) if self.data_dir is not None else None),
             connect_data_source=(
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
             ),
@@ -510,7 +504,6 @@ class ChatAgent:
         host_tools = [
             tool.as_pydantic_ai_tool()
             for tool in (
-                self._tools.create_dataset,
                 self._tools.connect_data_source,
                 self._tools.bash,
                 self._tools.file_editor,
