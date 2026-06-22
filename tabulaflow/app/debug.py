@@ -1168,6 +1168,30 @@ def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, 
                 "title": "Activity Heatmap",
             },
         ),
+        (
+            "QDEBUG_CHART_SLIDER",
+            "debug_slider",
+            "SELECT month, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month\nORDER BY month",
+            pd.DataFrame(
+                {"month": list(range(1, 13)), "revenue": [120, 90, 150, 60, 175, 130, 200, 80, 160, 110, 220, 140]}
+            ),
+            {
+                "params": [
+                    {
+                        "name": "min_revenue",
+                        "value": 0,
+                        "bind": {"input": "range", "min": 0, "max": 220, "step": 10, "name": "Min revenue: "},
+                    }
+                ],
+                "transform": [{"filter": "datum.revenue >= min_revenue"}],
+                "mark": "bar",
+                "encoding": {
+                    "x": {"field": "month", "type": "ordinal"},
+                    "y": {"field": "revenue", "type": "quantitative"},
+                },
+                "title": "Revenue by Month (drag the slider)",
+            },
+        ),
     ]
 
 

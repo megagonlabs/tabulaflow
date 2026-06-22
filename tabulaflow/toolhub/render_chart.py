@@ -249,6 +249,9 @@ class RenderPlotextChartTool:
         richer charts open in the browser at full fidelity. When ``record_id``
         is omitted, the most recent query result is used.
 
+        Specs may bind inputs (e.g. a range slider via ``params``/``bind``) or
+        selections for interactive filtering and zoom in the browser.
+
         A dark theme is applied by the viewer, so leave colors unset unless the
         user asked for specific ones.
 

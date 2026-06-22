@@ -975,7 +975,7 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
         "ramp": {"scheme": "greens"},
         "heatmap": {"scheme": "greens"},
     },
-    "mark": {"color": "#3eb489"},
+    "mark": {"color": "#3eb489", "tooltip": True},
     "bar": {"fill": "#3eb489"},
     "line": {"stroke": "#3eb489"},
     "point": {"fill": "#3eb489"},
@@ -1078,6 +1078,22 @@ def _normalize_field_refs(node: object, colmap: dict[str, str]) -> None:
             _normalize_field_refs(item, colmap)
 
 
+def _has_input_binding(spec: dict[str, object]) -> bool:
+    """Whether the spec binds a param to an HTML input widget (slider/dropdown/…).
+
+    Such charts render interactive controls that need vertical room below the
+    plot, so they're sized differently from a plain fill-the-card chart.
+    """
+    params = spec.get("params")
+    if not isinstance(params, list):
+        return False
+    for param in params:
+        bind = param.get("bind") if isinstance(param, dict) else None
+        if isinstance(bind, dict) and "input" in bind:
+            return True
+    return False
+
+
 def render_chart_html(
     df: "pd.DataFrame",
     vegalite_spec: dict[str, object],
@@ -1107,18 +1123,27 @@ def render_chart_html(
     existing_config = spec.get("config")
     spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
     spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
-    # A single-cell unit spec fills a bounded card both ways (responsive
-    # width/height = "container"); the spec's own size wins if it set one.
-    # Multi-view specs (layer/concat) and faceted ones (top-level facet/repeat,
-    # or a facet/row/column encoding channel) can't size to a container, so they
-    # keep their intrinsic size and scroll inside the card.
+    # Sizing modes (the spec's own width/height always wins via setdefault):
+    #  - plain single-cell unit spec -> fill a fixed-height card both ways
+    #    (responsive width/height = "container").
+    #  - unit spec with bound inputs (sliders/dropdowns) -> size the chart
+    #    explicitly so the controls have room below it; the card grows/scrolls.
+    #  - multi-view (layer/concat) or faceted (top-level facet/repeat or a
+    #    facet/row/column channel) -> can't size to a container, so keep the
+    #    intrinsic size and scroll inside the card.
     encoding = spec.get("encoding")
     has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
     is_unit_spec = "mark" in spec and not has_facet_channel
-    if is_unit_spec:
+    if is_unit_spec and not _has_input_binding(spec):
         spec.setdefault("width", "container")
         spec.setdefault("height", "container")
-    wrap_class = "fill" if is_unit_spec else "content"
+        wrap_class = "fill"
+    elif is_unit_spec:
+        spec.setdefault("width", "container")
+        spec.setdefault("height", 460)
+        wrap_class = "content"
+    else:
+        wrap_class = "content"
 
     vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
 
@@ -1132,6 +1157,7 @@ def render_chart_html(
         f"var spec={spec_json};"
         f"spec.data={{values:{data_json}}};"
         f"var opt={{renderer:{json.dumps(renderer)},"
+        'tooltip:{theme:"dark"},'
         "actions:{export:true,source:false,compiled:false,editor:false}};"
         'vegaEmbed("#vis",spec,opt).catch(function(err){'
         'var el=document.getElementById("vis");var pre=document.createElement("pre");'
