@@ -17,9 +17,11 @@ def extract_pdf_text(data: bytes) -> tuple[str, str]:
     fan-out. Synchronous and CPU-bound; call via ``asyncio.to_thread``.
 
     Pages are prefixed with ``--- Page N ---`` markers so the agent can cite and
-    navigate by page; empty pages are dropped.
+    navigate by page; empty pages are dropped. Output is NFKC-normalized so
+    ligatures (``ﬁ`` -> ``fi``) and split accents come out as plain characters.
     """
     import io
+    import unicodedata
     import warnings
 
     from pypdf import PdfReader
@@ -37,4 +39,6 @@ def extract_pdf_text(data: bytes) -> tuple[str, str]:
             text = (page.extract_text() or "").strip()
             if text:
                 parts.append(f"--- Page {i} ---\n{text}")
-    return title.strip(), "\n\n".join(parts).strip()
+    title = unicodedata.normalize("NFKC", title).strip()
+    body = unicodedata.normalize("NFKC", "\n\n".join(parts)).strip()
+    return title, body

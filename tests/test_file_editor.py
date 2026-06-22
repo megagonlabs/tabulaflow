@@ -55,6 +55,17 @@ class TestView:
         out = await editor("view", ".")
         assert "sub" in out and "f.txt" in out
 
+    async def test_view_range_start_past_end_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("a\nb\nc\n")
+        out = await editor("view", "a.txt", view_range=[10, 20])
+        assert "(error" in out and "past the end" in out
+
+    async def test_view_range_end_clamped(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "a.txt").write_text("L1\nL2\nL3\n")
+        out = await editor("view", "a.txt", view_range=[2, 999])  # end clamped to 3
+        assert "(error" not in out
+        assert "L2" in out and "L3" in out and "L1" not in out
+
     async def test_view_missing(self, editor: FileEditorTool) -> None:
         out = await editor("view", "nope.txt")
         assert "(error" in out and "does not exist" in out
@@ -159,6 +170,11 @@ class TestPdf:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
         out = await editor("view", "doc.pdf", view_range=[1, 1])
         assert "ONLY_PAGE" in out and "of 1 with text" in out
+
+    async def test_view_pdf_page_out_of_range_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
+        out = await editor("view", "doc.pdf", view_range=[2, 3])
+        assert "(error" in out and "past the end" in out
 
     async def test_write_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))
