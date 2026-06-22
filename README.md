@@ -320,11 +320,15 @@ June 17
 - [x] Show latency in run_query
 - [x] `extra_instructions` for agent
 
-- [ ] local pdf via browser
-- [ ] is transfer_record needed?
-- [ ] file_editor tool?
-- [ ] is create_dataset needed?
+June 21
+- [x] file_editor tool
+- [x] Improve tool progress display, +N -M for file edits
+- [x] Remove create_dataset tool
+- [x] is transfer_record needed? -> yes
+- [x] file_editor tool?
+- [ ] Open visualization in browser
 
+- [ ] local pdf
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
