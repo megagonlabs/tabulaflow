@@ -20,6 +20,56 @@ _MARK_TO_PLOTEXT = {
     "rect": "bar",
 }
 
+# Largest result that may be charted. The data is embedded inline in the
+# browser HTML, so beyond this the file balloons and Vega janks; a chart over
+# this many raw rows is also almost always un-aggregated. The tool refuses
+# rather than truncating (a partial chart would silently misrepresent the data).
+_MAX_CHART_ROWS = 20_000
+
+# Marks plotext can draw faithfully as a single x/y series.
+_PLOTEXT_MARKS = {"bar", "line", "point"}
+# Top-level keys that make a spec multi-view (no single mark to preview).
+_MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
+# Encoding channels that, when bound to a field, reshape the chart beyond a
+# single x/y series (grouping, faceting, second positions, polar, ...).
+_GROUPING_CHANNELS = (
+    "color",
+    "size",
+    "shape",
+    "detail",
+    "opacity",
+    "theta",
+    "theta2",
+    "radius",
+    "x2",
+    "y2",
+    "xOffset",
+    "yOffset",
+    "column",
+    "row",
+    "facet",
+)
+# Encoding-level transforms that change the data plotext would see (it plots
+# raw columns, so these diverge from what Vega computes).
+_RESHAPING_KEYS = ("aggregate", "bin", "timeUnit")
+
+_MARK_LABELS = {
+    "bar": "Bar chart",
+    "line": "Line chart",
+    "point": "Scatter plot",
+    "circle": "Scatter plot",
+    "square": "Scatter plot",
+    "tick": "Strip plot",
+    "area": "Area chart",
+    "arc": "Pie chart",
+    "rect": "Heatmap",
+    "boxplot": "Box plot",
+    "rule": "Rule chart",
+    "text": "Text chart",
+    "trail": "Line chart",
+    "geoshape": "Map",
+}
+
 
 def parse_vegalite_spec(spec: dict[str, Any]) -> tuple[str, str, str, str]:
     """Extract (mark, x_field, y_field, title) from a Vega-Lite spec.
@@ -62,6 +112,54 @@ def resolve_column(df: pd.DataFrame, name: str) -> str | None:
         if str(col).lower() == name.lower():
             return str(col)
     return None
+
+
+def _mark_type(spec: dict[str, Any]) -> str:
+    """Extract the mark type string from a spec (``""`` if absent/multi-view)."""
+    mark = spec.get("mark", "")
+    return str(mark.get("type", "")) if isinstance(mark, dict) else str(mark)
+
+
+def is_plotext_renderable(spec: dict[str, Any]) -> bool:
+    """Whether a Vega-Lite spec maps faithfully onto a plotext terminal chart.
+
+    plotext plots raw DataFrame columns as a single x/y series, so only
+    single-view specs with a supported mark, x and y fields, no grouping
+    channels, and no data-reshaping transforms render the same as the browser
+    (full Vega-Lite) would. Everything else falls back to the "open in browser"
+    card rather than a misleading approximation.
+    """
+    if not isinstance(spec, dict):
+        return False
+    if "transform" in spec or any(key in spec for key in _MULTIVIEW_KEYS):
+        return False
+    if _mark_type(spec) not in _PLOTEXT_MARKS:
+        return False
+    encoding = spec.get("encoding")
+    if not isinstance(encoding, dict):
+        return False
+    for channel in _GROUPING_CHANNELS:
+        enc = encoding.get(channel)
+        if isinstance(enc, dict) and enc.get("field"):
+            return False
+    for axis in ("x", "y"):
+        enc = encoding.get(axis)
+        if not isinstance(enc, dict) or not enc.get("field"):
+            return False
+        if any(key in enc for key in _RESHAPING_KEYS):
+            return False
+    return True
+
+
+def chart_type_label(spec: dict[str, Any]) -> str:
+    """Human-readable chart-type label for a spec (for UI cards and messages)."""
+    if not isinstance(spec, dict):
+        return "Chart"
+    if any(key in spec for key in ("layer", "hconcat", "vconcat", "concat")):
+        return "Composite chart"
+    if "facet" in spec or "repeat" in spec:
+        return "Faceted chart"
+    return _MARK_LABELS.get(_mark_type(spec), "Chart")
 
 
 def render_plotext(
@@ -130,12 +228,11 @@ def render_plotext(
 
 
 class RenderPlotextChartTool:
-    """Render a terminal chart from a stored query result.
+    """Attach a Vega-Lite chart spec to a stored query result.
 
-    Accepts a Vega-Lite spec (JSON string), extracts the core fields
-    (mark, encoding.x, encoding.y, title), validates against the
-    DataFrame, and does a test render via plotext. On success the spec
-    and DataFrame are stored for later display.
+    Validates the spec against the result DataFrame and stores it on the
+    record. Simple x/y specs also get a terminal (plotext) preview; richer
+    specs render in the browser via the full Vega runtime.
     """
 
     name: ClassVar = "render_chart"
@@ -144,14 +241,16 @@ class RenderPlotextChartTool:
         self._history = history or QueryHistory()
 
     async def __call__(self, record_id: str | None = None, *, vegalite_spec: str) -> str:
-        """Render a terminal chart from a stored query result using a Vega-Lite specification.
+        """Attach a Vega-Lite chart specification to a query result.
 
-        Call this after ``run_query`` to visualize a result. When
-        ``record_id`` is omitted, the most recent query result is used.
-        Only simple Vega-Lite specs are supported (single mark with x/y
-        encoding).
+        Accepts any Vega-Lite spec — single or multi-view: bar, line, point,
+        area, arc/pie, heatmap, stacked/grouped bars via a color encoding,
+        faceting, transforms, etc. Simple x/y charts preview in the terminal;
+        richer charts open in the browser at full fidelity. When ``record_id``
+        is omitted, the most recent query result is used.
 
-        Supported marks: bar, line, point, rect.
+        A dark theme is applied by the viewer, so leave colors unset unless the
+        user asked for specific ones.
 
         Example spec:
             {"mark": "bar", "encoding": {"x": {"field": "status", "type": "nominal"}, "y": {"field": "count", "type": "quantitative"}}, "title": "Schools by Status"}
@@ -169,10 +268,8 @@ class RenderPlotextChartTool:
         if not isinstance(spec, dict):
             return "(error: spec must be a JSON object)"
 
-        try:
-            mark, x_field, y_field, title = parse_vegalite_spec(spec)
-        except ValueError as e:
-            return f"(error: {e})"
+        if "mark" not in spec and not any(key in spec for key in _MULTIVIEW_KEYS):
+            return "(error: spec must have a 'mark' or be a multi-view spec (layer/facet/concat))"
 
         try:
             record = await self._history.get(record_id) if record_id else await self._history.last()
@@ -190,24 +287,35 @@ class RenderPlotextChartTool:
         if df.empty:
             return f"(error: query {record.record_id} result is empty)"
 
-        available = list(df.columns)
+        if len(df) > _MAX_CHART_ROWS:
+            return (
+                f"(error: {len(df):,} rows is too large to chart — aggregate the result first "
+                f"(e.g. GROUP BY) and chart the summary; max {_MAX_CHART_ROWS:,} rows)"
+            )
 
-        x_col = resolve_column(df, x_field)
-        if x_col is None:
-            return f"(error: column '{x_field}' not found. Available: {available})"
+        label = chart_type_label(spec)
 
-        y_col = resolve_column(df, y_field)
-        if y_col is None:
-            return f"(error: column '{y_field}' not found. Available: {available})"
-
-        try:
-            render_plotext(mark, x_col, y_col, title, df)
-        except Exception as e:
-            return f"(error rendering chart: {e})"
+        # Fail fast on the simple case, where x/y must be real columns. Richer
+        # specs (color/facet/transform/multi-view) are validated by the browser
+        # renderer; field-case mismatches are normalized at render time.
+        if is_plotext_renderable(spec):
+            mark, x_field, y_field, title = parse_vegalite_spec(spec)
+            x_col = resolve_column(df, x_field)
+            if x_col is None:
+                return f"(error: column '{x_field}' not found. Available: {list(df.columns)})"
+            y_col = resolve_column(df, y_field)
+            if y_col is None:
+                return f"(error: column '{y_field}' not found. Available: {list(df.columns)})"
+            # Best-effort terminal preview; never fail the attach on plotext.
+            try:
+                render_plotext(mark, x_col, y_col, title, df)
+            except Exception:
+                pass
+            self._history.attach_chart(record.record_id, spec)
+            return f"{label} attached to {record.record_id} (x={x_col}, y={y_col}), {len(df):,} rows"
 
         self._history.attach_chart(record.record_id, spec)
-
-        return f"Chart rendered from {record.record_id}: {mark} chart with {len(df)} data points (x={x_col}, y={y_col})"
+        return f"{label} attached to {record.record_id} — {len(df):,} rows, renders in the browser"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)

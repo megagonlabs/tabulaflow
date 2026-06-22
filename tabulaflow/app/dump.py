@@ -14,14 +14,14 @@ from __future__ import annotations
 import ast
 import base64
 import binascii
-import html
+import copy
 import json
 import re
 import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
+from tabulaflow.app.page import render_page
 
 if TYPE_CHECKING:
     import pandas as pd
@@ -323,50 +323,8 @@ def _load_tabulator_assets() -> tuple[str, str]:
 
 
 _CUSTOM_CSS = """
-/* Page chrome only — Tabulator's bundled midnight CSS handles the table itself. */
-html, body { margin: 0; padding: 0; min-height: 100%; background: #0f1117; color: #e4e4e7; }
-body {
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-    font-size: 14px;
-}
-
-#banner {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 24px;
-    border-bottom: 1px solid #21262d;
-    background: #0f1117;
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}
-#logo {
-    color: #3eb489;
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    user-select: none;
-}
-#repo {
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: #8a94a3;
-    text-decoration: none;
-    font-size: 13px;
-    padding: 4px 10px;
-    border-radius: 4px;
-}
-#repo:hover { background: #1f242c; color: #e6e6e6; }
-#repo svg { width: 16px; height: 16px; fill: currentColor; }
-
-#content {
-    padding: 20px 24px;
-    width: 100%;
-    box-sizing: border-box;
-}
+/* Table-specific styling — page chrome (banner, base palette, scrollbars)
+   lives in app/page.py; Tabulator's bundled midnight CSS handles the grid. */
 /* Card surface for the table — slightly elevated against page bg, with a
    subtle border and min-height that fills the viewport so short tables
    sit in a defined panel instead of floating against a vast page bg. */
@@ -480,15 +438,6 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 .tabulator .tabulator-frozen,
 .tabulator .tabulator-row .tabulator-frozen { border: none !important;
     box-shadow: none !important; }
-
-/* Dark scrollbars (WebKit/Blink + Firefox). */
-* { scrollbar-color: #3a4049 #1a1d23; scrollbar-width: thin; }
-::-webkit-scrollbar { width: 10px; height: 10px; }
-::-webkit-scrollbar-track { background: #1a1d23; }
-::-webkit-scrollbar-thumb { background: #3a4049; border-radius: 5px;
-    border: 2px solid #1a1d23; }
-::-webkit-scrollbar-thumb:hover { background: #4a5260; }
-::-webkit-scrollbar-corner { background: #1a1d23; }
 
 /* Modal (ours, not Tabulator's). */
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
@@ -968,28 +917,8 @@ def render_table_html(
     if truncated_rows:
         doc_title = f"{doc_title} (showing {max_rows:,} of {len(df):,} rows)"
 
-    doc = (
-        "<!doctype html><html><head><meta charset=utf-8>"
-        f"<title>{html.escape(doc_title)}</title>"
-        f"<style>{tabulator_css}</style>"
-        f"<style>{_CUSTOM_CSS}</style>"
-        f"<script>{tabulator_js}</script>"
-        "</head><body>"
-        '<header id="banner">'
-        '<span id="logo">tabulaflow</span>'
-        f'<a id="repo" href="{GITHUB_URL}" target="_blank" rel="noopener">'
-        '<svg viewBox="0 0 16 16" aria-hidden="true">'
-        '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38'
-        " 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53"
-        " .63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95"
-        " 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68"
-        " 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15"
-        " 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2"
-        ' 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
-        f"{GITHUB_SLUG}"
-        "</a>"
-        "</header>"
-        '<main id="content"><div id="table-wrap"><div id="table"></div></div></main>'
+    body = (
+        '<div id="table-wrap"><div id="table"></div></div>'
         '<div id="modal" role="dialog" aria-hidden="true">'
         '<div id="modal-card">'
         '<div id="modal-header">'
@@ -1001,8 +930,202 @@ def render_table_html(
         "</div></div>"
         '<div id="modal-body"></div>'
         "</div></div>"
-        f"<script>{init_js}</script>"
-        "</body></html>"
+    )
+    doc = render_page(
+        title=doc_title,
+        body=body,
+        head=f"<style>{tabulator_css}</style><style>{_CUSTOM_CSS}</style><script>{tabulator_js}</script>",
+        scripts=f"<script>{init_js}</script>",
+    )
+    html_path.parent.mkdir(parents=True, exist_ok=True)
+    html_path.write_text(doc, encoding="utf-8")
+
+
+# ---------------------------------------------------------------------------
+# Chart HTML rendering (Vega-Lite)
+# ---------------------------------------------------------------------------
+
+_DEFAULT_CHART_HEIGHT = 360
+# Above this row count, render with canvas instead of SVG: thousands of SVG
+# mark nodes bog the browser down, while canvas stays smooth. The render_chart
+# tool caps attachable results well below pathological sizes; this is just the
+# crisp-vs-fast tradeoff within that range.
+_SVG_ROW_LIMIT = 5_000
+
+# Dark/mint Vega config applied as *defaults* (lowest precedence). Anything the
+# spec sets explicitly — including agent-requested colors — overrides it, since
+# Vega layers config underneath the spec's own mark/encoding properties.
+_VEGA_DARK_CONFIG: dict[str, object] = {
+    "background": "#131720",
+    "view": {"stroke": "transparent"},
+    "font": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+    "title": {"color": "#e4e4e7", "subtitleColor": "#9aa4b2", "fontSize": 15, "fontWeight": 600},
+    "axis": {
+        "labelColor": "#9aa4b2",
+        "titleColor": "#e4e4e7",
+        "gridColor": "#21262d",
+        "domainColor": "#21262d",
+        "tickColor": "#21262d",
+    },
+    "legend": {"labelColor": "#9aa4b2", "titleColor": "#e4e4e7"},
+    "range": {
+        "category": ["#3eb489", "#5ac8fa", "#f5a623", "#bd6cf0", "#f06292", "#4dd0e1", "#aed581", "#ff8a65"],
+        "ramp": {"scheme": "greens"},
+        "heatmap": {"scheme": "greens"},
+    },
+    "mark": {"color": "#3eb489"},
+    "bar": {"fill": "#3eb489"},
+    "line": {"stroke": "#3eb489"},
+    "point": {"fill": "#3eb489"},
+    "area": {"fill": "#3eb489"},
+    "arc": {"stroke": "#131720"},
+}
+
+_CHART_CSS = """
+#vis-wrap {
+    width: 100%;
+    background: #131720;
+    border: 1px solid #21262d;
+    border-radius: 6px;
+    min-height: calc(100vh - 90px);
+    padding: 24px;
+    box-sizing: border-box;
+}
+#vis { width: 100%; }
+.vis-error { color: #ff7777; white-space: pre-wrap;
+    font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
+/* vega-embed action ("...") menu — dark to match the page. */
+.vega-embed { width: 100%; }
+.vega-embed .vega-actions {
+    background: #14171c; border: 1px solid #2c3038; border-radius: 4px;
+    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.vega-embed .vega-actions a { color: #e4e4e7; }
+.vega-embed .vega-actions a:hover { background: #1f2532; color: #3eb489; }
+.vega-embed summary { color: #6a737d; }
+.vega-embed summary:hover { color: #3eb489; }
+"""
+
+
+def _load_vega_assets() -> tuple[str, str, str]:
+    """Load vendored Vega, Vega-Lite, and vega-embed JS from package resources.
+
+    Returns ``(vega_js, vega_lite_js, vega_embed_js)``. Files are vendored under
+    ``tabulaflow/app/assets/vega/`` (vega@5, vega-lite@5, vega-embed@6 — the
+    canonical compatible trio).
+    """
+    from importlib.resources import files
+
+    base = files("tabulaflow.app.assets.vega")
+    return (
+        base.joinpath("vega.min.js").read_text(encoding="utf-8"),
+        base.joinpath("vega-lite.min.js").read_text(encoding="utf-8"),
+        base.joinpath("vega-embed.min.js").read_text(encoding="utf-8"),
+    )
+
+
+def _deep_merge(base: dict[str, object], override: dict[str, object]) -> dict[str, object]:
+    """Recursively merge ``override`` onto ``base``; ``override`` wins on conflict."""
+    out = dict(base)
+    for key, val in override.items():
+        existing = out.get(key)
+        if isinstance(val, dict) and isinstance(existing, dict):
+            out[key] = _deep_merge(existing, val)
+        else:
+            out[key] = val
+    return out
+
+
+def _normalize_field_refs(node: object, colmap: dict[str, str]) -> None:
+    """Rewrite ``field`` references to the DataFrame's column-name casing, in place.
+
+    Vega is case-sensitive on field names; an agent may emit a different case
+    than the actual columns. Walks the spec and, for any ``{"field": "x"}`` whose
+    value case-insensitively matches a column, replaces it with the real column
+    name. Transform-derived fields (no matching column) are left untouched.
+    """
+    if isinstance(node, dict):
+        for key, val in node.items():
+            if key == "field" and isinstance(val, str):
+                actual = colmap.get(val.lower())
+                if actual is not None:
+                    node[key] = actual
+            else:
+                _normalize_field_refs(val, colmap)
+    elif isinstance(node, list):
+        for item in node:
+            _normalize_field_refs(item, colmap)
+
+
+def render_chart_html(
+    df: "pd.DataFrame",
+    vegalite_spec: dict[str, object],
+    html_path: Path,
+    *,
+    title: str | None = None,
+) -> None:
+    """Render a Vega-Lite spec as a self-contained interactive HTML chart.
+
+    The DataFrame is embedded inline (offline ``file://`` blocks ``fetch``, so
+    external data URLs won't load) and rendered at full fidelity by the vendored
+    Vega runtime — unlike the plotext terminal preview, this honors color/facet/
+    transform encodings and any mark type. A dark/mint Vega ``config`` is merged
+    in as defaults; anything the spec sets explicitly (e.g. user-requested
+    colors) overrides it.
+
+    Args:
+        df: Source data (already row-bounded by the render_chart tool).
+        vegalite_spec: The Vega-Lite specification (semantic; unthemed).
+        html_path: Output HTML path.
+        title: Document title (browser tab); defaults to the file stem.
+    """
+    spec = copy.deepcopy(vegalite_spec)
+    colmap = {str(c).lower(): str(c) for c in df.columns}
+    _normalize_field_refs(spec, colmap)
+
+    existing_config = spec.get("config")
+    spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
+    spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
+    # Responsive width + sane default height for a single-cell unit spec only.
+    # Multi-view specs (layer/concat) and faceted ones (top-level facet/repeat,
+    # or a facet/row/column encoding channel) size from their children, where a
+    # top-level "container" width is invalid — leave their geometry alone.
+    encoding = spec.get("encoding")
+    has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
+    if "mark" in spec and not has_facet_channel:
+        spec["width"] = "container"
+        spec.setdefault("height", _DEFAULT_CHART_HEIGHT)
+
+    vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
+
+    # ``</`` inside an inline <script> string can prematurely close the tag.
+    data_json = (df.to_json(orient="records", date_format="iso", default_handler=str) or "[]").replace("</", "<\\/")
+    spec_json = json.dumps(spec, ensure_ascii=False, default=str).replace("</", "<\\/")
+    renderer = "canvas" if len(df) > _SVG_ROW_LIMIT else "svg"
+
+    init_js = (
+        "(function(){"
+        f"var spec={spec_json};"
+        f"spec.data={{values:{data_json}}};"
+        f"var opt={{renderer:{json.dumps(renderer)},"
+        "actions:{export:true,source:false,compiled:false,editor:false}};"
+        'vegaEmbed("#vis",spec,opt).catch(function(err){'
+        'var el=document.getElementById("vis");var pre=document.createElement("pre");'
+        'pre.className="vis-error";pre.textContent="Chart error: "+String(err);'
+        'el.innerHTML="";el.appendChild(pre);});})();'
+    )
+
+    head = (
+        f"<script>{vega_js}</script>"
+        f"<script>{vega_lite_js}</script>"
+        f"<script>{vega_embed_js}</script>"
+        f"<style>{_CHART_CSS}</style>"
+    )
+    doc = render_page(
+        title=title or html_path.stem,
+        body='<div id="vis-wrap"><div id="vis"></div></div>',
+        head=head,
+        scripts=f"<script>{init_js}</script>",
     )
     html_path.parent.mkdir(parents=True, exist_ok=True)
     html_path.write_text(doc, encoding="utf-8")

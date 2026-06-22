@@ -204,12 +204,46 @@ def _format_table_cell(value: object) -> str:
     return _rich_escape(s)
 
 
+def _spec_title(spec: dict[str, object]) -> str:
+    """Extract a Vega-Lite spec's title text (``""`` if absent)."""
+    title = spec.get("title", "") if isinstance(spec, dict) else ""
+    if isinstance(title, dict):
+        title = title.get("text", "")
+    return str(title) if title else ""
+
+
+def _build_chart_card(spec: dict[str, object], *, detailed: bool) -> RenderableType:
+    """Placeholder card for charts plotext can't draw faithfully (open in browser).
+
+    ``detailed`` adds the browser explainer line — used in the full-screen
+    ``ChartBrowserScreen``; the inline view stays to a compact headline + type.
+    """
+    from tabulaflow.toolhub.render_chart import chart_type_label
+
+    type_label = chart_type_label(spec)
+    title = _spec_title(spec)
+    lines = [Text(f"\U0001f4ca  {title or type_label}", style=ACCENT_BOLD)]
+    if title:
+        lines.append(Text(type_label, style="dim"))
+    if detailed:
+        lines.append(Text(""))
+        lines.append(Text("This chart type renders only in the browser.", style="dim"))
+    return Group(*lines)
+
+
 def build_chart(
     df: pd.DataFrame, vegalite_spec: dict[str, object], width: int = 80, height: int | None = None
 ) -> RenderableType:
-    """Build a plotext chart renderable from a Vega-Lite spec and DataFrame."""
-    from tabulaflow.toolhub.render_chart import parse_vegalite_spec, render_plotext
+    """Build a chart renderable from a Vega-Lite spec and DataFrame.
 
+    Simple x/y specs render inline via plotext; anything richer (color/facet/
+    transform/multi-view or an unsupported mark) returns a card directing the
+    user to open it in the browser, rather than a misleading approximation.
+    """
+    from tabulaflow.toolhub.render_chart import is_plotext_renderable, parse_vegalite_spec, render_plotext
+
+    if not is_plotext_renderable(vegalite_spec):
+        return _build_chart_card(vegalite_spec, detailed=height is not None)
     try:
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
         chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)

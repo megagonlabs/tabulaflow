@@ -96,8 +96,10 @@ class FileEditorTool:
         start, end = view_range
         if start < 1:
             return self._error(f"start must be >= 1, got {start}.")
-        if end == -1:
-            end = total
+        if start > total:
+            return self._error(f"start ({start}) is past the end (only {total} available).")
+        if end == -1 or end > total:
+            end = total  # clamp an over-long end to what's available
         if end < start:
             return self._error(f"end ({end}) must be >= start ({start}).")
         return (start - 1, end - 1)

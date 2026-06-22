@@ -63,12 +63,13 @@ class RuntimePaths:
 
 
 def prune_old_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
-    """Delete cell- and table-dump artifacts older than ``max_age_seconds``.
+    """Delete cell-, table-, and chart-dump artifacts older than ``max_age_seconds``.
 
-    Cleans up two kinds of entries in the shared dumps dir:
+    Cleans up three kinds of entries in the shared dumps dir:
       - ``C_*`` cell dumps (single files)
       - ``T_*`` table dumps (an ``.html`` file plus a sibling directory of
         spilled media blobs sharing the same stem)
+      - ``V_*`` chart dumps (single ``.html`` files)
 
     Belt-and-suspenders on top of the OS's TMPDIR cleanup, which on macOS
     has no firm schedule. The default 7-day window covers the common
@@ -84,7 +85,7 @@ def prune_old_dumps(max_age_seconds: float = 7 * 86400.0) -> None:
     cutoff = time.time() - max_age_seconds
     for entry in tmp_root.iterdir():
         name = entry.name
-        if not (name.startswith("C_") or name.startswith("T_")):
+        if not (name.startswith("C_") or name.startswith("T_") or name.startswith("V_")):
             continue
         try:
             if entry.stat().st_mtime >= cutoff:

@@ -138,6 +138,40 @@ def open_table_in_browser(
     return html_path
 
 
+def open_chart_in_browser(
+    df: "pd.DataFrame",
+    vegalite_spec: dict[str, object],
+    title: str,
+    app: object,
+    *,
+    status: "Callable[[Text], None]",
+) -> "Path | None":
+    """Render ``vegalite_spec`` over ``df`` as interactive HTML and open it.
+
+    Returns the written HTML path on success, or ``None`` on failure.
+    """
+    import secrets
+
+    from tabulaflow.app.dump import render_chart_html
+
+    try:
+        dumps_dir: Path = app._runtime_paths.dumps_dir  # type: ignore[attr-defined]
+    except AttributeError:
+        status(Text("save failed: no dumps dir", style=ERROR))
+        return None
+    html_path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
+    try:
+        render_chart_html(df, vegalite_spec, html_path, title=title)
+    except OSError as exc:
+        status(Text(f"write failed: {exc}", style=ERROR))
+        return None
+    except Exception as exc:
+        status(Text(f"render failed: {exc}", style=ERROR))
+        return None
+    _open_path_in_browser(html_path, status=status)
+    return html_path
+
+
 # ---------------------------------------------------------------------------
 # Data browser screen
 # ---------------------------------------------------------------------------
@@ -958,6 +992,15 @@ class ChartBrowserScreen(Screen[None]):
         color: $text;
     }
 
+    ChartBrowserScreen .chart-browser-status {
+        padding: 0 1;
+        color: #f5f5f5;
+    }
+
+    ChartBrowserScreen .chart-browser-gap {
+        height: 1;
+    }
+
     ChartBrowserScreen .chart-browser-hint {
         dock: bottom;
         padding: 0 1;
@@ -968,6 +1011,7 @@ class ChartBrowserScreen(Screen[None]):
 
     BINDINGS = [
         Binding("escape", "close_browser", "Back", show=True),
+        Binding("b", "open_chart_in_browser", "Open chart in browser", show=True, priority=True),
     ]
 
     def __init__(self, *, title: str, df: "pd.DataFrame", vegalite_spec: dict[str, object]) -> None:
@@ -976,10 +1020,14 @@ class ChartBrowserScreen(Screen[None]):
         self._df = df
         self._vegalite_spec = vegalite_spec
         self._content = Static(classes="chart-browser-content")
+        self._status = Static(classes="chart-browser-status")
+        self._gap = Static(classes="chart-browser-gap")
         self._hint = Static(classes="chart-browser-hint")
 
     def compose(self) -> ComposeResult:
         yield self._content
+        yield self._status
+        yield self._gap
         yield self._hint
 
     def on_mount(self) -> None:
@@ -990,6 +1038,23 @@ class ChartBrowserScreen(Screen[None]):
 
     def action_close_browser(self) -> None:
         self.dismiss()
+
+    async def action_open_chart_in_browser(self) -> None:
+        """Render the chart as interactive HTML and open it in the system browser.
+
+        Mirrors the data browser: show ``Opening...``, paint, then let the
+        helper overwrite the status with the final result.
+        """
+        import asyncio
+
+        self._set_status_message(Text("Opening...", style="dim"))
+        painted: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        self.call_after_refresh(lambda: painted.done() or painted.set_result(None))
+        await painted
+        open_chart_in_browser(self._df, self._vegalite_spec, self._title, self.app, status=self._set_status_message)
+
+    def _set_status_message(self, message: "Text") -> None:
+        self._status.update(message)
 
     def on_click(self, event: object) -> None:
         self.dismiss()
@@ -1003,6 +1068,8 @@ class ChartBrowserScreen(Screen[None]):
         self._content.update(renderable)
 
         hint = Text()
+        hint.append("b", style=KEY_HINT)
+        hint.append(" Open in browser    ", style="dim")
         hint.append("Esc", style=KEY_HINT)
         hint.append(" Back    ", style="dim")
         self._hint.update(hint)
