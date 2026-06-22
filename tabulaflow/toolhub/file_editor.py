@@ -183,7 +183,7 @@ class FileEditorTool:
         action = "Created" if is_new else "Wrote"
         return f"{action}: {path} ({num_lines} lines)"
 
-    def _str_replace(self, resolved: Path, path: str, old_str: str, new_str: str) -> str:
+    def _str_replace(self, resolved: Path, path: str, old_str: str, new_str: str, replace_all: bool = False) -> str:
         if not resolved.is_file():
             return self._error(f"{path} does not exist.")
         if old_str == new_str:
@@ -193,37 +193,35 @@ class FileEditorTool:
             content = resolved.read_text()
         except (UnicodeDecodeError, ValueError):
             return self._error(f"{path} is a binary file and cannot be edited.")
-        pattern = re.escape(old_str)
-        matches = list(re.finditer(pattern, content))
 
-        if not matches:
-            stripped_old = old_str.strip()
-            stripped_new = new_str.strip()
-            pattern = re.escape(stripped_old)
-            matches = list(re.finditer(pattern, content))
-            if not matches:
-                return self._error(f"old_str not found in {path}.")
-            old_str, new_str = stripped_old, stripped_new
-
-        if len(matches) > 1:
-            line_numbers = sorted(set(content.count("\n", 0, m.start()) + 1 for m in matches))
+        # Exact, whitespace-sensitive matching only — no fuzzy fallback. A lenient
+        # match can silently land an edit that loses surrounding whitespace, so an
+        # imperfect old_str fails loudly instead.
+        count = content.count(old_str)
+        if count == 0:
+            return self._error(f"old_str not found in {path}.")
+        if count > 1 and not replace_all:
+            line_numbers = sorted(
+                content.count("\n", 0, m.start()) + 1 for m in re.finditer(re.escape(old_str), content)
+            )
             return self._error(
-                f"old_str found {len(matches)} times in {path} "
-                f"(lines {line_numbers}). It must be unique — include more context."
+                f"old_str found {count} times in {path} (lines {line_numbers}). It must be unique — "
+                "include more context, or set replace_all=true to replace every occurrence."
             )
 
-        match = matches[0]
-        new_content = content[: match.start()] + new_str + content[match.end() :]
+        new_content = content.replace(old_str, new_str)
         resolved.write_text(new_content)
 
-        replacement_line = content.count("\n", 0, match.start()) + 1
+        # Show a snippet around the first replacement (with the count when replacing all).
+        replacement_line = content.count("\n", 0, content.find(old_str)) + 1
         start = max(1, replacement_line - SNIPPET_CONTEXT_LINES)
         end = replacement_line + SNIPPET_CONTEXT_LINES + new_str.count("\n")
         snippet_lines = new_content.split("\n")[start - 1 : end]
         per_line = MAX_RESPONSE_CHARS // max(len(snippet_lines), 1)
         snippet = self._make_numbered("\n".join(snippet_lines), start_line=start, max_line_chars=per_line)
 
-        return f"Edited {path}. Snippet:\n{snippet}"
+        label = f"Edited {path}" + (f" ({count} occurrences replaced)" if replace_all and count > 1 else "")
+        return f"{label}. Snippet:\n{snippet}"
 
     # -- main entry point -----------------------------------------------------
 
@@ -234,6 +232,7 @@ class FileEditorTool:
         file_text: str | None = None,
         old_str: str | None = None,
         new_str: str | None = None,
+        replace_all: bool = False,
         view_range: list[int] | None = None,
     ) -> str:
         """View and edit text files in the project directory.
@@ -241,8 +240,9 @@ class FileEditorTool:
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
         - ``write_file``: Create or overwrite a file with the given content.
-        - ``str_replace``: Replace an exact string in a file. ``old_str`` must
-          match exactly one location.
+        - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
+          ``old_str`` must match exactly (whitespace included) and be unique, unless
+          ``replace_all`` is set.
 
         All paths are relative to the project directory.
 
@@ -252,6 +252,8 @@ class FileEditorTool:
             file_text: Content for ``write_file`` command.
             old_str: String to find for ``str_replace``.
             new_str: Replacement string for ``str_replace``.
+            replace_all: For ``str_replace``, replace every occurrence instead of
+                requiring ``old_str`` to be unique.
             view_range: Optional ``[start, end]`` for ``view`` (1-indexed,
                 end=-1 means last). For files, selects a line range; for
                 directories, selects an entry range for pagination.
@@ -275,7 +277,7 @@ class FileEditorTool:
             if new_str is None:
                 return self._error("new_str is required for the str_replace command.")
             self._metrics.num_str_replace += 1
-            return self._str_replace(resolved, path, old_str, new_str)
+            return self._str_replace(resolved, path, old_str, new_str, replace_all)
         else:
             return self._error(f"unknown command '{command}'. Use view, write_file, or str_replace.")
 
