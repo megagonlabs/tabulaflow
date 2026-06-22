@@ -444,25 +444,25 @@ video { width: 240px; height: 160px; object-fit: contain; background: #000;
 #modal { position: fixed; inset: 0; background: rgba(0,0,0,0.65); display: none;
     align-items: center; justify-content: center; z-index: 1000; }
 #modal.open { display: flex; }
-#modal-card { background: var(--popover-bg); color: #e6e6e6; border: 1px solid var(--popover-border);
+#modal-card { background: var(--popover-bg); color: var(--text); border: 1px solid var(--popover-border);
     border-radius: 4px; max-width: 80vw; max-height: 80vh; min-width: 480px;
     display: flex; flex-direction: column;
     box-shadow: 0 12px 40px rgba(0,0,0,0.6); }
 #modal-header { padding: 8px 14px; border-bottom: 1px solid var(--popover-border);
     display: flex; justify-content: space-between; align-items: center; gap: 1rem; }
-#modal-title { font-size: 13px; color: #8a94a3; font-family: ui-monospace, monospace; }
+#modal-title { font-size: 13px; color: var(--text-muted); font-family: ui-monospace, monospace; }
 #modal-actions { display: flex; gap: 4px; align-items: center; }
 #modal-actions button { display: inline-flex; align-items: center; gap: 6px;
     cursor: pointer; font-size: 12px; font-family: inherit;
     background: transparent; padding: 5px 10px; border-radius: 4px; }
 #modal-actions button svg { width: 14px; height: 14px; stroke: currentColor;
     fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-#modal-close { color: #8a94a3; border: 1px solid transparent;
+#modal-close { color: var(--text-muted); border: 1px solid transparent;
     padding: 5px 6px; }
 #modal-close:hover { background: rgba(255, 255, 255, 0.06); color: var(--text); }
 #modal-body { padding: 12px 14px; overflow: auto; flex: 1; }
 #modal-body pre { margin: 0; font-family: ui-monospace, "SF Mono", Menlo, monospace;
-    font-size: 13px; white-space: pre-wrap; word-break: break-word; color: #e6e6e6; }
+    font-size: 13px; white-space: pre-wrap; word-break: break-word; color: var(--text); }
 #modal-body img { max-width: 76vw; max-height: 70vh; display: block; margin: 0 auto; }
 """
 

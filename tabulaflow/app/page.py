@@ -27,6 +27,9 @@ TEXT_MUTED = "#9aa4b2"  # cool gray
 TEXT_DIM = "#6a737d"  # dim gray
 POPOVER_BG = "#14171c"  # near-black
 POPOVER_BORDER = "#2c3038"  # charcoal gray
+SCROLLBAR_TRACK = "#1a1d23"  # near-black
+SCROLLBAR_THUMB = "#3a4049"  # slate gray
+SCROLLBAR_THUMB_HOVER = "#4a5260"  # gray
 
 _BASE_CSS = f"""
 :root {{
@@ -72,13 +75,13 @@ body {{
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: #8a94a3;
+    color: {TEXT_MUTED};
     text-decoration: none;
     font-size: 13px;
     padding: 4px 10px;
     border-radius: 4px;
 }}
-#repo:hover {{ background: #1f242c; color: #e6e6e6; }}
+#repo:hover {{ background: {ROW_HOVER}; color: {TEXT}; }}
 #repo svg {{ width: 16px; height: 16px; fill: currentColor; }}
 
 #content {{
@@ -88,13 +91,13 @@ body {{
 }}
 
 /* Dark scrollbars (WebKit/Blink + Firefox). */
-* {{ scrollbar-color: #3a4049 #1a1d23; scrollbar-width: thin; }}
+* {{ scrollbar-color: {SCROLLBAR_THUMB} {SCROLLBAR_TRACK}; scrollbar-width: thin; }}
 ::-webkit-scrollbar {{ width: 10px; height: 10px; }}
-::-webkit-scrollbar-track {{ background: #1a1d23; }}
-::-webkit-scrollbar-thumb {{ background: #3a4049; border-radius: 5px;
-    border: 2px solid #1a1d23; }}
-::-webkit-scrollbar-thumb:hover {{ background: #4a5260; }}
-::-webkit-scrollbar-corner {{ background: #1a1d23; }}
+::-webkit-scrollbar-track {{ background: {SCROLLBAR_TRACK}; }}
+::-webkit-scrollbar-thumb {{ background: {SCROLLBAR_THUMB}; border-radius: 5px;
+    border: 2px solid {SCROLLBAR_TRACK}; }}
+::-webkit-scrollbar-thumb:hover {{ background: {SCROLLBAR_THUMB_HOVER}; }}
+::-webkit-scrollbar-corner {{ background: {SCROLLBAR_TRACK}; }}
 """
 
 # GitHub mark, rendered in the banner's repo link.
