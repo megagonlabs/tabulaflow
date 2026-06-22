@@ -17,16 +17,16 @@ from tabulaflow.app.theme import ACCENT, ERROR, GITHUB_SLUG, GITHUB_URL
 # are the richer web shades from the design language (page bg, card surface,
 # borders). They're also published as the ``:root`` CSS custom properties below,
 # so dump.py's table/chart CSS can reference them as ``var(--accent)`` etc.
-PAGE_BG = "#0f1117"
-CARD_BG = "#131720"
-ROW_STRIPE = "#1a1f2a"
-ROW_HOVER = "#1f2532"
-BORDER = "#21262d"
-TEXT = "#e4e4e7"
-TEXT_MUTED = "#9aa4b2"
-TEXT_DIM = "#6a737d"
-POPOVER_BG = "#14171c"
-POPOVER_BORDER = "#2c3038"
+PAGE_BG = "#0f1117"  # near-black, blue-tinted
+CARD_BG = "#131720"  # dark slate
+ROW_STRIPE = "#1a1f2a"  # slate (lifted)
+ROW_HOVER = "#1f2532"  # slate (hover)
+BORDER = "#21262d"  # gunmetal gray
+TEXT = "#e4e4e7"  # off-white
+TEXT_MUTED = "#9aa4b2"  # cool gray
+TEXT_DIM = "#6a737d"  # dim gray
+POPOVER_BG = "#14171c"  # near-black
+POPOVER_BORDER = "#2c3038"  # charcoal gray
 
 _BASE_CSS = f"""
 :root {{

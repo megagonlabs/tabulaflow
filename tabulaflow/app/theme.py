@@ -5,9 +5,9 @@ from __future__ import annotations
 from rich.style import Style
 from textual.widgets.text_area import TextAreaTheme
 
-ACCENT = "#3EB489"
+ACCENT = "#3EB489"  # mint
 ACCENT_BOLD = f"bold {ACCENT}"
-ACCENT_RGB = (62, 180, 137)
+ACCENT_RGB = (62, 180, 137)  # mint (RGB)
 
 # Project repository — shown in the TUI banner and the HTML dump header.
 GITHUB_SLUG = "megagonlabs/tabulaflow"

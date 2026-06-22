@@ -974,7 +974,16 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
     # Categorical palette: the mint accent first, then off-palette hues used
     # only for chart series (not part of the page design tokens).
     "range": {
-        "category": [ACCENT, "#5ac8fa", "#f5a623", "#bd6cf0", "#f06292", "#4dd0e1", "#aed581", "#ff8a65"],
+        "category": [
+            ACCENT,  # mint
+            "#5ac8fa",  # sky blue
+            "#f5a623",  # amber
+            "#bd6cf0",  # violet
+            "#f06292",  # pink
+            "#4dd0e1",  # cyan
+            "#aed581",  # lime
+            "#ff8a65",  # coral
+        ],
         "ramp": {"scheme": "greens"},
         "heatmap": {"scheme": "greens"},
     },
