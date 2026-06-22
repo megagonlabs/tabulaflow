@@ -325,7 +325,6 @@ June 21
 - [x] Improve tool progress display, +N -M for file edits
 - [x] Remove create_dataset tool
 - [x] is transfer_record needed? -> yes
-- [x] file_editor tool?
 - [ ] Open visualization in browser
 
 - [ ] local pdf
