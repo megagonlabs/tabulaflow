@@ -19,6 +19,14 @@ GITHUB_URL = f"https://github.com/{GITHUB_SLUG}"
 # canonical value: use ``style=ERROR`` in code, or ``f"[{ERROR}]…[/]"`` in markup.
 ERROR = "#ff7777"
 
+# git diffstat token colors in tool-progress labels (e.g. "Edit foo +5 -2"):
+# additions in green, removals in red. git's own default defers to the terminal's
+# ANSI green/red (no fixed hex); we pin GitHub's diff palette — bright, tuned for a
+# dark background — rather than the named ``green``/``red`` (which Rich and Textual
+# resolve to different shades, see ERROR above).
+DIFF_ADDED = "#3FB950"
+DIFF_REMOVED = "#F85149"
+
 # Grey shade for inactive/unfocused states of widgets that normally
 # display mint accents (record pill bg, view stepper chevrons / label in
 # an unfocused AgentResultWidget). Matches the exact color Textual

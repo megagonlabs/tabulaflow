@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import difflib
 import json
 import re
 from typing import TYPE_CHECKING, TypedDict
@@ -21,7 +22,7 @@ from textual.widget import Widget
 from textual.widgets import Input, Static
 
 from tabulaflow.app.display import DATA_PREVIEW_MAX_ROWS
-from tabulaflow.app.theme import ACCENT, ACCENT_DIM, KEY_HINT, KEY_HINT_DIM, MESSAGE_SURFACE
+from tabulaflow.app.theme import ACCENT, ACCENT_DIM, DIFF_ADDED, DIFF_REMOVED, KEY_HINT, KEY_HINT_DIM, MESSAGE_SURFACE
 from tabulaflow.app.screens import ChartBrowserScreen, DataBrowserScreen, QueryBrowserScreen
 from tabulaflow.chat import (
     AnswerDelta,
@@ -477,6 +478,14 @@ class SpinnerWidget(Widget):
 # Keys handled by the prefix/grouping logic or too noisy to show in a step label.
 _NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
 
+# Tools whose arg summary is already a complete, verb-led label (e.g. "Edit foo +5 -2"),
+# shown as-is instead of wrapped as ``name(summary)``.
+_VERB_LED_TOOLS = frozenset({"file_editor"})
+
+# A git-style diffstat token (``+5`` / ``-2``) preceded by whitespace, so a path
+# like ``model-2.sql`` is not mistaken for a removed-line count.
+_DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
+
 
 def _fmt_arg_value(value: object, limit: int = 40) -> str:
     """Collapse whitespace and truncate a single arg value for a step label."""
@@ -496,6 +505,38 @@ def _summarize_generic_args(args: dict[str, object]) -> str:
     if len(items) == 1:
         return _fmt_arg_value(items[0][1])
     return ", ".join(f"{k}={_fmt_arg_value(v, 24)}" for k, v in items)[:80]
+
+
+def _line_diffstat(old: str, new: str) -> tuple[int, int]:
+    """Lines added/removed between two strings, git-diff style (changed lines only)."""
+    old_lines = old.splitlines()
+    new_lines = new.splitlines()
+    added = removed = 0
+    for tag, i1, i2, j1, j2 in difflib.SequenceMatcher(None, old_lines, new_lines).get_opcodes():
+        if tag == "replace":
+            removed += i2 - i1
+            added += j2 - j1
+        elif tag == "delete":
+            removed += i2 - i1
+        elif tag == "insert":
+            added += j2 - j1
+    return added, removed
+
+
+def _summarize_file_editor(args: dict[str, object]) -> str:
+    """A verb-led label for the file editor: ``Edit foo.sql +5 -2`` (git diffstat)."""
+    command = str(args.get("command", ""))
+    path = _fmt_arg_value(args.get("path", "."), 48)
+    if command == "str_replace":
+        added, removed = _line_diffstat(str(args.get("old_str", "")), str(args.get("new_str", "")))
+        return f"Edit {path} +{added} -{removed}"
+    if command == "write_file":
+        text = str(args.get("file_text", ""))
+        added = text.count("\n") + (1 if text and not text.endswith("\n") else 0)
+        return f"Write {path} +{added}"
+    if command == "view":
+        return f"View {path}"
+    return f"{command} {path}".strip()
 
 
 def summarize_tool_args(name: str, args: dict[str, object]) -> str:
@@ -549,6 +590,8 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
         return f"{db_prefix}{args.get('table_name', '')}"
     if name == "browser_navigate":
         return _fmt_arg_value(args.get("url", ""), 60)
+    if name == "file_editor":
+        return _summarize_file_editor(args)
     return f"{db_prefix}{_summarize_generic_args(args)}"
 
 
@@ -561,6 +604,22 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
     if isinstance(outcome, Failed):
         return "error"
     return "done"  # Completed
+
+
+def _styled_label(name: str, label: str) -> Text:
+    """Render a step label as dim text, coloring git diffstat tokens for the file
+    editor — ``+N`` in green, ``-M`` in red — to follow the git convention."""
+    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(label):
+        return Text(label, style="dim")
+    text = Text()
+    pos = 0
+    for m in _DIFFSTAT_TOKEN_RE.finditer(label):
+        text.append(label[pos : m.start()], style="dim")
+        token = m.group(1)
+        text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
+        pos = m.end()
+    text.append(label[pos:], style="dim")
+    return text
 
 
 class AgentTextBlock(Static):
@@ -632,19 +691,19 @@ class AgentProgressWidget(Widget):
                 if self._frozen:
                     line = Text()
                     line.append("⊘ ", style="dim")
-                    line.append(label, style="dim")
+                    line.append_text(_styled_label(_name, label))
                     parts.append(line)
                 else:
                     spinner = self._tool_spinners.get(tool_call_id)
                     if spinner is None:
                         spinner = Spinner("dots", style="dim")
                         self._tool_spinners[tool_call_id] = spinner
-                    spinner.text = Text(label, style="dim")
+                    spinner.text = _styled_label(_name, label)
                     parts.append(spinner)
             else:
                 line = Text()
                 line.append("→ ", style="dim")
-                line.append(label, style="dim")
+                line.append_text(_styled_label(_name, label))
                 parts.append(line)
 
         if self._status_text and not has_running:
@@ -722,7 +781,12 @@ class AgentProgressWidget(Widget):
     def _on_tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
         if self._status_text and self._status_text != "Thinking...":
             self._steps.append(("done", "", "__status__", self._status_text))
-        label = f"{name}({args_summary})" if args_summary else name
+        if args_summary and name in _VERB_LED_TOOLS:
+            label = args_summary
+        elif args_summary:
+            label = f"{name}({args_summary})"
+        else:
+            label = name
         self._steps.append(("running", tool_call_id, name, label))
         self._status_text = None
         self._refresh(layout=True, scroll=True)
