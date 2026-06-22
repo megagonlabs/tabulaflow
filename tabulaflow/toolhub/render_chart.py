@@ -1,4 +1,8 @@
-"""Tool that renders a chart from a Vega-Lite spec using plotext."""
+"""Tool that attaches a Vega-Lite chart spec to a query result.
+
+Simple x/y specs also get a plotext terminal preview here; the full chart
+renders in the browser (see ``tabulaflow.app.dump.render_chart_html``).
+"""
 
 from __future__ import annotations
 
@@ -11,14 +15,15 @@ from pydantic_ai import Tool
 from tabulaflow.toolhub.query_history import QueryHistory
 
 
-_SUPPORTED_MARKS = {"bar", "line", "point", "rect"}
-
+# Marks plotext can draw faithfully as a single x/y series, mapped to the
+# plotext function used to draw each. ``_PLOTEXT_MARKS`` is derived so the two
+# never drift.
 _MARK_TO_PLOTEXT = {
     "bar": "bar",
     "line": "line",
     "point": "scatter",
-    "rect": "bar",
 }
+_PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
 
 # Largest result that may be charted. The data is embedded inline in the
 # browser HTML, so beyond this the file balloons and Vega janks; a chart over
@@ -26,8 +31,6 @@ _MARK_TO_PLOTEXT = {
 # rather than truncating (a partial chart would silently misrepresent the data).
 _MAX_CHART_ROWS = 20_000
 
-# Marks plotext can draw faithfully as a single x/y series.
-_PLOTEXT_MARKS = {"bar", "line", "point"}
 # Top-level keys that make a spec multi-view (no single mark to preview).
 _MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
 # Encoding channels that, when bound to a field, reshape the chart beyond a
@@ -83,8 +86,8 @@ def parse_vegalite_spec(spec: dict[str, Any]) -> tuple[str, str, str, str]:
     else:
         mark_type = str(mark_raw)
 
-    if mark_type not in _SUPPORTED_MARKS:
-        supported = ", ".join(sorted(_SUPPORTED_MARKS))
+    if mark_type not in _PLOTEXT_MARKS:
+        supported = ", ".join(sorted(_PLOTEXT_MARKS))
         raise ValueError(f"unsupported mark '{mark_type}'. Supported: {supported}")
 
     encoding = spec.get("encoding", {})
@@ -227,7 +230,7 @@ def render_plotext(
     return str(plt.build())
 
 
-class RenderPlotextChartTool:
+class RenderChartTool:
     """Attach a Vega-Lite chart spec to a stored query result.
 
     Validates the spec against the result DataFrame and stores it on the
