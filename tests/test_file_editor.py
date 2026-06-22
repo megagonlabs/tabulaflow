@@ -12,6 +12,30 @@ def editor(tmp_path: Path) -> FileEditorTool:
     return FileEditorTool(str(tmp_path))
 
 
+def _make_pdf(text: str) -> bytes:
+    """Build a minimal valid single-page PDF with the given text in a content stream."""
+    stream = f"BT /F1 24 Tf 20 100 Td ({text}) Tj ET".encode()
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 300 200] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n%s\nendstream" % (len(stream), stream),
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out = bytearray(b"%PDF-1.4\n")
+    offsets = []
+    for i, body in enumerate(objs, 1):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n%s\nendobj\n" % (i, body)
+    xref_off = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1)
+    for off in offsets:
+        out += b"%010d 00000 n \n" % off
+    out += b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF" % (len(objs) + 1, xref_off)
+    return bytes(out)
+
+
 class TestView:
     async def test_view_file(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "a.txt").write_text("alpha\nbeta\ngamma\n")
@@ -115,6 +139,46 @@ class TestPathSafety:
         out = await editor("write_file", "../escape.txt", file_text="x")
         assert "(error" in out
         assert not (tmp_path.parent / "escape.txt").exists()
+
+
+class TestPdf:
+    async def test_view_pdf_extracts_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("HELLO_PDF_TEST"))
+        out = await editor("view", "doc.pdf")
+        assert "(error" not in out
+        assert "PDF: doc.pdf" in out
+        assert "--- Page 1 ---" in out
+        assert "HELLO_PDF_TEST" in out
+
+    async def test_view_pdf_detected_by_magic_bytes(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.bin").write_bytes(_make_pdf("MAGIC_DETECTED"))
+        out = await editor("view", "doc.bin")
+        assert "MAGIC_DETECTED" in out
+
+    async def test_view_pdf_page_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
+        out = await editor("view", "doc.pdf", view_range=[1, 1])
+        assert "ONLY_PAGE" in out and "of 1 with text" in out
+
+    async def test_write_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))
+        out = await editor("write_file", "doc.pdf", file_text="hi")
+        assert "(error" in out and "read-only" in out
+
+    async def test_str_replace_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))
+        out = await editor("str_replace", "doc.pdf", old_str="a", new_str="b")
+        assert "(error" in out and "read-only" in out
+
+    async def test_no_text_layer_notice(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "blank.pdf").write_bytes(_make_pdf(""))
+        out = await editor("view", "blank.pdf")
+        assert "(error" in out and "no extractable text" in out
+
+    async def test_malformed_pdf(self, editor: FileEditorTool, tmp_path: Path) -> None:
+        (tmp_path / "bad.pdf").write_bytes(b"%PDF-1.4\nnot a real pdf")
+        out = await editor("view", "bad.pdf")
+        assert "(error" in out
 
 
 class TestUnknownCommand:

@@ -7,6 +7,7 @@ validated to prevent directory traversal.
 Adapted from the Anthropic/OpenHands ``str_replace_editor`` pattern.
 """
 
+import asyncio
 import os
 import re
 from pathlib import Path
@@ -175,6 +176,56 @@ class FileEditorTool:
             return self._error(f"{path} does not exist.")
         return self._view_file(resolved, path, view_range)
 
+    @staticmethod
+    def _is_pdf(resolved: Path) -> bool:
+        """Detect a PDF by extension or ``%PDF-`` magic bytes."""
+        if resolved.suffix.lower() == ".pdf":
+            return True
+        try:
+            with open(resolved, "rb") as f:
+                return f.read(5) == b"%PDF-"
+        except OSError:
+            return False
+
+    async def _view_pdf(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
+        """View a PDF as extracted text (pypdf), the same way the web browser does.
+
+        Text-layer extraction only: scanned/image-only PDFs have no text and
+        return a clear notice rather than empty output. ``view_range`` selects a
+        *page* range here, not lines.
+        """
+        from tabulaflow.toolhub.pdf_extract import extract_pdf_text
+
+        if not resolved.is_file():
+            return self._error(f"{path} does not exist.")
+        try:
+            data = resolved.read_bytes()
+        except OSError as e:
+            return self._error(f"could not read {path}: {e}")
+
+        try:
+            _, body = await asyncio.to_thread(extract_pdf_text, data)
+        except Exception as e:
+            return self._error(f"could not parse {path} as a PDF: {e}")
+        if not body:
+            return self._error(f"{path} has no extractable text layer (likely scanned or image-only).")
+
+        pages = [p for p in re.split(r"\n\n(?=--- Page \d+ ---)", body) if p.strip()]
+        total = len(pages)
+        result = self._parse_range(view_range, total)
+        if isinstance(result, str):
+            return result
+        lo, hi = result
+        selected = "\n\n".join(pages[lo : hi + 1]).strip()
+        if len(selected) > MAX_RESPONSE_CHARS:
+            selected = selected[:MAX_RESPONSE_CHARS] + "\n\n... (truncated — use view_range to view specific pages)"
+
+        if view_range:
+            header = f"PDF: {path} (pages {lo + 1}-{min(hi + 1, total)} of {total} with text)\n"
+        else:
+            header = f"PDF: {path} ({total} page(s) with text)\n"
+        return header + selected
+
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
         resolved.parent.mkdir(parents=True, exist_ok=True)
@@ -239,6 +290,8 @@ class FileEditorTool:
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
+          A PDF is shown as its extracted text (text-layer only — a scanned/image-only PDF
+          returns a no-text notice); PDFs are read-only.
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
           ``old_str`` must match exactly (whitespace included) and be unique, unless
@@ -256,16 +309,21 @@ class FileEditorTool:
             replace_all: For ``str_replace``, replace every occurrence instead of
                 requiring ``old_str`` to be unique.
             view_range: Optional ``[start, end]`` for ``view`` (1-indexed,
-                end=-1 means last). For files, selects a line range; for
-                directories, selects an entry range for pagination.
+                end=-1 means last). For files, selects a line range; for PDFs, a
+                page range; for directories, an entry range for pagination.
         """
         try:
             resolved = self._resolve(path)
         except ValueError as e:
             return self._error(str(e))
 
+        if command in ("write_file", "str_replace") and self._is_pdf(resolved):
+            return self._error(f"{path} is a PDF — PDFs are read-only; use the view command.")
+
         if command == "view":
             self._metrics.num_view += 1
+            if self._is_pdf(resolved):
+                return await self._view_pdf(resolved, path, view_range)
             return self._view(resolved, path, view_range)
         elif command == "write_file":
             if file_text is None:
