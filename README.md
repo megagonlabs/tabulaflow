@@ -328,6 +328,7 @@ June 21
 - [ ] Open visualization in browser
 
 - [ ] local pdf
+- [ ] Tune prompt for non-data tasks
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
