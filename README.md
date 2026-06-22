@@ -325,10 +325,14 @@ June 21
 - [x] Improve tool progress display, +N -M for file edits
 - [x] Remove create_dataset tool
 - [x] is transfer_record needed? -> yes
-- [ ] Open visualization in browser
 
-- [ ] local pdf
+June 22
+- [x] Support viewing local pdf in file_editor tool
+- [ ] Open visualization in browser
+- [ ] Improve tool progress display for all tools
 - [ ] Tune prompt for non-data tasks
+- [ ] Chrome browser
+
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
@@ -336,7 +340,6 @@ June 21
 - [ ] Guard against long messages and context overflow
 - [ ] Context for canonicalization (e.g. pool vs swimming)
 - [ ] Offload truncated cell + read_message tool
-- [ ] clickable url in browser table
 - [ ] Inlucde table schema for add_canonical_name tool
 - [ ] extraction tool display
 - [ ] Remove registry variant of extraction and run_subagent_for_each_row tools
@@ -355,19 +358,15 @@ June 21
   - [ ] /reconnect
   - [ ] Session resume
   - [ ] Semantic join - cross join
-  - [ ] Data export
   - [ ] Support interrupting preview loading
   - [ ] Pass db doc on connect for small dbs?
   - [ ] Multimodal data processing in subagent
   - [ ] Disable compression for small dbs?
   - [ ] Enriched with other data in huggingface repo
-  - [ ] Show query latency
   - [ ] NL tool progress
   - [ ] "connect to data" instead of "paste data"
   - [ ] Consider huggingface compatibility when designing export format
   - [ ] Pagination for direct data browsing
-  - [ ] Video playing in full screen not working
-  - [ ] Multiple red colors for error messages
 - Data/Cell/Query Browser
   - [ ] Support multi-modal data browsing (images, audio, video, etc.)
   - [ ] Query browser - show language and database
