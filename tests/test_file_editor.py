@@ -197,6 +197,23 @@ class TestPdf:
         out = await editor("view", "bad.pdf")
         assert "(error" in out
 
+    async def test_pdf_view_offloaded_with_store(self, tmp_path: Path) -> None:
+        from tabulaflow.toolhub.message_store import MessageStore
+
+        tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
+        (tmp_path / "doc.pdf").write_bytes(_make_pdf("OFFLOAD_ME"))
+        out = await tool("view", "doc.pdf")
+        assert "[message_id=M1]" in out  # mirrored to the store
+        assert "OFFLOAD_ME" in out  # small PDF -> full content kept (make_marked)
+
+    async def test_non_pdf_view_not_offloaded(self, tmp_path: Path) -> None:
+        from tabulaflow.toolhub.message_store import MessageStore
+
+        tool = FileEditorTool(str(tmp_path), message_store=MessageStore().scoped("test"))
+        (tmp_path / "f.txt").write_text("plain text\n")
+        out = await tool("view", "f.txt")
+        assert "message_id" not in out  # only PDFs are mirrored
+
 
 class TestUnknownCommand:
     async def test_unknown_command(self, editor: FileEditorTool) -> None:

@@ -16,6 +16,13 @@ from typing import ClassVar, Literal
 from pydantic import BaseModel
 from pydantic_ai import Tool
 
+from tabulaflow.toolhub.message_store import (
+    MESSAGE_THRESHOLD_CHARS,
+    ScopedMessageStore,
+    make_marked,
+    make_snippet,
+)
+
 
 SNIPPET_CONTEXT_LINES = 4
 MAX_RESPONSE_LINES = 200
@@ -40,10 +47,14 @@ class FileEditorTool:
 
     name: ClassVar = "file_editor"
 
-    def __init__(self, working_dir: str) -> None:
+    def __init__(self, working_dir: str, message_store: ScopedMessageStore | None = None) -> None:
         self._working_dir = Path(working_dir).resolve()
         if not self._working_dir.is_dir():
             raise ValueError(f"working_dir is not a directory: {working_dir}")
+        # When present, a viewed PDF's extracted text is mirrored to the message store
+        # so the agent can run extraction tools on its message_id (PDFs only — other
+        # returns are not mirrored).
+        self._message_store = message_store
         self._metrics = FileEditorToolMetrics()
 
     def _resolve(self, path: str) -> Path:
@@ -220,7 +231,17 @@ class FileEditorTool:
             return self._error(f"{path} has no extractable text layer (likely scanned or image-only).")
 
         npages = len(re.findall(r"--- Page \d+ ---", body))
-        return f"PDF: {path} ({npages} page(s) with text)\n{body}"
+        text = f"PDF: {path} ({npages} page(s) with text)\n{body}"
+
+        # Mirror to the message store (PDFs only) so the agent can extract over the
+        # full document by message_id; long output is replaced with a head+tail
+        # snippet pointing back at the stored row.
+        if self._message_store is None:
+            return text
+        message_id = await self._message_store.add(kind="tool_return", content=text, tool_name=self.name)
+        if len(text) <= MESSAGE_THRESHOLD_CHARS:
+            return make_marked(message_id, text)
+        return make_snippet(message_id, text)
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()

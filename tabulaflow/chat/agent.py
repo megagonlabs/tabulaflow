@@ -412,7 +412,11 @@ class ChatAgent:
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None
             ),
             bash=self._build_bash_tool(),
-            file_editor=(FileEditorTool(str(self.project_dir)) if self.project_dir is not None else None),
+            file_editor=(
+                FileEditorTool(str(self.project_dir), message_store=self._main_scope)
+                if self.project_dir is not None
+                else None
+            ),
         )
 
     def _build_bash_tool(self) -> ExecuteBashTool | None:
@@ -537,11 +541,6 @@ class ChatAgent:
                     snippet_fn=snapshot_snippet,
                     threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
                 ),
-                # Mirror file_editor returns into the message store too, so a viewed
-                # PDF's extracted text is offloaded (content-agnostic head+tail snippet)
-                # and the agent can extract_rows / run_subagent on its message_id —
-                # the same flow as a browsed web PDF.
-                MessageStoreCapability(store=self._main_scope, tool_allowlist=frozenset({"file_editor"})),
             ],
             instructions=self._system_prompt,
             model_settings={
