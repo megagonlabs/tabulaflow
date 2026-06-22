@@ -945,7 +945,6 @@ def render_table_html(
 # Chart HTML rendering (Vega-Lite)
 # ---------------------------------------------------------------------------
 
-_DEFAULT_CHART_HEIGHT = 360
 # Above this row count, render with canvas instead of SVG: thousands of SVG
 # mark nodes bog the browser down, while canvas stays smooth. The render_chart
 # tool caps attachable results well below pathological sizes; this is just the
@@ -959,15 +958,18 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
     "background": "#131720",
     "view": {"stroke": "transparent"},
     "font": "-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-    "title": {"color": "#e4e4e7", "subtitleColor": "#9aa4b2", "fontSize": 15, "fontWeight": 600},
+    "title": {"color": "#e4e4e7", "subtitleColor": "#9aa4b2", "fontSize": 17, "fontWeight": 600},
     "axis": {
         "labelColor": "#9aa4b2",
         "titleColor": "#e4e4e7",
         "gridColor": "#21262d",
         "domainColor": "#21262d",
         "tickColor": "#21262d",
+        "labelFontSize": 12,
+        "titleFontSize": 14,
+        "labelLimit": 160,
     },
-    "legend": {"labelColor": "#9aa4b2", "titleColor": "#e4e4e7"},
+    "legend": {"labelColor": "#9aa4b2", "titleColor": "#e4e4e7", "labelFontSize": 12, "titleFontSize": 13},
     "range": {
         "category": ["#3eb489", "#5ac8fa", "#f5a623", "#bd6cf0", "#f06292", "#4dd0e1", "#aed581", "#ff8a65"],
         "ramp": {"scheme": "greens"},
@@ -982,16 +984,35 @@ _VEGA_DARK_CONFIG: dict[str, object] = {
 }
 
 _CHART_CSS = """
+/* Top-anchored, horizontally-centered column (Notion-style document flow):
+   the card sits just under the banner and is centered left-to-right, capped so
+   it isn't full-bleed on wide monitors. */
+#vis-stage {
+    min-height: calc(100vh - 120px);
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+/* Bounded, centered card — capped so the chart isn't full-bleed on wide
+   monitors. */
 #vis-wrap {
     width: 100%;
+    max-width: 1040px;
     background: #131720;
     border: 1px solid #21262d;
     border-radius: 6px;
-    min-height: calc(100vh - 90px);
     padding: 24px;
     box-sizing: border-box;
 }
-#vis { width: 100%; }
+/* Single-view charts fill a fixed-height card in both dimensions
+   (spec width/height = "container"). */
+#vis-wrap.fill { height: min(72vh, 640px); }
+#vis-wrap.fill #vis,
+#vis-wrap.fill #vis > .vega-embed { width: 100%; height: 100%; }
+/* Multi-view / faceted charts keep their intrinsic size and scroll inside
+   the card (Vega-Lite can't size those to a container). */
+#vis-wrap.content { max-height: calc(100vh - 120px); overflow: auto; }
+#vis-wrap.content #vis { width: 100%; }
 .vis-error { color: #ff7777; white-space: pre-wrap;
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
 /* vega-embed action ("...") menu — dark to match the page. */
@@ -1086,15 +1107,18 @@ def render_chart_html(
     existing_config = spec.get("config")
     spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
     spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
-    # Responsive width + sane default height for a single-cell unit spec only.
+    # A single-cell unit spec fills a bounded card both ways (responsive
+    # width/height = "container"); the spec's own size wins if it set one.
     # Multi-view specs (layer/concat) and faceted ones (top-level facet/repeat,
-    # or a facet/row/column encoding channel) size from their children, where a
-    # top-level "container" width is invalid — leave their geometry alone.
+    # or a facet/row/column encoding channel) can't size to a container, so they
+    # keep their intrinsic size and scroll inside the card.
     encoding = spec.get("encoding")
     has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
-    if "mark" in spec and not has_facet_channel:
-        spec["width"] = "container"
-        spec.setdefault("height", _DEFAULT_CHART_HEIGHT)
+    is_unit_spec = "mark" in spec and not has_facet_channel
+    if is_unit_spec:
+        spec.setdefault("width", "container")
+        spec.setdefault("height", "container")
+    wrap_class = "fill" if is_unit_spec else "content"
 
     vega_js, vega_lite_js, vega_embed_js = _load_vega_assets()
 
@@ -1123,7 +1147,7 @@ def render_chart_html(
     )
     doc = render_page(
         title=title or html_path.stem,
-        body='<div id="vis-wrap"><div id="vis"></div></div>',
+        body=f'<div id="vis-stage"><div id="vis-wrap" class="{wrap_class}"><div id="vis"></div></div></div>',
         head=head,
         scripts=f"<script>{init_js}</script>",
     )

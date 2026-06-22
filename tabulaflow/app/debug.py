@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any
 from tabulaflow.app.widgets import AgentResultWidget
 
 if TYPE_CHECKING:
+    import pandas as pd
     from textual.containers import VerticalScroll
 
     from tabulaflow.app.tui import TabulaflowApp
@@ -1023,167 +1024,166 @@ def _build_debug_multi_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     )
 
 
+def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, object]]]:
+    """Canonical debug chart specs: ``(record_id, label, query, df, spec)``.
+
+    Shared by the TUI debug gallery (``_build_debug_chart_result_widget``) and
+    ``scripts/gen_debug_html.py`` so the inline and browser renderings stay in
+    lockstep. Covers every render path: plotext-renderable (bar/line/scatter)
+    and beyond-plotext (stacked/pie/facet/heatmap).
+    """
+    import pandas as pd
+
+    return [
+        (
+            "QDEBUG_CHART_BAR",
+            "debug_bar",
+            "SELECT genre AS category, COUNT(*) AS count\nFROM movies\nGROUP BY genre\nORDER BY count DESC",
+            pd.DataFrame(
+                {
+                    "category": ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller"],
+                    "count": [42, 35, 58, 21, 29, 18, 33],
+                }
+            ),
+            {
+                "mark": "bar",
+                "encoding": {
+                    "x": {"field": "category", "type": "nominal"},
+                    "y": {"field": "count", "type": "quantitative"},
+                },
+                "title": "Movies by Genre",
+            },
+        ),
+        (
+            "QDEBUG_CHART_LINE",
+            "debug_line",
+            "SELECT month, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month\nORDER BY month",
+            pd.DataFrame(
+                {"month": list(range(1, 13)), "revenue": [120, 135, 128, 160, 172, 168, 190, 205, 198, 210, 225, 240]}
+            ),
+            {
+                "mark": "line",
+                "encoding": {
+                    "x": {"field": "month", "type": "quantitative"},
+                    "y": {"field": "revenue", "type": "quantitative"},
+                },
+                "title": "Monthly Revenue",
+            },
+        ),
+        (
+            "QDEBUG_CHART_SCATTER",
+            "debug_scatter",
+            "SELECT budget_m AS budget, gross_m AS gross\nFROM movies",
+            pd.DataFrame(
+                {
+                    "budget": [10, 25, 40, 55, 70, 90, 120, 150, 180, 200],
+                    "gross": [30, 55, 42, 120, 160, 140, 300, 280, 420, 510],
+                }
+            ),
+            {
+                "mark": "point",
+                "encoding": {
+                    "x": {"field": "budget", "type": "quantitative"},
+                    "y": {"field": "gross", "type": "quantitative"},
+                },
+                "title": "Budget vs Gross",
+            },
+        ),
+        (
+            "QDEBUG_CHART_STACKED",
+            "debug_stacked",
+            "SELECT quarter, region, SUM(sales) AS sales\nFROM sales\nGROUP BY quarter, region",
+            pd.DataFrame(
+                {
+                    "quarter": ["Q1", "Q1", "Q2", "Q2", "Q3", "Q3", "Q4", "Q4"],
+                    "region": ["North", "South"] * 4,
+                    "sales": [120, 90, 150, 110, 170, 130, 200, 160],
+                }
+            ),
+            {
+                "mark": "bar",
+                "encoding": {
+                    "x": {"field": "quarter", "type": "nominal"},
+                    "y": {"field": "sales", "type": "quantitative"},
+                    "color": {"field": "region", "type": "nominal"},
+                },
+                "title": "Quarterly Sales by Region",
+            },
+        ),
+        (
+            "QDEBUG_CHART_PIE",
+            "debug_pie",
+            "SELECT vendor, share\nFROM market_share",
+            pd.DataFrame({"vendor": ["AWS", "Azure", "GCP", "Other"], "share": [42, 28, 18, 12]}),
+            {
+                "mark": "arc",
+                "encoding": {
+                    "theta": {"field": "share", "type": "quantitative"},
+                    "color": {"field": "vendor", "type": "nominal"},
+                },
+                "title": "Cloud Market Share",
+            },
+        ),
+        (
+            "QDEBUG_CHART_FACET",
+            "debug_facet",
+            "SELECT month, region, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month, region",
+            pd.DataFrame(
+                [
+                    {"month": m, "region": r, "revenue": (i + 1) * base + (20 if r == "West" else 0)}
+                    for r, base in (("West", 40), ("East", 30))
+                    for i, m in enumerate(["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
+                ]
+            ),
+            {
+                "facet": {"field": "region", "type": "nominal", "columns": 2},
+                "spec": {
+                    "mark": "line",
+                    "encoding": {
+                        "x": {"field": "month", "type": "ordinal"},
+                        "y": {"field": "revenue", "type": "quantitative"},
+                    },
+                },
+                "title": "Revenue by Month, per Region",
+            },
+        ),
+        (
+            "QDEBUG_CHART_HEATMAP",
+            "debug_heatmap",
+            "SELECT day, hour, COUNT(*) AS value\nFROM events\nGROUP BY day, hour",
+            pd.DataFrame(
+                [
+                    {"day": d, "hour": h, "value": (idx * 7 + h * 3) % 11}
+                    for idx, d in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri"])
+                    for h in range(0, 24, 3)
+                ]
+            ),
+            {
+                "mark": "rect",
+                "encoding": {
+                    "x": {"field": "hour", "type": "ordinal"},
+                    "y": {"field": "day", "type": "nominal"},
+                    "color": {"field": "value", "type": "quantitative"},
+                },
+                "title": "Activity Heatmap",
+            },
+        ),
+    ]
+
+
 def _build_debug_chart_result_widget(app: TabulaflowApp) -> AgentResultWidget:
     """A gallery of chart specs covering every render path.
 
     Step through the records (↑↓) to exercise each: simple bar/line/scatter
     preview inline via plotext; stacked-bar/pie/facet/heatmap show the
-    "open in browser" card (Enter → ``b`` renders the real chart). Field
-    casing is intentionally mixed to exercise browser-side normalization.
+    "open in browser" card (Enter → ``b`` renders the real chart).
     """
-    import pandas as pd
-
     from tabulaflow.chat import ChatResult, ChatResultRecord
 
-    records: list[ChatResultRecord] = []
-
-    def add(record_id: str, label: str, query: str, df: pd.DataFrame, spec: dict[str, object]) -> None:
-        records.append(
-            ChatResultRecord(
-                record_id=record_id,
-                label=label,
-                query=query,
-                df=df,
-                chart_spec=spec,
-                query_lexer="sql",
-            )
-        )
-
-    # --- Plotext-renderable (preview inline) ---
-    add(
-        "QDEBUG_CHART_BAR",
-        "debug_bar",
-        "SELECT genre AS category, COUNT(*) AS count\nFROM movies\nGROUP BY genre\nORDER BY count DESC",
-        pd.DataFrame(
-            {
-                "category": ["Action", "Comedy", "Drama", "Horror", "Sci-Fi", "Romance", "Thriller"],
-                "count": [42, 35, 58, 21, 29, 18, 33],
-            }
-        ),
-        {
-            "mark": "bar",
-            "encoding": {
-                "x": {"field": "category", "type": "nominal"},
-                "y": {"field": "count", "type": "quantitative"},
-            },
-            "title": "Movies by Genre",
-        },
-    )
-    add(
-        "QDEBUG_CHART_LINE",
-        "debug_line",
-        "SELECT month, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month\nORDER BY month",
-        pd.DataFrame(
-            {"month": list(range(1, 13)), "revenue": [120, 135, 128, 160, 172, 168, 190, 205, 198, 210, 225, 240]}
-        ),
-        {
-            "mark": "line",
-            "encoding": {
-                "x": {"field": "month", "type": "quantitative"},
-                "y": {"field": "revenue", "type": "quantitative"},
-            },
-            "title": "Monthly Revenue",
-        },
-    )
-    add(
-        "QDEBUG_CHART_SCATTER",
-        "debug_scatter",
-        "SELECT budget_m AS budget, gross_m AS gross\nFROM movies",
-        pd.DataFrame(
-            {
-                "budget": [10, 25, 40, 55, 70, 90, 120, 150, 180, 200],
-                "gross": [30, 55, 42, 120, 160, 140, 300, 280, 420, 510],
-            }
-        ),
-        {
-            "mark": "point",
-            "encoding": {
-                "x": {"field": "budget", "type": "quantitative"},
-                "y": {"field": "gross", "type": "quantitative"},
-            },
-            "title": "Budget vs Gross",
-        },
-    )
-
-    # --- Beyond plotext (card inline; real chart in browser) ---
-    add(
-        "QDEBUG_CHART_STACKED",
-        "debug_stacked",
-        "SELECT quarter, region, SUM(sales) AS sales\nFROM sales\nGROUP BY quarter, region",
-        pd.DataFrame(
-            {
-                "quarter": ["Q1", "Q1", "Q2", "Q2", "Q3", "Q3", "Q4", "Q4"],
-                "region": ["North", "South"] * 4,
-                "sales": [120, 90, 150, 110, 170, 130, 200, 160],
-            }
-        ),
-        {
-            "mark": "bar",
-            "encoding": {
-                "x": {"field": "quarter", "type": "nominal"},
-                "y": {"field": "sales", "type": "quantitative"},
-                "color": {"field": "region", "type": "nominal"},
-            },
-            "title": "Quarterly Sales by Region",
-        },
-    )
-    add(
-        "QDEBUG_CHART_PIE",
-        "debug_pie",
-        "SELECT vendor, share\nFROM market_share",
-        pd.DataFrame({"vendor": ["AWS", "Azure", "GCP", "Other"], "share": [42, 28, 18, 12]}),
-        {
-            "mark": "arc",
-            "encoding": {
-                "theta": {"field": "share", "type": "quantitative"},
-                "color": {"field": "vendor", "type": "nominal"},
-            },
-            "title": "Cloud Market Share",
-        },
-    )
-    facet_rows = [
-        {"month": m, "region": r, "revenue": (i + 1) * base + (20 if r == "West" else 0)}
-        for r, base in (("West", 40), ("East", 30))
-        for i, m in enumerate(["Jan", "Feb", "Mar", "Apr", "May", "Jun"])
+    records = [
+        ChatResultRecord(record_id=rid, label=label, query=query, df=df, chart_spec=spec, query_lexer="sql")
+        for rid, label, query, df, spec in debug_chart_fixtures()
     ]
-    add(
-        "QDEBUG_CHART_FACET",
-        "debug_facet",
-        "SELECT month, region, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month, region",
-        pd.DataFrame(facet_rows),
-        {
-            "facet": {"field": "region", "type": "nominal", "columns": 2},
-            "spec": {
-                "mark": "line",
-                "encoding": {
-                    "x": {"field": "month", "type": "ordinal"},
-                    "y": {"field": "revenue", "type": "quantitative"},
-                },
-            },
-            "title": "Revenue by Month, per Region",
-        },
-    )
-    heat_rows = [
-        {"day": d, "hour": h, "value": (idx * 7 + h * 3) % 11}
-        for idx, d in enumerate(["Mon", "Tue", "Wed", "Thu", "Fri"])
-        for h in range(0, 24, 3)
-    ]
-    add(
-        "QDEBUG_CHART_HEATMAP",
-        "debug_heatmap",
-        "SELECT day, hour, COUNT(*) AS value\nFROM events\nGROUP BY day, hour",
-        pd.DataFrame(heat_rows),
-        {
-            "mark": "rect",
-            "encoding": {
-                "x": {"field": "hour", "type": "ordinal"},
-                "y": {"field": "day", "type": "nominal"},
-                "color": {"field": "value", "type": "quantitative"},
-            },
-            "title": "Activity Heatmap",
-        },
-    )
-
     result = ChatResult(
         text="Debug charts — simple specs preview inline; rich specs show a card (Enter, then `b` to open in browser).",
         records=records,
