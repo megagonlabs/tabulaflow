@@ -12,7 +12,7 @@ from tabulaflow.app.dump import render_chart_html
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
-    RenderPlotextChartTool,
+    RenderChartTool,
     chart_type_label,
     is_plotext_renderable,
 )
@@ -130,27 +130,27 @@ class TestRenderChartTool:
     async def test_simple_bar_attaches(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderPlotextChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "Bar chart attached" in msg
         assert (await history.last()).vegalite_spec == spec
 
     async def test_rich_spec_attaches_for_browser(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
-        msg = await RenderPlotextChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "renders in the browser" in msg
         assert (await history.last()).vegalite_spec == spec
 
     async def test_oversized_result_refused_without_attaching(self) -> None:
         history = await _history_with(pd.DataFrame({"a": range(20_001), "b": range(20_001)}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
-        msg = await RenderPlotextChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "too large" in msg
         assert (await history.last()).vegalite_spec is None
 
     async def test_unknown_column_errors_without_attaching(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "nope"}, "y": {"field": "b"}}}
-        msg = await RenderPlotextChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         assert (await history.last()).vegalite_spec is None

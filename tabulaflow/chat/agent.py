@@ -65,7 +65,7 @@ if TYPE_CHECKING:
         RegistryGetTableSchemaTool,
         RegistryRunQueryTool,
         RegistryTransferRecordTool,
-        RenderChartTool,
+        RenderPlotextChartTool,
         RunSubagentForEachRowTool,
         WebBrowserTool,
     )
@@ -261,7 +261,7 @@ class _Toolset:
     run_subagent_for_each_row: RunSubagentForEachRowTool | None
     extract_rows_from_documents: ExtractRowsFromDocumentsTool | None
     add_canonical_name: AddCanonicalNameTool
-    render_chart: RenderChartTool
+    render_chart: RenderPlotextChartTool
     web_browser: WebBrowserTool
     # Host-facing tools; ``None`` when the app didn't supply the dirs they need.
     connect_data_source: ConnectDataSourceTool | None
@@ -360,7 +360,7 @@ class ChatAgent:
             RegistryGetTableSchemaTool,
             RegistryRunQueryTool,
             RegistryTransferRecordTool,
-            RenderChartTool,
+            RenderPlotextChartTool,
             RunSubagentForEachRowTool,
             WebBrowserTool,
         )
@@ -406,7 +406,7 @@ class ChatAgent:
                 model_settings=_SUBAGENT_MODEL_SETTINGS,
                 trajectory_log_dir=subagent_dir,
             ),
-            render_chart=RenderChartTool(history=self._query_history),
+            render_chart=RenderPlotextChartTool(history=self._query_history),
             web_browser=WebBrowserTool(),
             connect_data_source=(
                 ConnectDataSourceTool(self.registry, self.data_dir) if self.data_dir is not None else None

@@ -1025,6 +1025,21 @@ _CHART_CSS = """
 .vega-embed .vega-actions a:hover { background: #1f2532; color: #3eb489; }
 .vega-embed summary { color: #6a737d; }
 .vega-embed summary:hover { color: #3eb489; }
+/* Bound-input widgets (slider/checkbox/radio/dropdown/text). ``accent-color``
+   is inherited, so one declaration recolors the range track+thumb, checkboxes,
+   and radios from the browser's default blue to mint; selects/text inputs have
+   no accent fill, so they're dark-themed explicitly. */
+.vega-bindings { accent-color: #3eb489; color: #e4e4e7; font-size: 13px; margin-top: 14px; }
+.vega-bindings .vega-bind { margin: 4px 0; }
+.vega-bindings .vega-bind-name { color: #9aa4b2; margin-right: 8px; }
+.vega-bindings select,
+.vega-bindings input[type="text"],
+.vega-bindings input[type="number"] {
+    background: #0f1117; color: #e4e4e7; border: 1px solid #21262d;
+    border-radius: 4px; padding: 2px 6px;
+}
+.vega-bindings select:focus,
+.vega-bindings input:focus { outline: none; border-color: #3eb489; }
 """
 
 
