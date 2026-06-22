@@ -83,6 +83,7 @@ dev = [
     "types-aiofiles>=24.1.0.20250516",
     "types-pyyaml>=6.0.12.20260518",
     "import-linter>=2.11",
+    "pillow>=11.3.0",
 ]
 streamlit = ["streamlit>=1.50.0"]
 
