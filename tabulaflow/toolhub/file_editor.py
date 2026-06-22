@@ -190,14 +190,21 @@ class FileEditorTool:
             return False
 
     async def _view_pdf(self, resolved: Path, path: str, view_range: list[int] | None) -> str:
-        """View a PDF as extracted text (pypdf), the same way the web browser does.
+        """View a PDF as its full extracted text (pypdf), the same way the web browser does.
 
-        Text-layer extraction only: scanned/image-only PDFs have no text and
-        return a clear notice rather than empty output. ``view_range`` selects a
-        *page* range here, not lines.
+        Returns the whole document (page-marked) untruncated: when offloaded to the
+        message store it lands in ``_internal.messages`` so the agent can run
+        ``extract_rows_from_documents`` / ``run_subagent_for_each_row`` over it.
+        Text-layer extraction only — scanned/image-only PDFs return a clear notice.
+        ``view_range`` does not apply (the full document is returned).
         """
         from tabulaflow.toolhub.pdf_extract import extract_pdf_text
 
+        if view_range is not None:
+            return self._error(
+                "view_range is not supported for PDFs — view returns the full document text. "
+                "Re-run view without view_range."
+            )
         if not resolved.is_file():
             return self._error(f"{path} does not exist.")
         try:
@@ -212,21 +219,8 @@ class FileEditorTool:
         if not body:
             return self._error(f"{path} has no extractable text layer (likely scanned or image-only).")
 
-        pages = [p for p in re.split(r"\n\n(?=--- Page \d+ ---)", body) if p.strip()]
-        total = len(pages)
-        result = self._parse_range(view_range, total)
-        if isinstance(result, str):
-            return result
-        lo, hi = result
-        selected = "\n\n".join(pages[lo : hi + 1]).strip()
-        if len(selected) > MAX_RESPONSE_CHARS:
-            selected = selected[:MAX_RESPONSE_CHARS] + "\n\n... (truncated — use view_range to view specific pages)"
-
-        if view_range:
-            header = f"PDF: {path} (pages {lo + 1}-{min(hi + 1, total)} of {total} with text)\n"
-        else:
-            header = f"PDF: {path} ({total} page(s) with text)\n"
-        return header + selected
+        npages = len(re.findall(r"--- Page \d+ ---", body))
+        return f"PDF: {path} ({npages} page(s) with text)\n{body}"
 
     def _write_file(self, resolved: Path, path: str, file_text: str) -> str:
         is_new = not resolved.exists()
@@ -292,8 +286,8 @@ class FileEditorTool:
 
         Commands:
         - ``view``: View a file (with optional line range) or list a directory (up to 2 levels deep).
-          A PDF is shown as its extracted text (text-layer only — a scanned/image-only PDF
-          returns a no-text notice); PDFs are read-only.
+          A PDF is shown as its full extracted text (text-layer only — a scanned/image-only PDF
+          returns a no-text notice). PDFs are read-only and ignore ``view_range``.
         - ``write_file``: Create or overwrite a file with the given content.
         - ``str_replace``: Replace an exact occurrence of ``old_str`` with ``new_str``.
           ``old_str`` must match exactly (whitespace included) and be unique, unless
@@ -311,8 +305,8 @@ class FileEditorTool:
             replace_all: For ``str_replace``, replace every occurrence instead of
                 requiring ``old_str`` to be unique.
             view_range: Optional ``[start, end]`` for ``view`` (1-indexed,
-                end=-1 means last). For files, selects a line range; for PDFs, a
-                page range; for directories, an entry range for pagination.
+                end=-1 means last). For files, selects a line range; for
+                directories, an entry range for pagination. Not used for PDFs.
         """
         try:
             resolved = self._resolve(path)

@@ -166,15 +166,16 @@ class TestPdf:
         out = await editor("view", "doc.bin")
         assert "MAGIC_DETECTED" in out
 
-    async def test_view_pdf_page_range(self, editor: FileEditorTool, tmp_path: Path) -> None:
+    async def test_view_pdf_returns_full_text(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await editor("view", "doc.pdf", view_range=[1, 1])
-        assert "ONLY_PAGE" in out and "of 1 with text" in out
+        out = await editor("view", "doc.pdf")
+        assert "(error" not in out
+        assert "1 page(s) with text" in out and "ONLY_PAGE" in out
 
-    async def test_view_pdf_page_out_of_range_errors(self, editor: FileEditorTool, tmp_path: Path) -> None:
+    async def test_view_pdf_view_range_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("ONLY_PAGE"))
-        out = await editor("view", "doc.pdf", view_range=[2, 3])
-        assert "(error" in out and "past the end" in out
+        out = await editor("view", "doc.pdf", view_range=[1, 2])
+        assert "(error" in out and "not supported for PDFs" in out
 
     async def test_write_pdf_rejected(self, editor: FileEditorTool, tmp_path: Path) -> None:
         (tmp_path / "doc.pdf").write_bytes(_make_pdf("X"))

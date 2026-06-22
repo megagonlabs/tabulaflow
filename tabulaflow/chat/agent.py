@@ -147,10 +147,11 @@ Use `workspace` for data transformation and semantic operations (e.g., LLM-based
 - When there are multiple alternative sources, choose the most commonly used one.
 - If full completeness is not achievable, deliver what you collected and tell the user what is missing and why.
 - For large-scale or context-heavy collection, decompose the work into independent subtasks and run them in parallel with `run_subagent_for_each_row` rather than going over each item one by one yourself — this avoids context bloat and reduces latency (see <concurrent_task_handling>).
-- To turn unstructured content into structured rows — documents you've loaded into `workspace` (PDFs, long text; see <loading_data>) or web pages — use the most efficient approach that still guarantees completeness and accuracy:
+- To turn unstructured content into structured rows — web pages, local PDFs, or text already in `workspace` — open the document, then run extraction over its content:
+  - Web pages/PDFs: gather with the `browser_*` tools (prefer direct URLs over search engines; default to duckduckgo.com if you must search).
+  - Local PDFs: `view` them with `file_editor` (returns the extracted text).
   - When the target data follows a simple, consistent textual pattern, use regex parsing, falling back to `extract_rows_from_documents` if the pattern proves unreliable.
   - When the data is irregularly formatted or requires semantic understanding to extract, use LLM-based `extract_rows_from_documents`.
-- For data on the web, first gather the pages with the `browser_*` tools (prefer direct URLs over search engines; default to duckduckgo.com if you must search), then extract as above.
 - Normalize collected values so the dataset is clean and queryable:
   - Numeric values: store in a numeric column (never as strings) and convert to one consistent unit, encoding that unit in the column name (e.g., `price_usd`, `weight_kg`).
   - String values: normalize to a canonical form where possible — consistent casing, spelling, and format; use `add_canonical_name` to unify entity variants across rows.
@@ -187,7 +188,7 @@ General:
 Paths, the shell, and files:
 - Relative paths — in `run_query` (reads and `COPY`) and in the shell — resolve against the user's project directory. Keep intermediate files in the scratch directory (OUTSIDE the project); do NOT write to the project directory unless the user explicitly asks you to save or export there. Reference scratch files by their absolute path (given in <session_paths>); `$SCRATCH` is a shell variable and does NOT expand in SQL, so put that literal absolute path in the query.
 - Shell (`execute_bash`): use only when plain SQL can't gather or transform the data (heterogeneous formats, custom parsing, pandas); it has network access and can explore the project's files (`ls`/`find`/`head`). Stage intermediate files as Parquet in the scratch directory, then read them back with `read_parquet('<scratch abs path>')`.
-- File editor (`file_editor`): `view` / `write_file` / `str_replace` for text files, paths relative to the project. Use it to author or edit files the user wants kept in the project (e.g. dbt models, scripts) — not to stage intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell `sed`/`echo` for writing or editing files.
+- File editor (`file_editor`): `view` / `write_file` / `str_replace` for text files, paths relative to the project. Use it to author or edit files the user wants kept in the project (e.g. dbt models, scripts) — not to stage intermediate data (that goes to scratch via DuckDB/shell). Prefer it over shell `sed`/`echo` for writing or editing files. `view` also reads a local PDF as its full extracted text (read-only).
 - Before running any destructive or irreversible command (deleting or overwriting files, changing system state), stop and ask the user to confirm first.
 
 Inspecting schemas and data:
@@ -536,6 +537,11 @@ class ChatAgent:
                     snippet_fn=snapshot_snippet,
                     threshold_chars=SNAPSHOT_SNIPPET_THRESHOLD_CHARS,
                 ),
+                # Mirror file_editor returns into the message store too, so a viewed
+                # PDF's extracted text is offloaded (content-agnostic head+tail snippet)
+                # and the agent can extract_rows / run_subagent on its message_id —
+                # the same flow as a browsed web PDF.
+                MessageStoreCapability(store=self._main_scope, tool_allowlist=frozenset({"file_editor"})),
             ],
             instructions=self._system_prompt,
             model_settings={
