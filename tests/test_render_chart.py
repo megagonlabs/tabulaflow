@@ -229,6 +229,13 @@ class TestRenderPlotextDataTypes:
         out = render_plotext("bar", "sales", "product", "", df, console_width=60, console_height=18)
         assert isinstance(out, str) and out.strip()
 
+    def test_horizontal_bar_first_row_on_top(self) -> None:
+        # the browser places the first data row at the top; plotext stacks bottom-up,
+        # so the renderer reverses to match — the first row's label sits above the last
+        df = pd.DataFrame({"score": [5, 1], "name": ["TOP", "BOTTOM"]})
+        out = render_plotext("bar", "score", "name", "", df, console_width=60, console_height=14)
+        assert out.index("TOP") < out.index("BOTTOM")
+
     def test_line_with_non_numeric_y_not_renderable(self) -> None:
         # no numeric measure axis -> caller degrades to the browser card
         df = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})

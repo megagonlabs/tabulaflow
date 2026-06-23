@@ -269,8 +269,12 @@ def render_plotext(
             plt.bar([str(v) for v in x_data], y_data, **color_kw)
             plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
         elif _is_numeric_series(x_data):
-            plt.bar([str(v) for v in y_data], x_data, orientation="horizontal", **color_kw)
-            plt.yticks(positions, _truncate_tick_labels(y_data, effective_width, stacked=True))
+            # plotext stacks the first category at the bottom; reverse so the first
+            # data row sits at the top, matching the browser (Vega-Lite) and natural
+            # reading order.
+            rev_cats = list(reversed(y_data))
+            plt.bar([str(v) for v in rev_cats], list(reversed(x_data)), orientation="horizontal", **color_kw)
+            plt.yticks(positions, _truncate_tick_labels(rev_cats, effective_width, stacked=True))
         else:
             raise ChartNotRenderable(f"bar chart has no numeric axis (x='{x_field}', y='{y_field}')")
     elif mark in ("line", "scatter"):
