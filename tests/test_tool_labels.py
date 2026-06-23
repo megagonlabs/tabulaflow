@@ -90,10 +90,11 @@ class TestStyledLabel:
         text = _styled_label("file_editor", "View model-2.sql")
         assert text.spans == []
 
-    def test_error_outcome_reddened(self) -> None:
+    def test_error_outcome_not_colored(self) -> None:
+        # tool failures aren't reddened — the "error" suffix stays dim like the label
         text = _styled_label("execute_bash", "Run pytest → error")
-        styled = {text.plain[s.start : s.end]: s.style for s in text.spans}
-        assert styled["error"] == DIFF_REMOVED
+        assert text.style == "dim"
+        assert text.spans == []
 
 
 class TestSummarizeOutcome:

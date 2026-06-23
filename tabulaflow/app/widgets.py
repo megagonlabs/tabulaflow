@@ -638,26 +638,20 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
 
 
 def _styled_label(name: str, label: str) -> Text:
-    """Render a step label as dim text with two accents: a trailing ``→ error``
-    outcome in red (any tool), and the file editor's git diffstat — ``+N`` green,
-    ``-M`` red. Diffstat coloring is scoped to the file editor so arithmetic in a SQL
-    snippet (``SELECT -1``) is never mistaken for a removed-line count."""
-    has_error = label.endswith("→ error")
-    body = label[: -len("error")] if has_error else label
-    has_diffstat = name == "file_editor" and bool(_DIFFSTAT_TOKEN_RE.search(body))
-    if not has_error and not has_diffstat:
+    """Render a step label as dim text, coloring the file editor's git diffstat —
+    ``+N`` green, ``-M`` red. Scoped to the file editor so arithmetic in a SQL snippet
+    (``SELECT -1``) is never mistaken for a removed-line count. Tool failures are not
+    reddened — the ``error`` outcome stays dim like the rest of the label."""
+    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(label):
         return Text(label, style="dim")
     text = Text()
     pos = 0
-    if has_diffstat:
-        for m in _DIFFSTAT_TOKEN_RE.finditer(body):
-            text.append(body[pos : m.start()], style="dim")
-            token = m.group(1)
-            text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
-            pos = m.end()
-    text.append(body[pos:], style="dim")
-    if has_error:
-        text.append("error", style=DIFF_REMOVED)
+    for m in _DIFFSTAT_TOKEN_RE.finditer(label):
+        text.append(label[pos : m.start()], style="dim")
+        token = m.group(1)
+        text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
+        pos = m.end()
+    text.append(label[pos:], style="dim")
     return text
 
 
