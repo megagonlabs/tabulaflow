@@ -224,7 +224,7 @@ def _build_chart_card(spec: dict[str, object], *, height: int | None) -> Rendera
 
     type_label = chart_type_label(spec)
     title = _spec_title(spec)
-    lines: list[RenderableType] = [Text(title or type_label, style="bold", justify="center")]
+    lines: list[RenderableType] = [Text(title or type_label, style="dim bold", justify="center")]
     if title:
         lines.append(Text(type_label, style="dim", justify="center"))
     lines.append(Text(""))
