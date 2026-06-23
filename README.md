@@ -333,6 +333,7 @@ June 22
 - [ ] Tune prompt for non-data tasks
 - [ ] Chrome browser
 
+- [ ] Remote server support
 - [ ] sample_data disconnect policy
 - [ ] Dump to /tmp vs session dir?
 - [ ] Banner - /connect pre-built data sources as most important use case
