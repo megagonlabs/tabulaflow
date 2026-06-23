@@ -59,10 +59,12 @@ _GROUPING_CHANNELS = (
     "row",
     "facet",
 )
-# Encoding-level keys that make a terminal preview diverge from the browser: data
-# transforms plotext can't compute (it plots raw columns), plus ``sort``, which
-# reorders an axis (the terminal would otherwise show data order).
-_RESHAPING_KEYS = ("aggregate", "bin", "timeUnit", "sort")
+# Encoding-level transforms that change the data plotext would see (it plots raw
+# columns, so these diverge from what Vega computes). ``sort`` is intentionally not
+# here: charted data is virtually always already ordered by the query, so a sorted
+# spec still previews faithfully — losing the preview for every sorted bar chart to
+# cover the rare unsorted case isn't worth it.
+_RESHAPING_KEYS = ("aggregate", "bin", "timeUnit")
 
 _MARK_LABELS = {
     "bar": "Bar chart",
@@ -228,21 +230,15 @@ def _fill_bars_with_background(rendered: str, color: tuple[int, int, int]) -> st
 
 
 def _is_numeric_column(col: pd.Series) -> bool:
-    """True when the column holds real numbers (nullable ``Int64``/``Float64``
+    """True when the column's dtype is numeric (nullable ``Int64``/``Float64``
     included, ``bool`` excluded).
 
     plotext compares x/y values numerically, so a categorical/temporal column
-    (strings, timestamps) must be plotted against integer positions instead. Uses
-    the dtype so a NULL doesn't demote a numeric column to categorical the way a
-    per-value check does; falls back to a per-value scan for object columns of
-    numbers.
+    (strings, timestamps) must be plotted against integer positions instead.
+    Dtype-based, so a NULL doesn't demote a numeric column to categorical the way a
+    per-value check would.
     """
-    if pd.api.types.is_bool_dtype(col):
-        return False
-    if pd.api.types.is_numeric_dtype(col):
-        return True
-    non_null = col.dropna()
-    return len(non_null) > 0 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in non_null)
+    return pd.api.types.is_numeric_dtype(col) and not pd.api.types.is_bool_dtype(col)
 
 
 def _truncate_tick_labels(values: list[Any], width: int, *, stacked: bool = False) -> list[str]:

@@ -36,8 +36,8 @@ class TestIsPlotextRenderable:
             ({"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}, "facet": {"field": "c"}}}, False),
             # data-reshaping transform on an axis
             ({"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b", "aggregate": "sum"}}}, False),
-            # axis sort reorders in the browser but not in the terminal -> divergence
-            ({"mark": "bar", "encoding": {"x": {"field": "a", "sort": "-y"}, "y": {"field": "b"}}}, False),
+            # an axis sort still previews (charted data is already ordered) -> renderable
+            ({"mark": "bar", "encoding": {"x": {"field": "a", "sort": "-y"}, "y": {"field": "b"}}}, True),
             # top-level transform
             (
                 {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}, "transform": [{"filter": "1"}]},
