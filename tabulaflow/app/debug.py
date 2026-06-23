@@ -1192,6 +1192,43 @@ def debug_chart_fixtures() -> list[tuple[str, str, str, pd.DataFrame, dict[str, 
                 "title": "Revenue by Month (drag the slider)",
             },
         ),
+        (
+            "QDEBUG_CHART_HOVER_LINE",
+            "debug_hover_line",
+            "SELECT month, SUM(revenue) AS revenue\nFROM sales\nGROUP BY month\nORDER BY month",
+            pd.DataFrame(
+                {"month": list(range(1, 13)), "revenue": [120, 135, 128, 160, 172, 168, 190, 205, 198, 210, 225, 240]}
+            ),
+            {
+                "encoding": {"x": {"field": "month", "type": "ordinal"}},
+                "layer": [
+                    {
+                        "mark": {"type": "line", "point": False},
+                        "encoding": {"y": {"field": "revenue", "type": "quantitative"}},
+                    },
+                    {
+                        "params": [
+                            {
+                                "name": "hover",
+                                "select": {
+                                    "type": "point",
+                                    "on": "pointerover",
+                                    "nearest": True,
+                                    "clear": "pointerout",
+                                    "fields": ["month"],
+                                },
+                            }
+                        ],
+                        "mark": {"type": "point", "size": 90, "filled": True},
+                        "encoding": {
+                            "y": {"field": "revenue", "type": "quantitative"},
+                            "opacity": {"condition": {"param": "hover", "empty": False, "value": 1}, "value": 0},
+                        },
+                    },
+                ],
+                "title": "Monthly Revenue (hover the line)",
+            },
+        ),
     ]
 
 

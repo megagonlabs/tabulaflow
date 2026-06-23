@@ -8,7 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from tabulaflow.app.dump import render_chart_html
+from tabulaflow.app.dump import _add_line_hover, render_chart_html
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
@@ -114,10 +114,55 @@ class TestRenderChartHtml:
         }
         assert '"width": "container"' not in self._render(tmp_path, df, spec)
 
+    def test_layer_spec_gets_container_sizing(self, tmp_path: Path) -> None:
+        # layer shares one plotting area, so it fills the card (unlike facet/concat)
+        df = pd.DataFrame({"a": ["x", "y"], "b": [1, 2]})
+        spec: dict[str, object] = {
+            "encoding": {"x": {"field": "a"}},
+            "layer": [
+                {"mark": "line", "encoding": {"y": {"field": "b"}}},
+                {"mark": "point", "encoding": {"y": {"field": "b"}}},
+            ],
+        }
+        assert '"width": "container"' in self._render(tmp_path, df, spec)
+
     def test_data_embedded_inline(self, tmp_path: Path) -> None:
         html = self._render(tmp_path, pd.DataFrame({"a": ["xyz"], "b": [42]}), SIMPLE_BAR)
         assert "spec.data={values:" in html
         assert '{"a":"xyz","b":42}' in html
+
+
+class TestAutoLineHover:
+    def test_plain_line_gets_hover_layer(self) -> None:
+        spec: dict[str, object] = {"mark": "line", "encoding": {"x": {"field": "m"}, "y": {"field": "r"}}, "title": "T"}
+        out = _add_line_hover(spec)
+        assert out is not spec
+        assert out["title"] == "T"  # top-level keys carried to the wrapper
+        assert out["encoding"] == {"x": {"field": "m"}}  # shared x lifted up
+        assert "layer" in out
+        blob = json.dumps(out)
+        assert '"on": "pointerover"' in blob and '"nearest": true' in blob and '"fields": ["m"]' in blob
+
+    def test_line_with_dict_mark_wrapped(self) -> None:
+        spec: dict[str, object] = {
+            "mark": {"type": "line", "point": True},
+            "encoding": {"x": {"field": "m"}, "y": {"field": "r"}},
+        }
+        assert "layer" in _add_line_hover(spec)
+
+    @pytest.mark.parametrize(
+        "spec",
+        [
+            # multi-series — grouping channel makes nearest-by-x ambiguous
+            {"mark": "line", "encoding": {"x": {"field": "m"}, "y": {"field": "r"}, "color": {"field": "g"}}},
+            {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}},  # not a line
+            {"layer": [{"mark": "line", "encoding": {"x": {"field": "m"}, "y": {"field": "r"}}}]},  # already layered
+            {"mark": "line", "encoding": {"x": {"field": "m"}, "y": {"field": "r"}}, "transform": [{"filter": "1"}]},
+            {"mark": "line", "encoding": {"x": {"field": "m"}}},  # missing y
+        ],
+    )
+    def test_richer_specs_left_untouched(self, spec: dict[str, object]) -> None:
+        assert _add_line_hover(spec) is spec
 
 
 async def _history_with(df: pd.DataFrame) -> QueryHistory:

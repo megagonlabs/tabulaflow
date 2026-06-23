@@ -1121,6 +1121,64 @@ def _has_input_binding(spec: dict[str, object]) -> bool:
     return False
 
 
+def _add_line_hover(spec: dict[str, object]) -> dict[str, object]:
+    """Layer a nearest-point hover dot onto a plain single-series line chart.
+
+    Only the narrow, safe shape is transformed — a unit ``line`` mark with x and
+    y fields and no layering, params, transforms, or grouping channel. Anything
+    richer is returned unchanged (the agent can author hover itself). Applied at
+    browser-render time only, so the stored spec and terminal preview stay the
+    plain line.
+    """
+    mark = spec.get("mark")
+    mark_type = mark.get("type") if isinstance(mark, dict) else mark
+    if mark_type != "line":
+        return spec
+    if any(key in spec for key in ("layer", "params", "transform", "facet", "repeat", "concat", "hconcat", "vconcat")):
+        return spec
+    encoding = spec.get("encoding")
+    if not isinstance(encoding, dict):
+        return spec
+    x_enc, y_enc = encoding.get("x"), encoding.get("y")
+    if not (isinstance(x_enc, dict) and x_enc.get("field") and isinstance(y_enc, dict) and y_enc.get("field")):
+        return spec
+    # Single series only — a grouping channel makes "nearest point by x" ambiguous.
+    for channel in ("color", "detail", "shape", "size", "opacity"):
+        ch_enc = encoding.get(channel)
+        if isinstance(ch_enc, dict) and ch_enc.get("field"):
+            return spec
+
+    hover_layer = {
+        "params": [
+            {
+                "name": "tf_hover",
+                "select": {
+                    "type": "point",
+                    "on": "pointerover",
+                    "nearest": True,
+                    "clear": "pointerout",
+                    "fields": [x_enc["field"]],
+                },
+            }
+        ],
+        "mark": {"type": "point", "size": 70, "filled": True},
+        "encoding": {
+            "y": copy.deepcopy(y_enc),
+            "opacity": {"condition": {"param": "tf_hover", "empty": False, "value": 1}, "value": 0},
+        },
+    }
+    # Shared x moves to the wrapper; the line keeps its mark + remaining
+    # encoding (y, tooltip, …). Other top-level keys (title, agent-set width/
+    # height) ride along on the wrapper.
+    wrapper = {key: val for key, val in spec.items() if key not in ("mark", "encoding")}
+    wrapper["encoding"] = {"x": x_enc}
+    wrapper["layer"] = [
+        {"mark": spec["mark"], "encoding": {k: v for k, v in encoding.items() if k != "x"}},
+        hover_layer,
+    ]
+    return wrapper
+
+
 def render_chart_html(
     df: "pd.DataFrame",
     vegalite_spec: dict[str, object],
@@ -1146,26 +1204,29 @@ def render_chart_html(
     spec = copy.deepcopy(vegalite_spec)
     colmap = {str(c).lower(): str(c) for c in df.columns}
     _normalize_field_refs(spec, colmap)
+    spec = _add_line_hover(spec)
 
     existing_config = spec.get("config")
     spec["config"] = _deep_merge(_VEGA_DARK_CONFIG, existing_config if isinstance(existing_config, dict) else {})
     spec.setdefault("$schema", "https://vega.github.io/schema/vega-lite/v5.json")
     # Sizing modes (the spec's own width/height always wins via setdefault):
-    #  - plain single-cell unit spec -> fill a fixed-height card both ways
-    #    (responsive width/height = "container").
-    #  - unit spec with bound inputs (sliders/dropdowns) -> size the chart
+    #  - single-cell spec (a unit ``mark`` or a ``layer`` of marks) -> fill a
+    #    fixed-height card both ways (responsive width/height = "container").
+    #  - single-cell spec with bound inputs (sliders/dropdowns) -> size the chart
     #    explicitly so the controls have room below it; the card grows/scrolls.
-    #  - multi-view (layer/concat) or faceted (top-level facet/repeat or a
-    #    facet/row/column channel) -> can't size to a container, so keep the
-    #    intrinsic size and scroll inside the card.
+    #  - genuinely multi-cell: faceted (top-level facet/repeat or a
+    #    facet/row/column channel) or concat -> can't size to a container, so
+    #    keep the intrinsic size and scroll inside the card.
     encoding = spec.get("encoding")
     has_facet_channel = isinstance(encoding, dict) and any(ch in encoding for ch in ("facet", "row", "column"))
-    is_unit_spec = "mark" in spec and not has_facet_channel
-    if is_unit_spec and not _has_input_binding(spec):
+    # ``layer`` shares one plotting area, so it supports container sizing;
+    # facet/concat/repeat have sub-views and don't.
+    is_single_cell = ("mark" in spec or "layer" in spec) and not has_facet_channel
+    if is_single_cell and not _has_input_binding(spec):
         spec.setdefault("width", "container")
         spec.setdefault("height", "container")
         wrap_class = "fill"
-    elif is_unit_spec:
+    elif is_single_cell:
         spec.setdefault("width", "container")
         spec.setdefault("height", 460)
         wrap_class = "content"
