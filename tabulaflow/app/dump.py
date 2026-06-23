@@ -1027,16 +1027,27 @@ _CHART_CSS = """
 #vis-wrap.content #vis { width: 100%; }
 .vis-error { color: var(--error); white-space: pre-wrap;
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
-/* vega-embed action ("...") menu — dark to match the page. */
 .vega-embed { width: 100%; }
-.vega-embed .vega-actions {
-    background: var(--popover-bg); border: 1px solid var(--popover-border); border-radius: 4px;
-    box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+/* vega-embed action ("...") menu — dark to match the page. vega-embed injects
+   its own light stylesheet at runtime with equal specificity, so we override on
+   its own selectors with !important (it only uses !important on `display`, so
+   this is safe). Covers the button, popup, links, and caret. */
+.vega-embed summary {
+    background: var(--popover-bg) !important; color: var(--text-muted) !important;
+    border-color: var(--popover-border) !important; opacity: 0.55 !important;
 }
-.vega-embed .vega-actions a { color: var(--text); }
-.vega-embed .vega-actions a:hover { background: var(--hover); color: var(--accent); }
-.vega-embed summary { color: var(--text-dim); }
-.vega-embed summary:hover { color: var(--accent); }
+.vega-embed summary svg { fill: currentColor !important; }
+.vega-embed details[open] summary,
+.vega-embed summary:hover { opacity: 1 !important; color: var(--accent) !important; }
+.vega-embed .vega-actions {
+    background: var(--popover-bg) !important; border-color: var(--popover-border) !important;
+}
+.vega-embed .vega-actions a { color: var(--text) !important; }
+.vega-embed .vega-actions a:hover,
+.vega-embed .vega-actions a:focus { background: var(--hover) !important; color: var(--accent) !important; }
+/* The caret pointing from the menu up to the button (border + fill triangles). */
+.vega-embed .vega-actions::before { border-bottom-color: var(--popover-border) !important; }
+.vega-embed .vega-actions::after { border-bottom-color: var(--popover-bg) !important; }
 /* Bound-input widgets (slider/checkbox/radio/dropdown/text). ``accent-color``
    is inherited, so one declaration recolors the range track+thumb, checkboxes,
    and radios from the browser's default blue to mint; selects/text inputs have
