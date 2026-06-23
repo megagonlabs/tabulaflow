@@ -7,6 +7,7 @@ renders in the browser (see ``tabulaflow.app.dump.render_chart_html``).
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, ClassVar
 
 import pandas as pd
@@ -165,6 +166,21 @@ def chart_type_label(spec: dict[str, Any]) -> str:
     return _MARK_LABELS.get(_mark_type(spec), "Chart")
 
 
+def _fill_bars_with_background(rendered: str, color: tuple[int, int, int]) -> str:
+    """Repaint plotext bar fills as a background-colored space run.
+
+    macOS Terminal adds line spacing that a foreground block glyph doesn't
+    cover, leaving horizontal gaps in solid bars. A space with the bar color set
+    as the cell *background* fills the whole cell (spacing included), so bars
+    render gap-free. In a bar chart the bar color is the only thing drawn in that
+    color, so converting every foreground run of it to background + spaces is safe.
+    """
+    r, g, b = color
+    fg = f"\x1b[38;2;{r};{g};{b}m"
+    bg = f"\x1b[48;2;{r};{g};{b}m"
+    return re.compile(re.escape(fg) + r"([^\x1b\n]*)").sub(lambda m: bg + " " * len(m.group(1)), rendered)
+
+
 def render_plotext(
     mark: str,
     x_field: str,
@@ -227,7 +243,12 @@ def render_plotext(
     plt.xlabel(x_field)
     plt.ylabel(y_field)
 
-    return str(plt.build())
+    rendered = str(plt.build())
+    # Bars are filled with a foreground block glyph, which leaves line-spacing
+    # gaps in macOS Terminal; repaint them as background-colored spaces.
+    if mark == "bar" and color is not None:
+        rendered = _fill_bars_with_background(rendered, color)
+    return rendered
 
 
 class RenderChartTool:
