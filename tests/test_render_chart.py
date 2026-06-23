@@ -36,6 +36,8 @@ class TestIsPlotextRenderable:
             ({"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}, "facet": {"field": "c"}}}, False),
             # data-reshaping transform on an axis
             ({"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b", "aggregate": "sum"}}}, False),
+            # axis sort reorders in the browser but not in the terminal -> divergence
+            ({"mark": "bar", "encoding": {"x": {"field": "a", "sort": "-y"}, "y": {"field": "b"}}}, False),
             # top-level transform
             (
                 {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}, "transform": [{"filter": "1"}]},
@@ -181,11 +183,11 @@ class TestRenderChartTool:
         assert "Bar chart attached" in msg
         assert (await history.last()).vegalite_spec == spec
 
-    async def test_rich_spec_attaches_for_browser(self) -> None:
+    async def test_rich_spec_attaches(self) -> None:
         history = await _history_with(pd.DataFrame({"a": ["x", "y"], "b": [1, 2], "c": ["g", "h"]}))
         spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "c"}}}
         msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
-        assert "renders in the browser" in msg
+        assert "attached" in msg
         assert (await history.last()).vegalite_spec == spec
 
     async def test_oversized_result_refused_without_attaching(self) -> None:
@@ -196,11 +198,40 @@ class TestRenderChartTool:
         assert (await history.last()).vegalite_spec is None
 
     async def test_unknown_column_errors_without_attaching(self) -> None:
+        # an invalid field reference (typo) is blocked, not attached
         history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
         spec = {"mark": "bar", "encoding": {"x": {"field": "nope"}, "y": {"field": "b"}}}
         msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        assert "not found" in msg and "nope" in msg
+        assert (await history.last()).vegalite_spec is None
+
+    async def test_rich_spec_bad_field_errors_without_attaching(self) -> None:
+        # browser-only specs are validated too: a bad color field is blocked
+        history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1], "c": ["g"]}))
+        spec = {"mark": "arc", "encoding": {"theta": {"field": "b"}, "color": {"field": "nope"}}}
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         assert (await history.last()).vegalite_spec is None
+
+    async def test_nested_field_attaches(self) -> None:
+        # a nested-struct reference (meta.country) resolves via its root column 'meta'
+        history = await _history_with(pd.DataFrame({"meta": [{"country": "US"}], "b": [1]}))
+        spec = {"mark": "bar", "encoding": {"x": {"field": "meta.country"}, "y": {"field": "b"}}}
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        assert "not found" not in msg
+        assert (await history.last()).vegalite_spec == spec
+
+    async def test_transform_derived_field_attaches(self) -> None:
+        # 'derived' is created by the transform, not a source column — must not block
+        history = await _history_with(pd.DataFrame({"a": ["x"], "b": [1]}))
+        spec = {
+            "transform": [{"calculate": "datum.b * 2", "as": "derived"}],
+            "mark": "bar",
+            "encoding": {"x": {"field": "a"}, "y": {"field": "derived"}},
+        }
+        msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
+        assert "not found" not in msg
+        assert (await history.last()).vegalite_spec == spec
 
 
 class TestRenderPlotextDataTypes:
@@ -263,6 +294,12 @@ class TestRenderPlotextDataTypes:
         with pytest.raises(ChartNotRenderable):
             render_plotext("bar", "x", "y", "", df, console_width=50, console_height=10)
 
+    def test_too_many_bars_not_renderable(self) -> None:
+        # a terminal can't legibly show dozens of bars -> caller shows the card
+        df = pd.DataFrame({"cat": [f"c{i}" for i in range(60)], "val": list(range(60))})
+        with pytest.raises(ChartNotRenderable):
+            render_plotext("bar", "cat", "val", "", df, console_width=60, console_height=14)
+
     def test_unsupported_mark_not_renderable(self) -> None:
         df = pd.DataFrame({"x": [1, 2], "y": [3, 4]})
         with pytest.raises(ChartNotRenderable):
@@ -290,4 +327,13 @@ class TestBuildChartFallback:
 
         df = pd.DataFrame({"x": ["a", "b"], "y": ["c", "d"]})
         spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "x"}, "y": {"field": "y"}}}
+        assert isinstance(build_chart(df, spec, width=60), Panel)
+
+    def test_too_many_bars_degrades_to_card(self) -> None:
+        from rich.panel import Panel
+
+        from tabulaflow.app.display import build_chart
+
+        df = pd.DataFrame({"cat": [f"c{i}" for i in range(60)], "val": list(range(60))})
+        spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "cat"}, "y": {"field": "val"}}}
         assert isinstance(build_chart(df, spec, width=60), Panel)

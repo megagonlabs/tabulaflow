@@ -32,6 +32,12 @@ _PLOTEXT_MARKS = frozenset(_MARK_TO_PLOTEXT)
 # rather than truncating (a partial chart would silently misrepresent the data).
 _MAX_CHART_ROWS = 20_000
 
+# Terminal preview gets unreadable past these counts (bar labels collapse to a
+# char; plotext slows on dense series). Beyond them ``render_plotext`` raises
+# ``ChartNotRenderable`` so the caller shows the browser card instead.
+_PLOTEXT_MAX_BARS = 50
+_PLOTEXT_MAX_POINTS = 1_000
+
 # Top-level keys that make a spec multi-view (no single mark to preview).
 _MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
 # Encoding channels that, when bound to a field, reshape the chart beyond a
@@ -53,9 +59,10 @@ _GROUPING_CHANNELS = (
     "row",
     "facet",
 )
-# Encoding-level transforms that change the data plotext would see (it plots
-# raw columns, so these diverge from what Vega computes).
-_RESHAPING_KEYS = ("aggregate", "bin", "timeUnit")
+# Encoding-level keys that make a terminal preview diverge from the browser: data
+# transforms plotext can't compute (it plots raw columns), plus ``sort``, which
+# reorders an axis (the terminal would otherwise show data order).
+_RESHAPING_KEYS = ("aggregate", "bin", "timeUnit", "sort")
 
 _MARK_LABELS = {
     "bar": "Bar chart",
@@ -116,6 +123,45 @@ def resolve_column(df: pd.DataFrame, name: str) -> str | None:
         if str(col).lower() == name.lower():
             return str(col)
     return None
+
+
+def _spec_field_refs(spec: object) -> tuple[set[str], bool]:
+    """Collect every ``field`` name referenced anywhere in a spec, with whether the
+    spec has any ``transform``.
+
+    Walks the whole tree, so layer/concat/facet sub-specs and channels like
+    ``tooltip`` / ``sort`` are covered. When a transform is present, fields may be
+    derived (not source columns), so the caller should skip column validation.
+    """
+    fields: set[str] = set()
+    has_transform = False
+
+    def walk(node: object) -> None:
+        nonlocal has_transform
+        if isinstance(node, dict):
+            if "transform" in node:
+                has_transform = True
+            field = node.get("field")
+            if isinstance(field, str):
+                fields.add(field)
+            for value in node.values():
+                walk(value)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value)
+
+    walk(spec)
+    return fields, has_transform
+
+
+def _field_resolves(df: pd.DataFrame, field: str) -> bool:
+    """Whether a Vega-Lite field reference maps to a result column — directly or via
+    the root of a nested access (``meta.country`` / ``meta['country']`` → column
+    ``meta``), so a valid nested-field spec isn't mistaken for a typo."""
+    if resolve_column(df, field) is not None:
+        return True
+    root = re.split(r"[.\[]", field, maxsplit=1)[0]
+    return root != field and resolve_column(df, root) is not None
 
 
 def _mark_type(spec: dict[str, Any]) -> str:
@@ -276,6 +322,9 @@ def render_plotext(
     data = data.replace([float("inf"), float("-inf")], float("nan")).dropna()
     if data.empty:
         raise ChartNotRenderable(f"no plottable rows for '{x_field}'/'{y_field}'")
+    max_rows = _PLOTEXT_MAX_BARS if mark == "bar" else _PLOTEXT_MAX_POINTS
+    if len(data) > max_rows:
+        raise ChartNotRenderable(f"too many rows for a terminal {mark} chart ({len(data)} > {max_rows})")
     x_numeric = _is_numeric_column(data["x"])
     y_numeric = _is_numeric_column(data["y"])
     x_data = data["x"].tolist()
@@ -399,29 +448,18 @@ class RenderChartTool:
                 f"(e.g. GROUP BY) and chart the summary; max {_MAX_CHART_ROWS:,} rows)"
             )
 
+        # Block a spec that references fields the result doesn't have (a typo, an
+        # invalid chart). Valid nested references resolve via their root column, and
+        # a transform may derive fields, so neither is rejected.
+        field_refs, has_transform = _spec_field_refs(spec)
+        if not has_transform:
+            missing = sorted(f for f in field_refs if not _field_resolves(df, f))
+            if missing:
+                return f"(error: field(s) not found: {missing}. Available columns: {list(df.columns)})"
+
         label = chart_type_label(spec)
-
-        # Fail fast on the simple case, where x/y must be real columns. Richer
-        # specs (color/facet/transform/multi-view) are validated by the browser
-        # renderer; field-case mismatches are normalized at render time.
-        if is_plotext_renderable(spec):
-            mark, x_field, y_field, title = parse_vegalite_spec(spec)
-            x_col = resolve_column(df, x_field)
-            if x_col is None:
-                return f"(error: column '{x_field}' not found. Available: {list(df.columns)})"
-            y_col = resolve_column(df, y_field)
-            if y_col is None:
-                return f"(error: column '{y_field}' not found. Available: {list(df.columns)})"
-            # Best-effort terminal preview; never fail the attach on plotext.
-            try:
-                render_plotext(mark, x_col, y_col, title, df)
-            except Exception:
-                pass
-            self._history.attach_chart(record.record_id, spec)
-            return f"{label} attached to {record.record_id} (x={x_col}, y={y_col}), {len(df):,} rows"
-
         self._history.attach_chart(record.record_id, spec)
-        return f"{label} attached to {record.record_id} — {len(df):,} rows, renders in the browser"
+        return f"{label} attached to {record.record_id} — {len(df):,} rows"
 
     def as_pydantic_ai_tool(self) -> Tool:
         return Tool(self.__call__, name=self.name)
