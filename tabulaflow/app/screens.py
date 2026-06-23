@@ -80,6 +80,23 @@ def _open_path_in_browser(path: Path, *, status: "Callable[[Text], None]") -> bo
     return opened
 
 
+def _show_path(path: Path, app: object, *, status: "Callable[[Text], None]") -> None:
+    """Show a dumped artifact in the live results pane, falling back to a file open.
+
+    Manual "view in browser" actions route here so one pane accumulates both agent
+    results and explorer views. When the pane is unavailable, open the file
+    directly (the pre-pane behavior).
+    """
+    try:
+        shown = bool(app.view_in_pane(path))  # type: ignore[attr-defined]
+    except Exception:
+        shown = False
+    if shown:
+        status(Text("opened in results pane", style="dim"))
+    else:
+        _open_path_in_browser(path, status=status)
+
+
 def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text], None]") -> "Path | None":
     """Serialize ``value`` to the dumps dir and open it in the browser.
 
@@ -101,7 +118,7 @@ def open_cell_in_browser(value: object, app: object, *, status: "Callable[[Text]
     except Exception as exc:
         status(Text(f"serialize failed: {exc}", style=ERROR))
         return None
-    _open_path_in_browser(path, status=status)
+    _show_path(path, app, status=status)
     return path
 
 
@@ -134,7 +151,7 @@ def open_table_in_browser(
     except Exception as exc:
         status(Text(f"render failed: {exc}", style=ERROR))
         return None
-    _open_path_in_browser(html_path, status=status)
+    _show_path(html_path, app, status=status)
     return html_path
 
 
@@ -168,7 +185,7 @@ def open_chart_in_browser(
     except Exception as exc:
         status(Text(f"render failed: {exc}", style=ERROR))
         return None
-    _open_path_in_browser(html_path, status=status)
+    _show_path(html_path, app, status=status)
     return html_path
 
 
@@ -868,7 +885,7 @@ class CellBrowserScreen(Screen[None]):
                 return
             self._dumped_path = path
         else:
-            _open_path_in_browser(self._dumped_path, status=self._refresh_status)
+            _show_path(self._dumped_path, self.app, status=self._refresh_status)
 
 
 # ---------------------------------------------------------------------------

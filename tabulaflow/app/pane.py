@@ -129,9 +129,9 @@ class OutputPane:
         with self._lock:
             self._results.append(html_path.name)
 
-    def open_browser(self) -> None:
-        """Best-effort open of the pane in the system browser (no-op if headless)."""
-        if self._browser_opened or self.url is None:
+    def open_browser(self, *, force: bool = False) -> None:
+        """Open the pane in the system browser (once unless ``force``; no-op if headless)."""
+        if self.url is None or (self._browser_opened and not force):
             return
         self._browser_opened = True
         try:
@@ -140,6 +140,10 @@ class OutputPane:
             webbrowser_open.open(self.url)
         except Exception:
             pass
+
+    def reopen(self) -> None:
+        """Force (re)open the pane in the browser — for explicit user actions."""
+        self.open_browser(force=True)
 
     def stop(self) -> None:
         if self._server is not None:

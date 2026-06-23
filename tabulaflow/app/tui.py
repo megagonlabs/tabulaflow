@@ -85,6 +85,7 @@ class TabulaflowApp(App[None]):
         ("ctrl+d", "quit_only", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
         ("ctrl+o", "open_data_explorer", "Open data explorer"),
+        ("ctrl+b", "open_results_pane", "Open results pane"),
         Binding("pageup", "scroll_log('pageup')", "Scroll up", show=False, priority=True),
         Binding("pagedown", "scroll_log('pagedown')", "Scroll down", show=False, priority=True),
     ]
@@ -445,32 +446,57 @@ class TabulaflowApp(App[None]):
             shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
             self.exit()
 
+    def _ensure_pane(self) -> "OutputPane | None":
+        """Lazily start the output pane; return it, or None if it couldn't start."""
+        if self._pane is None:
+            from tabulaflow.app.pane import OutputPane
+
+            try:
+                self._runtime_paths.dumps_dir.mkdir(parents=True, exist_ok=True)
+                self._pane = OutputPane(self._runtime_paths.dumps_dir)
+                self._pane.start()
+            except Exception:
+                logger.debug("output pane failed to start", exc_info=True)
+                self._pane = None
+        return self._pane
+
+    def view_in_pane(self, path: Path) -> bool:
+        """Push an already-written dump file to the pane and raise it (manual view).
+
+        Returns True when the pane is available and the artifact was shown, so
+        callers can fall back to a direct file open otherwise.
+        """
+        pane = self._ensure_pane()
+        if pane is None or pane.url is None:
+            return False
+        pane.push(path)
+        pane.reopen()
+        return True
+
+    def action_open_results_pane(self) -> None:
+        """(Re)open the live results pane in the browser (ctrl+b)."""
+        pane = self._ensure_pane()
+        if pane is not None and pane.url is not None:
+            pane.reopen()
+        else:
+            self.notify("Results pane unavailable.", severity="warning")
+
     async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll) -> None:
         """Render each cited result to the dumps dir and push it to the browser pane.
 
-        Lazily starts the output pane on the first push and announces its URL.
-        Best-effort: any render/serve failure is swallowed — the pane is an
-        additive surface and must never block or fail the chat turn.
+        Auto-push path: the pane lazily starts and opens once on the first result,
+        then updates silently (no focus steal). Best-effort — any failure is
+        swallowed so the pane never blocks or fails a chat turn.
         """
         import secrets
 
         from tabulaflow.app.dump import render_chart_html, render_table_html
-        from tabulaflow.app.pane import OutputPane
 
+        started = self._pane is None
+        pane = self._ensure_pane()
+        if pane is None:
+            return
         dumps_dir = self._runtime_paths.dumps_dir
-        started = False
-        if self._pane is None:
-            try:
-                dumps_dir.mkdir(parents=True, exist_ok=True)
-                self._pane = OutputPane(dumps_dir)
-                self._pane.start()
-                started = True
-            except Exception:
-                logger.debug("output pane failed to start", exc_info=True)
-                self._pane = None
-                return
-        assert self._pane is not None
-
         for record in result.records:
             if record.df is None or record.df.empty:
                 continue
@@ -484,11 +510,13 @@ class TabulaflowApp(App[None]):
             except Exception:
                 logger.debug("output pane render failed", exc_info=True)
                 continue
-            self._pane.push(path)
+            pane.push(path)
 
-        if started and self._pane.url is not None:
-            await chat_log.mount(SystemMessage(Text(f"Results pane → {self._pane.url}", style="dim")))
-            self._pane.open_browser()
+        if started and pane.url is not None:
+            await chat_log.mount(
+                SystemMessage(Text(f"Results pane → {pane.url}  ·  ctrl+b to reopen", style="dim"))
+            )
+            pane.open_browser()
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a
