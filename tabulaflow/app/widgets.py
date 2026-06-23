@@ -478,10 +478,6 @@ class SpinnerWidget(Widget):
 # Keys handled by the prefix/grouping logic or too noisy to show in a step label.
 _NOISE_ARG_KEYS = frozenset({"db_alias", "refresh", "tab", "tool_call_id"})
 
-# Tools whose arg summary is already a complete, verb-led label (e.g. "Edit foo +5 -2"),
-# shown as-is instead of wrapped as ``name(summary)``.
-_VERB_LED_TOOLS = frozenset({"file_editor"})
-
 # A git-style diffstat token (``+5`` / ``-2``) preceded by whitespace, so a path
 # like ``model-2.sql`` is not mistaken for a removed-line count.
 _DIFFSTAT_TOKEN_RE = re.compile(r"(?<=\s)([+-]\d+)")
@@ -540,25 +536,27 @@ def _summarize_file_editor(args: dict[str, object]) -> str:
 
 
 def summarize_tool_args(name: str, args: dict[str, object]) -> str:
-    """Render a tool call's raw args as a compact one-line label for the TUI.
+    """Render a tool call as a compact, verb-led one-line label for the TUI.
 
-    Presentation lives here (the consumer), not in ``chat`` — the events carry the
-    raw ``args`` dict and each frontend renders it as it likes. A handful of tools
-    get bespoke labels; everything else falls back to a generic ``key=value``
-    renderer. Truncates to keep the step line short."""
+    Every tool maps to ``<Verb> <target>`` — ``Query [main] SELECT …``,
+    ``Inspect [main] orders``, ``Navigate stripe.com``, ``Edit foo.sql +5 -2`` — so
+    the step list reads as a uniform action log. Presentation lives here (the
+    consumer), not in ``chat``: events carry the raw ``args`` dict and each frontend
+    renders it as it likes. Untreated / new tools fall back to a title-cased name
+    plus a generic ``key=value`` summary. Truncates to keep the step line short."""
     db_prefix = f"[{args['db_alias']}] " if args.get("db_alias") else ""
 
     if name == "run_query":
         query = " ".join(str(args.get("query", "")).split())
         if len(query) > 40:
             query = query[:37] + "..."
-        return f"{db_prefix}{query}"
+        return f"Query {db_prefix}{query}"
+    if name == "get_db_document":
+        return f"Inspect {db_prefix}".rstrip()
     if name == "get_table_schema":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
-        return f"{db_prefix}{'.'.join(parts)}"
-    if name == "get_db_document":
-        return f"{db_prefix}{'refresh' if args.get('refresh') else 'cached'}"
+        return f"Inspect {db_prefix}{'.'.join(parts)}"
     if name == "get_column_json_schema":
         parts = [str(args["schema_name"])] if args.get("schema_name") else []
         parts.append(str(args.get("table_name", "")))
@@ -566,7 +564,7 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
         label = ".".join(parts)
         if args.get("path"):
             label += f", path={args['path']}"
-        return f"{db_prefix}{label}"
+        return f"Inspect {db_prefix}{label}"
     if name == "render_chart":
         spec_str = args.get("vegalite_spec", "")
         try:
@@ -575,9 +573,10 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
             if isinstance(mark, dict):
                 mark = mark.get("type", "")
             title = spec.get("title", "") if isinstance(spec, dict) else ""
-            return str(title) if title else str(mark)
+            target = str(title) if title else str(mark)
         except (json.JSONDecodeError, TypeError):
-            return "chart"
+            target = "chart"
+        return f"Chart {target}".rstrip()
     if name == "transfer_record":
         record_id = str(args.get("record_id", ""))
         target_alias = str(args.get("target_alias", ""))
@@ -585,14 +584,44 @@ def summarize_tool_args(name: str, args: dict[str, object]) -> str:
         target_table = str(args.get("target_table", ""))
         mode = str(args.get("mode", "append"))
         target = f"{target_schema}.{target_table}" if target_schema else target_table
-        return f"{record_id} -> [{target_alias}] {target} ({mode})"
+        return f"Transfer {record_id} to [{target_alias}] {target} ({mode})"
     if name == "run_subagent_for_each_row":
-        return f"{db_prefix}{args.get('table_name', '')}"
+        return f"Subagent {db_prefix}{args.get('table_name', '')}"
+    if name == "extract_rows_from_documents":
+        parts = [str(args["schema_name"])] if args.get("schema_name") else []
+        parts.append(str(args.get("table_name", "")))
+        return f"Extract {db_prefix}{'.'.join(parts)}"
+    if name == "add_canonical_name":
+        parts = [str(args["schema_name"])] if args.get("schema_name") else []
+        parts.append(str(args.get("table_name", "")))
+        if args.get("input_column"):
+            parts.append(str(args["input_column"]))
+        return f"Canonicalize {db_prefix}{'.'.join(parts)}"
     if name == "browser_navigate":
-        return _fmt_arg_value(args.get("url", ""), 60)
+        return f"Navigate {_fmt_arg_value(args.get('url', ''), 60)}".rstrip()
+    if name == "browser_click":
+        return f"Click {_fmt_arg_value(args.get('ref', ''))}".rstrip()
+    if name == "browser_type":
+        return f"Type {_fmt_arg_value(args.get('text', ''))}".rstrip()
+    if name == "browser_scroll":
+        return f"Scroll {args.get('direction', '')}".rstrip()
+    if name == "browser_back":
+        return "Back"
+    if name == "browser_press":
+        return f"Press {args.get('key', '')}".rstrip()
+    if name == "browser_select":
+        return f"Select {_fmt_arg_value(args.get('option', ''))}".rstrip()
+    if name == "browser_wait":
+        cond = args.get("text") or args.get("text_gone")
+        target = _fmt_arg_value(cond) if cond else f"{args.get('seconds', '')}s"
+        return f"Wait {target}".rstrip()
+    if name == "connect_data_source":
+        return f"Connect {_fmt_arg_value(args.get('source', ''), 60)}".rstrip()
+    if name == "execute_bash":
+        return f"Run {_fmt_arg_value(args.get('command', ''), 60)}".rstrip()
     if name == "file_editor":
         return _summarize_file_editor(args)
-    return f"{db_prefix}{_summarize_generic_args(args)}"
+    return f"{name.replace('_', ' ').capitalize()} {_summarize_generic_args(args)}".rstrip()
 
 
 def summarize_outcome(outcome: ToolOutcome) -> str:
@@ -609,18 +638,26 @@ def summarize_outcome(outcome: ToolOutcome) -> str:
 
 
 def _styled_label(name: str, label: str) -> Text:
-    """Render a step label as dim text, coloring git diffstat tokens for the file
-    editor — ``+N`` in green, ``-M`` in red — to follow the git convention."""
-    if name != "file_editor" or not _DIFFSTAT_TOKEN_RE.search(label):
+    """Render a step label as dim text with two accents: a trailing ``→ error``
+    outcome in red (any tool), and the file editor's git diffstat — ``+N`` green,
+    ``-M`` red. Diffstat coloring is scoped to the file editor so arithmetic in a SQL
+    snippet (``SELECT -1``) is never mistaken for a removed-line count."""
+    has_error = label.endswith("→ error")
+    body = label[: -len("error")] if has_error else label
+    has_diffstat = name == "file_editor" and bool(_DIFFSTAT_TOKEN_RE.search(body))
+    if not has_error and not has_diffstat:
         return Text(label, style="dim")
     text = Text()
     pos = 0
-    for m in _DIFFSTAT_TOKEN_RE.finditer(label):
-        text.append(label[pos : m.start()], style="dim")
-        token = m.group(1)
-        text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
-        pos = m.end()
-    text.append(label[pos:], style="dim")
+    if has_diffstat:
+        for m in _DIFFSTAT_TOKEN_RE.finditer(body):
+            text.append(body[pos : m.start()], style="dim")
+            token = m.group(1)
+            text.append(token, style=DIFF_ADDED if token.startswith("+") else DIFF_REMOVED)
+            pos = m.end()
+    text.append(body[pos:], style="dim")
+    if has_error:
+        text.append("error", style=DIFF_REMOVED)
     return text
 
 
@@ -780,16 +817,10 @@ class AgentProgressWidget(Widget):
             self._timer = None
         self._refresh(layout=True)
 
-    def _on_tool_start(self, tool_call_id: str, name: str, args_summary: str) -> None:
+    def _on_tool_start(self, tool_call_id: str, name: str, label: str) -> None:
         if self._status_text and self._status_text != "Thinking...":
             self._steps.append(("done", "", "__status__", self._status_text))
-        if args_summary and name in _VERB_LED_TOOLS:
-            label = args_summary
-        elif args_summary:
-            label = f"{name}({args_summary})"
-        else:
-            label = name
-        self._steps.append(("running", tool_call_id, name, label))
+        self._steps.append(("running", tool_call_id, name, label or name))
         self._status_text = None
         self._refresh(layout=True, scroll=True)
 
