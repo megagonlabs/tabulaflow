@@ -190,12 +190,26 @@ def _is_numeric_series(values: list[Any]) -> bool:
     return all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values if v is not None)
 
 
-def _truncate_tick_labels(x_data: list[Any], width: int) -> list[str]:
-    """Stringify x values and truncate each so the labels share the axis width
-    without plotext dropping overlapping ones. Reserves ~4 cols for the y-axis."""
-    labels = [str(v) for v in x_data]
-    max_len = max(1, (width - 4) // max(len(labels), 1) - 1)
+def _truncate_tick_labels(values: list[Any], width: int, *, stacked: bool = False) -> list[str]:
+    """Stringify axis values and truncate each so the tick labels fit.
+
+    Side-by-side ticks (a vertical bar's x-axis, a line/scatter x-axis) share the
+    width without plotext dropping overlapping ones. ``stacked`` ticks (a horizontal
+    bar's y-axis, one label per row) instead get a fixed left-margin budget, since
+    they don't compete for horizontal space.
+    """
+    labels = [str(v) for v in values]
+    if stacked:
+        max_len = min(24, max(4, width // 4))
+    else:
+        max_len = max(1, (width - 4) // max(len(labels), 1) - 1)
     return [s[:max_len] if len(s) > max_len else s for s in labels]
+
+
+class ChartNotRenderable(Exception):
+    """A structurally valid spec whose data can't be drawn faithfully in the
+    terminal (e.g. no numeric measure axis). The caller falls back to the browser
+    card instead of surfacing this as an error."""
 
 
 def render_plotext(
@@ -210,7 +224,10 @@ def render_plotext(
 ) -> str:
     """Render a plotext chart and return the built string.
 
-    Raises on failure so the caller can report the error.
+    The measure axis is the numeric column, inferred from the data, so a bar chart
+    draws vertically (categories on x) or horizontally (categories on y) as the spec
+    intends. Raises ``ChartNotRenderable`` when no axis is numeric — the caller falls
+    back to the browser card; other failures raise for the caller to report.
     """
     import plotext as plt
 
@@ -238,17 +255,27 @@ def render_plotext(
 
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()
-    if not _is_numeric_series(y_data):
-        raise ValueError(f"y field '{y_field}' is not numeric — cannot draw a terminal {mark} chart")
 
     # Caller (e.g. the app) may pass a brand color; otherwise plotext's default.
     color_kw = {"color": color} if color is not None else {}
 
     positions = list(range(1, len(x_data) + 1))
     if mark == "bar":
-        plt.bar([str(v) for v in x_data], y_data, **color_kw)
-        plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
+        # A bar pairs a numeric measure axis with a categorical dimension axis.
+        # Whichever column is numeric is the measure; orientation follows from the
+        # channel it sits on — measure on y draws vertical bars, measure on x draws
+        # horizontal bars (categories on the y-axis).
+        if _is_numeric_series(y_data):
+            plt.bar([str(v) for v in x_data], y_data, **color_kw)
+            plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
+        elif _is_numeric_series(x_data):
+            plt.bar([str(v) for v in y_data], x_data, orientation="horizontal", **color_kw)
+            plt.yticks(positions, _truncate_tick_labels(y_data, effective_width, stacked=True))
+        else:
+            raise ChartNotRenderable(f"bar chart has no numeric axis (x='{x_field}', y='{y_field}')")
     elif mark in ("line", "scatter"):
+        if not _is_numeric_series(y_data):
+            raise ChartNotRenderable(f"{mark} chart needs a numeric y axis ('{y_field}')")
         plot = plt.plot if mark == "line" else plt.scatter
         if _is_numeric_series(x_data):
             plot(x_data, y_data, **color_kw)

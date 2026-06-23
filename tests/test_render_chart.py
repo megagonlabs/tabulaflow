@@ -12,6 +12,7 @@ from tabulaflow.app.dump import _add_line_hover, render_chart_html
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
 from tabulaflow.toolhub.render_chart import (
+    ChartNotRenderable,
     RenderChartTool,
     chart_type_label,
     is_plotext_renderable,
@@ -222,7 +223,32 @@ class TestRenderPlotextDataTypes:
         out = render_plotext("line", "x", "y", "", df, console_width=60, console_height=18)
         assert isinstance(out, str) and out.strip()
 
-    def test_non_numeric_y_raises_clear_error(self) -> None:
+    def test_horizontal_bar_numeric_x_categorical_y(self) -> None:
+        # regression: a horizontal bar (measure on x, category on y) wrongly errored
+        df = pd.DataFrame({"sales": [120, 80, 200], "product": ["Widget", "Gadget", "Gizmo"]})
+        out = render_plotext("bar", "sales", "product", "", df, console_width=60, console_height=18)
+        assert isinstance(out, str) and out.strip()
+
+    def test_line_with_non_numeric_y_not_renderable(self) -> None:
+        # no numeric measure axis -> caller degrades to the browser card
         df = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
-        with pytest.raises(ValueError, match="not numeric"):
+        with pytest.raises(ChartNotRenderable):
             render_plotext("line", "x", "y", "", df, console_width=60, console_height=18)
+
+    def test_bar_with_both_axes_categorical_not_renderable(self) -> None:
+        df = pd.DataFrame({"x": ["a", "b"], "y": ["c", "d"]})
+        with pytest.raises(ChartNotRenderable):
+            render_plotext("bar", "x", "y", "", df, console_width=60, console_height=18)
+
+
+class TestBuildChartFallback:
+    def test_both_categorical_bar_degrades_to_card(self) -> None:
+        # ChartNotRenderable from render_plotext must surface as the browser card,
+        # not a red "Chart error" line.
+        from rich.panel import Panel
+
+        from tabulaflow.app.display import build_chart
+
+        df = pd.DataFrame({"x": ["a", "b"], "y": ["c", "d"]})
+        spec: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "x"}, "y": {"field": "y"}}}
+        assert isinstance(build_chart(df, spec, width=60), Panel)

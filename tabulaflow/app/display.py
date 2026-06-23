@@ -250,7 +250,12 @@ def build_chart(
     transform/multi-view or an unsupported mark) returns a card directing the
     user to open it in the browser, rather than a misleading approximation.
     """
-    from tabulaflow.toolhub.render_chart import is_plotext_renderable, parse_vegalite_spec, render_plotext
+    from tabulaflow.toolhub.render_chart import (
+        ChartNotRenderable,
+        is_plotext_renderable,
+        parse_vegalite_spec,
+        render_plotext,
+    )
 
     if not is_plotext_renderable(vegalite_spec):
         return _build_chart_card(vegalite_spec, height=height)
@@ -258,6 +263,10 @@ def build_chart(
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
         chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)
         return Text.from_ansi(chart_str)
+    except ChartNotRenderable:
+        # Structurally fine, but the data can't be drawn faithfully in a terminal
+        # (no numeric measure axis) — degrade to the "open in browser" card.
+        return _build_chart_card(vegalite_spec, height=height)
     except Exception as e:
         return Text.from_markup(f"[{ERROR}]Chart error:[/] {e}")
 
