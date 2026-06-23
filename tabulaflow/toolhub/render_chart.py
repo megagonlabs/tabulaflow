@@ -181,6 +181,23 @@ def _fill_bars_with_background(rendered: str, color: tuple[int, int, int]) -> st
     return re.compile(re.escape(fg) + r"([^\x1b\n]*)").sub(lambda m: bg + " " * len(m.group(1)), rendered)
 
 
+def _is_numeric_series(values: list[Any]) -> bool:
+    """True when every non-null value is a real number (``bool`` excluded).
+
+    plotext compares x/y values numerically, so a categorical/temporal series
+    (strings, timestamps) must be plotted against integer positions instead.
+    """
+    return all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values if v is not None)
+
+
+def _truncate_tick_labels(x_data: list[Any], width: int) -> list[str]:
+    """Stringify x values and truncate each so the labels share the axis width
+    without plotext dropping overlapping ones. Reserves ~4 cols for the y-axis."""
+    labels = [str(v) for v in x_data]
+    max_len = max(1, (width - 4) // max(len(labels), 1) - 1)
+    return [s[:max_len] if len(s) > max_len else s for s in labels]
+
+
 def render_plotext(
     mark: str,
     x_field: str,
@@ -221,22 +238,26 @@ def render_plotext(
 
     x_data = df[x_field].tolist()
     y_data = df[y_field].tolist()
+    if not _is_numeric_series(y_data):
+        raise ValueError(f"y field '{y_field}' is not numeric — cannot draw a terminal {mark} chart")
 
     # Caller (e.g. the app) may pass a brand color; otherwise plotext's default.
     color_kw = {"color": color} if color is not None else {}
 
+    positions = list(range(1, len(x_data) + 1))
     if mark == "bar":
-        x_labels = [str(v) for v in x_data]
-        # Truncate labels so plotext doesn't skip any due to overlap.
-        # Reserve ~4 chars for y-axis; divide remaining width among bars.
-        max_label_len = max(1, (effective_width - 4) // max(len(x_labels), 1) - 1)
-        tick_labels = [s[:max_label_len] if len(s) > max_label_len else s for s in x_labels]
-        plt.bar(x_labels, y_data, **color_kw)
-        plt.xticks(list(range(1, len(x_labels) + 1)), tick_labels)
-    elif mark == "line":
-        plt.plot(x_data, y_data, **color_kw)
-    elif mark == "scatter":
-        plt.scatter(x_data, y_data, **color_kw)
+        plt.bar([str(v) for v in x_data], y_data, **color_kw)
+        plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
+    elif mark in ("line", "scatter"):
+        plot = plt.plot if mark == "line" else plt.scatter
+        if _is_numeric_series(x_data):
+            plot(x_data, y_data, **color_kw)
+        else:
+            # Categorical/temporal x (month names, date strings, …): plot against
+            # integer positions with labeled ticks, since plotext compares x values
+            # numerically and raises on strings.
+            plot(positions, y_data, **color_kw)
+            plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
 
     if title:
         plt.title(title)

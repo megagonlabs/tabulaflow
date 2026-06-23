@@ -15,6 +15,7 @@ from tabulaflow.toolhub.render_chart import (
     RenderChartTool,
     chart_type_label,
     is_plotext_renderable,
+    render_plotext,
 )
 
 SIMPLE_BAR: dict[str, object] = {"mark": "bar", "encoding": {"x": {"field": "a"}, "y": {"field": "b"}}}
@@ -199,3 +200,29 @@ class TestRenderChartTool:
         msg = await RenderChartTool(history=history)(vegalite_spec=json.dumps(spec))
         assert "not found" in msg
         assert (await history.last()).vegalite_spec is None
+
+
+class TestRenderPlotextDataTypes:
+    """Categorical/temporal x must not crash plotext's numeric axis comparison."""
+
+    def test_line_with_categorical_x_does_not_crash(self) -> None:
+        # regression: a line over month-name strings raised
+        # "'<' not supported between instances of 'str' and 'int'"
+        df = pd.DataFrame({"month": ["Jan", "Feb", "Mar"], "sales": [10, 20, 15]})
+        out = render_plotext("line", "month", "sales", "", df, console_width=60, console_height=18)
+        assert isinstance(out, str) and out.strip()
+
+    def test_scatter_with_categorical_x_does_not_crash(self) -> None:
+        df = pd.DataFrame({"cat": ["a", "b", "c"], "val": [1.0, 2.5, 3.0]})
+        out = render_plotext("scatter", "cat", "val", "", df, console_width=60, console_height=18)
+        assert isinstance(out, str) and out.strip()
+
+    def test_numeric_x_line_still_renders(self) -> None:
+        df = pd.DataFrame({"x": [1, 2, 3], "y": [4, 5, 6]})
+        out = render_plotext("line", "x", "y", "", df, console_width=60, console_height=18)
+        assert isinstance(out, str) and out.strip()
+
+    def test_non_numeric_y_raises_clear_error(self) -> None:
+        df = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
+        with pytest.raises(ValueError, match="not numeric"):
+            render_plotext("line", "x", "y", "", df, console_width=60, console_height=18)
