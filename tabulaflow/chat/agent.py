@@ -207,8 +207,8 @@ Visualization:
 - Call `render_chart` with a Vega-Lite JSON spec if the result lends itself to a chart (e.g. counts by category, trends over time, distributions).
 - `render_chart` accepts an optional `record_id`. Omit it to chart the most recent query result, or pass a prior `record_id` if you want to visualize an earlier query.
 - Do NOT render charts for single-row results, heterogeneous tables, or when the user only asks for a specific value.
-- Supported marks: bar, line, point, rect. Only simple specs with x/y encoding are supported.
-- Prefer bar for categorical comparisons, line for time series, point for correlations.
+- Prefer a simple single-view chart — `bar`, `line`, or `point` with x/y encoding — which previews directly in the terminal: bar for categorical comparisons, line for time series, point for correlations.
+- Any Vega-Lite spec is accepted, but richer ones (color/size grouping, faceting, `rect` heatmaps, transforms, composite layer/concat views) render only in the browser. Use them only when a simple chart can't convey the answer; do NOT build composite/multi-view charts by default.
 </tool_calling>
 
 <plan_mode>
