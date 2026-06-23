@@ -181,13 +181,22 @@ def _fill_bars_with_background(rendered: str, color: tuple[int, int, int]) -> st
     return re.compile(re.escape(fg) + r"([^\x1b\n]*)").sub(lambda m: bg + " " * len(m.group(1)), rendered)
 
 
-def _is_numeric_series(values: list[Any]) -> bool:
-    """True when every non-null value is a real number (``bool`` excluded).
+def _is_numeric_column(col: pd.Series) -> bool:
+    """True when the column holds real numbers (nullable ``Int64``/``Float64``
+    included, ``bool`` excluded).
 
-    plotext compares x/y values numerically, so a categorical/temporal series
-    (strings, timestamps) must be plotted against integer positions instead.
+    plotext compares x/y values numerically, so a categorical/temporal column
+    (strings, timestamps) must be plotted against integer positions instead. Uses
+    the dtype so a NULL doesn't demote a numeric column to categorical the way a
+    per-value check does; falls back to a per-value scan for object columns of
+    numbers.
     """
-    return all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in values if v is not None)
+    if pd.api.types.is_bool_dtype(col):
+        return False
+    if pd.api.types.is_numeric_dtype(col):
+        return True
+    non_null = col.dropna()
+    return len(non_null) > 0 and all(isinstance(v, (int, float)) and not isinstance(v, bool) for v in non_null)
 
 
 def _truncate_tick_labels(values: list[Any], width: int, *, stacked: bool = False) -> list[str]:
@@ -226,8 +235,11 @@ def render_plotext(
 
     The measure axis is the numeric column, inferred from the data, so a bar chart
     draws vertically (categories on x) or horizontally (categories on y) as the spec
-    intends. Raises ``ChartNotRenderable`` when no axis is numeric — the caller falls
-    back to the browser card; other failures raise for the caller to report.
+    intends. Fields resolve case-insensitively; rows null on either axis (and
+    non-finite measures) are dropped first. Raises ``ChartNotRenderable`` when a
+    field is missing, no rows remain, no axis is numeric, or the mark is unsupported
+    — the caller falls back to the browser card; other failures raise for the caller
+    to report.
     """
     import plotext as plt
 
@@ -253,8 +265,21 @@ def render_plotext(
     # plt.theme("dark")'s concrete canvas color.
     plt.canvas_color("default")
 
-    x_data = df[x_field].tolist()
-    y_data = df[y_field].tolist()
+    x_col = resolve_column(df, x_field)
+    y_col = resolve_column(df, y_field)
+    if x_col is None or y_col is None:
+        raise ChartNotRenderable(f"chart field not found (x='{x_field}', y='{y_field}')")
+
+    # Keep only rows plottable on both axes: drop nulls and non-finite measures,
+    # which break plotext's numeric axis. Bail to the card if nothing remains.
+    data = pd.DataFrame({"x": df[x_col], "y": df[y_col]})
+    data = data.replace([float("inf"), float("-inf")], float("nan")).dropna()
+    if data.empty:
+        raise ChartNotRenderable(f"no plottable rows for '{x_field}'/'{y_field}'")
+    x_numeric = _is_numeric_column(data["x"])
+    y_numeric = _is_numeric_column(data["y"])
+    x_data = data["x"].tolist()
+    y_data = data["y"].tolist()
 
     # Caller (e.g. the app) may pass a brand color; otherwise plotext's default.
     color_kw = {"color": color} if color is not None else {}
@@ -265,10 +290,10 @@ def render_plotext(
         # Whichever column is numeric is the measure; orientation follows from the
         # channel it sits on — measure on y draws vertical bars, measure on x draws
         # horizontal bars (categories on the y-axis).
-        if _is_numeric_series(y_data):
+        if y_numeric:
             plt.bar([str(v) for v in x_data], y_data, **color_kw)
             plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
-        elif _is_numeric_series(x_data):
+        elif x_numeric:
             # plotext stacks the first category at the bottom; reverse so the first
             # data row sits at the top, matching the browser (Vega-Lite) and natural
             # reading order.
@@ -278,10 +303,10 @@ def render_plotext(
         else:
             raise ChartNotRenderable(f"bar chart has no numeric axis (x='{x_field}', y='{y_field}')")
     elif mark in ("line", "scatter"):
-        if not _is_numeric_series(y_data):
+        if not y_numeric:
             raise ChartNotRenderable(f"{mark} chart needs a numeric y axis ('{y_field}')")
         plot = plt.plot if mark == "line" else plt.scatter
-        if _is_numeric_series(x_data):
+        if x_numeric:
             plot(x_data, y_data, **color_kw)
         else:
             # Categorical/temporal x (month names, date strings, …): plot against
@@ -289,11 +314,13 @@ def render_plotext(
             # numerically and raises on strings.
             plot(positions, y_data, **color_kw)
             plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
+    else:
+        raise ChartNotRenderable(f"unsupported terminal mark '{mark}'")
 
     if title:
         plt.title(title)
-    plt.xlabel(x_field)
-    plt.ylabel(y_field)
+    plt.xlabel(x_col)
+    plt.ylabel(y_col)
 
     rendered = str(plt.build())
     # Bars are filled with a foreground block glyph, which leaves line-spacing

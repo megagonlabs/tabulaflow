@@ -236,6 +236,38 @@ class TestRenderPlotextDataTypes:
         out = render_plotext("bar", "score", "name", "", df, console_width=60, console_height=14)
         assert out.index("TOP") < out.index("BOTTOM")
 
+    def test_nullable_numeric_column_recognized_as_measure(self) -> None:
+        # an Int64 column with a NULL is still the measure (dtype-based classification)
+        df = pd.DataFrame({"cat": ["a", "b", "c"], "val": pd.array([1, 2, None], dtype="Int64")})
+        out = render_plotext("bar", "cat", "val", "", df, console_width=50, console_height=10)
+        assert isinstance(out, str) and out.strip()
+
+    def test_non_finite_measure_dropped_not_crash(self) -> None:
+        # inf/NaN measures break plotext; they must be dropped, not crash
+        df = pd.DataFrame({"x": [1, 2, 3, 4], "y": [1.0, float("inf"), float("nan"), 4.0]})
+        out = render_plotext("line", "x", "y", "", df, console_width=50, console_height=10)
+        assert isinstance(out, str) and out.strip()
+
+    def test_field_resolved_case_insensitively(self) -> None:
+        df = pd.DataFrame({"Month": ["Jan", "Feb"], "Sales": [10, 20]})
+        out = render_plotext("bar", "month", "sales", "", df, console_width=50, console_height=10)
+        assert isinstance(out, str) and out.strip()
+
+    def test_missing_field_not_renderable(self) -> None:
+        df = pd.DataFrame({"x": ["a"], "y": [1]})
+        with pytest.raises(ChartNotRenderable):
+            render_plotext("bar", "x", "nope", "", df, console_width=50, console_height=10)
+
+    def test_empty_dataframe_not_renderable(self) -> None:
+        df = pd.DataFrame({"x": [], "y": []})
+        with pytest.raises(ChartNotRenderable):
+            render_plotext("bar", "x", "y", "", df, console_width=50, console_height=10)
+
+    def test_unsupported_mark_not_renderable(self) -> None:
+        df = pd.DataFrame({"x": [1, 2], "y": [3, 4]})
+        with pytest.raises(ChartNotRenderable):
+            render_plotext("area", "x", "y", "", df, console_width=50, console_height=10)
+
     def test_line_with_non_numeric_y_not_renderable(self) -> None:
         # no numeric measure axis -> caller degrades to the browser card
         df = pd.DataFrame({"x": [1, 2], "y": ["a", "b"]})
