@@ -9,6 +9,7 @@ from rich.align import Align
 from rich.columns import Columns
 from rich.console import Group
 from rich.markup import escape as _rich_escape
+from rich.panel import Panel
 from rich.style import Style
 from rich import box
 from rich.syntax import Syntax
@@ -16,7 +17,7 @@ from rich.table import Table
 from rich.text import Text
 from rich.theme import Theme
 
-from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_RGB, ERROR, KEY_HINT
+from tabulaflow.app.theme import ACCENT, ACCENT_BOLD, ACCENT_DIM, ACCENT_RGB, ERROR, KEY_HINT
 
 TABULAFLOW_THEME = Theme(
     {
@@ -212,23 +213,32 @@ def _spec_title(spec: dict[str, object]) -> str:
     return str(title) if title else ""
 
 
-def _build_chart_card(spec: dict[str, object], *, detailed: bool) -> RenderableType:
-    """Placeholder card for charts plotext can't draw faithfully (open in browser).
+def _build_chart_card(spec: dict[str, object], *, height: int | None) -> RenderableType:
+    """Placeholder box for charts plotext can't draw faithfully (open in browser).
 
-    ``detailed`` adds the browser explainer line — used in the full-screen
-    ``ChartBrowserScreen``; the inline view stays to a compact headline + type.
+    A dim rounded box with the title, chart type, and an explanatory line, all
+    centered. Full-screen (``height`` set) fills the chart region and centers
+    vertically; the inline result preview (``height`` is None) sizes to content.
     """
     from tabulaflow.toolhub.render_chart import chart_type_label
 
     type_label = chart_type_label(spec)
     title = _spec_title(spec)
-    lines = [Text(f"\U0001f4ca  {title or type_label}", style=ACCENT_BOLD)]
+    lines: list[RenderableType] = [Text(title or type_label, style="bold", justify="center")]
     if title:
-        lines.append(Text(type_label, style="dim"))
-    if detailed:
-        lines.append(Text(""))
-        lines.append(Text("This chart type renders only in the browser.", style="dim"))
-    return Group(*lines)
+        lines.append(Text(type_label, style="dim", justify="center"))
+    lines.append(Text(""))
+    lines.append(
+        Text(
+            "The terminal preview only supports simple bar, line, and scatter charts. "
+            "Open this one in your browser to view it in full.",
+            style="dim",
+            justify="center",
+        )
+    )
+    group = Group(*lines)
+    body = Align.center(group, vertical="middle") if height is not None else group
+    return Panel(body, height=height, box=box.ROUNDED, border_style=ACCENT_DIM, padding=(1, 2))
 
 
 def build_chart(
@@ -243,7 +253,7 @@ def build_chart(
     from tabulaflow.toolhub.render_chart import is_plotext_renderable, parse_vegalite_spec, render_plotext
 
     if not is_plotext_renderable(vegalite_spec):
-        return _build_chart_card(vegalite_spec, detailed=height is not None)
+        return _build_chart_card(vegalite_spec, height=height)
     try:
         mark, x_field, y_field, title = parse_vegalite_spec(vegalite_spec)
         chart_str = render_plotext(mark, x_field, y_field, title, df, width, height, color=ACCENT_RGB)
