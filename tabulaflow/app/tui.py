@@ -30,6 +30,7 @@ from tabulaflow.app.widgets import (
 )
 
 if TYPE_CHECKING:
+    from tabulaflow.app.pane import OutputPane
     from tabulaflow.chat import ChatResult
 
 logger = logging.getLogger(__name__)
@@ -108,6 +109,7 @@ class TabulaflowApp(App[None]):
         self._project_dir = Path(os.getcwd())
         prune_old_dumps()
         self._session: SessionState | None = None
+        self._pane: OutputPane | None = None
         self._session_lock = asyncio.Lock()
         self._busy = False
         self._current_worker: object | None = None
@@ -438,8 +440,55 @@ class TabulaflowApp(App[None]):
             # Transient agent working files don't outlive the session.
             import shutil
 
+            if self._pane is not None:
+                self._pane.stop()
             shutil.rmtree(self._runtime_paths.scratch_dir, ignore_errors=True)
             self.exit()
+
+    async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll) -> None:
+        """Render each cited result to the dumps dir and push it to the browser pane.
+
+        Lazily starts the output pane on the first push and announces its URL.
+        Best-effort: any render/serve failure is swallowed — the pane is an
+        additive surface and must never block or fail the chat turn.
+        """
+        import secrets
+
+        from tabulaflow.app.dump import render_chart_html, render_table_html
+        from tabulaflow.app.pane import OutputPane
+
+        dumps_dir = self._runtime_paths.dumps_dir
+        started = False
+        if self._pane is None:
+            try:
+                dumps_dir.mkdir(parents=True, exist_ok=True)
+                self._pane = OutputPane(dumps_dir)
+                self._pane.start()
+                started = True
+            except Exception:
+                logger.debug("output pane failed to start", exc_info=True)
+                self._pane = None
+                return
+        assert self._pane is not None
+
+        for record in result.records:
+            if record.df is None or record.df.empty:
+                continue
+            try:
+                if record.chart_spec is not None:
+                    path = dumps_dir / f"V_{secrets.token_hex(3)}.html"
+                    render_chart_html(record.df, record.chart_spec, path, title=record.label)
+                else:
+                    path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
+                    render_table_html(record.df, path, title=record.label)
+            except Exception:
+                logger.debug("output pane render failed", exc_info=True)
+                continue
+            self._pane.push(path)
+
+        if started and self._pane.url is not None:
+            await chat_log.mount(SystemMessage(Text(f"Results pane → {self._pane.url}", style="dim")))
+            self._pane.open_browser()
 
     def _restore_input_text(self, text: str) -> None:
         """Put `text` back into the input bar and focus it. Used after a
@@ -727,6 +776,9 @@ class TabulaflowApp(App[None]):
 
         session.last_result = result
         if result.records:
+            # Push to the browser pane BEFORE building the widget: AgentResultWidget
+            # -> build_result_views() nulls each record.df after rendering to Rich.
+            await self._push_results_to_pane(result, chat_log)
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,
