@@ -38,6 +38,12 @@ _MAX_CHART_ROWS = 20_000
 _PLOTEXT_MAX_BARS = 50
 _PLOTEXT_MAX_POINTS = 1_000
 
+# Bar thickness as a fraction of its slot, so plotext leaves a gap between bars
+# instead of drawing them flush (the default ~1.0 makes few bars merge into one
+# block). Half-slot keeps a gap even at the short preview height; gaps still fade at
+# high bar counts — a terminal-resolution limit, not a value this can beat.
+_BAR_WIDTH = 0.5
+
 # Top-level keys that make a spec multi-view (no single mark to preview).
 _MULTIVIEW_KEYS = ("layer", "concat", "hconcat", "vconcat", "facet", "repeat", "spec")
 # Encoding channels that, when bound to a field, reshape the chart beyond a
@@ -336,14 +342,16 @@ def render_plotext(
         # channel it sits on — measure on y draws vertical bars, measure on x draws
         # horizontal bars (categories on the y-axis).
         if y_numeric:
-            plt.bar([str(v) for v in x_data], y_data, **color_kw)
+            plt.bar([str(v) for v in x_data], y_data, width=_BAR_WIDTH, **color_kw)
             plt.xticks(positions, _truncate_tick_labels(x_data, effective_width))
         elif x_numeric:
             # plotext stacks the first category at the bottom; reverse so the first
             # data row sits at the top, matching the browser (Vega-Lite) and natural
             # reading order.
             rev_cats = list(reversed(y_data))
-            plt.bar([str(v) for v in rev_cats], list(reversed(x_data)), orientation="horizontal", **color_kw)
+            plt.bar(
+                [str(v) for v in rev_cats], list(reversed(x_data)), orientation="horizontal", width=_BAR_WIDTH, **color_kw
+            )
             plt.yticks(positions, _truncate_tick_labels(rev_cats, effective_width, stacked=True))
         else:
             raise ChartNotRenderable(f"bar chart has no numeric axis (x='{x_field}', y='{y_field}')")
