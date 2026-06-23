@@ -27,7 +27,7 @@ _PANE_HTML = """<!doctype html>
   html, body { margin: 0; background: #0f1117; }
   #stack { padding: 12px; }
   .card {
-    display: block; width: 100%; height: 80vh; border: 1px solid #21262d;
+    display: block; width: 100%; height: 60vh; border: 1px solid #21262d;
     border-radius: 8px; margin: 0 0 12px; background: #131720;
   }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 24px; }
@@ -37,6 +37,20 @@ _PANE_HTML = """<!doctype html>
 <div id="empty">waiting for results…</div>
 <div id="stack"></div>
 <script>
+  // Size each card to its content. The dump files are served from this same
+  // origin, so the parent may read the iframe document and track its height as
+  // Tabulator/Vega render asynchronously (ResizeObserver). Falls back to the
+  // CSS height on any access error.
+  function autosize(frame) {
+    frame.addEventListener('load', function () {
+      try {
+        var doc = frame.contentWindow.document;
+        var fit = function () { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+        fit();
+        if (window.ResizeObserver) { new ResizeObserver(fit).observe(doc.documentElement); }
+      } catch (e) { /* cross-origin / detached — keep the CSS height */ }
+    });
+  }
   var shown = 0;
   function poll() {
     fetch('/__index__').then(function (r) { return r.json(); }).then(function (names) {
@@ -48,6 +62,8 @@ _PANE_HTML = """<!doctype html>
       for (var i = shown; i < names.length; i++) {
         var f = document.createElement('iframe');
         f.className = 'card';
+        f.scrolling = 'no';
+        autosize(f);
         f.src = '/' + names[i];
         stack.appendChild(f);
         f.scrollIntoView({ behavior: 'smooth', block: 'start' });
