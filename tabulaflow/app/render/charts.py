@@ -87,9 +87,9 @@ _CHART_CSS = """
 #vis-wrap.fill { height: 480px; }
 #vis-wrap.fill #vis,
 #vis-wrap.fill #vis > .vega-embed { width: 100%; height: 100%; }
-/* Multi-view / faceted charts keep their intrinsic size and scroll inside
-   the card (Vega-Lite can't size those to a container). */
-#vis-wrap.content { max-height: 560px; overflow: auto; }
+/* Multi-view / faceted charts keep their intrinsic size (Vega-Lite can't size
+   those to a container). The parent pane/browser owns vertical scrolling. */
+#vis-wrap.content { overflow: visible; }
 #vis-wrap.content #vis { width: 100%; }
 .vis-error { color: var(--error); white-space: pre-wrap;
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }
