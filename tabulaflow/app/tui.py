@@ -11,7 +11,7 @@ from rich.text import Text
 from textual import events
 from textual.app import App, ComposeResult
 from textual.binding import Binding
-from textual.containers import Horizontal, VerticalScroll
+from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Input, Static
 
 from tabulaflow.app.commands import COMMAND_PREFIX, handle_command
@@ -34,6 +34,13 @@ if TYPE_CHECKING:
     from tabulaflow.chat import ChatResult
 
 logger = logging.getLogger(__name__)
+
+
+class BottomSeparator(Static):
+    """One-row separator that fills its current width without layout side effects."""
+
+    def render(self) -> Text:
+        return Text("─" * max(1, self.size.width), style="#333333", overflow="crop", no_wrap=True)
 
 
 def _warm_session_imports() -> None:
@@ -85,7 +92,6 @@ class TabulaflowApp(App[None]):
         ("ctrl+d", "quit_only", "Quit"),
         ("escape", "toggle_focus", "Toggle focus"),
         ("ctrl+o", "open_data_explorer", "Open data explorer"),
-        ("ctrl+b", "open_results_pane", "Open results pane"),
         Binding("pageup", "scroll_log('pageup')", "Scroll up", show=False, priority=True),
         Binding("pagedown", "scroll_log('pagedown')", "Scroll down", show=False, priority=True),
     ]
@@ -138,30 +144,28 @@ class TabulaflowApp(App[None]):
 
     def compose(self) -> ComposeResult:
         yield VerticalScroll(id="chat-log")
-        with Horizontal(id="input-row"):
-            # Mint heavy vertical bar — UserMessage-style prompt indicator.
-            # Rendered as a single-glyph Static (rather than a CSS border
-            # on the input) so the bar height equals one row even though
-            # the input bar occupies the full 3-row dock height.
-            yield Static("┃", id="input-prompt")
-            yield HistoryInput(
-                history_path=self._runtime_paths.history_path,
-                placeholder="Ask a question or type /help",
-                id="input-bar",
-            )
-            # Dim thin separators between dock sections. Same single-glyph
-            # trick: 1-row visual in a 3-row container.
-            yield Static("│", classes="input-sep")
-            # Content set by ``_refresh_esc_hint`` once mounted; starts disabled
-            # (faded) until there are results to jump to.
-            yield Static(id="input-esc-hint", disabled=True)
-            yield Static("│", classes="input-sep")
-            # Disabled until the background session build + sample auto-connect
-            # completes (re-enabled at the end of ``_ensure_session``), so the user
-            # can't open an empty explorer before any database is connected. While
-            # disabled it shows a "Preparing…" label so the fade reads as a
-            # transient loading state, not a permanently unavailable feature.
-            yield Button(self._explorer_label(ready=False), id="open-explorer-btn", disabled=True)
+        with Vertical(id="bottom-bar"):
+            yield BottomSeparator(classes="bottom-sep")
+            with Horizontal(id="input-row"):
+                yield Static("┃", id="input-prompt")
+                yield HistoryInput(
+                    history_path=self._runtime_paths.history_path,
+                    placeholder="Ask a question or type /help",
+                    id="input-bar",
+                )
+                yield Static("│", classes="input-sep")
+                # Content set by ``_refresh_esc_hint`` once mounted; starts disabled
+                # (faded) until there are results to jump to.
+                yield Static(id="input-esc-hint", disabled=True)
+                yield Static("│", classes="input-sep")
+                # Disabled until the background session build + sample auto-connect
+                # completes (re-enabled at the end of ``_ensure_session``), so the user
+                # can't open an empty explorer before any database is connected. While
+                # disabled it shows a "Preparing…" label so the fade reads as a
+                # transient loading state, not a permanently unavailable feature.
+                yield Button(self._explorer_label(ready=False), id="open-explorer-btn", disabled=True)
+            yield BottomSeparator(classes="bottom-sep")
+            yield Static(id="pane-url", disabled=True)
 
     def on_mount(self) -> None:
         self._setup_logging()
@@ -288,6 +292,15 @@ class TabulaflowApp(App[None]):
             # would otherwise keep its pressed/focus highlight).
             self.query_one("#input-bar", Input).focus()
             self.action_open_data_explorer()
+            event.stop()
+
+    def on_click(self, event: events.Click) -> None:
+        """Reopen the output pane when the persistent pane URL row is clicked."""
+        if getattr(event.widget, "id", None) != "pane-url":
+            return
+        pane = self._pane
+        if pane is not None and pane.url is not None:
+            pane.reopen()
             event.stop()
 
     def on_key(self, event: events.Key) -> None:
@@ -471,9 +484,11 @@ class TabulaflowApp(App[None]):
                     port=self._output_pane_port,
                 )
                 self._pane.start()
+                self._refresh_pane_url()
             except Exception:
                 logger.debug("output pane failed to start", exc_info=True)
                 self._pane = None
+                self._refresh_pane_url()
         return self._pane
 
     def view_in_pane(self, path: Path) -> bool:
@@ -491,17 +506,26 @@ class TabulaflowApp(App[None]):
         return True
 
     def action_open_results_pane(self) -> None:
-        """(Re)open the live results pane in the browser (ctrl+b)."""
+        """(Re)open the live results pane in the browser."""
         pane = self._ensure_pane()
         if pane is not None and pane.url is not None:
             pane.reopen()
         else:
             self.notify("Results pane unavailable.", severity="warning")
 
+    def _refresh_pane_url(self) -> None:
+        """Show the persistent pane URL below the input row once available."""
+        try:
+            pane_url = self.query_one("#pane-url", Static)
+        except Exception:
+            return
+        url = self._pane.url if self._pane is not None else None
+        pane_url.update(Text(url or "", style="dim"))
+        pane_url.disabled = url is None
+
     async def _push_turn_to_pane(
         self,
         result: "ChatResult",
-        chat_log: VerticalScroll,
         *,
         title: str,
         user_text: str,
@@ -537,7 +561,6 @@ class TabulaflowApp(App[None]):
         pane.push({"title": title, "user": user_text, "assistant": result.text, "records": records})
 
         if started and pane.url is not None:
-            await chat_log.mount(SystemMessage(Text(f"Results pane → {pane.url}  ·  ctrl+b to reopen", style="dim")))
             pane.open_browser()
 
     def _restore_input_text(self, text: str) -> None:
@@ -829,7 +852,6 @@ class TabulaflowApp(App[None]):
         # -> build_result_views() nulls each record.df after rendering to Rich.
         await self._push_turn_to_pane(
             result,
-            chat_log,
             title=display_text or question,
             user_text=display_text or question,
         )

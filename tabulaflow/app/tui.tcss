@@ -19,20 +19,27 @@ TabulaflowApp {
     scrollbar-background-active: transparent;
 }
 
-#input-row {
+#bottom-bar {
     dock: bottom;
-    layout: horizontal;
-    height: 3;
+    height: 4;
 }
 
-/* Prompt bar (UserMessage-style) and section separators. Each is a
-   single-glyph Static rendered in a 3-row container with vertical
-   padding, so the visible bar spans only the middle row even though
-   the surrounding sections are 3 rows tall. */
+.bottom-sep {
+    height: 1;
+    color: #4a4a4a;
+    background: transparent;
+    text-wrap: nowrap;
+}
+
+#input-row {
+    layout: horizontal;
+    height: 1;
+}
+
 #input-prompt {
     width: 1;
-    height: 3;
-    padding: 1 0;
+    height: 1;
+    padding: 0;
     background: transparent;
     color: #3EB489;
     text-style: bold;
@@ -40,20 +47,17 @@ TabulaflowApp {
 
 .input-sep {
     width: 1;
-    height: 3;
-    padding: 1 0;
+    height: 1;
+    padding: 0;
     background: transparent;
     color: #666666;
 }
 
 #input-bar {
-    /* No background box; the mint bar is rendered by the sibling
-       ``#input-prompt`` Static (single-row glyph) instead of a CSS
-       border, so the bar height matches the text row. */
     width: 1fr;
-    height: 3;
+    height: 1;
     border: none;
-    padding: 1 1;
+    padding: 0 1;
     background: transparent;
 }
 
@@ -68,8 +72,8 @@ TabulaflowApp {
        resizing when the label toggles between "Go to results" and
        "Go to input", which would otherwise shift "Esc" horizontally. */
     width: 22;
-    height: 3;
-    padding: 1 2;
+    height: 1;
+    padding: 0 2;
     background: transparent;
 }
 
@@ -89,7 +93,7 @@ TabulaflowApp {
        single line — without it Textual wraps the label to the button's height. */
     width: 30;
     text-wrap: nowrap;
-    height: 3;
+    height: 1;
     margin: 0;
     padding: 0 2;
     border: none;
@@ -97,6 +101,19 @@ TabulaflowApp {
     color: $text;
     text-style: none;
     min-width: 0;
+}
+
+#pane-url {
+    height: 1;
+    padding: 0 1;
+    background: transparent;
+    color: #666666;
+    text-wrap: nowrap;
+    text-align: right;
+}
+
+#pane-url:disabled {
+    opacity: 0;
 }
 
 #open-explorer-btn:hover {
