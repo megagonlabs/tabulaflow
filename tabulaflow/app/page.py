@@ -18,9 +18,9 @@ from tabulaflow.app.theme import ACCENT, ERROR
 # borders). They're also published as the ``:root`` CSS custom properties below,
 # so dump.py's table/chart CSS can reference them as ``var(--accent)`` etc.
 PAGE_BG = "#0f1117"  # near-black, blue-tinted
-CARD_BG = "#131720"  # dark slate
-ROW_STRIPE = "#1a1f2a"  # slate (lifted)
-ROW_HOVER = "#1f2532"  # slate (hover)
+CARD_BG = "#1a212c"  # slate panel — lifted clearly off the page so it reads without a border
+ROW_STRIPE = "#232b38"  # slate (lifted above the panel)
+ROW_HOVER = "#2c3441"  # slate (hover)
 BORDER = "#21262d"  # gunmetal gray
 TEXT = "#e4e4e7"  # off-white
 TEXT_MUTED = "#9aa4b2"  # cool gray

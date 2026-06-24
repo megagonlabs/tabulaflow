@@ -470,7 +470,7 @@ class TabulaflowApp(App[None]):
         if pane is None or pane.url is None:
             return False
         kind = {"V": "chart", "T": "data", "C": "data", "Q": "query"}.get(path.name[:1], "data")
-        pane.push({"records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
+        pane.push({"title": kind, "records": [{"label": None, "views": [{"kind": kind, "file": path.name}]}]})
         pane.reopen()
         return True
 
@@ -482,7 +482,7 @@ class TabulaflowApp(App[None]):
         else:
             self.notify("Results pane unavailable.", severity="warning")
 
-    async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll) -> None:
+    async def _push_results_to_pane(self, result: "ChatResult", chat_log: VerticalScroll, title: str) -> None:
         """Render each cited result to a card and push it to the browser pane.
 
         Auto-push path: the pane lazily starts and opens once on the first result,
@@ -511,7 +511,7 @@ class TabulaflowApp(App[None]):
         pane = self._ensure_pane()
         if pane is None:
             return
-        pane.push({"records": records})
+        pane.push({"title": title, "records": records})
 
         if started and pane.url is not None:
             await chat_log.mount(
@@ -807,7 +807,7 @@ class TabulaflowApp(App[None]):
         if result.records:
             # Push to the browser pane BEFORE building the widget: AgentResultWidget
             # -> build_result_views() nulls each record.df after rendering to Rich.
-            await self._push_results_to_pane(result, chat_log)
+            await self._push_results_to_pane(result, chat_log, title=display_text or question)
             # chat-log padding (2) + scrollbar (2) + widget margin (5) + widget padding (2) = 11
             result_widget = AgentResultWidget(
                 result,

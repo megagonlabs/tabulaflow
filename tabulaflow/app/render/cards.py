@@ -8,28 +8,66 @@ the tab UI itself lives in the pane (one iframe whose ``src`` swaps between view
 
 from __future__ import annotations
 
-import html
 import secrets
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from pygments import highlight
+from pygments.formatters import HtmlFormatter
+from pygments.lexers import get_lexer_by_name
+from pygments.style import Style
+from pygments.token import Comment, Keyword, Name, Number, Operator, Punctuation, String, Token
+from pygments.util import ClassNotFound
+
 from tabulaflow.app.page import CARD_BG, TEXT, render_page
 from tabulaflow.app.render.charts import render_chart_html
 from tabulaflow.app.render.tables import render_table_html
+from tabulaflow.app.theme import ACCENT
 
 if TYPE_CHECKING:
     from tabulaflow.chat.result import ChatResultRecord
 
+# Fixed pixel cap for the data-table panel: short tables hug, long ones cap +
+# scroll internally (≈ the chart panel height), rather than tracking the viewport.
+_PANE_TABLE_MAX_H = 520
+
+_QUERY_BG = CARD_BG  # same panel surface as the chart/data views
+
+
+class _SqlStyle(Style):  # type: ignore[misc]  # pygments ships no type stubs
+    """Mint-accented dark SQL syntax theme, cohesive with the pane palette."""
+
+    background_color = _QUERY_BG
+    styles = {  # noqa: RUF012
+        Token: TEXT,
+        Comment: "italic #6a737d",
+        Keyword: f"bold {ACCENT}",
+        Operator: "#9aa4b2",
+        Punctuation: "#9aa4b2",
+        Name: TEXT,
+        Name.Function: "#6cb6ff",
+        Name.Builtin: ACCENT,
+        String: "#98c379",
+        Number: "#d19a66",
+    }
+
+
 _QUERY_CSS = (
-    "body { background: %(bg)s; color: %(fg)s; margin: 0; }"
-    "pre.sql { margin: 0; padding: 16px; white-space: pre-wrap; word-break: break-word;"
-    " font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }"
-) % {"bg": CARD_BG, "fg": TEXT}
+    "#content { padding: 0; }"
+    "body { margin: 0; background: %(bg)s; }"
+    ".highlight { margin: 0; }"
+    ".highlight pre { margin: 0; padding: 18px 20px; white-space: pre-wrap; word-break: break-word;"
+    " font: 13px/1.6 ui-monospace, SFMono-Regular, Menlo, monospace; }"
+) % {"bg": _QUERY_BG}
 
 
-def render_query_html(sql: str, html_path: Path) -> None:
-    """Render a SQL string as a simple self-contained HTML page."""
-    body = f'<pre class="sql">{html.escape(sql)}</pre>'
+def render_query_html(sql: str, html_path: Path, *, lexer: str = "sql") -> None:
+    """Render SQL as a self-contained, syntax-highlighted HTML page."""
+    try:
+        lex = get_lexer_by_name(lexer or "sql")
+    except ClassNotFound:
+        lex = get_lexer_by_name("sql")
+    body = highlight(sql, lex, HtmlFormatter(style=_SqlStyle, noclasses=True))
     page = render_page(title="Query", body=body, head=f"<style>{_QUERY_CSS}</style>")
     html_path.write_text(page, encoding="utf-8")
 
@@ -49,11 +87,11 @@ def render_record_card(record: "ChatResultRecord", dumps_dir: Path) -> dict[str,
             render_chart_html(df, record.chart_spec, path, title=record.label)
             views.append({"kind": "chart", "file": path.name})
         path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
-        render_table_html(df, path, title=record.label)
+        render_table_html(df, path, title=record.label, max_height=_PANE_TABLE_MAX_H)
         views.append({"kind": "data", "file": path.name})
     if record.query:
         path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"
-        render_query_html(record.query, path)
+        render_query_html(record.query, path, lexer=record.query_lexer or "sql")
         views.append({"kind": "query", "file": path.name})
     if not views:
         return None

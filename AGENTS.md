@@ -126,9 +126,9 @@ Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 - **Engine**: Tabulator (`tabulator_midnight.min.css` + overrides) for tables, Vega for charts. Keep custom CSS thin — let the bundled theme do the work.
 - **Palette**:
   - Page bg: `#0f1117` (deepest)
-  - Card / table surface: `#131720`
-  - Even-row stripe: `#1a1f2a` (subtle ~4% lift)
-  - Row hover: `#1f2532`
+  - Card / panel surface: `#1a212c` (lifted clearly off the page so the borderless panel reads as a distinct surface)
+  - Even-row stripe: `#232b38` (lift above the panel)
+  - Row hover: `#2c3441`
   - Border: `#21262d`
   - Mint accent: `#3eb489` (headers, focus highlights, active pane tab)
   - Text primary `#e4e4e7`; dim / row-numbers `#6a737d`

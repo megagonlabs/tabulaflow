@@ -154,9 +154,10 @@ def _load_tabulator_assets() -> tuple[str, str]:
 _CUSTOM_CSS = """
 /* Table-specific styling — page chrome (banner, base palette, scrollbars)
    lives in app/page.py; Tabulator's bundled midnight CSS handles the grid. */
-/* Card surface for the table — slightly elevated against page bg, with a
-   subtle border and min-height that fills the viewport so short tables
-   sit in a defined panel instead of floating against a vast page bg. */
+/* The pane wraps this table in a rounded panel (the iframe), so drop the page
+   padding and let the table fill it edge-to-edge — the panel is the table's
+   outer frame. */
+#content { padding: 0; }
 #table-wrap {
     width: 100%;
     overflow: hidden;
@@ -425,13 +426,17 @@ _INIT_JS_TEMPLATE = """
 
     // Sizing strategy:
     //  - ``maxHeight`` always set so the *table* scrolls internally when
-    //    content exceeds the viewport (otherwise the page scrolls and
-    //    the sticky header / horizontal-scroll sync break). Short content
-    //    still flows naturally because the table is below the cap.
+    //    content exceeds the cap (otherwise the page scrolls and the sticky
+    //    header / horizontal-scroll sync break). Short content still flows
+    //    naturally because the table is below the cap.
+    //  - The cap is a fixed pixel value when a host frames the table in a
+    //    panel (``__MAX_HEIGHT__``), so short tables hug; otherwise it tracks
+    //    the viewport so a standalone page fills the window.
     //  - ``height`` set only for large tables to activate Tabulator's
     //    virtual scroll. Without ``height``, virtual scroll doesn't
     //    engage and 1000s of rows freeze the tab.
-    var viewportCap = Math.max(240, window.innerHeight - 100);
+    var fixedMax = __MAX_HEIGHT__;
+    var viewportCap = fixedMax != null ? fixedMax : Math.max(240, window.innerHeight - 100);
     var tableOpts = {
         data: data,
         columns: cols,
@@ -590,6 +595,7 @@ def render_table_html(
     title: str | None = None,
     max_rows: int = _DEFAULT_MAX_ROWS,
     inline_cap: int = _DEFAULT_INLINE_CAP,
+    max_height: int | None = None,
 ) -> None:
     """Render ``df`` as a single HTML file at ``html_path`` using Tabulator.
 
@@ -612,6 +618,9 @@ def render_table_html(
         title: Document title (browser tab); defaults to the file stem.
         max_rows: Row cap. Rows past this are dropped.
         inline_cap: Per-cell size threshold for inline vs spilled rendering.
+        max_height: Fixed pixel cap for the table when a host frames it in a
+            panel (short tables hug, long tables cap + scroll). ``None`` tracks
+            the viewport so a standalone full-window page fills the screen.
     """
     truncated_rows = max(0, len(df) - max_rows)
     view = df.head(max_rows)
@@ -736,6 +745,7 @@ def render_table_html(
         .replace("__COLS__", cols_json)
         .replace("__DISPLAY_CAP__", str(_CELL_DISPLAY_CAP))
         .replace("__HAS_MEDIA__", "true" if col_types else "false")
+        .replace("__MAX_HEIGHT__", str(max_height) if max_height is not None else "null")
     )
 
     doc_title = title or html_path.stem

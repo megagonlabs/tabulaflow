@@ -84,7 +84,7 @@ _CHART_CSS = """
 }
 /* Single-view charts fill a fixed-height card in both dimensions
    (spec width/height = "container"). */
-#vis-wrap.fill { height: 360px; }
+#vis-wrap.fill { height: 480px; }
 #vis-wrap.fill #vis,
 #vis-wrap.fill #vis > .vega-embed { width: 100%; height: 100%; }
 /* Multi-view / faceted charts keep their intrinsic size and scroll inside

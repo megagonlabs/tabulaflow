@@ -8,6 +8,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
+from tabulaflow.app.page import CARD_BG
 from tabulaflow.app.render import _add_line_hover, render_chart_html
 from tabulaflow.core.types import ExecResult, PredQuery
 from tabulaflow.toolhub.query_history import QueryHistory
@@ -91,7 +92,7 @@ class TestRenderChartHtml:
 
     def test_dark_theme_merged(self, tmp_path: Path) -> None:
         html = self._render(tmp_path, pd.DataFrame({"a": ["x"], "b": [1]}), SIMPLE_BAR)
-        assert '"background": "#131720"' in html
+        assert f'"background": "{CARD_BG}"' in html
 
     def test_field_case_normalized(self, tmp_path: Path) -> None:
         df = pd.DataFrame({"status": ["x"], "count": [1]})

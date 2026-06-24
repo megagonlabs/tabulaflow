@@ -44,62 +44,73 @@ _PANE_HTML = """<!doctype html>
 <meta charset="utf-8">
 <title>tabulaflow · results</title>
 <style>
-  html, body { margin: 0; background: #0f1117;
-               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
-  #banner { border-bottom: 1px solid #21262d; background: #0f1117; position: sticky; top: 0; z-index: 50; }
-  #banner-inner { display: flex; align-items: center; justify-content: space-between;
-                  max-width: 1100px; margin: 0 auto; padding: 12px 14px; }
+  html, body { height: 100%; }
+  body { margin: 0; background: #0f1117; color: #e4e4e7; display: flex; flex-direction: column;
+         font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+  #banner { border-bottom: 1px solid #21262d; background: #0f1117; flex: 0 0 auto; }
+  #banner-inner { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; }
   #logo { color: #3eb489; font: 700 16px ui-monospace, "SF Mono", Menlo, monospace;
           letter-spacing: 0.05em; user-select: none; }
   #repo { display: inline-flex; align-items: center; gap: 6px; color: #9aa4b2;
           text-decoration: none; font-size: 13px; padding: 4px 10px; border-radius: 4px; }
   #repo:hover { background: #1f2532; color: #e4e4e7; }
   #repo svg { width: 16px; height: 16px; fill: currentColor; }
-  #stack { padding: 12px; max-width: 1100px; margin: 0 auto; }
-  .card { border: 1px solid #21262d; border-radius: 8px; margin: 0 0 14px;
-          background: #131720; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
-  .railcard { display: flex; align-items: stretch; }
-  .rail { flex: 0 0 170px; border-right: 1px solid #21262d; padding: 6px 0; }
-  .railitem { padding: 8px 14px; color: #6a737d; cursor: pointer; border-left: 2px solid transparent;
-              font: 12px ui-monospace, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .railitem:hover { color: #e4e4e7; }
-  .railitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
-  .railcontent { flex: 1 1 auto; min-width: 0; position: relative; }
+  #main { flex: 1 1 auto; display: flex; min-height: 0; }
+  #turns { flex: 0 0 230px; border-right: 1px solid #21262d; overflow-y: auto; padding: 8px 0; }
+  .turnitem { padding: 9px 16px; color: #6a737d; cursor: pointer; border-left: 2px solid transparent;
+              font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .turnitem:hover { color: #e4e4e7; }
+  .turnitem.active { color: #3eb489; border-left-color: #3eb489; background: #1a1f2a; }
+  #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
+  #content-inner { width: min(1000px, 100%); margin: auto; padding: 16px; box-sizing: border-box; }
+  #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 28px; }
+  .rectabs { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+  .rectab { background: transparent; border: 0; color: #6a737d; cursor: pointer;
+            padding: 2px 1px; border-bottom: 2px solid transparent; max-width: 160px;
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+            font: 13px ui-monospace, monospace; }
+  .rectab:hover { color: #e4e4e7; }
+  .rectab.active { color: #3eb489; border-bottom-color: #3eb489; }
+  .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: center; justify-content: flex-end; gap: 8px; padding: 8px 10px;
-             font: 12px ui-monospace, monospace; }
+  .cardbar { display: flex; align-items: center; gap: 8px; padding: 2px 4px 12px;
+             font: 13px ui-monospace, monospace; }
   .cardlabel { color: #e4e4e7; margin-right: auto; }
   .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
              color: #6a737d; padding: 4px 14px; border-radius: 999px; text-transform: capitalize;
-             font: 12px ui-monospace, monospace; transition: color 0.18s ease; }
+             font: 13px ui-monospace, monospace; transition: color 0.18s ease; }
   .seg-opt:hover { color: #e4e4e7; }
   .seg-opt.active { color: #3eb489; }
   .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
                background: #262c36; }
   .seg-thumb.ready { transition: transform 0.22s ease, width 0.22s ease; }
-  .cardframe { display: block; width: 100%; height: 320px; border: 0; background: #131720; }
-  #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 24px; }
+  .cardframe { display: block; width: 100%; height: 320px; background: #1a212c;
+               border: 0; border-radius: 10px; box-shadow: 0 2px 6px rgba(0, 0, 0, 0.35); }
 </style>
 </head>
 <body>
 __BANNER__
-<div id="empty">waiting for results…</div>
-<div id="stack"></div>
+<div id="main">
+<aside id="turns"></aside>
+<div id="content"><div id="content-inner"><div id="empty">waiting for results…</div></div></div>
+</div>
 <script>
   // Cards are served same-origin, so the parent tracks each iframe's content
-  // height (ResizeObserver) and resizes the card to fit as Tabulator/Vega render.
+  // height (ResizeObserver) and resizes to fit as Tabulator/Vega render. Measure
+  // <body> (whose scrollHeight hugs the content) rather than documentElement
+  // (floored at the iframe viewport, so it can't shrink back for short content).
   function autosize(frame) {
     var ro = null;
     frame.addEventListener('load', function () {
       try {
         var doc = frame.contentWindow.document;
-        var fit = function () { frame.style.height = doc.documentElement.scrollHeight + 'px'; };
+        var fit = function () { frame.style.height = doc.body.scrollHeight + 'px'; };
         fit();
         if (ro) { ro.disconnect(); }
-        if (window.ResizeObserver) { ro = new ResizeObserver(fit); ro.observe(doc.documentElement); }
+        if (window.ResizeObserver) { ro = new ResizeObserver(fit); ro.observe(doc.body); }
       } catch (e) { /* cross-origin / detached — keep the CSS height */ }
     });
   }
@@ -110,10 +121,25 @@ __BANNER__
   }
   // Build one record's pane: a Chart|Data|Query tab strip + iframe. The chart
   // loads up front; Data/Query load lazily on tab click.
-  function buildRecord(record, labelText) {
+  function buildRecord(record, recOpts) {
     var pane = el('div', 'recordpane');
     var bar = el('div', 'cardbar');
-    if (labelText) { var lbl = el('span', 'cardlabel'); lbl.textContent = labelText; bar.appendChild(lbl); }
+    if (recOpts) {
+      var tabs = el('div', 'rectabs');
+      recOpts.records.forEach(function (rt, i) {
+        var t = el('button', 'rectab');
+        t.textContent = rt.label || ('result ' + (i + 1));
+        t.title = t.textContent;
+        if (i === recOpts.activeIndex) { t.classList.add('active'); }
+        t.onclick = function () { recOpts.onSelect(i); };
+        tabs.appendChild(t);
+      });
+      bar.appendChild(tabs);
+    } else if (record.label) {
+      var lbl = el('span', 'cardlabel');
+      lbl.textContent = record.label;
+      bar.appendChild(lbl);
+    }
     var frame = el('iframe', 'cardframe');
     frame.scrolling = 'no';
     autosize(frame);
@@ -146,56 +172,49 @@ __BANNER__
     }
     return pane;
   }
-  // A turn is one card with a left record rail (one item per cited result); all
-  // record panes are pre-built and toggled by visibility, so switching is a CSS
-  // toggle (no iframe reload, no flicker), not a re-render.
-  function makeTurn(turn) {
-    var card = el('div', 'card');
+  // Render the active turn: the record's pane(s) directly (no card frame). A
+  // multi-result turn carries record tabs in each pane's header (left of the view
+  // segmented); panes are pre-built and toggled by visibility (flicker-free switch).
+  function renderTurn(turn) {
     var records = turn.records || [];
-    if (records.length === 0) {
-      card.appendChild(buildRecord({ views: [] }, null));
-      return card;
+    if (records.length <= 1) {
+      return buildRecord(records[0] || { views: [] }, null);
     }
-    card.classList.add('railcard');
-    var rail = el('div', 'rail');
-    var content = el('div', 'railcontent');
-    var items = [];
+    var box = el('div', 'panesbox');
     var panes = [];
+    function onSelect(i) { panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); }); }
     records.forEach(function (rec, i) {
-      var pane = buildRecord(rec, null);
+      var pane = buildRecord(rec, { records: records, activeIndex: i, onSelect: onSelect });
       if (i !== 0) { pane.classList.add('hidden'); }
-      content.appendChild(pane);
+      box.appendChild(pane);
       panes.push(pane);
-      var it = el('div', 'railitem');
-      it.textContent = rec.label || ('result ' + (i + 1));
-      it.title = it.textContent;
-      it.onclick = function () {
-        items.forEach(function (x) { x.classList.remove('active'); });
-        it.classList.add('active');
-        panes.forEach(function (p, j) { p.classList.toggle('hidden', j !== i); });
-      };
-      items.push(it);
-      rail.appendChild(it);
     });
-    items[0].classList.add('active');
-    card.appendChild(rail);
-    card.appendChild(content);
-    return card;
+    return box;
   }
-  var shown = 0;
+  // Turn navigator: the sidebar lists every turn; only the selected turn is
+  // rendered (iframes never accumulate). New turns are appended and auto-selected.
+  var turns = [];
+  function selectTurn(i) {
+    if (i < 0 || i >= turns.length) { return; }
+    var items = document.querySelectorAll('#turns .turnitem');
+    for (var k = 0; k < items.length; k++) { items[k].classList.toggle('active', k === i); }
+    var inner = document.getElementById('content-inner');
+    inner.innerHTML = '';
+    inner.appendChild(renderTurn(turns[i]));
+  }
   function poll() {
-    fetch('/__index__').then(function (r) { return r.json(); }).then(function (turns) {
-      if (turns.length > 0) {
-        var e = document.getElementById('empty');
-        if (e) { e.remove(); }
+    fetch('/__index__').then(function (r) { return r.json(); }).then(function (server) {
+      if (server.length <= turns.length) { return; }
+      var sidebar = document.getElementById('turns');
+      for (var i = turns.length; i < server.length; i++) {
+        turns.push(server[i]);
+        var it = el('div', 'turnitem');
+        it.textContent = server[i].title || ('Turn ' + (i + 1));
+        it.title = it.textContent;
+        (function (idx) { it.onclick = function () { selectTurn(idx); }; })(i);
+        sidebar.appendChild(it);
       }
-      var stack = document.getElementById('stack');
-      for (var i = shown; i < turns.length; i++) {
-        var node = makeTurn(turns[i]);
-        stack.appendChild(node);
-        node.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }
-      shown = turns.length;
+      selectTurn(turns.length - 1);
     }).catch(function () {});
   }
   setInterval(poll, 1000);
