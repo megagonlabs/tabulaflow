@@ -15,10 +15,14 @@ import functools
 import http.server
 import json
 import threading
-from collections.abc import Callable
+from collections.abc import Callable, Sequence
 from pathlib import Path
 
 from tabulaflow.app.theme import GITHUB_SLUG, GITHUB_URL
+
+DEFAULT_OUTPUT_PANE_PORT_START = 61111
+DEFAULT_OUTPUT_PANE_PORT_END = 61130
+DEFAULT_OUTPUT_PANE_PORTS = tuple(range(DEFAULT_OUTPUT_PANE_PORT_START, DEFAULT_OUTPUT_PANE_PORT_END + 1))
 
 _GITHUB_SVG = (
     '<svg viewBox="0 0 16 16" aria-hidden="true">'
@@ -363,11 +367,23 @@ class _Handler(http.server.SimpleHTTPRequestHandler):
         """Silence request logging — stray stderr would corrupt the TUI."""
 
 
+class OutputPanePortError(RuntimeError):
+    """Raised when the output pane cannot bind its configured loopback port(s)."""
+
+
 class OutputPane:
     """A loopback HTTP server plus browser tab showing cited results as they arrive."""
 
-    def __init__(self, dumps_dir: Path) -> None:
+    def __init__(
+        self,
+        dumps_dir: Path,
+        *,
+        port: int | None = None,
+        port_range: Sequence[int] = DEFAULT_OUTPUT_PANE_PORTS,
+    ) -> None:
         self._dumps_dir = dumps_dir
+        self._port_config = port
+        self._port_range = tuple(port_range)
         self._results: list[dict[str, object]] = []
         self._lock = threading.Lock()
         self._server: _PaneServer | None = None
@@ -375,9 +391,30 @@ class OutputPane:
         self._browser_opened = False
 
     def start(self) -> None:
-        """Bind a loopback server on a free port and serve it in a daemon thread."""
+        """Bind a loopback server and serve it in a daemon thread.
+
+        With no explicit port, the pane takes the first available port from the
+        stable default range. An explicit port is strict and fails if occupied.
+        """
         handler = functools.partial(_Handler, directory=str(self._dumps_dir))
-        self._server = _PaneServer(("127.0.0.1", 0), handler, self)
+        ports = (self._port_config,) if self._port_config is not None else self._port_range
+        last_error: OSError | None = None
+        for port in ports:
+            if not 1 <= port <= 65535:
+                raise ValueError(f"Output pane port must be between 1 and 65535, got {port}.")
+            try:
+                self._server = _PaneServer(("127.0.0.1", port), handler, self)
+                break
+            except OSError as exc:
+                last_error = exc
+        if self._server is None:
+            if self._port_config is not None:
+                message = f"Output pane port {self._port_config} is unavailable."
+            elif self._port_range:
+                message = f"Output pane ports {self._port_range[0]}-{self._port_range[-1]} are unavailable."
+            else:
+                message = "Output pane has no ports configured."
+            raise OutputPanePortError(message) from last_error
         self._port = self._server.server_address[1]
         threading.Thread(target=self._server.serve_forever, daemon=True).start()
 

@@ -1,16 +1,36 @@
 from __future__ import annotations
 
+import contextlib
 import json
+import socket
 import urllib.error
 import urllib.request
 from importlib.resources import files
 from pathlib import Path
 from types import SimpleNamespace
+from collections.abc import Iterator
 
 import pandas as pd
+import pytest
 
 from tabulaflow.app.render.cards import render_query_html, render_record_card
-from tabulaflow.app.pane import OutputPane
+from tabulaflow.app.pane import OutputPane, OutputPanePortError
+
+
+@contextlib.contextmanager
+def _bound_loopback_port() -> Iterator[int]:
+    sock = socket.socket()
+    sock.bind(("127.0.0.1", 0))
+    sock.listen(1)
+    try:
+        yield int(sock.getsockname()[1])
+    finally:
+        sock.close()
+
+
+def _unused_loopback_port() -> int:
+    with _bound_loopback_port() as port:
+        return port
 
 
 def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
@@ -40,6 +60,24 @@ def test_output_pane_serves_text_only_turn(tmp_path: Path) -> None:
         ]
     finally:
         pane.stop()
+
+
+def test_output_pane_uses_first_available_port_in_range(tmp_path: Path) -> None:
+    with _bound_loopback_port() as occupied_port:
+        available_port = _unused_loopback_port()
+        pane = OutputPane(tmp_path, port_range=(occupied_port, available_port))
+        pane.start()
+        try:
+            assert pane.url == f"http://127.0.0.1:{available_port}/"
+        finally:
+            pane.stop()
+
+
+def test_output_pane_explicit_port_is_strict(tmp_path: Path) -> None:
+    with _bound_loopback_port() as occupied_port:
+        pane = OutputPane(tmp_path, port=occupied_port)
+        with pytest.raises(OutputPanePortError, match=str(occupied_port)):
+            pane.start()
 
 
 def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
