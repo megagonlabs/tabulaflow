@@ -64,24 +64,24 @@ _PANE_HTML = """<!doctype html>
   #content { flex: 1 1 auto; overflow-y: auto; min-width: 0; display: flex; }
   #content-inner { width: min(1000px, 100%); margin: auto; padding: 16px; box-sizing: border-box; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 28px; }
-  .rectabs { display: flex; align-items: center; gap: 12px; margin-right: auto; }
+  .rectabs { display: flex; align-items: center; gap: 12px; margin-right: auto; min-height: 32px; }
   .rectab { background: transparent; border: 0; color: #6a737d; cursor: pointer;
-            padding: 2px 1px; border-bottom: 2px solid transparent; max-width: 160px;
+            padding: 6px 1px; border-bottom: 2px solid transparent; max-width: 160px;
             white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            font: 13px ui-monospace, monospace; }
+            font: 13px/1.2 ui-monospace, monospace; }
   .rectab:hover { color: #e4e4e7; }
   .rectab.active { color: #3eb489; border-bottom-color: #3eb489; }
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: center; gap: 8px; padding: 2px 4px 12px;
+  .cardbar { display: flex; align-items: center; gap: 8px; min-height: 40px; padding: 6px 4px 14px;
              font: 13px ui-monospace, monospace; }
   .cardlabel { color: #e4e4e7; margin-right: auto; }
   .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
-             color: #6a737d; padding: 4px 14px; border-radius: 999px; text-transform: capitalize;
-             font: 13px ui-monospace, monospace; transition: color 0.18s ease; }
+             color: #6a737d; padding: 7px 16px; border-radius: 999px; text-transform: capitalize;
+             font: 13px/1.2 ui-monospace, monospace; transition: color 0.18s ease; }
   .seg-opt:hover { color: #e4e4e7; }
   .seg-opt.active { color: #3eb489; }
   .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
