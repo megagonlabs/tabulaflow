@@ -25,9 +25,9 @@ _PANE_HTML = """<!doctype html>
 <title>tabulaflow · results</title>
 <style>
   html, body { margin: 0; background: #0f1117; }
-  #stack { padding: 12px; }
-  .card { border: 1px solid #21262d; border-radius: 8px; margin: 0 0 12px;
-          background: #131720; overflow: hidden; }
+  #stack { padding: 12px; max-width: 1100px; margin: 0 auto; }
+  .card { border: 1px solid #21262d; border-radius: 8px; margin: 0 0 14px;
+          background: #131720; overflow: hidden; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3); }
   .cardbar { display: flex; align-items: center; gap: 8px; padding: 6px 10px;
              border-bottom: 1px solid #21262d; font: 12px ui-monospace, monospace; }
   .cardlabel { color: #e4e4e7; margin-right: auto; }
@@ -36,7 +36,7 @@ _PANE_HTML = """<!doctype html>
          font: 12px ui-monospace, monospace; }
   .tab:hover { color: #e4e4e7; }
   .tab.active { color: #3eb489; border-color: #3eb489; }
-  .cardframe { display: block; width: 100%; height: 60vh; border: 0; background: #131720; }
+  .cardframe { display: block; width: 100%; height: 320px; border: 0; background: #131720; }
   #empty { color: #6a737d; font: 14px ui-monospace, monospace; padding: 24px; }
 </style>
 </head>

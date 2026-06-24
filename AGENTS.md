@@ -119,24 +119,23 @@ If (and only if) resuming an interrupted experiment, append to the log file:
 bash exp/123_xxx.sh &>> log/123.out &
 ```
 
-## Design Language (HTML table dumps in `tabulaflow/app/dump.py`)
+## Design Language (HTML rendering in `tabulaflow/app/render/`, shown in the output pane)
 
 Dark-app feel, mint accent, modern data-app references (Linear, Stripe, GitHub).
 
-- **Engine**: Tabulator (`tabulator_midnight.min.css` + overrides). Keep custom CSS thin — let the bundled theme do the work.
+- **Engine**: Tabulator (`tabulator_midnight.min.css` + overrides) for tables, Vega for charts. Keep custom CSS thin — let the bundled theme do the work.
 - **Palette**:
   - Page bg: `#0f1117` (deepest)
   - Card / table surface: `#131720`
   - Even-row stripe: `#1a1f2a` (subtle ~4% lift)
   - Row hover: `#1f2532`
   - Border: `#21262d`
-  - Mint accent: `#3eb489` (headers, banner logo, focus highlights)
+  - Mint accent: `#3eb489` (headers, focus highlights, active pane tab)
   - Text primary `#e4e4e7`; dim / row-numbers `#6a737d`
 - **Layout**:
-  - Sticky top banner with `tabulaflow` mint-mono logo (left) and GitHub repo link (right).
-  - Table sits in a bordered card that `min-height`s the viewport — short tables still anchor a panel, no floating-in-void.
+  - Views render **bare** (no banner/page chrome), sized to their content, so they embed cleanly in the output pane (`app/pane.py`) — which frames each cited result as a card with a `Chart | Data | Query` tab strip and caps the stack width. The `tabulaflow` banner is reserved for standalone share exports.
   - Table layout `fitDataFill`: columns are content-sized, rows fill container width (blank space on the right is intentional).
-  - Width: card fills page. Height: only force a pixel height when row count > 100 (so virtual scroll engages); otherwise free-flow.
+  - Height: only force a pixel height when row count > 100 (so virtual scroll engages); otherwise free-flow at content height.
 - **No double boxes**: kill midnight's inner `.tabulator` border, the only frame is the outer card.
 - **Row separators**: none on body cells; vertical 1px dividers on header cells only.
 

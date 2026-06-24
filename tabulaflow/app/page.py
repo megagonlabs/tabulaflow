@@ -10,7 +10,7 @@ from __future__ import annotations
 
 import html
 
-from tabulaflow.app.theme import ACCENT, ERROR, GITHUB_SLUG, GITHUB_URL
+from tabulaflow.app.theme import ACCENT, ERROR
 
 # Web palette — the single source for the HTML dump colors. ``theme.py`` holds
 # the terminal palette (and the mint ``ACCENT`` / ``ERROR`` reused here); these
@@ -46,43 +46,11 @@ _BASE_CSS = f"""
     --popover-border: {POPOVER_BORDER};
     --error: {ERROR};
 }}
-html, body {{ margin: 0; padding: 0; min-height: 100%; background: {PAGE_BG}; color: {TEXT}; }}
+html, body {{ margin: 0; padding: 0; background: {CARD_BG}; color: {TEXT}; }}
 body {{
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     font-size: 14px;
 }}
-
-#banner {{
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 12px 24px;
-    border-bottom: 1px solid {BORDER};
-    background: {PAGE_BG};
-    position: sticky;
-    top: 0;
-    z-index: 50;
-}}
-#logo {{
-    color: {ACCENT};
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: 16px;
-    font-weight: 700;
-    letter-spacing: 0.05em;
-    user-select: none;
-}}
-#repo {{
-    display: inline-flex;
-    align-items: center;
-    gap: 6px;
-    color: {TEXT_MUTED};
-    text-decoration: none;
-    font-size: 13px;
-    padding: 4px 10px;
-    border-radius: 4px;
-}}
-#repo:hover {{ background: {ROW_HOVER}; color: {TEXT}; }}
-#repo svg {{ width: 16px; height: 16px; fill: currentColor; }}
 
 #content {{
     padding: 20px 24px;
@@ -99,19 +67,6 @@ body {{
 ::-webkit-scrollbar-thumb:hover {{ background: {SCROLLBAR_THUMB_HOVER}; }}
 ::-webkit-scrollbar-corner {{ background: {SCROLLBAR_TRACK}; }}
 """
-
-# GitHub mark, rendered in the banner's repo link.
-_GITHUB_SVG = (
-    '<svg viewBox="0 0 16 16" aria-hidden="true">'
-    '<path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38'
-    " 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53"
-    " .63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95"
-    " 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68"
-    " 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15"
-    " 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2"
-    ' 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>'
-)
-
 
 def render_page(*, title: str, body: str, head: str = "", scripts: str = "") -> str:
     """Assemble a full HTML document around a page body.
@@ -132,10 +87,6 @@ def render_page(*, title: str, body: str, head: str = "", scripts: str = "") -> 
         f"<style>{_BASE_CSS}</style>"
         f"{head}"
         "</head><body>"
-        '<header id="banner">'
-        '<span id="logo">tabulaflow</span>'
-        f'<a id="repo" href="{GITHUB_URL}" target="_blank" rel="noopener">{_GITHUB_SVG}{GITHUB_SLUG}</a>'
-        "</header>"
         f'<main id="content">{body}</main>'
         f"{scripts}"
         "</body></html>"

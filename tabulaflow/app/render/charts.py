@@ -71,7 +71,6 @@ _CHART_CSS = """
    the card sits just under the banner and is centered left-to-right, capped so
    it isn't full-bleed on wide monitors. */
 #vis-stage {
-    min-height: calc(100vh - 120px);
     display: flex;
     align-items: flex-start;
     justify-content: center;
@@ -80,21 +79,17 @@ _CHART_CSS = """
    monitors. */
 #vis-wrap {
     width: 100%;
-    max-width: 1040px;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    padding: 24px;
+    max-width: 720px;
     box-sizing: border-box;
 }
 /* Single-view charts fill a fixed-height card in both dimensions
    (spec width/height = "container"). */
-#vis-wrap.fill { height: min(72vh, 640px); }
+#vis-wrap.fill { height: 360px; }
 #vis-wrap.fill #vis,
 #vis-wrap.fill #vis > .vega-embed { width: 100%; height: 100%; }
 /* Multi-view / faceted charts keep their intrinsic size and scroll inside
    the card (Vega-Lite can't size those to a container). */
-#vis-wrap.content { max-height: calc(100vh - 120px); overflow: auto; }
+#vis-wrap.content { max-height: 560px; overflow: auto; }
 #vis-wrap.content #vis { width: 100%; }
 .vis-error { color: var(--error); white-space: pre-wrap;
     font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 13px; }

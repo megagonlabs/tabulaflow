@@ -159,10 +159,6 @@ _CUSTOM_CSS = """
    sit in a defined panel instead of floating against a vast page bg. */
 #table-wrap {
     width: 100%;
-    background: var(--card);
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    min-height: calc(100vh - 90px);
     overflow: hidden;
 }
 
