@@ -68,7 +68,7 @@ _PANE_HTML = """<!doctype html>
   .transcript { display: flex; flex-direction: column; gap: 32px; padding: 2px 4px 0; }
   .message { display: flex; min-width: 0; }
   .message-label { display: none; }
-  .message-body { font-size: 15px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
+  .message-body { font-size: 16px; line-height: 1.6; white-space: pre-wrap; overflow-wrap: anywhere; }
   .message.user { justify-content: flex-end; }
   .message.user .message-body { max-width: min(720px, 78%); padding: 10px 14px; color: #e4e4e7;
                                 background: #1f2532; border-radius: 16px 16px 4px 16px;
@@ -78,26 +78,26 @@ _PANE_HTML = """<!doctype html>
   @media (max-width: 640px) {
     .message.user .message-body { max-width: 92%; }
   }
-  .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px;
-             margin-right: auto; min-height: 36px; }
-  .rectab { background: transparent; border: 0; border-radius: 2px; color: #9aa4b2; cursor: pointer;
-            padding: 5px 10px; white-space: nowrap;
-            font: 14px/1.25 ui-monospace, monospace; }
-  .rectab:hover { color: #e4e4e7; background: #1f2532; }
+  .rectabs { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px;
+             margin-right: auto; min-height: 32px; }
+  .rectab { background: transparent; border: 0; border-radius: 4px; color: #9aa4b2; cursor: pointer;
+            padding: 4px 9px; white-space: nowrap;
+            font: 500 13px/1.25 ui-monospace, monospace; }
+  .rectab:hover { color: #e4e4e7; background: rgba(255, 255, 255, 0.035); }
   .rectab.active { color: #06120e; background: #3eb489; font-weight: 700; }
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 40px; padding: 6px 4px 14px;
+  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 12px;
              font: 13px ui-monospace, monospace; }
-  .cardlabel { display: inline-flex; margin-right: auto; padding: 5px 10px; white-space: nowrap;
-               color: #06120e; background: #3eb489; border-radius: 2px;
-               font: 700 14px/1.25 ui-monospace, monospace; }
+  .cardlabel { display: inline-flex; margin-right: auto; padding: 4px 9px; white-space: nowrap;
+               color: #06120e; background: #3eb489; border-radius: 4px;
+               font: 700 13px/1.25 ui-monospace, monospace; }
   .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
-             color: #6a737d; padding: 7px 16px; border-radius: 999px; text-transform: capitalize;
-             font: 14px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
+             color: #6a737d; padding: 6px 14px; border-radius: 999px; text-transform: capitalize;
+             font: 13px/1.25 ui-monospace, monospace; transition: color 0.18s ease; }
   .seg-opt:hover { color: #e4e4e7; }
   .seg-opt.active { color: #3eb489; }
   .seg-thumb { position: absolute; top: 3px; bottom: 3px; left: 0; width: 0; border-radius: 999px;
