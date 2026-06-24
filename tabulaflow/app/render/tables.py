@@ -124,7 +124,8 @@ def _safe_col_name(name: str) -> str:
     return re.sub(r"[^A-Za-z0-9_-]+", "_", name)[:32] or "col"
 
 
-_DEFAULT_MAX_ROWS = 50_000
+TABLE_RENDER_MAX_ROWS = 50_000
+_DEFAULT_MAX_ROWS = TABLE_RENDER_MAX_ROWS
 _DEFAULT_INLINE_CAP = 256 * 1024  # 256 KB
 # Cap on the full text stored per non-media cell (sent to Tabulator's data
 # array). Truncated text above this is replaced with a head excerpt + note;

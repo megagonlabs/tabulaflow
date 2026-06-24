@@ -88,11 +88,13 @@ _PANE_HTML = """<!doctype html>
   .panesbox { position: relative; }
   .recordpane { width: 100%; }
   .recordpane.hidden { position: absolute; top: 0; left: 0; visibility: hidden; pointer-events: none; }
-  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 12px;
+  .cardbar { display: flex; align-items: flex-end; gap: 8px; min-height: 36px; padding: 5px 4px 8px;
              font: 13px ui-monospace, monospace; }
   .cardlabel { display: inline-flex; margin-right: auto; padding: 4px 9px; white-space: nowrap;
                color: #06120e; background: #3eb489; border-radius: 4px;
                font: 700 13px/1.25 ui-monospace, monospace; }
+  .viewmeta { min-height: 15px; padding: 8px 4px 0; color: #6a737d; white-space: nowrap; text-align: left;
+              font: 12px/1.25 ui-monospace, monospace; }
   .seg { position: relative; display: inline-flex; padding: 3px; border-radius: 999px;
          box-shadow: inset 0 0 0 1px #21262d; }
   .seg-opt { position: relative; z-index: 1; background: transparent; border: 0; cursor: pointer;
@@ -176,6 +178,7 @@ __BANNER__
     var frame = el('iframe', 'cardframe');
     frame.scrolling = 'no';
     autosize(frame);
+    var meta = el('div', 'viewmeta');
     var seg = el('div', 'seg');
     var thumb = el('span', 'seg-thumb');
     seg.appendChild(thumb);
@@ -185,6 +188,7 @@ __BANNER__
       o.textContent = v.kind;
       o.onclick = function () {
         frame.src = '/' + v.file;
+        meta.textContent = v.meta || '';
         opts.forEach(function (x) { x.classList.remove('active'); });
         o.classList.add('active');
         moveThumb(thumb, o);
@@ -192,11 +196,15 @@ __BANNER__
       opts.push(o);
       seg.appendChild(o);
     });
-    if (opts.length) { bar.appendChild(seg); }
+    if (opts.length) {
+      bar.appendChild(seg);
+    }
     pane.appendChild(bar);
     pane.appendChild(frame);
+    pane.appendChild(meta);
     if (opts.length) {
       frame.src = '/' + record.views[0].file;
+      meta.textContent = record.views[0].meta || '';
       opts[0].classList.add('active');
       requestAnimationFrame(function () {
         moveThumb(thumb, opts[0]);

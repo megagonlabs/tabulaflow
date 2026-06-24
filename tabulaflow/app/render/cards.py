@@ -21,7 +21,7 @@ from pygments.util import ClassNotFound
 
 from tabulaflow.app.page import CARD_BG, TEXT, render_page
 from tabulaflow.app.render.charts import render_chart_html
-from tabulaflow.app.render.tables import render_table_html
+from tabulaflow.app.render.tables import TABLE_RENDER_MAX_ROWS, render_table_html
 from tabulaflow.app.theme import ACCENT
 
 if TYPE_CHECKING:
@@ -32,6 +32,17 @@ if TYPE_CHECKING:
 _PANE_TABLE_MAX_H = 520
 
 _QUERY_BG = CARD_BG  # same panel surface as the chart/data views
+
+
+def _plural(n: int, word: str) -> str:
+    return f"{n:,} {word}" if n == 1 else f"{n:,} {word}s"
+
+
+def _data_view_meta(num_rows: int, num_cols: int, *, max_rows: int = TABLE_RENDER_MAX_ROWS) -> str:
+    row_text = (
+        f"showing {max_rows:,} of {_plural(num_rows, 'row')}" if num_rows > max_rows else _plural(num_rows, "row")
+    )
+    return f"{row_text} · {_plural(num_cols, 'column')}"
 
 
 class _SqlStyle(Style):  # type: ignore[misc]  # pygments ships no type stubs
@@ -88,7 +99,7 @@ def render_record_card(record: "ChatResultRecord", dumps_dir: Path) -> dict[str,
             views.append({"kind": "chart", "file": path.name})
         path = dumps_dir / f"T_{secrets.token_hex(3)}.html"
         render_table_html(df, path, title=record.label, max_height=_PANE_TABLE_MAX_H)
-        views.append({"kind": "data", "file": path.name})
+        views.append({"kind": "data", "file": path.name, "meta": _data_view_meta(len(df), len(df.columns))})
     if record.query:
         path = dumps_dir / f"Q_{secrets.token_hex(3)}.html"
         render_query_html(record.query, path, lexer=record.query_lexer or "sql")
