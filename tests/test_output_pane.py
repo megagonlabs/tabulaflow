@@ -9,7 +9,7 @@ from types import SimpleNamespace
 
 import pandas as pd
 
-from tabulaflow.app.render.cards import render_record_card
+from tabulaflow.app.render.cards import render_query_html, render_record_card
 from tabulaflow.app.pane import OutputPane
 
 
@@ -58,6 +58,18 @@ def test_record_card_includes_data_view_meta(tmp_path: Path) -> None:
 
     assert card is not None
     assert card["views"] == [{"kind": "data", "file": card["views"][0]["file"], "meta": "2 rows · 2 columns"}]
+
+
+def test_query_view_renders_code_header_and_dracula_theme(tmp_path: Path) -> None:
+    path = tmp_path / "query.html"
+    render_query_html('print("Hello, world!")', path, lexer="python")
+
+    html = path.read_text()
+    assert '<span class="query-lang">Python</span>' in html
+    assert 'data-copy-query aria-label="Copy query" title="Copy query"' in html
+    assert '<span class="copy-label">Copy</span>' not in html
+    assert "#202020" in html
+    assert "#8BE9FD" in html  # Dracula builtin/token color.
 
 
 def test_record_card_links_assets_instead_of_inlining(tmp_path: Path) -> None:
